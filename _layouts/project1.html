@@ -2,7 +2,6 @@
 <html lang="en">
   {% include head.html %}
   <body>
-
     <div class="project-navigator">
       <ul>
         <li><a class="navigator-link" href="index.html">Main Page</a></li>
@@ -12,16 +11,22 @@
     </div>
     <div class='project-div'>
     <h1>Deep Stereo Matching with Explicit Cost Aggregation Sub-Architecture</h1>
-    <h2>Abstract</h2>
+    <h2>Introduction</h2>
     <p>Deep neural networks have shown excellent performance for stereo matching. Many efforts focus on the feature extraction and similarity measurement of the matching cost computation step while less attention is paid on cost aggregation which is crucial for stereo matching. In this paper, we present a learning-based cost aggregation method for stereo matching by a novel sub-architecture in the end-to-end trainable pipeline. We reformulate the cost aggregation as a learning process of the generation and selection of cost aggregation proposals which indicate the possible cost aggregation results. The cost aggregation sub-architecture is realized by a two-stream network: one for the generation of cost aggregation proposals, the other for the selection of the proposals. The criterion for the selection is determined by the low-level structure information obtained from a light convolutional network. The two-stream network offers a global view guidance for the cost aggregation to rectify the mismatching value stemming from the limited view of the matching cost computation. The comprehensive experiments on challenge datasets such as KITTI and Scene Flow show that our method outperforms the state-of-the-art methods.</p>
     <h2>Problem</h2>
     <p>The deep stereo matching methods lack the interpretability during cost aggregation. Only using 3D convolution without any guidance makes the cost aggregation process unexplainable and hard to balance the smoothness among the plane and the clear result on silhouettes.</p>
     <h2>Solution</h2>
     <p>We observe that the low-level cnn feature map has a strong information on the edges, therefore, we propose to use this information to guide the cost aggregation process, where the 3D convolution can both leverage the high-level semantic information of the later layres and low-level geometrical information from the first feature layers. As a result, the network can learn to balance the performance on the edge and among the plane referring to the different singnal correspondenses of the high-level and low-level feature maps.</p>
-    <img alt="aaai paper" src="{{ "/assets/img/project1-head.png" | prepend: site.baseurl }}" />
+    <img alt="overview" src="{{ "/assets/img/project1/overview.png" | prepend: site.baseurl }}" />
+    <p>The below figure shows the details of the network. Two branches are designed: </p>
+    <p>1. We generate the aggregation proposals from the obtained 3D feature map which is an implicit 4D feature map by CDHW. THe proposals is a 5D feature map as KCDHW, where K is the number of the proposals.</p>
+    <p>2. We reuse the feature map from the previous 2D CNN as the guidance to select or fuse the proposals as the final aggregation result. </p>
+    <img alt="network" src="{{ "/assets/img/project1/network.png" | prepend: site.baseurl }}" />
     <h2>Result</h2>
-    <p>The proposed architecture reaches a promising accuracy on the Scene Flow (Mayer et al. 2016) and the KITTI benchmark (Menze and Geiger 2015; Geiger, Lenz, and Urtasun 2012).</p>
-    </div>
+    <p>The proposed architecture outperforms the baseline GCNet on the Scene Flow and the KITTI benchmarks.</p>
+    <p>The left figure shous our results on the KITTI dataset, where the proposed method can simply improve the result of the baseline GCNet.</p>
+    <img alt="result" src="{{ "/assets/img/project1/result.png" | prepend: site.baseurl }}" />  
+    <p>The right figure shows the obtained guidance and its influence to the final result. To get a better visualization result, we pre-compute the mask only with the ground truth depth. The feature map is computed through the threshold of the mean value fo the feature map, so we can easily see the strong signal on the feature map. We also apply the gradient check on the mask where u can see there is a division on the top of the illustration result, this operation is to check the relation between the guidance and the depth gradient.  </p>  </div>
     {{ content }}
     {% include footer.html %}
   </body>
