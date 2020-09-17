@@ -14,7 +14,7 @@ def sort_key(s):
 def strsort(alist):
     alist.sort(key=sort_key)
     return alist
-path=r'H:\lidongyv.github.io\assets\img\project5'
+path=r'H:\lidongyv.github.io\assets\img\project7'
 files=os.listdir(path)
 files=strsort(files)
 for i in range(len(files)):
