@@ -21,3 +21,4 @@ for i in range(len(files)):
     files[i].split('幻灯片')
     print(i,files[i],files[i].split('幻灯片'))
     os.rename(os.path.join(path,files[i]),os.path.join(path,str(i)+'.png'))
+    # os.rename(os.path.join(path,files[i]),os.path.join(path,files[i].split('幻灯片')[1]))
