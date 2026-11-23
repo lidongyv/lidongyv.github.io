@@ -1,0 +1,50 @@
+name: Deploy site to GitHub Pages
+
+# This repository has GitHub Pages configured with build_type "workflow", which
+# means the classic branch builder is disabled and only a workflow can publish.
+# Without this file nothing is ever deployed (the last live deploy was 2022-10-29).
+#
+# The site is pre-rendered: generate locally with `python _build/build.py`, commit
+# the HTML, and this workflow publishes the committed tree as-is. It therefore does
+# not need Python, Ruby, Jekyll or any build step of its own.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # .git and .github are excluded by the action itself; everything else in the
+      # checkout is exactly the published site (~193 MB of the 1 GB budget).
+      - name: Upload site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
