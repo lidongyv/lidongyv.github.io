@@ -82,13 +82,13 @@ body{
 </style></head>
 <body><div class="frame">
   <div class="fig-head">
-    <div><div class="kicker">POST-TRAIN / 后训练</div><div class="title">当仿真器变成同一个模型 <span class="thin">/ When the simulator is the model</span></div><div class="sub">RL、交互、闭环、外推不再是独立的 post-train 阶段，而是围绕多模态轨迹预测的辅助任务——前提是 4D 生成足够可信。</div></div>
+    <div><div class="kicker">POST-TRAIN / 后训练</div><div class="title">当仿真器变成同一个模型 <span class="thin">/ When the simulator is the model</span></div><div class="sub">close loop training 可能被排进 pretrain：模型给出 action，渲染器给出 vision future，再算 reward。是否成立不确定。</div></div>
     <div class="fig-no">FIG.08</div>
   </div>
   <div class="body">
 <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
   <span class="badge hyp">HYPOTHESIS</span>
-  <span class="note">If the 4D generator is good enough to act as a simulator, post-training can be absorbed into a continued pretraining loop.</span>
+  <span class="note">Close loop training can be scheduled inside pretraining: action → vision future → reward.</span>
 </div>
 
 <div class="flow" style="margin-top:16px">
@@ -96,7 +96,7 @@ body{
   <div class="arr">→</div>
   <div class="node blue" style="flex:.95"><div class="tag">Act</div><h4>Action</h4><p>steer, accel<br>candidate trajectories</p></div>
   <div class="arr orange">→</div>
-  <div class="node orange" style="flex:1.2"><div class="tag">World model</div><h4>4D renderer</h4><p>1B NVS decoder<br>imagine the next 8 frames</p></div>
+  <div class="node orange" style="flex:1.2"><div class="tag">World model</div><h4>4D renderer</h4><p>1B NVS decoder<br>imagine a short-horizon future</p></div>
   <div class="arr orange">→</div>
   <div class="node orange" style="flex:1.1"><div class="tag">Rollout</div><h4>Imagined future</h4><p>novel views<br>counterfactual actions</p></div>
   <div class="arr purple">→</div>
@@ -108,15 +108,15 @@ body{
   <div style="position:absolute;left:4%;right:4%;top:16px;border-top:2px dashed #6d4aff"></div>
   <div style="position:absolute;left:4%;top:8px;width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:11px solid #6d4aff"></div>
   <div style="position:absolute;left:50%;top:5px;transform:translateX(-50%);background:var(--paper);padding:0 12px;font:700 11px/1.4 Consolas,monospace;letter-spacing:.1em;color:#6d4aff">POLICY UPDATE / GRADIENT / 策略更新</div>
-  <div style="position:absolute;left:50%;top:31px;transform:translateX(-50%);white-space:nowrap" class="note">RL · interaction · closed-loop · extrapolation — all become auxiliary tasks around the main trajectory prediction.</div>
+  <div style="position:absolute;left:50%;top:31px;transform:translateX(-50%);white-space:nowrap" class="note">Action → vision future → reward; close loop training can sit inside a pretraining interval.</div>
 </div>
 
 <div style="display:grid;grid-template-columns:1.2fr .8fr;gap:24px;margin-top:8px">
   <div>
     <div class="kicker" style="color:#6b7280">WHAT CHANGES</div>
     <div class="grid2" style="margin-top:9px">
-      <div class="node" style="padding:11px 13px"><div class="tag">Old</div><h4 style="font-size:17px;margin:5px 0 3px">仿真器是外挂</h4><p>policy → simulator → reward → update; separate stack</p></div>
-      <div class="node green" style="padding:11px 13px"><div class="tag">New</div><h4 style="font-size:17px;margin:5px 0 3px">仿真器是同一个模型</h4><p>renderer conditioned on the same scene token; shorter loop</p></div>
+      <div class="node" style="padding:11px 13px"><div class="tag">Separate</div><h4 style="font-size:17px;margin:5px 0 3px">post-train 独立</h4><p>policy → simulator → reward → update; separate stage</p></div>
+      <div class="node green" style="padding:11px 13px"><div class="tag">Scheduled</div><h4 style="font-size:17px;margin:5px 0 3px">close loop 进 pretrain</h4><p>action → vision future → reward inside a pretraining interval</p></div>
     </div>
   </div>
   <div class="node ghost" style="padding:12px 15px">
@@ -134,10 +134,10 @@ body{
 </div>
 
 <div class="grid3" style="margin-top:18px">
-  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">RISK 1</div><h4 style="font-size:17px;margin:5px 0 3px">仿真保真度</h4><p>渲染得好看 ≠ 物理正确；碰撞、遮挡、光照都可能骗过 policy。</p></div>
-  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">RISK 2</div><h4 style="font-size:17px;margin:5px 0 3px">Reward hacking</h4><p>策略会找到奖励漏洞；需要真实接管、舒适度和规则约束做锚。</p></div>
-  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">RISK 3</div><h4 style="font-size:17px;margin:5px 0 3px">算力成本</h4><p>闭环 rollout 比监督学习贵一个量级；“吸收”不等于免费。</p></div>
+  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">BALANCE 1</div><h4 style="font-size:17px;margin:5px 0 3px">仿真保真度</h4><p>渲染得好看 ≠ 物理正确；碰撞、遮挡、光照都可能骗过 policy。</p></div>
+  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">BALANCE 2</div><h4 style="font-size:17px;margin:5px 0 3px">Reward hacking</h4><p>策略会找到奖励漏洞；需要真实接管、舒适度和规则约束做锚。</p></div>
+  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">BALANCE 3</div><h4 style="font-size:17px;margin:5px 0 3px">算力成本</h4><p>闭环 rollout 比监督学习贵一个量级；并进 pretrain 不等于免费。</p></div>
 </div>
 </div>
-  <div class="fig-foot"><div><b>Sources:</b> CVPR 2026 Tesla talk (World Sim NN ↔ Policy NN closed loop); one V15 post-train hypothesis. &nbsp; <b>Note:</b> “absorbed” is a direction, not a confirmed fact.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
+  <div class="fig-foot"><div><b>Sources:</b> CVPR 2026 Tesla talk (World Sim NN ↔ Policy NN closed loop); V15 close loop framing.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
 </div></body></html>

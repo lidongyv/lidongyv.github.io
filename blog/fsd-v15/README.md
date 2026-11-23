@@ -11,7 +11,7 @@ A bilingual (Chinese / English), single-page, deliberately limited reading of Te
 | File | Purpose |
 |---|---|
 | `index.html` | The main bilingual, interactive article. Single file + `assets/` images. |
-| `assets/fig-01.png` … `fig-11.png` | The 11 original diagrams (2400×1500, optimized PNG). |
+| `assets/fig-01.png` … `fig-11.png`, plus `fig-01a.png`, `fig-07a.png`, `fig-09a.png`, and `fig-10a.png` | The 14 original diagrams (2400×1500, optimized PNG). |
 | `wechat-zh.html` | Static, inline-styled Chinese edition for the WeChat editor. |
 | `wechat-en.html` | Static, inline-styled English edition for the WeChat editor. |
 | `sources.md` | Source list, evidence levels, and notes on conflicting numbers. |
@@ -73,8 +73,8 @@ The main page is assembled from four parts:
 
 ```
 src/head.html   → <head>, CSS, top bar, hero, TOC, opening <div class="lang-zh">
-src/zh.html     → Chinese article sections (00–13 + Appendix A)
-src/en.html     → English article sections (00–13 + Appendix A)
+src/zh.html     → Chinese article sections (00–14 + Appendix A)
+src/en.html     → English article sections (00–14 + Appendix A)
 src/foot.html   → rail, footer, lightbox, JavaScript, closing tags
 ```
 
@@ -85,7 +85,7 @@ python build_page.py      # rebuild index.html
 python export_wechat.py   # rebuild wechat-zh.html / wechat-en.html
 ```
 
-Each language has 14 numbered sections plus Appendix A (15 total) with IDs `zh-*` / `en-*` and a shared `data-sec`. If you add a section, update:
+Each language has 15 numbered sections plus Appendix A (16 total) with IDs `zh-*` / `en-*` and a shared `data-sec`. If you add a section, update:
 - the TOC in `src/head.html`,
 - the mobile nav (generated from the TOC at runtime),
 - both `zh.html` and `en.html`,
@@ -113,9 +113,9 @@ The figures use only HTML/CSS (no external libraries), so they are reproducible 
 - **25×:** official framing is “critical intervention rate” improvement versus V14, not “25× safer” and not “25%”. The baseline is not public.
 - **Grok + FSD:** public evidence supports a shared general-pretrain stack / internet-video encoder; there is no public evidence that Grok weights directly co-train with FSD. The article separates the readings.
 - **UVE:** Universal Vision Encoder (not “Unified”); the full name comes from second-hand relays of Musk's posts, not the release notes. One open hypothesis is that UVE is itself part of Grok, possibly after multi-stage distillation.
-- **18 Hz / 8 frames / 36 fps / half TRIP:** also from second-hand relays of Musk's posts and media reconstruction; not official release-note text.
-- **V15 pipeline:** the “general VLM/world-model pretrain → VLA/WAM adaptation → distillation deployment” diagram is an inference, not an official pipeline. SFT's status is unknown.
-- **Task taxonomy:** three task sets — 4D dense world (4D video prediction basic, with NVS/3DGS/depth as sub-tasks), 4D sparse world (AD perception), planner (WAM S01, with multi-modal trajectory prediction and agent prediction). Language/VLM is an interface, not a task set.
+- **18 Hz / 36 fps / half TRIP:** from Musk; not a latency figure.
+- **V15 pipeline:** general VLM/world-model pretrain → VLA pretraining → distillation deployment.
+- **Task taxonomy:** four task sets — 4D dense world (4D video prediction basic, with NVS/3DGS/depth as sub-tasks), 4D sparse world (AD perception), planner (multi-modal trajectory prediction and agent prediction), language (caption, caption-based style transfer, pose as language, instance inpainting). Language interacts with all three.
 - Figures are dense by design. The web page supports click-to-zoom; the WeChat edition relies on tap-to-zoom.
 
 If you have first-hand V15 details, the most useful additions are: UVE pretraining data mix, 4D NVS conditioning, compact-token structure, and teacher/student distillation configuration.
@@ -125,7 +125,7 @@ If you have first-hand V15 details, the most useful additions are: UVE pretraini
 ## 7. Citation
 
 ```
-管中窥豹 FSD V15, 2026-11-23, v1.2.
+管中窥豹 FSD V15, 2026-11-23, v1.3.
 ```
 
 License: text and original diagrams © 2026. Public source excerpts remain the property of their respective owners. If you republish, please link back to the original sources listed in `sources.md`.

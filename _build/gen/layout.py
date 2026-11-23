@@ -176,7 +176,7 @@ def head(lang, title, desc, path, alt_lang, og_image, extra_head="", jsonld=None
     return "\n".join("  " + m for m in metas)
 
 
-def header(lang, active, alt_lang):
+def header(lang, active, alt_lang, alt_path=None):
     other_lang = alt_lang
     navs = []
     for key, label, path in NAV:
@@ -213,7 +213,7 @@ def header(lang, active, alt_lang):
         tl=esc(ui("theme_light", lang)),
         td=esc(ui("theme_dark", lang)),
         theme_icon=icon("sun") + icon("moon"),
-        alt_url=url(other_lang, _active_path(active)),
+        alt_url=url(other_lang, alt_path) if alt_path else url(other_lang, _active_path(active)),
         alt_href="en" if lang == "zh" else "zh-CN",
         lang_label=esc(ui("lang_switch_label", lang)),
         lang_icon=icon("globe"),
@@ -284,7 +284,7 @@ def footer(lang):
 
 
 def page(lang, title, desc, path, body, active="", og_image="/assets/og/og-default.png",
-         extra_head="", jsonld=None, noindex=False, show_progress=False):
+         extra_head="", jsonld=None, noindex=False, show_progress=False, alt_path=None):
     alt_lang = "en" if lang == "zh" else "zh"
     progress = '<div class="reading-bar" aria-hidden="true"></div>' if show_progress else ""
     return """<!DOCTYPE html>
@@ -309,7 +309,7 @@ def page(lang, title, desc, path, body, active="", og_image="/assets/og/og-defau
         head=head(lang, title, desc, path, alt_lang, og_image, extra_head, jsonld, noindex),
         progress=progress,
         skip=esc(ui("skip", lang)),
-        header=header(lang, active, alt_lang),
+        header=header(lang, active, alt_lang, alt_path),
         body=body,
         footer=footer(lang),
     )

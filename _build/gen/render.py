@@ -186,7 +186,7 @@ def load_posts(posts_dir):
     if not os.path.isdir(posts_dir):
         return posts
     for fn in sorted(os.listdir(posts_dir), reverse=True):
-        if not fn.endswith(".md"):
+        if not fn.endswith(".md") or fn.endswith(".en.md"):
             continue
         path = os.path.join(posts_dir, fn)
         with open(path, encoding="utf-8") as fh:
@@ -200,6 +200,14 @@ def load_posts(posts_dir):
             import datetime as _dt
             st = os.stat(path)
             date = _dt.date.fromtimestamp(min(st.st_ctime, st.st_mtime)).isoformat()
+        # optional English body: <slug>.en.md, front matter not required
+        html_en, minutes_en = "", 0
+        en_path = os.path.join(posts_dir, slug + ".en.md")
+        if os.path.isfile(en_path):
+            with open(en_path, encoding="utf-8") as fh:
+                _fm_en, en_body = parse_front_matter(fh.read())
+            html_en = render_markdown(en_body)
+            minutes_en = word_count(en_body)
         posts.append({
             "slug": slug,
             "file": fn,
@@ -212,7 +220,9 @@ def load_posts(posts_dir):
             "summary_en": fm.get("summary_en", fm.get("summary", "")),
             "body_md": body,
             "html": render_markdown(body),
+            "html_en": html_en,
             "minutes": word_count(body),
+            "minutes_en": minutes_en,
             "plain": plain(body),
         })
     posts.sort(key=lambda p: p["date"], reverse=True)
@@ -355,14 +365,21 @@ def _blog_rows(lang, posts, include_design=True):
     """Normalise markdown posts and design subsites into one list of rows."""
     rows = []
     for p in posts:
+        has_en = bool(p.get("html_en"))
+        if lang == "zh":
+            href, badge = "/blog/%s.html" % p["slug"], ""
+        elif has_en:
+            href, badge = "/en/blog/%s.html" % p["slug"], ""
+        else:
+            href, badge = "/blog/%s.html" % p["slug"], "中文"
         rows.append({
             "date": p["date"],
-            "href": "/blog/%s.html" % p["slug"],
+            "href": href,
             "title": p["title"] if lang == "zh" else p["title_en"],
             "summary": p["summary"] if lang == "zh" else p["summary_en"],
             "tags": " / ".join(p["tags"] if lang == "zh" else (p.get("tags_en") or p["tags"])),
-            "minutes": p["minutes"],
-            "badge": "" if lang == "zh" else ("中文" if lang == "zh" else "中文"),
+            "minutes": p["minutes"] if lang == "zh" else (p.get("minutes_en") or p["minutes"]),
+            "badge": badge,
         })
     if include_design:
         for d in DESIGN:
@@ -373,7 +390,7 @@ def _blog_rows(lang, posts, include_design=True):
                 "summary": d["summary"] if lang == "zh" else d["summary_en"],
                 "tags": " / ".join(d["tags"] if lang == "zh" else (d.get("tags_en") or d["tags"])),
                 "minutes": None,
-                "badge": "站" if lang == "zh" else "site",
+                "badge": "站" if lang == "zh" else "中文",
             })
     rows.sort(key=lambda r: r["date"], reverse=True)
     return rows
@@ -784,10 +801,16 @@ def render_opensource(lang):
 
 
 def render_blog_index(lang, posts):
+    note = ""
+    if lang != "zh":
+        note = ('<p class="muted small" style="margin-bottom:24px">'
+                'The three posts below are written in English. The research sites are written in Chinese; '
+                'each one opens with a short English summary.</p>')
     body = """
 <section class="section">
   <div class="wrap wrap--narrow">
     {head}
+    {note}
     {list}
     <div class="notice" style="margin-top:20px">
       <div class="notice__title">RSS</div>
@@ -797,6 +820,7 @@ def render_blog_index(lang, posts):
 </section>
 """.format(
         head=section_head(lang, "博客" if lang == "zh" else "Blog", level=1),
+        note=note,
         list=blog_list_html(lang, posts),
         rss_note=esc("订阅：" if lang == "zh" else "Subscribe: "),
         feed=("/blog/feed.xml" if lang == "zh" else "/en/blog/feed.xml"),
@@ -813,8 +837,14 @@ def t_ui_desc(lang):
 def render_post(lang, post, posts):
     title = post["title"] if lang == "zh" else post["title_en"]
     summary = post["summary"] if lang == "zh" else post["summary_en"]
-    tags = "".join(tag(x) for x in post["tags"])
+    tags = "".join(tag(x) for x in (post["tags"] if lang == "zh" else (post.get("tags_en") or post["tags"])))
     others = [p for p in posts if p["slug"] != post["slug"]][:2]
+    html_body = post["html"] if lang == "zh" else (post.get("html_en") or post["html"])
+    minutes = post["minutes"] if lang == "zh" else (post.get("minutes_en") or post["minutes"])
+    # a post without an English body is shown in Chinese, with a note
+    note = ""
+    if lang != "zh" and not post.get("html_en"):
+        note = '<div class="notice" style="margin-bottom:20px"><div>本文暂只有中文版本 · this note is in Chinese only.</div></div>'
     more = ""
     if others:
         more = """
@@ -837,29 +867,32 @@ def render_post(lang, post, posts):
     </div>
   </header>
   <div class="wrap wrap--narrow">
+    {note}
     <div class="prose">{html}</div>
   </div>
 </article>
 {more}
 """.format(
         blog=url(lang, "blog/index.html"), back=esc(ui("back_blog", lang)),
-        title=esc(title), date=esc(post["date"]), minutes=post["minutes"],
+        title=esc(title), date=esc(post["date"]), minutes=minutes,
         min_label=esc(ui("min_read", lang)), tags=tags,
-        html=post["html"], more=more,
+        note=note, html=html_body, more=more,
     )
     jsonld = {
         "@context": "https://schema.org",
         "@type": "BlogPosting",
         "headline": title,
         "datePublished": post["date"],
-        "inLanguage": "zh-CN",
+        "inLanguage": "zh-CN" if lang == "zh" else "en",
         "author": {"@type": "Person", "name": "Lidong Yu"},
         "description": summary,
         "mainEntityOfPage": L_.abs_url(lang, "blog/%s.html" % post["slug"]),
     }
+    # same language-relative path in both directions; url() adds the prefix
+    alt = ("blog/%s.html" % post["slug"]) if post.get("html_en") else "blog/index.html"
     return page(lang, title + " · " + t(PROFILE["name"], lang), summary,
                 "blog/%s.html" % post["slug"], body, active="blog",
-                jsonld=jsonld, show_progress=True)
+                jsonld=jsonld, show_progress=True, alt_path=alt)
 
 
 def render_about(lang):

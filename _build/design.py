@@ -264,6 +264,28 @@ def _unlock(html, src_path=None):
     return html
 
 
+def _inject_lang_note(index_path, entry):
+    """English readers land on a Chinese page: tell them what it is, in English."""
+    if not entry.get("summary_en") or not os.path.isfile(index_path):
+        return
+    import html as _html
+    style = ("font:15px/1.65 -apple-system,Segoe UI,PingFang SC,Microsoft YaHei,sans-serif;"
+             "max-width:860px;margin:18px auto;padding:14px 18px;"
+             "border:1px solid rgba(128,128,128,.35);border-radius:12px;background:rgba(128,128,128,.06)")
+    note = ('<div class="ldy-en-note" lang="en" style="%s"><strong>%s</strong><br>%s<br>'
+            '<span style="opacity:.75">The full text of this page is in Chinese.</span></div>'
+            % (style, _html.escape(entry["title_en"]), _html.escape(entry["summary_en"])))
+    raw = io.open(index_path, "rb").read().decode("utf-8", "surrogateescape")
+    if "ldy-en-note" in raw:
+        return
+    m = re.search(r"<body[^>]*>", raw, re.I)
+    if not m:
+        return
+    raw = raw[:m.end()] + "\n" + note + raw[m.end():]
+    with io.open(index_path, "wb") as fh:
+        fh.write(raw.encode("utf-8", "surrogateescape"))
+
+
 def build(report=False):
     made, skipped = [], []
     if os.path.isdir(OUT_ROOT):
@@ -355,6 +377,7 @@ def build(report=False):
                 fh.write(html)
             total += os.path.getsize(p)
 
+        _inject_lang_note(os.path.join(dst_root, "index.html"), entry)
         made.append({"entry": entry, "files": len(names), "mb": total / 1048576.0,
                      "converted": converted, "scrubbed": scrubs})
 

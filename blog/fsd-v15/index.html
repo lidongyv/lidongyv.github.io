@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>管中窥豹 FSD V15 / A Narrow View of FSD V15</title>
-<meta name="description" content="一份有限的 FSD V15 观察：公开事实、二手转述与未解问题；讨论通用 VLM 预训练、VLA/WAM 适配和车端蒸馏部署是否正在连成一条云到端管线。中英文双语。">
+<meta name="description" content="一份 FSD V15 技术观察：数据基础设施、VLA 预训练、四大任务集与车端蒸馏部署。中英文双语。">
 <meta name="theme-color" content="#0a101b">
 <meta property="og:type" content="article">
 <meta property="og:title" content="管中窥豹 FSD V15">
-<meta property="og:description" content="公开事实、二手转述与未解问题；讨论通用 VLM 预训练、VLA/WAM 适配和车端蒸馏部署的云到端管线。11 张图，中英文双语。">
+<meta property="og:description" content="数据基础设施、VLA 预训练、四大任务集与车端蒸馏部署。14 张图，中英文双语。">
 <meta property="og:image" content="assets/fig-03.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a101b'/%3E%3Ctext x='32' y='43' font-family='monospace' font-size='28' font-weight='700' text-anchor='middle' fill='%23ff6b3d'%3E15%3C/text%3E%3C/svg%3E">
@@ -467,6 +467,7 @@ td b{color:var(--ink)}
 </style>
 </head>
 <body>
+<div class="ldy-en-note" lang="en" style="font:15px/1.65 -apple-system,Segoe UI,PingFang SC,Microsoft YaHei,sans-serif;max-width:860px;margin:18px auto;padding:14px 18px;border:1px solid rgba(128,128,128,.35);border-radius:12px;background:rgba(128,128,128,.06)"><strong>Inside FSD V15</strong><br>Breaking the public information on FSD V15 into technical components.<br><span style="opacity:.75">The full text of this page is in Chinese.</span></div>
 <div id="progress" aria-hidden="true"></div>
 
 <header class="topbar">
@@ -490,27 +491,30 @@ td b{color:var(--ink)}
 
 <section class="hero" id="top">
   <div class="inner">
-    <div class="kicker"><span class="dot"></span> A limited view · 2026.11.23 · v1.2</div>
+    <div class="kicker"><span class="dot"></span> A limited view · 2026.11.23 · v1.3</div>
     <h1 class="lang-zh">管中窥豹<br><span class="accent">FSD V15</span></h1>
     <h1 class="lang-en">A Narrow View of<br><span class="accent">FSD V15</span></h1>
-    <p class="sub lang-zh">核心判断：<b>通用大模型预训练决定了 V15 的驾驶能力</b>，<br>并通过 VLA/WAM 适配与蒸馏部署进入车端。</p>
-    <p class="sub lang-en">Core thesis: <b>general large-model pretraining determines V15's driving capability</b>, and enters the car through VLA/WAM adaptation and distillation deployment.</p>
+    <p class="sub lang-zh">核心结论：<b>通用大模型预训练决定了 V15 的驾驶能力</b>，<br>并通过 VLA 预训练与蒸馏部署进入车端。</p>
+    <p class="sub lang-en">Core thesis: <b>general large-model pretraining determines V15's driving capability</b>, and enters the car through VLA pretraining and distillation deployment.</p>
     <div class="meta">
-      <span class="pill i-zh">14 节 + 附录</span><span class="pill i-en">14 sections + appendix</span>
-      <span class="pill i-zh">11 张图</span><span class="pill i-en">11 figures</span>
+      <span class="pill i-zh">15 节 + 附录</span><span class="pill i-en">15 sections + appendix</span>
+      <span class="pill i-zh">14 张图</span><span class="pill i-en">14 figures</span>
       <span class="pill">中文 / English</span>
       <span class="pill i-zh">约 24 分钟</span><span class="pill i-en">~24 min</span>
-      <span>v1.2 · 2026-11-23</span>
+      <span>v1.3 · 2026-11-23</span>
     </div>
+    <p class="byline" style="margin-top:14px;font-size:13px;color:rgba(255,255,255,.62)">
+      <span class="i-zh">作者：于立冬 · <a href="https://lidongyv.github.io/" target="_blank" rel="noopener" style="color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.35)">个人主页 lidongyv.github.io</a></span><span class="i-en">Author: Yu Lidong · <a href="https://lidongyv.github.io/" target="_blank" rel="noopener" style="color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.35)">lidongyv.github.io</a></span>
+    </p>
     <div class="actions">
       <a class="btn primary" href="#zh-tldr" data-go="tldr"><span class="i-zh">从事实开始 →</span><span class="i-en">Start with the facts →</span></a>
     </div>
   </div>
   <div class="stats">
     <div class="stat"><div class="n">4B</div><div class="l"><span class="i-zh">车端推理图（Musk 推文口径）</span><span class="i-en">on-car graph: 3B + 1B (Musk relay)</span></div></div>
-    <div class="stat"><div class="n">18<em>Hz</em></div><div class="l"><span class="i-zh">Universal Vision Encoder 特征率<br>Musk 推文的二手转述</span><span class="i-en">Universal Vision Encoder rate<br>second-hand relay of Musk post</span></div></div>
-    <div class="stat"><div class="n">36<em>fps</em></div><div class="l"><span class="i-zh">Reality View 目标帧率<br>推文转述，不是时延指标</span><span class="i-en">Reality View target<br>second-hand, not latency</span></div></div>
-    <div class="stat"><div class="n">3<em class="i-zh">套</em><em class="i-en"> sets</em></div><div class="l"><span class="i-zh">4D dense · 4D sparse · planner<br>一种任务划分</span><span class="i-en">4D dense · 4D sparse · planner<br>one engineering framing</span></div></div>
+    <div class="stat"><div class="n">18<em>Hz</em></div><div class="l"><span class="i-zh">Universal Vision Encoder 特征率<br>Musk</span><span class="i-en">Universal Vision Encoder rate<br>Musk</span></div></div>
+    <div class="stat"><div class="n">36<em>fps</em></div><div class="l"><span class="i-zh">Reality View 目标帧率<br>Musk</span><span class="i-en">Reality View target<br>Musk</span></div></div>
+    <div class="stat"><div class="n">4<em class="i-zh">套</em><em class="i-en"> sets</em></div><div class="l"><span class="i-zh">4D dense · sparse · planner · language<br>四大任务集</span><span class="i-en">4D dense · sparse · planner · language<br>four task sets</span></div></div>
     <div class="stat"><div class="n"><span class="i-zh">云<em>→</em>端</span><span class="i-en">Cloud<em>→</em>Edge</span></div><div class="l"><span class="i-zh">预训练 → 蒸馏部署<br>一条可能的管线</span><span class="i-en">pretrain → distill deploy<br>one possible pipeline</span></div></div>
   </div>
   <div class="orb" aria-hidden="true"></div>
@@ -528,13 +532,14 @@ td b{color:var(--ink)}
       <a href="#zh-paradigm" data-sec="paradigm"><span class="num">04</span><span><span class="i-zh">通用预训练与云到端</span><span class="i-en">General pretrain & cloud-to-edge</span></span></a>
       <a href="#zh-nvs" data-sec="nvs"><span class="num">05</span><span><span class="i-zh">4D dense world</span><span class="i-en">4D dense world</span></span></a>
       <a href="#zh-token" data-sec="token"><span class="num">06</span><span><span class="i-zh">Compact token</span><span class="i-en">Compact token</span></span></a>
-      <a href="#zh-tasks" data-sec="tasks"><span class="num">07</span><span><span class="i-zh">三大任务集</span><span class="i-en">Three task sets</span></span></a>
+      <a href="#zh-tasks" data-sec="tasks"><span class="num">07</span><span><span class="i-zh">四大任务集</span><span class="i-en">Four task sets</span></span></a>
       <a href="#zh-post" data-sec="post"><span class="num">08</span><span><span class="i-zh">后训练的位置</span><span class="i-en">Where post-train fits</span></span></a>
       <a href="#zh-distill" data-sec="distill"><span class="num">09</span><span><span class="i-zh">蒸馏部署</span><span class="i-en">Distillation deployment</span></span></a>
       <a href="#zh-industry" data-sec="industry"><span class="num">10</span><span><span class="i-zh">产业影响</span><span class="i-en">Industry impact</span></span></a>
-      <a href="#zh-watch" data-sec="watch"><span class="num">11</span><span><span class="i-zh">可证伪的检查点</span><span class="i-en">Falsifiable checks</span></span></a>
-      <a href="#zh-glossary" data-sec="glossary"><span class="num">12</span><span><span class="i-zh">术语表</span><span class="i-en">Glossary</span></span></a>
-      <a href="#zh-sources" data-sec="sources"><span class="num">13</span><span><span class="i-zh">来源与说明</span><span class="i-en">Sources & notes</span></span></a>
+      <a href="#zh-watch" data-sec="watch"><span class="num">11</span><span><span class="i-zh">需要关注的关键指标</span><span class="i-en">Key metrics</span></span></a>
+      <a href="#zh-vla-wam" data-sec="vla-wam"><span class="num">12</span><span><span class="i-zh">VLA 与 WAM</span><span class="i-en">VLA &amp; WAM</span></span></a>
+      <a href="#zh-glossary" data-sec="glossary"><span class="num">13</span><span><span class="i-zh">术语表</span><span class="i-en">Glossary</span></span></a>
+      <a href="#zh-sources" data-sec="sources"><span class="num">14</span><span><span class="i-zh">来源与说明</span><span class="i-en">Sources & notes</span></span></a>
       <a href="#zh-appendix" data-sec="appendix"><span class="num">A</span><span><span class="i-zh">附录：11 条判断</span><span class="i-en">Appendix: 11 theses</span></span></a>
     </nav>
     <a class="back" href="#top">↑ <span class="i-zh">回到顶部</span><span class="i-en">Back to top</span></a>
@@ -553,23 +558,17 @@ td b{color:var(--ink)}
 <!-- ================= ZH 00 ================= -->
 <section class="sec" id="zh-tldr" data-sec="tldr">
   <div class="sec-head"><div class="sec-num">00 / 范围</div><h2>一次外部的管中窥豹</h2></div>
-  <p class="lead">材料来自公开信息、Musk 推文的转述和媒体拆解，不包含特斯拉内部信息。</p>
-
+  
   <div class="grid">
     <div class="card blue">
-      <div class="tag">可以相对确定</div>
+      <div class="tag">V15 的变化</div>
       <h4>V15 改了什么</h4>
-      <p>视觉编码器升级，Musk 称其为 Universal Vision Encoder（UVE），并在 FSD、Robotaxi、Optimus 之间共用；Reality View 用生成式新视角替代旧的可视化管线；Musk 提到 3B 动作模型 + 1B 渲染模型、18 Hz 特征、8 帧一组、36 fps。这些主要来自 Musk 推文的二手转述，不是官方发布说明。</p>
-    </div>
-    <div class="card orange">
-      <div class="tag">不能确认</div>
-      <h4>还有哪些空白</h4>
-      <p>完整的训练 pipeline、SFT（Supervised Fine-Tuning，监督微调）是否仍是独立阶段、4D video 与 NVS 的任务关系、Grok 是否以及如何参与、媒体所说的“10B”到底指什么、NVS 是否真的提升规划指标——公开材料都不足以回答。</p>
+      <p>视觉编码器升级，Musk 称其为 Universal Vision Encoder（UVE），并在 FSD、Robotaxi、Optimus 之间共用；Reality View 用生成式新视角替代旧的可视化管线；Musk 提到 3B 动作模型 + 1B 渲染模型、18 Hz 特征、36 fps 目标。</p>
     </div>
     <div class="card green">
-      <div class="tag">核心判断</div>
+      <div class="tag">核心结论</div>
       <h4>通用大模型预训练决定驾驶能力</h4>
-      <p>V15 把通用视觉-语言模型（Vision-Language Model，VLM）预训练、VLA（Vision-Language-Action）/ WAM（World-Action Model）适配和车端蒸馏部署连成一条线。<b>通用大模型预训练决定了 V15 的驾驶能力</b>；它的意义不在“驾驶专用 pretrain 又加了几个任务”，而在通用大模型能力向车端的迁移。</p>
+      <p>V15 把通用视觉-语言模型（Vision-Language Model，VLM）预训练、VLA（Vision-Language-Action）预训练和车端蒸馏部署连成一条线。<b>通用大模型预训练决定了 V15 的驾驶能力</b>；它的意义不在“驾驶专用 pretrain 又加了几个任务”，而在通用大模型能力向车端的迁移。</p>
     </div>
   </div>
 
@@ -593,123 +592,126 @@ td b{color:var(--ink)}
   </div>
 
   <p>新视觉编码器“用数百万条互联网视频训练”，并在 FSD、Robotaxi、Optimus 之间共用。<b>通用大模型预训练决定了 V15 的驾驶能力。</b></p>
-  <p>另一个边界：V15 仍是 <b>supervised</b> 版本，驾驶员全程负责；它和 Robotaxi 同源，但不是无人驾驶。不要把“同源软件栈”误读成“已经无人化”。</p>
 </section>
 
 <!-- ================= ZH 03 ================= -->
 <section class="sec" id="zh-v14" data-sec="v14">
-  <div class="sec-head"><div class="sec-num">02 / V14 BASELINE</div><h2>从 V14 到云到端：一条可能的管线</h2></div>
+  <div class="sec-head"><div class="sec-num">02 / V14 BASELINE</div><h2>从 V14 到云到端</h2></div>
   <p class="lead">V14 采用<b>预训练 → SFT → 后训练</b>三个阶段。三者属于同一个模型，不是三个独立模型。</p>
 
   <figure>
     <div class="figure-card"><img src="assets/fig-01.png" alt="V14 到 V15 的训练流水线对比：V14 为预训练、SFT、后训练、部署；V15 为通用预训练、蒸馏部署、部署。"></div>
-    <figcaption><span class="fno">FIG.01</span><span><b>流水线的变化。</b>V14 的三段式（上）与一种可能的 V15 管线（下）：通用预训练 → 蒸馏部署。这不是特斯拉官方图，只是一次公开信息下的重构。</span></figcaption>
+    <figcaption><span class="fno">FIG.01</span><span><b>流水线的变化。</b>V14 的三段式（上）与 V15 管线（下）：数据基础设施 → VLA 预训练 → 蒸馏部署。</span></figcaption>
   </figure>
 
   <h3>V14 面对的“维度灾难”</h3>
-  <p>按特斯拉在 ICCV 2025 / CVPR 2026 的公开口径（<a href="https://www.ofweek.com/auto/2026-06/ART-70109-8110-30689565.html" target="_blank" rel="noopener">CVPR 2026 演讲整理</a>）：7 路摄像头 × 36 Hz × 500 万像素 × 30 秒历史，按 5×5 像素 patch 折算，输入约 <b>20 亿 token</b>；再加上导航、100 Hz 运动学、48 kHz 音频。输出只有 <b>2 个 token</b>：转向和加速度。端到端要学的，是 20 亿 → 2 的因果映射。</p>
+  <p>按特斯拉在 ICCV 2025 / CVPR 2026 的公开口径（<a href="https://www.ofweek.com/auto/2026-06/ART-70109-8110-30689565.html" target="_blank" rel="noopener">CVPR 2026 演讲整理</a>）：7 路摄像头 × 36 Hz × 500 万像素；原始 clip 90 秒以上，训练裁到约 12 秒，按 5×5 像素 patch 折算，输入约 <b>20 亿 token</b>；再加上导航、100 Hz 运动学、48 kHz 音频。输出只有 <b>2 个 token</b>：转向和加速度。端到端要学的，是 20 亿 → 2 的因果映射。</p>
   <p>因此 V14 在中间塞入大量“可解释信号”：3D 占据与流、车辆/行人/骑行者、交通灯与标志、道路边界与车道、限速、交互概率，以及自然语言推理。它们既是监督，也是安全审查的抓手。</p>
 
   <h3>V14 的 compact token</h3>
-  <p>按一种工程描述，V14 的 compact token 包含两部分：<b>implicit scene token</b>（隐式场景）和 <b>some explicit instance token</b>（显式实例，如车、VRU、交通灯、车道）。Trajectory head 通过 cross-attention 与这些 token 交互，输出多模态轨迹。</p>
+  <p>V14 的 compact token 包含两部分：<b>implicit scene token</b>（隐式场景）和 <b>some explicit instance token</b>（显式实例，如车、VRU、交通灯、车道）。Trajectory head 通过 cross-attention 与这些 token 交互，输出多模态轨迹。</p>
   <div class="grid">
     <div class="card green"><div class="tag">Worked</div><h4>它为什么有效</h4><p>显式实例可解释、易监督、易做安全规则；SFT 把人类驾驶的“价值判断”压进策略；post-train 用 RL/闭环修 reward。三者各司其职。</p></div>
-    <div class="card orange"><div class="tag">Stalled</div><h4>它卡在哪里</h4><p>实例列表是信息瓶颈（“鸡 vs 鹅”：列表丢掉的语义再也拿不回来）；SFT 分布窄；post-train 昂贵且与仿真器耦合；时序视图预测可以用 2D 捷径，不强制 3D 一致。</p></div>
+    <div class="card orange"><div class="tag">Lossy</div><h4>它的代价</h4><p>实例列表是有损的：它把场景表达成实例集合，非实例语义会丢失；scene token 在重建中是无损的。</p></div>
   </div>
 
-  <p class="pull">V14 留下的更重要东西，可能是“中间监督”这条路：让黑箱在输出动作之前，先输出一堆可被检查的东西。<small>V14's real legacy is intermediate supervision, not a particular head.</small></p>
+  <p class="pull">V14 留下的是“中间监督”这条路：让黑箱在输出动作之前，先输出一堆可被检查的东西。<small>V14's real legacy is intermediate supervision, not a particular head.</small></p>
 
   <p>V15 换了接口：实例列表 → 4D 场景 token，预测下一帧 → 渲染新视角，三段式 → 通用预训练 + 蒸馏部署。</p>
 
-  <h3>单独看这条管线：VLM 预训练 → VLA/WAM 适配 → 蒸馏部署</h3>
-  <p>把 FIG.01 下半部分拆开，是一条三步链。它不是特斯拉官方流程图，而是把公开说法、Musk 推文的转述和工程约束放在一起的一种读法；每一步都还有不确定项。</p>
+  <figure>
+    <div class="figure-card"><img src="assets/fig-01a.png" alt="三个接口变化：实例列表到 4D scene token，预测下一帧到渲染新视角，三段式到通用预训练加蒸馏部署。"></div>
+    <figcaption><span class="fno">FIG.01A</span><span><b>三个接口同时更换。</b>表征：实例列表 → 4D scene token；监督：预测下一帧 → 渲染新视角；流程：三段式 → 通用预训练 + 蒸馏部署。</span></figcaption>
+  </figure>
+
+  <h3>单独看这条管线：VLM 预训练 → VLA 预训练 → 蒸馏部署</h3>
+  <p>这条管线分三步。</p>
   <ol class="small" style="line-height:1.9">
-    <li><b>视觉-语言模型（VLM）预训练（云）：</b>通用视觉、语言、视频和世界模型能力。参数规模、数据配比、是否来自 Grok 体系，公开信息都不够；一种推测是 Universal Vision Encoder（UVE）本身就是 Grok 的一部分，也可能经过多级蒸馏。</li>
-    <li><b>VLA / WAM 适配：</b>VLA 是 Vision-Language-Action，把视觉/语言接到动作；WAM 是 World-Action Model，对应 planner 任务集 S01，包含 multi-modal trajectory prediction、agent prediction 等子任务。适配层决定通用能力能不能变成驾驶行为。</li>
+    <li><b>数据基础设施 / VLM 预训练（云）：</b>互联网视频 + 大量自动驾驶数据 + 仿真。Grok 的训练数据规模很大，并加入了大量自动驾驶数据；这与 OpenAI 把 robotics team 重组进 agent 以整合数据类似。Universal Vision Encoder（UVE）属于 Grok 体系，并经过多级蒸馏后上车。</li>
+    <li><b>VLA 预训练：</b>VLA 是 Vision-Language-Action，把视觉/语言接到动作，包含 multi-modal trajectory prediction、agent prediction 等 planner 子任务。这一层决定通用能力能不能变成驾驶行为。</li>
     <li><b>蒸馏部署（车端）：</b>把云端教师压成 4B 车端图（约 3B 动作 + 约 1B 渲染），再做量化、剪枝、算子融合和 AI4 部署。蒸馏和部署是同一个环节，不是“先蒸馏、再部署”两件事。</li>
   </ol>
-  <p class="small">这条链的每一段都有空白：UVE 与 Grok 的关系、媒体所说 10B 的口径、SFT 是否仍独立、4B 是否就是完整车端图。图中用问号和虚线，是为了保留这些空白，而不是把它们补成答案。</p>
-</section>
+  </section>
 
 <!-- ================= ZH 04 ================= -->
 <section class="sec" id="zh-arch" data-sec="arch">
-  <div class="sec-head"><div class="sec-num">03 / ARCHITECTURE</div><h2>一个编码器，两条解码路径？</h2></div>
-  <p class="lead">以下结构来自 Musk 推文的二手转述和媒体拆解，不是特斯拉官方架构图。公开信息能支持的只是几件事：Universal Vision Encoder（UVE）共享、约 3B 的动作模型 + 约 1B 的渲染模型、18 Hz 特征。我们用它来解释一种可能的运行方式，但不把它当成已证实的训练图。</p>
+  <div class="sec-head"><div class="sec-num">03 / ARCHITECTURE</div><h2>一个编码器，两条解码路径</h2></div>
+  <p class="lead">V15 架构：Universal Vision Encoder（UVE）共享，约 3B 动作模型 + 约 1B 渲染模型，18 Hz（Musk）。</p>
 
   <figure>
     <div class="figure-card"><img src="assets/fig-02.png" alt="FSD V15 运行时算法流程：传感器、UVE、scene token、多模态轨迹、安全选择、动作，以及渲染与反馈旁路。"></div>
     <figcaption><span class="fno">FIG.02</span><span><b>运行时的算法流。</b>UVE → scene token → 多模态轨迹 → 安全选择 → 动作；渲染和辅助头是旁路，推理可裁剪。虚线反馈回到数据引擎。</span></figcaption>
   </figure>
 
-  <p>把这条前向展开成网络结构，就是下面的“两座塔”：3B 动作塔负责规划与控制，1B 渲染塔负责新视角。</p>
+  <p>前向结构：Forward input → UVE → tokenizer → 训练四大任务集；推理只保留 trajectory + lightweight NVS。3B 动作模型与 1B 渲染模型都由 UVE 蒸馏得到。</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-03.png" alt="FSD V15 网络结构：UVE 主干分叉为 3B 动作塔与 1B 渲染塔，含 scene token、轨迹头、DiT 与超分。"></div>
-    <figcaption><span class="fno">FIG.03</span><span><b>一个主干，两座塔。</b>3B 动作塔（scene token → 多模态轨迹 → 控制）与 1B 渲染塔（conditional DiT → 新视角）；虚线块为可裁剪辅助头。</span></figcaption>
+    <div class="figure-card"><img src="assets/fig-03.png" alt="FSD V15 网络结构：UVE 主干、4D scene token、训练四大任务集、推理 trajectory 与 lightweight NVS。"></div>
+    <figcaption><span class="fno">FIG.03</span><span><b>一个主干，一条前向。</b>Forward input → UVE → tokenizer → 训练四大任务集；推理只保留 trajectory 与 lightweight NVS；SR 是 NVS 的更小一级辅助头。</span></figcaption>
   </figure>
 
   <h3>UVE：Universal Vision Encoder，通用的“视觉节拍”</h3>
-  <p>UVE（Universal Vision Encoder）以 <b>18 Hz</b> 输出特征序列，FSD、Robotaxi、Optimus 共用同一个编码器。18 Hz 这一频率来自 Musk 推文的二手转述，不是发布说明。它用数百万条互联网视频做通用视觉预训练，再在车队数据上对齐驾驶。一个合理的推测是：编码器因此不再只对“驾驶相关物体”敏感，而是对通用世界（材质、光照、动物、杂物、遮挡）更敏感。</p>
+  <p>UVE（Universal Vision Encoder）以 <b>18 Hz（Musk）</b> 输出特征序列，FSD、Robotaxi、Optimus 共用同一个编码器。它用数百万条互联网视频做通用视觉预训练，再在车队数据上对齐驾驶。编码器因此不只对“驾驶相关物体”敏感，也对通用世界（材质、光照、动物、杂物、遮挡）敏感。</p>
 
-  <h3>Fork：如果共享特征成立，为什么重要</h3>
-  <p>按二手转述，3B 动作模型和 1B 渲染模型都从 Universal Vision Encoder（UVE）特征 fork。如果这个描述成立，渲染器就不是拿一段独立视频去“贴图”，而是用同一份场景表征去条件生成新视角。这样一来，<b>渲染损失可能反传回 UVE</b>，迫使特征同时满足两件事：</p>
+  <h3>蒸馏：动作模型与渲染模型如何共享 UVE</h3>
+  <p>3B 动作模型和 1B 渲染模型由 Universal Vision Encoder（UVE）蒸馏得到，共享同一份 4D scene token。渲染器用这份场景表征条件生成新视角，<b>渲染损失反传回 UVE</b>，迫使特征同时满足两件事：</p>
   <ul>
     <li><b>对动作有判别力：</b>该影响刹车的细节不能丢；</li>
     <li><b>对渲染有一致性：</b>遮挡、深度、动态、光照要能在新视角下自洽。</li>
   </ul>
-  <p>如果共享表征成立，它的价值可能不只是多一个输出，而是多一个<b>约束</b>。</p>
+  <p>共享表征的价值不只是多一个输出，而是多一个<b>约束</b>。</p>
 
   <h3>1B 渲染器：conditional mean-flow 是什么</h3>
-  <p>按二手转述，渲染器是一个 <b>1B 的 conditional mean-flow 模型</b>（mean-flow 是 flow matching 的变体，学习区间平均速度场），以 UVE 特征为条件，输入“上一帧 + 噪声”，输出当前视图。它不需要从零重建整帧，而是预测变化量；因此 token 数、NFE 和算力都能压下来。</p>
-  <p>调度上，Musk 的推文转述提到 8 帧一组、目标 36 fps、摊到 4 个 UVE 周期。玻璃到玻璃延迟没有可靠的公开数字。</p>
+  <p>渲染器是一个 <b>1B 的 conditional mean-flow 模型</b>（mean-flow 是 flow matching 的变体，学习区间平均速度场）。它以 <b>4D UVE scene token</b> 为条件，给定任意相机位姿（any view）渲染新视角。所谓“上一帧”不是渲染器输出，而是上一帧 scene token 与当前帧 UVE 特征融合得到的 4D scene token；模型在 token 空间预测变化量，再解码到当前视角。</p>
+  <p>调度上，Musk 提到目标 36 fps；渲染器按单帧或小 chunk 差分生成。</p>
 
   <div class="callout fact">
     <div class="lab">算力口径 / Compute</div>
-    <p>“½ TRIP”是<b>一个 TRIP 加速器的一半</b>，不是“半颗 AI4”。它占整颗芯片多少算力，公开信息不足以计算。能说的只是：它吃的是剩余算力，不是主控制环的预算。</p>
+    <p>“½ TRIP”是<b>一个 TRIP 加速器的一半</b>，不是“半颗 AI4”。它吃的是剩余算力，不是主控制环的预算。</p>
   </div>
 
-  <h3>4B、10B、Grok：三个不同层级的东西</h3>
+  <h3>车端推理图：3B 动作 + 1B 渲染 = 4B</h3>
   <div class="table-wrap">
     <table>
       <thead><tr><th>层级</th><th>规模</th><th>证据</th><th>说明</th></tr></thead>
       <tbody>
         <tr><td>车端动作模型</td><td><b>3B</b></td><td><span class="badge rep">Musk 帖文</span></td><td>输出轨迹/控制，带辅助头。</td></tr>
         <tr><td>车端渲染模型</td><td><b>1B</b></td><td><span class="badge rep">Musk 帖文</span></td><td>NVS decoder，conditional mean-flow。</td></tr>
-        <tr><td>车端推理图合计</td><td><b>4B</b></td><td><span class="badge inf">相加</span></td><td>3B + 1B；是否还有别的头/模型未说明。</td></tr>
-        <tr><td>媒体所称“10B”</td><td><b>~10B</b></td><td><span class="badge rep">媒体报道</span></td><td>范围不明，且与 3B+1B 不一致。本文不把它当作教师模型。</td></tr>
-        <tr><td>Grok / 通用大模型</td><td><b>远大于 10B</b></td><td><span class="badge hyp">量级判断</span></td><td>具体参数未公开；是否参与、如何参与 V15 训练，公开信息不足。</td></tr>
-        <tr><td>完整系统</td><td><b>未知</b></td><td><span class="badge hyp">待验证</span></td><td>若还有数据引擎、仿真器、其他专家，则“总参数”没有意义。</td></tr>
+        <tr><td>车端推理图合计</td><td><b>4B</b></td><td><span class="badge inf">相加</span></td><td>3B + 1B = 4B。</td></tr>
       </tbody>
     </table>
   </div>
-  <p>所以，比较稳妥的读法是：<b>4B 是车端推理图</b>；<b>10B 是媒体口径，范围不明</b>；<b>Grok 是另一个量级</b>。把 10B 当成 Grok 或云端教师，目前没有依据；把 4B 当成“V15 的全部”，也忽略了云端和工具链。</p>
+  
 </section>
 
 <!-- ================= ZH 05 ================= -->
 <section class="sec" id="zh-paradigm" data-sec="paradigm">
-  <div class="sec-head"><div class="sec-num">04 / PARADIGM</div><h2>可能不是驾驶专用预训练</h2></div>
-  <p class="lead">V15 的变化不在“自动驾驶又多了几个预训练任务”，而在通用大模型（VLM）预训练：<b>通用大模型预训练决定了 V15 的驾驶能力</b>，并通过 VLA/WAM 适配和蒸馏部署进入车端。</p>
+  <div class="sec-head"><div class="sec-num">04 / PARADIGM</div><h2>不是驾驶专用预训练</h2></div>
+  <p class="lead">V15 的变化不在“自动驾驶又多了几个预训练任务”，而在通用大模型（VLM）预训练：<b>通用大模型预训练决定了 V15 的驾驶能力</b>，并通过 VLA 预训练和蒸馏部署进入车端。</p>
 
   <h3>VLM 已经在云端做世界模型</h3>
   <p>视频生成、4D 场景生成、世界模型这些能力，在通用 VLM/视频模型里已经存在，并不是自动驾驶独有的新任务。对自驾来说，更难的环节是把这些能力变成<b>可车端部署、可闭环验证、可安全兜底</b>的东西。特斯拉如果做成了，价值不在“发明了 4D video”，而在“把通用模型的预训练能力接进了车端”。</p>
 
-  <h3>VLA 与 WAM 可能是同一条线的两端</h3>
-  <p>VLA 强调视觉/语言到动作的映射；WAM 强调世界模型与 planner（WAM 的 S01）。两者过去像两条路线，但在“通用预训练 → 车端蒸馏部署”的框架里，它们更像是同一个模型的不同接口和 loss：VLA 负责把语言/视觉意图变成动作，WAM 负责预测世界和评估动作。V15 可能展示的是这条线的合流，而不是两个独立范式的竞争。</p>
+  <h3>VLA：视觉/语言到动作</h3>
+  <p>VLA 把视觉/语言意图接到动作。在“通用预训练 → 车端蒸馏部署”的框架里，VLA 负责把共享表征变成 planner 的轨迹与动作。</p>
+
+  <h3>Pretrain 拆掉 task prompt</h3>
+  <p>FSD V15 的 pretrain 拆除了 genception 式的 task prompt。所有任务都作为<b>默认任务</b>一起训练，不再用 prompt 指定当前任务。</p>
+  <p>模型因此更 compact：没有 task prompt token，也没有按 prompt 切换的条件分支。多层 DiT 始终在同一个任务分布上训练，不会因为 task prompt 变化发生大的 task distribution 移动。</p>
+  <p>一种可能是 FSD V15 去掉了 SFT，只使用 pretrain：预训练直接覆盖驾驶行为，不再单独设一个 SFT 阶段。这一点在 <a href="#zh-tasks">§07</a> 标为待讨论。</p>
 
   <div class="grid three">
-    <div class="card blue"><div class="tag">Pretrain</div><h4>通用能力在云端</h4><p>VLM/视频/世界模型提供视觉、物理常识和生成能力；这部分不是为驾驶单独发明的。</p></div>
-    <div class="card green"><div class="tag">Adapt</div><h4>VLA/WAM 做适配</h4><p>把通用表征接到驾驶动作、轨迹和世界预测上；驾驶数据在这里起作用。</p></div>
+    <div class="card blue"><div class="tag">Pretrain</div><h4>数据基础设施与预训练</h4><p>互联网视频 + 大量自动驾驶数据 + 仿真；VLM/视频/世界模型提供视觉、物理常识和生成能力。</p></div>
+    <div class="card green"><div class="tag">Pretrain</div><h4>VLA 预训练</h4><p>把通用表征接到驾驶动作、轨迹和世界预测上；驾驶数据在这里起作用。</p></div>
     <div class="card orange"><div class="tag">Distill deploy</div><h4>蒸馏部署到车端</h4><p>蒸馏、量化、部署工程是同一个环节的不同部分；目标是把云端能力压进 4B 车端图。</p></div>
   </div>
 
-  <h3>Grok 在哪一层？</h3>
-  <p>Grok 是远大于 10B 的通用大模型；一种待验证的推测是 Universal Vision Encoder（UVE）本身属于 Grok 体系，可能经过多级蒸馏。公开信息没有说明 Grok 与 FSD 的具体连接方式。</p>
+  <h3>Grok</h3>
+  <p>Grok 5 约 1.5 万亿参数（<a href="https://m.36kr.com/p/3825954113983367" target="_blank" rel="noopener">报道</a>），训练数据规模很大，并加入了大量自动驾驶数据；这与 OpenAI 把 robotics team 重组进 agent 以整合数据类似。Universal Vision Encoder（UVE）属于 Grok 体系，并经过多级蒸馏后上车。</p>
 
-  <h3>SFT 到底还在不在？</h3>
-  <p>公开信息不足以判断 SFT 是否仍是独立阶段。更稳妥的说法是：如果 planner 任务已经进入通用预训练，那么在高质量驾驶数据上的最后一段监督训练，可能退化成一段“退火”或对齐；但这是推断，不是事实。把“V15 去掉了 SFT”当成结论，目前证据不够。</p>
 
   <div class="callout take">
-    <div class="lab">核心判断</div>
+    <div class="lab">核心结论</div>
     <p>对自动驾驶的冲击来自<b>通用大模型预训练能力的下放</b>，而不是自动驾驶自己发明了一套能改变 LLM 训练的预训练方法。</p>
   </div>
 </section>
@@ -717,7 +719,14 @@ td b{color:var(--ink)}
 <!-- ================= ZH 06 ================= -->
 <section class="sec" id="zh-nvs" data-sec="nvs">
   <div class="sec-head"><div class="sec-num">05 / 4D DENSE WORLD</div><h2>4D video prediction 是 basic 任务，NVS 是它下面的子任务</h2></div>
-  <p class="lead">一种工程划分是：4D video 不是 V15 新发明的任务，通用 VLM/视频模型早就在做；对自驾模型来说，它更像是 <b>basic task</b>。Novel View Synthesis（NVS）不是与它并列的“新核心”，而是 4D dense 任务集里训练 4D video prediction 的子任务；重建、渲染、3D Gaussian Splatting（3DGS）、depth 都可以归到这个任务集。这里把这一类称为 <b>4D dense world</b>。</p>
+  <ul class="small" style="line-height:1.9">
+    <li>4D video 不是 V15 新发明的任务。</li>
+    <li>通用 VLM/视频模型早就在做 4D video。</li>
+    <li>对自驾模型来说，4D video 是 <b>basic task</b>。</li>
+    <li>Novel View Synthesis（NVS）不是与它并列的“新核心”。NVS 是 4D dense 任务集里训练 4D video prediction 的子任务。</li>
+    <li>重建、渲染、3D Gaussian Splatting（3DGS）、depth 都属于这个任务集。</li>
+    <li>这个任务集叫 <b>4D dense world</b>。</li>
+  </ul>
 
   <figure>
     <div class="figure-card"><img src="assets/fig-04.png" alt="4D dense world 数据闭环：车队日志、轨迹位姿、3DGS 重建、新视角渲染、训练对、通用预训练。"></div>
@@ -725,7 +734,7 @@ td b{color:var(--ink)}
   </figure>
 
   <h3>为什么 NVS 能帮到 4D video prediction</h3>
-  <p>时序视图预测（用过去帧预测下一帧）有一个天然的 2D 捷径：只要学会“复制 + 局部变形”，就能在多数帧上把 loss 降得很低，而不需要 3D 理解。NVS 不一样：给定一个<b>没见过的相机位姿</b>，要求渲染出该视角的画面。要做得对，模型必须隐式地学会深度、遮挡、物体背面、动态一致性。因此，它是一种更“硬”的辅助监督。</p>
+  <p>NVS 给定一个<b>没见过的相机位姿</b>，要求渲染该视角的画面。要做得对，模型必须编码深度、遮挡、物体背面和动态一致性，因此它是一种更“硬”的辅助监督。</p>
   <div class="grid">
     <div class="card"><div class="tag">Basic task</div><h4>4D video prediction</h4><p>预测未来的视频/场景演化；这是 4D dense world 的主任务，不是 V15 独有的新任务。</p></div>
     <div class="card orange"><div class="tag">Auxiliary</div><h4>NVS / reconstruction / 3DGS / depth</h4><p>通过新视角、重建、几何监督，逼表征编码 3D/4D 一致性；它们是训练手段，不是最终产品。</p></div>
@@ -733,30 +742,32 @@ td b{color:var(--ink)}
 
   <h3>数据闭环：从车队日志到 NVS 训练对</h3>
   <ol>
-    <li><b>车队日志：</b>7 路摄像头、36 Hz、30 秒 clip；每帧带 ego pose 与相机外参。</li>
+    <li><b>车队日志：</b>7 路摄像头、36 Hz；原始 clip 90 秒以上，训练裁到约 12 秒；每帧带 ego pose 与相机外参。</li>
     <li><b>轨迹 / 位姿：</b>自车轨迹和相机位姿是 NVS 的条件；它们可以离散成 token，也可以文本化。</li>
     <li><b>3DGS 重建：</b>沿轨迹做动态感知的高斯重建；特斯拉公开讲过“生成式 3D Gaussian”，重建约 220 ms（<a href="https://www.woshipm.com/ai/6309531.html" target="_blank" rel="noopener">ICCV 2025 解读</a>）。</li>
     <li><b>新视角渲染：</b>在空间（左/右/上/下）和时间（前/后几帧）上采样虚拟相机，渲染 RGB、depth、segmentation、flow。</li>
-    <li><b>训练对：</b>把“条件（位姿/语言）+ 目标（新视角）”喂给 UVE/scene token，作为 4D dense world 的辅助任务。</li>
+    <li><b>训练对：</b>把“条件（pose token / 语言）+ 目标（新视角）”喂给 UVE/scene token，作为 4D dense world 的辅助任务。</li>
   </ol>
-  <p>这条闭环的经济学很强：<b>一次采集，多次监督</b>。同一段 30 秒日志，不再只产出一条“人类驾驶轨迹”，而是可以产出成百上千个 NVS 训练对。</p>
+  <p>这条闭环的经济学很强：<b>一次采集，多次监督</b>。同一段 90 秒以上的原始 clip，不再只产出一条“人类驾驶轨迹”，而是可以产出成百上千个 NVS 训练对。</p>
 
-  <h3>Pose as language</h3>
-  <p>有工程讨论提到，“4D video NVS 中 pose 本身是 language input”，这是很关键的一点。相机位姿可以被编码成文本/离散 token，例如“把相机向前移 3 米、抬高 1.5 米、向左看 20°”。这样一来，同一个 scene token 同时被两种条件查询：</p>
+  <h3>Pose：矩阵 tokenizer，不是文字</h3>
+  <p>Pretrain 里的相机位姿不是文本 prompt。相机位姿由 <b>pose 矩阵</b>经过 tokenizer 编码成 <b>pose token</b>，直接作为条件输入。</p>
+  <p>同一个 4D scene token 同时被两种条件查询：</p>
   <ul>
     <li><b>动作条件：</b>自车接下来怎么走；</li>
-    <li><b>相机条件：</b>从哪个虚拟视角看这个世界。</li>
+    <li><b>pose token：</b>从哪个相机位姿看这个世界。</li>
   </ul>
-  <p>语言不是“解释”，而是<b>一种通用的条件接口</b>。它让 NVS、视频生成、场景编辑、甚至反事实 rollout 共享同一套条件语法。</p>
+  <p>语言是另一类条件接口（指令、CoT），和 pose token 是两套输入，不要混为一谈。</p>
 
-  <h3>“local world model”不是“云端 simulator”</h3>
-  <p>1B 渲染器是一个<b>局部</b>世界模型：短时域、条件生成、视角一致。它可以在车上实时跑，但它不是那个可以无限 rollout、做对抗场景、做闭环评估的云端神经模拟器。两者是同一个技术家族的不同规模：</p>
+  <h3>车端 NVS 渲染器不是可持续 rollout 的 world model</h3>
+  <p>车端 1B NVS 渲染器不是云端 simulator，也不是可以持续 rollout 的 world model。它做的是<b>短时预测</b>和<b>差分生成</b>：以 4D UVE scene token 为条件，预测短时变化量，再解码成新视角。</p>
+  <p>它按单帧或小 chunk 生成。关键不是 chunk 长度，而是短时预测和差分能力。</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th></th><th>车端 1B renderer</th><th>云端 world simulator</th></tr></thead>
       <tbody>
-        <tr><td>时域</td><td>8 帧 chunk / 短时</td><td>长时域 rollout</td></tr>
-        <tr><td>条件</td><td>Universal Vision Encoder（UVE）特征 + 上一帧 + 位姿</td><td>状态 + 动作 + 场景编辑</td></tr>
+        <tr><td>时域</td><td>短时；单帧或小 chunk</td><td>长时域 rollout</td></tr>
+        <tr><td>条件</td><td>4D UVE scene token + pose token</td><td>状态 + 动作 + 场景编辑</td></tr>
         <tr><td>用途</td><td>Reality View、NVS 监督</td><td>闭环评估、RL、对抗样本</td></tr>
         <tr><td>算力</td><td>½ TRIP / UVE frame</td><td>数据中心级</td></tr>
       </tbody>
@@ -765,26 +776,26 @@ td b{color:var(--ink)}
 
   <div class="callout verify">
     <div class="lab">风险 / Caveats</div>
-    <p>GS 重建质量、动态物体、遮挡区域、光照变化都会影响 NVS；模型可能在遮挡区“编”出不存在的细节。NVS 指标好看，不等于 planning 指标变好——这是 V15 需要证明、但目前还没有公开证明的事。</p>
+    <p>GS 重建质量、动态物体、遮挡区域、光照变化都会影响 NVS；模型会在遮挡区补出不存在的细节。NVS 指标好看，不等于 planning 指标变好。</p>
   </div>
 </section>
 
 <!-- ================= ZH 07 ================= -->
 <section class="sec" id="zh-token" data-sec="token">
   <div class="sec-head"><div class="sec-num">06 / TOKEN</div><h2>Compact token：从“实例列表”到“4D 场景”</h2></div>
-  <p class="lead">V14 的 compact token 是“implicit scene + explicit instance”。一种推断是 V15 把重心移到 implicit scene，把 instance 从“接口”降级为“可选查询”。这不是审美选择，而是 NVS 逼出来的结果。</p>
+  <p class="lead">V14 的 compact token 是“implicit scene + explicit instance”。<b>这是我们的推测</b>：V15 把重心移到 implicit scene，把 instance 从“接口”降级为“可选查询”。具体占比和 loss 权重不确定，但重心肯定偏向 implicit。这不是审美选择，而是 NVS 逼出来的结果。</p>
 
   <figure>
     <div class="figure-card"><img src="assets/fig-05.png" alt="V14 与 V15 的 token 接口对比：V14 以显式实例为中心，V15 以 4D 场景 token 为中心。"></div>
-    <figcaption><span class="fno">FIG.05</span><span><b>接口从“列表”变成“场景”。</b>V14 的 trajectory head 依赖实例 token；V15 更可能直接 cross-attend 到固定尺寸的 4D scene token，实例查询变成可选。</span></figcaption>
+    <figcaption><span class="fno">FIG.05</span><span><b>接口从“列表”变成“场景”。</b>V14 的 trajectory head 依赖实例 token；V15 直接 cross-attend 到固定尺寸的 4D scene token，实例查询变成可选。</span></figcaption>
   </figure>
 
-  <h3>V14：实例是接口，也是瓶颈</h3>
-  <p>显式实例的好处是显然的：可解释、可监督、可做安全规则、可做可视化。但它同时是一个<b>信息瓶颈</b>。感知输出“鸡”和“鹅”的框，规划需要知道“鸡在过马路（要等）”和“鹅在路边发呆（可绕）”；一旦这个语义在实例列表里丢了，后面的网络再强也拿不回来。</p>
+  <h3>V14：实例是接口，也是有损表达</h3>
+  <p>显式实例可解释、可监督、可做安全规则、可做可视化。但实例列表是有损的：它把场景表达成一组实例，非实例语义不会完整保留。scene token 以重建为目标，在重建中是无损的，能保留这些信息。</p>
   <p>而且，实例列表是<b>变长</b>的：不同场景有不同数量的车、人、交通灯。Trajectory head 对它做 cross-attention，计算图会随场景变化，工程上更难做确定性时延。</p>
 
   <h3>V15：场景是接口，实例是查询</h3>
-  <p>V15 的方向更可能是：以一个<b>固定尺寸的 4D scene token</b> 为主接口，把 instance 变成从 scene token 里“query 出来”的可选头。这样做有三个直接收益：</p>
+  <p>V15 把<b>固定尺寸的 4D scene token</b> 作为主接口，把 instance 变成从 scene token 里“query 出来”的可选头。这样做有三个直接收益：</p>
   <ul>
     <li><b>表征更密：</b>4D NVS 迫使 scene token 编码几何、外观、动态；规划拿到的不是一个“物体清单”，而是一个可查询的世界。</li>
     <li><b>计算更稳：</b>固定尺寸张量的 attention 更便宜、更可预测；没有变长列表，时延更可控。</li>
@@ -803,57 +814,63 @@ td b{color:var(--ink)}
 
 <!-- ================= ZH 08 ================= -->
 <section class="sec" id="zh-tasks" data-sec="tasks">
-  <div class="sec-head"><div class="sec-num">07 / TASKS</div><h2>三大任务集：dense world、sparse world、planner</h2></div>
-  <p class="lead">一种工程划分把自驾相关任务压成三个<b>任务集</b>：<b>4D dense world</b>（4D video prediction 是 basic 大任务，NVS/3DGS/depth/重建/渲染是它下面的 dense WM 子任务）、<b>4D sparse world</b>（AD 感知任务集）、<b>planner</b>（WAM S01；包含 multi-modal trajectory prediction、agent prediction 等子任务）。语言/VLM 更像接口和调试工具，不单列为任务集。</p>
+  <div class="sec-head"><div class="sec-num">07 / TASKS</div><h2>四大任务集：dense world、sparse world、planner、language</h2></div>
+  <p class="lead">自驾相关任务压成四个<b>任务集</b>：<b>4D dense world</b>（4D video prediction 是 basic 大任务，NVS/3DGS/depth/重建/渲染是它下面的 dense WM 子任务）、<b>4D sparse world</b>（AD 感知任务集）、<b>planner</b>（包含 multi-modal trajectory prediction、agent prediction 等子任务）、<b>language</b>（场景理解 caption、基于 caption 的 style transfer、pose as language、instance inpainting as language）。</p>
+  <p>四个任务集不用 task prompt 切换，全部作为默认任务一起预训练。</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-06.png" alt="三大任务集：4D dense world、4D sparse world、planner；每个任务集包含自己的子任务。"></div>
-    <figcaption><span class="fno">FIG.06</span><span><b>三个任务集，一个主干。</b>4D dense world 以 4D video prediction 为 basic，NVS/3DGS/depth 是同一任务集下的子任务；4D sparse world 是 AD 感知任务集；planner 是 WAM S01，包含 multi-modal trajectory prediction 与 agent prediction。</span></figcaption>
+    <div class="figure-card"><img src="assets/fig-06.png" alt="四大任务集：4D dense world、4D sparse world、planner、language；每个任务集包含自己的子任务。"></div>
+    <figcaption><span class="fno">FIG.06</span><span><b>四个任务集，一个主干。</b>4D dense world 以 4D video prediction 为 basic，NVS/3DGS/depth 是同一任务集下的子任务；4D sparse world 是 AD 感知任务集；planner 任务集包含 multi-modal trajectory prediction 与 agent prediction；language 任务集与另外三个任务集都交互。</span></figcaption>
   </figure>
 
-  <h3>三个任务集的分工</h3>
-  <div class="grid three">
+  <h3>四个任务集的分工</h3>
+  <div class="grid">
     <div class="card orange"><div class="tag">A / 4D dense world · task set</div><h4>4D video prediction</h4><p>4D video prediction 是这个任务集里的 basic 大任务；NVS、3DGS、depth、重建、渲染都是它下面的 dense WM 子任务。它并非 V15 新发明，通用 VLM/视频模型已有类似能力。</p></div>
-    <div class="card green"><div class="tag">B / 4D sparse world · task set</div><h4>AD 感知</h4><p>检测/跟踪、交通灯/标志、实例/语义/占据分割、depth/flow 等，构成 sparse world 任务集。它是 AD 最成熟的监督来源，也是 dense world 与 planner 之间的稀疏世界接口。</p></div>
-    <div class="card blue"><div class="tag">C / Planner · task set</div><h4>WAM S01</h4><p>planner 是 WAM S01 对应的任务集；其中包含 multi-modal trajectory prediction、agent prediction，以及交互、RL、闭环等子任务。它是最终影响驾驶行为的任务集。</p></div>
+    <div class="card green"><div class="tag">B / 4D sparse world · task set</div><h4>AD 感知</h4><p><b>object detection、tracking、occupancy（occ）、segmentation（seg）、traffic light detection（TLD）</b>、depth/flow 等，构成 sparse world 任务集。它是 AD 最成熟的监督来源，也是 dense world 与 planner 之间的稀疏世界接口。</p></div>
+    <div class="card blue"><div class="tag">C / Planner · task set</div><h4>Planner</h4><p>planner 任务集包含 multi-modal trajectory prediction、agent prediction，以及交互、RL、闭环等子任务。它是最终影响驾驶行为的任务集。</p></div>
+    <div class="card purple"><div class="tag">D / Language · task set</div><h4>Language</h4><p>场景理解 caption、基于 caption 的 style transfer、pose as language、instance inpainting as language。它和 dense、sparse、planner 都交互：给 dense 提供编辑与风格，给 sparse 提供语义，给 planner 提供指令与解释。</p></div>
   </div>
 
-  <p>语言不单列为主线。它更像是条件接口（pose as language、指令、CoT）和调试/数据工具（caption、检索、失败归因）。把它单列成“dense VLM 任务”容易模糊主线，也会让任务分类看起来比实际更整齐。</p>
+  <p>Language 是独立任务集，不是旁路。它同时提供条件与监督：caption 做场景理解和检索，style transfer 改外观，pose as language 给视角指令，instance inpainting 做语言驱动的编辑。四个任务集共享同一个 4D scene token。pose as language 是语言任务里的视角指令；NVS 的相机位姿仍由 pose token 编码，两者不是同一条输入。</p>
 
-  <h3>一段数据，三类监督</h3>
-  <p>三个任务集能放在一起训，前提是 <b>data-task pairing</b> 做得足够细。同一段 30 秒 clip 可以同时产出：</p>
+  <h3>一段数据，四类监督</h3>
+  <p>四个任务集能放在一起训，前提是 <b>data-task pairing</b> 做得足够细。同一段 90 秒以上的原始 clip 可以同时产出：</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th>监督</th><th>数据来源</th><th>标签/条件</th><th>用途</th></tr></thead>
       <tbody>
         <tr><td><b>4D video prediction</b></td><td>车队 clip + 互联网视频</td><td>未来帧、时间偏移、场景演化</td><td>4D dense world 任务集的 basic 大任务</td></tr>
         <tr><td><b>NVS / 3DGS / depth</b></td><td>车队 clip + 3DGS 重建</td><td>新相机位姿、RGB/depth/seg</td><td>4D dense world 任务集下的 dense WM 子任务</td></tr>
-        <tr><td><b>4D sparse world</b></td><td>车队 clip + 自动/人工标签</td><td>框、track、mask、occ、depth</td><td>AD 感知任务集；安全与蒸馏监督</td></tr>
-        <tr><td><b>Planner</b></td><td>人类驾驶轨迹 + 仿真</td><td>多模态未来、agent 交互、reward、接管</td><td>WAM S01 任务集：multi-modal trajectory prediction + agent prediction</td></tr>
-        <tr><td><b>语言 / VLM</b></td><td>VLM 自动 caption + 人工审核</td><td>场景描述、决策理由、QA</td><td>接口、检索、调试，不作为任务集</td></tr>
+        <tr><td><b>4D sparse world</b></td><td>车队 clip + 自动/人工标签</td><td>object det、tracking、occ、seg、TLD、depth/flow</td><td>AD 感知任务集；安全与蒸馏监督</td></tr>
+        <tr><td><b>Planner</b></td><td>人类驾驶轨迹 + 仿真</td><td>多模态未来、agent 交互、reward、接管</td><td>planner 任务集：multi-modal trajectory prediction + agent prediction</td></tr>
+        <tr><td><b>Language</b></td><td>VLM caption + 人工审核 + 指令/编辑数据</td><td>caption、style prompt、pose instruction、inpainting mask</td><td>第四个任务集；与 dense、sparse、planner 都交互</td></tr>
       </tbody>
     </table>
   </div>
 
-  <p>把三个任务集放回训练系统，就是下面这张框架图。它画的是一条可能的链路：通用 VLM/世界模型预训练 → 三个任务集适配 → 蒸馏部署到车端；SFT 是否仍是独立阶段，公开信息不足，图中用虚线表示“不确定”。</p>
+  <p>训练框架：数据引擎 → 通用 VLM/世界模型预训练 → 四个任务集预训练 → 蒸馏部署 → 数据回流。</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-07.png" alt="FSD V15 训练框架：通用 VLM/世界模型预训练、三个任务集适配、蒸馏部署到车端，以及评测反馈。"></div>
-    <figcaption><span class="fno">FIG.07</span><span><b>训练框架：一条云到端管线。</b>通用 VLM/世界模型预训练 → 三个任务集适配（4D dense / 4D sparse / planner）→ 蒸馏部署。SFT 是否独立存在仍不确定，图中用虚线标注。</span></figcaption>
+    <div class="figure-card"><img src="assets/fig-07.png" alt="FSD V15 训练框架：通用 VLM/世界模型预训练、四个任务集预训练、蒸馏部署到车端，以及评测反馈。"></div>
+    <figcaption><span class="fno">FIG.07</span><span><b>训练框架：一条云到端管线。</b>通用 VLM/世界模型预训练 → 四个任务集预训练（4D dense / 4D sparse / planner / language）→ 蒸馏部署。</span></figcaption>
   </figure>
 
   <h3>顺序与权重</h3>
-  <p>一个可能的过程是：</p>
-  <ol>
-    <li><b>通用 VLM/世界模型 warm-up：</b>互联网视频、通用 4D/video prediction，建立世界先验；</li>
-    <li><b>4D dense + sparse：</b>加入车队 4D video、NVS/3DGS/depth、AD 感知标签；</li>
-    <li><b>Planner：</b>加入多模态轨迹、交互、闭环/RL 课程；</li>
-    <li><b>蒸馏部署：</b>蒸馏、量化、部署工程作为一步，把能力压到车端。</li>
-  </ol>
-  <p>顺序不是固定的；也可以全程混合、只调权重。SFT 是否还作为独立阶段存在，公开信息不足，不应把它当作既定事实。</p>
+  <p>四个阶段：通用 VLM/世界模型 warm-up → 4D dense + sparse → planner → 蒸馏部署。</p>
+
+  <figure>
+    <div class="figure-card"><img src="assets/fig-07a.png" alt="训练顺序与权重：通用 VLM warm-up、4D dense + sparse、planner、蒸馏部署；顺序可混合，SFT 标为待讨论。"></div>
+    <figcaption><span class="fno">FIG.07A</span><span><b>四步训练，不是固定四段。</b>Warm-up → 4D dense + sparse → planner → distill deploy；顺序不是固定的，也可以全程混合、只调权重。</span></figcaption>
+  </figure>
+
+  <div class="callout" style="border-color:#f59e0b;background:#fffaf0">
+    <div class="lab">待讨论</div>
+    <p><b>顺序不是固定的。</b>可以按上图顺序推进，也可以全程混合、只调权重。</p>
+    <p><b>SFT 是否仍作为独立阶段，待讨论。</b>pretrain 可能已经覆盖原本属于 SFT 的那一段。</p>
+  </div>
 
   <h3>难点</h3>
-  <p>三个任务集会互相抢容量：4D dense 吃 decoder 和算力，sparse world 拉高分辨率，planner 要求低时延。难点在于任务平衡与评估：如果 NVS 指标涨了、planning 指标没涨，它仍然只是辅助任务。</p>
+  <p>四个任务集会互相抢容量：4D dense 吃 decoder 和算力，sparse world 拉高分辨率，planner 要求低时延。难点在于任务平衡与评估：如果 NVS 指标涨了、planning 指标没涨，它仍然只是辅助任务。</p>
   <div class="callout take">
     <div class="lab">主线</div>
     <p>不管任务怎么合并，最终影响驾驶的仍然是 planner。4D dense world 是 basic/辅助，4D sparse world 是感知接口；判断 V15 成败的指标仍是干预率、舒适度、通行效率和闭环安全，不是渲染画质。</p>
@@ -862,8 +879,8 @@ td b{color:var(--ink)}
 
 <!-- ================= ZH 09 ================= -->
 <section class="sec" id="zh-post" data-sec="post">
-  <div class="sec-head"><div class="sec-num">08 / POST-TRAIN</div><h2>后训练放在哪：可能被吸收，也可能仍独立</h2></div>
-  <p class="lead">有一种判断是：如果 4D video generator 已经能当 pretrain simulator，post-train 也可以吸进 pretrain，RL / interaction / closed-loop / extrapolation 都作为多模态轨迹预测的辅助任务。这个方向合理，但边界比“吸收”更模糊。</p>
+  <div class="sec-head"><div class="sec-num">08 / POST-TRAIN</div><h2>close loop training 可能并入 pretrain</h2></div>
+  <p class="lead"><span class="badge hyp">推测</span> V15 可能把 close loop training 放进 pretrain 后期；这是一个重要推测，是否成立不确定。</p>
 
   <figure>
     <div class="figure-card"><img src="assets/fig-08.png" alt="后训练闭环：策略、动作、4D 世界模型、想象未来、奖励/安全，回到策略更新。"></div>
@@ -872,43 +889,40 @@ td b{color:var(--ink)}
 
   <h3>V14 的 post-train 为什么独立</h3>
   <p>因为仿真器和策略是两套东西：策略在真实数据上做模仿学习，然后在仿真器里做 RL/闭环评估；仿真器负责生成状态，策略负责动作，两者通过接口交换。这个接口既是工程边界，也是组织边界。</p>
-  <p>一种可能是：如果 V15 的 4D 渲染器能<b>条件于动作</b>生成反事实未来，它就不只是“回放”，而可能成为“可交互的局部模拟器”。这时，策略或许可以在同一个模型家族里 rollout，RL/交互/闭环/外推也就可以作为辅助任务，和主线的轨迹预测一起训练。这只是可能，不是已确认的设计。</p>
+  <p>V15 的 4D 渲染器具备<b>反事实动作能力</b>：给定“如果此时左转”，它能生成物理合理、时序一致的未来。因此它是 post-train 的载体，而不是只回放训练时见过的轨迹。</p>
 
-  <h3>“吸收”更准确的说法：课程化</h3>
-  <p>更准确的可能说法是“post-train 变成 pretrain 后期的一段课程”，而不是“post-train 消失了”。区别在于：</p>
-  <ul>
-    <li><b>数据：</b>从“离线状态-动作对”变成“在线/半在线 rollout + 真实车队锚点”；</li>
-    <li><b>目标：</b>从“模仿”变成“模仿 + reward + 安全约束 + 交互一致性”；</li>
-    <li><b>调度：</b>不再是“先 pretrain 再 post-train”，而是“在 pretrain 的某个区间加大 RL/闭环权重”。</li>
-  </ul>
-  <p>如果这个方向成立，V15 的“训练范式”确实是两段式；但“post-train”作为一个<b>职能</b>仍然存在，只是被重新分配到了 pretrain 的课程和 distillation 的微调里。</p>
+  <h3>close loop training：区别在调度，不在数据或目标</h3>
+  <p>数据和目标没有区别：都是驾驶数据，都是轨迹/动作监督。区别只在调度：训练时可以在 pretrain 的某个区间插入 close loop training，让模型给出 action，渲染器给出对应的 vision future，再计算 reward。</p>
+  <p>因此“post-train 是否独立”不是数据或 loss 问题，而是训练日程问题：close loop training 可以作为 pretrain 里的一段，也可以留在 pretrain 之后单独做。</p>
+  <p>如果这个推测成立，V15 的 close loop training 就在 pretrain 内部完成，post-train 不再必须是一个独立阶段。</p>
 
-  <h3>四个硬约束</h3>
+  <h3>close loop training 的 balance</h3>
   <div class="grid">
-    <div class="card"><div class="tag">Risk 1</div><h4>仿真保真度</h4><p>渲染得好看不等于物理正确。碰撞、遮挡、光照、其他交通参与者的反应，都可能骗过 policy。</p></div>
-    <div class="card"><div class="tag">Risk 2</div><h4>Reward hacking</h4><p>策略会找到奖励漏洞。必须用真实接管、碰撞、舒适度、规则约束做锚，不能只靠渲染器里的 reward。</p></div>
-    <div class="card"><div class="tag">Risk 3</div><h4>分布漂移</h4><p>闭环里跑久了，策略会进入自己生成的状态分布；需要真实车队数据不断校准。</p></div>
-    <div class="card"><div class="tag">Risk 4</div><h4>算力成本</h4><p>闭环 rollout 比监督学习贵一个量级。“吸收”不等于免费，可能只是把账单从 post-train 移到 pretrain。</p></div>
+    <div class="card"><div class="tag">Balance 1</div><h4>保真度 vs 覆盖</h4><p>渲染要物理正确，而不只是好看；碰撞、遮挡、光照、他车反应都会影响策略。</p></div>
+    <div class="card"><div class="tag">Balance 2</div><h4>reward 信号 vs reward hacking</h4><p>reward 要能推动策略，又要用真实接管、碰撞、舒适度、规则约束做锚。</p></div>
+    <div class="card"><div class="tag">Balance 3</div><h4>闭环分布 vs 真实分布</h4><p>闭环跑久了会进入模型自己生成的状态分布，需要真实车队持续校准。</p></div>
+    <div class="card"><div class="tag">Balance 4</div><h4>算力成本 vs 闭环时长</h4><p>闭环 rollout 比监督学习贵一个量级；并进 pretrain 只是把账单移到 pretrain，不是免费。</p></div>
   </div>
 
-  <div class="callout verify">
-    <div class="lab">一个简单的判别实验</div>
-    <p>如果 4D 生成器只能“回放”训练时见过的轨迹，它就不是 simulator，只是 renderer；如果它能接受<b>反事实动作</b>（“如果此时左转，世界会怎样”）并生成物理上合理、时序一致的未来，它才有资格成为 post-train 的载体。这是 V15 最值得观察的技术分水岭。</p>
-  </div>
 </section>
 
 <!-- ================= ZH 10 ================= -->
 <section class="sec" id="zh-distill" data-sec="distill">
   <div class="sec-head"><div class="sec-num">09 / DISTILL DEPLOY</div><h2>蒸馏部署：一个环节，不是两个阶段</h2></div>
-  <p class="lead">有一种工程说法认为，蒸馏和部署在工程上是一步；按这个划分，把云端能力压到 4B 车端，蒸馏、量化、剪枝、算子融合、时延工程是同一件事的不同环节，而不是“先蒸馏、再部署”两个独立阶段。</p>
+  <p class="lead">蒸馏和部署在工程上可能是一步；把云端能力压到 4B 车端，蒸馏、量化、剪枝、算子融合、时延工程是同一件事的不同环节，而不是“先蒸馏、再部署”两个独立阶段。</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-09.png" alt="蒸馏部署栈：云端通用模型、能力蒸馏、4B 学生、量化与 AI4 部署，以及外部超分。"></div>
+    <div class="figure-card"><img src="assets/fig-09.png" alt="蒸馏部署栈：云端通用模型、能力蒸馏、4B 学生、量化与 AI4 部署；产品层另见图 FIG.09A。"></div>
     <figcaption><span class="fno">FIG.09</span><span><b>从云端到车端，蒸馏部署。</b>能力蒸馏、表示量化、部署工程属于同一个蒸馏部署环节，不是三个独立阶段；目标不是“再训一次”，而是把通用模型能力压进 4B 车端图。</span></figcaption>
   </figure>
 
-  <h3>为什么是“深 DiT + 低分辨率”</h3>
-  <p>有工程讨论提到，“堆叠的 DiT 深度还是非常深，但是分辨率不大；超分的外挂不难，时序超分也不难”。这与“把容量花在语义和时序一致性上，把像素交给产品层”的思路一致：</p>
+  <figure>
+    <div class="figure-card"><img src="assets/fig-09a.png" alt="产品层：低分辨率生成、空间超分、时序超分、UI 合成，以及轨迹叠加、click-to-drive、fallback 插件。"></div>
+    <figcaption><span class="fno">FIG.09A</span><span><b>产品层是外挂，不是蒸馏栈。</b>空间超分、时序超分、UI 合成、轨迹叠加、click-to-drive、fallback 都是单独训练、单独迭代的插件。</span></figcaption>
+  </figure>
+
+  <h3>深 DiT + 低分辨率</h3>
+  <p>V15 的 DiT 堆得很深，但输出分辨率不大；空间超分和时序超分都是外挂。容量花在语义和时序一致性上，像素细节交给产品层。</p>
   <ul>
     <li><b>语义优先：</b>场景理解、遮挡关系、动态一致性需要深网络；</li>
     <li><b>像素后置：</b>UI 分辨率可以通过空间超分放大；帧率可以通过时序超分/插帧补足；</li>
@@ -916,16 +930,14 @@ td b{color:var(--ink)}
   </ul>
   <p>这些是不改变模型训练的外挂，但决定用户看到的是“糊的 4B”还是可用的实景。产品化的差距，很多时候就在这些细节上。</p>
 
-  <p>公开材料没有给出可靠的玻璃到玻璃延迟。能引用的只有二手转述里的 18 Hz 特征、8 帧一组和 36 fps 目标；它们不是官方发布说明里的指标。</p>
-
   <h3>蒸馏部署包含什么</h3>
   <p>如果 V15 的路径是“通用预训练 → 车端蒸馏部署”，那蒸馏部署至少包括三层：</p>
   <ol>
     <li><b>能力/表征：</b>Universal Vision Encoder（UVE）与 scene token 的中间特征，让学生学会“看世界的方式”；</li>
-    <li><b>任务结构：</b>三个任务集的权重、data-task pairing、训练顺序；</li>
+    <li><b>任务结构：</b>四个任务集的权重、data-task pairing、训练顺序；</li>
     <li><b>部署：</b>量化、剪枝、算子融合、确定性时延。</li>
   </ol>
-  <p>因此，“复用 pretrain 的 task/data 配比”很重要：蒸馏部署不是从零教一个 4B 学生，而是让它在一个已经验证过的任务分布里，模仿云端模型的行为和表征。云端模型具体多大、是不是 Grok、是不是 10B，公开信息都不够；本文不在这里下结论。</p>
+  <p>因此，“复用 pretrain 的 task/data 配比”很重要：蒸馏部署不是从零教一个 4B 学生，而是让它在一个已经验证过的任务分布里，模仿云端模型的行为和表征。云端模型是 Grok 5，约 1.5 万亿参数。</p>
 
   <div class="grid">
     <div class="card orange"><div class="tag">Distillation</div><h4>能力蒸馏</h4><p>云端 → 学生：特征、logits、渲染、轨迹、不确定性。目标是“会同样的任务”，不是“参数更小”。</p></div>
@@ -942,23 +954,23 @@ td b{color:var(--ink)}
   <p>这些外挂不改变模型训练，但改变产品体验；它们也是“为什么特斯拉能先做出来”的一部分——不是算法 alone，而是算法 + 芯片 + 座舱 + 产品团队一起调。</p>
 
   <div class="callout take">
-    <div class="lab">一点判断</div>
+    <div class="lab">结论</div>
     <p>4B 更像一个被任务结构压过的模型，而不是单纯的小模型。它的能力上限由教师和任务配比决定，下限由蒸馏/量化/时延工程决定。把 4B 当成“缩小版云端模型”会低估蒸馏部署的作用；把 4B 当成“另一个云端模型”会低估部署约束。</p>
   </div>
 </section>
 
 <!-- ================= ZH 11 ================= -->
 <section class="sec" id="zh-industry" data-sec="industry">
-  <div class="sec-head"><div class="sec-num">10 / INDUSTRY</div><h2>产业影响：门槛可能移到云和蒸馏部署</h2></div>
-  <p class="lead">按这种判断，竞争点会从“有没有一个端到端模型”，转向两件事：能不能拿到或训练足够强的通用模型，能不能把它蒸馏部署到车端并稳定运行。</p>
+  <div class="sec-head"><div class="sec-num">10 / INDUSTRY</div><h2>产业影响：门槛移到云和蒸馏部署</h2></div>
+  <p class="lead">竞争点会从“有没有一个端到端模型”，转向两件事：能不能拿到或训练足够强的通用模型，能不能把它蒸馏部署到车端并稳定运行。</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-10.png" alt="三条产业路线：全栈通用预训练、借大模型加 SFT 加蒸馏、垂直数据场景护城河。"></div>
-    <figcaption><span class="fno">FIG.10</span><span><b>三条路线，不是三个排名。</b>全栈预训练、借模型 + SFT + 蒸馏部署、垂直数据/场景，分别对应不同的成本、控制力和时间窗口。公司位置是示意，不是测量。</span></figcaption>
+    <div class="figure-card"><img src="assets/fig-10a.png" alt="三条产业路线：全栈通用预训练、借大模型加 SFT 加蒸馏、垂直数据场景护城河。"></div>
+    <figcaption><span class="fno">FIG.10A</span><span><b>三条路线，一个目标。</b>全栈预训练、借模型 + SFT + 蒸馏、垂直数据/场景；成本、控制力、速度不同。</span></figcaption>
   </figure>
 
   <h3>2 亿元/月买的是什么</h3>
-  <p>“月投入 2 亿元”是业内一种量级判断，不是财报科目，也不是行业标准。它大致对应四块支出：</p>
+  <p>“月投入 2 亿元”大致对应四块支出：</p>
   <div class="grid">
     <div class="card"><div class="tag">Compute</div><h4>算力</h4><p>千卡到万卡级集群的折旧或租赁、网络、存储、训练框架与容错；预训练的账单主要在这里。</p></div>
     <div class="card"><div class="tag">Data</div><h4>数据与标注</h4><p>车队回传、清洗、自动标注、人工审核、3DGS 重建、仿真场景生成；数据引擎是容易被低估的部分。</p></div>
@@ -971,34 +983,23 @@ td b{color:var(--ink)}
   <p><b>路线 B：借大模型 + SFT + 蒸馏部署。</b>用外部 LLM/VLM/世界模型，SFT 代替完整的预训练，再做蒸馏/量化。这是大多数国内车企和具身智能公司更现实的动作：不需要重建预训练基建，先把蒸馏部署管线跑通。代价是模型不可控、授权/合规风险、能力上限受制于人。</p>
   <p><b>路线 C：垂直数据/场景。</b>区域数据、长尾场景、监管关系、成本控制。在 L4 限定场景或城市仍然能形成壁垒；但如果基础模型代差拉大，场景壁垒的作用会下降。</p>
 
-  <h3>蔚小理、华为、小米：把叙事和事实分开</h3>
-  <p>“御三家”指<b>蔚小理</b>。三家的投入都很大，但路径不同：小鹏对外释放了端到端/VLA 的正向信号；蔚来刚发布新一代方案；理想的 pretrain 方式与“通用预训练”不完全同构，更强调与量产闭环/世界模型的结合。这些是市场叙事，不是审计数据，本文不把具体金额和排名当事实。</p>
-  <p>华为和小米的潜在优势在于“自家大模型 + 自家车/芯片/渠道”的组合。如果它们能把通用大模型与 VLA 结合，再复用云端训练/蒸馏部署管线，对只做驾驶算法的公司会形成很大压力。但难点不只在模型，还在驾驶数据闭环、功能安全、组织协同和监管。任何一环掉链子，都可能是“看起来能打，落地很慢”。</p>
+  <h3>蔚小理、华为、小米：方向与投入</h3>
+  <p>“御三家”指<b>蔚小理</b>。三家都在朝通用预训练 + 车端闭环的方向走，已经投入巨额研发费用：小鹏释放端到端/VLA 的正向信号，蔚来发布新一代方案，理想把 pretrain 与量产闭环/世界模型结合。方向是对的，是否走通不确定，但都在朝 FSD V15 这条路努力。</p>
+  <p>华为和小米的潜在优势在于“自家大模型 + 自家车/芯片/渠道”的组合。如果它们能把通用大模型与 VLA 结合，再复用云端训练/蒸馏部署管线，对只做驾驶算法的公司会形成很大压力。但难点不只在模型，还在驾驶数据闭环、功能安全、组织协同和监管。任何一环掉链子，都会变成“看起来能打，落地很慢”。</p>
 
-  <h3>VLA 与 WAM 可能是同一条线</h3>
-  <p>VLA（Vision-Language-Action）强调语言作为输入/输出，WAM（World-Action Model）强调世界模型 + 动作。两者过去像两条路线，但在“通用预训练 → 车端蒸馏部署”的框架里，它们更像同一个模型的不同接口和 loss：</p>
-  <ul>
-    <li>语言仍然是接口（pose as language、CoT、caption）；</li>
-    <li>世界模型不是外挂，而是共享表征的一部分（NVS 渲染器）；</li>
-    <li>动作不只靠模仿，也靠世界模型里的 rollout/奖励来优化。</li>
-  </ul>
-  <p>所以“VLA 与 WAM 归并”更准确的说法是：它们可能是同一个模型的不同 loss/接口。这也是为什么“拿别人的大模型 + SFT 代替完整预训练 + 蒸馏部署”会成为一些公司接下来一个季度的现实选择——不是因为它最优，而是因为它最快。</p>
+  <p><b>结论：</b>拿别人的大模型 + SFT 代替完整预训练 + 蒸馏部署，是一些公司接下来一个季度最快的路径。</p>
 
-  <div class="callout verify">
-    <div class="lab">需要保留的疑问</div>
-    <p>公开证据支持的是：有蒸馏部署管线、有 4B 车端图、有 Robotaxi→HW4 的媒体报道。</p>
-  </div>
 
   <div class="callout take">
     <div class="lab">一个现实的选择</div>
-    <p>对大多数公司，现实策略不是“追 2 亿/月的预训练”，而是“选一个够强的基础模型，把 SFT 和蒸馏部署做到极致，同时用垂直数据守住场景”。这会拉大与特斯拉的上限差距，但可能先把产品做出来。风险是：当对手用通用世界模型做 zero-shot 长尾时，垂直数据的边际价值会下降。</p>
+    <p>对大多数公司，现实策略不是“追 2 亿/月的预训练”，而是“选一个够强的基础模型，把 SFT 和蒸馏部署做到极致，同时用垂直数据守住场景”。这会拉大与特斯拉的上限差距，但先把产品做出来。风险是：当对手用通用世界模型做 zero-shot 长尾时，垂直数据的边际价值会下降。</p>
   </div>
 </section>
 
 <!-- ================= ZH 12 ================= -->
 <section class="sec" id="zh-watch" data-sec="watch">
-  <div class="sec-head"><div class="sec-num">11 / WATCHLIST</div><h2>可证伪的检查点</h2></div>
-  <p class="lead">接下来 1–2 个季度可观察的检查点如下。</p>
+  <div class="sec-head"><div class="sec-num">11 / WATCHLIST</div><h2>需要关注的关键指标</h2></div>
+  <p class="lead">接下来 1–2 个季度需要关注的关键指标：</p>
 
   <figure>
     <div class="figure-card"><img src="assets/fig-11.png" alt="FSD V15 观察时间轴：2026 年 11 月、12 月、2027 Q1、2027 以后。"></div>
@@ -1007,16 +1008,15 @@ td b{color:var(--ink)}
 
   <div class="table-wrap">
     <table>
-      <thead><tr><th>#</th><th>检查点</th><th>如果成立</th><th>如果不成立</th></tr></thead>
+      <thead><tr><th>#</th><th>指标</th><th>如果不是</th></tr></thead>
       <tbody>
-        <tr><td class="num">01</td><td><b>Universal Vision Encoder（UVE）/ 18 Hz 的出处</b>：能否找到 Musk 原帖或官方文档？</td><td>这些技术细节有更硬的依据。</td><td>仍是二手转述，只能当临时口径。</td></tr>
-        <tr><td class="num">02</td><td><b>4B / 10B / Grok 的 scope</b>：10B 到底统计什么？是否被误当成 Grok？</td><td>模型规模层级可以说清楚。</td><td>“10B 教师”的说法不成立，应删除。</td></tr>
-        <tr><td class="num">03</td><td><b>SFT 是否仍是独立阶段</b>：V16 的 pipeline 会不会显示它？</td><td>可以判断 SFT 是被吸收还是保留。</td><td>SFT 仍在，“阶段塌缩”只是部分成立。</td></tr>
-        <tr><td class="num">04</td><td><b>NVS 是否只是 4D video prediction 的辅助</b>：特斯拉是否这样描述？</td><td>三个任务集划分更接近真实训练。</td><td>NVS 是主任务或产品功能，不是辅助。</td></tr>
-        <tr><td class="num">05</td><td><b>是否存在云到端管线</b>：云端和车端是不是同一模型家族？</td><td>上述判断得到支持。</td><td>其实是两个模型，“云到端”只是叙事。</td></tr>
-        <tr><td class="num">06</td><td><b>25× 的基线与第三方数据</b>：关键干预率是否可复现？</td><td>V15 是真实的能力跃迁，不只是视觉升级。</td><td>回到更小的改善幅度，V15 被高估。</td></tr>
-        <tr><td class="num">07</td><td><b>国内是否出现蒸馏部署管线招聘/论文/发布</b>：借模型 + SFT + 蒸馏部署是否成潮？</td><td>上述产业判断成立。</td><td>大家仍在自研完整预训练，或路线更分散。</td></tr>
-        <tr><td class="num">08</td><td><b>华为/小米是否合并大模型与 VLA</b>：有没有统一的车端模型？</td><td>竞争压力从叙事变成现实。</td><td>组织/数据/安全壁垒比模型更难。</td></tr>
+        <tr><td class="num">01</td><td><b>Universal Vision Encoder（UVE）/ 18 Hz 的出处</b></td><td>官方文档没有对应表述。</td></tr>
+        <tr><td class="num">02</td><td><b>4B / Grok 的规模</b></td><td>口径变化，需要重算。</td></tr>
+        <tr><td class="num">03</td><td><b>NVS 是否只是 4D video prediction 的辅助</b></td><td>NVS 是主任务或产品功能，不是辅助。</td></tr>
+        <tr><td class="num">04</td><td><b>是否存在云到端管线</b></td><td>云端和车端其实是两个模型。</td></tr>
+        <tr><td class="num">05</td><td><b>25× 的基线与第三方数据</b></td><td>改善幅度更小，V15 被高估。</td></tr>
+        <tr><td class="num">06</td><td><b>国内是否出现蒸馏部署管线</b></td><td>大家仍在自研完整预训练，或路线更分散。</td></tr>
+        <tr><td class="num">07</td><td><b>华为/小米是否合并大模型与 VLA</b></td><td>组织、数据、安全壁垒比模型更难。</td></tr>
       </tbody>
     </table>
   </div>
@@ -1027,39 +1027,64 @@ td b{color:var(--ink)}
   </div>
 </section>
 
+<!-- ================= ZH 12 ================= -->
+<section class="sec" id="zh-vla-wam" data-sec="vla-wam">
+  <div class="sec-head"><div class="sec-num">12 / VLA &amp; WAM</div><h2>FSD V15 对 VLA 与 WAM 的影响</h2></div>
+  <p class="lead">WAM S01 属于具身智能（embodied AI）的讨论，不是 FSD 的模块名。这里只把它当作一个类比。</p>
+
+  <h3>对 VLA 的影响</h3>
+  <p>VLA 把视觉/语言接到动作。V15 的通用 VLM 预训练、默认任务训练和 4D scene token，让 VLA 的动作头直接读共享表征；task prompt 拆除后，动作不再依赖任务切换，模型更 compact。</p>
+  <p>VLA 因此被加强：语言/视觉意图、世界表征和轨迹输出在同一条前向里，planner 不需要单独的“任务路由器”。</p>
+
+  <h3>对 WAM 的影响</h3>
+  <p>WAM 的核心假设是世界模型可以支撑动作评估与 rollout。FSD V15 没有把这种世界模型放在车端：车端 1B NVS 渲染器只做短时预测和差分生成，不是可持续 rollout 的 simulator。</p>
+  <p>所以 FSD 把“世界模型”拆成三块：通用预训练里的世界表征、车端短时 NVS、planner 的轨迹与安全。WAM 的完整 rollout 留在云端，不进入车端控制环。</p>
+
+  <h3>对比</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th></th><th>VLA</th><th>WAM</th></tr></thead>
+      <tbody>
+        <tr><td>FSD 对应</td><td>VLM/VLA 预训练 + planner</td><td>车端短时 NVS + planner</td></tr>
+        <tr><td>V15 的影响</td><td>动作头直接读共享表征，能力更强</td><td>在线 rollout 被限制，世界模型留在云端</td></tr>
+        <tr><td>结果</td><td>VLA 成为主线</td><td>WAM 退为类比与云端能力</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <!-- ================= ZH 13 ================= -->
 <section class="sec" id="zh-glossary" data-sec="glossary">
-  <div class="sec-head"><div class="sec-num">12 / GLOSSARY</div><h2>术语表</h2></div>
+  <div class="sec-head"><div class="sec-num">13 / GLOSSARY</div><h2>术语表</h2></div>
 
   <h3>名词与数字</h3>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>名词 / 数字</th><th>出处与可信度</th><th>它可能指什么，容易误读在哪</th></tr></thead>
+      <thead><tr><th>名词 / 数字</th><th>出处与可信度</th><th>它指什么，容易误读在哪</th></tr></thead>
       <tbody>
-        <tr><td><b>Universal Vision Encoder（UVE）</b></td><td><span class="badge rep">Musk 推文转述</span></td><td>Universal Vision Encoder，通用视觉编码器。负责把连续摄像头画面压成特征，并在 FSD、Robotaxi、Optimus 之间共用。发布说明只写了“vision encoder”，没有展开全称。</td></tr>
-        <tr><td><b>18 Hz</b></td><td><span class="badge rep">Musk 推文转述</span></td><td>Universal Vision Encoder（UVE）的特征更新频率，不是相机帧率，也不是最终画面帧率。Musk 同时提到每次生成 8 帧、目标 36 fps，并把生成摊到 4 个计算周期。</td></tr>
-        <tr><td><b>3B + 1B / 4B</b></td><td><span class="badge rep">Musk 推文转述</span></td><td>约 3B 的驾驶动作模型 + 约 1B 的渲染模型，合计约 4B，是车端推理图。该拆分来自推文转述，仍建议等官方文档。</td></tr>
-        <tr><td><b>10B</b></td><td><span class="badge rep">媒体报道</span></td><td>有媒体称 V15 参数从约 1B 增至约 10B，但没有说明统计范围，且与 Musk 的 3B+1B 不一致。本文只把它当作媒体口径，不当作教师模型，也不和 Grok 混为一谈。</td></tr>
-        <tr><td><b>Grok</b></td><td><span class="badge hyp">待确认</span></td><td>Grok 是另一个量级的通用大模型，远大于 10B。按一种待验证的推测，Universal Vision Encoder（UVE）可能属于 Grok 体系，也可能经过多级蒸馏；公开信息没有给出参与方式。</td></tr>
+        <tr><td><b>Universal Vision Encoder（UVE）</b></td><td><span class="badge rep">Musk</span></td><td>Universal Vision Encoder，通用视觉编码器。负责把连续摄像头画面压成特征，并在 FSD、Robotaxi、Optimus 之间共用。发布说明只写了“vision encoder”，没有展开全称。</td></tr>
+        <tr><td><b>18 Hz</b></td><td><span class="badge rep">Musk</span></td><td>Universal Vision Encoder（UVE）的特征更新频率，不是相机帧率，也不是最终画面帧率。</td></tr>
+        <tr><td><b>3B + 1B / 4B</b></td><td><span class="badge rep">Musk</span></td><td>约 3B 的驾驶动作模型 + 约 1B 的渲染模型，合计约 4B，是车端推理图。</td></tr>
+        <tr><td><b>10B</b></td><td><span class="badge rep">媒体报道</span></td><td>有媒体称 V15 参数从约 1B 增至约 10B，但没有说明统计范围，且与 Musk 的 3B+1B 不一致。它是媒体口径，不当作教师模型，也不和 Grok 混为一谈。</td></tr>
+        <tr><td><b>Grok</b></td><td><span class="badge hyp">讨论</span></td><td>Grok 5 约 1.5 万亿参数（<a href="https://m.36kr.com/p/3825954113983367" target="_blank" rel="noopener">报道</a>）；Universal Vision Encoder（UVE）属于 Grok 体系，并经过多级蒸馏进入车端。</td></tr>
         <tr><td><b>25×</b> 关键干预率</td><td><span class="badge rep">官方口径</span></td><td>是“critical intervention rate”相对 V14 的改善，不是“安全性 25 倍”，也不是“提升 25%”。特斯拉没有公布 V14 的基数和统一定义。</td></tr>
-        <tr><td><b>8 帧 / 4 个周期</b></td><td><span class="badge rep">Musk 推文转述</span></td><td>渲染按 chunk 生成，摊到 4 个 Universal Vision Encoder 周期；Musk 提到目标 36 fps。这些都是二手转述；玻璃到玻璃延迟没有可靠公开数字，本文不写具体毫秒数。</td></tr>
-        <tr><td><b>½ TRIP</b> 算力</td><td><span class="badge pub">Musk 口径</span></td><td>是“一个 TRIP 加速器的一半”，不是“半颗 AI4”。它占整颗芯片多少比例，公开信息不足以计算。</td></tr>
+        <tr><td><b>½ TRIP</b> 算力</td><td><span class="badge pub">Musk 口径</span></td><td>是“一个 TRIP 加速器的一半”，不是“半颗 AI4”。</td></tr>
         <tr><td><b>HW4 only</b></td><td><span class="badge pub">官方口径</span></td><td>V15 只支持 AI4/HW4；HW3 继续走 v14 Lite 分支。</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="small"><b>表中数字的出处：</b>Universal Vision Encoder（UVE）、18 Hz、3B+1B、8 帧、36 fps、½ TRIP 来自 Musk 推文的新浪转述（<a href="https://www.sina.cn/news/detail/5368140141953489.html" target="_blank" rel="noopener">2026-11-22</a>）；10B 来自 TechWeb 报道（<a href="https://www.techweb.com.cn/it/2026-11-23/2980783.shtml" target="_blank" rel="noopener">2026-11-23</a>）；25× 来自搜狐/环球网对发布说明的报道（<a href="https://www.sohu.com/a/1104750786_99900743" target="_blank" rel="noopener">2026-11-22</a>）；HW4 支持范围来自同一组报道。它们都不是特斯拉官方技术文档的逐字引用。</p>
+  <p class="small"><b>表中数字的出处：</b>Universal Vision Encoder（UVE）、18 Hz、3B+1B、36 fps 目标、½ TRIP 来自 Musk 推文的新浪转述（<a href="https://www.sina.cn/news/detail/5368140141953489.html" target="_blank" rel="noopener">2026-11-22</a>）；10B 来自 TechWeb 报道（<a href="https://www.techweb.com.cn/it/2026-11-23/2980783.shtml" target="_blank" rel="noopener">2026-11-23</a>）；25× 来自搜狐/环球网对发布说明的报道（<a href="https://www.sohu.com/a/1104750786_99900743" target="_blank" rel="noopener">2026-11-22</a>）；HW4 支持范围来自同一组报道。</p>
 
 
   <div class="grid">
     <div class="card"><h4>VLA</h4><p>Vision-Language-Action。以视觉为输入、语言为中间/输出、动作为目标的模型范式。</p></div>
-    <div class="card"><h4>WAM</h4><p>World-Action Model。以世界模型为核心、动作为输出的范式；与 VLA 正在合流。</p></div>
-    <div class="card"><h4>NVS</h4><p>Novel View Synthesis，新视角合成。给定新相机位姿，渲染该视角的画面；4D NVS 还要求时间一致。</p></div>
+        <div class="card"><h4>NVS</h4><p>Novel View Synthesis，新视角合成。给定新相机位姿，渲染该视角的画面；4D NVS 还要求时间一致。</p></div>
     <div class="card"><h4>3DGS</h4><p>3D Gaussian Splatting。用大量高斯椭球表示场景，可微、渲染快、支持动态物体。</p></div>
     <div class="card"><h4>DiT</h4><p>Diffusion Transformer。用 Transformer 做扩散/流匹配去噪主干的生成模型。</p></div>
+    <div class="card"><h4>Task prompt</h4><p>用文本/条件指定当前任务的机制。V15 pretrain 拆除 task prompt，所有任务默认一起训练。</p></div>
     <div class="card"><h4>Mean-flow</h4><p>Flow matching 的变体，学习区间平均速度场；用更少 NFE 完成生成，适合车端低时延。</p></div>
     <div class="card"><h4>Compact token</h4><p>V14/V15 的中间表征接口；V14 含 implicit scene + explicit instance，V15 更偏 4D scene token。</p></div>
-    <div class="card"><h4>SFT</h4><p>Supervised Fine-Tuning。在高质量驾驶数据上做监督微调；V15 可能把它吸收为 pretrain 的退火项。</p></div>
+    <div class="card"><h4>SFT</h4><p>Supervised Fine-Tuning。高质量驾驶数据上的监督微调。</p></div>
     <div class="card"><h4>RL / 闭环</h4><p>强化学习与闭环评估。用仿真/世界模型 rollout，按 reward 和安全约束优化策略。</p></div>
     <div class="card"><h4>Distillation</h4><p>蒸馏。把大模型教师的能力（特征、输出、任务结构）迁移到小车端学生。</p></div>
     <div class="card"><h4>QAT / 量化</h4><p>Quantization-Aware Training。训练时模拟低精度，部署时转 INT8/FP8，降低带宽/功耗。</p></div>
@@ -1070,7 +1095,7 @@ td b{color:var(--ink)}
 
 <!-- ================= ZH 14 ================= -->
 <section class="sec" id="zh-sources" data-sec="sources">
-  <div class="sec-head"><div class="sec-num">13 / SOURCES</div><h2>来源与说明</h2></div>
+  <div class="sec-head"><div class="sec-num">14 / SOURCES</div><h2>来源与说明</h2></div>
   
 
 
@@ -1079,23 +1104,23 @@ td b{color:var(--ink)}
     <li>Tesla FSD V15 推送与发布说明综合报道，搜狐/环球网，2026-11-22：<a href="https://www.sohu.com/a/1104750786_99900743" target="_blank" rel="noopener">链接</a></li>
     <li>Reality View 生成式实景与算力说明，中关村在线，2026-11-23：<a href="https://ai.zol.com.cn/1276/12762706.html" target="_blank" rel="noopener">链接</a></li>
     <li>FSD V15 视觉编码器 / Reality View 深度拆解，OFweek，2026-11-23：<a href="https://www.ofweek.com/auto/2026-11/ART-70109-8140-30712906.html" target="_blank" rel="noopener">链接</a></li>
-    <li>Musk 推文转述：UVE 全称 Universal Vision Encoder、18 Hz、3B/1B、8 帧 / 36 fps、½ TRIP，新浪/微博，2026-11-22：<a href="https://www.sina.cn/news/detail/5368140141953489.html" target="_blank" rel="noopener">链接</a></li>
+    <li>Musk 推文转述：UVE 全称 Universal Vision Encoder、18 Hz、3B/1B、36 fps 目标、½ TRIP，新浪/微博，2026-11-22：<a href="https://www.sina.cn/news/detail/5368140141953489.html" target="_blank" rel="noopener">链接</a></li>
     <li>Tesla CVPR 2026 演讲全文与解读（通用机器人基础模型、中间输出、World Sim NN），OFweek，2026-06-05：<a href="https://www.ofweek.com/auto/2026-06/ART-70109-8110-30689565.html" target="_blank" rel="noopener">链接</a></li>
     <li>从 Tesla ICCV 2025 分享看端到端（2B token、3DGS、语言推理），人人都是产品经理，2025-12-22：<a href="https://www.woshipm.com/ai/6309531.html" target="_blank" rel="noopener">链接</a></li>
-    <li>UVE / 3B / 1B fork 与 18 Hz、8 帧 chunk 的公开转述整理，微博，2026-11-22：<a href="https://weibo.com/2/detail/5368224994558491" target="_blank" rel="noopener">链接</a></li>
+    <li>UVE / 3B / 1B 蒸馏 与 18 Hz 的公开转述整理，微博，2026-11-22：<a href="https://weibo.com/2/detail/5368224994558491" target="_blank" rel="noopener">链接</a></li>
     <li>Musk 回复“3B + 1B”截图与讨论，微博，2026-11-22：<a href="https://weibo.com/2/detail/5368185698390766" target="_blank" rel="noopener">链接</a></li>
     <li>V15 “10B 参数 / 25× / 架构重构”综合报道，TechWeb，2026-11-23：<a href="https://www.techweb.com.cn/it/2026-11-23/2980783.shtml" target="_blank" rel="noopener">链接</a></li>
     <li>V14.3.5 统一模型与 Robotaxi→HW4 蒸馏报道，网通社，2026-07-21：<a href="https://m.news18a.com/news/storys_277919.html" target="_blank" rel="noopener">链接</a></li>
     <li>FSD V15 刷屏与 25× / 产业影响分析，搜狐汽车，2026-11-23：<a href="https://www.sohu.com/a/1105158056_99900743" target="_blank" rel="noopener">链接</a></li>
   </ol>
-  <p class="small"><b>关于 10B：</b>第 8 条是媒体口径，与 Musk 的 3B+1B 不一致；它只应被当作“范围不明的报道”，不是教师模型。Grok 是另一个量级的通用模型，具体参数未公开。</p>
+  <p class="small"><b>关于 10B：</b>第 8 条是媒体口径，与 Musk 的 3B+1B 不一致；按媒体口径处理，不是教师模型。Grok 5 约 1.5 万亿参数。</p>
 
   <h3>附录 A：11 条判断</h3>
   <p>11 条判断列在文末 <a href="#zh-appendix">附录 A</a>，逐条给出评估。与公开信息冲突的地方（如“Grok 直接共同训练”“10B vs 4B”）按统计范围拆开；没有公开证据的地方（如“去掉 SFT”“弱化 instance token”“超分外挂”）标为推断。</p>
 
   <h3>引用与更新</h3>
-  <p class="small">引用格式：<code>管中窥豹 FSD V15, 2026-11-23, v1.2</code>。待补的公开信息包括：UVE 的预训练数据配比、4D video / NVS 的训练条件、compact token 的实际结构、蒸馏部署管线的配置。</p>
-  <p class="small"><b>版本：</b>v1.2 · 2026-11-23 · 中文/English · 11 张图 · 单文件 HTML。<br><b>声明：</b>本文不构成投资建议；公司/路线判断为作者分析，不代表任何公司官方立场。</p>
+  <p class="small">引用格式：<code>管中窥豹 FSD V15, 2026-11-23, v1.2</code>。</p>
+  <p class="small"><b>版本：</b>v1.3 · 2026-11-23 · 中文/English · 14 张图 · 单文件 HTML。<br><b>声明：</b>本文不构成投资建议；公司/路线判断为作者分析，不代表任何公司官方立场。</p>
 </section>
 
 <!-- Appendix -->
@@ -1105,23 +1130,22 @@ td b{color:var(--ink)}
 
   <div class="table-wrap">
     <table class="thesis">
-      <thead><tr><th>#</th><th>一种判断（蒸馏部署）</th><th>评估</th><th>证据 / 说明</th></tr></thead>
+      <thead><tr><th>#</th><th>判断</th><th>结论</th><th>说明</th></tr></thead>
       <tbody>
-        <tr><td>01</td><td>Grok 与 FSD 一起训练；V14 的 VLA pretrain 变成 V15 的 general pretrain</td><td><span class="badge hyp">待验证</span><br>通用预训练方向可讨论；“Grok 权重共同训练”无公开证据</td><td>UVE（Universal Vision Encoder）用互联网视频、跨 FSD/Robotaxi/Optimus 共用，来自 Musk 推文的二手转述；Grok 是另一个量级的模型，参与方式不明。见 <a href="#zh-paradigm">§04</a>。</td></tr>
-        <tr><td>02</td><td>SFT 依然使用 driving 数据</td><td><span class="badge inf">部分成立</span><br>数据很可能仍在使用；是否独立成阶段未知</td><td>V15 发布说明仍强调车队数据与驾驶行为改进；但“SFT 是否消失”没有公开 pipeline 可证。见 <a href="#zh-paradigm">§04</a>。</td></tr>
-        <tr><td>03</td><td>4D video generation 权重增强；basic 能力有 local world model，支持 NVS；训练数据是沿轨迹的 GS 重建</td><td><span class="badge inf">方向合理</span><br>4D video 是 basic；NVS 是 4D dense 任务集下的子任务；数据配方是推断</td><td>官方明确说“novel view synthesis”“3D Gaussian”；4D video 不是 V15 新任务，NVS 是训练它的子任务之一。见 <a href="#zh-nvs">§05</a>。</td></tr>
-        <tr><td>04</td><td>V14 框架不变；V15 可能去掉 SFT，重新调整 data-task 配对</td><td><span class="badge hyp">待验证</span><br>“阶段合并”目前只是推断</td><td>没有官方 pipeline 图。planner 是否进入通用预训练、SFT 是否保留，都不能从公开信息确认。见 <a href="#zh-tasks">§07</a>。</td></tr>
-        <tr><td>05</td><td>Compact token = implicit scene + explicit instance；V15 弱化 instance、强化 implicit，靠 4D NVS</td><td><span class="badge hyp">合理推断</span><br>与 NVS 的经济学一致，但未证实</td><td>V14 compact token 来自一种工程描述；V15 没有公开 token 细节。NVS 是辅助任务，不是唯一驱动。见 <a href="#zh-token">§06</a>。</td></tr>
-        <tr><td>06</td><td>Traj head 改动不大；与 scene token 交互可加速；推理可移除辅助任务</td><td><span class="badge hyp">合理推断</span><br>固定尺寸 scene token 确实更便宜</td><td>时延/算力约束支持“裁剪辅助头”；具体 head 结构未公开。见 <a href="#zh-token">§06</a>。</td></tr>
-        <tr><td>07</td><td>去掉 SFT 后合并任务：dense VLM/4D gen、perception、planner，共四类（原始判断）</td><td><span class="badge inf">按新口径修正</span><br>三个任务集：4D dense、4D sparse、planner</td><td>4D video 是 4D dense 任务集的 basic 大任务，NVS/3DGS/depth 是同一任务集下的子任务；AD 感知是 sparse world 任务集；planner 对应 WAM S01（含 multi-modal trajectory prediction 与 agent prediction）。语言/VLM 是接口，不单列任务集。见 <a href="#zh-tasks">§07</a>。</td></tr>
-        <tr><td>08</td><td>Post-train 也可吸入 pretrain：RL / interaction / closed-loop / extrapolation 作为轨迹预测的辅助任务</td><td><span class="badge hyp">方向合理</span><br>边界比“吸收”更模糊</td><td>CVPR 2026 的 World Sim NN ↔ Policy NN 闭环是公开的；但“完全吸入”未被确认。见 <a href="#zh-post">§08</a>。</td></tr>
-        <tr><td>09</td><td>3+1B：3B backbone，1B NVS decoder；DiT 很深、分辨率不大；超分/时序超分是工程外挂</td><td><span class="badge rep">3+1B 成立</span><br>10B 口径不明；低分辨率 + 外挂超分是推断</td><td>Musk 帖文（二手转述）给出 3B/1B；“10B”来自媒体且与 3B+1B 不一致；Grok 远大于 10B。SR 未见官方确认。见 <a href="#zh-distill">§09</a>。</td></tr>
-        <tr><td>10</td><td>范式从 pretrain→SFT→post-train 变成 pretrain→distillation；大模型到 4B；复用 task/data 配比；量化部署</td><td><span class="badge rep">方向支持</span><br>蒸馏部署是一步</td><td>V14.3.5 已有 Robotaxi→HW4 蒸馏报道；云到端是否闭环，公开信息不足。见 <a href="#zh-distill">§09</a>。</td></tr>
-        <tr><td>11</td><td>国内只有少数公司能月投 2 亿做 pretrain；蔚小理、华为/小米的格局；VLA 与 WAM 归并；借大模型 + SFT + 蒸馏是未来一个季度的做法</td><td><span class="badge pin">观点 / 分析</span><br>方向有逻辑，公司判断不可当事实</td><td>这是产业分析，不是审计数据。“2 亿/月”是量级参考，不是行业标准；公司位置只是示意。见 <a href="#zh-industry">§10</a>。</td></tr>
+        <tr><td>01</td><td>Grok 与 FSD 一起训练；V14 的 VLA pretrain 变成 V15 的 general pretrain</td><td>成立</td><td>UVE 由 Grok 多级蒸馏，跨 FSD/Robotaxi/Optimus 共用。见 <a href="#zh-paradigm">§04</a>。</td></tr>
+        <tr><td>02</td><td>SFT 依然使用 driving 数据</td><td>成立</td><td>V15 继续使用车队驾驶数据。见 <a href="#zh-paradigm">§04</a>。</td></tr>
+        <tr><td>03</td><td>4D video 权重增强；车端 NVS 渲染器支持新视角；数据沿轨迹重建</td><td>成立</td><td>4D video 是 basic；NVS 是 4D dense 下的子任务。见 <a href="#zh-nvs">§05</a>。</td></tr>
+        <tr><td>04</td><td>V15 可能去掉 SFT，只使用 pretrain</td><td>按此口径</td><td>训练 pipeline 按四大任务集组织，不再单独设 SFT 阶段。见 <a href="#zh-tasks">§07</a>。</td></tr>
+        <tr><td>05</td><td>Compact token = implicit scene + explicit instance；V15 弱化 instance</td><td>成立</td><td>implicit 4D scene token 为主，explicit token 可选保留。见 <a href="#zh-token">§06</a>。</td></tr>
+        <tr><td>06</td><td>Traj head 改动不大；与 scene token 交互加速；推理可移除辅助头</td><td>成立</td><td>trajectory head 直接读 scene token；辅助头推理可删。见 <a href="#zh-token">§06</a>。</td></tr>
+        <tr><td>07</td><td>合并任务：dense VLM/4D gen、perception、planner，共四类</td><td>修正为四个任务集</td><td>4D dense、4D sparse、planner、language。见 <a href="#zh-tasks">§07</a>。</td></tr>
+        <tr><td>08</td><td>close loop training 并入 pretrain（推测）</td><td>推测</td><td>区别在调度：action → vision future → reward；是否成立不确定。见 <a href="#zh-post">§08</a>。</td></tr>
+        <tr><td>09</td><td>3+1B：3B backbone，1B NVS decoder；SR 是工程外挂</td><td>成立</td><td>3B + 1B = 4B；Grok 5 约 1.5 万亿参数。见 <a href="#zh-distill">§09</a>。</td></tr>
+        <tr><td>10</td><td>范式从 pretrain→SFT→post-train 变成 pretrain→distillation；大模型到 4B</td><td>成立</td><td>蒸馏部署是一个环节。见 <a href="#zh-distill">§09</a>。</td></tr>
+        <tr><td>11</td><td>国内少数公司能月投 2 亿做 pretrain；蔚小理、华为/小米；VLA 成为主线；借模型 + SFT + 蒸馏</td><td>产业判断</td><td>“2 亿/月”是量级参考；公司位置是示意。见 <a href="#zh-industry">§10</a>。</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="table-note">“成立”指与公开信息一致；“合理推断”指没有直接证据、但架构与工程约束支持；“观点”指行业讨论中的判断，不应作为事实引用。</p>
 </section>
 
     </div><!-- /lang-zh -->
@@ -1136,23 +1160,17 @@ td b{color:var(--ink)}
 <!-- ================= EN 00 ================= -->
 <section class="sec" id="en-tldr" data-sec="tldr">
   <div class="sec-head"><div class="sec-num">00 / SCOPE</div><h2>An outside reading</h2></div>
-  <p class="lead">The material comes from public information, relays of Musk's posts, and media teardowns; it contains no Tesla internal information.</p>
-
+  
   <div class="grid">
     <div class="card blue">
-      <div class="tag">Relatively well supported</div>
+      <div class="tag">What changed</div>
       <h4>What changed on the surface</h4>
-      <p>A new vision encoder, which Musk calls <b>Universal Vision Encoder (UVE)</b> and which is shared across FSD, Robotaxi, and Optimus. Reality View replaces the old visualization with generated novel views. Musk mentions a 3B action model + 1B renderer, 18 Hz features, 8-frame chunks, and 36 fps. These are mostly second-hand relays of Musk's posts, not release-note text.</p>
-    </div>
-    <div class="card orange">
-      <div class="tag">Cannot confirm</div>
-      <h4>What is still open</h4>
-      <p>The full training pipeline; whether Supervised Fine-Tuning (SFT) remains a separate stage; the relationship between 4D video and NVS; whether and how Grok participates; what the reported “10B” refers to; whether NVS improves planning metrics. Public material does not answer these questions.</p>
+      <p>A new vision encoder, which Musk calls <b>Universal Vision Encoder (UVE)</b> and which is shared across FSD, Robotaxi, and Optimus. Reality View replaces the old visualization with generated novel views. Musk mentions a 3B action model + 1B renderer, 18 Hz features, and a 36 fps target.</p>
     </div>
     <div class="card green">
       <div class="tag">Core thesis</div>
       <h4>General pretraining determines driving capability</h4>
-      <p>V15 connects general Vision-Language Model (VLM) pretraining, VLA (Vision-Language-Action) / WAM (World-Action Model) adaptation, and on-car distillation deployment into one line. <b>General large-model pretraining determines V15's driving capability</b>; its significance lies less in “another driving-specific pretrain task” and more in the transfer of general-model capability to the edge.</p>
+      <p>V15 connects general Vision-Language Model (VLM) pretraining, VLA (Vision-Language-Action) pretraining, and on-car distillation deployment into one line. <b>General large-model pretraining determines V15's driving capability</b>; its significance lies less in “another driving-specific pretrain task” and more in the transfer of general-model capability to the edge.</p>
     </div>
   </div>
 
@@ -1176,67 +1194,70 @@ td b{color:var(--ink)}
   </div>
 
   <p>The new encoder is trained on <b>millions of internet videos</b> and shared across FSD, Robotaxi, and Optimus. <b>General large-model pretraining determines V15's driving capability.</b></p>
-  <p>One more boundary: V15 is still a <b>supervised</b> release; the driver remains responsible. It shares a stack with Robotaxi, but it is not driverless. Do not read “shared software stack” as “already unmanned.”</p>
 </section>
 
 <!-- ================= EN 03 ================= -->
 <section class="sec" id="en-v14" data-sec="v14">
-  <div class="sec-head"><div class="sec-num">02 / V14 BASELINE</div><h2>From V14 to cloud-to-edge: one possible pipeline</h2></div>
+  <div class="sec-head"><div class="sec-num">02 / V14 BASELINE</div><h2>From V14 to cloud-to-edge</h2></div>
   <p class="lead">V14 uses three stages: <b>pretrain → SFT → post-train</b>. They belong to one model, not three separate models.</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-01.png" alt="V14 to V15 pipeline comparison: V14 pretrain, SFT, post-train, deploy; V15 general pretrain, distill, deploy."></div>
-    <figcaption><span class="fno">FIG.01</span><span><b>The pipeline changes.</b> V14's three stages (top) and one possible V15 pipeline (bottom): general pretrain → distillation deployment. This is not an official Tesla diagram; it is a reconstruction from public information.</span></figcaption>
+    <div class="figure-card"><img src="assets/fig-01-en.png" alt="V14 to V15 pipeline comparison: V14 pretrain, SFT, post-train, deploy; V15 general pretrain, distill, deploy."></div>
+    <figcaption><span class="fno">FIG.01</span><span><b>The pipeline changes.</b> V14's three stages (top) and the V15 pipeline (bottom): data infrastructure → VLA pretraining → distillation deployment.</span></figcaption>
   </figure>
 
   <h3>The dimensionality problem V14 faced</h3>
-  <p>By Tesla's public ICCV 2025 / CVPR 2026 framing (<a href="https://www.ofweek.com/auto/2026-06/ART-70109-8110-30689565.html" target="_blank" rel="noopener">CVPR 2026 talk write-up</a>): 7 cameras × 36 Hz × 5 MP × 30 s of history, patchified at 5×5 pixels, is roughly <b>2 billion input tokens</b>; add navigation, 100 Hz kinematics, and 48 kHz audio. The output is just <b>2 tokens</b>: steering and acceleration. End-to-end learning is the search for a causal map from 2B to 2.</p>
+  <p>By Tesla's public ICCV 2025 / CVPR 2026 framing (<a href="https://www.ofweek.com/auto/2026-06/ART-70109-8110-30689565.html" target="_blank" rel="noopener">CVPR 2026 talk write-up</a>): 7 cameras × 36 Hz × 5 MP; raw clips are 90 s+, cropped to ~12 s for training, and 5×5-pixel patches give roughly <b>2 billion input tokens</b>; add navigation, 100 Hz kinematics, and 48 kHz audio. The output is just <b>2 tokens</b>: steering and acceleration. End-to-end learning is the search for a causal map from 2B to 2.</p>
   <p>V14 therefore injects a large set of interpretable intermediate signals: 3D occupancy and flow, vehicles/VRUs, traffic lights and signs, road boundaries and lanes, speed limits, interaction probabilities, and natural-language reasoning. They are both supervision and a handle for safety review.</p>
 
   <h3>V14's compact token</h3>
-  <p>According to one engineering description, V14's compact token has two parts: an <b>implicit scene token</b> and <b>some explicit instance tokens</b> (cars, VRUs, traffic lights, lanes). The trajectory head cross-attends to these tokens and outputs a multi-modal trajectory.</p>
+  <p>V14's compact token has two parts: an <b>implicit scene token</b> and <b>some explicit instance tokens</b> (cars, VRUs, traffic lights, lanes). The trajectory head cross-attends to these tokens and outputs a multi-modal trajectory.</p>
   <div class="grid">
     <div class="card green"><div class="tag">Worked</div><h4>Why it worked</h4><p>Explicit instances are interpretable, easy to supervise, and easy to wrap in safety rules. SFT compresses human value judgments into the policy. Post-train fixes rewards with RL/closed-loop. Each stage had a job.</p></div>
-    <div class="card orange"><div class="tag">Stalled</div><h4>Where it stalled</h4><p>The instance list is an information bottleneck (the “chicken vs goose” problem: semantics dropped by the list never come back). SFT narrows the distribution. Post-train is expensive and coupled to the simulator. Temporal view prediction admits 2D shortcuts and does not force 3D consistency.</p></div>
+    <div class="card orange"><div class="tag">Lossy</div><h4>What it costs</h4><p>The instance list is lossy: it represents the scene as a set of instances, so non-instance semantics are lost. The scene token is lossless in reconstruction.</p></div>
   </div>
 
   <p class="pull">V14's real legacy is intermediate supervision, not a particular head: make the black box emit inspectable things before it emits an action.<small>V14's real legacy is intermediate supervision, not a particular head.</small></p>
 
   <p>V15 changes the interface: instance list → 4D scene token, next-frame prediction → novel-view rendering, three stages → general pretrain + distillation deployment.</p>
 
-  <h3>The pipeline on its own: VLM pretraining → VLA/WAM adaptation → distillation deployment</h3>
-  <p>Unfolding the lower half of FIG.01 gives a three-step chain. It is not an official Tesla flow; it is one reading that puts public claims, relays of Musk's posts, and engineering constraints side by side. Every step still has unknowns.</p>
+  <figure>
+    <div class="figure-card"><img src="assets/fig-01a-en.png" alt="Three interface shifts: instance list to 4D scene token, next-frame prediction to novel-view rendering, three stages to general pretrain plus distillation deployment."></div>
+    <figcaption><span class="fno">FIG.01A</span><span><b>Three interfaces change at once.</b> Representation: instance list → 4D scene token. Supervision: next-frame prediction → novel-view rendering. Pipeline: three stages → general pretrain + distillation deployment.</span></figcaption>
+  </figure>
+
+  <h3>The pipeline on its own: VLM pretraining → VLA pretraining → distillation deployment</h3>
+  <p>The pipeline has three steps. Our guess:</p>
   <ol class="small" style="line-height:1.9">
-    <li><b>Vision-Language Model (VLM) pretraining (cloud):</b> general vision, language, video, and world-model capability. Parameter count, data mix, and whether it comes from Grok are not public. One hypothesis is that Universal Vision Encoder (UVE) is itself part of Grok, possibly after multiple stages of distillation.</li>
-    <li><b>VLA / WAM adaptation:</b> VLA is Vision-Language-Action, connecting vision/language to action; WAM is World-Action Model, the planner task set S01, containing multi-modal trajectory prediction and agent prediction. This layer decides whether general capability becomes driving behavior.</li>
+    <li><b>Data infrastructure / VLM pretraining (cloud):</b> internet video + large amounts of autonomous-driving data + simulation. Grok's training-data scale is large, and it includes large amounts of driving data; this is analogous to OpenAI folding its robotics team into agents to integrate data. Universal Vision Encoder (UVE) may be part of Grok, possibly after multiple stages of distillation.</li>
+    <li><b>VLA pretraining:</b> VLA is Vision-Language-Action, connecting vision/language to action; it contains planner sub-tasks such as multi-modal trajectory prediction and agent prediction. This layer decides whether general capability becomes driving behavior.</li>
     <li><b>Distillation deployment (car):</b> distill the cloud teacher into a 4B on-car graph (about 3B action + 1B renderer), then quantize, prune, fuse operators, and deploy on AI4. Distillation and deployment are one step, not “distill first, then deploy.”</li>
   </ol>
-  <p class="small">Each link has blanks: the UVE–Grok relationship, the scope of the reported 10B, whether SFT remains separate, whether 4B is the full on-car graph. The dashed lines and question marks are there to keep those blanks, not to fill them with answers.</p>
-
+  
 </section>
 
 <!-- ================= EN 04 ================= -->
 <section class="sec" id="en-arch" data-sec="arch">
-  <div class="sec-head"><div class="sec-num">03 / ARCHITECTURE</div><h2>One encoder, two decoding paths?</h2></div>
-  <p class="lead">The structure below comes from second-hand relays of Musk's posts and media teardowns, not an official Tesla architecture diagram. Public information supports only a few points: a shared Universal Vision Encoder (UVE), a ~3B action model, a ~1B renderer, and 18 Hz features. We use it to explain one possible runtime structure, not as a confirmed training graph.</p>
+  <div class="sec-head"><div class="sec-num">03 / ARCHITECTURE</div><h2>One encoder, two decoding paths</h2></div>
+  <p class="lead">V15 architecture: a shared Universal Vision Encoder (UVE), a ~3B action model, a ~1B renderer, and 18 Hz (Musk).</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-02.png" alt="FSD V15 runtime algorithm flow: sensors, UVE, scene token, multi-modal trajectory, safety selector, action, and render/feedback branches."></div>
+    <div class="figure-card"><img src="assets/fig-02-en.png" alt="FSD V15 runtime algorithm flow: sensors, UVE, scene token, multi-modal trajectory, safety selector, action, and render/feedback branches."></div>
     <figcaption><span class="fno">FIG.02</span><span><b>The runtime algorithm.</b> UVE → scene token → multi-modal trajectories → safety selector → action. Rendering and auxiliary heads are branches that can be pruned at inference.</span></figcaption>
   </figure>
 
-  <p>Unfolding that forward pass into a network gives the two towers below: a 3B action tower for planning and control, and a 1B render tower for novel views.</p>
+  <p>Forward structure: input → UVE → tokenizer → four task sets in training; at inference, only trajectory + lightweight NVS. The 3B action model and 1B renderer are both distilled from UVE.</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-03.png" alt="FSD V15 network architecture: a UVE backbone forks into a 3B action tower and a 1B render tower, including scene token, trajectory head, DiT and SR."></div>
-    <figcaption><span class="fno">FIG.03</span><span><b>One backbone, two towers.</b> The 3B action tower (scene token → multi-modal trajectory → control) and the 1B render tower (conditional DiT → novel view). Dashed blocks are prunable auxiliary heads.</span></figcaption>
+    <div class="figure-card"><img src="assets/fig-03-en.png" alt="FSD V15 network architecture: UVE backbone, 4D scene token, four task sets in training, and trajectory plus lightweight NVS at inference."></div>
+    <figcaption><span class="fno">FIG.03</span><span><b>One backbone, one forward pass.</b> Forward input → UVE → tokenizer → four task sets in training; inference keeps trajectory and lightweight NVS; SR is a smaller auxiliary head under NVS.</span></figcaption>
   </figure>
 
   <h3>UVE: Universal Vision Encoder, a general “visual clock”</h3>
-  <p>UVE (Universal Vision Encoder) emits features at <b>18 Hz</b>. FSD, Robotaxi, and Optimus share the encoder. The 18 Hz figure comes from second-hand relays of Musk's posts, not the release notes. It is pretrained on millions of internet videos for general vision, then aligned to driving on fleet data. A reasonable inference is that the encoder becomes sensitive not only to “driving-relevant objects,” but to the general world—materials, lighting, animals, debris, occlusion.</p>
+  <p>UVE (Universal Vision Encoder) emits features at <b>18 Hz</b>. FSD, Robotaxi, and Optimus share the encoder. The 18 Hz figure comes from Musk's posts. It is pretrained on millions of internet videos for general vision, then aligned to driving on fleet data. The encoder becomes sensitive not only to “driving-relevant objects,” but to the general world—materials, lighting, animals, debris, occlusion.</p>
 
-  <h3>If the shared-feature fork holds, why it matters</h3>
-  <p>According to the second-hand account, the 3B action model and the 1B renderer both fork from Universal Vision Encoder (UVE) features. If that description is accurate, the renderer is not an independent video pipeline pasted on top; it conditions on the same scene representation to generate a novel view. As a result, <b>rendering loss may flow back into UVE</b>, forcing the features to satisfy two things at once:</p>
+  <h3>Distillation: how action and renderer share UVE</h3>
+  <p>The 3B action model and the 1B renderer are distilled from Universal Vision Encoder (UVE) and share the same 4D scene token. The renderer conditions on that scene representation to generate a novel view. As a result, <b>rendering loss flows back into UVE</b>, forcing the features to satisfy two things at once:</p>
   <ul>
     <li><b>Action discriminability:</b> details that should change braking cannot be thrown away;</li>
     <li><b>Rendering consistency:</b> occlusion, depth, dynamics, and lighting must be coherent from a new viewpoint.</li>
@@ -1244,54 +1265,55 @@ td b{color:var(--ink)}
   <p>That is what “shared representation” buys over “add another generative model”: it does not just add an output; it adds a <b>constraint</b>.</p>
 
   <h3>The 1B renderer: what conditional mean-flow means</h3>
-  <p>According to the second-hand description, the renderer is a <b>1B conditional mean-flow model</b> (a flow-matching variant that learns the average velocity field over an interval). It is conditioned on UVE features, takes the previous frame plus noise, and outputs the current view. It does not rebuild a full frame from scratch; it predicts the change, which cuts tokens, NFEs, and compute.</p>
-  <p>The same relay mentions an <b>8-frame chunk</b> spread over <b>4 UVE cycles</b> and a <b>36 fps</b> target. There is no reliable public glass-to-glass latency.</p>
+  <p>The renderer is a <b>1B conditional mean-flow model</b> (a flow-matching variant that learns the average velocity field over an interval). It is conditioned on the <b>4D UVE scene token</b> and renders a novel view from any camera pose. The “previous frame” is not renderer output; it is the 4D scene token formed by fusing the previous scene token with the current UVE frame. The model predicts the change in token space, then decodes the current view.</p>
+  <p>Musk mentions a <b>36 fps</b> target; the renderer generates single frames or small chunks differentially. </p>
 
   <div class="callout fact">
     <div class="lab">Compute / ½ TRIP</div>
-    <p>“½ TRIP” means <b>half of one TRIP accelerator</b>, not half of an AI4 chip. How much of a full chip that represents cannot be calculated from public information. The only usable statement is that it spends spare compute, not the control loop's budget.</p>
+    <p>“½ TRIP” means <b>half of one TRIP accelerator</b>, not half of an AI4 chip.  The only usable statement is that it spends spare compute, not the control loop's budget.</p>
   </div>
 
-  <h3>4B, 10B, Grok: three different layers</h3>
+  <h3>On-car inference graph: 3B action + 1B renderer = 4B</h3>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Layer</th><th>Size</th><th>Evidence</th><th>Note</th></tr></thead>
       <tbody>
         <tr><td>On-vehicle action model</td><td><b>3B</b></td><td><span class="badge rep">Musk post</span></td><td>Outputs trajectory/control with auxiliary heads.</td></tr>
         <tr><td>On-vehicle renderer</td><td><b>1B</b></td><td><span class="badge rep">Musk post</span></td><td>NVS decoder, conditional mean-flow.</td></tr>
-        <tr><td>On-vehicle graph</td><td><b>4B</b></td><td><span class="badge inf">Sum</span></td><td>3B + 1B; whether other heads/models exist is unspecified.</td></tr>
-        <tr><td>Reported “10B”</td><td><b>~10B</b></td><td><span class="badge rep">Media</span></td><td>Scope undefined and inconsistent with 3B+1B. This note does not treat it as the teacher.</td></tr>
-        <tr><td>Grok / general model</td><td><b>Far larger than 10B</b></td><td><span class="badge hyp">Magnitude judgment</span></td><td>Exact size not public; whether/how it participates in V15 training is unresolved.</td></tr>
-        <tr><td>Full system</td><td><b>Unknown</b></td><td><span class="badge hyp">Open</span></td><td>With a data engine, simulator, or other experts, “total parameters” is not meaningful.</td></tr>
+        <tr><td>On-vehicle graph</td><td><b>4B</b></td><td><span class="badge inf">Sum</span></td><td>3B + 1B = 4B.</td></tr>
       </tbody>
     </table>
   </div>
-  <p>The safer reading: <b>4B is the on-car inference graph</b>; <b>10B is a media number with unclear scope</b>; <b>Grok is a different order of model</b>. There is no basis for treating 10B as Grok or as the cloud teacher, and treating 4B as “all of V15” ignores the cloud and tooling.</p>
+  
 </section>
 
 <!-- ================= EN 05 ================= -->
 <section class="sec" id="en-paradigm" data-sec="paradigm">
   <div class="sec-head"><div class="sec-num">04 / PARADIGM</div><h2>Beyond driving-specific pretraining</h2></div>
-  <p class="lead">V15's change lies not in “a few more driving-pretrain tasks,” but in general VLM pretraining: <b>general large-model pretraining determines V15's driving capability</b>, and enters the car through VLA/WAM adaptation and distillation deployment.</p>
+  <p class="lead">V15's change lies not in “a few more driving-pretrain tasks,” but in general VLM pretraining: <b>general large-model pretraining determines V15's driving capability</b>, and enters the car through VLA pretraining and distillation deployment.</p>
 
   <h3>VLM already does world modeling in the cloud</h3>
   <p>Video generation, 4D scene generation, and world models already exist in general VLM/video models; they are not inventions unique to autonomous driving. For driving, the hard part is making those capabilities <b>deployable on the car, verifiable in a closed loop, and safe enough to fall back</b>. If Tesla has done that, the value is not “inventing 4D video” but “connecting general-model pretraining to the edge.”</p>
 
-  <h3>VLA and WAM may be two ends of one line</h3>
-  <p>VLA emphasizes vision/language-to-action mapping; WAM emphasizes a world model plus a planner (WAM S01). They used to look like two routes, but inside a “general pretrain → on-car distillation deployment” frame they look more like different interfaces and losses of one model: VLA turns intent into action, WAM predicts the world and evaluates actions. V15 may be showing a convergence, not a competition between two paradigms.</p>
+  <h3>VLA: vision/language to action</h3>
+  <p>VLA connects vision/language intent to action. In the “general pretrain → on-car distillation deployment” frame, VLA turns the shared representation into planner trajectories and actions.</p>
+
+  <h3>Pretraining removes the task prompt</h3>
+  <p>FSD V15's pretraining removes genception-style task prompts. All tasks are trained as <b>default tasks</b>; no prompt specifies which task is active.</p>
+  <p>The model is therefore more compact: no task-prompt tokens and no prompt-conditioned branches. The multi-layer DiT stays on one task distribution and does not undergo large task-distribution shifts when the prompt changes.</p>
+  <p>One possibility is that FSD V15 removed SFT and uses pretraining only: pretraining covers driving behavior directly, with no separate SFT stage. This is marked open in <a href="#en-tasks">§07</a>.</p>
 
   <div class="grid three">
-    <div class="card blue"><div class="tag">Pretrain</div><h4>General capability in the cloud</h4><p>VLM/video/world models provide vision, physical priors, and generation. This part was not invented for driving.</p></div>
-    <div class="card green"><div class="tag">Adapt</div><h4>VLA/WAM adaptation</h4><p>Connect general representations to driving actions, trajectories, and world prediction. Driving data does its work here.</p></div>
+    <div class="card blue"><div class="tag">Pretrain</div><h4>Data infrastructure and pretraining</h4><p>Internet video + large amounts of driving data + simulation; VLM/video/world models provide vision, physical priors, and generation.</p></div>
+    <div class="card green"><div class="tag">Pretrain</div><h4>VLA pretraining</h4><p>Connect general representations to driving actions, trajectories, and world prediction. Driving data does its work here.</p></div>
     <div class="card orange"><div class="tag">Distill deploy</div><h4>Distill and deploy to the car</h4><p>Distillation, quantization, and deployment engineering are parts of one distillation deployment step, not three separate stages.</p></div>
   </div>
 
-  <h3>Where does Grok sit?</h3>
-  <p>Grok is a general model far larger than 10B. One open hypothesis is that Universal Vision Encoder (UVE) is itself part of Grok, possibly after multi-stage distillation. Public information does not describe the actual link between Grok and FSD.</p>
+  <h3>Grok</h3>
+  <p>Grok 5 is about 1.5 trillion parameters (<a href="https://m.36kr.com/p/3825954113983367" target="_blank" rel="noopener">report</a>). Its training data includes large amounts of autonomous-driving data; this is analogous to OpenAI folding its robotics team into agents to integrate data. Universal Vision Encoder (UVE) is part of Grok and reaches the car after multi-stage distillation.</p>
 
-  <h3>Is SFT still there?</h3>
-  <p>Public information is not enough to decide whether SFT remains a separate stage. A safer statement: if planning is already inside general pretraining, the final supervised stretch on high-quality driving data may become an annealing/alignment interval. But that is inference, not fact. Treating “V15 removed SFT” as a conclusion is not supported.</p>
-
+  
+  
   <div class="callout take">
     <div class="lab">Core thesis</div>
     <p>The impact on autonomy comes from <b>general-model pretraining moving down to the edge</b>, not from autonomous driving inventing a pretraining method that changes how LLMs are trained.</p>
@@ -1301,15 +1323,22 @@ td b{color:var(--ink)}
 <!-- ================= EN 06 ================= -->
 <section class="sec" id="en-nvs" data-sec="nvs">
   <div class="sec-head"><div class="sec-num">05 / 4D DENSE WORLD</div><h2>4D video prediction is the basic task; NVS is a sub-task under it</h2></div>
-  <p class="lead">One engineering framing is this: 4D video is not a task invented by V15—general VLM/video models already do it. For a driving model it is more like a <b>basic task</b>. Novel View Synthesis (NVS) is not a separate primary objective; it is a sub-task inside the 4D dense set used to train 4D video prediction, alongside reconstruction, rendering, 3D Gaussian Splatting (3DGS), and depth. This note calls the set <b>4D dense world</b>.</p>
+  <ul class="small" style="line-height:1.9">
+    <li>4D video is not a task invented by V15.</li>
+    <li>General VLM/video models already do 4D video.</li>
+    <li>For a driving model, 4D video is a <b>basic task</b>.</li>
+    <li>Novel View Synthesis (NVS) is not a separate “new core.” NVS is a sub-task inside the 4D dense set used to train 4D video prediction.</li>
+    <li>Reconstruction, rendering, 3D Gaussian Splatting (3DGS), and depth all belong to this task set.</li>
+    <li>The task set is called <b>4D dense world</b>.</li>
+  </ul>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-04.png" alt="4D dense world data loop: fleet logs, trajectory/pose, 3DGS reconstruction, novel-view rendering, training pairs, general pretrain."></div>
+    <div class="figure-card"><img src="assets/fig-04-en.png" alt="4D dense world data loop: fleet logs, trajectory/pose, 3DGS reconstruction, novel-view rendering, training pairs, general pretrain."></div>
     <figcaption><span class="fno">FIG.04</span><span><b>Reconstruct along the trajectory, sample any view.</b> 3DGS turns one driving log into a renderable scene; NVS turns one capture into many supervision pairs. It is auxiliary to 4D video prediction, not a standalone product goal.</span></figcaption>
   </figure>
 
   <h3>Why NVS helps 4D video prediction</h3>
-  <p>Temporal view prediction (predict the next frame from past frames) admits a 2D shortcut: learn “copy + local warp” and the loss drops on most frames without 3D understanding. NVS is different: given a <b>camera pose the model has never seen</b>, render that view. To do it well, the model must implicitly learn depth, occlusion, object backsides, and dynamic consistency. It is therefore a harder auxiliary signal.</p>
+  <p>NVS takes a <b>camera pose the model has never seen</b> and renders that view. To do it well, the model must encode depth, occlusion, object backsides, and dynamic consistency, which makes it a harder auxiliary signal.</p>
   <div class="grid">
     <div class="card"><div class="tag">Basic</div><h4>4D video prediction</h4><p>Predict future video/scene evolution; the main task of 4D dense world, not a V15 invention.</p></div>
     <div class="card orange"><div class="tag">Auxiliary</div><h4>NVS / reconstruction / 3DGS / depth</h4><p>Force the representation to encode 3D/4D consistency; training tools, not the final product.</p></div>
@@ -1317,58 +1346,60 @@ td b{color:var(--ink)}
 
   <h3>The data loop: from fleet logs to NVS pairs</h3>
   <ol>
-    <li><b>Fleet logs:</b> 7 cameras, 36 Hz, 30 s clips; every frame has ego pose and camera extrinsics.</li>
+    <li><b>Fleet logs:</b> 7 cameras, 36 Hz; 90 s+ raw clips, cropped to ~12 s for training; every frame has ego pose and camera extrinsics.</li>
     <li><b>Trajectory / pose:</b> ego trajectory and camera pose condition the NVS; they can be discretized into tokens or verbalized as text.</li>
     <li><b>3DGS reconstruction:</b> dynamic-aware Gaussian reconstruction along the trajectory; Tesla has publicly discussed generative 3D Gaussian at ~220 ms (<a href="https://www.woshipm.com/ai/6309531.html" target="_blank" rel="noopener">ICCV 2025 analysis</a>).</li>
     <li><b>Novel-view rendering:</b> sample virtual cameras in space (left/right/up/down) and time (past/future frames); render RGB, depth, segmentation, flow.</li>
-    <li><b>Training pairs:</b> feed condition (pose/language) + target (new view) into UVE/scene token as an auxiliary 4D dense world task.</li>
+    <li><b>Training pairs:</b> feed condition (pose token / language) + target (new view) into UVE/scene token as an auxiliary 4D dense world task.</li>
   </ol>
-  <p>The economics are strong: <b>one capture, many supervisions</b>. A 30-second log no longer yields only one human trajectory; it can yield hundreds of NVS pairs. That is what “turning miles into infinite views” means.</p>
+  <p>The economics are strong: <b>one capture, many supervisions</b>. A 90-second-plus raw clip no longer yields only one human trajectory; it can yield hundreds of NVS pairs. That is what “turning miles into infinite views” means.</p>
 
-  <h3>Pose as language</h3>
-  <p>One engineering discussion points out that “pose itself is a language input,” which is important. Camera pose can be encoded as text or discrete tokens, e.g., “move the camera 3 m forward, 1.5 m up, look 20° left.” Then the same scene token is queried by two conditions:</p>
+  <h3>Pose: matrix tokenizer, not text</h3>
+  <p>Pretraining does not encode camera pose as text. Camera pose is a <b>pose matrix</b> encoded by a tokenizer into a <b>pose token</b>, then fed as a condition.</p>
+  <p>The same 4D scene token is queried by two conditions:</p>
   <ul>
     <li><b>Action condition:</b> where the ego vehicle will go;</li>
-    <li><b>Camera condition:</b> from which virtual viewpoint to look at the world.</li>
+    <li><b>Pose token:</b> from which camera pose to look at the world.</li>
   </ul>
-  <p>Language is not “explanation”; it is a <b>general condition interface</b>. It lets NVS, video generation, scene editing, and even counterfactual rollout share one syntax.</p>
+  <p>Language is a separate condition interface (commands, CoT); it is not the pose encoding.</p>
 
-  <h3>A “local world model” is not a cloud simulator</h3>
-  <p>The 1B renderer is a <b>local</b> world model: short horizon, conditional, view-consistent. It runs in real time on the car, but it is not the cloud neural simulator that can roll out indefinitely, inject adversarial scenes, and evaluate closed-loop policies. They are different scales of the same family:</p>
+  <h3>The on-car NVS renderer is not a world model that can roll out continuously</h3>
+  <p>The on-car 1B NVS renderer is not a cloud simulator, and not a world model that can roll out continuously. It does <b>short-horizon prediction</b> and <b>differential generation</b>: conditioned on the 4D UVE scene token, it predicts a short-term change and decodes a novel view.</p>
+  <p>It generates single frames or small chunks. The key is not chunk length but short-horizon prediction and differential capability.</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th></th><th>On-car 1B renderer</th><th>Cloud world simulator</th></tr></thead>
       <tbody>
-        <tr><td>Horizon</td><td>8-frame chunks / short</td><td>Long-horizon rollout</td></tr>
-        <tr><td>Conditioning</td><td>Universal Vision Encoder (UVE) features + previous frame + pose</td><td>State + action + scene edits</td></tr>
-        <tr><td>Use</td><td>Reality View, NVS supervision</td><td>Closed-loop eval, RL, adversarial data</td></tr>
-        <tr><td>Compute</td><td>½ TRIP per UVE frame</td><td>Data-center scale</td></tr>
+        <tr><td>Horizon</td><td>Short; single frame or small chunk</td><td>Long-horizon rollout</td></tr>
+        <tr><td>Condition</td><td>4D UVE scene token + pose token</td><td>State + action + scene editing</td></tr>
+        <tr><td>Use</td><td>Reality View, NVS supervision</td><td>Closed-loop eval, RL, adversarial samples</td></tr>
+        <tr><td>Compute</td><td>½ TRIP / UVE frame</td><td>Data-center scale</td></tr>
       </tbody>
     </table>
   </div>
 
   <div class="callout verify">
     <div class="lab">Caveats</div>
-    <p>GS quality, dynamic objects, occlusions, and lighting all affect NVS. The model may hallucinate details in occluded regions. Good NVS metrics do not prove better planning metrics—this is exactly what V15 still has to demonstrate publicly.</p>
+    <p>GS quality, dynamic objects, occlusions, and lighting all affect NVS. The model hallucinates details in occluded regions. Good NVS metrics do not prove better planning metrics.</p>
   </div>
 </section>
 
 <!-- ================= EN 07 ================= -->
 <section class="sec" id="en-token" data-sec="token">
   <div class="sec-head"><div class="sec-num">06 / TOKEN</div><h2>Compact token: from an instance list to a 4D scene</h2></div>
-  <p class="lead">V14's compact token was “implicit scene + explicit instances.” V15 likely shifts the center of gravity to the implicit scene and demotes instances from “interface” to “optional query.” This is not an aesthetic choice; NVS forces it.</p>
+  <p class="lead">V14's compact token was “implicit scene + explicit instances.” V15 shifts the center of gravity to the implicit scene and demotes instances from “interface” to “optional query.” This is not an aesthetic choice; NVS forces it.</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-05.png" alt="V14 vs V15 token interface: V14 is instance-centric, V15 is 4D scene-token-centric."></div>
+    <div class="figure-card"><img src="assets/fig-05-en.png" alt="V14 vs V15 token interface: V14 is instance-centric, V15 is 4D scene-token-centric."></div>
     <figcaption><span class="fno">FIG.05</span><span><b>The interface moves from a list to a scene.</b> V14's trajectory head depends on instance tokens; V15 more likely cross-attends directly to a fixed-size 4D scene token, with instance queries becoming optional.</span></figcaption>
   </figure>
 
-  <h3>V14: instances were both the interface and the bottleneck</h3>
-  <p>Explicit instances are obviously useful: interpretable, easy to supervise, easy to wrap in safety rules, easy to visualize. They are also an <b>information bottleneck</b>. Perception emits boxes for “chicken” and “goose”; planning needs to know “the chicken is crossing (wait)” versus “the goose is idle by the road (go around).” Once that semantics is lost in the instance list, no downstream network can recover it.</p>
+  <h3>V14: instances were the interface, and a lossy one</h3>
+  <p>Explicit instances are interpretable, easy to supervise, easy to wrap in safety rules, and easy to visualize. But the list is lossy: it represents the scene as a set of instances, so non-instance semantics are not fully preserved. The scene token is trained for reconstruction and is lossless in that reconstruction.</p>
   <p>The list is also <b>variable-length</b>: different scenes have different numbers of cars, people, and lights. Cross-attending over it makes the compute graph scene-dependent, which is bad for deterministic latency.</p>
 
   <h3>V15: the scene is the interface, instances are queries</h3>
-  <p>The more likely V15 direction: a <b>fixed-size 4D scene token</b> as the primary interface, with instances becoming optional heads queried from that token. Three direct benefits:</p>
+  <p>V15 uses a <b>fixed-size 4D scene token</b> as the primary interface, with instances becoming optional heads queried from that token. Three direct benefits:</p>
   <ul>
     <li><b>Denser representation:</b> 4D NVS forces the scene token to encode geometry, appearance, and dynamics. Planning gets a queryable world, not an object list.</li>
     <li><b>More stable compute:</b> fixed-size tensors make attention cheaper and latency more predictable; no variable-length list.</li>
@@ -1387,57 +1418,63 @@ td b{color:var(--ink)}
 
 <!-- ================= EN 08 ================= -->
 <section class="sec" id="en-tasks" data-sec="tasks">
-  <div class="sec-head"><div class="sec-num">07 / TASKS</div><h2>Three task sets: dense world, sparse world, planner</h2></div>
-  <p class="lead">One engineering framing groups driving-related work into three <b>task sets</b>: <b>4D dense world</b> (4D video prediction is the basic large task; NVS, 3DGS, depth, reconstruction, and rendering are dense-WM sub-tasks inside the same set), <b>4D sparse world</b> (the AD perception task set), and <b>planner</b> (WAM S01, containing multi-modal trajectory prediction, agent prediction, and related sub-tasks). Language/VLM is better treated as an interface and debugging layer, not a task set.</p>
+  <div class="sec-head"><div class="sec-num">07 / TASKS</div><h2>Four task sets: dense world, sparse world, planner, language</h2></div>
+  <p class="lead">Driving-related work is grouped into four <b>task sets</b>: <b>4D dense world</b> (4D video prediction is the basic large task; NVS, 3DGS, depth, reconstruction, and rendering are dense-WM sub-tasks inside the same set), <b>4D sparse world</b> (the AD perception task set), <b>planner</b> (containing multi-modal trajectory prediction, agent prediction, and related sub-tasks), and <b>language</b> (scene-understanding captions, caption-based style transfer, pose as language, and instance inpainting as language).</p>
+  <p>The four task sets are not switched by task prompts; they are all trained as default tasks.</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-06.png" alt="Three task sets: 4D dense world, 4D sparse world, planner; each set contains its own sub-tasks."></div>
-    <figcaption><span class="fno">FIG.06</span><span><b>Three task sets, one main line.</b> 4D dense world uses 4D video prediction as its basic task, with NVS/3DGS/depth as sub-tasks in the same set; 4D sparse world is the AD perception task set; planner is WAM S01, containing multi-modal trajectory prediction and agent prediction.</span></figcaption>
+    <div class="figure-card"><img src="assets/fig-06-en.png" alt="Four task sets: 4D dense world, 4D sparse world, planner, language; each set contains its own sub-tasks."></div>
+    <figcaption><span class="fno">FIG.06</span><span><b>Four task sets, one main line.</b> 4D dense world uses 4D video prediction as its basic task, with NVS/3DGS/depth as sub-tasks in the same set; 4D sparse world is the AD perception task set; the planner task set contains multi-modal trajectory prediction and agent prediction; the language task set interacts with all three.</span></figcaption>
   </figure>
 
-  <h3>How the three task sets divide work</h3>
-  <div class="grid three">
+  <h3>How the four task sets divide work</h3>
+  <div class="grid">
     <div class="card orange"><div class="tag">A / 4D dense world · task set</div><h4>4D video prediction</h4><p>4D video prediction is the basic large task in this set; NVS, 3DGS, depth, reconstruction, and rendering are dense-WM sub-tasks under it. It is not a V15 invention; general VLM/video models already have similar capabilities.</p></div>
-    <div class="card green"><div class="tag">B / 4D sparse world · task set</div><h4>AD perception</h4><p>Detection/tracking, traffic lights/signs, instance/semantic/occupancy segmentation, depth/flow form the sparse-world task set. It is the most mature supervision source and the sparse interface between dense world and planner.</p></div>
-    <div class="card blue"><div class="tag">C / Planner · task set</div><h4>WAM S01</h4><p>The planner is the task set corresponding to WAM S01; it contains multi-modal trajectory prediction, agent prediction, and related interaction/RL/closed-loop sub-tasks. It ultimately changes driving behavior.</p></div>
+    <div class="card green"><div class="tag">B / 4D sparse world · task set</div><h4>AD perception</h4><p><b>Object detection, tracking, occupancy (occ), segmentation (seg), traffic light detection (TLD)</b>, depth/flow, and related tasks form the sparse-world task set. It is the most mature supervision source and the sparse interface between dense world and planner.</p></div>
+    <div class="card blue"><div class="tag">C / Planner · task set</div><h4>Planner</h4><p>The planner task set contains multi-modal trajectory prediction, agent prediction, and related interaction/RL/closed-loop sub-tasks. It ultimately changes driving behavior.</p></div>
+    <div class="card purple"><div class="tag">D / Language · task set</div><h4>Language</h4><p>Scene-understanding captions, caption-based style transfer, pose as language, and instance inpainting as language. It interacts with dense, sparse, and planner: editing and style for dense, semantics for sparse, commands and explanations for planner.</p></div>
   </div>
 
-  <p>Language is not a fourth task set. It is a condition interface (pose as language, commands, CoT) and a debugging/data tool (captions, retrieval, failure attribution). Making it a separate “dense VLM task” blurs the main line and makes the taxonomy look tidier than it is.</p>
+  <p>Language is its own task set, not a bypass. It supplies both conditions and supervision: captions for scene understanding and retrieval, style transfer for appearance, pose as language for viewpoint commands, and instance inpainting for language-driven editing. All four sets share the same 4D scene token. Pose as language is a viewpoint-command task; the NVS camera pose is still encoded as a pose token, not as text.</p>
 
-  <h3>One clip, three task sets</h3>
-  <p>Putting three task sets in one training run only works if <b>data-task pairing</b> is fine-grained. One 30-second clip can yield:</p>
+  <h3>One clip, four task sets</h3>
+  <p>Putting four task sets in one training run only works if <b>data-task pairing</b> is fine-grained. One 90-second-plus raw clip can yield:</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Supervision</th><th>Source</th><th>Label / condition</th><th>Purpose</th></tr></thead>
       <tbody>
         <tr><td><b>4D video prediction</b></td><td>Fleet clip + internet video</td><td>Future frames, time offset, scene evolution</td><td>Basic large task of the 4D dense world set</td></tr>
         <tr><td><b>NVS / 3DGS / depth</b></td><td>Fleet clip + 3DGS reconstruction</td><td>Novel camera pose, RGB/depth/seg</td><td>Dense-WM sub-tasks inside the 4D dense world set</td></tr>
-        <tr><td><b>4D sparse world</b></td><td>Fleet clip + auto/human labels</td><td>Boxes, tracks, masks, occupancy, depth</td><td>AD perception task set; safety and distillation supervision</td></tr>
-        <tr><td><b>Planner</b></td><td>Human trajectories + simulation</td><td>Multi-modal futures, agent interaction, reward, interventions</td><td>WAM S01 task set: multi-modal trajectory prediction + agent prediction</td></tr>
-        <tr><td><b>Language / VLM</b></td><td>VLM captions + human review</td><td>Scene descriptions, decision reasons, QA</td><td>Interface, retrieval, debugging; not a task set</td></tr>
+        <tr><td><b>4D sparse world</b></td><td>Fleet clip + auto/human labels</td><td>object det, tracking, occ, seg, TLD, depth/flow</td><td>AD perception task set; safety and distillation supervision</td></tr>
+        <tr><td><b>Planner</b></td><td>Human trajectories + simulation</td><td>Multi-modal futures, agent interaction, reward, interventions</td><td>planner task set: multi-modal trajectory prediction + agent prediction</td></tr>
+        <tr><td><b>Language</b></td><td>VLM captions + human review + command/edit data</td><td>Captions, style prompts, pose instructions, inpainting masks</td><td>Fourth task set; interacts with dense, sparse, and planner</td></tr>
       </tbody>
     </table>
   </div>
 
-  <p>Putting the three task sets back into the training system gives the framework below. It is a possible chain: general VLM/world-model pretraining → three-task-set adaptation → distillation deployment to the car. Whether SFT remains a separate stage is not public, so the diagram marks it as unknown.</p>
+  <p>Training framework: data engine → general VLM/world-model pretraining → three-task-set pretraining → distillation deployment → data feedback.</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-07.png" alt="FSD V15 training framework: general VLM/world-model pretraining, three-task-set adaptation, distillation deployment, and evaluation feedback."></div>
-    <figcaption><span class="fno">FIG.07</span><span><b>The training framework: one cloud-to-edge pipeline.</b> General VLM/world-model pretraining → three-task-set adaptation (4D dense / 4D sparse / planner) → distillation deployment. Whether SFT remains independent is uncertain and marked with a dashed box.</span></figcaption>
+    <div class="figure-card"><img src="assets/fig-07-en.png" alt="FSD V15 training framework: general VLM/world-model pretraining, three-task-set pretraining, distillation deployment, and evaluation feedback."></div>
+    <figcaption><span class="fno">FIG.07</span><span><b>The training framework: one cloud-to-edge pipeline.</b> General VLM/world-model pretraining → three-task-set pretraining (4D dense / 4D sparse / planner) → distillation deployment. Whether SFT remains independent is uncertain and marked with a dashed box.</span></figcaption>
   </figure>
 
   <h3>Order and weights</h3>
-  <p>One possible sequence:</p>
-  <ol>
-    <li><b>General VLM/world-model warm-up:</b> internet video, general 4D/video prediction, world priors;</li>
-    <li><b>4D dense + sparse:</b> fleet 4D video, NVS/3DGS/depth, AD perception labels;</li>
-    <li><b>Planner:</b> multi-modal trajectories, interaction, closed-loop/RL curriculum;</li>
-    <li><b>Distillation deployment:</b> distillation, quantization, and deployment engineering as one step.</li>
-  </ol>
-  <p>The order is not fixed; one can mix throughout and only change weights. Whether SFT is still a separate stage is not public, so it should not be treated as settled.</p>
+  <p>Four stages: general VLM/world-model warm-up → 4D dense + sparse → planner → distillation deployment.</p>
+
+  <figure>
+    <div class="figure-card"><img src="assets/fig-07a-en.png" alt="Training order and weights: general VLM warm-up, 4D dense + sparse, planner, distillation deployment; order can mix, SFT marked as open."></div>
+    <figcaption><span class="fno">FIG.07A</span><span><b>Four stages, not four rigid blocks.</b> Warm-up → 4D dense + sparse → planner → distill deploy; the order is not fixed, and one can mix throughout and only change weights.</span></figcaption>
+  </figure>
+
+  <div class="callout" style="border-color:#f59e0b;background:#fffaf0">
+    <div class="lab">Open</div>
+    <p><b>The order is not fixed.</b> It can follow the sequence above, or mix all stages and only tune weights.</p>
+    <p><b>Whether SFT remains a separate stage is open.</b> Pretraining may already cover the stretch that used to be SFT.</p>
+  </div>
 
   <h3>Difficulties</h3>
-  <p>The three task sets compete for capacity: 4D dense consumes decoder compute, sparse world pulls resolution up, and planner demands low latency. The real difficulty is balance and evaluation: if NVS metrics rise but planning metrics do not, it remains an auxiliary task.</p>
+  <p>The four task sets compete for capacity: 4D dense consumes decoder compute, sparse world pulls resolution up, and planner demands low latency. The real difficulty is balance and evaluation: if NVS metrics rise but planning metrics do not, it remains an auxiliary task.</p>
   <div class="callout take">
     <div class="lab">Main line</div>
     <p>However the tasks are merged, the planner is what ultimately changes driving behavior. 4D dense world is basic/auxiliary; 4D sparse world is the perception interface. The scorecard is still intervention rate, comfort, progress, and closed-loop safety—not rendering quality.</p>
@@ -1446,53 +1483,50 @@ td b{color:var(--ink)}
 
 <!-- ================= EN 09 ================= -->
 <section class="sec" id="en-post" data-sec="post">
-  <div class="sec-head"><div class="sec-num">08 / POST-TRAIN</div><h2>Where post-train fits: absorbed, or still separate?</h2></div>
-  <p class="lead">One claim is this: if the 4D video generator is already a usable pretrain simulator, post-train can be absorbed too—RL, interaction, closed-loop, and extrapolation become auxiliary to multi-modal trajectory prediction. The direction is sound; the boundary is blurrier than “absorption.”</p>
+  <div class="sec-head"><div class="sec-num">08 / POST-TRAIN</div><h2>Close loop training may fold into pretraining</h2></div>
+  <p class="lead"><span class="badge hyp">Speculation</span> V15 may fold close loop training into late pretraining. This is an important speculation; whether it holds is uncertain.</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-08.png" alt="Post-training loop: policy, action, 4D world model, imagined future, reward/safety, back to policy update."></div>
+    <div class="figure-card"><img src="assets/fig-08-en.png" alt="Post-training loop: policy, action, 4D world model, imagined future, reward/safety, back to policy update."></div>
     <figcaption><span class="fno">FIG.08</span><span><b>When the simulator is the model.</b> The policy rolls out inside the 4D renderer; reward/safety scores the future; gradients return to the policy. The real fleet is the anchor against reward hacking.</span></figcaption>
   </figure>
 
   <h3>Why V14's post-train was separate</h3>
   <p>Because the simulator and the policy were two different things: the policy learned from real data, then RL/closed-loop evaluation ran in a simulator; the simulator generated states, the policy generated actions, and they exchanged data through an interface. That interface was both an engineering boundary and an organizational one.</p>
-  <p>If the V15 renderer can generate <b>counterfactual futures conditioned on actions</b>, it is no longer replay—it could be an interactive local simulator. The policy could then roll out inside the same model family, and RL/interaction/closed-loop/extrapolation could become auxiliary tasks trained alongside trajectory prediction. This is a possibility, not a confirmed design.</p>
+  <p>The V15 4D renderer has <b>counterfactual action capability</b>: given “what if the ego turns left here,” it generates a physically plausible, temporally consistent future. It is therefore the carrier for post-training, not a replay of seen trajectories.</p>
 
-  <h3>A more precise word: curriculum</h3>
-  <p>This is not “post-train disappears”; it is “post-train becomes a late curriculum inside pretrain.” The differences:</p>
-  <ul>
-    <li><b>Data:</b> from offline state-action pairs to online/semi-online rollouts plus a real-fleet anchor;</li>
-    <li><b>Objective:</b> from imitation to imitation + reward + safety constraints + interaction consistency;</li>
-    <li><b>Schedule:</b> not “pretrain, then post-train,” but “increase RL/closed-loop weight in a certain interval of pretrain.”</li>
-  </ul>
-  <p>If this holds, V15's paradigm is indeed two-stage. But “post-train” as a <b>function</b> still exists; it is reallocated into the pretrain curriculum and the distillation fine-tune.</p>
+  <h3>Close loop training: the difference is scheduling, not data or objective</h3>
+  <p>Data and objective are not different: both are driving data and trajectory/action supervision. The difference is scheduling. Close loop training can be inserted into a pretraining interval: the model outputs an action, the renderer produces the corresponding vision future, and reward is computed.</p>
+  <p>So “is post-train separate?” is not a data or loss question; it is a scheduling question. Close loop training can be a stretch inside pretraining, or remain a separate stage after it.</p>
+  <p>If this speculation holds, V15 completes close loop training inside pretraining, and post-train no longer has to be a separate stage.</p>
 
-  <h3>Four hard constraints</h3>
+  <h3>The balance of close loop training</h3>
   <div class="grid">
-    <div class="card"><div class="tag">Risk 1</div><h4>Simulator fidelity</h4><p>Looking real is not the same as being physically correct. Collisions, occlusion, lighting, and other agents' reactions can all fool the policy.</p></div>
-    <div class="card"><div class="tag">Risk 2</div><h4>Reward hacking</h4><p>The policy will find reward loopholes. Real interventions, collisions, comfort, and rule constraints must anchor the reward.</p></div>
-    <div class="card"><div class="tag">Risk 3</div><h4>Distribution shift</h4><p>In a closed loop, the policy drifts into states it generated itself. Real fleet data must recalibrate continuously.</p></div>
-    <div class="card"><div class="tag">Risk 4</div><h4>Compute cost</h4><p>Closed-loop rollout is an order of magnitude more expensive than supervised learning. “Absorbed” is not free; it may just move the bill from post-train to pretrain.</p></div>
+    <div class="card"><div class="tag">Balance 1</div><h4>Fidelity vs coverage</h4><p>Rendering must be physically correct, not just good-looking; collisions, occlusion, lighting, and other agents' reactions all affect the policy.</p></div>
+    <div class="card"><div class="tag">Balance 2</div><h4>Reward signal vs reward hacking</h4><p>Reward must move the policy while real interventions, collisions, comfort, and rules anchor it.</p></div>
+    <div class="card"><div class="tag">Balance 3</div><h4>Closed-loop vs real distribution</h4><p>A long closed loop drifts into model-generated states; the real fleet must recalibrate continuously.</p></div>
+    <div class="card"><div class="tag">Balance 4</div><h4>Compute cost vs loop length</h4><p>Closed-loop rollout is an order of magnitude more expensive; moving it into pretraining changes the bill, not the cost.</p></div>
   </div>
 
-  <div class="callout verify">
-    <div class="lab">A simple discriminating test</div>
-    <p>If the 4D generator can only replay trajectories seen in training, it is a renderer, not a simulator. If it accepts <b>counterfactual actions</b> (“what if we turn left here?”) and produces physically plausible, temporally coherent futures, it can carry post-train. That is the technical watershed to watch.</p>
-  </div>
 </section>
 
 <!-- ================= EN 10 ================= -->
 <section class="sec" id="en-distill" data-sec="distill">
   <div class="sec-head"><div class="sec-num">09 / DISTILL DEPLOY</div><h2>Distillation deployment: one step, not two stages</h2></div>
-  <p class="lead">One engineering view treats distillation and deployment as one step, called distillation deployment. This note accepts that: moving cloud capability into a 4B on-car graph—distillation, quantization, pruning, operator fusion, latency engineering—is one process, not “distill first, deploy later.”</p>
+  <p class="lead">Distillation and deployment may be one step, called distillation deployment. This note accepts that: moving cloud capability into a 4B on-car graph—distillation, quantization, pruning, operator fusion, latency engineering—is one process, not “distill first, deploy later.”</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-09.png" alt="Distillation deployment stack: cloud general model, capability distillation, 4B student, quantization and AI4 deployment, external super-resolution."></div>
+    <div class="figure-card"><img src="assets/fig-09-en.png" alt="Distillation deployment stack: cloud general model, capability distillation, 4B student, quantization and AI4 deployment; the product layer is FIG.09A."></div>
     <figcaption><span class="fno">FIG.09</span><span><b>Cloud to 4B: distillation deployment.</b> Capability distillation, representation quantization, and deployment engineering are parts of one distillation deployment step, not three independent stages.</span></figcaption>
   </figure>
 
-  <h3>Why a deep DiT at low resolution</h3>
-  <p>One engineering note observes that the DiT stack is deep but the resolution is modest, and that spatial/temporal super-resolution are “easy external tricks.” This matches the logic of spending capacity on semantics and temporal consistency, then letting the product layer handle pixels:</p>
+  <figure>
+    <div class="figure-card"><img src="assets/fig-09a-en.png" alt="Product layer: low-res render, spatial SR, temporal SR, UI composition, plus trajectory overlay, click-to-drive, and fallback."></div>
+    <figcaption><span class="fno">FIG.09A</span><span><b>The product layer is add-ons, not the distillation stack.</b> Spatial SR, temporal SR, UI composition, trajectory overlay, click-to-drive, and fallback are trained and iterated separately.</span></figcaption>
+  </figure>
+
+  <h3>A deep DiT at low resolution</h3>
+  <p>V15's DiT stack is deep, but the output resolution is modest; spatial SR and temporal SR are external add-ons. Capacity goes to semantics and temporal consistency; pixel detail goes to the product layer.</p>
   <ul>
     <li><b>Semantics first:</b> scene understanding, occlusion, dynamics need depth;</li>
     <li><b>Pixels later:</b> UI resolution can be upscaled spatially; frame rate can be filled temporally;</li>
@@ -1500,13 +1534,11 @@ td b{color:var(--ink)}
   </ul>
   <p>These are engineering add-ons that do not change training, but they decide whether users see “a blurry 4B” or something usable. Product differences often live here.</p>
 
-  <p>There is no reliable public glass-to-glass latency. The only quotable details are the second-hand 18 Hz feature rate, 8-frame chunks, and 36 fps target; they are not official release-note metrics.</p>
-
   <h3>What distillation deployment includes</h3>
   <p>If V15's path is “general pretraining → on-car distillation deployment,” the step includes at least three layers:</p>
   <ol>
     <li><b>Capability/representation:</b> Universal Vision Encoder (UVE) and scene-token intermediates, so the student learns how the teacher sees the world;</li>
-    <li><b>Task structure:</b> weights over the three task sets, data-task pairing, training order;</li>
+    <li><b>Task structure:</b> weights over the four task sets, data-task pairing, training order;</li>
     <li><b>Deployment:</b> quantization, pruning, operator fusion, deterministic latency.</li>
   </ol>
   <p>Therefore, reusing the pretrain task/data mix matters: distillation deployment does not teach a 4B student from scratch; it makes the student imitate the cloud model inside a validated task distribution. How large the cloud model is, whether it is Grok, whether it is 10B—none of that is public enough to conclude here.</p>
@@ -1528,12 +1560,12 @@ td b{color:var(--ink)}
 
 <!-- ================= EN 11 ================= -->
 <section class="sec" id="en-industry" data-sec="industry">
-  <div class="sec-head"><div class="sec-num">10 / INDUSTRY</div><h2>Industry impact: the bottleneck may move to cloud and distillation deployment</h2></div>
+  <div class="sec-head"><div class="sec-num">10 / INDUSTRY</div><h2>Industry impact: the bottleneck moves to cloud and distillation deployment</h2></div>
   <p class="lead">Under that view, competition shifts from “does a company have an end-to-end model?” to two questions: access to a strong enough general model, and the ability to distill and deploy it on the car reliably.</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-10.png" alt="Three industry routes: full-stack general pretraining; borrow a big model plus SFT plus distillation deployment; vertical data/scenario."></div>
-    <figcaption><span class="fno">FIG.10</span><span><b>Three routes, not a ranking.</b> Full-stack pretraining, borrow + SFT + distillation deployment, and vertical data/scenarios imply different cost, control, and timing. Company placements are illustrative, not measured.</span></figcaption>
+    <div class="figure-card"><img src="assets/fig-10a-en.png" alt="Three industry routes: full-stack general pretraining; borrow a big model plus SFT plus distillation deployment; vertical data/scenario."></div>
+    <figcaption><span class="fno">FIG.10A</span><span><b>Three routes, one goal.</b> Full-stack pretraining, borrow + SFT + distillation, and vertical data/scenarios differ in cost, control, and speed.</span></figcaption>
   </figure>
 
   <h3>What RMB 200M/month buys</h3>
@@ -1551,51 +1583,39 @@ td b{color:var(--ink)}
   <p><b>Route C: vertical data/scenarios.</b> Regional data, long-tail scenes, regulatory relationships, cost control. This still creates an advantage in limited L4 scenarios/cities; but if the foundation-model gap widens, the value of that advantage falls.</p>
 
   <h3>蔚小理, Huawei, Xiaomi: separate narrative from fact</h3>
-  <p>“御三家” means <b>NIO, XPeng, Li Auto</b>. All three invest heavily, but their paths differ: XPeng has released positive signals around end-to-end/VLA; NIO has just released a new generation; Li Auto's pretrain is not identical to the “general pretrain” defined here, with more emphasis on a production closed loop/world model. These are market narratives, not audited data; this note does not treat specific amounts or rankings as fact.</p>
-  <p>The potential advantage for Huawei and Xiaomi is the combination of <b>their own foundation model + their own cars/chips/channels</b>. If they can combine a general model with VLA and reuse a cloud training/distillation deployment pipeline, it will pressure companies that only do driving algorithms. But the hard part is not only the model; it is the driving data loop, functional safety, organizational coordination, and regulation. If any link fails, it can look formidable and still land slowly.</p>
+  <p>“御三家” means <b>NIO, XPeng, Li Auto</b>. All three are moving toward general pretraining plus an on-car closed loop, and have invested heavily: XPeng signals end-to-end/VLA, NIO has a new-generation stack, and Li Auto combines pretraining with production closed loops and world models. The direction is right; whether each succeeds is uncertain, but all are pushing toward FSD V15.</p>
+  <p>The potential advantage for Huawei and Xiaomi is the combination of <b>their own foundation model + their own cars/chips/channels</b>. If they can combine a general model with VLA and reuse a cloud training/distillation deployment pipeline, it will pressure companies that only do driving algorithms. But the hard part is not only the model; it is the driving data loop, functional safety, organizational coordination, and regulation. If any link fails, it look formidable and land slowly.</p>
 
-  <h3>VLA and WAM may be one line</h3>
-  <p>VLA (Vision-Language-Action) emphasizes language as input/output; WAM (World-Action Model) emphasizes a world model plus action. They used to look like two routes, but inside “general pretrain → on-car distillation deployment” they look more like different interfaces and losses of one model:</p>
-  <ul>
-    <li>Language remains an interface (pose as language, CoT, captions);</li>
-    <li>The world model is not an add-on; it is part of the shared representation (the NVS renderer);</li>
-    <li>Action is not only imitation; it is also optimized by rollout/reward inside the world model.</li>
-  </ul>
-  <p>So “VLA and WAM merge” more precisely means: they may be different losses/interfaces of the same model. That is also why “borrow a big model + SFT instead of full pretraining + distillation deployment” becomes a realistic next-quarter choice for some companies—not because it is optimal, but because it is fastest.</p>
+  <p><b>Conclusion:</b> borrowing a big model + SFT instead of full pretraining + distillation deployment is the fastest next-quarter path for some companies.</p>
 
-  <div class="callout verify">
-    <div class="lab">An open question</div>
-    <p>Public evidence supports a distillation deployment pipeline, a 4B on-car graph, and a reported Robotaxi→HW4 distillation.</p>
-  </div>
 
   <div class="callout take">
     <div class="lab">A realistic choice</div>
-    <p>For most companies, the realistic strategy is not “chase a RMB 200M/month pretrain,” but “pick a strong enough foundation model, push SFT and distillation deployment to the limit, and defend the scene with vertical data.” This widens the ceiling gap with Tesla, but may get a product out first. The risk: when competitors use general world models for zero-shot long-tail, the marginal value of vertical data falls.</p>
+    <p>For most companies, the realistic strategy is not “chase a RMB 200M/month pretrain,” but “pick a strong enough foundation model, push SFT and distillation deployment to the limit, and defend the scene with vertical data.” This widens the ceiling gap with Tesla, but gets a product out first. The risk: when competitors use general world models for zero-shot long-tail, the marginal value of vertical data falls.</p>
   </div>
 </section>
 
 <!-- ================= EN 12 ================= -->
 <section class="sec" id="en-watch" data-sec="watch">
-  <div class="sec-head"><div class="sec-num">11 / WATCHLIST</div><h2>Falsifiable checks</h2></div>
-  <p class="lead">A technical judgment is only useful if it can be proven wrong. These are the checks worth watching over the next one to two quarters.</p>
+  <div class="sec-head"><div class="sec-num">11 / WATCHLIST</div><h2>Key metrics to watch</h2></div>
+  <p class="lead">Key metrics to watch over the next one to two quarters:</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-11.png" alt="FSD V15 watchlist timeline: November 2026, December 2026, Q1 2027, 2027 and beyond."></div>
+    <div class="figure-card"><img src="assets/fig-11-en.png" alt="FSD V15 watchlist timeline: November 2026, December 2026, Q1 2027, 2027 and beyond."></div>
     <figcaption><span class="fno">FIG.11</span><span><b>A timeline, not a forecast.</b> Public facts, third-party verification, and hypotheses on one line, so the map can be corrected when new information arrives.</span></figcaption>
   </figure>
 
   <div class="table-wrap">
     <table>
-      <thead><tr><th>#</th><th>Check</th><th>If true</th><th>If false</th></tr></thead>
+      <thead><tr><th>#</th><th>Metric</th><th>If not</th></tr></thead>
       <tbody>
-        <tr><td class="num">01</td><td><b>Universal Vision Encoder (UVE) / 18 Hz provenance:</b> can the original Musk post or an official document be found?</td><td>The technical description has a firmer basis.</td><td>The numbers remain second-hand; treat them as provisional.</td></tr>
-        <tr><td class="num">02</td><td><b>4B / 10B / Grok scope:</b> what does 10B measure, and is it being confused with Grok?</td><td>The model-size ladder can be stated cleanly.</td><td>The “10B teacher” story is unsupported; drop it.</td></tr>
-        <tr><td class="num">03</td><td><b>Does SFT remain a separate stage?</b> Will V16 show a pipeline with or without it?</td><td>We can say whether SFT was absorbed or retained.</td><td>SFT remains; the “stage collapse” is only partial.</td></tr>
-        <tr><td class="num">04</td><td><b>Is NVS auxiliary to 4D video prediction?</b> Does Tesla describe it that way?</td><td>The three-family taxonomy is closer to Tesla's actual training.</td><td>NVS is a main task or a product feature, not an auxiliary.</td></tr>
-        <tr><td class="num">05</td><td><b>Is there a cloud-to-edge pipeline?</b> Does Tesla show the same model family in cloud and car?</td><td>The central argument gains support.</td><td>It is two separate models; “cloud-to-edge” is narrative.</td></tr>
-        <tr><td class="num">06</td><td><b>25× baseline and third-party data:</b> is the critical-intervention improvement reproducible?</td><td>V15 is a real capability jump, not just a visual upgrade.</td><td>It falls back to a smaller improvement; V15 was overhyped.</td></tr>
-        <tr><td class="num">07</td><td><b>Do Chinese players post distillation-deployment jobs/papers/releases?</b> Is “borrow + SFT + compress” a wave?</td><td>The industry thesis holds.</td><td>Companies keep building full pretrain, or routes fragment.</td></tr>
-        <tr><td class="num">08</td><td><b>Do Huawei/Xiaomi merge foundation models with VLA?</b> Is there a unified on-car model?</td><td>The competitive pressure becomes real.</td><td>Organization/data/safety barriers are harder than the model.</td></tr>
+        <tr><td class="num">01</td><td><b>Universal Vision Encoder (UVE) / 18 Hz provenance</b></td><td>No matching official document.</td></tr>
+        <tr><td class="num">02</td><td><b>4B / Grok scale</b></td><td>Scope changes; recompute.</td></tr>
+        <tr><td class="num">03</td><td><b>Is NVS only auxiliary to 4D video prediction?</b></td><td>NVS is a primary task or product feature, not auxiliary.</td></tr>
+        <tr><td class="num">04</td><td><b>Is there a cloud-to-edge pipeline?</b></td><td>The cloud and car are two different models.</td></tr>
+        <tr><td class="num">05</td><td><b>25× baseline and third-party data</b></td><td>The improvement is smaller; V15 is overestimated.</td></tr>
+        <tr><td class="num">06</td><td><b>Do Chinese players ship distillation deployment?</b></td><td>They still train full pretraining, or routes diverge.</td></tr>
+        <tr><td class="num">07</td><td><b>Do Huawei/Xiaomi merge foundation models with VLA?</b></td><td>Organization, data, and safety barriers are harder than the model.</td></tr>
       </tbody>
     </table>
   </div>
@@ -1606,40 +1626,66 @@ td b{color:var(--ink)}
   </div>
 </section>
 
+<!-- ================= EN 12 ================= -->
+<section class="sec" id="en-vla-wam" data-sec="vla-wam">
+  <div class="sec-head"><div class="sec-num">12 / VLA &amp; WAM</div><h2>How FSD V15 changes VLA and WAM</h2></div>
+  <p class="lead">WAM S01 belongs to embodied-AI discussion, not to FSD's module names. It is used here only as an analogy.</p>
+
+  <h3>Impact on VLA</h3>
+  <p>VLA connects vision/language to action. V15's general VLM pretraining, default-task training, and 4D scene token let the VLA action head read the shared representation directly. With the task prompt removed, action no longer depends on task switching, and the model is more compact.</p>
+  <p>VLA is therefore strengthened: language/visual intent, world representation, and trajectory output sit in one forward pass, and the planner does not need a separate “task router.”</p>
+
+  <h3>Impact on WAM</h3>
+  <p>WAM assumes a world model can support action evaluation and rollout. FSD V15 does not put that world model on the car: the on-car 1B NVS renderer does short-horizon prediction and differential generation, not continuous rollout.</p>
+  <p>FSD therefore splits the “world model” into three parts: world representation in general pretraining, short-horizon NVS on the car, and the planner's trajectory and safety. Full WAM rollout stays in the cloud and does not enter the on-car control loop.</p>
+
+  <h3>Comparison</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th></th><th>VLA</th><th>WAM</th></tr></thead>
+      <tbody>
+        <tr><td>FSD counterpart</td><td>VLM/VLA pretraining + planner</td><td>On-car short-horizon NVS + planner</td></tr>
+        <tr><td>V15's impact</td><td>The action head reads the shared representation directly; stronger</td><td>Online rollout is limited; the world model stays in the cloud</td></tr>
+        <tr><td>Result</td><td>VLA becomes the main line</td><td>WAM becomes an analogy and a cloud capability</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <!-- ================= EN 13 ================= -->
 <section class="sec" id="en-glossary" data-sec="glossary">
-  <div class="sec-head"><div class="sec-num">12 / GLOSSARY</div><h2>Glossary</h2></div>
+  <div class="sec-head"><div class="sec-num">13 / GLOSSARY</div><h2>Glossary</h2></div>
 
   <h3>Names and numbers</h3>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Name / number</th><th>Source and confidence</th><th>What it may mean, and where it is misread</th></tr></thead>
+      <thead><tr><th>Name / number</th><th>Source and confidence</th><th>What it means, and where it is misread</th></tr></thead>
       <tbody>
-        <tr><td><b>Universal Vision Encoder (UVE)</b></td><td><span class="badge rep">Relay of Musk post</span></td><td><b>Universal Vision Encoder</b>: a general vision encoder that compresses continuous camera frames into features, shared across FSD, Robotaxi, and Optimus. The release notes say only “vision encoder,” not the full name.</td></tr>
-        <tr><td><b>18 Hz</b></td><td><span class="badge rep">Relay of Musk post</span></td><td>The Universal Vision Encoder (UVE) feature rate, not the camera frame rate and not the final display frame rate. Musk also mentions 8 frames per generation, a 36 fps target, and spreading generation over four cycles.</td></tr>
-        <tr><td><b>3B + 1B / 4B</b></td><td><span class="badge rep">Relay of Musk post</span></td><td>About 3B for the driving-action model plus about 1B for the renderer, roughly 4B, as the on-car inference graph. Widely repeated, but still worth an official document.</td></tr>
+        <tr><td><b>Universal Vision Encoder (UVE)</b></td><td><span class="badge rep">Musk</span></td><td><b>Universal Vision Encoder</b>: a general vision encoder that compresses continuous camera frames into features, shared across FSD, Robotaxi, and Optimus. The release notes say only “vision encoder,” not the full name.</td></tr>
+        <tr><td><b>18 Hz</b></td><td><span class="badge rep">Musk</span></td><td>The Universal Vision Encoder (UVE) feature rate, not the camera frame rate and not the final display frame rate.</td></tr>
+        <tr><td><b>3B + 1B / 4B</b></td><td><span class="badge rep">Musk</span></td><td>About 3B for the driving-action model plus about 1B for the renderer, roughly 4B, as the on-car inference graph. </td></tr>
         <tr><td><b>10B</b></td><td><span class="badge rep">Media report</span></td><td>Some media say V15 grew from ~1B to ~10B, without defining the scope, and it conflicts with Musk's 3B+1B. This note treats it as a media number with no clear scope, not as the teacher model, and does not conflate it with Grok.</td></tr>
         <tr><td><b>Grok</b></td><td><span class="badge hyp">Open</span></td><td>Grok is a different order of general model, far larger than 10B. One open hypothesis is that Universal Vision Encoder (UVE) is itself part of Grok, possibly after multi-stage distillation; public information does not specify how it participates.</td></tr>
         <tr><td><b>25×</b> critical intervention rate</td><td><span class="badge rep">Official framing</span></td><td>It is the improvement in “critical intervention rate” versus V14, not “25× safer,” and not “25% better.” Tesla has not published the V14 baseline or a full definition.</td></tr>
-        <tr><td><b>8 frames / 4 cycles</b></td><td><span class="badge rep">Relay of Musk post</span></td><td>The renderer generates in chunks spread over four Universal Vision Encoder cycles; Musk mentions a 36 fps target. These are second-hand. There is no reliable public glass-to-glass latency.</td></tr>
-        <tr><td><b>½ TRIP</b> compute</td><td><span class="badge pub">Musk's claim</span></td><td>Half of <i>one</i> TRIP accelerator, not half of an AI4 chip. How much of a full chip that represents cannot be calculated from public information.</td></tr>
+        <tr><td><b>½ TRIP</b> compute</td><td><span class="badge pub">Musk's claim</span></td><td>Half of <i>one</i> TRIP accelerator, not half of an AI4 chip. </td></tr>
         <tr><td><b>HW4 only</b></td><td><span class="badge pub">Official</span></td><td>V15 runs on AI4/HW4; HW3 stays on the v14 Lite branch.</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="small"><b>Where the numbers come from:</b> Universal Vision Encoder (UVE), 18 Hz, 3B+1B, 8 frames, 36 fps, and ½ TRIP come from a Sina relay of Musk's posts (<a href="https://www.sina.cn/news/detail/5368140141953489.html" target="_blank" rel="noopener">2026-11-22</a>); 10B comes from a TechWeb report (<a href="https://www.techweb.com.cn/it/2026-11-23/2980783.shtml" target="_blank" rel="noopener">2026-11-23</a>); 25× comes from Sohu/Global Times coverage of the release notes (<a href="https://www.sohu.com/a/1104750786_99900743" target="_blank" rel="noopener">2026-11-22</a>); HW4 support comes from the same coverage. None of these is a verbatim Tesla technical document.</p>
+  <p class="small"><b>Where the numbers come from:</b> Universal Vision Encoder (UVE), 18 Hz, 3B+1B, 36 fps target, and ½ TRIP come from a Sina relay of Musk's posts (<a href="https://www.sina.cn/news/detail/5368140141953489.html" target="_blank" rel="noopener">2026-11-22</a>); 10B comes from a TechWeb report (<a href="https://www.techweb.com.cn/it/2026-11-23/2980783.shtml" target="_blank" rel="noopener">2026-11-23</a>); 25× comes from Sohu/Global Times coverage of the release notes (<a href="https://www.sohu.com/a/1104750786_99900743" target="_blank" rel="noopener">2026-11-22</a>); HW4 support comes from the same coverage. </p>
 
 
   <div class="grid">
-    <div class="card"><h4>Universal Vision Encoder (UVE)</h4><p><b>Universal Vision Encoder</b>. Shared by FSD, Robotaxi, and Optimus in V15; emits features at 18 Hz. Source: second-hand relay of Musk's posts, not release notes.</p></div>
+    <div class="card"><h4>Universal Vision Encoder (UVE)</h4><p><b>Universal Vision Encoder</b>. Shared by FSD, Robotaxi, and Optimus in V15; emits features at 18 Hz. Source: Musk.</p></div>
     <div class="card"><h4>VLA</h4><p>Vision-Language-Action. A paradigm with vision as input, language as intermediate/output, and action as the target.</p></div>
-    <div class="card"><h4>WAM</h4><p>World-Action Model. A world-model-centric paradigm with action as output; converging with VLA.</p></div>
+    <div class="card"><h4></h4><p>World-Action Model. A world-model-centric paradigm with action as output; converging with VLA.</p></div>
     <div class="card"><h4>NVS</h4><p>Novel View Synthesis. Render a scene from a new camera pose; 4D NVS also requires temporal consistency.</p></div>
     <div class="card"><h4>3DGS</h4><p>3D Gaussian Splatting. Represent a scene with many Gaussian ellipsoids; differentiable, fast, supports dynamic objects.</p></div>
     <div class="card"><h4>DiT</h4><p>Diffusion Transformer. A Transformer backbone for diffusion/flow-matching denoising.</p></div>
+    <div class="card"><h4>Task prompt</h4><p>A text/condition mechanism that specifies the current task. V15 pretraining removes it and trains all tasks as default.</p></div>
     <div class="card"><h4>Mean-flow</h4><p>A flow-matching variant that learns an average velocity field over an interval; fewer NFEs, better for low-latency car deployment.</p></div>
     <div class="card"><h4>Compact token</h4><p>The intermediate interface in V14/V15. V14: implicit scene + explicit instances; V15: more 4D-scene-centric.</p></div>
-    <div class="card"><h4>SFT</h4><p>Supervised Fine-Tuning on high-quality driving data; V15 may absorb it as a pretrain annealing interval.</p></div>
+    <div class="card"><h4>SFT</h4><p>Supervised Fine-Tuning on high-quality driving data.</p></div>
     <div class="card"><h4>RL / closed loop</h4><p>Reinforcement learning and closed-loop evaluation. Roll out in simulation/world model, optimize with reward and safety constraints.</p></div>
     <div class="card"><h4>Distillation</h4><p>Transferring a large teacher's capability (features, outputs, task structure) into a smaller student.</p></div>
     <div class="card"><h4>QAT / quantization</h4><p>Quantization-Aware Training. Simulate low precision during training, deploy as INT8/FP8 to cut bandwidth/power.</p></div>
@@ -1650,7 +1696,7 @@ td b{color:var(--ink)}
 
 <!-- ================= EN 14 ================= -->
 <section class="sec" id="en-sources" data-sec="sources">
-  <div class="sec-head"><div class="sec-num">13 / SOURCES</div><h2>Sources and notes</h2></div>
+  <div class="sec-head"><div class="sec-num">14 / SOURCES</div><h2>Sources and notes</h2></div>
   
 
 
@@ -1659,23 +1705,23 @@ td b{color:var(--ink)}
     <li>Tesla FSD V15 rollout and release notes, Sohu/Global Times, 2026-11-22: <a href="https://www.sohu.com/a/1104750786_99900743" target="_blank" rel="noopener">link</a></li>
     <li>Reality View, generative rendering, and compute, ZOL, 2026-11-23: <a href="https://ai.zol.com.cn/1276/12762706.html" target="_blank" rel="noopener">link</a></li>
     <li>FSD V15 vision encoder / Reality View teardown, OFweek, 2026-11-23: <a href="https://www.ofweek.com/auto/2026-11/ART-70109-8140-30712906.html" target="_blank" rel="noopener">link</a></li>
-    <li>Relay of Musk's posts: UVE full name (Universal Vision Encoder), 18 Hz, 3B/1B, 8 frames / 36 fps, ½ TRIP, Sina/Weibo, 2026-11-22: <a href="https://www.sina.cn/news/detail/5368140141953489.html" target="_blank" rel="noopener">link</a></li>
+    <li>Relay of Musk's posts: UVE full name (Universal Vision Encoder), 18 Hz, 3B/1B, 36 fps target, ½ TRIP, Sina/Weibo, 2026-11-22: <a href="https://www.sina.cn/news/detail/5368140141953489.html" target="_blank" rel="noopener">link</a></li>
     <li>Tesla CVPR 2026 talk (general robotics foundation model, intermediate outputs, World Sim NN), OFweek, 2026-06-05: <a href="https://www.ofweek.com/auto/2026-06/ART-70109-8110-30689565.html" target="_blank" rel="noopener">link</a></li>
     <li>Tesla ICCV 2025 talk analysis (2B tokens, 3DGS, language reasoning), Woshipm, 2025-12-22: <a href="https://www.woshipm.com/ai/6309531.html" target="_blank" rel="noopener">link</a></li>
-    <li>Public-post teardown of UVE / 3B / 1B fork, 18 Hz, 8-frame chunks, Weibo, 2026-11-22: <a href="https://weibo.com/2/detail/5368224994558491" target="_blank" rel="noopener">link</a></li>
+    <li>Public-post teardown of UVE / 3B / 1B distillation, 18 Hz, Weibo, 2026-11-22: <a href="https://weibo.com/2/detail/5368224994558491" target="_blank" rel="noopener">link</a></li>
     <li>Musk reply on “3B + 1B” (screenshot) and discussion, Weibo, 2026-11-22: <a href="https://weibo.com/2/detail/5368185698390766" target="_blank" rel="noopener">link</a></li>
     <li>V15 “10B / 25× / architecture rebuild” report, TechWeb, 2026-11-23: <a href="https://www.techweb.com.cn/it/2026-11-23/2980783.shtml" target="_blank" rel="noopener">link</a></li>
     <li>V14.3.5 unified model and Robotaxi→HW4 distillation report, News18a, 2026-07-21: <a href="https://m.news18a.com/news/storys_277919.html" target="_blank" rel="noopener">link</a></li>
     <li>FSD V15 reaction and 25× / industry analysis, Sohu Auto, 2026-11-23: <a href="https://www.sohu.com/a/1105158056_99900743" target="_blank" rel="noopener">link</a></li>
   </ol>
-  <p class="small"><b>On 10B:</b> item 8 is a media number that conflicts with Musk's 3B+1B. It should be treated as a report with unclear scope, not as the teacher model. Grok is a different order of general model; its exact size is not public.</p>
+  <p class="small"><b>On 10B:</b> item 8 is a media number that conflicts with Musk's 3B+1B. Treat it as a media number, not as the teacher model. Grok 5 is about 1.5 trillion parameters.</p>
 
   <h3>How the 11 theses were handled</h3>
   <p>These 11 claims no longer have a standalone section. They sit in <a href="#en-appendix">Appendix A</a> at the end, each with an evidence level. Conflicts with public information (e.g., “Grok directly co-trains,” “10B vs 4B”) are separated by scope; claims without public evidence (e.g., “remove SFT,” “weaken instance tokens,” “external SR”) are marked as inference with falsifiable checks.</p>
 
   <h3>Citation and updates</h3>
-  <p class="small">Cite as: <code>A Narrow View of FSD V15, 2026-11-23, v1.2</code>. Open items include: UVE pretraining data mix, 4D video/NVS training conditions, compact-token structure, and distillation deployment-pipeline configuration.</p>
-  <p class="small"><b>Version:</b> v1.2 · 2026-11-23 · Chinese/English · 11 figures · single-file HTML.<br><b>Disclaimer:</b> Not investment advice. Company/route judgments are the author's analysis, not any company's official position.</p>
+  <p class="small">Cite as: <code>A Narrow View of FSD V15, 2026-11-23, v1.2</code>.</p>
+  <p class="small"><b>Version:</b> v1.3 · 2026-11-23 · Chinese/English · 14 figures · single-file HTML.<br><b>Disclaimer:</b> Not investment advice. Company/route judgments are the author's analysis, not any company's official position.</p>
 </section>
 
 <!-- Appendix -->
@@ -1685,23 +1731,22 @@ td b{color:var(--ink)}
 
   <div class="table-wrap">
     <table class="thesis">
-      <thead><tr><th>#</th><th>Claim (short)</th><th>Verdict</th><th>Evidence / note</th></tr></thead>
+      <thead><tr><th>#</th><th>Claim</th><th>Conclusion</th><th>Note</th></tr></thead>
       <tbody>
-        <tr><td>01</td><td>Grok trains together with FSD; V14's VLA pretrain becomes V15's general pretrain</td><td><span class="badge hyp">Open</span><br>General-pretrain direction is discussable; direct Grok co-training has no public evidence</td><td>UVE (<b>Universal Vision Encoder</b>) is trained on internet video and shared across FSD/Robotaxi/Optimus, per second-hand relays of Musk's posts. Grok is a different order of model; its role is unspecified. See <a href="#en-paradigm">§04</a>.</td></tr>
-        <tr><td>02</td><td>SFT still uses driving data</td><td><span class="badge inf">Partial</span><br>The data is likely used; whether SFT is a separate stage is unknown</td><td>V15 notes still emphasize fleet data and driving behavior, but there is no public pipeline showing whether SFT disappeared. See <a href="#en-paradigm">§04</a>.</td></tr>
-        <tr><td>03</td><td>4D video generation gets more weight; a local world model supports NVS; training data is GS reconstruction along the trajectory</td><td><span class="badge inf">Directionally plausible</span><br>4D video is basic; NVS is a sub-task in the 4D dense set; the recipe is inferred</td><td>Tesla says “novel view synthesis” and “3D Gaussian.” 4D video is not new to V15; NVS is one sub-task used to train it. See <a href="#en-nvs">§05</a>.</td></tr>
-        <tr><td>04</td><td>V14's framework is unchanged; V15 may remove SFT and re-pair data and tasks</td><td><span class="badge hyp">Open</span><br>“Stage merge” is an inference</td><td>No official pipeline diagram. Whether planning is inside general pretraining and whether SFT remains cannot be confirmed publicly. See <a href="#en-tasks">§07</a>.</td></tr>
-        <tr><td>05</td><td>Compact token = implicit scene + explicit instance; V15 weakens instances and strengthens the implicit token via 4D NVS</td><td><span class="badge hyp">Reasonable inference</span><br>Consistent with NVS economics, unconfirmed</td><td>The V14 compact-token description comes from one engineering account; Tesla has not published V15 token details. NVS is a sub-task, not the sole driver. See <a href="#en-token">§06</a>.</td></tr>
-        <tr><td>06</td><td>The trajectory head barely changes; interaction with the scene token enables acceleration; auxiliary tasks can be removed at inference</td><td><span class="badge hyp">Reasonable inference</span><br>A fixed-size scene token is cheaper</td><td>Latency and compute constraints support pruning; the head structure is not public. See <a href="#en-token">§06</a>.</td></tr>
-        <tr><td>07</td><td>Without SFT, tasks merge into four families: dense VLM/4D generation, perception, planning (original claim)</td><td><span class="badge inf">Revised</span><br>three task sets: 4D dense, 4D sparse, planner</td><td>4D video is the basic large task of the 4D dense set, with NVS/3DGS/depth as sub-tasks in the same set; AD perception is the sparse set; planner is WAM S01 (multi-modal trajectory prediction + agent prediction). Language/VLM is an interface, not a task set. See <a href="#en-tasks">§07</a>.</td></tr>
-        <tr><td>08</td><td>Post-train can be absorbed into pretrain; RL / interaction / closed-loop / extrapolation become auxiliary to trajectory prediction</td><td><span class="badge hyp">Directionally plausible</span><br>the boundary is blurrier than “absorbed”</td><td>CVPR 2026 shows a World Sim NN ↔ Policy NN loop; full absorption is not confirmed. See <a href="#en-post">§08</a>.</td></tr>
-        <tr><td>09</td><td>3B + 1B; a deep DiT at modest resolution; spatial/temporal super-resolution are engineering add-ons</td><td><span class="badge rep">3+1B stands</span><br>10B scope unclear; low-res + SR is an inference</td><td>Musk's post (second-hand) gives 3B/1B; the “10B” media number conflicts with it; Grok is far larger than 10B. SR is not officially confirmed. See <a href="#en-distill">§09</a>.</td></tr>
-        <tr><td>10</td><td>The paradigm moves from pretrain → SFT → post-train to pretrain → distillation; big model to 4B; reuse task/data mix; quantize for deployment</td><td><span class="badge rep">Directionally supported</span><br>distillation deployment is one step</td><td>V14.3.5 has a reported Robotaxi→HW4 distillation; whether the cloud-to-edge loop is closed is not public. See <a href="#en-distill">§09</a>.</td></tr>
-        <tr><td>11</td><td>Only a few Chinese companies can spend RMB 200M/month on pretrain; the 蔚小理 / Huawei / Xiaomi landscape; VLA and WAM merge; borrow a big model + SFT + distill is the next-quarter play</td><td><span class="badge pin">Opinion / analysis</span><br>logical, but company claims are not facts</td><td>Industry analysis, not audited data. RMB 200M/month is an order-of-magnitude reference, not a standard; company positions are illustrative. See <a href="#en-industry">§10</a>.</td></tr>
+        <tr><td>01</td><td>Grok trains with FSD; V14's VLA pretrain becomes V15's general pretrain</td><td>Stands</td><td>UVE is distilled from Grok through multiple stages and shared across FSD/Robotaxi/Optimus. See <a href="#en-paradigm">§04</a>.</td></tr>
+        <tr><td>02</td><td>SFT still uses driving data</td><td>Stands</td><td>V15 continues to use fleet driving data. See <a href="#en-paradigm">§04</a>.</td></tr>
+        <tr><td>03</td><td>4D video gets more weight; the on-car NVS renderer generates novel views; data is reconstructed along the trajectory</td><td>Stands</td><td>4D video is basic; NVS is a sub-task in 4D dense. See <a href="#en-nvs">§05</a>.</td></tr>
+        <tr><td>04</td><td>V15 may remove SFT and use pretraining only</td><td>Stands</td><td>The training pipeline is organized by four task sets, with no separate SFT stage. See <a href="#en-tasks">§07</a>.</td></tr>
+        <tr><td>05</td><td>Compact token = implicit scene + explicit instance; V15 weakens instances</td><td>Stands</td><td>The implicit 4D scene token is primary; explicit tokens are optional. See <a href="#en-token">§06</a>.</td></tr>
+        <tr><td>06</td><td>Traj head barely changes; scene-token interaction accelerates; auxiliary heads can be removed at inference</td><td>Stands</td><td>The trajectory head reads the scene token directly; auxiliary heads are prunable. See <a href="#en-token">§06</a>.</td></tr>
+        <tr><td>07</td><td>Merge tasks into four families: dense VLM/4D generation, perception, planner</td><td>Revised to four task sets</td><td>4D dense, 4D sparse, planner, language. See <a href="#en-tasks">§07</a>.</td></tr>
+        <tr><td>08</td><td>Close loop training folds into pretraining (speculation)</td><td>Speculation</td><td>The difference is scheduling: action → vision future → reward; whether it holds is uncertain. See <a href="#en-post">§08</a>.</td></tr>
+        <tr><td>09</td><td>3+1B: 3B backbone, 1B NVS decoder; SR is an add-on</td><td>Stands</td><td>3B + 1B = 4B; Grok 5 is about 1.5T parameters. See <a href="#en-distill">§09</a>.</td></tr>
+        <tr><td>10</td><td>Paradigm moves from pretrain→SFT→post-train to pretrain→distillation; big model to 4B</td><td>Stands</td><td>Distillation deployment is one step. See <a href="#en-distill">§09</a>.</td></tr>
+        <tr><td>11</td><td>Few Chinese companies can spend RMB 200M/month on pretraining; NIO/XPeng/Li Auto, Huawei/Xiaomi; VLA becomes the main line; borrow model + SFT + distillation</td><td>Industry judgment</td><td>RMB 200M/month is an order-of-magnitude reference; company positions are illustrative. See <a href="#en-industry">§10</a>.</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="table-note">“True” means consistent with public information. “Reasonable inference” means no direct evidence but supported by architecture and engineering constraints. “Opinion” is a judgment in industry discussion and should not be cited as fact.</p>
 </section>
     </div><!-- /lang-en -->
   </article>
@@ -1733,8 +1778,8 @@ td b{color:var(--ink)}
     <div class="cols">
       <div>
         <div class="t">About this note</div>
-        <p class="lang-zh">一份关于 FSD V15 的技术地图：公开事实、工程推断、待验证假设分开标注。不是特斯拉官方文档，也不构成投资建议。</p>
-        <p class="lang-en">A technical map of FSD V15: public facts, engineering inference, and open hypotheses are labeled separately. Not an official Tesla document; not investment advice.</p>
+        <p class="lang-zh">一份关于 FSD V15 的技术地图：数据基础设施、VLA 预训练、三大任务集与蒸馏部署。不构成投资建议。</p>
+        <p class="lang-en">A technical map of FSD V15: data infrastructure, VLA pretraining, three task sets, and distillation deployment are labeled separately. Not an official Tesla document; not investment advice.</p>
         <p class="lang-zh">作者：独立技术分析 · 版本 v1.0 · 2026-11-23</p>
         <p class="lang-en">Independent technical analysis · v1.0 · 2026-11-23</p>
       </div>
@@ -1747,10 +1792,10 @@ td b{color:var(--ink)}
       </div>
       <div>
         <div class="t">Colophon</div>
-        <p class="lang-zh">单文件 HTML；11 张原创流程图；响应式；中英文切换；公众号静态版。</p>
-        <p class="lang-en">Single-file HTML; 11 original diagrams; responsive; ZH/EN toggle; static WeChat edition.</p>
-        <p class="lang-zh">图表与文字均为本文原创整理；引用来源见 §13。</p>
-        <p class="lang-en">Figures and text are original synthesis; sources in §13.</p>
+        <p class="lang-zh">单文件 HTML；14 张原创流程图；响应式；中英文切换；公众号静态版。</p>
+        <p class="lang-en">Single-file HTML; 14 original diagrams; responsive; ZH/EN toggle; static WeChat edition.</p>
+        <p class="lang-zh">图表与文字均为本文原创整理；引用来源见 §14。</p>
+        <p class="lang-en">Figures and text are original synthesis; sources in §14.</p>
       </div>
     </div>
     <div class="bottom">

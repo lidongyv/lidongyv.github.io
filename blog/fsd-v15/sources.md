@@ -62,14 +62,13 @@
 - Chinese industry narrative around 蔚小理 / Huawei / Xiaomi.
 
 **Inferred / hypothesis**
-- V15 training pipeline: general VLM/world-model pretrain → VLA/WAM adaptation → distillation deployment.
-- SFT may remain, may be absorbed, or may be only an annealing interval; public information is insufficient.
+- V15 training pipeline: general VLM/world-model pretrain → VLA pretraining → distillation deployment.
 - Compact token shift from instance-centric to scene-centric.
-- Task framing: three task sets — 4D dense world (4D video prediction basic, with NVS/3DGS/depth as sub-tasks), 4D sparse world (AD perception), planner (WAM S01, with multi-modal trajectory prediction and agent prediction).
-- 4D NVS data recipe along the trajectory; pose as language.
+- Task framing: four task sets — 4D dense world (4D video prediction basic, with NVS/3DGS/depth as sub-tasks), 4D sparse world (AD perception), planner (multi-modal trajectory prediction and agent prediction), language (caption, style transfer, pose as language, instance inpainting).
+- 4D NVS data recipe along the trajectory; pose token from a pose matrix.
 - External spatial/temporal super-resolution.
 - “2亿/月” as an order-of-magnitude reference.
-- VLA + WAM convergence.
+- VLA and WAM comparison (section 12).
 
 ## Update log
 
@@ -77,4 +76,4 @@
 |---|---|
 | 2026-11-23 | v1.0: first public version; 14 sections + appendix, 11 figures, ZH/EN, print CSS, WeChat editions. |
 | 2026-11-23 | v1.1: retitled “管中窥豹 FSD V15”; corrected UVE to Universal Vision Encoder; clarified 18 Hz / 10B / Grok provenance; changed task taxonomy to three sets; merged distillation/deployment; moved the 11-point table to Appendix A; removed overconfident framing. |
-| 2026-11-23 | v1.2: removed the Evidence key card and community latency estimates; rewrote second-person/meta prose for readers; expanded UVE to Universal Vision Encoder; added inline source links for media numbers; renamed the stage “蒸馏部署”; restructured the three task sets and WAM S01 sub-tasks; added a dedicated VLM → VLA/WAM → 蒸馏部署 subsection. |
+| 2026-11-23 | v1.2: removed the Evidence key card and community latency estimates; rewrote second-person/meta prose for readers; expanded UVE to Universal Vision Encoder; added inline source links for media numbers; renamed the stage “蒸馏部署”; restructured the four task sets and WAM S01 sub-tasks; added a dedicated VLM → VLA/WAM → 蒸馏部署 subsection. |

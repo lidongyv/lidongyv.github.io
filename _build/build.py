@@ -310,9 +310,11 @@ def main():
         made.append(w(url(lang, "about.html").lstrip("/"), R.render_about(lang)))
         # Post bodies are written in Chinese only; /en/blog/ links straight to them
         # instead of duplicating the same content under a second URL.
-        if lang == "zh":
-            for p in posts:
+        for p in posts:
+            if lang == "zh":
                 made.append(w("blog/%s.html" % p["slug"], R.render_post(lang, p, posts)))
+            elif p.get("html_en"):
+                made.append(w("en/blog/%s.html" % p["slug"], R.render_post(lang, p, posts)))
         made.append(w(url(lang, "blog/feed.xml").lstrip("/"), feed(lang, posts)))
 
     made.append(w("404.html", R.render_404("zh")))
@@ -339,6 +341,9 @@ def main():
         if d.get("href"):
             continue
         pages.append(("zh", "blog/%s/index.html" % d["slug"], "0.5"))
+    for p in posts:
+        if p.get("html_en"):
+            pages.append(("en", "blog/%s.html" % p["slug"], "0.6"))
     made.append(w("sitemap.xml", sitemap(pages)))
     made.append(w("robots.txt", robots()))
     made.append(w(".nojekyll", ""))

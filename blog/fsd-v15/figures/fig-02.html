@@ -82,58 +82,53 @@ body{
 </style></head>
 <body><div class="frame">
   <div class="fig-head">
-    <div><div class="kicker">ALGORITHM FLOW / 算法流程</div><div class="title">从像素到动作，再回到数据 <span class="thin">/ Pixels → action → data</span></div><div class="sub">V15 的一次前向：Universal Vision Encoder 编码 → scene token → 多模态轨迹 → 安全选择 → 动作；渲染与辅助头是旁路，推理可裁剪。</div></div>
+    <div><div class="kicker">ALGORITHM FLOW / 算法流程</div><div class="title">从像素到动作，再回到数据 <span class="thin">/ Pixels → action → data</span></div><div class="sub">V15 的一次前向：UVE 编码 → 4D scene token → Planner（trajectory + safety）→ 动作；感知与 NVS 是辅助头，推理可裁剪。</div></div>
     <div class="fig-no">FIG.02</div>
   </div>
   <div class="body">
-<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
-  <span class="badge pub">RUNTIME</span><span class="note">Solid = inference path &nbsp;·&nbsp; dashed = optional / prunable &nbsp;·&nbsp; back arrow = training feedback</span>
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+  <span class="badge pub">INFERENCE</span><span class="note">Solid = inference path · dashed = auxiliary / removable</span>
   <span style="flex:1"></span><span class="pill orange">one forward pass</span>
 </div>
 
-<!-- 01 inputs -->
 <div class="flow">
-  <div class="node" style="flex:1.1"><span class="num">01</span><div class="tag">Input</div><h4>7 × camera</h4><p>36 Hz · 5 MP · 30 s history</p></div>
-  <div class="node" style="flex:.9"><span class="num">01</span><div class="tag">Input</div><h4>Nav · IMU · audio</h4><p>route, ego motion, 100 Hz</p></div>
-  <div class="node" style="flex:.8"><span class="num">01</span><div class="tag">Input</div><h4>Language / pose</h4><p>command, NVS camera pose</p></div>
+  <div class="node" style="flex:1.1"><div class="tag">Input</div><h4>7 × camera</h4><p>36 Hz · 5 MP · 90 s+ raw / 12 s crop</p></div>
+  <div class="node" style="flex:.9"><div class="tag">Input</div><h4>Nav · IMU · audio</h4><p>route, ego motion, 100 Hz</p></div>
+  <div class="node" style="flex:.8"><div class="tag">Input</div><h4>Language / pose</h4><p>command, NVS camera pose</p></div>
 </div>
 <div style="display:flex;justify-content:center"><div class="arr down">↓</div></div>
 
-<!-- 02 UVE -->
-<div class="node green" style="border-width:2px"><span class="num">02</span><div class="tag">Encode / 18 Hz</div><h4>UVE：通用视觉编码器 <span class="mono" style="font-size:12px;color:#5f6673">F = N × D</span></h4><p>把 7 路像素压成特征序列；FSD / Robotaxi / Optimus 共用。特征既给动作，也给渲染。</p></div>
-<div style="display:flex;justify-content:center"><div class="arr down">↓</div></div>
-
-<!-- 03 token -->
-<div style="display:grid;grid-template-columns:1.25fr .75fr;gap:14px">
-  <div class="node green" style="border-width:2px"><span class="num">03</span><div class="tag">Compress / interface</div><h4>Scene tokenizer → <span class="mono">S × D</span></h4><p>固定尺寸的 4D 场景 token：几何、外观、动态、遮挡都压在这里。它是 planner 与 renderer 的共享接口。</p></div>
-  <div class="node ghost"><span class="num">03b</span><div class="tag">Optional / dashed</div><h4>Instance queries → <span class="mono">K × D</span></h4><p>车、VRU、交通灯等显式 query；训练时需要，推理时可裁剪。</p></div>
-</div>
+<div class="node green" style="border-width:2px"><div class="tag">Encode / 18 Hz (Musk)</div><h4>Universal Vision Encoder（UVE）</h4><p>把 7 路像素压成特征序列；FSD / Robotaxi / Optimus 共用。</p></div>
 <div style="display:flex;justify-content:center"><div class="arr down green">↓</div></div>
 
-<!-- 04 planner + decision + action -->
-<div class="flow">
-  <div class="node blue" style="flex:1.15"><span class="num">04</span><div class="tag">Plan</div><h4>Trajectory head</h4><p>M 个多模态 query × T 步<br><span class="mono">M × T × 2</span></p></div>
-  <div class="arr">→</div>
-  <div class="node purple" style="flex:1.05"><span class="num">04b</span><div class="tag">Decide</div><h4>Safety selector</h4><p>碰撞 / 规则 / 舒适度<br><span style="color:#0b8a5c;font-weight:700">YES → act</span> &nbsp; <span style="color:#dc2626;font-weight:700">NO → fallback</span></p></div>
-  <div class="arr">→</div>
-  <div class="node dark" style="flex:.85"><span class="num">05</span><div class="tag">Act</div><h4>2 tokens</h4><p>steer + accel<br>at control rate</p></div>
-</div>
+<div style="display:grid;grid-template-columns:1.45fr .85fr;gap:18px;align-items:start">
+  <div>
+    <div style="display:grid;grid-template-columns:1.3fr .7fr;gap:10px">
+      <div class="node green" style="border-width:2px"><div class="tag">Token / compact</div><h4>4D scene token（implicit）</h4><p>固定尺寸 <span class="mono">S × D</span>；几何、外观、动态、遮挡都压在这里。</p></div>
+      <div class="node ghost"><div class="tag">V14 explicit token</div><h4>instance tokens</h4><p>UVE 能力不足时保留，与 4D token 一起进 planner；能力上来后删除。</p></div>
+    </div>
 
-<!-- 05 renderer / aux -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px">
-  <div class="node orange"><span class="num">06</span><div class="tag">Render / local world model</div><h4>1B NVS decoder → Reality View</h4><p>prev frame + noise + pose → DiT mean-flow → 8-frame chunk。它不参与主控制环，但和动作共享 UVE 特征。</p></div>
-  <div class="node ghost"><span class="num">06b</span><div class="tag">Aux / prunable</div><h4>Perception · language · 3DGS</h4><p>det/track、TL/TSR、seg/occ、caption、3DGS。训练时是监督，推理时按算力裁剪。</p></div>
-</div>
+    <div style="display:flex;justify-content:center"><div class="arr down green">↓</div></div>
 
-<!-- 06 feedback -->
-<div style="margin-top:14px;border:1.5px dashed #9aa0aa;border-radius:10px;padding:9px 14px;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.35)">
-  <span class="badge inf">FEEDBACK</span>
-  <span class="mono" style="font-size:10.5px;letter-spacing:.1em;color:#6b7280">DEPLOY</span>
-  <span style="color:#9aa0aa">→</span><span class="note">fleet log / 接管与困难场景</span>
-  <span style="color:#9aa0aa">→</span><span class="note">data engine / 挖掘与标注</span>
-  <span style="color:#9aa0aa">→</span><span class="note">new training pairs</span>
-  <span style="flex:1"></span><span class="pill">↺ 回到 pretrain</span>
+    <div class="node blue" style="padding:14px 16px;border-width:2px">
+      <div class="tag">Planner</div>
+      <h4 style="margin:5px 0 8px">Planner：trajectory + safety</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="node" style="padding:10px 12px"><div class="tag">Submodule</div><h4 style="font-size:16px;margin:3px 0 2px">Trajectory</h4><p>多模态轨迹 <span class="mono">M × T × 2</span>；interaction / value。</p></div>
+        <div class="node purple" style="padding:10px 12px"><div class="tag">Submodule</div><h4 style="font-size:16px;margin:3px 0 2px">Safety</h4><p>碰撞 / 规则 / 舒适度；不安全则 fallback。</p></div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:center"><div class="arr down">↓</div></div>
+    <div class="node dark"><div class="tag">Action</div><h4>2 tokens</h4><p>steer + accel · at control rate</p></div>
+  </div>
+
+  <div style="border-left:1.5px dashed #b9b1a3;padding-left:16px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="badge hyp">AUX HEADS</span><span class="note">from 4D token</span></div>
+    <div class="node ghost" style="margin-bottom:10px"><div class="tag">Perception head / aux</div><h4 style="font-size:18px;margin:4px 0 3px">object det · tracking · occ · seg · TLD</h4><p>对应 V14 explicit token；explicit 删除后，这个 head 一起删。</p></div>
+    <div class="node ghost"><div class="tag">NVS decoder / 1B / aux</div><h4 style="font-size:18px;margin:4px 0 3px">any-view NVS</h4><p>条件：4D UVE scene token + 任意相机位姿；不参与控制环。</p><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><span class="pill">Spatial SR</span><span class="pill">Temporal SR</span></div><p style="margin-top:6px">SR 是 NVS 的更小一级辅助头；temporal 特征直接读 UVE。</p></div>
+  </div>
 </div>
 </div>
-  <div class="fig-foot"><div><b>Sources:</b> V15 release notes; Musk posts relayed by media (18 Hz, 3B/1B, 8 frames); CVPR 2026; a reconstruction from public information. &nbsp; <b>Note:</b> algorithm graph is inferred, not official.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
+  <div class="fig-foot"><div><b>Sources:</b> V15 release notes; Musk (18 Hz, 3B/1B); CVPR 2026.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
 </div></body></html>

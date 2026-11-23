@@ -82,65 +82,41 @@ body{
 </style></head>
 <body><div class="frame">
   <div class="fig-head">
-    <div><div class="kicker">NETWORK ARCHITECTURE / 网络结构</div><div class="title">一个主干，两座塔 <span class="thin">/ One backbone, two towers</span></div><div class="sub">Universal Vision Encoder（UVE）之后分叉：3B 动作塔（scene token → 多模态轨迹 → 控制）与 1B 渲染塔（conditional DiT → 新视角）。</div></div>
+    <div><div class="kicker">NETWORK ARCHITECTURE / 网络结构</div><div class="title">一个主干，一条前向 <span class="thin">/ One backbone, one forward pass</span></div><div class="sub">Forward input → UVE → tokenizer → 四大任务集（训练）；推理只保留 trajectory + lightweight NVS。</div></div>
     <div class="fig-no">FIG.03</div>
   </div>
   <div class="body">
-<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
-  <span class="badge inf">INFERRED</span><span class="note">Solid blocks are on the inference path; dashed blocks are optional / prunable. Tensor shapes are symbolic.</span>
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+  <span class="badge pub">FORWARD</span><span class="note">One forward pass; training uses all four task sets, inference keeps trajectory + lightweight NVS.</span>
   <span style="flex:1"></span><span class="pill green">shared Universal Vision Encoder</span>
 </div>
 
-<!-- input + backbone -->
-<div class="flow">
-  <div class="node" style="flex:1"><div class="tag">Sensor</div><h4>7 × camera</h4><p>patchify · 36 Hz</p></div>
-  <div class="arr">→</div>
-  <div class="node" style="flex:1"><div class="tag">Sensor</div><h4>Nav / IMU / audio</h4><p>tokenized context</p></div>
-  <div class="arr">→</div>
-  <div class="node" style="flex:1"><div class="tag">Sensor</div><h4>Language / pose</h4><p>command + camera pose</p></div>
-  <div class="arr">→</div>
-  <div class="node green" style="flex:2.1;border-width:2px"><div class="tag">Backbone</div><h4>Universal Vision Encoder × L blocks</h4><p>Universal Vision Encoder · self-attention / FFN · <span class="mono">F: N × D @ 18 Hz</span></p></div>
-</div>
+<div class="node" style="border-width:2px"><div class="tag">Forward input</div><h4>7 cameras · Nav/IMU/audio · Language/pose</h4><p>36 Hz pixels · route and ego motion · command and NVS camera pose</p></div>
+<div style="display:flex;justify-content:center"><div class="arr down">↓</div></div>
 
-<div style="display:flex;justify-content:center;margin:7px 0 3px"><div class="arr down green">↓</div></div>
+<div class="node green" style="border-width:2px"><div class="tag">Encoder</div><h4>Universal Vision Encoder（UVE）× L</h4><p>self-attention / FFN · <span class="mono">F: N × D @ 18 Hz (Musk)</span> · temporal features are carried here</p></div>
+<div style="display:flex;justify-content:center"><div class="arr down green">↓</div></div>
 
-<!-- two towers -->
-<div style="display:grid;grid-template-columns:1.18fr .82fr;gap:20px">
-  <!-- action tower -->
+<div class="node green" style="border-width:2px"><div class="tag">Tokenizer</div><h4>4D scene token <span class="mono">S × D</span>（compact implicit）</h4><p>固定尺寸；可并行保留 V14 explicit instance token。所有任务默认一起训练，不用 task prompt。UVE 能力上来后，explicit token 与对应 perception head 一起删除。</p></div>
+<div style="display:flex;justify-content:center"><div class="arr down green">↓</div></div>
+
+<div style="display:grid;grid-template-columns:1.05fr .95fr;gap:20px;align-items:start">
   <div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="badge inf">ACTION TOWER / 3B</span><span class="note">planner + aux</span></div>
-    <div class="node green" style="border-width:2px"><div class="tag">Compress</div><h4>Scene tokenizer</h4><p>perceiver / query-based compressor → <span class="mono">S × D</span>；固定尺寸，供 planner 与 renderer 共享。</p></div>
-    <div style="display:flex;justify-content:center"><div class="arr down green">↓</div></div>
-    <div class="node blue"><div class="tag">Plan</div><h4>Trajectory head</h4><p>M 个多模态 query 对 <span class="mono">S × D</span> 做 cross-attention → <span class="mono">M × T × 2</span>；可加 interaction / value 头。</p></div>
-    <div style="display:flex;justify-content:center"><div class="arr down">↓</div></div>
-    <div class="node dark"><div class="tag">Act</div><h4>Control head → steer + accel</h4><p>2 个控制 token；安全选择器在外部或作为浅层 head。</p></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px">
-      <div class="node ghost" style="padding:9px 11px"><div class="tag">Optional</div><h4 style="font-size:16px;margin:4px 0 2px">Instance query decoder</h4><p>K 个 query → boxes / tracks / masks</p></div>
-      <div class="node ghost" style="padding:9px 11px"><div class="tag">Aux / prunable</div><h4 style="font-size:16px;margin:4px 0 2px">Perception · language</h4><p>det/track · seg/occ · caption / CoT</p></div>
-    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="badge inf">TRAINING</span><span class="note">four task sets · no task prompt</span></div>
+    <div class="node green" style="padding:10px 13px;margin-bottom:8px"><div class="tag">Set A / 4D dense</div><h4 style="font-size:17px;margin:3px 0 2px">4D video prediction（basic）</h4><p>NVS / 3DGS / depth 是同一 set 的子任务；训练 NVS decoder 与几何一致性。</p></div>
+    <div class="node green" style="padding:10px 13px;margin-bottom:8px"><div class="tag">Set B / 4D sparse</div><h4 style="font-size:17px;margin:3px 0 2px">AD perception</h4><p>object detection · tracking · occupancy · segmentation · TLD · depth/flow。</p></div>
+    <div class="node blue" style="padding:10px 13px"><div class="tag">Set C / Planner</div><h4 style="font-size:17px;margin:3px 0 2px">Planner</h4><p>multi-modal trajectory prediction · agent prediction · interaction / RL / closed-loop。</p></div>
+    <div class="node purple" style="padding:8px 12px;margin-top:8px"><div class="tag">Set D / Language</div><h4 style="font-size:16px;margin:2px 0 2px">Language</h4><p>caption · caption-based style transfer · pose as language · instance inpainting；与另外三个任务集都交互。</p></div>
   </div>
 
-  <!-- render tower -->
   <div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="badge rep">RENDER TOWER / 1B</span><span class="note">local world model</span></div>
-    <div class="node orange"><div class="tag">Condition</div><h4>Prev frame latent + pose + noise</h4><p>预测变化量，而不是从零重建整帧</p></div>
-    <div style="display:flex;justify-content:center"><div class="arr down orange">↓</div></div>
-    <div class="node orange" style="border-width:2px"><div class="tag">Generator</div><h4>Conditional DiT × L</h4><p>mean-flow · cross-attn to <span class="mono">S × D</span> · few NFEs</p></div>
-    <div style="display:flex;justify-content:center"><div class="arr down orange">↓</div></div>
-    <div class="node orange"><div class="tag">Output</div><h4><span class="mono">8 × h × w</span> low-res chunk</h4><p>8 帧 / 4 个 UVE 周期</p></div>
-    <div style="display:flex;justify-content:center"><div class="arr down orange">↓</div></div>
-    <div class="node dark"><div class="tag">Product</div><h4>Spatial / temporal SR → Reality View</h4><p>~36 fps UI；外部超分不改训练图</p></div>
-    <div class="note" style="margin-top:9px">1B 渲染器吃“剩余算力”：<b>½ TRIP / encoder frame</b>，不是半颗 AI4。</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="badge rep">INFERENCE</span><span class="note">only trajectory + lightweight NVS</span></div>
+    <div class="node blue" style="padding:11px 13px;margin-bottom:8px"><div class="tag">Planner</div><h4 style="font-size:17px;margin:3px 0 2px">Trajectory + Safety → action</h4><p>multi-modal trajectory 与 safety 是 planner 的两个子模块；输出 steer + accel。</p></div>
+    <div class="node orange" style="padding:11px 13px;margin-bottom:8px"><div class="tag">NVS decoder / lightweight</div><h4 style="font-size:17px;margin:3px 0 2px">any-view NVS</h4><p>条件：4D UVE scene token + 任意相机位姿；temporal 特征直接读 UVE。</p><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><span class="pill">Spatial SR</span><span class="pill">Temporal SR</span></div><p style="margin-top:5px">SR 是 NVS 的更小一级辅助头。</p></div>
+    <div class="node ghost" style="padding:10px 13px"><div class="tag">Optional / removed first</div><h4 style="font-size:17px;margin:3px 0 2px">V14 explicit token + perception head</h4><p>UVE 能力不足时保留；能力上来后删除。推理只留 trajectory 与轻量 NVS。</p></div>
   </div>
 </div>
 
-<!-- budget band -->
-<div class="grid4" style="margin-top:13px">
-  <div class="kpi" style="padding:9px 12px"><div class="n" style="font-size:24px">3B + 1B</div><div class="l">action + renderer<br>4B deployed graph</div></div>
-  <div class="kpi" style="padding:9px 12px"><div class="n" style="font-size:24px">S × D</div><div class="l">fixed-size scene token<br>cheap cross-attention</div></div>
-  <div class="kpi" style="padding:9px 12px"><div class="n" style="font-size:24px">18 Hz</div><div class="l">UVE feature rate<br>second-hand; no derived ms</div></div>
-  <div class="kpi" style="padding:9px 12px"><div class="n" style="font-size:24px">36 fps</div><div class="l">UI target<br>second-hand, not latency</div></div>
 </div>
-</div>
-  <div class="fig-foot"><div><b>Sources:</b> Musk posts relayed by media (Universal Vision Encoder, 3B/1B, 18 Hz, mean-flow); CVPR 2026 intermediate outputs. &nbsp; <b>Note:</b> block diagram is inferred; shapes are symbolic.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
+  <div class="fig-foot"><div><b>Sources:</b> Musk (Universal Vision Encoder, 3B/1B, 18 Hz, mean-flow); CVPR 2026 intermediate outputs.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
 </div></body></html>
