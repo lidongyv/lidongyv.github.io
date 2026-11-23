@@ -227,6 +227,7 @@ def load_posts(posts_dir):
             "title_en": fm.get("title_en", fm.get("title", slug)),
             "date": fm.get("date", ""),
             "tags": [x.strip() for x in (fm.get("tags") or "").split(",") if x.strip()],
+            "tags_en": [x.strip() for x in (fm.get("tags_en") or "").split(",") if x.strip()],
             "summary": fm.get("summary", ""),
             "summary_en": fm.get("summary_en", fm.get("summary", "")),
             "body_md": body,
@@ -395,7 +396,7 @@ def render_home(lang, posts):
                                "VLA、世界模型、数据闭环的一手工程笔记。"
                                if lang == "zh" else
                                "First-hand engineering notes on VLA, world models and data loops."),
-        blog_list=blog_list_html(lang, posts[:3]),
+        blog_list=blog_list_html(lang, posts[:3], external_links=(lang != "zh")),
         contact_kicker=esc("Contact"),
         contact_title=esc("正在找 VLA / 世界模型落地方向的岗位" if lang == "zh"
                           else "Looking for a role in VLA / world-model deployment"),
@@ -412,15 +413,20 @@ def render_home(lang, posts):
                 plain(t(PROFILE["lede"], lang)), "index.html", body, active="", jsonld=jsonld)
 
 
-def blog_list_html(lang, posts):
+def blog_list_html(lang, posts, external_links=False):
     if not posts:
         return '<p class="muted">%s</p>' % esc(ui("empty_blog", lang))
     items = []
     for p in posts:
         title = p["title"] if lang == "zh" else p["title_en"]
         summary = p["summary"] if lang == "zh" else p["summary_en"]
-        href = url(lang, "blog/%s.html" % p["slug"])
-        note = "" if lang == "zh" else '<span class="tag tag--mono">中文</span>'
+        # Chinese-only posts: the English index links straight to the Chinese page
+        href = ("/blog/%s.html" % p["slug"]) if (external_links or lang == "zh") else url(lang, "blog/%s.html" % p["slug"])
+        tags = " / ".join(p["tags"] if lang == "zh" else p.get("tags_en") or p["tags"])
+        note = ""
+        if lang != "zh":
+            badge = "中文" if not external_links else "Chinese"
+            note = '<span class="tag tag--mono">%s</span>' % badge
         items.append("""
       <article class="post-item">
         <time datetime="{date}">{date}</time>
@@ -431,7 +437,7 @@ def blog_list_html(lang, posts):
         </div>
       </article>""".format(
             date=esc(p["date"]), href=esc(href), title=esc(title), summary=esc(summary),
-            note=note, tags=esc(" / ".join(p["tags"])), minutes=p["minutes"],
+            note=note, tags=esc(tags), minutes=p["minutes"],
             min_label=esc(ui("min_read", lang))))
     return '<div class="post-list">%s</div>' % "".join(items)
 
@@ -493,7 +499,7 @@ def render_experience(lang):
         degree=esc(t(e["degree"], lang)),
         dept=esc(t(e["dept"], lang)),
         where=esc(t(e["where"], lang)),
-        note=(" · " + esc(e["note"])) if e["note"] else "",
+        note=(" · " + esc(t(e["note"], lang))) if e["note"] else "",
     ) for e in EDUCATION)
 
     pats = "".join(
@@ -809,7 +815,7 @@ def render_blog_index(lang, posts):
 """.format(
         head=section_head(lang, "Blog · 博客" if lang == "zh" else "Blog",
                           ui("blog_title", lang), ui("blog_desc", lang), level=1),
-        list=blog_list_html(lang, posts),
+        list=blog_list_html(lang, posts, external_links=(lang != "zh")),
         rss_note=esc("订阅：" if lang == "zh" else "Subscribe: "),
         feed=("/blog/feed.xml" if lang == "zh" else "/en/blog/feed.xml"),
     )

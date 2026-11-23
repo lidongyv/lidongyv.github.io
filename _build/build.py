@@ -254,6 +254,10 @@ def sitemap(pages):
 def robots():
     return """User-agent: *
 Allow: /
+Disallow: /_build/
+Disallow: /_includes/
+Disallow: /_layouts/
+Disallow: /README.md
 
 Sitemap: https://lidongyv.github.io/sitemap.xml
 """
@@ -281,9 +285,11 @@ def main():
         made.append(w(url(lang, "opensource.html").lstrip("/"), R.render_opensource(lang)))
         made.append(w(url(lang, "blog/index.html").lstrip("/"), R.render_blog_index(lang, posts)))
         made.append(w(url(lang, "about.html").lstrip("/"), R.render_about(lang)))
-        for p in posts:
-            made.append(w(url(lang, "blog/%s.html" % p["slug"]).lstrip("/"),
-                          R.render_post(lang, p, posts)))
+        # Post bodies are written in Chinese only; /en/blog/ links straight to them
+        # instead of duplicating the same content under a second URL.
+        if lang == "zh":
+            for p in posts:
+                made.append(w("blog/%s.html" % p["slug"], R.render_post(lang, p, posts)))
         made.append(w(url(lang, "blog/feed.xml").lstrip("/"), feed(lang, posts)))
 
     made.append(w("404.html", R.render_404("zh")))
@@ -303,8 +309,9 @@ def main():
         pages.append((lang, "opensource.html", "0.8"))
         pages.append((lang, "about.html", "0.8"))
         pages.append((lang, "blog/index.html", "0.7"))
-        for p in posts:
-            pages.append((lang, "blog/%s.html" % p["slug"], "0.6"))
+        if lang == "zh":
+            for p in posts:
+                pages.append((lang, "blog/%s.html" % p["slug"], "0.6"))
     made.append(w("sitemap.xml", sitemap(pages)))
     made.append(w("robots.txt", robots()))
     made.append(w(".nojekyll", ""))

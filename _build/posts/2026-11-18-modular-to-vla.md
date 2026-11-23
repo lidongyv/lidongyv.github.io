@@ -1,5 +1,6 @@
 ---
 title: 从模块化感知到单阶段 VLA：三次换代里反复出现的同一个坑
+tags_en: VLA, End-to-end, Perception
 title_en: "From modular perception to one-stage VLA: the same trap, three generations in a row"
 date: 2026-11-18
 tags: VLA, 端到端, 感知

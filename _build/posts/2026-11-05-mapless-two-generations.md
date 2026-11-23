@@ -1,5 +1,6 @@
 ---
 title: 无图三年：从 HD map 到 Mapless 的三次模型换代
+tags_en: Mapless, Lane detection, Data loop
 title_en: "Three years without a map: three model generations from HD map to Mapless"
 date: 2026-11-05
 tags: 无图, 车道线, 数据闭环
