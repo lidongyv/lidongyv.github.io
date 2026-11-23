@@ -48,3 +48,13 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      # GitHub occasionally answers "No artifacts named \"github-pages\" were found
+      # for this workflow run" immediately after a successful upload (artifact
+      # metadata lags). A retry fixes it, and without this the site would silently
+      # stay on the previous version. If the retry fails too, the job fails loudly.
+      - name: Deploy to GitHub Pages (retry)
+        id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
