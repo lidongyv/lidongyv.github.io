@@ -311,12 +311,21 @@ def build(report=False):
         if not base:
             skipped.append((entry["slug"], "no source root configured"))
             continue
-        src = os.path.join(base, entry["src"].replace("/", os.sep))
-        if not os.path.isdir(src):
-            skipped.append((entry["slug"], "missing source"))
-            continue
+        src = os.path.join(base, entry["src"].replace("/", os.sep)) if entry.get("src") else ""
 
-        files = list(_plan(src, tuple(entry.get("skip", ())), tuple(entry.get("exclude", ()))))
+        single = entry.get("file")
+        if single:
+            # a standalone page kept loose in the source root
+            src_path = os.path.join(base, single.replace("/", os.sep))
+            if not os.path.isfile(src_path):
+                skipped.append((entry["slug"], "missing file"))
+                continue
+            files = [(src_path, "index.html")]
+        else:
+            if not os.path.isdir(src):
+                skipped.append((entry["slug"], "missing source"))
+                continue
+            files = list(_plan(src, tuple(entry.get("skip", ())), tuple(entry.get("exclude", ()))))
         if not files:
             skipped.append((entry["slug"], "nothing publishable"))
             continue

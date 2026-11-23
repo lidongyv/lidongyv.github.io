@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>还没有人拥有的那一层数据</title>
+<style>
+:root{
+  color-scheme: light;
+  --ink:#14161A; --ink2:#1F2329; --ink3:#2B3138;
+  --paper:#FFFFFF; --paper2:#F2F3F5; --paper3:#E6E8EB;
+  --touch:#FF5A36; --touchdim:#C23F22;
+  --vision:#3E7C8F; --visionlt:#6BA3B5;
+  --fast:#E8A33D;
+  --muted:#6B7280; --mutedk:#98A2AE;
+  --sans:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",sans-serif;
+  --mono:"Cascadia Mono","Consolas","SF Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#3A3D42;font-family:var(--sans);-webkit-font-smoothing:antialiased}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.slide{
+  position:absolute;width:1280px;height:720px;background:var(--paper);color:var(--ink);
+  padding:52px 62px;display:none;flex-direction:column;
+  box-shadow:0 18px 60px rgba(0,0,0,.4);overflow:hidden;
+}
+.slide.on{display:flex}
+.slide.dark{background:var(--ink);color:var(--paper2)}
+.kick{font-size:12px;font-weight:700;letter-spacing:3px;color:var(--muted);margin-bottom:14px}
+.dark .kick{color:var(--mutedk)}
+h1{font-size:50px;line-height:1.24;font-weight:700;letter-spacing:-.5px}
+h2{font-size:31px;line-height:1.3;font-weight:700;letter-spacing:-.3px;margin-bottom:24px}
+h3{font-size:15px;font-weight:700;margin-bottom:9px}
+p{font-size:14.5px;line-height:1.75;color:var(--ink2)}
+.dark p{color:var(--mutedk)}
+.lead{font-size:17px;line-height:1.75;color:var(--ink2)}
+.dark .lead{color:var(--mutedk)}
+.sm{font-size:12.5px;line-height:1.68;color:var(--muted)}
+.big{font-size:38px;line-height:1.36;font-weight:700}
+.hot{color:var(--touch)} .cool{color:var(--vision)} .warm{color:var(--fast)}
+.hotd{color:var(--touchdim)}
+.body{flex:1;display:flex;flex-direction:column;justify-content:flex-start}
+.row{display:flex;gap:22px}
+.row.g14{gap:14px}
+.col{flex:1}
+.card{background:var(--paper2);border-radius:13px;padding:22px 24px}
+.card.cool{background:#EAF1F4}
+.card.hot{background:#FDEDE9}
+.card.warm{background:#FBEFD9}
+.card.ink{background:var(--ink);color:var(--paper2)}
+.card.ink p,.card.ink .sm{color:var(--mutedk)}
+.card.sm{padding:17px 19px}
+.glow{position:absolute;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,90,54,.30) 0%,rgba(255,90,54,.10) 45%,rgba(255,90,54,0) 72%)}
+.glow.c{background:radial-gradient(circle,rgba(62,124,143,.28) 0%,rgba(62,124,143,.09) 45%,rgba(62,124,143,0) 72%)}
+.num{width:27px;height:27px;border-radius:50%;background:var(--touch);color:#fff;
+  font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.num.cool{background:var(--vision)} .num.warm{background:var(--fast)}
+.num.gray{background:var(--paper3);color:var(--muted)}
+.hd{display:flex;align-items:center;gap:11px;margin-bottom:11px}
+.hd h3{margin:0}
+ul{list-style:none;margin-top:4px}
+li{font-size:13px;line-height:1.62;color:var(--ink3);padding-left:15px;position:relative;margin-bottom:7px}
+li:before{content:"";position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:50%;background:var(--paper3)}
+li.h:before{background:var(--touch)} li.c:before{background:var(--vision)}
+.dark li{color:var(--mutedk)}
+.band{display:flex;align-items:center;gap:22px;background:var(--paper2);border-radius:13px;
+  padding:16px 22px;margin-bottom:11px}
+.band .bt{width:190px;flex:none}
+.band .bt .t{font-size:16px;font-weight:700}
+.band .bt .s{font-size:10.5px;color:var(--muted);margin-top:3px}
+.band p{font-size:12.5px;line-height:1.66}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;font-weight:700;color:var(--muted);text-align:left;
+  padding:0 10px 9px 0;border-bottom:1px solid var(--paper3)}
+td{font-size:12.5px;line-height:1.55;color:var(--ink3);padding:10px 10px 10px 0;
+  border-bottom:1px solid var(--paper3);vertical-align:top}
+td.k{font-weight:700;color:var(--ink);width:24%}
+td.off{color:var(--mutedk)}
+td.act{font-weight:700;color:var(--touchdim)}
+.bars{display:flex;gap:26px;margin-top:4px}
+.bcol{flex:1}
+.bcol .bl{font-size:12.5px;color:var(--muted);margin-bottom:7px;font-weight:700}
+.bar{border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;margin-bottom:6px;padding:0 10px;text-align:center}
+.metric{display:flex;gap:18px;margin-top:4px}
+.metric .m{flex:1;background:var(--paper2);border-radius:13px;padding:18px 20px}
+.metric .mv{font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-1px}
+.metric .ml{font-size:11.5px;color:var(--muted);margin-top:7px;line-height:1.5}
+.flow{display:flex;align-items:stretch;gap:0;margin:2px 0}
+.step{flex:1;background:var(--paper2);border-radius:11px;padding:13px 11px;text-align:center}
+.step.on{background:#E2EDF1}
+.step .sl{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:6px}
+.step .sv{font-size:12.5px;font-weight:700;line-height:1.45}
+.arr{display:flex;align-items:center;justify-content:center;width:28px;color:var(--paper3);font-size:14px;font-weight:700;flex:none}
+.eq{font-family:var(--mono);font-size:13px;background:var(--paper2);border-radius:9px;padding:12px 15px;color:var(--ink);margin:10px 0;line-height:1.65}
+.ref{font-size:11.5px;line-height:1.6;color:var(--muted);padding-left:14px;position:relative;margin-bottom:7px}
+.ref:before{content:"▸";position:absolute;left:0;top:0;color:var(--paper3);font-size:9px}
+.ref b{color:var(--ink3);font-weight:700}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.5px;padding:2px 8px;border-radius:4px;background:var(--paper3);color:var(--muted);margin-left:6px;vertical-align:1px}
+.tag.ok{background:#DFEAE4;color:#3D7355}
+.tag.chk{background:#FAE3D8;color:var(--touchdim)}
+.foot{font-size:11px;color:var(--mutedk);margin-top:auto;padding-top:14px}
+#prog{position:fixed;left:0;bottom:0;height:3px;background:var(--touch);transition:width .22s;z-index:9}
+#pg{position:fixed;right:15px;bottom:11px;font-size:11px;color:rgba(255,255,255,.5);
+  font-family:var(--sans);z-index:9}
+#mnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:10;
+  background:rgba(20,22,26,.94);padding:9px 16px calc(9px + env(safe-area-inset-bottom));
+  align-items:center;justify-content:space-between;gap:10px}
+#mnav button{width:56px;height:40px;border:0;border-radius:10px;background:rgba(255,255,255,.14);
+  color:#fff;font-size:22px;font-weight:700;line-height:1}
+#mnav .t{color:#fff;font-size:12.5px;font-weight:700;letter-spacing:1px}
+@media (max-width:900px){
+  html,body{background:#14161A;-webkit-tap-highlight-color:transparent}
+  #stage{position:static;display:block;overflow:visible}
+  .slide{position:relative;width:100%;height:auto;min-height:100vh;min-height:100dvh;
+    padding:24px 18px 78px;box-shadow:none;transform:none!important;border-radius:0}
+  .slide.dark div[style^="margin-top"]{margin-top:20px!important}
+  #pg{display:none}
+  #prog{top:0;bottom:auto}
+  #mnav{display:flex}
+  .kick{font-size:10px;letter-spacing:2px;margin-bottom:9px}
+  h1{font-size:25px;line-height:1.3}
+  h2{font-size:18.5px;line-height:1.35;margin-bottom:14px}
+  h3{font-size:13.5px}
+  p{font-size:13px;line-height:1.66}
+  .lead{font-size:14px;line-height:1.66}
+  .big{font-size:21px;line-height:1.42}
+  .sm{font-size:12px;line-height:1.6}
+  .ref{font-size:11px;line-height:1.52}
+  .eq{font-size:12px;padding:10px 12px}
+  .row,.row.g14{flex-direction:column;gap:10px}
+  .band{flex-direction:column;align-items:flex-start;gap:8px;padding:12px 14px}
+  .band .bt{width:auto}
+  .flow{flex-direction:column}
+  .flow .arr{transform:rotate(90deg);width:100%;height:22px}
+  .metric{flex-direction:column;gap:12px}
+  .card{padding:14px 15px}
+  .card.sm{padding:12px 13px}
+  table{display:block;overflow-x:auto}
+  th,td{font-size:11px;padding:7px 8px 7px 0}
+}
+@media print{
+  html,body{background:#fff}
+  #stage{position:static;display:block;overflow:visible}
+  .slide{display:flex!important;position:relative;page-break-after:always;box-shadow:none;
+    transform:none!important;margin:0}
+  #prog,#pg{display:none}
+}
+</style>
+</head>
+<body>
+<div class="ldy-en-note" lang="en" style="font:15px/1.65 -apple-system,Segoe UI,PingFang SC,Microsoft YaHei,sans-serif;max-width:860px;margin:18px auto;padding:14px 18px;border:1px solid rgba(128,128,128,.35);border-radius:12px;background:rgba(128,128,128,.06)"><strong>The layer of data nobody owns yet (extended)</strong><br>The full argument: why that layer cannot be bypassed, and how it differs from existing force-control e-stop behaviour.<br><span style="opacity:.75">The full text of this page is in Chinese.</span></div>
+<div id="stage"></div>
+<div id="prog"></div>
+<div id="pg"></div>
+<div id="mnav"><button id="mprev" type="button">‹</button><span class="t" id="mpg"></span><button id="mnext" type="button">›</button></div>
+
+<template id="deck">
+
+<!-- 1 -->
+<section class="slide dark">
+  <div class="glow" style="width:640px;height:640px;right:-190px;top:-260px"></div>
+  <div class="glow c" style="width:420px;height:420px;left:-170px;bottom:-190px"></div>
+  <div class="kick">A 轮 · 机 器 人 触 觉 数 据</div>
+  <div style="margin-top:130px">
+    <h1>还没有人拥有的<br>那一层数据</h1>
+    <p class="lead" style="margin-top:34px;max-width:790px">
+      机器人已经能看懂一个厨房。但当它真的伸出手，<br>
+      它需要的那一类数据，互联网上一条都没有。
+    </p>
+  </div>
+  <div class="foot">本材料用于融资沟通，不含任何第三方未公开信息</div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <div class="kick">先 看 一 个 具 体 的 场 景</div>
+  <h2>一个挤了洗洁精的盘子</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col" style="flex:1.15">
+        <div class="card" style="margin-bottom:14px">
+          <p>一个机器人准备和人一起洗盘子。学生刚挤好洗洁精，人接电话走了。你问它：「这有几个陶瓷餐具？」</p>
+          <p style="margin-top:12px"><b class="cool">今天的视觉模型一秒就能答出「四个」。</b></p>
+        </div>
+        <div class="card hot">
+          <p>你接着说：「帮我把它洗了。」</p>
+          <p style="margin-top:12px">它伸出手，捏住盘子。瓷面涂了洗洁精，摩擦系数骤降。</p>
+          <p style="margin-top:12px"><b class="hotd">盘子开始下滑。等到摄像头确认「盘子正在下落」，它已经在地上了。</b></p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card cool sm" style="margin-bottom:12px">
+          <h3 class="cool">前半句，产业已经解决了</h3>
+          <p class="sm">数物体、理解「它」指哪一个、拆解「洗干净」要做哪几步 —— 这些都发生在接触之前，由视觉和语言完成，已经基本收敛。</p>
+        </div>
+        <div class="card hot sm">
+          <h3 class="hotd">后半句，还没有人解决</h3>
+          <p class="sm">滑、滚、打转、捏碎、卡住、碰到人。这些全部发生在手接触物体之后的几十毫秒里，摄像头看不见，语言模型推不出来。</p>
+        </div>
+        <p class="sm" style="margin-top:14px">这条分界线，就是我们所在的位置。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide dark">
+  <div class="glow c" style="width:520px;height:520px;right:-180px;bottom:-230px"></div>
+  <div class="kick">这 条 分 界 线 有 一 个 精 确 的 名 字</div>
+  <div style="margin-top:96px">
+    <div class="big">
+      摄像头记录的是<span class="cool">运动学</span>：<br>
+      东西移动到了哪里。
+    </div>
+    <div class="big" style="margin-top:38px">
+      手感受到的是<span class="hot">力学</span>：<br>
+      它为什么会移动，以及会不会滑掉。
+    </div>
+    <p class="lead" style="margin-top:44px;max-width:840px">
+      互联网上有几十亿小时的视频，全部是前者。<br>
+      后者，一条都没有 —— 因为它从来没有被任何一台摄像机记录过。
+    </p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <div class="glow" style="width:330px;height:330px;right:-130px;top:-130px"></div>
+  <div class="kick">为 什 么 这 件 事 现 在 才 变 成 机 会</div>
+  <h2>视觉这一层收敛了，瓶颈往后移了一格</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card cool">
+          <div class="hd"><span class="num cool">1</span><h3 class="cool">2020 — 2024：看见</h3></div>
+          <p class="sm">大模型解决了识别、指代、任务分解。业内的判断是，视觉已经解决了机器人感知世界「99%」的问题。这一层的竞争已经进入工程与成本阶段。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card warm">
+          <div class="hd"><span class="num warm">2</span><h3 style="color:#B07A1C">2023 — 2026：动起来</h3></div>
+          <p class="sm">动作模型（VLA）成为共识路线，机器人能把看见的东西转成动作。资本与人才在这一层高度密集，数据靠遥操作大规模采集。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot">
+          <div class="hd"><span class="num">3</span><h3 class="hotd">现在：碰到</h3></div>
+          <p class="sm">动作做出来了，但接触之后的一切仍然靠碰运气。行业开始意识到：把触觉直接塞进视觉模型，要么产生大量冗余，要么关键信息被淹没 —— 有团队反馈「一加触觉，原来的模型反而崩了」。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card ink" style="margin-top:22px">
+      <p style="font-size:16px;font-weight:700;color:var(--paper2)">
+        每一次瓶颈后移，都会重新定价一层基础设施。<span class="hot">这一次后移到了接触。</span>
+      </p>
+      <p class="sm" style="margin-top:11px">
+        而这一层与前两层有一个本质区别：前两层的数据可以从互联网上拿，或者用仿真生成；这一层的数据只能靠真实物理接触，一次一次采出来。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <div class="kick">这 一 层 到 底 缺 什 么</div>
+  <h2>不是传感器不够好，是数据不存在</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card cool" style="height:100%">
+          <h3 class="cool">硬件其实已经够用了</h3>
+          <p class="sm" style="margin-top:2px">高分辨率的视触觉传感器已有十余年积累，能同时感知力度、位置、温度、材质、纹理、振动、滑动、碰撞。多光谱、摩擦电、惯性等路线都已验证。</p>
+          <p class="sm" style="margin-top:14px"><b>但一个最好的传感器，不会自动产生智能。</b>行业里真实发生过的转折是：把传感器做到了很好的水平之后，发现智能并没有随之出现 —— 因为连训练它的数据都没有。</p>
+        </div>
+      </div>
+      <div class="col" style="flex:1.1">
+        <div class="card hot">
+          <h3 class="hotd">而数据这一侧，是三个尚未解决的「跨」</h3>
+          <ul style="margin-top:10px">
+            <li class="h"><b>跨传感器</b> —— 同一批次产出的传感器性能都不完全一致，一个模型往往只能锚定某一种硬件</li>
+            <li class="h"><b>跨模态</b> —— 力、温度、剪切、振动还没有一套与硬件无关的共同表征</li>
+            <li class="h"><b>跨本体</b> —— 换一只手、换一台机器人，数据分布就变了</li>
+          </ul>
+          <p class="sm" style="margin-top:9px"><b class="hotd">跨本体的解法方向见第 16 页：</b>把数据的定义域从本体上移到场景上。</p>
+        </div>
+        <div class="card sm" style="margin-top:14px">
+          <p class="sm">学术界近两年已经出现多个统一触觉表征的尝试，但公开基准的结论是：没有任何一个表征在所有任务上占优，且绝大多数工作仍局限在视触觉这一类硬件之间迁移。</p>
+          <p class="sm" style="margin-top:10px"><b class="hotd">这三个「跨」全都是数据问题，不是算法问题。</b></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <div class="kick">为 什 么 不 能 等 别 人 顺 手 做 掉</div>
+  <h2>这层数据有三个让它无法被绕过的性质</h2>
+  <div class="body">
+    <div class="card ink" style="margin-bottom:15px;padding:14px 20px">
+      <p style="font-size:15px;font-weight:700;color:var(--paper2)">
+        根子上的原因只有一句：<span class="hot">物理属性只能通过一次真实交互的反馈被观测到。</span>
+      </p>
+      <p class="sm" style="margin-top:9px">
+        几何是物体的外观，可以被静态拍下来；重量、摩擦、软硬、易碎是物体<b style="color:var(--paper2)">被作用时的行为</b>，必须先发生一次接触。这不是我们的一家之言 —— 视觉领域顶级实验室从 2015 年起<b style="color:var(--paper2)">连续十年</b>尝试「从视频反推物理属性」（Galileo、Physics 101、Visual De-animation、Physical Primitive Decomposition），每一篇的前提都是<b style="color:var(--paper2)">必须先观测到一次交互</b>，且结果只能给出粗粒度的标量估计。到 2024 年，同一条线上的最新工作（Spring-Gaus, ECCV 2024）开篇仍在承认：现有方法建模了外观与几何，<b style="color:var(--paper2)">但缺乏估计物体物理属性的能力</b>。
+      </p>
+    </div>
+    <div class="row g14">
+      <div class="col">
+        <div class="card" style="height:100%">
+          <div class="hd"><span class="num gray">1</span><h3>不能爬</h3></div>
+          <p class="sm">图像和视频可以从互联网上取。接触力、剪切、滑移必须由一只真实的手压在一个真实的物体上产生。没有任何存量语料可以被清洗出来。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="height:100%">
+          <div class="hd"><span class="num gray">2</span><h3>不能纯靠仿真</h3></div>
+          <p class="sm">仿真能给出几何与运动，但接触力学涉及材料、湿度、磨损、表面污染。洗洁精让瓷面摩擦系数骤降这类情况，恰恰是仿真最难标定的部分。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="height:100%">
+          <div class="hd"><span class="num gray">3</span><h3>不能事后补</h3></div>
+          <p class="sm">运动学可以从录好的视频里反推。而一次接触的力分布如果当时没有被测量，就永久丢失了 —— 这一层的数据具有不可回溯性。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card hot" style="margin-top:15px">
+      <p><b class="hotd">结论：这是一个必须靠时间积累、且先动者占据结构性优势的资产。</b></p>
+      <p class="sm" style="margin-top:10px">
+        视觉数据的壁垒在 2012 年之后迅速消失，因为互联网本身就是语料库。触觉数据不存在这个通道，而且它的稀缺是<b>原理性的、不会随算力或模型进步而消失</b> —— 谁先把采集体系、标准和规模跑起来，谁就定义这一层的接口。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide dark">
+  <div class="glow" style="width:560px;height:560px;left:50%;top:50%;transform:translate(-50%,-50%)"></div>
+  <div style="margin:auto;text-align:center;max-width:900px">
+    <div class="big">机器人有了眼睛，也有了大脑。<br>它还缺一根<span class="hot">脊髓</span>。</div>
+    <p class="lead" style="margin-top:36px">
+      人快要摔倒时，不会先识别「我正在摔倒」、分析原因、再决定伸手。<br>身体先完成了反射。
+    </p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <div class="kick">这 一 层 在 系 统 里 的 位 置</div>
+  <h2>三层架构：慢脑、快脑、脊髓</h2>
+  <div class="body">
+    <div class="band" style="background:#E7EFF2">
+      <div class="bt"><div class="t cool">慢脑</div><div class="s">类比大脑皮质</div></div>
+      <p>语义理解、任务规划、想象。今天的大模型已经覆盖 —— 决定「为什么要这么做、下一步做什么」。</p>
+    </div>
+    <div class="band" style="background:#FBEFD9">
+      <div class="bt"><div class="t warm">快脑</div><div class="s">灵巧操作与长程任务</div></div>
+      <p>动作模型所在的一层。触觉在这里的作用是让机器人<b>做得更好</b>：抓稳了没有、捏得太紧没有、材质是什么。</p>
+    </div>
+    <div class="band" style="background:#FBE0D8">
+      <div class="bt"><div class="t hotd">脊髓</div><div class="s">极致的快</div></div>
+      <p>滑落、碰撞、失衡的那一毫秒。不经过任何推理与规划 —— 因为推理本身来不及。触觉在这里的作用是让机器人<b>来得及</b>。</p>
+    </div>
+    <div class="row" style="margin-top:18px">
+      <div class="col">
+        <div class="card sm">
+          <p class="sm">分层的判据是延迟与信息量的权衡：脊髓追求极致的快，不要求信息特别丰富；快脑需要更丰富的多模态信息；慢脑负责思考和理解。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot sm">
+          <p class="sm"><b class="hotd">两层都需要数据，而且是同一类数据。</b>我们在下面两层供给这一类数据，不与慢脑争夺位置。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <div class="kick">一 个 必 须 回 答 的 质 疑</div>
+  <h2>这和已有的力控急停有什么不一样</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card">
+          <h3>传统力控 / 急停</h3>
+          <p class="sm" style="margin-top:2px">基于比较简单的等效量，比如单点力的大小。这与过去传感器与处理能力有限有关 —— 系统只能关注极少量信息，所以只能做「超过阈值就停」。</p>
+        </div>
+        <div class="card hot" style="margin-top:14px">
+          <h3 class="hotd">脊髓级系统</h3>
+          <p class="sm" style="margin-top:2px">拿到的不只是力，还包括温度、滑动、接触状态等。因此它不是「停下来」，而是<b>调整</b> —— 滑了就增大握力，碰到人就卸力，卡住就换姿态。</p>
+        </div>
+        <p class="sm" style="margin-top:13px">两者在工程思想上相通，区别主要在信息丰富度。</p>
+      </div>
+      <div class="col">
+        <div class="card ink" style="height:100%">
+          <h3 style="color:var(--paper2)">以及为什么不能照搬自动驾驶的主动安全</h3>
+          <p class="sm" style="margin-top:12px">自动驾驶可以用一套独立的主动安全系统做防碰撞，因为它的目标是<b style="color:var(--paper2)">不要碰</b>。</p>
+          <p class="sm" style="margin-top:14px">而机器人的绝大多数任务，前提就是<b style="color:var(--paper2)">必须碰</b>。既然一定会碰，安全就不能外挂成一个独立模块，它必须内生在操作能力里。</p>
+          <div style="height:1px;background:rgba(255,255,255,.12);margin:18px 0"></div>
+          <p class="sm"><b style="color:var(--touch)">这直接决定了市场结构：</b>这一层不会作为一个安全配件被采购，而会成为操作能力本身的一部分 —— 也就意味着它进入的是机器人的核心 BOM，而不是选装件。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <div class="kick">我 们 对 数 据 的 判 断</div>
+  <h2>人类并不是靠绝对精准做事情的</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col" style="flex:1.1">
+        <div class="card">
+          <p>行业早期的通行要求是：触觉数据必须精准到亚毫米级，才能用于训练。</p>
+          <p style="margin-top:14px"><b>我们认为这个要求反映的是模型不够强，而不是数据该有的样子。</b></p>
+          <p class="sm" style="margin-top:14px">妈妈让你练毛笔字，不会要求你每次落笔都精准到同一位置偏差小于毫米。同一个动作每次采出来的数据都不一样，但重复训练之后，模型反而可能自己学到：哪些变化不重要，哪些信息才真正关键。</p>
+          <p class="sm" style="margin-top:12px">这种差异性本身就是有价值的。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot" style="margin-bottom:14px">
+          <h3 class="hotd">我们的数据标准</h3>
+          <p class="sm" style="margin-top:2px">高质量、多元化、多模态，优先于绝对精准与全覆盖。<b>高质量不意味着完全一致，也不等于高精度。</b></p>
+        </div>
+        <div class="card sm">
+          <h3>怎么判断一组数据有价值</h3>
+          <p class="sm">最直接的标准是它能不能训出一个有用的模型 —— 比如完全不用视觉，只靠触觉，机器人能不能完成任务。</p>
+          <p class="sm" style="margin-top:10px">反例也很清楚：明明知道某个位置没有发生接触，传感器却突然产生了信号，这就是脏数据。</p>
+        </div>
+      </div>
+    </div>
+    <p class="sm" style="margin-top:16px">这个判断直接决定了采集成本结构 —— 它让规模化采集在经济上成为可能，而不是被精度要求锁死在实验室里。</p>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <div class="kick">为 什 么 是 数 据 这 个 位 置</div>
+  <h2>这一层有三个可选位置，我们选了中间那个</h2>
+  <div class="body">
+    <div class="row g14">
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num gray">1</span><h3>只做传感器</h3></div>
+          <p class="sm">硬件路线已经拥挤，且最终会被压成标准件，毛利随规模下降。更重要的是，它不产生累积性资产 —— 卖出去的传感器不会让下一颗更好卖。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot" style="height:100%">
+          <div class="hd"><span class="num">2</span><h3 class="hotd">做数据与表征</h3></div>
+          <p class="sm">采集体系 + 跨传感器/跨模态/跨本体的统一表征。它的产出随时间累积，且被上下游同时需要：传感器厂商需要它证明价值，本体厂商需要它训练模型。</p>
+          <p class="sm" style="margin-top:9px"><b class="hotd">这是唯一同时具备累积性与中立性的位置。</b></p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num gray">3</span><h3>做整机</h3></div>
+          <p class="sm">资本强度高、周期长，且一旦做整机就与所有潜在客户构成竞争 —— 而这一层最需要的恰恰是被所有本体厂商采用。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card cool" style="margin-top:20px">
+      <p class="sm"><b class="cool">一个附带的判断：</b>我们认为现在不应该急着用「最小单位」去定义触觉数据。今天定义完，明天可能就有人做出新的东西把它推翻。物理上一个像素受多大力、温度多少当然可以作为基本信息，但真正转成机器人能用于控制的信息之后，最后有用的可能反而是一个等效的六维力。表示形式还没有收敛 —— 这正是现在进入这一层的时间窗口。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+  <div class="kick">市 场 的 形 状</div>
+  <h2>谁会为这一层付钱</h2>
+  <div class="body">
+    <table>
+      <tr><th>客户</th><th>他们现在的处境</th><th>我们提供什么</th></tr>
+      <tr>
+        <td class="k">人形与通用机器人本体</td>
+        <td>动作模型已跑通，但接触之后的可靠性上不去，交付场景被迫收窄到低风险动作</td>
+        <td class="act">训练数据 + 可直接部署的接触反应能力</td>
+      </tr>
+      <tr>
+        <td class="k">灵巧手 / 夹爪厂商</td>
+        <td>硬件参数已经很好，但缺少能证明「用了它确实更强」的模型与数据</td>
+        <td class="act">跨传感器表征，让硬件价值可被量化</td>
+      </tr>
+      <tr>
+        <td class="k">传感器同行</td>
+        <td>各自锚定自家硬件训练模型，规模上不去</td>
+        <td class="act">中立的表征层与评测</td>
+      </tr>
+      <tr>
+        <td class="k">工业与商用集成商</td>
+        <td>接触密集的工序（装配、打磨、分拣易碎品）仍然依赖人</td>
+        <td class="act">面向具体工序的接触能力包</td>
+      </tr>
+    </table>
+    <div class="row" style="margin-top:20px">
+      <div class="col">
+        <div class="card sm">
+          <p class="sm"><b>需求的时间点已经到了。</b>动作模型这一层跑通之后，客户遇到的下一个问题必然是接触 —— 这不是需要被教育的需求，而是已经在客户现场发生的故障。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm">
+          <p class="sm"><b>而供给还没有形成。</b>公开基准显示统一触觉表征仍无优胜方案，学术界的尝试大多局限于同类硬件之间的迁移。这个时间差就是我们的窗口。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide">
+  <div class="kick">我 们 的 护 城 河</div>
+  <h2>为什么后进入者难以追平</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card" style="margin-bottom:13px">
+          <div class="hd"><span class="num">1</span><h3>时间不可压缩</h3></div>
+          <p class="sm">这一层的数据只能靠真实接触产生。资本可以加速采集速度，但无法跳过物理过程本身 —— 这与视觉数据可以一次性爬取有本质区别。</p>
+          <p class="sm" style="margin-top:9px">近两年已出现「用视觉去预测接触力」的研究方向，值得注意的是它<b>不构成对这一层的替代，反而是对它的确认</b>：这类方法要训练起来，前提是先有一批真实测到的接触标签。<b class="hot">先验只能用真实接触数据买来。</b></p>
+        </div>
+        <div class="card">
+          <div class="hd"><span class="num">2</span><h3>表征带来复利</h3></div>
+          <p class="sm">跨传感器、跨模态、跨本体的表征一旦建立，新硬件接入的边际成本会持续下降，而竞争者每接一种新硬件都要重来一次。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="margin-bottom:13px">
+          <div class="hd"><span class="num">3</span><h3>中立性带来数据回流</h3></div>
+          <p class="sm">不做整机，因此可以同时服务多家本体厂商。每一个客户的部署都会带回新的接触数据，而做整机的玩家拿不到竞争对手的数据。</p>
+        </div>
+        <div class="card hot">
+          <div class="hd"><span class="num">4</span><h3 class="hotd">评测的独立性</h3></div>
+          <p class="sm">这一层缺少公认评测基准，而评测标准往往由最早建立它的一方定义。我们主张把第三方评测放进独立的非营利组织 —— 自己既是运动员又是裁判员显然不合理。这既是取信客户的方式，也是标准话语权的入口。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide">
+  <div class="kick">风 险 与 我 们 的 应 对</div>
+  <h2>我们认为需要被诚实讨论的四件事</h2>
+  <div class="body">
+    <div class="row g14">
+      <div class="col">
+        <div class="card sm" style="margin-bottom:12px">
+          <h3>风险一：视觉继续变强，把这一层吃掉</h3>
+          <p class="sm">应对：这是信息论层面的边界而非能力问题 —— 接触力不是几何量，再高分辨率的视觉也无法反推。即使视觉能预测「可能会滑」，仍然需要在滑动发生的那一毫秒内测到它。</p>
+          <p class="sm" style="margin-top:9px">一个可核查的旁证：2026 年一项针对五个顶尖视频生成模型的评测（10,990 条专家标注、22 类物理现象）显示，在物理关键场景下 <b class="hot">83.3%</b> 的第三人称、<b class="hot">93.5%</b> 的第一人称生成视频存在人类可辨识的物理错误。视觉侧的数据规模已经足够大，<b>但物理这一栏并没有随之补上</b>。</p>
+        </div>
+        <div class="card sm">
+          <h3>风险二：融进大模型即可，不需要独立一层</h3>
+          <p class="sm">应对：行业已有反例 —— 直接把触觉塞进视觉模型，要么冗余，要么关键信息被淹没，有团队反馈模型反而变差。信息量与延迟要求的形状正好相反，这是分层的工程理由。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="margin-bottom:12px">
+          <h3>风险三：三个「跨」可能解不开</h3>
+          <p class="sm">应对：这是我们承认的最大不确定性，被业内判断为未来两三年甚至五年的问题。我们的路径是先做与具体传感器无关的一阶参数，再处理二阶参数以减少校准误差 —— 而不是等一个完美的统一表征出现。</p>
+        </div>
+        <div class="card hot sm">
+          <h3 class="hotd">风险四：市场节奏比预期慢</h3>
+          <p class="sm">应对：接触密集的工业工序（装配、打磨、易碎品分拣）不依赖通用机器人的成熟度，可以先形成收入与数据回流，同时为通用场景积累语料。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide">
+  <div class="kick">为 什 么 是 现 在</div>
+  <h2>三个条件第一次同时成立</h2>
+  <div class="body">
+    <div class="metric">
+      <div class="m">
+        <div class="mv cool">需求</div>
+        <div class="ml">动作模型这一层已经跑通，客户现场遇到的下一个故障必然是接触。需求不需要被教育。</div>
+      </div>
+      <div class="m">
+        <div class="mv warm">硬件</div>
+        <div class="ml">多模态触觉传感器已经过了可用门槛，能同时给出力、滑动、温度、纹理，不再是瓶颈。</div>
+      </div>
+      <div class="m">
+        <div class="mv hot">供给</div>
+        <div class="ml">统一表征仍无优胜方案，数据资产尚未被任何一方占据。这是最后一个还空着的位置。</div>
+      </div>
+    </div>
+    <div class="card ink" style="margin-top:24px">
+      <p style="font-size:17px;font-weight:700;color:var(--paper2);line-height:1.6">
+        这三个条件的重叠期不会很长。硬件成熟会吸引更多人进入，而数据资产一旦被某一方先积累起来，表征标准就会随之确定。
+      </p>
+    </div>
+    <div class="row" style="margin-top:18px">
+      <div class="col">
+        <div class="card sm">
+          <p class="sm">我们对时间窗口的判断是：<b>表示形式的收敛期</b>。一旦这一层的数据格式与评测标准被确立，后进入者就只能在别人定义的接口上竞争。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm">
+          <p class="sm">这也解释了为什么我们不急于定义「最小单位」，而急于建立采集规模 —— <b>标准来自数据量，而不是来自定义。</b>第 17 页给出我们对最小单位的最新方向性回答：<b class="hotd">meta action</b>。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide">
+  <div class="kick">对 这 一 层 数 据 的 定 义，我 们 再 前 进 一 步</div>
+  <h2>我们要积累的不是「设备数据」，是「场景 × 交互」数据</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <h3>行业现在在采什么</h3>
+          <p class="sm">人形机器人和其他特定本体的<b>关键点数据</b> —— 本质是某台设备关节轨迹的采样点。它回答的是「这台设备怎么动」，而不是「这个场景里发生了什么交互」。</p>
+          <p class="sm" style="margin-top:10px">后果是数据绑定设备：换一台机器人，分布就变了；设备换代，数据作废。同一场景，100 种设备要采 100 遍。</p>
+          <p class="sm" style="margin-top:10px"><b class="hotd">绑定某一家的设备采集没有意义 —— 绑定设备的数据走不远。</b></p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot" style="height:100%">
+          <h3 class="hotd">我们要采什么</h3>
+          <p class="sm"><b>环境数据 + 交互数据。</b>场景的几何、语义、可供性与状态机；以及「谁对哪个物体执行了什么交互、接触反馈如何」。这些定义在场景与物体上，不定义在任何一台设备上。</p>
+          <p class="sm" style="margin-top:10px"><b class="hotd">一个场景可以被 100 种设备使用。</b>场景是长寿命资产，设备是短寿命工具。</p>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <div class="col">
+        <div class="card sm">
+          <p class="sm"><b>行为上先做一个拆分：</b>「移动」（从 A 到 B）与「关键物体交互」（接触、施力、改变状态）的数据分布、反馈模态、延迟要求完全不同，不应混在一份数据里。我们的数据层聚焦后者。但拆分不是二分类：locomotion 与 interaction 虽已分开，很多具体任务仍区分僵硬 —— 尤其居家环境中的 locomotion（绕障、过窄门、贴家具移动）。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card cool sm">
+          <p class="sm"><b class="cool">这是对「跨本体」的结构性解法：</b>跨本体不是靠模型魔法解决，而是靠把数据的定义域从本体上移到场景上解决。行业现状佐证：RT-X、Octo 的跨本体泛化仍依赖在多种本体上各采一批数据。一个附带的判断：<b>具身短期内不会出现垄断公司，不可能像 CUDA 一样</b> —— 这一层的机会不在绑定某一家设备，而在中立的数据与接口层。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide">
+  <div class="kick">对「最 小 单 位」的 方 向 性 回 答</div>
+  <h2>meta action：设备执行的是它，录制的数据也拆成它</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col" style="flex:1.08">
+        <div class="card sm" style="height:100%">
+          <h3>定义</h3>
+          <p class="sm">场景里的<b>通用交互单元</b>：与本体弱耦合，与物体和场景强耦合；有可验证的前置/后置条件；接触反馈落在交互面上。抓、放、推、压、旋、掀、挂……被显式拆分、命名、复用。</p>
+          <p class="sm" style="margin-top:10px">三层含义：</p>
+          <ul style="margin-top:6px">
+            <li class="h"><b>设备执行的是 meta action</b> —— 各设备用自持的 meta action 库把它解释成本体动作</li>
+            <li class="h"><b>录制的数据按 meta action 拆分</b> —— 不按帧、不按整段轨迹</li>
+            <li class="h"><b>VLA 按 meta action 重构</b> —— 输出 meta action 序列 + 场景状态；推理在场景/交互层，执行在本体层</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot" style="height:100%">
+          <h3 class="hotd">为什么它对商业模式重要</h3>
+          <p class="sm">第 11 页我们说过：不急着定义「最小单位」。现在方向明确了：<b>最小单位不该在信号层定义（像素级的力 / 温度），而应该在交互层定义 —— meta action。</b></p>
+          <p class="sm" style="margin-top:10px">meta action 库就是我们为「100 种设备」提供的接口：被越多设备引用，数据回流越大，复利越强。中性位置因此更成立 —— 我们定义的接口是跨设备的，不是某一台设备的。</p>
+          <p class="sm" style="margin-top:10px">标准仍来自数据量，但现在我们知道该去采<b>什么结构</b>的量。</p>
+          <p class="sm" style="margin-top:10px"><b class="hotd">优先级：</b>meta action 的拆分与 VLA 重构，这个的优先级大于评测、大于硬件、大于数采。需要统一的不是行业标准，而是定制可衡量的评测空间 —— 不是端到端的评测，而是对 action 进行 meta 元素细分。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide">
+  <div class="kick">数 据 飞 轮 的 改 进</div>
+  <h2>做中学：先完成任务赚钱，数据是任务的副产品</h2>
+  <div class="body">
+    <div class="card hot" style="margin-bottom:13px">
+      <p><b class="hotd">对行业采集模式的一个判断：</b>「盲目地用特定设备采集、然后卖设备，是本末倒置 —— 它强迫大家用不正确的通用设备，低效率地完成特定任务。」<span class="tag">本材料主张</span></p>
+      <p style="margin-top:8px">更直接地说：<b class="hotd">在任务闭环 ready 之前，数据采集和遥操采集都是空谈</b>；遥操执行指的不是采集数据，而是直接执行任务并且商业闭环。同理，「遥操加速十倍」的演示路线不成立 —— 完成任务不是把遥操加速去执行，那会让机器人永远无法 scale up 到多样化应用；这种 formulation 从最底层的硬件设计和实现上已经是不 make sense 的。<span class="tag">本材料主张</span></p>
+    </div>
+    <div class="flow">
+      <div class="step on"><div class="sl">第 一 步</div><div class="sv">遥操把任务<br>完成、交付</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="sl">副 产 品</div><div class="sv">环境 + 交互<br>数据自然产生</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="sl">量 上 来</div><div class="sv">数据末端<br>应用量提高</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="sl">真 相</div><div class="sv">正确 meta action<br>浮现</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="sl">迭 代</div><div class="sv">设备与硬件<br>设计</div></div>
+    </div>
+    <div class="row" style="margin-top:15px">
+      <div class="col" style="flex:1.12">
+        <div class="card sm" style="height:100%">
+          <h3>两侧公开判断与我们的关系</h3>
+          <div class="ref"><b>丁文伯（Xspark AI，DeepTech 访谈 2026-08）：</b>「我们坚信好的模型和人类一样，在『干中学』对于迭代至关重要」；「终局要看，中间也要『沿途下蛋』」—— 团队已在产业龙头工厂落地验证。<span class="tag ok">已核实</span></div>
+          <div class="ref"><b>吴佳俊（斯坦福，ECCV 2026 演讲）：</b>「追踪大规模机器人数据这件事，一直都非常困难……数据的采集始终是个难题」—— 连斯坦福为 BEHAVIOR 挑战赛采集 3000 小时演示都花了「相当可观的一笔钱」。<span class="tag ok">已核实</span></div>
+        </div>
+      </div>
+      <div class="col" style="flex:0.9">
+        <div class="card ink" style="height:100%">
+          <p style="font-size:15.5px;font-weight:700;color:var(--paper2)">采集成本只有被任务收入摊薄，规模才可持续。</p>
+          <p class="sm" style="margin-top:10px">旧模式里采集是独立成本中心，靠融资续命，量必然上不去；新模式里采集是交付的副产品 —— 任务越多，数据越多，资产越厚。</p>
+          <p class="sm" style="margin-top:10px">还有一条被所有人忽略的红线：<b style="color:var(--paper2)">T</b> —— 现在的采集忽略了 T 的存在，在一些高速运作场景下，机体会产生不受控制的震动和惯性，对设备本身是极大的损耗，该用什么速度移动是现在无法采集的信号。只有在不考虑工作效率和泛化的前提下，目前的慢动作遥操才是合理的。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide">
+  <div class="kick">为 什 么 后 来 者 难 以 追 平</div>
+  <h2>硬件、软件、数据都还有问题 —— 量不够，不见真相</h2>
+  <div class="body">
+    <div class="row g14">
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num gray">硬</span><h3>硬件</h3></div>
+          <p class="sm">传感器一致性、漂移与跨传感器标定未收敛。「哪怕都是视触觉传感器，同一批次生产出来的性能都可能不完全一样。」<span class="tag ok">丁文伯访谈</span></p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num gray">软</span><h3>软件</h3></div>
+          <p class="sm">触觉表征未收敛，触觉与 VLA 的融合方式未定 —— 有团队反馈「一加触觉，原来的模型反而崩了」。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num gray">数</span><h3>数据</h3></div>
+          <p class="sm">量不够、绑定设备、没有交互结构。四者互相放大：硬件问题暴露在数据里，数据问题暴露在模型里，模型问题暴露在场景里。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num gray">T</span><h3>时间与速度</h3></div>
+          <p class="sm">现有采集忽略了 T 的存在：在一些高速运作场景下，机体会产生不受控制的震动和惯性，对设备本身是极大的损耗；「该用什么速度移动」是现在无法采集的信号。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card cool" style="margin-top:15px">
+      <p class="sm"><b class="cool">量不够，不见真相。</b>哪些 meta action 成立、哪种硬件设计正确、哪种表征有用 —— 这些都不是定义出来的，是从量里浮出来的。丁文伯把三个「跨」概括为未来两三年甚至五年的问题（第 14 页）；吴佳俊的表述是：表示是统一的，难的在于「如何得到它」—— 得到的唯一路径就是量。</p>
+      <p class="sm" style="margin-top:8px">这里的量不是数据条数，而是<b>应用多样性与实际完成的任务数</b> —— scale up 始终没有做起来，缺的正是这两者。</p>
+    </div>
+    <div class="card ink" style="margin-top:14px">
+      <p style="font-size:16px;font-weight:700;color:var(--paper2)">
+        竞争含义：谁先通过商业闭环把量做上去，谁先看见真相，谁就定义这一层的接口。<span class="hot">窗口期 = 别人还停留在「采集—卖设备」的旧模式里。</span>
+      </p>
+      <p class="sm" style="margin-top:9px">这不是一个可以被爬取的数据层，是一个只能被<b style="color:var(--paper2)">做出来</b>的数据层 —— 第 6 页的结论不变，现在它有了更具体的形状：场景 × meta action × 接触反馈。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide">
+  <div class="kick">创 始 人 的 六 条 原 始 判 断 · 原 样 收 录</div>
+  <h2>我们对数据与方法论的六个核心判断，一字未改</h2>
+  <div class="body">
+    <div class="row g14">
+      <div class="col">
+        <div class="card sm" style="margin-bottom:11px">
+          <div class="hd"><span class="num">1</span><h3>具身数据要做中学</h3></div>
+          <p class="sm">「可以让 agent 执行前，首先需要让遥操实行 —— 这里的遥操执行指的不是采集数据，而是直接执行任务并且商业闭环。在这个 ready 前，数据采集和遥操采集都是扯淡。现在的采集忽略了 T 的存在：在一些高速运作场景下，机体会产生不受控制的震动和惯性，对设备本身是极大的损耗，该用什么速度移动是现在无法采集的信号。</p>
+          <p class="sm" style="margin-top:6px">具身现在的数据采集方法是错的。做中学应该先商业闭环：先完成任务赚钱，在任务中迭代 meta action 和设备；而不是现在这样盲目地用特定设备采集然后卖设备 —— 这是本末倒置的商业模式，是强迫大家用不正确的通用设备、低效率完成特定任务的商业模式。应当在现在的各类设备中设计通用 meta action，在快速正确完成任务的基础上实现数据采集。只有先用遥操把任务完成之后，才可能把数据末端应用量提高，才可以在这个基础上得到正确的 meta action，以及迭代硬件设备的设计上。」</p>
+        </div>
+        <div class="card sm" style="margin-bottom:11px">
+          <div class="hd"><span class="num">2</span><h3>数据不应该绑定具身设备</h3></div>
+          <p class="sm">「绑定某一家的设备采集是没有意义的。真正重要的数据，不是人形机器人采集的那些关键点数据，而是环境数据、交互数据。一个场景可以被 100 种设备使用。绑定设备的数据走不远 —— 具身短期内不可能出现垄断公司，没可能像 CUDA 一样。」</p>
+        </div>
+        <div class="card sm">
+          <div class="hd"><span class="num">3</span><h3>行为上应该区分移动和关键物体交互</h3></div>
+          <p class="sm">「目前 locomotion、interaction 两个任务已经分开，但是还有很多具体任务区分得非常僵硬，尤其是在居家环境中的 locomotion。」</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="margin-bottom:11px">
+          <div class="hd"><span class="num">4</span><h3>拆分通用交互方式：meta action 与 VLA 重构</h3></div>
+          <p class="sm">「目前的 top 问题是需要拆分通用的交互方式：设备执行的是 meta action，录制的数据也应该拆分为 meta action；VLA 也一样，需要重新根据 meta action 进行重构。这个的优先级大于评测、大于硬件、大于数采。需要统一的不是行业标准，而是定制可衡量的评测空间 —— 不是端到端的评测，而是对 action 进行 meta 元素细分。」</p>
+        </div>
+        <div class="card sm" style="margin-bottom:11px">
+          <div class="hd"><span class="num">5</span><h3>重要的不是行为，而是场景</h3></div>
+          <p class="sm">「数据 view 下，重要的不是行为而是场景 —— 这是一个跟现在的 VLA 以及 LLM 直接存在的巨大 gap。」</p>
+        </div>
+        <div class="card hot">
+          <div class="hd"><span class="num">6</span><h3 class="hotd">硬件、软件、数据都有问题；量不够不见真相</h3></div>
+          <p class="sm">「现在的硬件、软件、数据都存在问题，量不够不见真相。scale up 始终没有做起来 —— 不是堆叠数据量，而是堆叠应用多样性和实际完成的任务。完成任务不是遥操加速十倍让机器执行：这种 formulation 会让机器人永远无法 scale up 到多样化的应用中，从最底层的硬件设计和实现上已经是不 make sense 的。只有在不考虑工作效率和泛化的前提下，目前的慢动作遥操才是合理的。」</p>
+        </div>
+      </div>
+    </div>
+    <p class="sm" style="margin-top:10px">六条判断原样收录（仅补标点与更正拼写），属本材料自有主张。第 16—19 页是对这六条的展开：场景 × 交互数据层、meta action、做中学飞轮、量不够不见真相。</p>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide">
+  <div class="kick">回 到 那 个 厨 房</div>
+  <h2>同一个场景，有了这一层之后</h2>
+  <div class="body">
+    <table>
+      <tr><th>场景里的一步</th><th>慢脑（已有）</th><th>快脑（已有）</th><th>脊髓（我们）</th></tr>
+      <tr><td class="k">「这有几个陶瓷餐具？」</td><td>视觉模型数出四个</td><td class="off">—</td><td class="off">—</td></tr>
+      <tr><td class="k">「把它洗了」</td><td>消解指代，规划五步</td><td class="off">—</td><td class="off">—</td></tr>
+      <tr><td class="k">拿起盘子</td><td>确认可以开始</td><td>接触力分布确认抓稳</td><td class="act">握力闭环维持</td></tr>
+      <tr><td class="k">发现盘子下压着垃圾</td><td>重写行动流：先擦桌</td><td class="act">抬起瞬间重量突变触发重新规划</td><td class="off">—</td></tr>
+      <tr><td class="k">瓷面打滑，盘子下落</td><td class="off">来不及</td><td class="off">来不及</td><td class="act">滑动检测 → 即刻增大握力</td></tr>
+      <tr><td class="k">机械臂碰到回来的人</td><td class="off">来不及</td><td class="off">来不及</td><td class="act">碰撞检测 → 即刻卸力</td></tr>
+    </table>
+    <p class="sm" style="margin-top:18px">前四行，产业已经解决。<b class="hotd">最后两行，是这一整层存在的理由 —— 也是机器人能否从演示走进真实厨房的分界线。</b></p>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide dark">
+  <div class="glow" style="width:600px;height:600px;left:50%;bottom:-320px;transform:translateX(-50%)"></div>
+  <div style="margin:auto;text-align:center;max-width:920px">
+    <div class="big">机器人要走进真实的房间，<br>总要有人先把<span class="hot">这一层数据</span>建起来。</div>
+    <p class="lead" style="margin-top:38px">它不能被爬取，不能被仿真，也不能事后补。<br>只能一次一次，真实地碰出来。</p>
+  </div>
+</section>
+
+<!-- 23 -->
+<section class="slide">
+  <div class="kick">附 · 本 材 料 说 明</div>
+  <h2>关于引号内的判断与数据</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card">
+          <h3>引号内的行业判断</h3>
+          <p class="sm" style="margin-top:2px">本材料中引号内的表述，来自以下公开行业材料：斯坦福吴佳俊 ECCV 2026 演讲（机器人世界表示）、Xspark AI 丁文伯的雷锋网《物理AI 50人》访谈（2026-09）与 DeepTech 访谈（2026-08）。用于说明行业共识与已被验证的现象，不代表其作者与本项目存在任何关联或背书。</p>
+        </div>
+        <div class="card cool sm" style="margin-top:13px">
+          <h3 class="cool">技术判断的来源</h3>
+          <p class="sm">三层架构、三个「跨」、数据质量标准等技术判断，均属公开讨论范畴；配套的技术依据与参考文献见内部技术版材料。第 6 页提到的 Galileo、Physics 101、Visual De-animation、Physical Primitive Decomposition、Spring-Gaus 均为已发表的学术工作（NeurIPS 2015 / BMVC 2016 / NeurIPS 2017 / ECCV 2018 / ECCV 2024），作者、出处与年份已逐条核对，在此仅用于说明「物理属性需经交互观测」这一结论已被独立研究反复确认。</p>
+          <p class="sm" style="margin-top:9px">第 14 页引用的视频物理真实性评测为 <b>Physion-Eval</b>（arXiv:2603.19607，2026），其中 83.3% / 93.5% 两个数字直接取自该文摘要，非本材料估算。</p>
+          <p class="sm" style="margin-top:9px">第 16—19 页新增引用的 <b>RT-X、Octo、π0、UMI、LEO、BEHAVIOR Robot Suite</b> 及 2026 年两场演讲、两篇访谈与 Xspark AI 融资报道，均已逐条核对出处。第 20 页为创始人六条核心判断的原文照录，属本材料自有主张。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot">
+          <h3 class="hotd">需要被明确区分的部分</h3>
+          <p class="sm" style="margin-top:2px">以下属于本材料的自有推论，不是任何第三方的观点：</p>
+          <ul style="margin-top:9px">
+            <li class="h"><b>触觉是物理属性的一种，它建模的是交互的反馈</b> —— 因此它不是视觉的补充模态，而是把「从远处反推」换成「在接触面上直接读数」。这也是这一层数据无法被互联网语料替代的根本原因</li>
+            <li class="h">这一层进入核心 BOM 而非选装件的市场结构判断</li>
+            <li class="h">时间窗口为「表示形式的收敛期」</li>
+            <li class="h">三个可选位置的取舍分析</li>
+            <li class="h">第 16—20 页：数据锚定场景而非设备、行为拆分为移动与关键物体交互、meta action 的定义与 VLA 重构、做中学的商业闭环、「量不够不见真相」；第 20 页为创始人六条核心判断的原文照录</li>
+          </ul>
+        </div>
+        <p class="sm" style="margin-top:13px">本材料不含任何财务预测、估值建议或投资承诺。所有前瞻性判断均存在不确定性，实际结果可能与之存在重大差异。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</template>
+
+<script>
+(function(){
+  const tpl = document.getElementById('deck');
+  const stage = document.getElementById('stage');
+  Array.from(tpl.content.children).forEach(n => stage.appendChild(n.cloneNode(true)));
+  const slides = Array.from(stage.querySelectorAll('.slide'));
+  const prog = document.getElementById('prog');
+  const pg = document.getElementById('pg');
+  let i = 0;
+
+  const isMobile = () => window.innerWidth <= 900;
+  const mpg = document.getElementById('mpg');
+  const mnav = document.getElementById('mnav');
+  function fit(){
+    if(isMobile()){ slides.forEach(sl => sl.style.transform = 'none'); return; }
+    const s = Math.min(window.innerWidth/1280, window.innerHeight/720) * 0.965;
+    slides.forEach(sl => sl.style.transform = 'scale('+s+')');
+  }
+  function show(n){
+    i = Math.max(0, Math.min(slides.length-1, n));
+    slides.forEach((sl,k) => sl.classList.toggle('on', k===i));
+    prog.style.width = ((i+1)/slides.length*100)+'%';
+    pg.textContent = (i+1) + ' / ' + slides.length;
+    if(mpg) mpg.textContent = (i+1) + ' / ' + slides.length;
+    if(isMobile()) window.scrollTo(0, 0);
+  }
+  if(mnav){
+    document.getElementById('mprev').addEventListener('click', function(){ show(i-1); });
+    document.getElementById('mnext').addEventListener('click', function(){ show(i+1); });
+  }
+  let _tx = null, _ty = null, _tbl = false;
+  document.addEventListener('touchstart', function(e){
+    _tx = e.touches[0].clientX; _ty = e.touches[0].clientY;
+    _tbl = !!e.target.closest('table');
+  }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if(_tx === null) return;
+    if(!_tbl){
+      const dx = e.changedTouches[0].clientX - _tx;
+      const dy = e.changedTouches[0].clientY - _ty;
+      if(Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy)*1.4) show(i + (dx < 0 ? 1 : -1));
+    }
+    _tx = null; _ty = null; _tbl = false;
+  }, {passive:true});
+  window.addEventListener('resize', fit);
+  document.addEventListener('keydown', e => {
+    if(['ArrowRight','ArrowDown',' ','PageDown','Enter'].includes(e.key)){ e.preventDefault(); show(i+1); }
+    else if(['ArrowLeft','ArrowUp','PageUp','Backspace'].includes(e.key)){ e.preventDefault(); show(i-1); }
+    else if(e.key==='Home'){ show(0); }
+    else if(e.key==='End'){ show(slides.length-1); }
+  });
+  stage.addEventListener('click', e => show(i + (e.clientX < window.innerWidth*0.28 ? -1 : 1)));
+  fit(); show(0);
+})();
+</script>
+</body>
+</html>

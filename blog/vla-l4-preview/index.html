@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLA 在 L4 的可执行落地方案</title>
+<style>
+:root{
+  --ink:#1e293b; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc;
+  --left:#334155; --right:#0f766e; --accent:#0f172a;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;color:var(--ink);background:var(--bg);line-height:1.7;font-size:16px;}
+.wrap{max-width:960px;margin:0 auto;padding:8px 20px 64px;}
+nav{position:sticky;top:0;background:rgba(248,250,252,.96);border-bottom:1px solid var(--line);padding:8px 0;z-index:5;overflow-x:auto;white-space:nowrap;}
+nav a{color:var(--accent);text-decoration:none;margin-right:14px;font-size:13px;}
+.cover{min-height:80vh;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--line);}
+.cover h1{font-size:34px;line-height:1.35;margin:0 0 14px;}
+.cover .rep{color:var(--muted);font-size:16px;}
+.cover .tag{color:var(--muted);font-size:13px;margin-top:10px;}
+section{padding:40px 0;border-bottom:1px solid var(--line);}
+h2{font-size:22px;margin:0 0 4px;}
+.secnote{color:var(--muted);font-size:13px;margin-bottom:20px;}
+/* 三笔账 */
+.ledger{display:grid;grid-template-columns:1fr;gap:14px;}
+.ledger .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;}
+.ledger .card h3{margin:0 0 8px;font-size:17px;color:var(--accent);}
+.ledger .card p{margin:0;font-size:15px;}
+/* 定义块 */
+.def{background:#fff;border:1px dashed #94a3b8;border-radius:10px;padding:14px 18px;margin-bottom:22px;font-size:14.5px;}
+.def h4{margin:0 0 6px;font-size:14px;color:var(--muted);}
+.def ul{margin:0;padding-left:20px;}
+/* 两栏对比 */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+.cmp-col{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;}
+.cmp-col .head{color:#fff;padding:10px 16px;font-weight:600;font-size:16px;}
+.cmp-col.left .head{background:var(--left);}
+.cmp-col.right .head{background:var(--right);}
+.cmp-col .body{padding:6px 16px 16px;display:flex;flex-direction:column;gap:14px;}
+.cmp-col h4{margin:12px 0 6px;font-size:14px;color:var(--muted);border-left:3px solid var(--line);padding-left:8px;}
+.cmp-col ul{margin:0;padding-left:20px;font-size:14.5px;}
+.cmp-col li{margin:6px 0;}
+.subgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+.sub{background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13.5px;}
+.sub h5{margin:0 0 4px;font-size:13px;color:var(--accent);}
+.sub ul{margin:0;padding-left:16px;font-size:13px;}
+.sub li{margin:4px 0;}
+/* 占位 */
+.stub{background:#fff;border:1px dashed #cbd5e1;border-radius:10px;padding:14px 18px;color:var(--muted);font-size:14px;}
+.foot{color:var(--muted);font-size:12.5px;padding-top:20px;}
+@media (max-width:760px){
+  .cover h1{font-size:28px;}
+  .cmp{grid-template-columns:1fr;}
+}
+@media (max-width:420px){
+  .subgrid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="ldy-en-note" lang="en" style="font:15px/1.65 -apple-system,Segoe UI,PingFang SC,Microsoft YaHei,sans-serif;max-width:860px;margin:18px auto;padding:14px 18px;border:1px solid rgba(128,128,128,.35);border-radius:12px;background:rgba(128,128,128,.06)"><strong>A workable VLA plan for L4 (short version)</strong><br>The condensed version of the same plan: the three accounts, the generation comparison, and the recommended sequence.<br><span style="opacity:.75">The full text of this page is in Chinese.</span></div>
+<div class="wrap">
+<nav>
+  <a href="#cover">封面</a><a href="#ledger">先算三笔账</a><a href="#compare">两代方案公平对比</a><a href="#s4">国内 robovan 现状</a><a href="#s5">建议与策略</a><a href="#s6">hard case 算账</a><a href="#s7">落地节奏</a>
+</nav>
+
+<section class="cover" id="cover">
+  <h1>VLA 在 L4 的可执行落地方案</h1>
+  <div class="rep">汇报人：于立冬</div>
+  <div class="tag">预览版 · 用于确认手机端阅读与两栏对比的布局效果</div>
+</section>
+
+<section id="ledger">
+  <h2>先算三笔账</h2>
+  <div class="secnote">（总结版已确认，先按此写）</div>
+  <div class="ledger">
+    <div class="card">
+      <h3>运营账</h3>
+      <p>这套方案在计算收益时的主要问题，在于 hard case 无法快速迭代——技术方案缺点导致的接管次数、接管后 SD 遥操的控制时间长度和释放时机（配送任务中的人机比例问题），对应最终结果就是平均速度和单任务毛利。</p>
+    </div>
+    <div class="card">
+      <h3>团队管理账</h3>
+      <p>VLA 方案跟 two-stage 方案对 infra 有着极其不同的需求；同时存在两个 team = 人员、算力和金钱上的冗余投入和浪费 + 非常严重的内部矛盾，而 data infra 和工程 team 没有冗余人力支持两代方案同时上线和迭代——这就是死局。</p>
+    </div>
+    <div class="card">
+      <h3>投入产出比</h3>
+      <p>hard case 和必须要遥操的场景，受现有闭环效率以及方案限制，2-3 个 Q 之内几乎不会有什么大的改变；同期 VLA 方案本身的成本在大幅下降（早期 VLA 迭代只需要 10-15%）。</p>
+    </div>
+  </div>
+</section>
+
+<section id="compare">
+  <h2>两代方案公平对比</h2>
+  <div class="secnote">大屏左右两栏；手机端自动上下堆叠：先完整读「现有方案」栏，再读「VLA 方案」栏，两栏用顶部色条区分。</div>
+  <div class="def">
+    <h4>先对齐定义（one-stage / two-stage）</h4>
+    <ul>
+      <li>区分标准不是「是否带着感知一起训练」，而是：① 是否采用 pretrain-ft-posttrain 模式；② 是否去除感知任务作为上游任务的存在；③ 是否还需要在标注上花钱。</li>
+      <li>one-stage 中感知更多依赖预刷；预刷可以为 pretrain 提供所需要的感知标签，本质是对大模型的蒸馏；不需要精准的感知结果，因为下游没有依赖。</li>
+    </ul>
+  </div>
+  <div class="cmp">
+    <div class="cmp-col left">
+      <div class="head">现有方案（perception+PnC → two-stage E2E）</div>
+      <div class="body">
+        <div>
+          <h4>成熟度</h4>
+          <ul>
+            <li>现状基于 perception+PnC 模式；中间版本为无图和轻图版本，变量为是否添加 map 地图；沿此路线走到终态是 two-stage 的 E2E。</li>
+            <li>数据闭环 infra、测试 infra、training infra、工程 infra 方案成熟；有成熟 team 可持续维护迭代。</li>
+            <li>终态 two-stage E2E 可以解决大部分的非 corner-case 场景。</li>
+          </ul>
+        </div>
+        <div>
+          <h4>主要问题</h4>
+          <ul>
+            <li>在计算收益时的主要问题，在于 hard case 无法快速迭代。</li>
+            <li>明细：技术方案缺点导致的接管次数、接管之后 SD 遥操的控制时间长度和释放时机（配送任务中的人机比例问题），对应最终结果就是平均速度和单任务毛利。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="cmp-col right">
+      <div class="head">VLA 方案</div>
+      <div class="body">
+        <div class="subgrid">
+          <div class="sub">
+            <h5>L4 行业现状</h5>
+            <ul>
+              <li>除 Tesla 外没有人实际大规模部署上车。</li>
+              <li>Tesla 也就几百辆车；Waymo 有测试没有上路推送；Wayve 有测试但没有大规模部署，基本都不超过 50 辆的测试规模。</li>
+            </ul>
+          </div>
+          <div class="sub">
+            <h5>L2 收敛现状</h5>
+            <ul>
+              <li>迭代方案和策略基本收敛；pretrain 跟随 LLM 发展，成本为早期 VLA 迭代的 10-15%；ft 及 post-train 策略方案趋近收敛。</li>
+              <li>分歧点：各家 perception 和 pnc 部门的话语权 → ft/post-train 中感知数据、分析、pnc RL 策略比例变化。分歧不在技术，在于组织结构。</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <h4>缺点与主要问题</h4>
+          <ul>
+            <li>缺点在于黑盒以及迭代不可控，导致投入过多——想要一个全能的模型，但拿不到具体解决问题的结果。</li>
+            <li>黑盒可以通过很多技术手段解决，现在已经不是主要问题了。</li>
+            <li>目前的主要问题：持续迭代能力弱。根因是 data 和 test infra 要做大做全需要时间。</li>
+            <li>L2 参考：走得快的公司 infra 经过一年多的迭代第一版已经基本收敛了，但当初搓的缝合怪卡住了方案的持续迭代，亟待重构 infra。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="s4">
+  <h2>国内 robovan 现状</h2>
+  <div class="stub">占位：去 HD map 化 + 可迭代的数据闭环（能力要求 + 行业对照）。内容待逐章确认后填充。</div>
+</section>
+<section id="s5">
+  <h2>建议与策略</h2>
+  <div class="stub">占位：VLA 必须做、two-stage 继续、重点转向遥操提升；两代方案并行是死局；切入策略 = 用遥操数据训练 VLA、逐步减少人驾介入。内容待逐章确认后填充。</div>
+</section>
+<section id="s6">
+  <h2>hard case 算账</h2>
+  <div class="stub">占位：hard case 细分、遥操默认 AD 均速为 0、第一步上限 8-15 kph、两套 issue 管理与算账模式。内容待逐章确认后填充。</div>
+</section>
+<section id="s7">
+  <h2>落地节奏</h2>
+  <div class="stub">占位：先拿 VLA 收益、不一把梭；对 L4 再花两年重新迭代不可接受；不要大而全 infra、与 two-stage 共存；infra 有问题但不是不能用；第一目标 = 取得 VLA 价值成果。内容待逐章确认后填充。</div>
+</section>
+
+<div class="foot">预览版：仅用于确认布局效果；最终内容以逐章确认稿为准。</div>
+</div>
+</body>
+</html>

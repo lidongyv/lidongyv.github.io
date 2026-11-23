@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>从看见到接触：技术要点与参考工作</title>
+<style>
+:root{
+  color-scheme: light;
+  --ink:#14161A; --ink2:#1F2329; --ink3:#2B3138;
+  --paper:#FFFFFF; --paper2:#F2F3F5; --paper3:#E6E8EB;
+  --touch:#FF5A36; --touchdim:#C23F22;
+  --vision:#3E7C8F; --visionlt:#6BA3B5;
+  --fast:#E8A33D;
+  --muted:#6B7280; --mutedk:#98A2AE;
+  --sans:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",sans-serif;
+  --mono:"Cascadia Mono","Consolas","SF Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#3A3D42;font-family:var(--sans);-webkit-font-smoothing:antialiased}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.slide{
+  position:absolute;width:1280px;height:720px;background:var(--paper);color:var(--ink);
+  padding:44px 56px;display:none;flex-direction:column;
+  box-shadow:0 18px 60px rgba(0,0,0,.4);overflow:hidden;
+}
+.slide.on{display:flex}
+.slide.dark{background:var(--ink);color:var(--paper2)}
+.kick{font-size:11.5px;font-weight:700;letter-spacing:3px;color:var(--muted);margin-bottom:11px}
+.dark .kick{color:var(--mutedk)}
+h1{font-size:46px;line-height:1.24;font-weight:700;letter-spacing:-.5px}
+h2{font-size:28px;line-height:1.3;font-weight:700;letter-spacing:-.3px;margin-bottom:20px}
+h3{font-size:14.5px;font-weight:700;margin-bottom:8px}
+h4{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:7px}
+p{font-size:13.5px;line-height:1.7;color:var(--ink2)}
+.dark p{color:var(--mutedk)}
+.lead{font-size:16px;line-height:1.72;color:var(--ink2)}
+.dark .lead{color:var(--mutedk)}
+.sm{font-size:12px;line-height:1.64;color:var(--muted)}
+.xs{font-size:11px;line-height:1.58;color:var(--muted)}
+.big{font-size:35px;line-height:1.36;font-weight:700}
+.hot{color:var(--touch)} .cool{color:var(--vision)} .warm{color:var(--fast)}
+.hotd{color:var(--touchdim)}
+.body{flex:1;display:flex;flex-direction:column}
+.row{display:flex;gap:18px}
+.row.g12{gap:12px}
+.col{flex:1}
+.card{background:var(--paper2);border-radius:12px;padding:18px 20px}
+.card.cool{background:#EAF1F4}
+.card.hot{background:#FDEDE9}
+.card.warm{background:#FBEFD9}
+.card.ink{background:var(--ink);color:var(--paper2)}
+.card.ink p,.card.ink .sm,.card.ink .xs{color:var(--mutedk)}
+.card.sm{padding:14px 16px}
+.glow{position:absolute;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(255,90,54,.30) 0%,rgba(255,90,54,.10) 45%,rgba(255,90,54,0) 72%)}
+.glow.c{background:radial-gradient(circle,rgba(62,124,143,.28) 0%,rgba(62,124,143,.09) 45%,rgba(62,124,143,0) 72%)}
+.num{width:25px;height:25px;border-radius:50%;background:var(--touch);color:#fff;
+  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.num.cool{background:var(--vision)} .num.warm{background:var(--fast)}
+.num.gray{background:var(--paper3);color:var(--muted)}
+.hd{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.hd h3{margin:0}
+ul{list-style:none;margin-top:3px}
+li{font-size:12.5px;line-height:1.6;color:var(--ink3);padding-left:14px;position:relative;margin-bottom:6px}
+li:before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:var(--paper3)}
+li.h:before{background:var(--touch)} li.c:before{background:var(--vision)}
+.dark li{color:var(--mutedk)}
+.band{display:flex;align-items:center;gap:20px;background:var(--paper2);border-radius:12px;
+  padding:14px 20px;margin-bottom:10px}
+.band .bt{width:200px;flex:none}
+.band .bt .t{font-size:15px;font-weight:700}
+.band .bt .s{font-size:10px;color:var(--muted);margin-top:3px}
+.band p{font-size:12px;line-height:1.62}
+table{width:100%;border-collapse:collapse}
+th{font-size:10.5px;font-weight:700;color:var(--muted);text-align:left;
+  padding:0 9px 8px 0;border-bottom:1px solid var(--paper3)}
+td{font-size:12px;line-height:1.52;color:var(--ink3);padding:9px 9px 9px 0;
+  border-bottom:1px solid var(--paper3);vertical-align:top}
+td.k{font-weight:700;color:var(--ink);width:22%}
+td.off{color:var(--mutedk)}
+td.act{font-weight:700;color:var(--touchdim)}
+table.sm td{font-size:11.5px;padding:7px 9px 7px 0}
+.eq{font-family:var(--mono);font-size:13px;background:var(--paper2);border-radius:8px;
+  padding:11px 14px;color:var(--ink);margin:9px 0;line-height:1.6}
+.dark .eq{background:var(--ink3);color:var(--paper2)}
+.ref{font-size:11px;line-height:1.55;color:var(--muted);padding-left:13px;position:relative;margin-bottom:6px}
+.ref:before{content:"▸";position:absolute;left:0;top:0;color:var(--paper3);font-size:9px}
+.ref b{color:var(--ink3);font-weight:700}
+.ref .v{color:var(--mutedk)}
+.tag{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.5px;padding:2px 7px;
+  border-radius:4px;background:var(--paper3);color:var(--muted);margin-left:6px;vertical-align:1px}
+.tag.ok{background:#DFEAE4;color:#3D7355}
+.tag.chk{background:#FAE3D8;color:var(--touchdim)}
+.flow{display:flex;align-items:stretch;gap:0;margin:4px 0}
+.step{flex:1;background:var(--paper2);border-radius:10px;padding:12px 10px;text-align:center}
+.step.on{background:#E2EDF1}
+.step .sl{font-size:8.5px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:5px}
+.step .sv{font-size:11.5px;font-weight:700;line-height:1.4}
+.arr{display:flex;align-items:center;justify-content:center;width:26px;color:var(--paper3);
+  font-size:13px;font-weight:700;flex:none}
+.bars{display:flex;gap:16px;align-items:flex-end}
+.bcol{flex:1;display:flex;flex-direction:column;gap:7px}
+.bl{font-size:12px;font-weight:700;margin-bottom:2px}
+.bar{border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;text-align:center;padding:0 6px}
+.foot{font-size:10.5px;color:var(--mutedk);margin-top:auto;padding-top:12px}
+#prog{position:fixed;left:0;bottom:0;height:3px;background:var(--touch);transition:width .22s;z-index:9}
+#pg{position:fixed;right:15px;bottom:11px;font-size:11px;color:rgba(255,255,255,.5);z-index:9}
+#mnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:10;
+  background:rgba(20,22,26,.94);padding:9px 16px calc(9px + env(safe-area-inset-bottom));
+  align-items:center;justify-content:space-between;gap:10px}
+#mnav button{width:56px;height:40px;border:0;border-radius:10px;background:rgba(255,255,255,.14);
+  color:#fff;font-size:22px;font-weight:700;line-height:1}
+#mnav .t{color:#fff;font-size:12.5px;font-weight:700;letter-spacing:1px}
+@media (max-width:900px){
+  html,body{background:#14161A;-webkit-tap-highlight-color:transparent}
+  #stage{position:static;display:block;overflow:visible}
+  .slide{position:relative;width:100%;height:auto;min-height:100vh;min-height:100dvh;
+    padding:24px 18px 78px;box-shadow:none;transform:none!important;border-radius:0}
+  .slide.dark div[style^="margin-top"]{margin-top:20px!important}
+  #pg{display:none}
+  #prog{top:0;bottom:auto}
+  #mnav{display:flex}
+  .kick{font-size:10px;letter-spacing:2px;margin-bottom:9px}
+  h1{font-size:25px;line-height:1.3}
+  h2{font-size:18.5px;line-height:1.35;margin-bottom:14px}
+  h3{font-size:13.5px}
+  h4{font-size:11px}
+  p{font-size:13px;line-height:1.66}
+  .lead{font-size:14px;line-height:1.66}
+  .big{font-size:21px;line-height:1.42}
+  .sm{font-size:12px;line-height:1.6}
+  .xs{font-size:11px;line-height:1.55}
+  .ref{font-size:11px;line-height:1.52}
+  .eq{font-size:12px;padding:10px 12px}
+  .row,.row.g12,.row.g14{flex-direction:column;gap:10px}
+  .band{flex-direction:column;align-items:flex-start;gap:8px;padding:12px 14px}
+  .band .bt{width:auto}
+  .flow{flex-direction:column}
+  .flow .arr{transform:rotate(90deg);width:100%;height:22px}
+  .card{padding:14px 15px}
+  .card.sm{padding:12px 13px}
+  table{display:block;overflow-x:auto}
+  th,td{font-size:11px;padding:7px 8px 7px 0}
+}
+@media print{
+  html,body{background:#fff}
+  #stage{position:static;display:block;overflow:visible}
+  .slide{display:flex!important;position:relative;page-break-after:always;box-shadow:none;
+    transform:none!important;margin:0}
+  #prog,#pg{display:none}
+}
+</style>
+</head>
+<body>
+<div class="ldy-en-note" lang="en" style="font:15px/1.65 -apple-system,Segoe UI,PingFang SC,Microsoft YaHei,sans-serif;max-width:860px;margin:18px auto;padding:14px 18px;border:1px solid rgba(128,128,128,.35);border-radius:12px;background:rgba(128,128,128,.06)"><strong>From seeing to touching: technical notes (extended)</strong><br>The full version of the technical essay: four questions, kinematic priors, and the reference work.<br><span style="opacity:.75">The full text of this page is in Chinese.</span></div>
+<div id="stage"></div>
+<div id="prog"></div>
+<div id="pg"></div>
+<div id="mnav"><button id="mprev" type="button">‹</button><span class="t" id="mpg"></span><button id="mnext" type="button">›</button></div>
+
+<template id="deck">
+
+<!-- 1 -->
+<section class="slide dark">
+  <div class="glow" style="width:620px;height:620px;right:-190px;top:-250px"></div>
+  <div class="glow c" style="width:400px;height:400px;left:-160px;bottom:-180px"></div>
+  <div class="kick">内 部 技 术 分 享 · 2026.09</div>
+  <div style="margin-top:118px">
+    <h1>从看见，到接触</h1>
+    <p class="lead" style="margin-top:30px;max-width:800px">
+      一条连续的技术线：世界表示如何被写下来，<br>
+      以及为什么接触这一层至今没有被写进去。
+    </p>
+    <p class="sm" style="margin-top:26px;color:#5A6068">
+      含方法细节、失效条件与参考工作 · 文献标注了置信度，请见末页说明
+    </p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <div class="kick">这 份 材 料 的 结 构</div>
+  <h2>四个技术问题，一条线索</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card cool" style="height:100%">
+          <div class="hd"><span class="num cool">1</span><h3 class="cool">世界怎么被写成可推演的形式</h3></div>
+          <p class="sm">组合式抽象、符号谓词与神经网络的分工、前置/后置条件的自动发现、点云轨迹验证。</p>
+          <p class="xs" style="margin-top:9px">P3 — P6</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card cool" style="height:100%">
+          <div class="hd"><span class="num cool">2</span><h3 class="cool">先验从哪来</h3></div>
+          <p class="sm">关节物体运动学先验的条件 VAE 建模，以及把 2D 扩散先验蒸馏到 3D/4D 表示的 SDS 路线。</p>
+          <p class="xs" style="margin-top:9px">P7 — P9</p>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div class="col">
+        <div class="card hot" style="height:100%">
+          <div class="hd"><span class="num">3</span><h3 class="hotd">为什么接触这一层补不上</h3></div>
+          <p class="sm">物理属性只能由交互反馈观测到；触觉是这个反问题的另一端 —— <b>而这条线自己从 2018 年起就已经在伸手去碰</b>。以及 hold 谓词的时间性缺陷、三层架构、跨传感器表征、评测缺口。</p>
+          <p class="xs" style="margin-top:9px">P10 — P24</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot" style="height:100%">
+          <div class="hd"><span class="num">4</span><h3 class="hotd">数据应该怎么被采出来</h3></div>
+          <p class="sm">采集方法的本末倒置、数据锚定场景而非设备、行为拆分为 meta action、VLA 按 meta action 重构、做中学的商业闭环。</p>
+          <p class="xs" style="margin-top:9px">P25 — P30</p>
+        </div>
+      </div>
+    </div>
+    <div class="card ink" style="margin-top:18px">
+      <p style="font-size:15px;font-weight:700;color:var(--paper2)">
+        贯穿全篇的线索：<span class="cool">世界表示</span>这件事被做得越来越完整，
+        但它始终写的是<span class="cool">几何与运动</span>；<span class="hot">接触力学</span>不是它的低分辨率版本，而是一个正交的量。
+      </p>
+    </div>
+    <p class="sm" style="margin-top:14px">每个技术点给出：做法 → 关键设计 → <b>失效条件</b>。失效条件是这份材料最值得讨论的部分。</p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <div class="kick">问 题 一 · 世 界 表 示</div>
+  <h2>组合式抽象：符号负责组合，网络负责世界</h2>
+  <div class="body">
+    <div class="flow">
+      <div class="step"><div class="sl">输 入</div><div class="sv">图像 / 视频<br>语言指令</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="sl">基 础 模 型</div><div class="sv">感知<br>语言理解</div></div>
+      <div class="arr">→</div>
+      <div class="step on"><div class="sl">组 合 式 抽 象</div><div class="sv">原子技能<br>谓词集合</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="sl">规 划</div><div class="sv">技能串联<br>+ 验证器</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="sl">输 出</div><div class="sv">动作</div></div>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num cool">S</span><h3>状态 States</h3></div>
+          <p class="xs">二元谓词，由网络验证而非人工判定。<span style="font-family:var(--mono)">is_dirty(x)</span>、<span style="font-family:var(--mono)">on(A,B)</span>。验证器是一个分类网络或直接调用 VLM。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num cool">A</span><h3>动作 Actions</h3></div>
+          <p class="xs">原子技能，带前置与后置条件。<span style="font-family:var(--mono)">wash(x)</span> 要求 <span style="font-family:var(--mono)">hold(x)</span> ∧ <span style="font-family:var(--mono)">faucet_on</span>，效果是 <span style="font-family:var(--mono)">¬is_dirty(x)</span>（若表面有洗洁精）。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num cool">R</span><h3>关系 Relations</h3></div>
+          <p class="xs">「是这套符号化的类型定义了组合性，而由网络来处理感知与控制。」符号层只回答「什么能接在什么后面」。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card cool" style="margin-top:16px">
+      <h4 class="cool" style="margin-bottom:6px">这套设计解决的核心问题</h4>
+      <p class="sm">纯神经策略无法做长程组合泛化；纯符号规划器无法泛化到新场景。把组合性交给符号、把感知与控制交给网络，是当前长程操作任务的主流折衷。它允许「推演」：前置条件满足 → 执行 → 后置效果成立 → 下一步真正被允许做什么。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <div class="kick">问 题 一 · 关 键 设 计</div>
+  <h2>前置条件不是手写的，是被发现的</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col" style="flex:1.05">
+        <div class="card hot">
+          <p style="font-size:14px"><b class="hotd">「如果所有这些东西都是手工编码的，那它就退化成了传统的规划系统，而那是无法泛化的。」</b></p>
+          <p class="sm" style="margin-top:11px">于是问题变成：你怎么知道 <span style="font-family:var(--mono)">hold</span> 是 <span style="font-family:var(--mono)">wash</span> 的前置条件？答案是这些同样由网络发现。</p>
+        </div>
+        <div class="card" style="margin-top:13px">
+          <h4>整条链路的学习分工</h4>
+          <ul>
+            <li class="c">哪些属性值得被表示 —— 基础模型生成假设</li>
+            <li class="c">哪些属性构成前置/后置条件 —— 网络生成</li>
+            <li class="c">某个状态此刻是否成立 —— 网络验证</li>
+            <li class="c">具体怎么动 —— 网络给出控制策略</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card cool" style="height:100%">
+          <h4 class="cool">参考工作 · 算子学习谱系</h4>
+          <div class="ref"><b>BLADE｜Behavior from Language and Demonstration</b><br>
+            Liu, Nie, Zhang, Mao, Wu｜<span class="v">arXiv 2505.21981</span><span class="tag ok">已核实</span><br>
+            与本页主张最直接对应的一篇：从带语言标注的演示中抽取高层动作库，<b class="hotd">「可以自动恢复这类结构化表示，无需人工标注的状态或符号定义」</b>。每个高层动作的前置条件与效果都<b>落在视觉感知上</b>，控制器则是神经网络策略。实机验证覆盖带关节的物体、部分可观测与几何约束。</div>
+          <div class="ref"><b>LOFT｜Learning Symbolic Operators for TAMP</b><br>
+            Silver, Chitnis, Tenenbaum, Kaelbling, Lozano-Pérez｜<span class="v">IROS 2021</span><span class="tag ok">已核实</span><br>
+            自底向上的关系学习：先对 effect 聚类，再用贪心 + 最佳优先搜索归纳 precondition。本质是归纳逻辑编程（ILP），负样本至关重要。</div>
+          <div class="ref"><b>Learning Neuro-Symbolic Skills for Bilevel Planning</b><br>
+            Silver, Athalye, Tenenbaum, Lozano-Pérez, Kaelbling｜<span class="v">CoRL 2022</span><span class="tag ok">已核实</span><br>
+            把参数化策略与算子、采样器联合学习。</div>
+          <div class="ref"><b>Predicate Invention for Bilevel Planning</b><br>
+            Silver, Chitnis, Kumar, McClinton, Lozano-Pérez, Kaelbling, Tenenbaum｜<span class="v">AAAI 2023</span><span class="tag ok">已核实</span><br>
+            解决 LOFT「谓词需人工给定」的限制。</div>
+          <div class="ref"><b>Neuro-Symbolic Imitation Learning</b>｜Keller, Tanneberg, Peters｜<span class="v">ICRA 2025</span><span class="tag ok">已核实</span><br>
+            从未分割的原始演示中同时获得符号与技能。</div>
+        </div>
+      </div>
+    </div>
+    <p class="xs" style="margin-top:12px"><b>可讨论：</b>上述谱系里的 precondition 全部是<b>静态可判定</b>的逻辑式。第 14 页会指出这个假设在接触场景下失效。</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <div class="kick">问 题 一 · 一 个 有 用 的 类 比</div>
+  <h2>物理世界里的 Claude Code</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card cool">
+          <h3 class="cool">同构的部分</h3>
+          <ul style="margin-top:6px">
+            <li class="c">拆解成若干步骤（技能发现）</li>
+            <li class="c">验证「拥有这些技能」意味着什么</li>
+            <li class="c">考虑技能如何串联完成长程任务</li>
+            <li class="c">最后用验证器检查需求是否全部被满足</li>
+          </ul>
+          <p class="xs" style="margin-top:10px">这个类比的价值在于：它说明「符号规划 + 神经执行」不是robotics特有的权宜之计，而是长程任务的通用结构。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot">
+          <h3 class="hotd">而这个类比的边界，恰好是全篇的要害</h3>
+          <p style="margin-top:6px"><b>Claude Code 的验证器不需要赶时间。</b></p>
+          <p class="sm" style="margin-top:10px">文件不会在你检查它的时候滑下桌子。代码世界里验证失败就重试，代价是一次 rerun；物理世界里验证失败意味着一个盘子已经碎了。</p>
+          <div class="eq" style="margin-top:12px;font-size:12px">
+            验证器延迟预算：<br>
+            数字世界　O(秒) — 可重试<br>
+            物理世界　O(毫秒) — 不可逆
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card ink" style="margin-top:16px">
+      <p class="sm">这一页要记住的是<b style="color:var(--paper2)">「不可逆性 + 延迟预算」</b>这一对约束。后面三层架构的全部工程理由，都可以从这一对约束推出来。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <div class="kick">问 题 一 · 表 示 的 维 度 扩 展</div>
+  <h2>从 2D 验证到点云轨迹</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card sm" style="margin-bottom:12px">
+          <h4>第一版的做法与局限</h4>
+          <p class="xs">「当我说『它是不是脏的』的时候，所有的验证都是在 2D 里完成的。你分割出一块图像区域，然后要么用你自己的网络去判断，要么直接发给一个视觉大模型。」</p>
+          <p class="xs" style="margin-top:9px"><b>失效条件：</b>涉及三维空间关系的谓词无法在 2D 判定。「物体 A 是不是在物体 B 上面？这种情况，你真的必须去发现三维场景才行。」</p>
+        </div>
+        <div class="card cool sm">
+          <h4 class="cool">扩展之后</h4>
+          <p class="xs">输入变为随时间变化的三维点云（点云轨迹）。可检测物体、验证状态、验证空间关系，并泛化到更长的任务周期。训练时演示抓放一本书，测试时两本书仍能组合技能。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="height:100%">
+          <h4>这一步加的到底是什么 —— 请注意</h4>
+          <div class="eq" style="font-size:12px">
+            2D → 3D → 4D<br>
+            = 空间分辨率 + 时间分辨率
+          </div>
+          <p class="sm" style="margin-top:10px">点云轨迹能精确告诉你盘子的<b>位置随时间怎么变</b>。它把「看见」这一层写得越来越厚。</p>
+          <p class="sm" style="margin-top:12px"><b class="hotd">但它始终在同一层里。</b>无论点云多密、帧率多高，它测量的都是位形（configuration），不是力。</p>
+          <p class="xs" style="margin-top:12px">这一点在第 10—13 页会被形式化：分辨率的提升不会跨越状态空间的类型边界。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <div class="kick">问 题 二 · 先 验 从 哪 来</div>
+  <h2>关节运动学先验：让物体自己说出能被怎么动</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col" style="flex:1.05">
+        <div class="card">
+          <h4>方法结构｜条件 VAE + 纯几何编码器</h4>
+          <div class="eq">
+训练：<br>
+  enc₁(形变场, mesh) → q(z)      ← 条件 VAE<br>
+  enc₂(mesh)         → p(z)      ← 只看几何<br>
+  dec(z, mesh)       → 形变场<br>
+  L = L_recon + β · KL( q(z) ‖ p(z) )<br><br>
+测试：只用 enc₂ → 采样 z → dec → 一个可能的形变
+          </div>
+          <p class="xs" style="margin-top:9px">关键设计：训练时让「只看几何」的分布去逼近「看过真实形变」的分布，测试时就能仅凭几何采样出合理的运动方式。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card cool" style="margin-bottom:12px">
+          <h4 class="cool">最有说服力的结果</h4>
+          <p class="xs">用 iPhone 对房间做三维扫描 —— 结果不准确，「全是伪影」、「一团一团（blobby）的东西」。送进系统后依然零样本泛化，预测出与水龙头、窗帘、洗碗机、马桶、笔记本、显示器交互的可能方式。</p>
+          <p class="xs" style="margin-top:9px"><b>意义：</b>对几何噪声的鲁棒性说明模型学到的是类别级的运动学先验，而非精确几何拟合。</p>
+        </div>
+        <div class="card hot sm">
+          <p class="xs"><b class="hotd">产出被称为「免费的演示」（free demonstrations）</b> —— 无需人类遥操作即可获得可用的交互轨迹。第 10 页将论证这个说法需要一个脚注。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card sm" style="margin-top:14px">
+      <h4 class="cool" style="margin-bottom:5px">参考工作 · 关节物体建模</h4>
+      <div class="row g12">
+        <div class="col"><div class="ref"><b>Ditto｜Building Digital Twins of Articulated Objects from Interaction</b><br>
+          Jiang, Hsu, Zhu｜<span class="v">CVPR 2022</span><span class="tag ok">已核实</span><br>
+          交互前后两帧点云 → 隐式神经表示联合预测占据、部件分割与关节参数。已知限制：只处理两部件物体，跨类别泛化有限。</div></div>
+        <div class="col"><div class="ref"><b>NeuROK｜Generative 4D Neural Object Kinematics</b><br>
+          Geng, He, Gao, Zhang, Wu, Wu｜<span class="v">arXiv 2605.30347</span><span class="tag ok">已核实</span><br>
+          同一条线的最新一步，且它<b>亲口说明了本材料的核心命题</b>：「多数现有方法<b class="hotd">预设一个物理模型，再用系统辨识去估参数</b>，因而受限于特定类别和小规模数据集。」它的解法是学一个隐式运动学状态空间取代显式辨识 —— 注意：这是<b>绕开</b>反演，不是解决反演。参数本身仍然没有被观测到。</div></div>
+      </div>
+      <p class="xs" style="margin-top:9px">两条路线的分工：Ditto 需要<b>先交互再观测</b>，运动学先验路线只需<b>静态几何</b>。这正是第 11—13 页要展开的那条分界线 —— 凡是能从静态几何拿到的，都归「形状」；凡是必须先动一下的，都归「物理属性」。</p>
+      <p class="xs" style="margin-top:6px"><b class="hotd">本页方法即 Neural Kinematics（ECCV 2026）</b>，出自吴佳俊 ECCV 2026 演讲（已核实）；「iPhone 扫描零样本泛化」即演讲中的 free demonstrations 例子。<span class="tag ok">已核实</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <div class="kick">问 题 二 · 从 生 成 模 型 借 经 验</div>
+  <h2>SDS：把视频扩散模型当作先验，而不是生成器</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col" style="flex:1.02">
+        <div class="card">
+          <h4>管线</h4>
+          <div class="eq" style="font-size:11.5px">
+静态 mesh → 3D Gaussian Splatting → 加时间维 → 4D 表示<br>
+　　↓ 多视角可微渲染<br>
+　　视频片段 → 视频扩散模型算 score<br>
+　　↓ 梯度回传<br>
+　　优化底层 4D 表示
+          </div>
+          <p class="xs" style="margin-top:9px"><b>SDS 损失的原始形式（文本到 3D）：</b></p>
+          <div class="eq" style="font-size:11.5px">L_SDS = E_{t,ε}[ w(t)·‖ ε_φ(z_t | y, t) − ε ‖² ]</div>
+          <p class="xs">梯度通过渲染 x = g(θ) 回流更新底层表示 θ。这里把 θ 从 NeRF 换成 4D 高斯，把 2D 图像扩散换成视频扩散。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot" style="margin-bottom:12px">
+          <h4 class="hotd">一个必须讲清的澄清</h4>
+          <p class="sm">「我们实际上并没有真的生成视频。视频扩散模型只被用来计算分数。没有任何视频被生成出来。它被当作一个先验来指导你。」</p>
+        </div>
+        <div class="card cool sm" style="margin-bottom:12px">
+          <h4 class="cool">结果</h4>
+          <p class="xs">机器人手臂抓起一块砖、篮球砸到砖筐弹开、猫跳上坐垫；一块布可得到任意密集的点追踪轨迹。真机可在无演示条件下学会对应任务。</p>
+        </div>
+        <div class="card sm">
+          <h4>已知失效模式</h4>
+          <p class="xs">来自 SDS 原始文献：过饱和、过平滑；随机种子间多样性不足（反向 KL 的 mode-seeking）；Janus 多头伪影。时间维会放大不一致性。</p>
+          <p class="xs" style="margin-top:8px"><b class="hotd">更根本的一条（2026 年由这条线自己测出来）：</b>把视频模型当物理先验，前提是它真的懂物理。<b>Physion-Eval</b> 用 10,990 条专家推理轨迹、22 个细分物理类别去查五个 SOTA 视频模型，结论是在物理关键场景下 <b class="hot">83.3%</b> 的第三人称、<b class="hot">93.5%</b> 的第一人称生成视频含有<b>人类可辨识的物理错误</b>。</p>
+        </div>
+      </div>
+    </div>
+    <div class="row g12" style="margin-top:13px">
+      <div class="col"><div class="ref"><b>DreamFusion｜Text-to-3D using 2D Diffusion（SDS 提出）</b><br>
+        Poole, Jain, Barron, Mildenhall｜<span class="v">ICLR 2023 · arXiv 2209.14988</span><span class="tag ok">已核实</span></div></div>
+      <div class="col"><div class="ref"><b>3D Gaussian Splatting for Real-Time Radiance Field Rendering</b><br>
+        Kerbl, Kopanas, Leimkühler, Drettakis｜<span class="v">SIGGRAPH / ACM TOG 42(4), 2023</span><span class="tag ok">已核实</span></div></div>
+      <div class="col"><div class="ref"><b>Physion-Eval｜Evaluating Physical Realism in Generated Video</b><br>
+        Zhang, Jing, Yu, Ding, Nie, Du, Zou, Wu, Shuai｜<span class="v">arXiv 2603.19607</span><span class="tag ok">已核实</span><br>
+        83.3% / 93.5% 的生成视频含物理错误 —— 即「先验本身有多可靠」的直接度量。</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide dark">
+  <div class="glow c" style="width:500px;height:500px;right:-170px;top:-200px"></div>
+  <div class="kick">小 结 · 到 这 里 世 界 看 起 来 已 经 写 完 了</div>
+  <div style="margin-top:80px">
+    <div class="big">几何、指代、可动方式、<br>随时间变化的轨迹，<br>甚至连演示都可以是免费的。</div>
+    <p class="lead" style="margin-top:36px">如果技术线在这里结束，机器人应该已经能把那个盘子洗了。</p>
+    <div class="big" style="margin-top:34px">然后它<span class="hot">伸出手</span>。</div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <div class="glow" style="width:380px;height:380px;right:-150px;top:-150px"></div>
+  <div class="kick">问 题 三 · 核 心 论 点</div>
+  <h2>「免费的演示」里，缺的是哪一栏</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card cool" style="height:100%">
+          <h4 class="cool">视频扩散模型见过的</h4>
+          <ul style="margin-top:6px">
+            <li class="c">一只猫通常怎样跳上坐垫</li>
+            <li class="c">一块布可以怎样被拉动</li>
+            <li class="c">手臂看起来如何抓起一块砖</li>
+            <li class="c">密集点追踪 —— 物体移动到了哪里</li>
+          </ul>
+          <p class="xs" style="margin-top:10px"><b>全部是被观察到的运动学。</b>互联网视频里有海量这类数据，这正是 SDS 路线成立的前提。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot" style="height:100%">
+          <h4 class="hotd">而同一场景里同时存在的</h4>
+          <ul style="margin-top:6px">
+            <li class="h">猫落在坐垫上时，爪垫受到多大的力</li>
+            <li class="h">拉那块布需要多少牛顿，何时会撕裂</li>
+            <li class="h">那块砖滑了没有，夹持力是否过大</li>
+            <li class="h">瓷面加洗洁精后，摩擦系数变成多少</li>
+          </ul>
+          <p class="xs" style="margin-top:10px"><b>全部是接触力学。摄像机从不记录它。</b></p>
+        </div>
+      </div>
+    </div>
+    <div class="card ink" style="margin-top:16px">
+      <p style="font-size:15.5px;font-weight:700;color:var(--paper2)">
+        「free demonstrations」需要一个脚注：它免费提供的是<span class="cool">运动学</span>，不是<span class="hot">力学</span>。
+      </p>
+      <p class="sm" style="margin-top:10px">
+        这不是分辨率不够 —— 再密的点云也补不上，因为它们不是几何量。形式化地说：视觉观测给出的是位形轨迹 q(t)，而接触力 f 通过 M(q)q̈ + C(q,q̇)q̇ + G(q) = τ + Jᵀf 与之耦合；在质量、摩擦、刚度等参数未知时，从 q(t) 反解 f 是欠定的。
+      </p>
+    </div>
+    <p class="xs" style="margin-top:12px"><b>一个佐证：</b>谈运动学轨迹时可以说「你再也不必去遥操作机器人了，因为一切都是生成的」；而在触觉侧，数据仍必须一寸一寸真实采集，因为互联网上根本不存在。判断的差异，正好沿着运动学与力学的边界分开。</p>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <div class="kick">问 题 三 · 一 个 更 准 确 的 说 法</div>
+  <h2>几何可以被静态观测，物理属性不能</h2>
+  <div class="body">
+    <div class="card ink" style="margin-bottom:12px;padding:13px 20px">
+      <p style="font-size:15px;font-weight:700;color:var(--paper2)">
+        物理属性<span class="hot">只能通过一次交互的反馈</span>被观测到。<span style="color:var(--mutedk);font-weight:400;font-size:12.5px">　—— 不是触觉领域的新主张，同一条研究脉络里早已反复证明过。</span>
+      </p>
+    </div>
+    <div class="row">
+      <div class="col" style="flex:1.06">
+        <div class="card cool" style="height:100%">
+          <h4 class="cool">反演路线 · 从交互反馈反推物理属性（十年，同一条线）</h4>
+          <div class="ref"><b>Galileo｜Perceiving Physical Object Properties by Integrating a Physics Engine with Deep Learning</b><br>
+            Wu, Yildirim, Lim, Freeman, Tenenbaum｜<span class="v">NeurIPS 2015 · 被引 415</span><span class="tag ok">已核实</span><br>
+            物理引擎作生成模型，MCMC 反推质量、摩擦、形状。<b>观测量是碰撞前后的运动变化 —— 也就是交互的反馈。</b></div>
+          <div class="ref"><b>Physics 101｜Learning Physical Object Properties from Unlabeled Videos</b><br>
+            Wu, Lim, Zhang, Tenenbaum, Freeman｜<span class="v">BMVC 2016 · 被引 170 · doi:10.5244/C.30.39</span><span class="tag ok">已核实</span><br>
+            <b>必须看物体滑下斜面、被撞、落水</b>，才能读出质量、体积、材质、摩擦。数据集本身就是按「交互场景」组织的。</div>
+          <div class="ref"><b>Visual De-animation｜Learning to See Physics / Scene Physics Acquisition</b><br>
+            Wu, Lu, Kohli, Freeman, Tenenbaum｜<span class="v">NeurIPS 2017 · 被引 232</span><span class="tag ok">已核实</span><br>
+            可微物理引擎让感知端到端可训。<b>同样以「发生了什么交互」为输入。</b></div>
+          <div class="ref"><b>Physical Primitive Decomposition</b>｜Liu, Freeman, Tenenbaum, Wu｜<span class="v">ECCV 2018 · 被引 30 · arXiv:1809.05070</span><span class="tag ok">已核实</span><br>
+            把物体拆成带质量与摩擦的物理基元 —— 属性被挂在几何上，但<b>属性值仍来自交互观测</b>。</div>
+          <div class="ref"><b>Spring-Gaus｜Reconstruction and Simulation of Elastic Objects with Spring-Mass 3D Gaussians</b><br>
+            Zhong, Yu, Wu, Li｜<span class="v">ECCV 2024 · 被引 120 · arXiv:2403.09434</span><span class="tag ok">已核实</span><br>
+            八年后同一问题仍在：原文开篇即指出「现有方法（如 3D Gaussians）建模了外观与几何，<b>但缺乏估计物体物理属性的能力</b>」—— 必须再嵌一个弹簧质点模型，并且仍然<b>要多视角视频里那段真实运动</b>才能拟合。</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="margin-bottom:10px">
+          <h4>五篇工作的公共结构</h4>
+          <div class="eq" style="font-size:11.5px">
+施加/观察一次交互 a<br>
+　　↓<br>
+读取反馈 Δ（运动变化 / 接触读数）<br>
+　　↓<br>
+反演物理属性 θ = {m, μ, k, …}
+          </div>
+          <p class="xs" style="margin-top:7px">没有任何一篇是从<b>静态图像</b>直接读出质量或摩擦的 —— 因为原理上做不到。几何是物体的<b>外观</b>，物理属性是物体<b>在被作用时的行为</b>。</p>
+        </div>
+        <div class="card hot sm">
+          <h4 class="hotd">而这条线的三个结构性限制</h4>
+          <ul style="margin-top:4px">
+            <li class="h">只能<b>被动观测别人的交互</b>，不能在自己的操作回路里实时用</li>
+            <li class="h">强依赖物理引擎的参数化，刚体+库仑摩擦之外难标定</li>
+            <li class="h">只能反演<b>粗粒度标量</b>（μ ≈ 0.3），不是接触面上随时间变化的力分布</li>
+          </ul>
+          <p class="xs" style="margin-top:7px">这三条不是实现问题，是<b>把仪器放在远端</b>的必然代价 —— 下一页给出直接的解法。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+  <div class="glow c" style="width:400px;height:400px;right:-150px;bottom:-170px"></div>
+  <div class="kick">问 题 三 · 一 条 常 被 忽 略 的 事 实</div>
+  <h2>这条线自己早就伸向了触觉 —— 二十年，没有断过</h2>
+  <div class="body">
+    <div class="card ink" style="margin-bottom:11px;padding:13px 20px">
+      <p style="font-size:14.5px;font-weight:700;color:var(--paper2)">
+        「触觉 vs 视觉」<span class="hot">从来不是一场路线之争</span>。<span style="color:var(--mutedk);font-weight:400;font-size:12.5px">　同一批研究者在同一条线上，只要走到「物理属性」这一步，就会自己伸手去碰 —— 从 2018 年一直做到今天。</span>
+      </p>
+    </div>
+    <div class="row g12">
+      <div class="col" style="flex:1.3">
+        <div class="card cool" style="height:100%">
+          <h4 class="cool">同一条研究线上的触觉工作（均已核实）</h4>
+          <div class="ref"><b>3D Shape Perception from Monocular Vision, Touch, and Shape Priors</b><br>
+            Wang, Wu, Sun, Yuan, Freeman, Tenenbaum, Adelson｜<span class="v">IROS 2018 · 被引 135 · arXiv:1808.03247</span><span class="tag ok">关键桥梁</span><br>
+            先用视觉+形状先验预测 3D 形状，再让机器人<b>主动去触摸「视觉预测不确定的区域」</b>，约 10 次触摸即可补全。原文对触觉的定位就是：<b>「touch gets precise local shape information」</b>，而视觉受遮挡与 2D-3D 歧义所限。</div>
+          <div class="ref"><b>See, feel, act: Hierarchical learning for complex manipulation skills with multisensory fusion</b><br>
+            Oller, Wu, Wu, Tenenbaum, Rodriguez｜<span class="v">Science Robotics 2019 · 被引 149 · doi:10.1126/scirobotics.aav3123</span><span class="tag ok">已核实</span><br>
+            叠叠乐（Jenga）。原文直言：<b>「Tactile stimuli are only acquired through invasive interaction」</b>—— 触觉读数必须靠一次真实介入才能拿到，这正是它珍贵的原因。机器人先做一段短探索，在<b>力域与视觉域</b>各学一个概率模型。</div>
+          <div class="ref"><b>ObjectFolder</b>｜Gao, Chang, Mall, Fei-Fei, Wu｜<span class="v">CoRL 2021 · 被引 114</span><span class="tag ok">已核实</span><br>
+            原文点破了现状：已有数据集<b>「mostly centered around geometry」</b>。于是把视觉、听觉、触觉统一编码进隐式表征。</div>
+          <div class="ref"><b>See, Hear, and Feel: Smart Sensory Fusion for Robotic Manipulation</b><br>
+            Li, Zhang, Zhu, Wang, Lee, Xu, Adelson, Fei-Fei, Gao, Wu｜<span class="v">CoRL 2022 · 被引 126</span><span class="tag ok">已核实</span><br>
+            自注意力融合三模态。结论写得很直接：<b>视觉给全局但受遮挡，声音给「连看都看不见」的关键时刻的即时反馈，触觉给决策所需的精确局部量。</b></div>
+          <div class="ref"><b>RoboPack: Learning Tactile-Informed Dynamics Models for Dense Packing</b><br>
+            Ai, Tian, Shi, Wang, Tan, Li, Wu｜<span class="v">2024 · arXiv:2407.01418</span><span class="tag ok">已核实</span><br>
+            开篇第一句即本页论点：<b>「Tactile feedback is critical for understanding the dynamics…」</b>。机器人<b>从直接与间接接触中反推物体物理属性</b>，每个任务平均只用 30 分钟真实交互数据，即可在线自适应。</div>
+          <div class="ref"><b>DexSkin: High-Coverage Conformable Robotic Skin</b>｜Wistreich, Shi, Tian, Clarke, Nath, Xu, Bao, Wu｜<span class="v">2025 · arXiv:2509.18830</span><span class="tag ok">已核实</span><br>
+            柔性电容电子皮肤，几乎覆盖整个手指表面。关键的一句是：<b>「critically for data-driven approaches, DexSkin can be calibrated to enable model transfer across sensor instances」</b>—— 跨传感器标定被明确当作<b>数据驱动的前提</b>（对应第 21 页的「跨传感器」）。</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="margin-bottom:10px">
+          <h4>读法</h4>
+          <p class="xs">把六篇按年份连起来看，会看到一个<b>反复出现的同一句话</b>：几何够用的地方用视觉，一旦需要<b>接触之后才存在的量</b>（局部形状、力、动力学、材质），同一批人就去装触觉传感器。</p>
+          <p class="xs" style="margin-top:8px">2018 用触觉补几何 → 2019 在力域建模 → 2021—2022 把触觉纳入表征与融合 → 2024 直接学<b>触觉信息化的动力学模型</b> → 2025 回到<b>硬件与跨传感器标定</b>。</p>
+          <p class="xs" style="margin-top:8px">值得注意：这条线最后落回了<b>硬件与标定</b>问题 —— 与第 19—21 页从传感器一侧出发得到的结论在同一个点上会合。</p>
+        </div>
+        <div class="card hot sm">
+          <h4 class="hotd">所以本材料的主张不是「引入触觉」</h4>
+          <p class="xs">触觉早就在里面了。真正未解的是：这些工作全部<b>各自采一份数据、各自训一个模型</b>，30 分钟的交互数据只服务于单个任务与单个本体。</p>
+          <p class="xs" style="margin-top:8px"><b class="hotd">缺的不是想法，是这一层的公共数据与公共表征。</b>下一页给出为什么它必须是「公共」的。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide">
+  <div class="glow" style="width:420px;height:420px;right:-160px;top:-160px"></div>
+  <div class="kick">问 题 三 · 本 材 料 的 核 心 主 张</div>
+  <h2>触觉不是第 N 个模态，它是同一个反问题的另一端</h2>
+  <div class="body">
+    <div class="card cool sm" style="margin-bottom:10px">
+      <div class="hd"><span class="num cool">A</span><h3 class="cool">视觉路线：把交互反馈从远处、间接地反演出来</h3></div>
+      <div class="flow" style="margin-top:6px">
+        <div class="step on"><div class="sl">交 互</div><div class="sv">盘子被握、被抬</div></div>
+        <div class="arr">→</div>
+        <div class="step on"><div class="sl">反 馈 的 间 接 投 影</div><div class="sv">物体位形<br>随时间的变化</div></div>
+        <div class="arr">→</div>
+        <div class="step on"><div class="sl">相 机</div><div class="sv">点云轨迹 q(t)</div></div>
+        <div class="arr">→</div>
+        <div class="step on" style="background:#D3E3E9"><div class="sl">反 演（ 病 态 ）</div><div class="sv">物理引擎 + MCMC<br>→ m, μ 的标量估计</div></div>
+      </div>
+    </div>
+    <div class="card hot sm" style="margin-bottom:12px">
+      <div class="hd"><span class="num">B</span><h3 class="hotd">触觉路线：在反馈产生的那个位置直接读数</h3></div>
+      <div class="flow" style="margin-top:6px">
+        <div class="step" style="background:#FBE0D8"><div class="sl">交 互</div><div class="sv">盘子被握、被抬</div></div>
+        <div class="arr">→</div>
+        <div class="step" style="background:#F7C7B8"><div class="sl">接 触 面</div><div class="sv">力、剪切、振动<br>温度、滑移</div></div>
+        <div class="arr">→</div>
+        <div class="step" style="background:#F7C7B8"><div class="sl">正 向 读 数</div><div class="sv">不需要反演<br>不需要物理引擎</div></div>
+      </div>
+    </div>
+    <div class="row g12">
+      <div class="col" style="flex:1.25">
+        <div class="card ink" style="height:100%">
+          <p style="font-size:14.5px;font-weight:700;color:var(--paper2)">
+            触觉建模的对象，正是<span class="hot">交互的 feedback</span> 本身。
+          </p>
+          <p class="sm" style="margin-top:10px">它和视觉不是「两种看世界的方式」在抢同一份信息。视觉那条线一直在做的，是从远处把接触面上发生的事<b style="color:var(--paper2)">反推</b>回来；触觉只是把仪器放到了反问题的<b style="color:var(--paper2)">另一端</b>，让同一个量变成一次前向测量。</p>
+          <p class="sm" style="margin-top:10px">所以它补的不是「视觉的低分辨率版本」，而是<b style="color:var(--touch)">让一个原本病态的反问题不必再被求解</b>。第 10 页那个欠定方程，在接触面上是直接可测的。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="height:100%">
+          <h4>一个顺带得到的推论：主动性</h4>
+          <table class="sm" style="margin-top:4px">
+            <tr><th style="width:26%"></th><th>被动</th><th>主动</th></tr>
+            <tr><td class="k">几何 / 空间</td><td class="off">2D 判定、看视频</td><td class="act">具身空间智能：绕过去看</td></tr>
+            <tr><td class="k">物理属性</td><td class="off">看别人碰（Galileo 线）</td><td class="act">自己碰，读反馈</td></tr>
+          </table>
+          <p class="xs" style="margin-top:10px">整个领域一直在沿同一条轴往前走：<b>从被动观测走向主动获取</b>。触觉只是这条轴上最后、也最难的一步 —— 因为它要求本体真的伸出手。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide">
+  <div class="glow" style="width:300px;height:300px;right:-120px;bottom:-120px"></div>
+  <div class="kick">问 题 三 · 第 一 个 松 动 的 地 方</div>
+  <h2>hold 不是一个状态，是一个被持续维持的过程</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card">
+          <h4>它在表示里的样子</h4>
+          <div class="eq" style="font-size:12px">hold(x) ∈ {True, False}<br><br>wash(x):<br>　pre:  hold(x) ∧ faucet_on<br>　post: ¬is_dirty(x)</div>
+          <p class="xs" style="margin-top:8px">整套推演建立在此之上：前置成立 → 执行 → 后置成立。符号层因此可以干净地组合。第 4 页的算子学习谱系，学的全部是这种形式的逻辑式。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot">
+          <h4 class="hotd">它在物理世界里的样子</h4>
+          <div class="eq" style="font-size:11.5px">hold(x, t) ⟸ f_grip(t) ≥ m·g / μ(t)<br><br>μ(t) 因洗洁精骤降<br>⟹ hold(x, t)=True<br>　 hold(x, t+50ms)=False</div>
+          <p class="xs" style="margin-top:8px">谁在这 50 毫秒里重新验证它？在纯视觉的验证链条里，没有人 —— 等到画面确认「盘子正在下落」，它已经在地上了。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card ink" style="margin-top:16px">
+      <p class="sm"><b style="color:var(--paper2)">形式化地说</b>，符号规划假设 precondition 在动作执行期间保持不变（frame assumption）。接触类 precondition 违反这个假设：它们的真值由一个连续的物理量决定，而该物理量在执行期间可以被环境改变。<b style="color:var(--touch)">这是 frame problem 的一个物理实例，而且不能靠提高验证频率解决 —— 因为验证链路本身的延迟就大于失效窗口。</b></p>
+    </div>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide">
+  <div class="kick">问 题 三 · 为 什 么 不 能 直 接 融 合</div>
+  <h2>信息量与延迟要求，形状正好相反</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col" style="flex:1.05">
+        <div class="card hot">
+          <p class="sm">「从第一性原理看，人类触觉的信息量没有视觉那么丰富，但效率非常高。现在的问题是，如果直接把触觉和整个视觉模型融合，要么产生大量冗余，要么关键触觉信息反而被淹没。」</p>
+          <p class="sm" style="margin-top:11px">「现在也有很多人在研究 VTLA……但也有人跟我吐槽，一加触觉，原来的 VLA 反而『崩了』。」</p>
+        </div>
+        <div class="card sm" style="margin-top:12px">
+          <h4>工程上的具体表现</h4>
+          <ul style="margin-top:4px">
+            <li class="h">token 预算被高频低信息量的触觉流挤占</li>
+            <li class="h">触觉采样率（~1kHz）与视觉帧率（~30Hz）差两个量级，时间对齐需重采样，重采样即丢失关键瞬态</li>
+            <li class="h">滑动、碰撞是稀疏事件，在均匀采样的序列里被平均掉</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="height:100%">
+          <h4>两种信息的形状</h4>
+          <div class="bars" style="margin-top:12px">
+            <div class="bcol">
+              <div class="bl cool">看见</div>
+              <div class="bar" style="height:86px;background:#D3E3E9;color:var(--vision)">信息量 高</div>
+              <div class="bar" style="height:30px;background:#E7EFF2;color:var(--vision);font-size:11px">延迟要求 宽松</div>
+            </div>
+            <div class="bcol">
+              <div class="bl hotd">接触</div>
+              <div class="bar" style="height:30px;background:#FAD9D1;color:var(--touchdim);font-size:11px">信息量 低</div>
+              <div class="bar" style="height:86px;background:#F7C7B8;color:var(--touchdim)">延迟要求 极严</div>
+            </div>
+          </div>
+          <p class="xs" style="margin-top:14px">把两个形状如此不同的信号压进同一个模型，代价必然出现在两端之一：冗余，或者淹没。<b>这是分层的工程理由，不是哲学偏好。</b></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide">
+  <div class="kick">问 题 三 · 一 条 神 经 科 学 线 索</div>
+  <h2>运动控制可以不经过皮质 —— 但请注意引用边界</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card warm">
+          <h4 style="color:#B07A1C">⚠ 一个需要在内部澄清的引用</h4>
+          <p class="sm" style="margin-top:4px">流传的说法是「去除小猫部分皮质层后，它仍能在迷宫穿梭甚至跳跃」。核实后发现，这实际混合了两条不同的文献：</p>
+          <ul style="margin-top:9px">
+            <li class="h"><b>Hubel &amp; Wiesel 的小猫实验</b>是<b>单眼剥夺</b>（缝合一只眼），研究的是视觉皮质的可塑性与关键期，<b>不是皮质切除后的运动能力</b></li>
+            <li class="h"><b>去皮质 / 去大脑猫的运动实验</b>是另一条独立文献，研究的是<b>中枢模式发生器（CPG）</b></li>
+          </ul>
+          <p class="xs" style="margin-top:10px"><b>对外引用时请使用后者，不要说成「小猫实验」。</b></p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card cool" style="margin-bottom:12px">
+          <h4 class="cool">真正支持分层论点的是这一条</h4>
+          <div class="ref"><b>去皮质猫 / 去大脑猫的运动控制</b>｜<span class="v">Shik, Orlovsky, Grillner 等，1960s—1990s</span><span class="tag ok">结论已核实</span><br>
+            急性去皮质（丘脑）猫可自发产生节律性后肢运动；箭毒抑制传入后仍存在简化的传出节律 → 证明存在<b>中枢运动程序</b>。完全脊髓横断的动物虽无自发运动，但四肢置于跑步机上可诱发协调步态 → <b>脊髓 CPG</b>。脊髓内网络加体感传入可在无前庭与视觉参与下调节行走与站立平衡。</div>
+        </div>
+        <div class="card hot sm">
+          <p class="xs"><b class="hotd">对架构的启示：</b>一个复杂的运动行为可以完全不经过皮质而由低层回路闭环，且该回路依赖<b>本体感觉与接触反馈</b>而非视觉。这为「脊髓层不应是慢脑的下游，而应是并行的独立回路」提供了生物学参照 —— 注意这是类比论证，不是严格推导。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide">
+  <div class="kick">问 题 三 · 架 构</div>
+  <h2>三层：慢脑 — 快脑 — 脊髓</h2>
+  <div class="body">
+    <div class="band" style="background:#E7EFF2">
+      <div class="bt"><div class="t cool">慢脑 · VLM</div><div class="s">类比大脑皮质 · O(100ms—s)</div></div>
+      <p>语义理解、高层认知、任务规划。前面讲的组合式抽象、前置条件发现、技能串联都在这一层。「慢脑更多决定你为什么要这么做、下一步做什么。」</p>
+    </div>
+    <div class="band" style="background:#FBEFD9">
+      <div class="bt"><div class="t warm">快脑 · VTLA + TWAM</div><div class="s">灵巧操作与长程任务 · O(10—100ms)</div></div>
+      <p>点云轨迹验证状态与空间关系、运动学先验推断可动方式、蒸馏出的运动轨迹 —— 加上接触之后才出现的那一栏：抓稳了没有、滑不滑、捏得太紧没有。</p>
+    </div>
+    <div class="band" style="background:#FBE0D8">
+      <div class="bt"><div class="t hotd">脊髓 · VTA</div><div class="s">极致的快 · O(1—10ms)</div></div>
+      <p>滑落、碰撞、失衡的那一毫秒。不经过任何符号验证，不等待任何规划重写 —— 因为符号验证本身来不及（见第 5 页的延迟预算）。</p>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <div class="col">
+        <div class="card sm">
+          <p class="xs"><b>分层判据：</b>延迟与信息丰富度的权衡。「脊髓追求极致的快，不要求信息特别丰富；快脑需要更丰富的多模态信息；慢脑更多负责思考和理解。」</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot sm">
+          <p class="xs"><b class="hotd">同一种触觉，两种角色：</b>在快脑里让机器人<b>做得更好</b>，在脊髓里让机器人<b>来得及</b>。这意味着同一份数据要同时服务两类模型，对采样率与标注粒度提出了不同要求 —— 这是采集体系设计的关键约束。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide">
+  <div class="kick">问 题 三 · 与 现 有 方 案 的 区 分</div>
+  <h2>脊髓层 vs 传统力控急停</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card sm" style="margin-bottom:12px">
+          <h4>传统力控 / 急停</h4>
+          <p class="xs">「我理解更多还是基于比较简单的等效量，比如单点力的大小。这和过去传感器能力、处理能力有限有关，所以系统只能关注少量信息。」→ 阈值触发，二值输出：继续 / 停止。</p>
+        </div>
+        <div class="card hot sm" style="margin-bottom:12px">
+          <h4 class="hotd">脊髓级系统</h4>
+          <p class="xs">「拿到的不只是力，也可能包括温度、滑动、接触状态等信息，它本质上是一种多模态触觉系统。」→ 输出是<b>调整</b>而非停止：滑了增大握力、碰人卸力、卡住换姿态。</p>
+        </div>
+        <p class="xs">「当然，我不会简单说两者完全不一样。很多科学和工程思想本质上是相通的。区别主要在信息丰富度。」</p>
+      </div>
+      <div class="col">
+        <div class="card ink" style="height:100%">
+          <h4 style="color:var(--paper2)">为什么不能照搬自动驾驶的主动安全</h4>
+          <p class="sm" style="margin-top:9px">「自动驾驶里可以用独立的主动安全系统做防碰撞，但具身智能不一样。<b style="color:var(--paper2)">机器人很多任务的前提就是要发生接触。</b>既然一定会碰，就必须有一个『脊髓级』的系统，在接触发生以后快速反应。」</p>
+          <div style="height:1px;background:rgba(255,255,255,.12);margin:15px 0"></div>
+          <p class="sm">安全目标是<b style="color:var(--paper2)">不要碰</b>，而操作任务的前提是<b style="color:var(--paper2)">必须碰</b>。所以这一层不能外挂成独立监控模块，只能内生在操作回路里。</p>
+          <p class="xs" style="margin-top:13px"><b style="color:var(--touch)">工程含义：</b>脊髓层必须与控制器共享状态，不能是一个旁路的 watchdog —— 它需要知道当前意图是「正在抓」还是「正在放」，否则无法区分「期望的接触」与「意外的碰撞」。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide">
+  <div class="kick">问 题 三 · 硬 件 基 础</div>
+  <h2>视触觉传感器谱系与多模态化</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card cool" style="height:100%">
+          <h4 class="cool">参考工作 · 两条主要硬件路线</h4>
+          <div class="ref"><b>Retrographic sensing（GelSight 的起点）</b><br>
+            Johnson, Adelson｜<span class="v">CVPR 2009</span><span class="tag ok">已核实</span><br>
+            透明弹性体 + 反射涂层，背面相机 + RGB 三方向光源做光度立体。测的是<b>几何形变</b>而非力，力与滑移由形变反推。表面自带 BRDF，因此透明/镜面物体不构成问题。</div>
+          <div class="ref"><b>GelSight: High-Resolution Robot Tactile Sensors</b><br>
+            Yuan, Dong, Adelson｜<span class="v">Sensors 17(12):2762, 2017</span><span class="tag ok">已核实</span><br>
+            表面标记点位移可同时给出法向与剪切力。</div>
+          <div class="ref"><b>TacTip 家族｜软体仿生光学触觉</b><br>
+            Lepora 等，Bristol Robotics Lab｜<span class="v">Soft Robotics 2018；IEEE Sensors J. 2021 综述</span><span class="tag ok">已核实</span><br>
+            仿表皮—真皮交界的乳突结构，把表面形变<b>机械放大</b>为标记点侧向位移，直接读出剪切应变场。可用标记位移建模 SA-I、标记速度建模 RA-I 传入。</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot" style="margin-bottom:10px">
+          <h4 class="hotd">多模态化的方向 —— 已有实物，不只是设想</h4>
+          <p class="xs" style="margin-bottom:7px">把多光谱成像、摩擦电感测与惯性测量结合，使单个指尖同时感知力度、位置、温度、材质、纹理、振动、滑动、碰撞、接近。动机来自通信领域的直觉：「通信的频谱这么宽，为什么视触觉只能用可见光？」<b>以下每一条都对应一个已发表的实物传感器：</b></p>
+          <div class="ref"><b>SATac</b>｜Song, Yu, Zhang, Sou, Mu, Peng, Ding｜<span class="v">2024 · arXiv:2402.00585</span><span class="tag ok">已核实</span><br>
+            用锶铝酸盐的<b>长余辉发光</b>同时读温度、压力、剪切 —— 补上了传统视触觉<b>测不了温度</b>这个缺口。</div>
+          <div class="ref"><b>UltraTac</b>｜Gong, Sou, Li, Guo, Huang, Lyu, Song, Ding｜<span class="v">2025 · arXiv:2508.20982</span><span class="tag ok">已核实</span><br>
+            同轴光声结构把<b>超声</b>并入视触觉：3–8 cm 接近感知（R²=0.90）、材质分类 99.20%、15 类纹理—材质双模识别 92.11%。</div>
+          <div class="ref"><b>MoiréTac</b>｜Sou, Gong, Li, Lyu, Song, Mu, Ding｜<span class="v">2025 · arXiv:2509.12714</span><span class="tag ok">已核实</span>　·　<b>摩尔纹放大</b>微形变换取分辨率。</div>
+          <div class="ref"><b>柔性摩擦电触觉传感器</b>｜Song, Yin, Wang 等｜<span class="v">Nano Energy 2022 · 被引 156</span><span class="tag ok">已核实</span>　·　<b>同时识别材质与纹理</b>，自供电路线。</div>
+        </div>
+        <div class="card sm">
+          <h4>但硬件不自动产生智能</h4>
+          <p class="xs">「到了 2024 年，我开始意识到：我们已经把传感器做到了很好的水平，但一个最好的传感器，依然不会自动产生智能。」→ 转向模型，「但紧接着发现，连数据都没有」。</p>
+          <p class="xs" style="margin-top:7px">这条判断在文献里留下了痕迹：同一批人 2024 年写了一篇视触觉综述，<b>专门从「信号处理方法」而非硬件角度</b>重审整个领域，结论是<b>「唯有配上恰当的信号处理方法，感知系统的全部潜力才能被释放」</b>。<span class="tag ok">已核实</span><br>
+          <span style="color:var(--mutedk)">When Vision Meets Touch: A Contemporary Review for Visuotactile Sensors from the Signal Processing Perspective｜Li, Wang, Wu, Li, Luo, Fang, Sun, Zhang, Ding｜2024 · arXiv:2406.12226</span></p>
+          <p class="xs" style="margin-top:7px"><b>这是这一层最关键的判断，也是下一页的入口。</b></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide">
+  <div class="kick">问 题 三 · 真 实 瓶 颈</div>
+  <h2>三个「跨」，以及学界的现状</h2>
+  <div class="body">
+    <div class="row g12">
+      <div class="col">
+        <div class="card hot sm" style="height:100%">
+          <div class="hd"><span class="num">1</span><h3 class="hotd">跨传感器</h3></div>
+          <p class="xs">「哪怕都是视触觉传感器，同一批次生产出来的性能都可能不完全一样。结果就是，一个模型往往只能锚定某一种传感器继续训练。」</p>
+          <p class="xs" style="margin-top:8px"><b>目标：</b>让不同传感器的数据进入模型后拥有相似的有效特征。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot sm" style="height:100%">
+          <div class="hd"><span class="num">2</span><h3 class="hotd">跨模态</h3></div>
+          <p class="xs">力、温度、剪切、振动能否转换成与硬件无关的共同表征？</p>
+          <p class="xs" style="margin-top:8px"><b>初步思路：</b>先找与具体传感器无关的一阶参数，转成共同信息，再研究二阶参数以减少校准误差与机理差异。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot sm" style="height:100%">
+          <div class="hd"><span class="num">3</span><h3 class="hotd">跨本体</h3></div>
+          <p class="xs">同一个动作换一个人、一个传感器甚至一台机器人，数据分布都会变化。</p>
+          <p class="xs" style="margin-top:8px">而触觉没有互联网时代天然积累的海量图片与视频 —— 这是与「看见」那一层最根本的资源差异。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card cool" style="margin-top:14px">
+      <h4 class="cool" style="margin-bottom:6px">参考工作 · 统一触觉表征的现状</h4>
+      <div class="row g12">
+        <div class="col">
+          <div class="ref"><b>Sparsh｜自监督视触觉表征</b>｜Meta AI｜<span class="v">CoRL 2024</span><span class="tag ok">已核实</span><br>
+            46 万+ 触觉图像上做掩码与自蒸馏预训练，在 TacBench 上平均超过任务/传感器专用的端到端训练。关键发现：<b>背景差分</b>与<b>约 80ms 短时间窗</b>的 token 化对学到可泛化表征至关重要。</div>
+          <div class="ref"><b>UniTouch / AnyTouch</b>｜<span class="v">2024 / ICLR 2025</span><span class="tag chk">作者待核实</span><br>
+            将触觉嵌入对齐到预训练图文嵌入，用<b>传感器专属 token</b> 支持多传感器联合训练。</div>
+        </div>
+        <div class="col">
+          <div class="ref"><b>T3 / Sparsh-X</b>｜<span class="v">CoRL 2025</span><span class="tag chk">部分待核实</span><br>
+            Sparsh-X 扩展到图像、音频、运动、压力四种触觉模态，约 100 万次接触交互。</div>
+          <div class="ref" style="color:var(--touchdim)"><b>关键结论（第三方基准）</b><span class="tag ok">已核实</span><br>
+            在 TacBench 上横评 UniTouch、AnyTouch、T3、Sparsh：<b>各有所长且依赖传感器，没有任何一个冻结表征在所有任务上占优</b>；且现有跨传感器工作<b>绝大多数局限在视触觉这一类硬件之间</b>迁移。</div>
+        </div>
+      </div>
+      <div class="row g12" style="margin-top:2px">
+        <div class="col">
+          <div class="ref"><b>VTV-LLM｜Universal Visuo-Tactile Video Understanding</b><br>
+            Xie, Li, Li, Li, Chen, Ma, Yu, Ding｜<span class="v">2025 · arXiv:2505.22566</span><span class="tag ok">已核实</span><br>
+            正面处理「跨传感器 + 跨模态」：VTV150K 数据集横跨 <b>GelSight Mini、DIGIT、Tac3D 三种传感器</b>、100 个物体、15 万帧，标注<b>硬度、凸起、弹性、摩擦</b>四个属性 —— 恰好都是<b>只能由接触反馈得到的物理属性</b>。</div>
+        </div>
+        <div class="col">
+          <div class="ref"><b>DexSkin 的跨本体证据</b>｜<span class="v">2025 · arXiv:2509.18830</span><span class="tag ok">已核实</span><br>
+            电子皮肤可标定，从而<b>在不同传感器实例之间迁移模型</b>。原文把这一点标为「对数据驱动方法至关重要」—— 与左侧「跨传感器」诉求是同一件事，且已有可验证的实现路径。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide">
+  <div class="kick">问 题 三 · 数 据 方 法 论</div>
+  <h2>数据质量的判据，以及表示的最小单位</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card hot" style="margin-bottom:12px">
+          <h4 class="hotd">一个比较激进的观点</h4>
+          <p class="xs">「很早以前，有几家做大模型训练的公司跟我们提要求，说你的触觉数据必须精准到亚毫米，我们才能训练。我当时就在想，那可能是因为模型本身还不够强。」</p>
+          <p class="xs" style="margin-top:9px">「同一个动作，每次采出来的数据都可能不一样。但重复训练以后，模型反而可能自己学到：哪些变化不重要，哪些信息才真正关键。这种差异性本身可能就是有价值的。」</p>
+          <p class="xs" style="margin-top:9px"><b>→ 高质量、多元化、多模态 优先于 绝对精准与全覆盖。「高质量不意味着完全一致，也不等于高精度。」</b></p>
+        </div>
+        <div class="card sm">
+          <h4>数据价值的操作性判据</h4>
+          <p class="xs">「最直接的标准，就是它到底能不能训出一个有用的模型。比如完全不用视觉，只靠触觉，机器人能不能完成一些任务。」</p>
+          <p class="xs" style="margin-top:8px">脏数据的定义同样操作化：「明明知道某个位置没有发生接触，但传感器突然产生了信号。」</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="margin-bottom:12px">
+          <h4>最小单位：刻意悬置</h4>
+          <p class="xs">「我现在反而觉得，不应该急着用『最小单位』去定义触觉数据……你今天定义完，明天可能就有人做出新的东西把它推翻。」</p>
+          <p class="xs" style="margin-top:9px">物理意义上，一个像素上的力、温度、剪切力当然可作为基本信息。但「真正转成机器人能理解、能用于控制的信息以后，最后有用的东西可能反而是一个<b>等效六维力</b>」。</p>
+          <p class="xs" style="margin-top:9px">对照早期控制界的立场：「你不用给我触觉，只给我关节六维力，我也能做精准控制。」—— 「我觉得这里中间一定还有差距。」</p>
+        </div>
+        <div class="card cool sm">
+          <p class="xs"><b class="cool">与前半段的呼应：</b>「看见」那一层认为表示本来是统一的，难的是「如何表示」与「如何得到」；而在接触这一层，连「统一的表示是什么」都还不能定义。<b>两处都把赌注押在同一个位置：表示形式尚未收敛。</b></p>
+          <p class="xs" style="margin-top:8px">注意第 20 页 Sparsh 的发现与此一致 —— 有效表征的关键不在单点精度，而在<b>时间窗与背景归一化</b>。</p>
+          <p class="xs" style="margin-top:8px"><b class="hotd">本材料在问题四（第 25—30 页）给出方向：</b>最小单位不应在信号层（像素级力/温度）定义，而应在交互层定义 —— <b>meta action</b>。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide">
+  <div class="kick">问 题 三 · 评 测</div>
+  <h2>三个基准，一个共同缺项</h2>
+  <div class="body">
+    <div class="row g12">
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num cool">1</span><h3>推理的分解（Inact，CoRL 2026）</h3></div>
+          <p class="xs">受 POMDP 启发。动作空间太大，模型输出未必等于真值却可能依然有效，所以不直接让模型产生动作，而是给一组动作要求<b>重新排序</b>，使之与观测到的状态变化对齐。</p>
+          <p class="xs" style="margin-top:8px"><b>作者自陈局限：</b>「但它仍然是被动的。」</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num cool">2</span><h3>具身空间智能</h3></div>
+          <p class="xs">智能体可以真的移动：「你可以说『我要向前走』，然后它就真的向前走了。」物体被遮挡后被问到几何形状 —— 必须主动绕过去看。约 10 个类别、29 个子类别。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num cool">3</span><h3>家庭日常活动</h3></div>
+          <p class="xs">活动集不是研究者拍脑袋想的，而是查劳工部时间使用调查再做问卷。第一名是「聚会之后打扫房间」，「摆好餐桌」排在四百名左右。</p>
+          <div class="ref" style="margin-top:8px"><b>BEHAVIOR-1K</b>｜Li, Zhang, Wong, Gokmen, Srivastava 等；资深作者含 Savarese, Gweon, Liu, Wu, Fei-Fei｜<span class="v">CoRL 2022 / arXiv 2403.09227</span><span class="tag ok">已核实</span><br>
+            1000 项活动、50 个场景、9000+ 物体，基于 ATUS 美国时间使用调查选题；OmniGibson 仿真器支持温度、浸湿、脏污等扩展物体状态。</div>
+        </div>
+      </div>
+    </div>
+    <div class="card hot" style="margin-top:14px">
+      <div class="hd"><span class="num">!</span><h3 class="hotd">三个基准评的都是「预测得对不对」「任务完成没完成」</h3></div>
+      <p class="xs">没有一个在评<b>「接触之后反应得够不够快」</b>。而在触觉这一侧，评测缺失同样被认为是被严重低估的问题 —— 为此有主张把第三方评测放进独立的非营利组织：「自己既是运动员，又是裁判员，显然不合理。」</p>
+      <p class="xs" style="margin-top:8px">值得注意的是，这条线<b>补评测比补数据快</b>：Physion-Eval（2026）已经能对生成视频的物理真实性做 22 类细粒度诊断，靠的是 10,990 条<b>人类专家</b>推理轨迹。<b class="hotd">评测缺口能用标注补上，数据缺口不能 —— 接触数据必须真的去接触一次才有。</b></p>
+      <p class="xs" style="margin-top:8px"><b>我们内部该问的：</b>一个「脊髓层基准」应该长什么样？候选指标：滑动检测延迟、碰撞后卸力时间、握力闭环的稳态误差、以及<b>反射介入后长程任务的成功率保持度</b>（见第 24 页开放问题二）。</p>
+      <p class="xs" style="margin-top:8px"><b class="hotd">方向（配合第 28 页优先级）：</b>需要统一的不是行业标准，而是<b>定制可衡量的评测空间</b> —— 不是端到端的评测，而是对 action 进行 <b>meta 元素细分</b>：拆到 meta action 级去测抓取稳定性、接触反馈、完成时间、速度剖面，而不是只报一个端到端成功率。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 23 -->
+<section class="slide">
+  <div class="kick">回 到 那 个 场 景</div>
+  <h2>三层架构完整走一遍</h2>
+  <div class="body">
+    <table class="sm">
+      <tr><th>场景里的一步</th><th>慢脑</th><th>快脑</th><th>脊髓</th></tr>
+      <tr><td class="k">「这有几个陶瓷餐具？」</td><td>VLM 数出「四个」</td><td class="off">—</td><td class="off">—</td></tr>
+      <tr><td class="k">「把它洗了」</td><td>消解指代，规划五步行动流</td><td class="off">—</td><td class="off">—</td></tr>
+      <tr><td class="k">拿起盘子</td><td>技能 hold 前置条件成立</td><td>接触力分布确认抓稳</td><td class="act">握力闭环维持</td></tr>
+      <tr><td class="k">发现盘子下的垃圾</td><td>重写行动流：先擦桌子</td><td>抬起瞬间重量/重心/接触面积突变，触发重新验证</td><td class="off">—</td></tr>
+      <tr><td class="k">盘子已被洗干净</td><td>重新验证状态，跳过「洗」</td><td>点云轨迹确认位置变化</td><td class="off">—</td></tr>
+      <tr><td class="k">瓷面打滑，盘子下落</td><td class="off">来不及</td><td class="off">来不及</td><td class="act">滑动检测 → 即刻增大握力</td></tr>
+      <tr><td class="k">机械臂碰到回来的同学</td><td class="off">来不及</td><td class="off">来不及</td><td class="act">碰撞检测 → 即刻卸力</td></tr>
+    </table>
+    <div class="row" style="margin-top:14px">
+      <div class="col"><div class="card sm"><p class="xs">前五行，第 3—9 页的那套表示已经回答得很完整。注意第四行：垃圾在盘子被拿起前是被遮挡的，视觉看不见 —— 但抬起瞬间重量、重心、接触面积同时变化，<b>这三个量直接出现在接触面上，不需要任何推理</b>。</p></div></div>
+      <div class="col"><div class="card hot sm"><p class="xs"><b class="hotd">最后两行是这一整层存在的理由。</b>验证器是审慎的、事后的、检查逻辑一致性的；而滑落与碰撞要求毫秒级、在线、检查物理现实的反应 —— 不是同一种东西的更快版本，而是另一种东西。</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide">
+  <div class="kick">留 给 团 队 的 议 题</div>
+  <h2>六个还没有答案的问题</h2>
+  <div class="body">
+    <div class="row g12">
+      <div class="col">
+        <div class="card sm" style="margin-bottom:10px">
+          <div class="hd"><span class="num">1</span><h3>脊髓层的「原子技能」是什么</h3></div>
+          <p class="xs">原子技能是符号化、可命名的（hold、wash、place）。而脊髓层的反射不可命名、无前置条件、无后置效果。它们能被纳入同一套组合式抽象吗，还是必须完全独立？</p>
+        </div>
+        <div class="card sm" style="margin-bottom:10px">
+          <div class="hd"><span class="num">2</span><h3>谁来验证脊髓的介入是对的</h3></div>
+          <p class="xs">脊髓卸力可能让长程任务失败。验证器如何在事后判断「这次反射是必要的」而非「这次反射毁了任务」？这直接关系到能否为脊髓层定义可优化的目标函数。</p>
+        </div>
+        <div class="card sm">
+          <div class="hd"><span class="num">3</span><h3>触觉数据本身能不能成为先验</h3></div>
+          <p class="xs">第 11—13 页说明：物理属性必须由交互反馈观测到，所以它<b>原理上</b>不可能像运动学那样「免费」。但换一个问法 —— 如果已经在接触面上采了足够多的正向读数，能否反过来训出一个<b>从几何直接预测摩擦、刚度、易碎性</b>的模型，把后续的交互成本摊掉？这决定了数据资产是线性增值还是复利增值。</p>
+          <p class="xs" style="margin-top:8px"><b class="hotd">这个问题已经有人在正面攻：</b>近期出现了一批<b>「从第一视角视频预测接触力」</b>的工作 —— TouchSight（用 500 小时压力手套录制 + 生成模型把「戴手套」重渲染成「裸手」以消除外观差）、TouchAnything / EgoTouch（208 个任务、1891 段、同步多视角 RGB + 双手位姿 + 连续压力图）。<b>它们的共同前提正是本材料的主张：触觉标签必须先由真实接触采到，之后才谈得上用视觉去预测它。</b><span class="tag ok">已核实</span></p>
+          <p class="xs" style="margin-top:8px">换言之，<b>先验不是凭空来的，是用一批真实接触数据「买」来的</b> —— 这恰好是复利成立的条件，也是这层数据资产的核心论证。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="margin-bottom:10px">
+          <div class="hd"><span class="num">4</span><h3>触觉侧的「推理分解」基准是什么样的</h3></div>
+          <p class="xs">第 22 页的基准一让模型给动作重新排序。触觉侧的等价物应该考核什么 —— 给定一段接触力序列，判断「哪一刻应该松手」？这可能是最容易先做出来的一个内部基准。更一般地：评测应针对 <b>meta action 的 meta 元素</b>（第 22、28 页），而不是端到端成功率。</p>
+        </div>
+        <div class="card hot">
+          <div class="hd"><span class="num">5</span><h3 class="hotd">hold 应该被重新定义吗</h3></div>
+          <p class="xs">如果「拿住」在物理上是一个持续维持的过程而非二元状态，那么第 4 页的符号类型系统是否需要引入一类新的谓词 —— <b>需要被连续维持的前置条件</b>（maintenance condition）？</p>
+          <p class="xs" style="margin-top:8px">相关线索：时序逻辑与 durative action 在经典规划里已有形式（PDDL 2.1 的 over all 条件），但尚未与神经算子学习结合。<b>这可能是整条技术线里最小、也最深的一处改动。</b></p>
+        </div>
+        <div class="card sm" style="margin-top:10px">
+          <div class="hd"><span class="num">6</span><h3>meta action 的最小集合存在吗</h3></div>
+          <p class="xs">移动与关键物体交互的边界怎么划？通用交互方式能否收敛为一个有限集？同一 meta action 在不同本体上的「语义等价」如何定义与验证？<b class="hotd">这直接决定第 25—30 页采集体系的分割方式。</b></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide">
+  <div class="kick">问 题 四 · 数 据 采 集 方 法 论</div>
+  <h2>现在的方法是本末倒置：先完成任务，还是先卖设备</h2>
+  <div class="body">
+    <div class="card hot" style="margin-bottom:12px">
+      <p class="sm"><b class="hotd">对行业现行做法的一个判断：</b>「盲目地用特定设备（人形或特定本体）采集关键点数据，然后卖设备 —— 这是本末倒置。它强迫大家用不正确的通用设备，低效率地完成特定任务。」<span class="tag">本材料主张</span></p>
+    </div>
+    <div class="row">
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <h4>采集驱动的旧模式</h4>
+          <div class="eq" style="font-size:11.5px;margin:7px 0">特定设备 → 采集关键点数据 → 训 VLA<br>→ 卖设备 / 卖模型</div>
+          <ul style="margin-top:6px">
+            <li class="h">数据绑定设备，设备换代数据作废</li>
+            <li class="h">采集是独立成本中心，无法自我造血</li>
+            <li class="h">「先有量、再找场景」—— 场景是后找的</li>
+            <li class="h">现在的采集忽略了 <b>T</b> 的存在：在一些高速运作场景下，机体会产生<b>不受控制的</b>震动和惯性，对设备本身是极大的损耗，「该用什么速度移动」是现在无法采集的信号</li>
+          </ul>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card warm sm" style="height:100%">
+          <h4 style="color:#B07A1C">任务驱动的新模式（做中学）</h4>
+          <div class="eq" style="font-size:11.5px;margin:7px 0">遥操完成任务（先赚钱）→ 任务中自然产生<br>环境 + 交互数据 → 提炼 meta action<br>→ 迭代设备与硬件设计</div>
+          <ul style="margin-top:6px">
+            <li class="h">数据是完成任务的副产品，成本被收入摊薄</li>
+            <li class="h">只有任务真的被做完，数据末端应用量才可能提高</li>
+            <li class="h">正确的 meta action 与正确的硬件，只能从量里长出来</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="card ink" style="margin-top:12px">
+      <p class="sm"><b style="color:var(--paper2)">顺序问题是本质问题：</b>先有商业闭环（任务赚钱），后有采集规模；先有量，后有正确的 meta action 与硬件设计。反过来的顺序，让采集变成靠融资续命的成本中心 —— 量上不去，真相也出不来（见第 29 页）。</p>
+      <p class="sm" style="margin-top:9px">所以在任务闭环 <b style="color:var(--paper2)">ready 之前，数据采集和遥操采集都是空谈</b> —— 遥操执行指的不是采集数据，而是<b>直接执行任务并且商业闭环</b>。同样要警惕「遥操加速十倍」的演示路线：完成任务不是把遥操加速去执行，那会让机器人永远无法 scale up 到多样化应用 —— 这种 formulation <b style="color:var(--touch)">从最底层的硬件设计和实现上就已经是不 make sense 的</b>；只有在不考虑工作效率和泛化的前提下，目前的慢动作遥操才是合理的。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide">
+  <div class="kick">问 题 四 · 数 据 应 该 锚 定 什 么</div>
+  <h2>重要的不是行为，是场景 —— 数据必须与设备解耦</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card" style="height:100%">
+          <h4>人形机器人采的「关键点数据」是什么</h4>
+          <p class="xs">本质是<b>某个本体的关节轨迹采样点</b>。它描述的是「这台设备怎么动」，而不是「这个场景里发生了什么交互」。</p>
+          <ul style="margin-top:9px">
+            <li class="h">换了本体，关键点分布就失效</li>
+            <li class="h">同一场景，100 种设备要采 100 遍</li>
+            <li class="h">场景本身（环境 + 交互）反而没有被留下来</li>
+            <li class="h">绑定某一家的设备采集没有意义 —— 绑定设备的数据走不远</li>
+          </ul>
+          <p class="xs" style="margin-top:9px">行业已经在为跨本体付费：RT-X、Octo 要跨本体泛化，前提是在多种本体上各采一批数据。<span class="tag ok">已核实</span></p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card cool" style="height:100%">
+          <h4 class="cool">真正该积累的：环境数据 + 交互数据</h4>
+          <p class="xs"><b>一个场景可以被 100 种设备使用</b>。场景数据（几何、语义、可供性、状态机）与交互数据（谁对哪个物体执行了什么交互、接触反馈如何）定义在场景与物体上，不定义在任何一台设备上。</p>
+          <div class="flow" style="margin-top:10px">
+            <div class="step on"><div class="sl">场 景</div><div class="sv">环境数据<br>交互数据</div></div>
+            <div class="arr">→</div>
+            <div class="step"><div class="sl">引 用</div><div class="sv">设备 A / B<br>… / N</div></div>
+          </div>
+          <p class="xs" style="margin-top:10px">场景是<b>长寿命资产</b>，设备是短寿命工具。资产的定义域从设备上移到场景上 —— 这正是第 20 页「跨本体」的结构性解法。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card ink" style="margin-top:13px">
+      <p style="font-size:15px;font-weight:700;color:var(--paper2)">
+        这是与现在的 VLA 以及 LLM 之间存在的<span class="hot">巨大 gap</span>：两者都以<span class="cool">行为</span>为单位组织信息，而物理世界的信息组织单位是<span class="hot">场景</span>。
+      </p>
+      <p class="sm" style="margin-top:9px">行为是转瞬即逝的，场景是持续存在的 —— 可以反复进入一个场景，不能反复进入同一个行为。所以可积累的数据资产只能是场景 × 交互。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide">
+  <div class="kick">问 题 四 · 交 互 的 最 小 单 位</div>
+  <h2>把行为拆成 meta action：移动与关键物体交互分开</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col" style="flex:1.05">
+        <div class="card sm" style="margin-bottom:11px">
+          <h4>先做一个行为层面的拆分</h4>
+          <div class="row g12" style="margin-top:7px">
+            <div class="col"><div class="card sm" style="background:var(--paper);padding:11px 13px">
+              <p class="xs"><b>移动</b>（locomotion / navigation）</p>
+              <p class="xs" style="margin-top:5px">从 A 到 B。反馈靠位姿与地图，延迟要求宽松，几乎不产生接触数据。</p>
+            </div></div>
+            <div class="col"><div class="card sm" style="background:var(--paper);padding:11px 13px">
+              <p class="xs"><b class="hotd">关键物体交互</b>（key-object interaction）</p>
+              <p class="xs" style="margin-top:5px">接触、施力、改变状态。反馈靠接触面读数，毫秒级延迟 —— 前 24 页的主战场。</p>
+            </div></div>
+          </div>
+          <p class="xs" style="margin-top:9px">两类行为的数据分布、反馈模态、延迟预算完全不同 —— <b>混在一份「行为数据」里采集，是对两者同时的浪费。</b></p>
+          <p class="xs" style="margin-top:8px">但拆分不是二分类：locomotion 与 interaction 两个任务虽然已经分开，很多具体任务的区分仍然僵硬 —— <b>尤其居家环境中的 locomotion</b>（绕障、过窄门、贴家具移动、上下台阶）至今仍被当作一个整体任务处理。</p>
+        </div>
+        <div class="card sm">
+          <h4>通用交互方式要被拆出来</h4>
+          <p class="xs">抓、放、推、压、旋、掀、挂……通用交互方式应该被显式拆分、命名、复用，而不是每次都被埋进一段连续的关节轨迹里重新学一遍。<b>设备执行的是 meta action，录制的数据也按 meta action 拆分。</b></p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot" style="height:100%">
+          <h4 class="hotd">meta action 的定义（本材料方向）</h4>
+          <div class="eq" style="font-size:11.5px;margin:8px 0">
+meta_action := ( 场景上下文 s,<br>
+　　目标物体 o, 交互意图 g,<br>
+　　接触反馈 f, 后验状态 s' )
+          </div>
+          <ul style="margin-top:8px">
+            <li class="h">与本体<b>弱耦合</b>，与物体/场景<b>强耦合</b></li>
+            <li class="h">前置/后置条件在场景中可验证（接第 3—4 页）</li>
+            <li class="h">接触反馈 f 定义在交互面上（接第 10—13 页）</li>
+            <li class="h">执行方：设备侧 meta action 库解释成本体动作</li>
+          </ul>
+          <p class="xs" style="margin-top:9px"><b>与算子学习谱系的关系：</b>meta action 是「原子技能」从单本体轨迹级，上移到<b>场景级交互单元</b>的推广。符号层负责组合 meta action，网络负责感知与控制 —— 第 3 页的分工原样保留。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide">
+  <div class="kick">问 题 四 · 模 型 侧 的 结 论</div>
+  <h2>VLA 也要按 meta action 重构</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card" style="height:100%">
+          <h4>今天的 VLA 长什么样</h4>
+          <div class="eq" style="font-size:11.5px;margin:7px 0">视觉 + 语言 → 动作轨迹<br>动作空间 = 特定硬件的关节/末端轨迹<br>数据集 = 某台采集设备的录制</div>
+          <p class="xs" style="margin-top:8px">三层绑定：<b>模型绑硬件，数据绑设备，技能绑在场景之外</b>。RT-X 已证明跨本体数据融合能提升泛化，但代价是每个本体都要重采、重标。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card hot" style="height:100%">
+          <h4 class="hotd">按 meta action 重构之后</h4>
+          <div class="eq" style="font-size:11.5px;margin:7px 0">视觉 + 语言 → meta action 序列 + 场景状态<br>　↓ 设备侧<br>meta action 库 → 本体动作</div>
+          <p class="xs" style="margin-top:8px"><b>输出层</b>不再直接吐关节轨迹，而是吐「在这个场景里对哪个物体执行哪个 meta action」；<b>数据层</b>按 meta action 切分而非按帧；<b>本体层</b>各自维护解释器。推理发生在场景/交互语义层，执行发生在本体层。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card ink" style="margin-top:13px">
+      <p style="font-size:15px;font-weight:700;color:var(--paper2)">
+        「重要的不是行为，而是场景」—— 模型的知识应该组织在<span class="cool">场景 × meta action</span>上，而不是组织在<span class="hot">设备 × 轨迹</span>上。后者会让每一代新硬件都重新变成「没见过的分布」。
+      </p>
+      <p class="sm" style="margin-top:9px">对接触层的含义：meta action 的接触反馈 f 与后验 s′ 正是第 10—13 页那一栏缺失的数据 —— 按 meta action 组织，这一栏第一次有了可以积累的结构。</p>
+      <p class="sm" style="margin-top:9px"><b style="color:var(--paper2)">优先级判断：</b>meta action 的拆分与 VLA 重构，这个的优先级<b>大于评测、大于硬件、大于数采</b>。需要统一的不是行业标准，而是<b>定制可衡量的评测空间</b> —— 不是端到端的评测，而是对 action 进行 meta 元素细分。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide">
+  <div class="kick">问 题 四 · 闭 环 与 量</div>
+  <h2>量不够，不见真相 —— 硬件、软件、数据都还有问题</h2>
+  <div class="body">
+    <div class="row g12">
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num gray">硬</span><h3>硬件</h3></div>
+          <p class="xs">传感器一致性、漂移、跨传感器标定仍未收敛（第 19—20 页）。「哪怕都是视触觉传感器，同一批次生产出来的性能都可能不完全一样。」<span class="tag ok">丁文伯访谈</span></p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num gray">软</span><h3>软件</h3></div>
+          <p class="xs">触觉表征未收敛，触觉 × VLA 的融合方式未定（第 15、21 页）；「一加触觉，原来的 VLA 反而崩了」是业内常被提到的现象。<span class="tag ok">丁文伯访谈</span></p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num gray">数</span><h3>数据</h3></div>
+          <p class="xs">量不够、绑定设备、没有交互结构（第 25—28 页）。四者互相放大：硬件的问题暴露在数据里，数据的问题暴露在模型里，模型的问题暴露在场景里。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="height:100%">
+          <div class="hd"><span class="num gray">T</span><h3>时间与速度</h3></div>
+          <p class="xs">现有采集忽略了 T 的存在：在一些高速运作场景下，机体会产生不受控制的震动和惯性，对设备本身是极大的损耗；「该用什么速度移动」是现在无法采集的信号。</p>
+        </div>
+      </div>
+    </div>
+    <div class="row g12" style="margin-top:13px">
+      <div class="col" style="flex:1.12">
+        <div class="card cool sm" style="height:100%">
+          <h4 class="cool">两则可核对的旁证（2026）</h4>
+          <div class="ref"><b>丁文伯</b>（DeepTech 访谈，2026-08）：「我坚信触觉领域存在 scaling law，但单纯增加数据量可能并不是关键突破口。」<span class="tag ok">已核实</span><br>
+          解读：<b>量是必要条件，量的结构才是充分条件</b> —— 无结构的量（绑定设备的轨迹）堆再多也见不到真相。</div>
+          <div class="ref"><b>吴佳俊</b>（ECCV 2026 演讲 Q&amp;A）：「我认为我们的表示其实是相当统一的……（难的在于）统一的表示到底是什么？如何把它表示出来？以及怎么才能得到它？」<span class="tag ok">已核实 · 据演讲整理</span><br>
+          解读：「怎么得到」只有一个答案 —— 量。而斯坦福为 BEHAVIOR 挑战赛采 3000 小时演示已经花了「相当可观的一笔钱」：<b>连顶级学术机构都被采集成本压着，采集只能靠任务收入养。</b></div>
+        </div>
+      </div>
+      <div class="col" style="flex:0.9">
+        <div class="card hot" style="height:100%">
+          <h4 class="hotd">所以做中学不是姿态，是唯一解</h4>
+          <p class="xs">先遥操把任务做完（商业闭环、赚钱）→ 数据末端应用量提高 → 正确的 meta action 浮现 → 硬件设计得到迭代信号 → 任务做得更快更好 → 数据更多。<b>每一圈都在攒同一份资产：场景 × meta action × 接触反馈。</b></p>
+          <p class="xs" style="margin-top:9px">反过来的顺序（先采集、再卖设备）在经济学上不可持续 —— 采集成本没有任何收入可以摊薄，量必然上不去，真相必然出不来。</p>
+          <p class="xs" style="margin-top:9px"><b class="hotd">Scale-up 的判据：</b>不是堆叠数据量，而是堆叠应用多样性和实际完成的任务。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide">
+  <div class="kick">问 题 四 · 核 心 主 张 原 文</div>
+  <h2>六条主张，原文照录 —— 不省略，不更改</h2>
+  <div class="body">
+    <div class="row g12">
+      <div class="col">
+        <div class="card sm" style="margin-bottom:10px">
+          <div class="hd"><span class="num">1</span><h3>具身数据要做中学</h3></div>
+          <p class="xs">「可以让 agent 执行前，首先需要让遥操实行 —— 这里的遥操执行指的不是采集数据，而是直接执行任务并且商业闭环。在这个 ready 前，数据采集和遥操采集都是扯淡。现在的采集忽略了 T 的存在：在一些高速运作场景下，机体会产生不受控制的震动和惯性，对设备本身是极大的损耗，该用什么速度移动是现在无法采集的信号。</p>
+          <p class="xs" style="margin-top:6px">具身现在的数据采集方法是错的。做中学应该先商业闭环：先完成任务赚钱，在任务中迭代 meta action 和设备；而不是现在这样盲目地用特定设备采集然后卖设备 —— 这是本末倒置的商业模式，是强迫大家用不正确的通用设备、低效率完成特定任务的商业模式。应当在现在的各类设备中设计通用 meta action，在快速正确完成任务的基础上实现数据采集。只有先用遥操把任务完成之后，才可能把数据末端应用量提高，才可以在这个基础上得到正确的 meta action，以及迭代硬件设备的设计上。」</p>
+        </div>
+        <div class="card sm" style="margin-bottom:10px">
+          <div class="hd"><span class="num">2</span><h3>数据不应该绑定具身设备</h3></div>
+          <p class="xs">「绑定某一家的设备采集是没有意义的。真正重要的数据，不是人形机器人采集的那些关键点数据，而是环境数据、交互数据。一个场景可以被 100 种设备使用。绑定设备的数据走不远 —— 具身短期内不可能出现垄断公司，没可能像 CUDA 一样。」</p>
+        </div>
+        <div class="card sm">
+          <div class="hd"><span class="num">3</span><h3>行为上应该区分移动和关键物体交互</h3></div>
+          <p class="xs">「目前 locomotion、interaction 两个任务已经分开，但是还有很多具体任务区分得非常僵硬，尤其是在居家环境中的 locomotion。」</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card sm" style="margin-bottom:10px">
+          <div class="hd"><span class="num">4</span><h3>拆分通用交互方式：meta action 与 VLA 重构</h3></div>
+          <p class="xs">「目前的 top 问题是需要拆分通用的交互方式：设备执行的是 meta action，录制的数据也应该拆分为 meta action；VLA 也一样，需要重新根据 meta action 进行重构。这个的优先级大于评测、大于硬件、大于数采。需要统一的不是行业标准，而是定制可衡量的评测空间 —— 不是端到端的评测，而是对 action 进行 meta 元素细分。」</p>
+        </div>
+        <div class="card sm" style="margin-bottom:10px">
+          <div class="hd"><span class="num">5</span><h3>重要的不是行为，而是场景</h3></div>
+          <p class="xs">「数据 view 下，重要的不是行为而是场景 —— 这是一个跟现在的 VLA 以及 LLM 直接存在的巨大 gap。」</p>
+        </div>
+        <div class="card hot">
+          <div class="hd"><span class="num">6</span><h3 class="hotd">硬件、软件、数据都有问题；量不够不见真相</h3></div>
+          <p class="xs">「现在的硬件、软件、数据都存在问题，量不够不见真相。scale up 始终没有做起来 —— 不是堆叠数据量，而是堆叠应用多样性和实际完成的任务。完成任务不是遥操加速十倍让机器执行：这种 formulation 会让机器人永远无法 scale up 到多样化的应用中，从最底层的硬件设计和实现上已经是不 make sense 的。只有在不考虑工作效率和泛化的前提下，目前的慢动作遥操才是合理的。」</p>
+        </div>
+      </div>
+    </div>
+    <p class="xs" style="margin-top:8px">以上六条为创始人对数据方法论的原始表述，原样收录（仅补标点与更正拼写），是本材料第 25—29 页全部展开的依据，属本材料自有主张。</p>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide">
+  <div class="kick">参 考 文 献 汇 总</div>
+  <h2>按主题整理</h2>
+  <div class="body">
+    <div class="row g12">
+      <div class="col">
+        <h4 class="cool">符号算子与任务规划</h4>
+        <div class="ref"><b>Silver, Chitnis, Tenenbaum, Kaelbling, Lozano-Pérez.</b> Learning Symbolic Operators for Task and Motion Planning. <span class="v">IROS 2021. arXiv:2103.00589</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Silver, Athalye, Tenenbaum, Lozano-Pérez, Kaelbling.</b> Learning Neuro-Symbolic Skills for Bilevel Planning. <span class="v">CoRL 2022</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Silver, Chitnis, Kumar, McClinton, Lozano-Pérez, Kaelbling, Tenenbaum.</b> Predicate Invention for Bilevel Planning. <span class="v">AAAI 2023</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Chitnis, Silver, Tenenbaum, Lozano-Pérez, Kaelbling.</b> Learning Neuro-Symbolic Relational Transition Models for Bilevel Planning. <span class="v">IROS 2022</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Keller, Tanneberg, Peters.</b> Neuro-Symbolic Imitation Learning. <span class="v">ICRA 2025</span><span class="tag ok">已核实</span></div>
+
+        <h4 class="cool" style="margin-top:13px">生成先验与 3D/4D 表示</h4>
+        <div class="ref"><b>Poole, Jain, Barron, Mildenhall.</b> DreamFusion: Text-to-3D using 2D Diffusion. <span class="v">ICLR 2023. arXiv:2209.14988</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Kerbl, Kopanas, Leimkühler, Drettakis.</b> 3D Gaussian Splatting for Real-Time Radiance Field Rendering. <span class="v">ACM TOG 42(4), SIGGRAPH 2023. arXiv:2308.04079</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Jiang, Hsu, Zhu.</b> Ditto: Building Digital Twins of Articulated Objects from Interaction. <span class="v">CVPR 2022. arXiv:2202.08227</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Geng, He, Gao, Zhang, Wu, Wu.</b> NeuROK: Generative 4D Neural Object Kinematics. <span class="v">2026. arXiv:2605.30347</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Zhang, Jing, Yu, Ding, Nie, Wang, Du, Zou, Wu, Shuai.</b> Physion-Eval: Evaluating Physical Realism in Generated Video via Human Reasoning. <span class="v">2026. arXiv:2603.19607</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Wang 等.</b> ProlificDreamer (VSD). <span class="v">NeurIPS 2023</span><span class="tag chk">作者待核实</span></div>
+        <div class="ref"><b>Liu, Nie, Zhang, Mao, Wu.</b> BLADE: Learning Compositional Behaviors from Demonstration and Language. <span class="v">2025. arXiv:2505.21981</span><span class="tag ok">已核实</span></div>
+      </div>
+      <div class="col">
+        <h4 class="hotd">物理属性 ← 交互反馈</h4>
+        <div class="ref"><b>Wu, Yildirim, Lim, Freeman, Tenenbaum.</b> Galileo: Perceiving Physical Object Properties by Integrating a Physics Engine with Deep Learning. <span class="v">NeurIPS 2015. 被引 415</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Wu, Lim, Zhang, Tenenbaum, Freeman.</b> Physics 101: Learning Physical Object Properties from Unlabeled Videos. <span class="v">BMVC 2016. doi:10.5244/C.30.39. 被引 170</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Wu, Lu, Kohli, Freeman, Tenenbaum.</b> Learning to See Physics via Visual De-animation / Scene Physics Acquisition via Visual De-animation. <span class="v">NeurIPS 2017. 被引 232</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Liu, Freeman, Tenenbaum, Wu.</b> Physical Primitive Decomposition. <span class="v">ECCV 2018. arXiv:1809.05070. 被引 30</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Zhong, Yu, Wu, Li.</b> Reconstruction and Simulation of Elastic Objects with Spring-Mass 3D Gaussians (Spring-Gaus). <span class="v">ECCV 2024. arXiv:2403.09434. 被引 120</span><span class="tag ok">已核实</span></div>
+        <h4 class="hotd" style="margin-top:13px">同一条线上的触觉工作（第 12 页）</h4>
+        <div class="ref"><b>Wang, Wu, Sun, Yuan, Freeman, Tenenbaum, Adelson.</b> 3D Shape Perception from Monocular Vision, Touch, and Shape Priors. <span class="v">IROS 2018. doi:10.1109/IROS.2018.8593430. arXiv:1808.03247. 被引 135</span><span class="tag ok">已核实 · 关键桥梁</span></div>
+        <div class="ref"><b>Oller, Wu, Wu, Tenenbaum, Rodriguez.</b> See, feel, act: Hierarchical learning for complex manipulation skills with multisensory fusion. <span class="v">Science Robotics 2019. doi:10.1126/scirobotics.aav3123. 被引 149</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Gao, Chang, Mall, Fei-Fei, Wu.</b> ObjectFolder: A Dataset of Objects with Implicit Visual, Auditory, and Tactile Representations. <span class="v">CoRL 2021. arXiv:2109.07991. 被引 114</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Li, Zhang, Zhu, Wang, Lee, Xu, Adelson, Fei-Fei, Gao, Wu.</b> See, Hear, and Feel: Smart Sensory Fusion for Robotic Manipulation. <span class="v">CoRL 2022. arXiv:2212.03858. 被引 126</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Ai, Tian, Shi, Wang, Tan, Li, Wu.</b> RoboPack: Learning Tactile-Informed Dynamics Models for Dense Packing. <span class="v">2024. arXiv:2407.01418</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Wistreich, Shi, Tian, Clarke, Nath, Xu, Bao, Wu.</b> DexSkin: High-Coverage Conformable Robotic Skin for Learning Contact-Rich Manipulation. <span class="v">2025. arXiv:2509.18830</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Physion / Physion++ / ComPhy / CoPhy</b> 反事实物理推理基准. <span class="v">2021—2023</span><span class="tag chk">待核实</span>（注：上栏 Physion-Eval 2026 已核实，与此系列同名但不是同一篇）</div>
+
+        <h4 class="hotd" style="margin-top:13px">触觉传感与表征</h4>
+        <div class="ref"><b>Johnson, Adelson.</b> Retrographic sensing for the measurement of surface texture and shape. <span class="v">CVPR 2009, pp.1070–1077</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Yuan, Dong, Adelson.</b> GelSight: High-Resolution Robot Tactile Sensors for Estimating Geometry and Force. <span class="v">Sensors 17(12):2762, 2017</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Lepora 等.</b> The TacTip Family: Soft Optical Tactile Sensors with 3D-Printed Biomimetic Morphologies. <span class="v">Soft Robotics 2018</span>；Soft Biomimetic Optical Tactile Sensing with the TacTip: A Review. <span class="v">IEEE Sensors J. 2021. arXiv:2105.14455</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Sparsh</b>: Self-supervised touch representations for vision-based tactile sensing. <span class="v">Meta AI, CoRL 2024. arXiv:2410.24090</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>UniTouch / AnyTouch / T3 / Sparsh-X</b>. <span class="v">2024—2025</span><span class="tag chk">作者待核实</span></div>
+        <div class="ref"><b>Xie, Li, Li, Li, Chen, Ma, Yu, Ding.</b> Universal Visuo-Tactile Video Understanding for Embodied Interaction (VTV-LLM / VTV150K). <span class="v">2025. arXiv:2505.22566</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Li, Wang, Wu, Li, Luo, Fang, Sun, Zhang, Ding.</b> When Vision Meets Touch: A Contemporary Review for Visuotactile Sensors from the Signal Processing Perspective. <span class="v">2024. arXiv:2406.12226</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Song, Yu, Zhang, Sou, Mu, Peng, Ding.</b> SATac: A Thermoluminescence Enabled Tactile Sensor for Concurrent Perception of Temperature, Pressure, and Shear. <span class="v">2024. arXiv:2402.00585</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Gong, Sou, Li, Guo, Huang, Lyu, Song, Ding.</b> UltraTac: Integrated Ultrasound-Augmented Visuotactile Sensor. <span class="v">2025. arXiv:2508.20982</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Sou, Gong, Li, Lyu, Song, Mu, Ding.</b> MoiréTac: A Dual-Mode Visuotactile Sensor Using Moiré Pattern Amplification. <span class="v">2025. arXiv:2509.12714</span><span class="tag ok">已核实</span></div>
+        <h4 class="hotd" style="margin-top:13px">从视觉预测接触力（第 24 页问题三）</h4>
+        <div class="ref"><b>Zhou, Lu, Lin, Chen, Lyu, Ding.</b> TouchSight: Bare-Handed Tactile Prediction from Egocentric Video via Generative Visual Augmentation. <span class="v">2026. arXiv:2609.20414</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>TouchAnything / EgoTouch</b>: A Dataset and Framework for Bimanual Tactile Estimation from Egocentric Video. <span class="v">2026. arXiv:2605.13083</span><span class="tag ok">已核实</span></div>
+
+        <h4 class="hotd" style="margin-top:13px">动作模型与基准</h4>
+        <div class="ref"><b>Chi, Feng, Du, Xu, Cousineau, Burchfiel, Song.</b> Diffusion Policy. <span class="v">RSS 2023. arXiv:2303.04137</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Brohan 等（通讯 Chebotar, Yu, Hausman）.</b> RT-2. <span class="v">CoRL 2023. arXiv:2307.15818</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Kim, Pertsch, Karamcheti 等.</b> OpenVLA. <span class="v">CoRL 2024, PMLR 270. arXiv:2406.09246</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Li, Zhang, Wong, Gokmen, Srivastava 等.</b> BEHAVIOR-1K. <span class="v">CoRL 2022 / arXiv:2403.09227</span><span class="tag ok">已核实</span></div>
+        <div class="ref"><b>Shik, Orlovsky, Grillner 等.</b> 去大脑猫运动控制与脊髓 CPG. <span class="v">1960s—1990s</span><span class="tag ok">结论已核实</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide">
+  <div class="kick">参 考 文 献 补 遗 · 2023 年 后 的 新 工 作 与 2026 年 演 讲 / 访 谈</div>
+  <h2>问题四与最近三年的补充依据</h2>
+  <div class="body">
+    <div class="row g12">
+      <div class="col">
+        <h4 class="cool">吴佳俊线 · 2023 年后的工作与演讲</h4>
+        <div class="ref"><b>LEO｜An Embodied Generalist Agent in 3D World</b><br>
+          Huang, Yong, Ma, Linghu, Li, Wang, Li, Zhu, Jia, Huang, Wu, Fei-Fei 等｜<span class="v">ICML 2024 · arXiv:2311.12871</span><span class="tag ok">已核实</span><br>
+          3D 感知、推理、规划、行动在一个共享 3D 表示上闭环 —— 「世界表示」路线 2024 年的实例。</div>
+        <div class="ref"><b>BEHAVIOR Robot Suite（BRS）</b><br>
+          Jiang, Zhang, Wong, Wang, Ze, Yin, Gokmen, Song, Wu, Fei-Fei｜<span class="v">CoRL 2025 · arXiv:2503.05652</span><span class="tag ok">已核实</span><br>
+          双臂轮式 + 4-DoF 躯干全身操作真机套件，含<b>低成本全身遥操采集界面</b>，为 5 项家庭任务设计硬件与采集 —— 恰是第 25 页「任务驱动」的组织方式。</div>
+        <div class="ref"><b>IJCAI-ECAI 2026 计算机与思想奖获奖演讲</b>｜Building Visual and Physical Intelligence Through Code｜<span class="v">2026-08-20 · 不来梅</span><span class="tag ok">已核实</span><br>
+          「物理代码」= 几何 / 外观 / 物理 / 关系；「从一张照片，逆推一个世界」；对生成模型的批评：<b>大模型给了运动学，物理代码才给动力学</b> —— 缺了后者，世界模型只是「世界壁纸」。</div>
+        <div class="ref"><b>ECCV 2026 Physical AI Workshop 演讲</b>｜<span class="v">2026-09-09 · 马尔默；AI 科技评论整理</span><span class="tag ok">已核实</span><br>
+          本材料第 2—9、22 页引文的主要来源；自陈：<b>「追踪大规模机器人数据这件事，一直都非常困难……数据的采集始终是个难题」</b>。</div>
+      </div>
+      <div class="col">
+        <h4 class="hotd">丁文伯线 · 2023 年后的工作与访谈</h4>
+        <div class="ref"><b>SuperTac</b>｜<span class="v">Nature Sensors 2026</span><span class="tag ok">已核实</span><br>
+          多光谱成像 + 摩擦电感测 + 惯性测量融合，单指尖同时感知力度、位置、温度、材质、纹理、颜色、振动、滑动、碰撞、接近 —— 第 19 页多模态化路线的实物顶点。</div>
+        <div class="ref"><b>DOVE 触觉语言模型</b>｜Xspark AI｜<span class="v">2026 · DeepTech 访谈披露</span><span class="tag ok">已核实</span><br>
+          约 8.5 亿参数，把 SuperTac 触觉信号转为语义描述 —— 触觉侧「从感知数值到理解含义」的尝试。</div>
+        <div class="ref"><b>HumanTouch 数据集</b>｜Xspark AI｜<span class="v">2026 · DeepTech 访谈披露</span><span class="tag ok">已核实</span><br>
+          人手自然操作同步采集触觉 + 视觉 + 动作：累计 1,000+ 小时、100+ 任务，首批公开约 100 小时，上线半月下载超 200 万次 —— 接触数据稀缺性的直接市场证据。</div>
+        <div class="ref"><b>访谈与公司事实</b>｜雷锋网《物理AI 50人》2026-09-15；DeepTech 2026-08-28<span class="tag ok">已核实</span><br>
+          第 15—21 页引文来源；第 29 页「干中学」「scaling law 存在但纯量不是突破口」出自 DeepTech 篇。Xspark AI（无界智航）2025 年创立，亿元天使轮（鼎晖VGC、初心资本、SEE Fund 无限基金领投，上证报 2026-07-10）。</div>
+        <h4 class="hotd" style="margin-top:10px">跨本体数据（第 26、28 页的行业背景）</h4>
+        <div class="ref"><b>RT-X</b>（ICRA 2024 · arXiv:2310.08864）／<b>Octo</b>（RSS 2024 · arXiv:2405.12213）／<b>π0</b>（2024 · arXiv:2410.24164）／<b>UMI</b>（RSS 2024 · arXiv:2402.10329）<span class="tag ok">均已核实</span><br>
+          跨本体泛化全部依赖「在多种本体上重采数据」—— 数据的定义域在本体上，是这条路线共同的隐含前提；把它移到场景上是第 26 页的主张。</div>
+      </div>
+    </div>
+    <p class="xs" style="margin-top:9px"><b>本页全部条目于 2026-09 完成本轮检索核对。</b>SuperTac、DOVE、HumanTouch 三项为公司披露信息（访谈 + 新闻稿），非论文索引，引用时请注明来源。问题四（第 25—30 页）论点本身为本材料自有主张，上述材料仅作背景与旁证。</p>
+  </div>
+</section>
+
+<!-- 33 -->
+<section class="slide">
+  <div class="kick">使 用 说 明</div>
+  <h2>关于引用、置信度与原创部分</h2>
+  <div class="body">
+    <div class="row">
+      <div class="col">
+        <div class="card warm" style="margin-bottom:12px">
+          <h4 style="color:#B07A1C">文献置信度标注</h4>
+          <p class="xs"><span class="tag ok">已核实</span> 本次已通过检索确认作者、会议与年份。</p>
+          <p class="xs" style="margin-top:7px"><span class="tag chk">待核实</span> 方法名与技术内容可信，但作者列表或发表年份凭记忆，<b>对外引用前请自行核对</b>。</p>
+          <p class="xs" style="margin-top:7px">本机出网受管理员白名单限制，无法逐条打开原文。已另附 <b>fetch_papers.py / 一键抓论文.bat</b>，本次已跑过一轮：抓到 <b>515 + 约 100 篇</b>论文的元数据与摘要，落在 <b>papers\</b> 目录。<b>第 4、7、8、11、12、19、20、22、24、31 页涉及的工作已据此逐条核对</b>（作者、会议、年份、DOI/arXiv 号、被引数，引文直接摘自原文摘要）。</p>
+          <p class="xs" style="margin-top:7px">2026-09 补充一轮：问题四新引用的 <b>RT-X、Octo、π0、UMI、LEO、BEHAVIOR Robot Suite</b>，以及<b>吴佳俊 2026 年两场演讲、丁文伯 2026 年两篇访谈与 Xspark AI 融资报道</b>，均已逐条检索核对，出处见 <b>第 32 页补遗</b>。</p>
+          <p class="xs" style="margin-top:7px">剩余 <span class="tag chk">待核实</span> 仅 4 条，全部是<b>不在这两位作者名下的第三方工作</b>（Physion / ComPhy / CoPhy 系列、UniTouch / AnyTouch、T3 / Sparsh-X、ProlificDreamer）—— 语料里查不到，需要另外检索确认。</p>
+        </div>
+        <div class="card hot sm">
+          <h4 class="hotd">已纠正的一处常见误引</h4>
+          <p class="xs">第 16 页：「去掉皮质的小猫仍能在迷宫跳跃」把 Hubel &amp; Wiesel 的<b>单眼剥夺</b>实验与<b>去皮质猫运动控制</b>两条独立文献混为一谈。支持分层论点的是后者（脊髓 CPG 文献），请勿再以「小猫实验」之名引用。</p>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <h4>引号内容与原创推论的区分</h4>
+          <p class="xs">引号内的表述来自以下公开行业材料：<b>斯坦福吴佳俊 ECCV 2026 演讲</b>（机器人世界表示）、<b>Xspark AI 丁文伯的雷锋网《物理AI 50人》访谈与 DeepTech 访谈</b>（机器人触觉），用于陈述行业判断与已验证现象。</p>
+          <p class="xs" style="margin-top:10px"><b>以下属于本材料的自有推论，不是任何第三方观点，讨论时请明确区分：</b></p>
+          <ul style="margin-top:7px">
+            <li class="h"><b>第 10 页</b> 运动学 / 力学的信息论边界，以及 f 从 q(t) 反解欠定的论证</li>
+            <li class="h"><b>第 11、13 页</b> <b>核心主张：</b>触觉是物理属性的一种，建模的对象是交互的 feedback；它不是第 N 个模态，而是把视觉侧那个病态反问题换成接触面上的一次正向读数。附带的「被动 → 主动」轴同属本材料推论</li>
+            <li class="h"><b>第 12 页</b> <span class="hot">此页例外 —— 全部是已核实的公开文献事实</span>，六篇工作的年份、作者、出处与引文均可查；只有「读法」一栏的归纳（这条线一旦走到物理属性就会自己伸向触觉）属于本材料的整理</li>
+            <li class="h"><b>第 14 页</b> hold 的时间性缺陷即 frame assumption 的物理失效</li>
+            <li class="h"><b>第 15 页</b> 采样率错配导致瞬态丢失的工程解释</li>
+            <li class="h"><b>第 18 页</b> 脊髓层需共享意图状态、不能做旁路 watchdog</li>
+            <li class="h"><b>第 22 页</b> 脊髓层基准的候选指标；以及「评测缺口能用标注补，数据缺口不能」这一对比</li>
+            <li class="h"><b>第 24 页</b> 六个开放问题（第六问为 meta action 最小集合），及与 PDDL 2.1 durative action 的关联</li>
+            <li class="h"><b>第 25—30 页（问题四）</b> 数据采集方法的批判（任务驱动 vs 采集驱动）、数据锚定场景而非设备、移动与关键物体交互的拆分、meta action 的定义、VLA 按 meta action 重构、「量不够不见真相」与做中学闭环；<b>第 30 页为创始人六条核心判断的原文照录</b></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <p class="xs" style="margin-top:12px">本材料仅供内部技术讨论使用。</p>
+  </div>
+</section>
+
+</template>
+
+<script>
+(function(){
+  const tpl = document.getElementById('deck');
+  const stage = document.getElementById('stage');
+  Array.from(tpl.content.children).forEach(n => stage.appendChild(n.cloneNode(true)));
+  const slides = Array.from(stage.querySelectorAll('.slide'));
+  const prog = document.getElementById('prog');
+  const pg = document.getElementById('pg');
+  let i = 0;
+
+  const isMobile = () => window.innerWidth <= 900;
+  const mpg = document.getElementById('mpg');
+  const mnav = document.getElementById('mnav');
+  function fit(){
+    if(isMobile()){ slides.forEach(sl => sl.style.transform = 'none'); return; }
+    const s = Math.min(window.innerWidth/1280, window.innerHeight/720) * 0.965;
+    slides.forEach(sl => sl.style.transform = 'scale('+s+')');
+  }
+  function show(n){
+    i = Math.max(0, Math.min(slides.length-1, n));
+    slides.forEach((sl,k) => sl.classList.toggle('on', k===i));
+    prog.style.width = ((i+1)/slides.length*100)+'%';
+    pg.textContent = (i+1) + ' / ' + slides.length;
+    if(mpg) mpg.textContent = (i+1) + ' / ' + slides.length;
+    if(isMobile()) window.scrollTo(0, 0);
+  }
+  if(mnav){
+    document.getElementById('mprev').addEventListener('click', function(){ show(i-1); });
+    document.getElementById('mnext').addEventListener('click', function(){ show(i+1); });
+  }
+  let _tx = null, _ty = null, _tbl = false;
+  document.addEventListener('touchstart', function(e){
+    _tx = e.touches[0].clientX; _ty = e.touches[0].clientY;
+    _tbl = !!e.target.closest('table');
+  }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if(_tx === null) return;
+    if(!_tbl){
+      const dx = e.changedTouches[0].clientX - _tx;
+      const dy = e.changedTouches[0].clientY - _ty;
+      if(Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy)*1.4) show(i + (dx < 0 ? 1 : -1));
+    }
+    _tx = null; _ty = null; _tbl = false;
+  }, {passive:true});
+  window.addEventListener('resize', fit);
+  document.addEventListener('keydown', e => {
+    if(['ArrowRight','ArrowDown',' ','PageDown','Enter'].includes(e.key)){ e.preventDefault(); show(i+1); }
+    else if(['ArrowLeft','ArrowUp','PageUp','Backspace'].includes(e.key)){ e.preventDefault(); show(i-1); }
+    else if(e.key==='Home'){ show(0); }
+    else if(e.key==='End'){ show(slides.length-1); }
+  });
+  stage.addEventListener('click', e => show(i + (e.clientX < window.innerWidth*0.28 ? -1 : 1)));
+  fit(); show(0);
+})();
+</script>
+</body>
+</html>

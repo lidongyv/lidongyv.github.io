@@ -228,4 +228,58 @@ DESIGN = [
      "title": "World Model · 发展路线图", "title_en": "World model roadmap",
      "summary": "世界模型从 2020 到 2026 的路线图。", "summary_en": "A roadmap of world models from 2020 to 2026.",
      "tags": ["世界模型", "路线图"], "tags_en": ["World models", "Roadmap"]},
+
+    # ------------------------------------- 单页文章（design 根目录下的独立 html）/
+    {"slug": "vla-l4-plan", "root": "design", "file": "VLA在L4的可执行落地方案.html",
+     "title": "VLA 在 L4 的可执行落地方案", "title_en": "A workable VLA plan for L4",
+     "summary": "先把三笔账算清楚：两代方案的公平对比、国内 robovan 现状、落地方法与节奏。",
+     "summary_en": "Do the arithmetic first: a fair comparison of the two generations, the state of robovans in "
+                  "China, and a deployment sequence that follows from it.",
+     "tags": ["VLA", "L4", "落地"], "tags_en": ["VLA", "L4", "Deployment"]},
+    {"slug": "vla-l4-preview", "root": "design", "file": "vla-l4-preview.html",
+     "title": "VLA 在 L4 的可执行落地方案（提要）", "title_en": "A workable VLA plan for L4 (short version)",
+     "summary": "同一份方案的精简提要版：三笔账、两代方案对比、建议与节奏。",
+     "summary_en": "The condensed version of the same plan: the three accounts, the generation comparison, and "
+                  "the recommended sequence.",
+     "tags": ["VLA", "L4", "落地"], "tags_en": ["VLA", "L4", "Deployment"]},
+    {"slug": "one-hand-one-kitchen", "root": "design", "file": "一只手和一个厨房.html",
+     "title": "一只手，和一个厨房", "title_en": "A hand, and a kitchen",
+     "summary": "从一个挤了洗洁精的盘子出发：视觉这一层快写完了，状态、动作与它们的关系还空着。",
+     "summary_en": "Starting from a plate covered in dish soap: the vision layer is nearly written, while state, "
+                  "action and the relation between them are still open.",
+     "tags": ["具身", "触觉", "长文"], "tags_en": ["Embodied", "Tactile", "Essay"]},
+    {"slug": "see-to-touch", "root": "design", "file": "内部技术版-从看见到接触.html",
+     "title": "从看见，到接触：技术要点与参考工作", "title_en": "From seeing to touching: technical notes",
+     "summary": "三个技术问题一条线索：组合式抽象、被发现的「前置条件」，以及从 2D 验证到点云轨迹的路径。",
+     "summary_en": "Three technical questions along one thread: compositional abstraction, preconditions that are "
+                  "discovered rather than written, and the path from 2D verification to point-cloud trajectories.",
+     "tags": ["具身", "触觉", "技术"], "tags_en": ["Embodied", "Tactile", "Technical"]},
+    {"slug": "see-to-touch-extended", "root": "design", "file": "内部技术版-从看见到接触-丰富版.html",
+     "title": "从看见，到接触：技术要点与参考工作（丰富版）",
+     "title_en": "From seeing to touching: technical notes (extended)",
+     "summary": "同一篇技术长文的完整版：四个技术问题、关节运动学先验与参考工作。",
+     "summary_en": "The full version of the technical essay: four questions, kinematic priors, and the reference "
+                  "work.",
+     "tags": ["具身", "触觉", "技术"], "tags_en": ["Embodied", "Tactile", "Technical"]},
+    {"slug": "data-layer-pitch", "root": "design", "file": "投资人版-还没有人拥有的那一层数据.html",
+     "title": "还没有人拥有的那一层数据", "title_en": "The layer of data nobody owns yet",
+     "summary": "瓶颈不在传感器而在数据：这层数据的三个性质，与「慢脑 / 快脑 / 脊髓」三层架构。",
+     "summary_en": "The bottleneck is not the sensor but the data: three properties of that layer, and a "
+                  "slow-brain / fast-brain / spinal-cord architecture.",
+     "tags": ["具身", "数据", "观点"], "tags_en": ["Embodied", "Data", "Position"]},
+    {"slug": "data-layer-pitch-extended", "root": "design",
+     "file": "投资人版-还没有人拥有的那一层数据-丰富版.html",
+     "title": "还没有人拥有的那一层数据（丰富版）",
+     "title_en": "The layer of data nobody owns yet (extended)",
+     "summary": "同一观点的完整展开：为什么这层数据无法被绕过，以及它与已有力控急停的区别。",
+     "summary_en": "The full argument: why that layer cannot be bypassed, and how it differs from existing "
+                  "force-control e-stop behaviour.",
+     "tags": ["具身", "数据", "观点"], "tags_en": ["Embodied", "Data", "Position"]},
+    {"slug": "touch-revisited", "root": "design", "file": "触觉视角重述.html",
+     "title": "从一只手的视角，重述一个厨房里的故事",
+     "title_en": "A kitchen story, retold from a hand's point of view",
+     "summary": "用触觉这一侧重讲同一个厨房场景：视觉 99% 的路上触觉没有工作，而状态被别人改掉了。",
+     "summary_en": "The same kitchen scene told from the tactile side: on 99% of the path touch does nothing, and "
+                  "then the state is changed by someone else.",
+     "tags": ["具身", "触觉", "长文"], "tags_en": ["Embodied", "Tactile", "Essay"]},
 ]

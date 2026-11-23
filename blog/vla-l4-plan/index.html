@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLA 在 L4 的可执行落地方案</title>
+<style>
+:root{
+  --ink:#111827; --body:#374151; --mut:#6b7280; --dim:#9ca3af;
+  --line:#e5e7eb; --bg:#fafafa; --panel:#ffffff;
+  --slate:#475569; --teal:#0f766e; --amber:#b45309;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;color:var(--body);background:var(--bg);line-height:1.8;font-size:16px;}
+.wrap{max-width:880px;margin:0 auto;padding:0 20px 80px;}
+nav{position:-webkit-sticky;position:sticky;top:0;background:rgba(250,250,250,.96);border-bottom:1px solid var(--line);z-index:50;overflow-x:auto;white-space:nowrap;}
+nav .inner{display:flex;gap:22px;padding:10px 0;}
+nav a{color:var(--mut);text-decoration:none;font-size:13px;flex:none;}
+/* 封面 */
+.cover{min-height:82vh;display:flex;flex-direction:column;justify-content:center;padding:40px 0;}
+.cover h1{font-size:38px;font-weight:650;letter-spacing:-.5px;line-height:1.35;margin:0;color:var(--ink);}
+.cover .rep{font-size:15px;color:var(--mut);margin-top:20px;}
+.cover .tags{margin-top:40px;color:var(--dim);font-size:13px;letter-spacing:1px;}
+/* 章节 */
+section{padding:56px 0 48px;border-bottom:1px solid var(--line);scroll-margin-top:64px;}
+.sec-label{font-size:12px;letter-spacing:3px;color:var(--dim);margin-bottom:12px;}
+h2{font-size:25px;font-weight:600;margin:0 0 12px;letter-spacing:-.2px;color:var(--ink);}
+.secnote{font-size:13px;color:var(--mut);margin-bottom:26px;}
+.intro{font-size:15px;margin:0 0 18px;}
+/* 卡片 */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px 22px;}
+.ledger{display:grid;gap:14px;}
+.ledger h3{font-size:15px;font-weight:600;letter-spacing:2px;color:var(--ink);margin:0 0 12px;}
+.ledger p{margin:0 0 12px;font-size:15px;}
+/* 文字链路（替代色块箭头链） */
+.route{display:flex;flex-wrap:wrap;align-items:center;row-gap:8px;margin:8px 0;font-size:13.5px;color:var(--body);}
+.route span{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:13px;box-shadow:0 1px 2px rgba(15,23,42,.04);}
+.route .ar{background:none;border:none;box-shadow:none;padding:0;margin:0 2px;color:var(--dim);font-weight:700;font-size:12px;}
+.route b{font-weight:700;color:var(--ink);}
+.route .hl{color:var(--amber);font-weight:700;}
+.route .end{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:700;}
+/* 竖向思维流程 */
+.vflow{position:relative;margin:6px 0 2px;padding-left:26px;}
+.vflow::before{content:"";position:absolute;left:8px;top:12px;bottom:12px;width:1px;background:var(--line);}
+.vflow .step{position:relative;padding:9px 0;}
+.vflow .step::before{content:"";position:absolute;left:-22px;top:15px;width:9px;height:9px;border-radius:50%;background:var(--panel);border:1.5px solid var(--teal);}
+.vflow .step:last-child::before{background:var(--teal);}
+.vflow .no{font-size:11px;letter-spacing:2px;color:#475569;font-weight:700;}
+.hltext{color:#b45309;font-weight:700;}
+/* 指标行 */
+.mets{display:grid;gap:8px;margin:4px 0 0;}
+.met{display:flex;align-items:flex-start;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;}
+.m-no{flex:none;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--teal);color:#fff;font-size:10px;font-weight:700;margin-top:3px;}
+/* 结果块 */
+.endbox{display:inline-block;background:var(--ink);color:#fff;font-size:13.5px;font-weight:600;border-radius:8px;padding:6px 14px;margin-top:6px;}
+/* 总结块 */
+.sum{font-size:13px;color:var(--ink);font-weight:600;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 12px;margin-top:10px;}
+.sum b{color:#b45309;}
+/* 并行情境 */
+.duo{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;padding:8px 12px 10px;margin:0 0 12px;text-align:center;}
+.duo-lbl{font-size:11px;letter-spacing:2px;color:#64748b;font-weight:700;margin-bottom:2px;}
+.duo .pair{margin:2px 0 0;}
+/* 发展线 */
+.tl{position:relative;margin:8px 0 4px;padding-left:22px;}
+.tl::before{content:"";position:absolute;left:7px;top:12px;bottom:12px;width:2px;background:var(--line);}
+.tl .nd{position:relative;padding:6px 0;}
+.tl .nd::before{content:"";position:absolute;left:-21px;top:12px;width:10px;height:10px;border-radius:50%;background:var(--panel);border:2px solid var(--slate);}
+.tl .nd:last-child::before{background:var(--slate);border-color:var(--slate);}
+.tl .nd-lbl{font-size:11px;letter-spacing:2px;color:var(--slate);font-weight:700;}
+.tl .nd-txt{font-size:13px;}
+/* 漏斗逻辑图 */
+.funnel{margin:10px 0 4px;}
+.fq{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+.fq .q{display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:13.5px;border-bottom:1px solid var(--line);}
+.fq .q:last-child{border-bottom:none;}
+.qn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--slate);color:#fff;font-size:12px;font-weight:700;}
+.fd{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 0;}
+.fd .vline{width:2px;height:16px;background:var(--line);}
+.fd .w{font-size:11px;letter-spacing:2px;color:var(--mut);font-weight:700;}
+.fc{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+.fc .c{position:relative;padding:11px 14px 11px 28px;font-size:13.5px;border-bottom:1px solid var(--line);}
+.fc .c::before{content:"•";position:absolute;left:12px;color:var(--amber);font-weight:800;}
+.fc .c:last-child{border-bottom:none;}
+.fend{position:relative;background:var(--ink);color:#fff;border-radius:12px;padding:14px 16px;font-size:14px;font-weight:700;text-align:center;}
+.fend::before{content:"";position:absolute;top:-8px;left:50%;transform:translateX(-50%);border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:8px solid var(--ink);}
+/* 三步流水 */
+.flow3{display:grid;gap:0;margin:10px 0 6px;}
+.f3{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
+.f3-head{display:flex;align-items:center;gap:10px;font-size:14.5px;font-weight:800;color:var(--ink);margin-bottom:6px;}
+.f3-no{flex:none;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--slate);color:#fff;font-size:11px;font-weight:800;}
+.f3-body{font-size:14px;color:var(--body);line-height:1.8;}
+.f3.fin{border-color:#99f6e4;background:#f0fdfa;}
+.f3.fin .f3-no{background:var(--teal);}
+.fd.arr .w{font-size:14px;color:var(--dim);}
+/* 环行测试图 */
+.loop{display:grid;grid-template-columns:1fr 26px 1fr;grid-template-rows:auto 26px auto;gap:6px;align-items:center;justify-items:stretch;margin:10px 0 4px;}
+.loop .lp{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;text-align:center;line-height:1.6;}
+.loop .lp.key{background:#f0fdfa;border-color:#99f6e4;font-weight:700;color:var(--ink);}
+.loop .arr{text-align:center;color:var(--teal);font-weight:800;font-size:14px;}
+/* 功能树 */
+.ftree{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0 4px;}
+.ftree .froot{grid-column:1/-1;text-align:center;margin-bottom:4px;}
+.ftree .froot span{display:inline-block;background:var(--ink);color:#fff;border-radius:10px;padding:8px 18px;font-size:14px;font-weight:800;}
+.ftree .fb{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+.ftree .fb.p1{border-top:3px solid #0f766e;}
+.ftree .fb.p2{border-top:3px solid #d97706;}
+.ftree .fb.p3{border-top:3px solid #475569;}
+.ftree .fb-h{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:8px;}
+.ftree .fb ul{margin:0;padding:0;list-style:none;}
+.ftree .fb li{position:relative;padding:3px 0 3px 14px;font-size:12.5px;color:var(--body);}
+.ftree .fb li::before{content:"·";position:absolute;left:0;color:#94a3b8;font-weight:800;}
+@media (max-width:760px){
+  .ftree{grid-template-columns:1fr;}
+  .ftree .froot{grid-column:1;}
+}
+/* 阶段块 */
+.phase{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden;}
+.phase .ph-h{padding:12px 14px;color:#fff;font-weight:800;font-size:14px;letter-spacing:.5px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;}
+.ph-t{flex:none;}
+.ph-route{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;font-weight:600;}
+.ph-route span{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:6px;padding:2px 8px;}
+.ph-route .par{background:none;border:none;padding:0;color:rgba(255,255,255,.85);font-weight:800;}
+.ph-route .pend{background:#fff;font-weight:800;}
+.phase.p1 .ph-route .pend{color:#0f766e;}
+.phase.p2 .ph-route .pend{color:#b45309;}
+.phase.p3 .ph-route .pend{color:#334155;}
+.phase.p1 .ph-h{background:#0f766e;}
+.phase.p2 .ph-h{background:#d97706;}
+.phase.p3 .ph-h{background:#475569;}
+.phase .ph-b{padding:10px 16px 12px;}
+.phase .subs{list-style:none;margin:0;padding:0;}
+.phase .subs li{position:relative;padding:4px 0 4px 40px;font-size:13.5px;}
+.phase .subs .sn{position:absolute;left:2px;top:5px;font-size:11px;color:var(--teal);font-weight:800;background:#f0fdfa;border-radius:6px;padding:0 6px;}
+/* 总时间轴 */
+.roadmap{display:flex;align-items:flex-start;margin:14px 0 4px;}
+.rm{flex:none;display:flex;flex-direction:column;align-items:center;text-align:center;width:110px;}
+.rm-dot{width:12px;height:12px;border-radius:50%;}
+.rm-dot.p1{background:#0f766e;}
+.rm-dot.p2{background:#d97706;}
+.rm-dot.p3{background:#475569;}
+.rm-t{font-size:11.5px;color:var(--body);margin-top:6px;line-height:1.5;}
+.rm-line{flex:1;height:2px;background:var(--line);margin-top:5px;min-width:16px;}
+/* 阶段内时间轴 */
+.p-tl{margin-top:10px;border-top:1px dashed var(--line);padding-top:8px;}
+.p-tl-lbl{font-size:11px;letter-spacing:2px;color:var(--dim);font-weight:700;margin-bottom:2px;}
+/* 各阶段时间轴配色 */
+.phase.p1 .route .end{background:#0f766e;border-color:#0f766e;}
+.phase.p2 .route .end{background:#d97706;border-color:#d97706;}
+.phase.p3 .route .end{background:#475569;border-color:#475569;}
+.phase.p1 .route .ar{color:#0f766e;}
+.phase.p2 .route .ar{color:#d97706;}
+.phase.p3 .route .ar{color:#64748b;}
+@media (max-width:560px){
+  .roadmap{flex-direction:column;gap:8px;align-items:flex-start;}
+  .rm{flex-direction:row;gap:10px;width:auto;text-align:left;align-items:center;}
+  .rm-t{margin-top:0;}
+  .rm-line{width:2px;height:14px;flex:none;margin:0 0 0 5px;}
+}
+/* 横向思维链 */
+.mindh{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 0 4px;}
+.mindh .rb{background:var(--ink);color:#fff;border-radius:10px;padding:8px 16px;font-size:14px;font-weight:800;}
+.mindh .arrow{color:var(--dim);font-weight:800;}
+.mindh .ch{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13.5px;font-weight:600;color:var(--ink);}
+.mindh .ch.yes{border-top:3px solid var(--teal);}
+.mindh .ch.no{border-top:3px solid #f59e0b;}
+.mindh .mk{font-weight:800;}
+.mindh .ch.yes .mk{color:var(--teal);}
+.mindh .ch.no .mk{color:var(--amber);}
+/* 对错行 */
+.yn{display:grid;gap:8px;margin:8px 0 4px;}
+.yn > div{display:flex;gap:10px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px;}
+.yn .y{border-left:4px solid var(--teal);}
+.yn .n{border-left:4px solid #f59e0b;}
+.ym{flex:none;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-top:2px;}
+.yn .y .ym{background:#f0fdfa;color:var(--teal);border:1px solid #99f6e4;}
+.yn .n .ym{background:#fffbeb;color:var(--amber);border:1px solid #fcd34d;}
+.subh.hl{background:var(--ink);color:#fff;border-left:4px solid var(--teal);padding:10px 14px;border-radius:0 8px 8px 0;font-size:15.5px;letter-spacing:.5px;}
+/* 并行问题卡 */
+.prb{display:grid;gap:10px;margin:10px 0 4px;}
+.prb-i{display:flex;gap:12px;align-items:flex-start;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+.prb-no{flex:none;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--slate);color:#fff;font-size:12px;font-weight:700;margin-top:1px;}
+.prb-t{font-size:13.5px;flex:1;}
+.prb-subs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}
+.ps{background:#f1f5f9;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;}
+/* 赛马 vs 升级 */
+.race{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0;}
+.rc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;}
+.rc.ok{border-top:3px solid var(--slate);}
+.rc.no{border-top:3px solid var(--teal);}
+.rc-h{font-size:13.5px;font-weight:800;color:var(--ink);margin-bottom:6px;}
+.rc-t{font-size:13px;color:var(--body);}
+/* 后果格 */
+.cnq{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;}
+.c4{position:relative;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:9px 12px 9px 24px;font-size:12.5px;}
+.c4::before{content:"→";position:absolute;left:10px;color:#b45309;font-weight:700;}
+@media (max-width:760px){
+  .race{grid-template-columns:1fr;}
+  .cnq{grid-template-columns:1fr;}
+}
+@media (max-width:420px){
+  .prb-subs{grid-template-columns:1fr;}
+}
+.vflow .t{font-size:14.5px;font-weight:600;color:var(--ink);}
+.vflow .d{font-size:13px;color:var(--mut);margin-top:1px;}
+.vflow .vsub{margin:4px 0 0;padding:0;list-style:none;}
+.vflow .vsub li{position:relative;padding:2px 0 2px 14px;font-size:13.5px;color:var(--body);}
+.vflow .vsub li::before{content:"–";position:absolute;left:0;color:var(--dim);}
+/* 并列 */
+.pair{display:flex;justify-content:center;align-items:center;gap:18px;margin:14px 0 6px;font-size:14px;}
+.pair .t{font-weight:600;color:var(--ink);}
+.pair .divider{width:1px;height:16px;background:var(--line);}
+.pair .lbl{color:var(--dim);font-size:12px;}
+/* 强调句（细线+浅底，替代深色横幅） */
+.note{border-left:2px solid var(--teal);background:#f8fafc;padding:12px 16px;font-size:14.5px;border-radius:0 6px 6px 0;margin:14px 0;color:var(--body);}
+.note b{color:var(--ink);font-weight:600;}
+.note.amber{border-left-color:#d97706;background:#fffbeb;}
+.lead2{font-size:14.5px;font-weight:700;color:var(--ink);margin:10px 0 2px;}
+.subh{font-size:14.5px;font-weight:700;color:var(--ink);margin:14px 0 8px;padding-left:10px;border-left:4px solid #d97706;}
+/* 金字塔台阶 */
+.steps{position:relative;margin:10px 0 0;padding-left:26px;}
+.steps::before{content:"";position:absolute;left:9px;top:14px;bottom:14px;width:2px;background:var(--line);}
+.st{position:relative;margin:0 0 10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:8px;}
+.st .st-no{position:absolute;left:-26px;top:12px;width:20px;height:20px;border-radius:50%;background:var(--slate);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.st1{width:100%;}
+.st2{width:88%;}
+.st3{width:76%;}
+.st4{width:64%;background:#f0fdfa;border-color:#99f6e4;}
+.st4 .st-no{background:var(--teal);}
+.st-head{font-size:13px;font-weight:700;color:var(--ink);letter-spacing:.5px;margin-bottom:4px;}
+.st-body{font-size:13px;color:var(--body);}
+.st-note{font-size:12.5px;color:var(--mut);border-top:1px dashed var(--line);margin-top:4px;padding-top:3px;}
+.note.slate{border-left-color:var(--slate);}
+/* 对勾清单 */
+.cklist{list-style:none;margin:8px 0;padding:0;}
+.cklist li{position:relative;padding:4px 0 4px 22px;font-size:14px;}
+.cklist li::before{content:"✓";position:absolute;left:0;color:var(--teal);font-weight:700;font-size:13px;}
+/* 分组问题清单 */
+.qtree{margin:8px 0 0;}
+.qtree .grp{margin:8px 0 0;}
+.qtree .grp-head{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:700;color:var(--ink);letter-spacing:1px;padding:2px 0 4px;border-bottom:1px solid var(--line);}
+.qtree .grp-head .n{color:var(--teal);font-size:12px;font-weight:700;}
+.qtree .subs{list-style:none;margin:4px 0 0;padding:0;}
+.qtree .subs li{position:relative;padding:3px 0 3px 34px;font-size:13.5px;}
+.qtree .subs li .sn{position:absolute;left:4px;font-size:12px;color:#6b7280;font-weight:600;padding-top:1px;}
+/* 链条盒 */
+.chainbox{border:1px solid var(--line);border-radius:8px;background:#fafafa;padding:10px 14px;margin:10px 0;}
+.chainbox .lbl{font-size:11.5px;letter-spacing:2px;color:#475569;font-weight:700;margin-bottom:6px;}
+.lane2{border:1px solid var(--line);border-radius:6px;background:var(--panel);padding:8px 12px;margin:8px 0;}
+.lane2 .lhd{font-size:12px;font-weight:700;color:var(--ink);letter-spacing:1px;margin-bottom:3px;}
+.lane2 .lchain{font-size:13px;color:var(--ink);font-weight:600;line-height:1.9;background:#f8fafc;border:1px solid var(--line);border-radius:6px;padding:4px 10px;}
+.lane2 .lchain .ar{color:var(--dim);margin:0 4px;font-weight:400;}
+.lnotes{list-style:none;margin:5px 0 0;padding:0;}
+.lnotes li{position:relative;padding:2px 0 2px 18px;font-size:12.5px;color:var(--mut);}
+.lnotes li .n{position:absolute;left:0;font-size:11px;color:#6b7280;font-weight:700;}
+.chainbox .cost{font-size:13px;color:var(--ink);font-weight:600;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 12px;margin-top:8px;}
+.chainbox .cost b{color:#b45309;}
+/* 后果行 */
+.conseq{margin:10px 0 0;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 14px;}
+.conseq .cl{font-size:11px;letter-spacing:2px;color:#b45309;font-weight:700;margin-bottom:2px;}
+.conseq div.c-line{padding:5px 0 5px 18px;position:relative;font-size:13.5px;font-weight:600;color:var(--ink);border-bottom:1px dashed #f0d489;}
+.conseq div.c-line:last-child{border-bottom:none;}
+.conseq div.c-line::before{content:"→";position:absolute;left:0;color:#b45309;font-weight:700;}
+/* 刻度线（替代分段色块速度计） */
+.scale{margin:26px 0 8px;}
+.scale .track{position:relative;height:2px;background:var(--line);}
+.scale .zone{position:absolute;top:-1.5px;height:5px;background:var(--teal);left:40%;width:35%;border-radius:3px;}
+.scale .cap{position:absolute;top:-8px;font-size:11px;color:var(--dim);}
+.scale .cap.c0{left:0;}
+.scale .cap.c8{left:40%;transform:translateX(-50%);}
+.scale .cap.c15{left:75%;transform:translateX(-50%);color:var(--teal);font-weight:600;}
+.scale .cap.c20{right:0;}
+.scale-labels{display:grid;grid-template-columns:40% 35% 25%;margin-top:12px;font-size:12.5px;color:var(--mut);}
+.scale-labels span:nth-child(2){text-align:center;color:var(--teal);font-weight:600;}
+.scale-labels span:nth-child(3){text-align:right;}
+/* 细条 */
+.bar-row{margin:12px 0 2px;}
+.bar-row .lbl{font-size:12px;color:var(--mut);margin-bottom:5px;}
+.bar{height:5px;background:#eef0f3;border-radius:3px;overflow:hidden;}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--teal);}
+/* 通用 */
+.chip{display:inline-block;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 13px;font-size:13.5px;color:var(--body);}
+.chip b{color:var(--ink);font-weight:600;}
+.hlist{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0;}
+.hlist .chip{flex:1 1 220px;}
+ul.tight,ol.tight{margin:0;padding-left:20px;font-size:14.5px;}
+ul.tight li,ol.tight li{margin:8px 0;}
+.mini{display:flex;align-items:center;gap:7px;font-size:12px;letter-spacing:2px;color:#475569;font-weight:700;margin:16px 0 6px;}
+.mini::before{content:"";width:3px;height:13px;border-radius:2px;background:var(--teal);flex:none;}
+.cmp-col.left .mini::before{background:var(--slate);}
+.cmp-col.right .mini::before{background:var(--teal);}
+.subcap{display:block;font-size:12px;font-weight:700;color:#334155;background:#eef2f7;border-radius:4px;padding:3px 10px;margin:8px 0 6px;letter-spacing:1px;}
+.cmp-col.right .subcap{background:#e6f4f2;color:#115e59;}
+.dlines{margin:8px 0 0;}
+.dline{font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line);}
+.dline b{font-weight:700;color:var(--ink);}
+.firms{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px;}
+.firm{display:block;text-align:center;font-size:11.5px;font-weight:700;letter-spacing:1px;color:var(--ink);border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:2px 8px;}
+.fnote{font-size:13.5px;padding:2px 2px 8px;border-bottom:1px solid var(--line);}
+/* 两栏：公司列 + 状态列 */
+.cmp2{display:flex;gap:16px;margin:0 0 6px;border-top:1px solid var(--line);padding-top:8px;}
+.cmp2 .c-l{flex:none;width:92px;display:flex;flex-direction:column;gap:4px;border-right:2px solid #cbd5e1;padding-right:10px;background:#f1f5f9;padding-left:6px;}
+.cmp2 .c-r{flex:1;font-size:13.5px;align-self:center;}
+/* 双箭头轴 */
+.bal{margin:12px 0 2px;}
+.bal-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:2px;}
+.bal-side{text-align:left;}
+.bal-side.right{text-align:right;}
+.bal-side .lab{font-size:12.5px;font-weight:700;color:var(--ink);}
+.bal-side .out{font-size:13px;color:var(--teal);font-weight:700;margin-top:2px;}
+.bal-svg{display:block;width:100%;height:auto;}
+/* 话语权对峙轴 */
+.axis{display:flex;align-items:stretch;gap:10px;margin:12px 0;}
+.axis .side{flex:1;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:9px 10px;text-align:center;display:flex;flex-direction:column;justify-content:center;}
+.axis .side .lab{font-size:12.5px;font-weight:700;color:var(--ink);}
+.axis .side .out{font-size:13px;color:var(--teal);font-weight:700;margin-top:3px;}
+.axis .mid{align-self:center;flex:none;color:#94a3b8;font-weight:700;font-size:17px;}
+/* 定义块 */
+.def{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px 20px;margin-bottom:24px;}
+.def .lbl{font-size:11.5px;letter-spacing:2.5px;color:#475569;font-weight:700;margin-bottom:8px;}
+.crit{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:10px 0 14px;}
+.crit div{border:1px solid var(--line);border-radius:6px;padding:11px 14px;font-size:13px;background:var(--panel);}
+.crit .no{font-size:11px;color:var(--teal);font-weight:600;margin-right:6px;}
+/* 两栏 */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:stretch;}
+.cmp-col{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+.cmp-col .head{padding:14px 18px;border-bottom:1px solid var(--line);}
+.cmp-col .head .main{font-size:15.5px;font-weight:600;color:var(--ink);}
+.cmp-col .head .sub{font-size:12px;color:var(--mut);font-weight:600;margin-top:3px;}
+.cmp-col.left .head{border-top:3px solid var(--slate);}
+.cmp-col.right .head{border-top:3px solid var(--teal);}
+.cmp-col .body{padding:4px 18px 18px;display:flex;flex-direction:column;flex:1;}
+.seg{flex:1 1 auto;display:flex;flex-direction:column;}
+/* 行列表 */
+.rows{margin:2px 0;}
+.row{display:flex;gap:16px;padding:6px 2px;border-bottom:1px solid var(--line);font-size:13.5px;align-items:stretch;}
+.row:last-child{border-bottom:none;}
+.row .k{flex:none;width:92px;font-size:11.5px;letter-spacing:1.5px;color:#475569;font-weight:600;border-right:2px solid #cbd5e1;padding-right:10px;background:#f1f5f9;display:flex;align-items:center;}
+.row .v{color:var(--body);}
+.row .v b{font-weight:600;color:var(--ink);}
+/* 子卡 */
+.subgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;}
+.sub{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 16px;}
+.sub h5{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:var(--ink);letter-spacing:.5px;margin:0 0 8px;}
+.sub h5::before{content:"";width:5px;height:16px;border-radius:2px;background:var(--slate);flex:none;}
+.sub.vla h5::before{background:var(--teal);}
+.sub ul{margin:0;padding-left:18px;font-size:13.5px;}
+.sub li{margin:6px 0;}
+/* 投入饼图 */
+.pie-wrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
+.pie{flex:none;position:relative;width:150px;height:150px;border-radius:50%;}
+.pl{position:absolute;transform:translate(-50%,-50%);text-align:center;line-height:1.25;}
+.pl span{display:block;}
+.pp{font-size:15px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(15,23,42,.3);white-space:nowrap;}
+.pn{font-size:11px;color:#fff;text-shadow:0 1px 2px rgba(15,23,42,.3);margin-top:1px;white-space:nowrap;}
+.pl.dk .pp{color:#334155;text-shadow:none;}
+.pl.dk .pn{color:#475569;text-shadow:none;}
+.pie-legend{flex:1 1 240px;list-style:none;margin:0;padding:0;}
+.pie-legend li{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--line);}
+.pie-legend li:last-child{border-bottom:none;}
+.pie-legend .dot{flex:none;width:8px;height:8px;border-radius:50%;margin-top:7px;}
+.pl-main{font-size:12.5px;color:var(--body);margin-top:2px;}
+.it-tag{display:inline-block;font-size:11.5px;font-weight:700;padding:1px 9px;border-radius:999px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;white-space:nowrap;}
+.sub.vla .it-tag{background:#f0fdfa;color:#0f766e;border-color:#99f6e4;}
+.pc{font-weight:800;color:var(--ink);}
+.sub.vla .pc{color:#0f766e;}
+/* 双车道 */
+.lanes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0;}
+.lane{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
+.lane .hd{font-size:13.5px;font-weight:600;color:var(--ink);padding:10px 14px;border-bottom:1px solid var(--line);background:#fafafa;display:flex;align-items:center;gap:8px;}
+.lane .dot{width:8px;height:8px;border-radius:50%;background:var(--slate);flex:none;}
+.lane.l2 .dot{background:var(--teal);}
+.lane .bd{padding:10px 14px;font-size:13px;}
+/* 四理由 */
+.reasons{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;margin:14px 0;}
+.reasons .reason{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14.5px;}
+.reasons.red{grid-template-columns:1fr 1fr;gap:10px 14px;}
+.reasons.red .reason{background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:11px 14px;color:#7f1d1d;font-weight:600;}
+.reasons.red .reason .n{background:#dc2626;color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex:none;}
+/* 红色警示面板 */
+.warn-panel{border:1px solid #fca5a5;border-radius:14px;overflow:hidden;background:var(--panel);margin:12px 0;box-shadow:0 2px 10px rgba(220,38,38,.08);}
+.warn-h{background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;padding:12px 16px;font-size:15px;font-weight:800;letter-spacing:.5px;display:flex;align-items:center;gap:8px;}
+.warn-h::before{content:"⚠";font-size:16px;flex:none;}
+.warn-b{padding:8px 16px 12px;}
+.warn-i{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px dashed #fecaca;font-size:14px;color:#7f1d1d;}
+.warn-i:last-child{border-bottom:none;}
+.warn-i .wn{flex:none;width:24px;height:24px;border-radius:8px;background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.reason .n{font-size:12px;color:var(--dim);padding-top:2px;flex:none;}
+/* 小节 */
+.block{margin-top:28px;}
+.block>h3{font-size:16px;font-weight:600;color:var(--ink);margin:0 0 12px;}
+.foot{color:var(--dim);font-size:13px;padding-top:28px;text-align:center;}
+/* 右下目录 */
+.toc-fab{position:fixed;right:16px;bottom:16px;z-index:60;background:var(--ink);color:#fff;border-radius:999px;padding:10px 16px;font-size:13px;font-weight:700;box-shadow:0 4px 14px rgba(15,23,42,.25);cursor:pointer;user-select:none;}
+.toc-panel{position:fixed;right:16px;bottom:64px;z-index:60;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(15,23,42,.15);padding:10px 0;width:200px;display:none;}
+.toc-panel.open{display:block;}
+.toc-panel .toc-title{font-size:11px;letter-spacing:2px;color:var(--mut);font-weight:800;padding:2px 16px 8px;border-bottom:1px solid var(--line);margin-bottom:6px;}
+.toc-panel a{display:block;padding:8px 16px;font-size:13.5px;color:var(--body);text-decoration:none;}
+.toc-panel a:hover{background:#f8fafc;color:var(--teal);}
+@media (max-width:760px){
+  .cover h1{font-size:30px;}
+  .cmp{grid-template-columns:1fr;}
+  .crit{grid-template-columns:1fr;}
+  .lanes{grid-template-columns:1fr;}
+  .reasons{grid-template-columns:1fr;}
+}
+@media (max-width:420px){
+  .subgrid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="ldy-en-note" lang="en" style="font:15px/1.65 -apple-system,Segoe UI,PingFang SC,Microsoft YaHei,sans-serif;max-width:860px;margin:18px auto;padding:14px 18px;border:1px solid rgba(128,128,128,.35);border-radius:12px;background:rgba(128,128,128,.06)"><strong>A workable VLA plan for L4</strong><br>Do the arithmetic first: a fair comparison of the two generations, the state of robovans in China, and a deployment sequence that follows from it.<br><span style="opacity:.75">The full text of this page is in Chinese.</span></div>
+<div class="wrap">
+<nav>
+  <div class="inner">
+    <a href="#cover" onclick="return go('cover')">封面</a><a href="#ledger" onclick="return go('ledger')">先算三笔账</a><a href="#compare" onclick="return go('compare')">两代方案对比</a><a href="#domestic" onclick="return go('domestic')">国内 robovan 现状</a><a href="#strategy" onclick="return go('strategy')">落地方法</a><a href="#accounting" onclick="return go('accounting')">VLA 算账的逻辑</a><a href="#rhythm" onclick="return go('rhythm')">落地节奏</a>
+  </div>
+</nav>
+
+<section class="cover" id="cover">
+  <h1>VLA 在 L4 的可执行落地方案</h1>
+  <div class="rep">汇报人：于立冬</div>
+  <div class="tags">先算三笔账 · 两代方案对比 · 遥操切入 · 先拿收益，不一把梭</div>
+</section>
+
+<section id="ledger">
+  <div class="sec-label">01 · 先算三笔账</div>
+  <h2>先算三笔账</h2>
+  <div class="secnote">从运营账、团队管理账、投入方向账出发，而不是从技术问题出发。</div>
+  <div class="ledger">
+    <div class="card">
+      <h3>运营账</h3>
+      <div class="vflow">
+        <div class="step">
+          <div class="no">01 · 主要问题</div>
+          <div class="t">L4 场景的 hard case 有方案但是无法快速迭代</div>
+        </div>
+        <div class="step">
+          <div class="no">02 · 原因</div>
+          <div class="t">迭代上线链条长</div>
+          <div class="lane2">
+            <div class="lhd">感知模型</div>
+            <div class="lchain">数据采集<span class="ar">→</span>数据标注<span class="ar">→</span>训练<span class="ar">→</span>模型评测<span class="ar">→</span>上下游联调发版<span class="ar">→</span>端到端评测<span class="ar">→</span>路测</div>
+            <ul class="lnotes"><li><span class="n">1.</span>完整链路从数据获取就不是 D+3 能完成；轻量 feat 安全 OTA 上线经常需要 1-2 个月</li></ul>
+          </div>
+          <div class="lane2">
+            <div class="lhd">pnc 模型</div>
+            <div class="lchain">大量的人驾数据采集<span class="ar">→</span>质检筛选<span class="ar">→</span>训练优化<span class="ar">→</span>超参联调<span class="ar">→</span>端到端评测<span class="ar">→</span>路测</div>
+            <ul class="lnotes"><li><span class="n">1.</span>不需要标注但需大量采集；运营数据无法回收时，靠摆拍和测试车回收的周期是月粒度</li></ul>
+          </div>
+          <div class="lane2">
+            <div class="lhd">工程与 infra</div>
+            <ul class="lnotes">
+              <li><span class="n">1.</span>算法版本极快频率更新，工程适配和稳定性测试适配会 block 工程 team 的正向研发</li>
+              <li><span class="n">2.</span>缺少正向研发的工程和 infra 体系在发版中会存在整体系统回退问题</li>
+            </ul>
+          </div>
+          <div class="sum"><b>总结：</b>高质量标注需长期积累，多模块串联调试测试时间代价极高——这两项是 block two-stage 方案上线的主要问题</div>
+        </div>
+        <div class="step">
+          <div class="no">03 · 表现</div>
+          <div class="mets">
+            <div class="met"><span class="m-no">1</span>接管次数 · 人机共驾比例，这些运营相关指标的提升难以 match 运营的持续迭代需求</div>
+            <div class="met"><span class="m-no">2</span>跟 L2 不同，L4 浮现一个新难点在于优化人机共驾比例，也就是接管后遥操的控制时间长度</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="no">04 · 结果</div>
+          <div class="t">平均速度 · 单任务毛利 · 人机共驾比例等运营指标 <span class="hltext">无法满足持续优化</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>团队管理账</h3>
+      <div class="vflow">
+        <div class="step">
+          <div class="no">01 · 现状</div>
+          <div class="duo">
+            <div class="duo-lbl">两个 team 并行</div>
+            <div class="pair">
+              <span class="t">two-stage team</span><span class="divider"></span><span class="t">VLA team</span>
+            </div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="no">02 · 问题</div>
+          <div class="mets">
+            <div class="met"><span class="m-no">1</span>VLA 方案跟 two-stage 方案对 infra 有着极其不同的需求</div>
+            <div class="met"><span class="m-no">2</span>人员、算力、数据等冗余投入和浪费</div>
+            <div class="met"><span class="m-no">3</span>研发 team 分裂和内部矛盾显著</div>
+            <div class="met"><span class="m-no">4</span>打爆 data infra、工程 team、测试 team</div>
+            <div class="met"><span class="m-no">5</span>除非 2-3 倍超配的人员，没有办法支持两代方案同时上线和迭代</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="no">03 · 结果</div>
+          <div class="t"><span class="hltext">这就是可持续迭代上的死局</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>投入方向账</h3>
+      <div class="subgrid">
+        <div class="sub">
+          <h5>two-stage</h5>
+          <div class="pie-wrap">
+            <div class="pie" style="background:conic-gradient(#475569 0 40%,#94a3b8 40% 80%,#e2e8f0 80% 100%);">
+              <span class="pl" style="left:79%;top:41%;"><span class="pp">40%</span><span class="pn">数据</span></span>
+              <span class="pl" style="left:32%;top:75%;"><span class="pp">40%</span><span class="pn">平台</span></span>
+              <span class="pl dk" style="left:32%;top:25%;"><span class="pp">20%</span><span class="pn">算法</span></span>
+            </div>
+            <ul class="pie-legend">
+              <li><span class="dot" style="background:#475569"></span><div><span class="it-tag">数据闭环和平台 <span class="pc">40%</span></span><div class="pl-main">制约性能提升的是 L4 的数据闭环效率以及方案限制，<b>2-3 个 Q</b> 之内几乎不会有什么大的改变</div></div></li>
+              <li><span class="dot" style="background:#94a3b8"></span><div><span class="it-tag">测试，工程，以及其他 infra <span class="pc">40%</span></span><div class="pl-main">需要继续投入大量精力在 infra 优化上来，数据，平台，训练，评测等 infra，跟算法研发和发版节奏脱节</div></div></li>
+              <li><span class="dot" style="background:#e2e8f0"></span><div><span class="it-tag">算法方案 <span class="pc">20%</span></span><div class="pl-main">L4 虽然存在大量 hard case 和必须要遥操的场景，但是可以抄袭的 L2 算法方案收敛</div></div></li>
+            </ul>
+          </div>
+        </div>
+        <div class="sub vla">
+          <h5>VLA</h5>
+          <div class="pie-wrap">
+            <div class="pie" style="background:conic-gradient(#0f766e 0 40%,#2dd4bf 40% 70%,#99f6e4 70% 100%);">
+              <span class="pl" style="left:79%;top:41%;"><span class="pp">40%</span><span class="pn">算法</span></span>
+              <span class="pl" style="left:41%;top:79%;"><span class="pp">30%</span><span class="pn">平台</span></span>
+              <span class="pl dk" style="left:25%;top:32%;"><span class="pp">30%</span><span class="pn">数据</span></span>
+            </div>
+            <ul class="pie-legend">
+              <li><span class="dot" style="background:#0f766e"></span><div><span class="it-tag">算法方案 <span class="pc">40%</span></span><div class="pl-main">在 L2 的第一代方案基本收敛，方案本身的成本在大幅下降——探索初期动辄上万卡、几亿投入 → 现在的算法迭代只需要 <b>10-15%</b></div></div></li>
+              <li><span class="dot" style="background:#2dd4bf"></span><div><span class="it-tag">算法配套平台开发 <span class="pc">30%</span></span><div class="pl-main">算法上线存在的部署，工程，数据框架需要重新开发，并且需求跟 two-stage 不同，可以借助 agent 快速开发，难度比之前下降 80%</div></div></li>
+              <li><span class="dot" style="background:#99f6e4"></span><div><span class="it-tag">数据，工程，测试新框架 <span class="pc">30%</span></span><div class="pl-main">其他配套 infra 包含云平台，测试平台，仿真平台等中台</div></div></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="sec-label">02 · 两代方案对比</div>
+  <h2>两代方案对比</h2>
+  <div class="def">
+    <div class="lbl">先对齐定义（VLA / two-stage）</div>
+    <p style="margin:0;font-size:14px;">区分标准不是「是否带着感知一起训练」，而是：</p>
+    <div class="crit">
+      <div><span class="no">①</span>是否采用 pretrain-ft-post_train 模式</div>
+      <div><span class="no">②</span>是否去除感知任务作为上游任务的存在</div>
+      <div><span class="no">③</span>是否还需要在感知标注上花钱</div>
+      <div><span class="no">④</span>是否按照感知场景集 × pnc 行为集的标签树进行数据闭环</div>
+    </div>
+    <div class="note" style="margin:8px 0 10px;">VLA 中感知是作为 <b>debug 辅助</b>，而不是上游依赖任务，因此感知标注更多依赖预刷。</div>
+    <ul class="vsub">
+      <li>预刷可以为 pretrain 提供所需要的感知标签（本质是对大模型的蒸馏）</li>
+      <li>不需要精准的感知结果（下游没有依赖）</li>
+    </ul>
+  </div>
+  <div class="cmp">
+    <div class="cmp-col left">
+      <div class="head">
+        <div class="main">two-stage 方案</div>
+        <div class="sub">perception+PnC → two-stage E2E</div>
+      </div>
+      <div class="body">
+        <div class="seg">
+        <div class="mini">现状</div>
+        <div class="tl">
+          <div class="nd">
+            <div class="nd-lbl">现状</div>
+            <div class="nd-txt">perception+PnC 方案，在 L2 是成熟的方案<br>已经解决高速、城区的大部分 AD 问题，也是 L4 目前的线上方案</div>
+          </div>
+          <div class="nd">
+            <div class="nd-lbl">中间升级版本</div>
+            <div class="nd-txt">无图 / 轻图版本（变量：是否添加 map 地图）</div>
+          </div>
+          <div class="nd">
+            <div class="nd-lbl">终态方案</div>
+            <div class="nd-txt">two-stage 的 E2E</div>
+          </div>
+        </div>
+        </div>
+        <div class="seg">
+        <div class="mini">成熟度</div>
+        <ul class="cklist">
+          <li>数据闭环 infra、测试 infra、training infra、工程 infra 等 infra 方案成熟</li>
+          <li>容易组建成熟的 team，并且持续迭代方案也很明确</li>
+          <li>从 L2 在途可以看到 two-stage E2E 可以解决大部分的非 corner-case 场景</li>
+        </ul>
+        </div>
+        <div class="seg">
+        <div class="mini">问题</div>
+        <div class="note amber" style="margin:8px 0 10px;">
+          <b>算账时浮现了一个主要问题</b><br>
+          使用成熟算法方案之后，浮现出来的 hard case 有解决方案但是无法快速迭代
+        </div>
+        <div class="chainbox">
+          <div class="lbl">迭代上线链条长</div>
+          <div class="lane2">
+            <div class="lhd">感知模型</div>
+            <div class="lchain">数据采集<span class="ar">→</span>数据标注<span class="ar">→</span>训练<span class="ar">→</span>模型评测<span class="ar">→</span>上下游联调发版<span class="ar">→</span>端到端评测<span class="ar">→</span>路测</div>
+            <ul class="lnotes">
+              <li><span class="n">1.</span>完整链路从数据获取就不是 D+3 能完成的东西</li>
+              <li><span class="n">2.</span>整个链路走完，一个轻量的 feat 要安全 OTA 上线也经常需要 1-2 个月</li>
+            </ul>
+          </div>
+          <div class="lane2">
+            <div class="lhd">pnc 模型</div>
+            <div class="lchain">大量的人驾数据采集<span class="ar">→</span>质检筛选<span class="ar">→</span>训练优化<span class="ar">→</span>超参联调<span class="ar">→</span>端到端评测<span class="ar">→</span>路测</div>
+            <ul class="lnotes">
+              <li><span class="n">1.</span>pnc 的数据虽然不需要标注，但是需要大量采集，也是一个非常复杂的问题</li>
+              <li><span class="n">2.</span>在运营数据无法回收的情况下，靠摆拍和测试车回收的周期也是月粒度的</li>
+            </ul>
+          </div>
+          <div class="lane2">
+            <div class="lhd">工程与 infra</div>
+            <ul class="lnotes">
+              <li><span class="n">1.</span>要快速解决问题，算法版本会有极快的频率更新，对应的工程适配和稳定性测试适配会 block 工程 team 的正向研发</li>
+              <li><span class="n">2.</span>缺少正向研发的工程和 infra 体系在发版中会存在整体系统回退问题</li>
+            </ul>
+          </div>
+          <div class="cost"><b>总结：</b>高质量标注需长期积累，多模块串联调试测试时间代价极高——这两项是 block two-stage 方案上线的主要问题</div>
+        </div>
+        <div class="conseq">
+          <div class="cl">最终表现</div>
+          <div class="c-line">接管次数 · 人机共驾比例等运营指标难以 match 运营迭代需求</div>
+          <div class="c-line">平均速度 · 单任务毛利等运营指标无法持续优化</div>
+        </div>
+        </div>
+      </div>
+    </div>
+    <div class="cmp-col right">
+      <div class="head">
+        <div class="main">VLA 方案</div>
+        <div class="sub">pretrain → ft → post-train</div>
+      </div>
+      <div class="body">
+        <div class="seg">
+        <div class="mini">现状</div>
+        <div class="subcap">在 L2</div>
+        <div class="rows">
+          <div class="row"><span class="k">已 OTA</span><span class="v">国内小鹏、地平线有已经 OTA 的版本，国外 Tesla 也有成熟的版本</span></div>
+        </div>
+        <div class="subcap">在 L4</div>
+        <div class="rows">
+          <div class="row"><span class="k">TESLA</span><span class="v"><b>不到一千辆</b>——唯一实际大规模部署上车</span></div>
+        </div>
+        <div class="cmp2">
+          <div class="c-l">
+            <span class="firm">WAYMO</span>
+            <span class="firm">WAYVE</span>
+            <span class="firm">NVIDIA</span>
+          </div>
+          <div class="c-r">有测试，没有上路推送，但没有大规模部署，基本都不超过 <b>50 辆</b> 的测试规模</div>
+        </div>
+        </div>
+        <div class="seg">
+        <div class="mini">成熟度</div>
+        <div style="font-size:13.5px;margin-bottom:8px;">在 L2 的迭代方案和策略基本收敛，其中：</div>
+        <div class="subcap">pretrain</div>
+        <div class="dline">跟随 LLM 发展，成本 = 早期 VLA 迭代的 <b>10-15%</b></div>
+        <div class="subcap">ft 及 post-train</div>
+        <div class="dline">策略和方案趋近收敛，具体的：ft / post-train 中感知数据、分析、pnc RL 策略的比例变化</div>
+        <div class="note"><b>ft 和 pretrain 的资源投入各有优势，本质不在技术选择，而是在于组织结构和话语权。</b></div>
+        <div class="bal">
+          <div class="bal-row">
+            <div class="bal-side">
+              <div class="lab">perception 部门话语权</div>
+              <div class="out">更重的 FT</div>
+            </div>
+            <div class="bal-side right">
+              <div class="lab">pnc 部门话语权</div>
+              <div class="out">更重的 post-train</div>
+            </div>
+          </div>
+          <svg class="bal-svg" viewBox="0 0 300 110">
+            <line x1="30" y1="24" x2="270" y2="24" stroke="#475569" stroke-width="3"></line>
+            <circle cx="150" cy="24" r="4.5" fill="#475569"></circle>
+            <polygon points="150,24 144,84 156,84" fill="#94a3b8"></polygon>
+            <line x1="128" y1="86" x2="172" y2="86" stroke="#64748b" stroke-width="4" stroke-linecap="round"></line>
+            <line x1="60" y1="24" x2="30" y2="66" stroke="#cbd5e1" stroke-width="1.5"></line>
+            <line x1="60" y1="24" x2="90" y2="66" stroke="#cbd5e1" stroke-width="1.5"></line>
+            <path d="M30 66 Q60 90 90 66" fill="none" stroke="#475569" stroke-width="3" stroke-linecap="round"></path>
+            <line x1="240" y1="24" x2="210" y2="66" stroke="#cbd5e1" stroke-width="1.5"></line>
+            <line x1="240" y1="24" x2="270" y2="66" stroke="#cbd5e1" stroke-width="1.5"></line>
+            <path d="M210 66 Q240 90 270 66" fill="none" stroke="#475569" stroke-width="3" stroke-linecap="round"></path>
+          </svg>
+        </div>
+        </div>
+        <div class="seg">
+        <div class="mini">问题</div>
+        <div class="qtree">
+          <div class="grp">
+            <div class="grp-head"><span class="n">01</span>黑盒属性</div>
+            <ul class="subs">
+              <li><span class="sn">1.1</span>方案的天生黑盒属性导致迭代不可控，导致预研阶段投入过多，研发节奏和产出不可控</li>
+              <li><span class="sn">1.2</span>为了解决黑盒问题需要 bug 工具箱的成本很高，借助 agent 之后，目前这不是一个主要卡点了</li>
+            </ul>
+          </div>
+          <div class="grp">
+            <div class="grp-head"><span class="n">02</span>技术迷信</div>
+            <ul class="subs">
+              <li><span class="sn">2.1</span>存在技术迷信想要一个全能的模型，导致盲目迭代模型性能，快速搓了一版上线之后，拿不到上线解决具体问题的收益</li>
+            </ul>
+          </div>
+          <div class="grp">
+            <div class="grp-head"><span class="n">03</span>持续迭代能力弱</div>
+            <ul class="subs">
+              <li><span class="sn">3.1</span>根因是 data 和 test infra 要做大，做全需要时间，第一版之后再如何迭代是一个系统问题</li>
+            </ul>
+          </div>
+          <div class="grp">
+            <div class="grp-head"><span class="n">04</span>L2 的经验迁移难</div>
+            <ul class="subs">
+              <li><span class="sn">4.1</span>虽然存在 L2 的方案参考，走得快的公司 infra 经过 <b>1-2 年多</b> 的迭代第一版已经基本收敛了，但是当初搓的 infra 缝合怪卡住了方案的持续迭代，目前走得快的公司都在迭代的是 infra</li>
+            </ul>
+          </div>
+        </div>
+        <div class="conseq">
+          <div class="cl">最终表现</div>
+          <div class="c-line">投入和收益无法计算</div>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="domestic">
+  <div class="sec-label">03 · 国内 robovan 现状</div>
+  <h2>国内 robovan 现状</h2>
+  <ol class="tight" style="margin:0 0 16px;font-size:15px;">
+    <li>目前国内的 robovan 公司现状：有着比较成熟的 perception-pnc team，也可以根据运营的 issue 迭代。</li>
+    <li>各家的进度有所差距，主要体现在：<b>是否完成了去 HDmap（无图）</b>，以及 <b>是否有可迭代的数据闭环</b>。</li>
+    <li>对于 e2e 方案，都属于在靠近 two-stage 方案的过程中，VLA 基本停留在口头。</li>
+  </ol>
+  <div class="block">
+    <h3>去 HDmap（无图）</h3>
+    <div class="note"><b>对 VLA：不是先决条件</b>——map 作为多模态输入跟 lidar 一样，都是有就用的东西。</div>
+    <div class="lead2">对 two-stage 方案是必须点——不是在技术上，而是在迭代效率上。</div>
+    <div class="subh">two-stage 方案不去掉 HD map 时的问题解决路径存在问题：</div>
+    <div class="route">
+      <span>运营问题回流之后</span><span class="ar">→</span>
+      <span>必然有一大部分静态问题被分到 map，而不是 perception 或者 pnc 算路</span><span class="ar">→</span>
+      <span>组织上做了一个 shortcut：无法支持有用 issue 的回流入库和加入训练</span><span class="ar">→</span>
+      <span class="end">长期 block 走向 two-stage E2E 的进度</span>
+    </div>
+    <div class="subh">临时方案和问题：</div>
+    <div class="note amber">
+      <ul class="lnotes">
+        <li><span class="n">1.</span>在 pnc team 是组织核心时，可以靠人力密集完成一段时间的运营支持。</li>
+        <li><span class="n">2.</span>将 HD map 加入 E2E 闭环会产生大量的数据鲜度问题以及版本管理问题<br>这虽然是一个可以解决的问题，但是会耗费大量的研发精力，并且给数据闭环的存储和挖掘造成极大的难度</li>
+      </ul>
+    </div>
+  </div>
+  <div class="block">
+    <h3>可迭代的数据闭环</h3>
+    <div class="mini">能力要求</div>
+    <div class="subh">数据-模型 team 无壁垒</div>
+    <div style="font-size:12.5px;color:var(--mut);margin:0 0 8px;">表现为：</div>
+    <div class="steps">
+      <div class="st st1">
+        <span class="st-no">1</span>
+        <div class="st-head">数据+模型合并</div>
+        <div class="st-body">拆分 issue 解决方案为数据驱动，原数据 team 参与问题分析，对问题有感知能力<br>可以直接对问题解决负责，数据+模型迭代合并作为一环，直接通向发版</div>
+      </div>
+      <div class="st st2">
+        <span class="st-no">2</span>
+        <div class="st-head">工具相互开放</div>
+        <div class="st-body">数据 team 的挖掘工具、perception team 的配平-训练工具，相互开放，支持 auto mining、auto balance
+          <div class="st-note">这是可以数据驱动模型迭代的前提</div>
+        </div>
+      </div>
+      <div class="st st3">
+        <span class="st-no">3</span>
+        <div class="st-head">平台工具串联</div>
+        <div class="st-body">支持从 issue 直接到 model training 的自动化<br>auto mining、auto balance、auto training、auto evaluation 等平台工具串联</div>
+      </div>
+      <div class="st st4">
+        <span class="st-no">4</span>
+        <div class="st-head">版本横向对比</div>
+        <div class="st-body">支持多模型，以及多数据版本，产生的系统版本的横向对比<br>发版有可对比的 e2e-sil 和路测报告作为依据</div>
+      </div>
+    </div>
+    <div class="mini">行业对照</div>
+    <div class="subgrid">
+      <div class="sub">
+        <h5>L2 赛道</h5>
+        <ul>
+          <li>这套东西有比较成熟的方案，前提是依赖上千辆人驾测试车的实测。</li>
+          <li>回顾 two-stage 阶段：版本管理和问题回收账一直无法算清，OTA 更多依赖「更好」而不是「最好」的判断。</li>
+        </ul>
+      </div>
+      <div class="sub">
+        <h5>L4 赛道</h5>
+        <ul>
+          <li>目前这套配套系统基本残疾：没有一家公司（包含 Waymo 和 Tesla）跑通这套系统的迭代。</li>
+          <li>Tesla 本身也没有足够的 issue 和数据驱动，驱动 robotaxi 运行的数据闭环来源依然是 L2 的 FSD。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="strategy">
+  <div class="sec-label">04 · 落地方法</div>
+  <h2>落地方法</h2>
+  <div class="block">
+    <h3>两代方案赛马：可持续迭代上的死局</h3>
+    <div class="pair">
+      <span class="t">two-stage team</span><span class="divider"></span><span class="t">VLA team</span><span class="lbl">赛马</span>
+    </div>
+    <div class="prb">
+      <div class="prb-i">
+        <span class="prb-no">1</span>
+        <div class="prb-t">VLA 方案跟 two-stage 方案对 infra 有着极其不同的需求</div>
+      </div>
+      <div class="prb-i">
+        <span class="prb-no">2</span>
+        <div class="prb-t">VLA 的 infra 迭代方向按照从 two-stage infra 线性地迭代几乎会无法推进 VLA 的算法迭代</div>
+      </div>
+      <div class="prb-i">
+        <span class="prb-no">3</span>
+        <div class="prb-t">对一个公司来说，同时存在 VLA 和 two-stage 两个 team 都是很难受的事儿
+          <div class="prb-subs">
+            <div class="ps">人员、算力、数据等冗余投入和浪费</div>
+            <div class="ps">两个研发 team 分裂和内部矛盾显著</div>
+            <div class="ps">上下游 team 更加难受，两方面的需求会打爆 data infra、工程 team、测试 team</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="subh">VLA 和 two-stage 不是赛马方案</div>
+    <div class="race">
+      <div class="rc ok">
+        <div class="rc-h">同方案的赛马是合理的</div>
+        <div class="rc-t">无论如何都会得到一个可用的方案——就如 hd/轻图/无图方案是赛马方案，two-stage 中 pnc model 和 pure two-stage 是赛马</div>
+      </div>
+      <div class="rc no">
+        <div class="rc-h">两代方案是升级关系，不是赛马</div>
+        <div class="rc-t">two-stage 和 VLA 本质是两代方案，在产品设计中他们也不是赛马和冲突，而是升级和补丁</div>
+      </div>
+    </div>
+    <div class="lead2">平等互卷的关系，会直接导致：</div>
+    <div class="cnq">
+      <div class="c4">拖累线上 two-stage 方案的迭代效率</div>
+      <div class="c4">运营账不能提升</div>
+      <div class="c4">VLA 的上线时间几乎变成了不可能完成的任务</div>
+      <div class="c4">对 two-stage 无力解决的问题也无能为力</div>
+    </div>
+    <div class="fend">除非 2-3 倍超配的人力+财力，一个公司没有办法支持两代方案同时上线和迭代</div>
+  </div>
+  <div class="block">
+    <h3>要不要做 VLA，怎么均衡 VLA 和 two-stage</h3>
+    <div class="hlist">
+      <span class="chip">L4 要做 VLA 是一个注定的事情，问题在于何时、以何种方式上线，以及花多少钱可以得到多少收益，是否算得清楚账。</span>
+      <span class="chip">two-stage 需要继续投入，因为 12 个月内，two-stage 依然可以维持 robovan 的基本盘，至少两端间的路程仍可保持相对不错的效果。</span>
+    </div>
+    <div class="mini">运营中的主要矛盾</div>
+    <div style="font-size:13px;margin-bottom:6px;">主要矛盾是接管问题的处理，具体在产品设计上：</div>
+    <div class="funnel">
+      <div class="fq">
+        <div class="q"><span class="qn">1</span>什么时候必须遥操接管</div>
+        <div class="q"><span class="qn">2</span>接管之后怎么高效操作</div>
+        <div class="q"><span class="qn">3</span>怎么再从接管切回自驾</div>
+      </div>
+      <div class="fd"><span class="vline"></span><span class="w">导致</span></div>
+      <div class="fc">
+        <div class="c">这些问题已经长期折磨和 block two-stage 研发 team 的运行</div>
+        <div class="c">运营营收支持账单一直没有提升的希望</div>
+        <div class="c">AD 系统版本的迭代无法对齐 issue 的分布以及最终 AD 的价值</div>
+      </div>
+      <div class="fd"><span class="vline"></span><span class="w">因此</span></div>
+      <div class="fend">提效的重点来到了针对遥操问题的功能设计和算法优化</div>
+    </div>
+  </div>
+  <div class="block">
+    <h3>VLA 立项目的，从解决问题和拿到收益出发</h3>
+    <div class="mindh">
+      <span class="rb">第一性原理</span><span class="arrow">→</span>
+      <span class="ch yes"><span class="mk">✓</span> 从解决问题和拿到收益出发</span>
+      <span class="ch no"><span class="mk">✕</span> 从研发或者管理角度出发</span>
+    </div>
+    <div class="subh">VLA 在 robovan 产品中的定位</div>
+    <div class="yn">
+      <div class="y"><span class="ym">✓</span>处理 two-stage 无法解决的 hard case 和必须遥操的场景建立收益集</div>
+      <div class="n"><span class="ym">✕</span>直接使用 VLA 全面替代 two-stage 方案</div>
+    </div>
+    <div class="subh">算法设计和训练数据</div>
+    <div class="lead2" style="margin:8px 0 4px;">算法设计</div>
+    <div class="yn">
+      <div class="y"><span class="ym">✓</span>模拟遥操人员远程控车，安全第一</div>
+      <div class="n"><span class="ym">✕</span>模拟人驾开车，效果第一</div>
+    </div>
+    <div class="lead2" style="margin:8px 0 4px;">数据设计</div>
+    <div class="yn">
+      <div class="y"><span class="ym">✓</span>利用远程遥操数据进行 VLA 方案训练，低速安全解决遥操问题，安全第一</div>
+      <div class="n"><span class="ym">✕</span>人驾采集，模拟完美人驾表现</div>
+    </div>
+    <div class="subh">上线验证方式</div>
+    <div class="loop">
+      <div class="lp key">触发 two-stage 接管之后</div>
+      <div class="arr">→</div>
+      <div class="lp key">测试是否遥操人驾介入</div>
+      <div class="arr">↑</div>
+      <div></div>
+      <div class="arr">↓</div>
+      <div class="lp key">测试是否 VLA 可以切回 two-stage</div>
+      <div class="arr">←</div>
+      <div class="lp key">测试 VLA 是否取代人驾</div>
+    </div>
+    <div class="subh">功能验收方式</div>
+    <div class="ftree">
+      <div class="fb p1">
+        <div class="fb-h">初期安全验证</div>
+        <ul>
+          <li>遥操新增模式变成：切换 VLA、切换 two-stage、切换遥操</li>
+          <li>先由人判断，随时安全接管</li>
+        </ul>
+      </div>
+      <div class="fb p2">
+        <div class="fb-h">中期</div>
+        <ul>
+          <li>sd 只做决策</li>
+        </ul>
+      </div>
+      <div class="fb p3">
+        <div class="fb-h">云端设置决策大模型</div>
+        <ul>
+          <li>sd 最后兜底</li>
+        </ul>
+      </div>
+    </div>
+    <div class="subh">功能指标</div>
+    <div class="mets">
+      <div class="met"><span class="m-no">1</span>触发遥操后，人驾的比例</div>
+      <div class="met"><span class="m-no">2</span>整途 VLA-two_stage-人驾比例</div>
+    </div>
+    <div class="subh hl">合则两利——VLA 与 two-stage 并存</div>
+    <div class="flow3">
+      <div class="f3">
+        <div class="f3-head"><span class="f3-no">1</span>缓和两个研发 team 之间的矛盾</div>
+        <div class="f3-body">不存在干掉某个 team 的理由，类似当年 L2 切分高速、城区、泊车一样的管理策略</div>
+      </div>
+      <div class="f3">
+        <div class="f3-head"><span class="f3-no">2</span>两个 team 都有了自己解决问题的验证手段</div>
+        <div class="f3-body">可以借助 agent 快速搭建自己的轮子，通用需求由平台重构承接</div>
+      </div>
+      <div class="f3">
+        <div class="f3-head"><span class="f3-no">3</span>data infra 和工程 team 根据问题划分</div>
+        <div class="f3-body">而不是按方案添加无意义内卷的工作量</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="accounting">
+  <div class="sec-label">05 · VLA 算账的逻辑</div>
+  <h2>VLA 算账的逻辑</h2>
+  <div class="note"><b>第一个共识：</b>遥操默认 AD 的平均速度为 0 →<br>无论使用何种方案，只要不需要人参与、可以继续开，就是正向的收益（短期对平均速度会有影响）。</div>
+  <div class="mini">VLA 替换遥操的第一步上限：遥操的均速控制 8-15 kph</div>
+  <div class="scale">
+    <div class="track">
+      <div class="zone"></div>
+      <span class="cap c0">0</span>
+      <span class="cap c8">8</span>
+      <span class="cap c15">15</span>
+      <span class="cap c20">20 kph</span>
+    </div>
+    <div class="scale-labels">
+      <span>遥操默认</span>
+      <span>第一步上限 8-15 kph</span>
+      <span>后续</span>
+    </div>
+  </div>
+  <div class="mini">两套 issue 管理与算账模式</div>
+  <div class="lanes">
+    <div class="lane l1">
+      <div class="hd"><span class="dot"></span>two-stage</div>
+      <div class="bd">
+        <ol class="tight" style="font-size:13px;">
+          <li>根据现有测试标签体系，判定解决周期和投入</li>
+          <li>根据测试 issue 类型，建立 issue 管控和项目跟踪</li>
+          <li>主要跟踪的是对应 issue 标签消失的比例</li>
+          <li>项目核算对应 issue 对在途+两端成本核算的比例</li>
+        </ol>
+      </div>
+    </div>
+    <div class="lane l2">
+      <div class="hd"><span class="dot"></span>VLA</div>
+      <div class="bd">
+        <ol class="tight" style="font-size:13px;">
+          <li>根据遥操类型，重构标签体系</li>
+          <li>针对遥操代价和时间，划分标签价值</li>
+          <li>主要跟踪的是触发遥操后需要人驾参与的比例</li>
+          <li>项目核算触发遥操后需要人工参与的比例，计算降低人工的成本，以及是否产生额外的安全成本</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+  <div class="subh">冲突 issue 的处理</div>
+  <div class="f3">
+    <div class="f3-body">根据 issue 价值和解决周期进行 issue 归类，两个 team 不抢 issue，从成本和收益出发</div>
+  </div>
+</section>
+
+<section id="rhythm">
+  <div class="sec-label">06 · 落地节奏</div>
+  <h2>落地节奏</h2>
+  <div class="secnote">先拿收益，不一把梭。</div>
+  <div class="note">对于 L4 公司来说，首要的是拿到 VLA 的收益，而不是让 VLA 全面替代 two-stage。<br><b>第一目标：取得 VLA 的价值成果。</b></div>
+  <div class="roadmap">
+    <div class="rm">
+      <div class="rm-dot p1"></div>
+      <div class="rm-t">第一阶段<br>求同存异先拿收益</div>
+    </div>
+    <div class="rm-line"></div>
+    <div class="rm">
+      <div class="rm-dot p2"></div>
+      <div class="rm-t">第二阶段<br>逐步变成万能的</div>
+    </div>
+    <div class="rm-line"></div>
+    <div class="rm">
+      <div class="rm-dot p3"></div>
+      <div class="rm-t">第三阶段<br>通用 VLA 即是 WAM</div>
+    </div>
+  </div>
+  <div class="phase p1">
+    <div class="ph-h">
+      <div class="ph-t">第一阶段 · 求同存异先拿收益</div>
+      <div class="ph-route">
+        <span>two-stage 守基本盘（1-2 年）</span><span class="par">→</span>
+        <span>VLA 从遥操 / hard case 切入（8-15 kph 上限）</span><span class="par">→</span>
+        <span class="pend">逐步扩大 VLA 边界，拿到价值成果</span>
+      </div>
+    </div>
+    <div class="ph-b">
+      <ul class="subs">
+        <li><span class="sn">1.1</span>VLA 方案本身的成本在大幅下降 → 可以低成本跑通 VLA，先解决一部分 two-stage 不好解决的问题</li>
+        <li><span class="sn">1.2</span>我们不要一个大而全的 infra，对 robovan 来说再花两年重新迭代 infra 是不可接受的<br>→ 谋求跟现在 two-stage 方案共存，infra 有问题，但是又不是不能用<br>→ 借 VLA 开始迭代需要长时间积累的新 data 和 infra，并且磨合 team 转型</li>
+      </ul>
+    </div>
+  </div>
+  <div class="phase p2">
+    <div class="ph-h">
+      <div class="ph-t">第二阶段 · VLA 不是万能的，但是也可以逐步变成万能的</div>
+      <div class="ph-route">
+        <span>榨干 two-stage</span><span class="par">→</span>
+        <span>优化 VLA 成本和能力</span><span class="par">→</span>
+        <span class="pend">team 转型，交付 team 接力</span>
+      </div>
+    </div>
+    <div class="ph-b">
+      <ul class="subs">
+        <li><span class="sn">2.1</span>跟随 L2 的算法迭代方向 → 逐步摸索方案上限和优化成本<br>L4 有自己对算法的独特要求，不从零开始预研，就跟 VLA 使用 pretrain 而不是 from scratch 方法论上的统一</li>
+        <li><span class="sn">2.2</span>榨干 two-stage 的所有能力，当 two-stage 停止研发，只剩下数据迭代的时候<br>让 two-stage 的 team 带着自己无法解决的问题，使用成熟的 VLA infra 进行新方案解决<br>让功能负责人借助新算法，平滑拓展 VLA 的功能边界，让交付的人还是交付自己的功能</li>
+        <li><span class="sn">2.3</span>研发逐步建立 world model 以及独立的 pretrain vlm 能力，为大规模交付做好 infra 构建能力以及测试能力</li>
+      </ul>
+    </div>
+  </div>
+  <div class="phase p3">
+    <div class="ph-h">
+      <div class="ph-t">第三阶段 · 通用 VLA 即是 WAM</div>
+      <div class="ph-route">
+        <span>robovan</span><span class="par">→</span>
+        <span>在途场景的拓展</span><span class="par">→</span>
+        <span class="pend">完善配送的最后 60m</span>
+      </div>
+    </div>
+    <div class="ph-b">
+      <ul class="subs">
+        <li><span class="sn">3.1</span>从 robovan 到 robo truck，从 robovan 到 robotaxi</li>
+        <li><span class="sn">3.2</span>从 robovan 到配送的最后 60m</li>
+      </ul>
+    </div>
+  </div>
+  <div class="warn-panel">
+    <div class="warn-h">切记不能一把梭做 VLA</div>
+    <div class="warn-b">
+      <div class="warn-i"><span class="wn">01</span>VLA 的运营账短期无法算通，投入的钱打水漂，全靠技术信仰</div>
+      <div class="warn-i"><span class="wn">02</span>研发组织上会产生巨大的不稳定变数，产生巨大的内卷和内耗</div>
+      <div class="warn-i"><span class="wn">03</span>two-stage 的中短期的方案迭代无法进行，中短期营收无法有效改善</div>
+      <div class="warn-i"><span class="wn">04</span>infra team 和工程 team 的全面崩盘，产生不可控的安全问题</div>
+    </div>
+  </div>
+</section>
+
+<div class="foot">VLA 在 L4 的可执行落地方案 · 汇报人：于立冬</div>
+<div class="toc-fab" id="tocFab">目录</div>
+<div class="toc-panel" id="tocPanel">
+  <div class="toc-title">目录</div>
+  <a href="#ledger" onclick="return go('ledger')">01 先算三笔账</a>
+  <a href="#compare" onclick="return go('compare')">02 两代方案对比</a>
+  <a href="#domestic" onclick="return go('domestic')">03 国内 robovan 现状</a>
+  <a href="#strategy" onclick="return go('strategy')">04 落地方法</a>
+  <a href="#accounting" onclick="return go('accounting')">05 VLA 算账的逻辑</a>
+  <a href="#rhythm" onclick="return go('rhythm')">06 落地节奏</a>
+</div>
+<script>
+function go(id){
+  var el=document.getElementById(id);
+  if(!el) return true;
+  try{el.scrollIntoView({behavior:'smooth',block:'start'});}
+  catch(e){el.scrollIntoView();}
+  var p=document.getElementById('tocPanel');
+  if(p) p.classList.remove('open');
+  return false;
+}
+(function(){
+  var fab=document.getElementById('tocFab');
+  var p=document.getElementById('tocPanel');
+  fab.addEventListener('click',function(e){e.stopPropagation();p.classList.toggle('open');});
+  document.addEventListener('click',function(){p.classList.remove('open');});
+  p.addEventListener('click',function(e){e.stopPropagation();});
+  document.addEventListener('click',function(e){
+    var a=e.target.closest?e.target.closest('a[href^="#"]'):null;
+    if(!a) return;
+    var id=a.getAttribute('href').slice(1);
+    if(document.getElementById(id)){
+      e.preventDefault();
+      go(id);
+    }
+  });
+})();
+</script>
+</div>
+</body>
+</html>
