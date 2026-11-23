@@ -419,16 +419,36 @@ def build(report=False):
         total_scrub += scrubs
 
         if not os.path.exists(os.path.join(dst_root, "index.html")):
-            links = [n for n in names if n.lower().endswith((".html", ".md"))]
-            items = "\n".join('    <li><a href="{h}">{t}</a></li>'.format(
-                h=n.replace("\\", "/"), t=n.replace("\\", "/")) for n in links[:200])
-            html = INDEX_TEMPLATE.format(title=entry["title"], lead=entry["summary"], items=items)
-            html = _inject_backbar(html)
-            p = os.path.join(dst_root, "index.html")
-            os.makedirs(dst_root, exist_ok=True)
-            with io.open(p, "w", encoding="utf-8", newline="\n") as fh:
-                fh.write(html)
-            total += os.path.getsize(p)
+            # prefer the project's own entry page over a generated file listing
+            entry_rel = entry.get("index")
+            html_files = [n for n in names if n.lower().endswith(".html")]
+            if not entry_rel and len(html_files) == 1:
+                entry_rel = html_files[0].replace(os.sep, "/")
+            made_index = False
+            if entry_rel:
+                src_entry = os.path.join(dst_root, entry_rel.replace("/", os.sep))
+                if os.path.isfile(src_entry):
+                    body = io.open(src_entry, "rb").read().decode("utf-8", "surrogateescape")
+                    sub = os.path.dirname(entry_rel.replace("\\", "/"))
+                    if sub and "<base " not in body.lower():
+                        # keep every relative link resolving inside that subdirectory
+                        body = re.sub(r"(<head[^>]*>)", r'\1\n<base href="./%s/">' % sub,
+                                      body, count=1, flags=re.I)
+                    p = os.path.join(dst_root, "index.html")
+                    with io.open(p, "w", encoding="utf-8", newline="\n") as fh:
+                        fh.write(body)
+                    total += os.path.getsize(p)
+                    made_index = True
+            if not made_index:
+                items = "\n".join('    <li><a href="{h}">{t}</a></li>'.format(
+                    h=n.replace("\\", "/"), t=n.replace("\\", "/")) for n in html_files[:200])
+                html = INDEX_TEMPLATE.format(title=entry["title"], lead=entry["summary"], items=items)
+                html = _inject_backbar(html)
+                p = os.path.join(dst_root, "index.html")
+                os.makedirs(dst_root, exist_ok=True)
+                with io.open(p, "w", encoding="utf-8", newline="\n") as fh:
+                    fh.write(html)
+                total += os.path.getsize(p)
 
         made.append({"entry": entry, "files": len(names), "mb": total / 1048576.0,
                      "converted": converted, "scrubbed": scrubs})
