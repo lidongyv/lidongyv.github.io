@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js" data-alt="/en/blog/2026-11-18-modular-to-vla.html">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <title>从模块化感知到单阶段 VLA：三次换代里反复出现的同一个坑 · 于立冬</title>
+  <meta name="description" content="每一次「把感知融进端到端」，真正难的都不是模型结构，而是怎么在不破坏单任务指标的前提下，让多任务在同一份数据上共存。">
+  <meta name="author" content="Lidong Yu">
+  <link rel="canonical" href="https://lidongyv.github.io/blog/2026-11-18-modular-to-vla.html">
+  <link rel="alternate" hreflang="zh-CN" href="https://lidongyv.github.io/blog/2026-11-18-modular-to-vla.html">
+  <link rel="alternate" hreflang="en" href="https://lidongyv.github.io/en/blog/2026-11-18-modular-to-vla.html">
+  <link rel="alternate" hreflang="x-default" href="https://lidongyv.github.io/blog/2026-11-18-modular-to-vla.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Lidong Yu · 于立冬">
+  <meta property="og:title" content="从模块化感知到单阶段 VLA：三次换代里反复出现的同一个坑 · 于立冬">
+  <meta property="og:description" content="每一次「把感知融进端到端」，真正难的都不是模型结构，而是怎么在不破坏单任务指标的前提下，让多任务在同一份数据上共存。">
+  <meta property="og:url" content="https://lidongyv.github.io/blog/2026-11-18-modular-to-vla.html">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="从模块化感知到单阶段 VLA：三次换代里反复出现的同一个坑 · 于立冬">
+  <meta name="twitter:description" content="每一次「把感知融进端到端」，真正难的都不是模型结构，而是怎么在不破坏单任务指标的前提下，让多任务在同一份数据上共存。">
+  <link rel="stylesheet" href="/assets/site/site.css">
+  <meta property="og:image" content="https://lidongyv.github.io/assets/og/og-default.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:image" content="https://lidongyv.github.io/assets/og/og-default.png">
+  <link rel="icon" href="/assets/site/favicon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/site/favicon.svg">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "从模块化感知到单阶段 VLA：三次换代里反复出现的同一个坑", "datePublished": "2026-11-18", "inLanguage": "zh-CN", "author": {"@type": "Person", "name": "Lidong Yu"}, "description": "每一次「把感知融进端到端」，真正难的都不是模型结构，而是怎么在不破坏单任务指标的前提下，让多任务在同一份数据上共存。", "mainEntityOfPage": "https://lidongyv.github.io/blog/2026-11-18-modular-to-vla.html"}</script>
+</head>
+<body>
+<div class="reading-bar" aria-hidden="true"></div>
+<a class="skip" href="#main">跳到主要内容</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="/" aria-label="于立冬">
+        <span class="brand-mark">LY</span>
+        <span class="brand-text">于立冬<span class="brand-sub"> · 自动驾驶算法负责人</span></span>
+      </a>
+      <button class="icon-btn nav-toggle" type="button" aria-label="菜单" aria-expanded="false"
+              aria-controls="site-nav"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <nav class="nav" id="site-nav" aria-label="主导航">
+        <a href="/experience.html">经历</a>
+        <a href="/publications.html">论文</a>
+        <a href="/projects.html">项目</a>
+        <a href="/opensource.html">开源</a>
+        <a href="/blog/index.html" aria-current="page">博客</a>
+        <a href="/about.html">关于</a>
+      </nav>
+      <div class="header-tools">
+        <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false"
+                data-label-light="切换到浅色主题" data-label-dark="切换到深色主题"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg></button>
+        <a class="lang-toggle" href="/en/blog/index.html" hreflang="en"
+           aria-label="切换语言" title="切换语言"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z"/></svg><span>English</span></a>
+      </div>
+    </div>
+  </header>
+<main id="main">
+
+<article>
+  <header class="post-header wrap wrap--narrow">
+    <a class="small" href="/blog/index.html">← 返回博客</a>
+    <h1 style="margin-top:14px">从模块化感知到单阶段 VLA：三次换代里反复出现的同一个坑</h1>
+    <div class="post-meta">
+      <time datetime="2026-11-18">2026-11-18</time><span class="sep"></span>
+      <span>2 分钟阅读</span><span class="sep"></span>
+      <span><span class="tag">VLA</span><span class="tag">端到端</span><span class="tag">感知</span></span>
+    </div>
+  </header>
+  <div class="wrap wrap--narrow">
+    <div class="prose"><p>我把 2021 年以来的工作按「感知在不在策略里」分成三代：模块化感知、两阶段端到端、单阶段 VLA。三代的技术细节差别很大，但每一代我都撞在同一堵墙上：<strong>多任务指标与单模型之间的取舍</strong>。</p>
+<h2 id="第一代-模块化-指标好看但学不动">第一代：模块化，指标好看但学不动</h2>
+<p>蔚来时期做的是标准模块化：Mono3D 检测跟踪 + 车道线 + 后处理，靠数据闭环和评测框架把每个模块的指标单独推上去。关联后处理上，我们用 7 相机 + 1 激光雷达的规则化关联，后来改成可学习的 cost metric 替代规则与二分图匹配，在 20% 三维误差率下做到 0.03 的 ID switch 和 86% 召回。</p>
+<p>这一代的优点是每个指标都能解释、都能回滚。缺点也很清楚：<strong>误差会累积</strong>，而且模块之间的接口是人为定义的，模型学不到接口之外的信息。</p>
+<h2 id="第二代-两阶段端到端-感知被-重构成-token">第二代：两阶段端到端，感知被「重构成 token」</h2>
+<p>NVIDIA 时期的核心动作是把感知任务重新组织，让它们适配 E2E：Lidar 前融合、检测、把 MOT 升级成 object prediction、加一个支持 pre/post-training 的 future tokenizer。车道线检测走了一条很长的路：segment-based（所见即所得，靠超分、BEV 多尺度融合、动态多分辨率 DCN 提精度）→ query-based（引入 navi info，能过路口、能 split/merge、能换道）→ token-based（以自回归方式 tokenize 所有感知元素）。</p>
+<p>token-based 那一步是分水岭。它让两阶段能升级到单阶段，因为<strong>感知元素一旦变成 token，规划就可以直接把它们当语言来读</strong>。</p>
+<h2 id="第三代-单阶段-规划直接吃图像流">第三代：单阶段，规划直接吃图像流</h2>
+<p>到了单阶段，planning 从「基于感知结果」改成「基于图像流」，perception tokenizer 被去掉、降级成 debugger 任务。轨迹预测的形态也一路换：单模态 → 多模态回归 → 自回归 → 扩散，最后叠 RL post-training 和世界模型闭环训练。</p>
+<h2 id="反复出现的那个坑">反复出现的那个坑</h2>
+<p>三代下来，同一个问题出现了三次：<strong>你怎么在同一个模型里放多个任务，而不让它们互相拖累？</strong></p>
+<p>我们在新石器给出的答案是 group query-based 模型 + single-head 多任务：从 multi-head 改成 single-head，让数据配平变成模型自己可以配置的事；而且配平发生在 token 级别（BEV token / image token），不是在 task-loss 级别。query 分组这件事在地平线就验证过一遍——它把单任务与多任务的指标差距拉平了，离散要素（箭头、斑马线、路口）用 query-based 替换两阶段检测器后分数持平、计算效率提升 30% 以上。</p>
+<p>我的结论是：</p>
+<ol><li><strong>多任务的关键不在 loss 加权，在表示层</strong>。task-loss 级别的加权是在结果上补救，token 级别的重配平是在原因上解决。</li><li><strong>单任务是多任务的子集</strong>。如果一个架构不能把单任务当作 N=1 的多任务来跑，它迟早会分裂成两套代码。</li><li><strong>能随时加数据比一次训到最好更重要</strong>。frozen head 预训练 backbone、frozen backbone 微调 perception head，这套可控迭代方式在工程上的价值远大于刷点。</li></ol>
+<p>下一篇我会写数据闭环那部分——因为在 VLA 里，模型结构反而是最容易追平的部分。</p></div>
+  </div>
+</article>
+
+<section class="section section--tight">
+  <div class="wrap wrap--narrow">
+    <h2 style="font-size:1.1rem;margin-bottom:12px">继续读</h2>
+    <div class="post-list">
+      <article class="post-item">
+        <time datetime="2026-11-05">2026-11-05</time>
+        <div>
+          <h3><a href="/blog/2026-11-05-mapless-two-generations.html">无图三年：从 HD map 到 Mapless 的三次模型换代</a></h3>
+          <p>2023 年交付国内第一套 Mapless 方案时，真正的难点不是「不要地图」，而是让模型在没有地图先验时依然能稳定输出拓扑。</p>
+          <div class="post-item__meta"><span>无图 / 车道线 / 数据闭环</span><span>·</span><span>2 分钟阅读</span></div>
+        </div>
+      </article>
+      <article class="post-item">
+        <time datetime="2026-10-20">2026-10-20</time>
+        <div>
+          <h3><a href="/blog/2026-10-20-world-model-in-production.html">世界模型在量产里到底怎么用：四个必须回答的问题</a></h3>
+          <p>如果世界模型只被用来「生成好看的视频」，它在量产里就没有位置。它必须先回答评测、复现、条件注入和成本这四个问题。</p>
+          <div class="post-item__meta"><span>世界模型 / WAM / 评测</span><span>·</span><span>2 分钟阅读</span></div>
+        </div>
+      </article></div>
+  </div>
+</section>
+
+</main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div>
+          <div class="brand" style="margin-bottom:12px">
+            <span class="brand-mark">LY</span>
+            <span class="brand-text">于立冬</span>
+          </div>
+          <p class="small muted" style="max-width:34ch">VLA / 世界模型落地 · 自动驾驶算法</p>
+          <p class="small muted" style="margin-top:12px">本站为纯静态站点，无外部依赖、无追踪脚本。</p>
+        </div>
+        <div>
+          <h4>浏览</h4>
+          <div class="footer-links"><a href="/experience.html">经历</a><a href="/publications.html">论文</a><a href="/projects.html">项目</a><a href="/opensource.html">开源</a><a href="/blog/index.html">博客</a><a href="/about.html">关于</a></div>
+        </div>
+        <div>
+          <h4>足迹</h4>
+          <div class="footer-links">
+            <a href="mailto:yvlidong@gmail.com">yvlidong@gmail.com</a>
+            <a href="https://github.com/lidongyv" rel="me noopener">GitHub @lidongyv</a>
+            <a href="https://scholar.google.com/citations?hl=en&amp;user=cYLbx3AAAAAJ" rel="noopener">Google Scholar</a>
+            <a href="/blog/feed.xml">RSS</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span data-year>2026</span> 于立冬 · 保留所有权利</span>
+        <span class="vibe">static · no build · no tracking</span>
+      </div>
+    </div>
+  </footer>
+  <button class="to-top" type="button" aria-label="回到顶部"><svg class="" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 19V5"/><path d="m6 11 6-6 6 6"/></svg></button>
+  <div class="toast" role="status" aria-live="polite" data-copied="已复制" data-failed="复制失败，请手动选择"></div>
+<script src="/assets/site/site.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Lidong Yu · 博客与研究笔记</title>
+    <link>https://lidongyv.github.io/</link>
+    <description>VLA、世界模型、数据闭环与感知工程落地的研究笔记。</description>
+    <language>zh-CN</language>
+    <atom:link href="https://lidongyv.github.io/blog/feed.xml" rel="self" type="application/rss+xml"/>
+    <lastBuildDate>Mon, 23 Nov 2026 09:00:00 +0800</lastBuildDate>
+
+    <item>
+      <title>从模块化感知到单阶段 VLA：三次换代里反复出现的同一个坑</title>
+      <link>https://lidongyv.github.io/blog/2026-11-18-modular-to-vla.html</link>
+      <guid isPermaLink="true">https://lidongyv.github.io/blog/2026-11-18-modular-to-vla.html</guid>
+      <pubDate>Wed, 18 Nov 2026 09:00:00 +0800</pubDate>
+      <description>每一次「把感知融进端到端」，真正难的都不是模型结构，而是怎么在不破坏单任务指标的前提下，让多任务在同一份数据上共存。</description>
+      <content:encoded><![CDATA[<p>我把 2021 年以来的工作按「感知在不在策略里」分成三代：模块化感知、两阶段端到端、单阶段 VLA。三代的技术细节差别很大，但每一代我都撞在同一堵墙上：<strong>多任务指标与单模型之间的取舍</strong>。</p>
+<h2 id="第一代-模块化-指标好看但学不动">第一代：模块化，指标好看但学不动</h2>
+<p>蔚来时期做的是标准模块化：Mono3D 检测跟踪 + 车道线 + 后处理，靠数据闭环和评测框架把每个模块的指标单独推上去。关联后处理上，我们用 7 相机 + 1 激光雷达的规则化关联，后来改成可学习的 cost metric 替代规则与二分图匹配，在 20% 三维误差率下做到 0.03 的 ID switch 和 86% 召回。</p>
+<p>这一代的优点是每个指标都能解释、都能回滚。缺点也很清楚：<strong>误差会累积</strong>，而且模块之间的接口是人为定义的，模型学不到接口之外的信息。</p>
+<h2 id="第二代-两阶段端到端-感知被-重构成-token">第二代：两阶段端到端，感知被「重构成 token」</h2>
+<p>NVIDIA 时期的核心动作是把感知任务重新组织，让它们适配 E2E：Lidar 前融合、检测、把 MOT 升级成 object prediction、加一个支持 pre/post-training 的 future tokenizer。车道线检测走了一条很长的路：segment-based（所见即所得，靠超分、BEV 多尺度融合、动态多分辨率 DCN 提精度）→ query-based（引入 navi info，能过路口、能 split/merge、能换道）→ token-based（以自回归方式 tokenize 所有感知元素）。</p>
+<p>token-based 那一步是分水岭。它让两阶段能升级到单阶段，因为<strong>感知元素一旦变成 token，规划就可以直接把它们当语言来读</strong>。</p>
+<h2 id="第三代-单阶段-规划直接吃图像流">第三代：单阶段，规划直接吃图像流</h2>
+<p>到了单阶段，planning 从「基于感知结果」改成「基于图像流」，perception tokenizer 被去掉、降级成 debugger 任务。轨迹预测的形态也一路换：单模态 → 多模态回归 → 自回归 → 扩散，最后叠 RL post-training 和世界模型闭环训练。</p>
+<h2 id="反复出现的那个坑">反复出现的那个坑</h2>
+<p>三代下来，同一个问题出现了三次：<strong>你怎么在同一个模型里放多个任务，而不让它们互相拖累？</strong></p>
+<p>我们在新石器给出的答案是 group query-based 模型 + single-head 多任务：从 multi-head 改成 single-head，让数据配平变成模型自己可以配置的事；而且配平发生在 token 级别（BEV token / image token），不是在 task-loss 级别。query 分组这件事在地平线就验证过一遍——它把单任务与多任务的指标差距拉平了，离散要素（箭头、斑马线、路口）用 query-based 替换两阶段检测器后分数持平、计算效率提升 30% 以上。</p>
+<p>我的结论是：</p>
+<ol><li><strong>多任务的关键不在 loss 加权，在表示层</strong>。task-loss 级别的加权是在结果上补救，token 级别的重配平是在原因上解决。</li><li><strong>单任务是多任务的子集</strong>。如果一个架构不能把单任务当作 N=1 的多任务来跑，它迟早会分裂成两套代码。</li><li><strong>能随时加数据比一次训到最好更重要</strong>。frozen head 预训练 backbone、frozen backbone 微调 perception head，这套可控迭代方式在工程上的价值远大于刷点。</li></ol>
+<p>下一篇我会写数据闭环那部分——因为在 VLA 里，模型结构反而是最容易追平的部分。</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>无图三年：从 HD map 到 Mapless 的三次模型换代</title>
+      <link>https://lidongyv.github.io/blog/2026-11-05-mapless-two-generations.html</link>
+      <guid isPermaLink="true">https://lidongyv.github.io/blog/2026-11-05-mapless-two-generations.html</guid>
+      <pubDate>Thu, 05 Nov 2026 09:00:00 +0800</pubDate>
+      <description>2023 年交付国内第一套 Mapless 方案时，真正的难点不是「不要地图」，而是让模型在没有地图先验时依然能稳定输出拓扑。</description>
+      <content:encoded><![CDATA[<p>「无图」这个词很容易被误解成「把地图模块删掉」。实际上删掉地图之后，所有原来由地图免费提供的东西——拓扑、路口结构、车道归属——都要由模型自己学出来。</p>
+<h2 id="第一次换代-segment-based-所见即所得">第一次换代：segment-based，所见即所得</h2>
+<p>最早的做法是「所见即所得」：模型只输出车道线和路沿，不输出中心线；靠超分、BEV 多尺度融合、动态多分辨率 DCN 把几何精度顶上去。为了让 GT 对得上，我们搭了 HD map → local BEV 的 GT 生成系统（200 万 image、1200 万 lane instance），把 segment-based 车道线检测从 AP 13% 拉到 60%、EPE 从 1.5 米压到 0.18 米。</p>
+<p>这条路的天花板很明显：<strong>它只能看见它看见的</strong>。路口被遮挡、远处弱可见、车道线断掉的地方，模型没有能力补。</p>
+<h2 id="第二次换代-query-based-从-看见-到-推理">第二次换代：query-based，从「看见」到「推理」</h2>
+<p>query-based 方案把车道表示成「车道–车道线–点链」的多级回归，去掉后处理、把人力的位置往前挪，计算效率持平而 F1 提升 15%。更重要的是它能引入 navi info：路口直行还是左转、要不要 split/merge、是否换道，这些上游决策成了模型输入，模型开始能「猜」出没看见的部分。</p>
+<p>代价是数据规则要重写：query-based 对标注规则、数据配平、case 级精调都更敏感。我们为此建了道路结构全要素、多任务、同源时序的数据集，并把 issue 解决周期从 D+10 压到 D+3。</p>
+<h2 id="第三次换代-token-based-为端到端做准备">第三次换代：token-based，为端到端做准备</h2>
+<p>第三次换代的目的不再是刷指标，而是<strong>让车道线能进端到端</strong>。以自回归方式 tokenize 感知元素之后，车道检测从「输出一张 BEV 图」变成「输出一串 token」，于是它可以和轨迹预测共享同一个解码器。</p>
+<p>这一步也顺手解决了长尾问题：拓扑学习有三条路线并行试过——基于 language model 的自回归关键点生成、基于 MaskFormer 的拓扑关键点分割、以及把 query-based 点链生成「逆」成 segment 算法的 reverse transformer。三条路线最终都指向同一件事：<strong>拓扑要被显式地生成，而不是从分割图里后处理出来</strong>。</p>
+<h2 id="复盘">复盘</h2>
+<p>如果只允许留三条经验：</p>
+<ol><li><strong>无图的本质是拓扑建模</strong>，不是检测精度。精度再高，没有拓扑就无法支撑决策。</li><li><strong>换表示之前先换数据规则</strong>。query-based 的收益有一半来自标注规则和数据配平的重写。</li><li><strong>换代的判据是「能不能进端到端」</strong>，不是「这一代指标涨了多少」。token-based 之所以值得做，是因为它让后面两代成为可能。</li></ol>
+<p>再往后就是世界模型那条线了，我在另一篇里写。</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>世界模型在量产里到底怎么用：四个必须回答的问题</title>
+      <link>https://lidongyv.github.io/blog/2026-10-20-world-model-in-production.html</link>
+      <guid isPermaLink="true">https://lidongyv.github.io/blog/2026-10-20-world-model-in-production.html</guid>
+      <pubDate>Tue, 20 Oct 2026 09:00:00 +0800</pubDate>
+      <description>如果世界模型只被用来「生成好看的视频」，它在量产里就没有位置。它必须先回答评测、复现、条件注入和成本这四个问题。</description>
+      <content:encoded><![CDATA[<p>我在 NVIDIA 和新石器都做过世界模型这条线，被问得最多的问题是「世界模型到底解决什么问题」。我的回答一直很朴素：<strong>它得先在工程流程里占一个位置，而不是先在排行榜上占一个位置。</strong></p>
+<p>对我来说，这个位置要过四道关。</p>
+<h2 id="一-能不能当考场-而不只是渲染器">一、能不能当考场，而不只是渲染器</h2>
+<p>单场景重建式的渲染很酷，但它对评测没用——你只能重建你录过的那一段。所以后来我们把 render 的目标从「单场景重建」改成「泛化的生成」，DiT 和 3D-GS 只作为渲染手段，而不是目的本身。</p>
+<p>有意义的用法是：给定同一段场景，模型能不能生成「如果那辆车早 0.3 秒变道」的版本？如果能，你就可以拿它做闭环评测，而不用真的在路上去复现一次危险场景。</p>
+<h2 id="二-能不能复现失败-case">二、能不能复现失败 case</h2>
+<p>数据闭环里最贵的一环是「把线上问题变回可训练的数据」。我们当时的做法是：VLM 自动 triage 找出问题、离线感知模型自动标注、再用世界模型把失败 case 扩展成多个变体。这条路把冗余从 80% 压到 5%，把 issue 解决周期从 D+10 压到 D+3。</p>
+<p>世界模型在这里的价值是<strong>放大样本</strong>，不是替代真值。</p>
+<h2 id="三-能不能被条件注入">三、能不能被条件注入</h2>
+<p>如果世界模型只能无条件下生成，那它跟数据增广没有本质区别。真正有用的是 conditional inception：语言（下一段该左转）、layout（这排车该在哪）、轨迹（自车要走这条线）。</p>
+<p>这也是为什么我们把 backbone 和 CoT inception 都从 Cosmos / VGGT / Qwen 蒸馏过来——<strong>conditioning 的语义必须和规划器共享</strong>，否则生成出来的场景没法用来评测规划。</p>
+<h2 id="四-成本能不能算得过来">四、成本能不能算得过来</h2>
+<p>这一条最容易被忽略。一个 6 个月、13 人、3500 卡的端到端项目，如果世界模型推理成本高于真车采集成本，它在量产流程里就不成立。所以我们做的是「预训练一次、渲染按需」——render 的算力只花在需要复现的那批 case 上。</p>
+<h2 id="一个反向的经验">一个反向的经验</h2>
+<p>做世界模型最容易犯的错，是把它当成一个更大的模型去做，而不是<strong>当成一个更严格的评测装置去做</strong>。前者会一路追指标，最后没人知道它好不好；后者会逼你先定义什么叫「好」，然后模型自然朝着那个方向收敛。</p>
+<p>对 VLA 来说这件事更明显：当策略直接吃图像流、感知元素变成 token 之后，唯一能把「策略变好了」和「数据泄漏了」区分开的，就是那个能条件生成反事实场景的世界模型。</p>]]></content:encoded>
+    </item>
+  </channel>
+</rss>

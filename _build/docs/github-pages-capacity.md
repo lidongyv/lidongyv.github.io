@@ -1,0 +1,76 @@
+# GitHub Pages 能挂多少内容：容量预算与实测
+
+> 调研时间：2026-11-23。依据：GitHub 官方文档 [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
+> 与 [About large files on GitHub](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)。
+
+## 一句话答案
+
+**公开发布出去的内容上限是 1 GB，不是「无限」。** 你现在的站点大约 193 MB，占了上限的 **19%**，还有约 **5 倍**的余量；
+真正最先撞到的不是容量，而是**每月 100 GB 的流量软上限**——因为站里有 132 MB 的论文与报告 PDF。
+
+## 官方硬指标（逐条对应你的问题）
+
+| 指标 | 上限 | 说明 | 站点现状 |
+|---|---|---|---|
+| 发布站点总大小 | **1 GB** | 「Published GitHub Pages sites may be no larger than 1 GB」 | 约 **193 MB**（19%） |
+| 源仓库推荐大小 | **1 GB**（recommended） | 超过后 Pages 构建可能失败 | 约 193 MB（不含本地备份） |
+| 每月流量 | **100 GB**（soft） | 软限制，超了会收到 GitHub 的邮件提醒，可能限速 | 见下方测算 |
+| 构建次数 | **10 次/小时**（soft） | 只针对 Jekyll 自动构建；用自定义 Actions 工作流不受此限 | 本站已关闭 Jekyll，**不触发构建配额** |
+| 单用户站点数 | 1 个 | 一个账号只能有一个 `*.github.io` | 1 个 |
+| 单次推送体积 | **2 GB** | 超过直接拒绝 push | 单次 push 增量很小 |
+| 单个文件 | **100 MiB 硬上限** | 超过 100 MiB 会被拒绝；超过 50 MiB 会警告 | 最大 `sot.pdf` 61.9 MB、`mot.pdf` 55.5 MB，**都已超过 50 MiB 警告线，但未触 100 MiB 上限** |
+
+## 流量测算：真正的瓶颈在哪
+
+100 GB/月 ÷ 单次访问量 = 每月可承受的访问次数。
+
+| 访问场景 | 单次流量 | 100 GB 可支撑 |
+|---|---|---|
+| 只看主页（图 + CSS + JS） | ≈ 0.3 MB | 约 33 万次 |
+| 看完主页 + 论文页 + 开源页 | ≈ 0.5 MB | 约 20 万次 |
+| 点开一次 `project8` 项目页（60 张截图） | ≈ 12 MB | 约 8300 次 |
+| 下载一次 `sot.pdf`（62 MB） | 62 MB | **约 1600 次** |
+| 下载一次 `mot.pdf`（56 MB） | 56 MB | 约 1800 次 |
+
+结论：**日常浏览完全不用担心；两个大 PDF 才是唯一风险点。**
+如果哪天这两个 PDF 被转发到群里，几千次下载就能吃掉一个月的额度。
+
+## 建议的三条优化（按性价比排序）
+
+1. **把两个大 PDF 移到 GitHub Releases**（最推荐，5 分钟）
+   Releases 走的是另一套存储，不计入 Pages 的 1 GB 与 100 GB 配额。
+   ```powershell
+   gh release create v1-reports assets/pdf/sot.pdf assets/pdf/mot.pdf -t "Tech reports"
+   ```
+   然后把 `_layouts/project5/6/7/8` 里的链接换成 Release 的下载地址，再重新构建。
+   收益：发布体积从 193 MB 降到约 **75 MB**，流量风险基本清零。
+
+2. **把 `project6/7/8` 的截图压成 WebP**（可选）
+   这 3 个页面共 121 张 PNG、约 40 MB。压到 WebP q82 大约能到 4 MB，
+   单页访问流量降到 1/10。旧页面按原样保留是为了「不删内容」，但体积可以优化。
+   `_build/` 下已预留 `tools/` 目录放这类脚本。
+
+3. **不要在仓库里放大视频 / 大模型权重**
+   单文件 100 MiB 是硬墙，2 GB 是单次推送的硬墙。真要放就走 Releases 或外部对象存储。
+
+## 与你「每年付费」的关系
+
+`lidongyv.github.io` 这种用户站点，在 **GitHub Free** 上就已经是公开可用的，
+**不需要付费**。付费（Pro/Team）买到的是私有仓库 Pages、受保护分支等，
+并不会提高 1 GB / 100 GB 这两个上限。所以：
+- 如果只是个人主页 + 博客，Free 足够，**这笔钱可以省下来**；
+- 如果 Pay 是为了「私有仓库也能发布 Pages」或团队协作，那就保留。
+
+## 当前站点体积构成（实测）
+
+| 目录 | 大小 | 占比 | 备注 |
+|---|---:|---:|---|
+| `assets/pdf` | 132.6 MB | 69% | 12 个 PDF，其中 `sot.pdf` 61.9 MB、`mot.pdf` 55.5 MB |
+| `assets/img` | 51.9 MB | 27% | 8 个旧项目页的截图 |
+| `resume` | 2.0 MB | 1% | 4 份简历 PDF |
+| `assets/site` + `assets/og` | 0.4 MB | 0.2% | 新版样式、脚本、分享图 |
+| 全部 HTML | 1.2 MB | 0.6% | 27 个页面 |
+| `_build`（源码） | 0.4 MB | 0.2% | 生成器与内容源 |
+| **合计（发布内容）** | **约 193 MB** | **19% of 1 GB** | |
+
+不含：本地备份 `_backup/`（约 183 MB，已在 `.gitignore` 里，不会推送）、`.git` 历史（385 MB，只在本地/远端仓库，不计入发布站点）。
