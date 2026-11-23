@@ -17,7 +17,8 @@ sys.path.insert(0, HERE)
 
 from gen import layout as L_          # noqa: E402
 from gen import render as R           # noqa: E402
-from gen.data_core import PROFILE, CAREER, EDUCATION  # noqa: E402
+from gen.data_core import PROFILE, EDUCATION  # noqa: E402
+from gen.data_career import CAREER  # noqa: E402
 from gen.data_works import PAPERS, MANUSCRIPTS        # noqa: E402
 from gen.data_repos import REPOS                      # noqa: E402
 from gen.layout import url, t                         # noqa: E402

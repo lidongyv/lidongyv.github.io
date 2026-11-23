@@ -7,7 +7,8 @@ import os
 from . import layout as L_
 from . import releases
 from .blog import parse_front_matter, render_markdown, plain, word_count
-from .data_core import PROFILE, FOCUS_AREAS, CAREER, EDUCATION
+from .data_core import PROFILE, FOCUS_AREAS, EDUCATION
+from .data_career import CAREER
 from .data_works import PAPERS, MANUSCRIPTS, PATENTS, PROJECT_PAGES, PROJECTS_INTRO
 from .data_repos import REPOS, REPO_GROUPS, FINANCE, FORKS
 from .data_design import DESIGN
@@ -103,14 +104,28 @@ def area_list(lang):
     return '<div class="area-list">%s</div>' % items
 
 
+def career_flat(c):
+    """All bullet items of a role, flattened."""
+    out = []
+    for sec in c.get("sections", []):
+        out.extend(sec["items"])
+    return out
+
+
+def career_sections_html(lang, c):
+    parts = []
+    for sec in c.get("sections", []):
+        parts.append('<h4 class="tl-sublabel">%s</h4>' % esc(t(sec["label"], lang)))
+        parts.append("<ul>%s</ul>" % "".join("<li>%s</li>" % t(b, lang) for b in sec["items"]))
+    return "".join(parts)
+
+
 def career_timeline(lang, limit=None, show_bullets=True):
     rows = []
     items = CAREER if limit is None else CAREER[:limit]
     for c in items:
-        bullets = ""
-        if show_bullets:
-            bullets = "<ul>%s</ul>" % "".join("<li>%s</li>" % t(b, lang) for b in c["bullets"])
-        tags = "".join(tag(x, "tag--mono") for x in c["tags"])
+        bullets = career_sections_html(lang, c) if show_bullets else ""
+        tags = "".join(tag(x, "tag--mono") for x in c.get("tags", []))
         rows.append("""
       <article class="tl-item" data-reveal>
         <div class="tl-when"><b>{when}</b></div>
@@ -338,7 +353,7 @@ def render_home(lang, posts):
         focus_head=section_head(lang, "方向" if lang == "zh" else "Focus", level=2),
         focus=area_list(lang),
         career_head=section_head(lang, "经历" if lang == "zh" else "Experience", level=2),
-        career=career_timeline(lang, limit=3, show_bullets=True),
+        career=career_timeline(lang, limit=3, show_bullets=False),
         career_cta=btn(url(lang, "experience.html"),
                        "全部经历" if lang == "zh" else "All experience", "btn btn--ghost"),
         paper_head=section_head(lang, "论文" if lang == "zh" else "Publications", level=2),
@@ -443,7 +458,7 @@ def person_jsonld(lang):
 def render_experience(lang):
     rows = []
     for c in CAREER:
-        bullets = "".join("<li>%s</li>" % t(b, lang) for b in c["bullets"])
+        bullets = career_sections_html(lang, c)
         rows.append("""
       <article class="card" data-reveal style="margin-bottom:16px">
         <div class="card__top">
@@ -454,10 +469,10 @@ def render_experience(lang):
         <div class="tl-role" style="margin-top:6px">{role}</div>
         <div class="tl-scope">{scope}</div>
         <p style="margin-top:12px">{summary}</p>
-        <ul style="margin-top:14px;padding-left:18px;display:grid;gap:8px">{bullets}</ul>
+        {bullets}
       </article>""".format(
             when=tag(t(c["when"], lang) if isinstance(c["when"], dict) else c["when"], "tag--mono"),
-            tags="".join(tag(x, "tag--mono") for x in c["tags"][:4]),
+            tags="".join(tag(x, "tag--mono") for x in c.get("tags", [])[:4]),
             company=esc(t(c["company"], lang)),
             role=esc(t(c["role"], lang)),
             scope=esc(t(c["scope"], lang)),
@@ -681,7 +696,7 @@ def render_projects(lang):
             company=esc(t(c["company"], lang)),
             role=esc(t(c["role"], lang)),
             summary=t(c["summary"], lang),
-            bullets="".join("<li>%s</li>" % t(b, lang) for b in c["bullets"][:3]),
+            bullets="".join("<li>%s</li>" % t(b, lang) for b in career_flat(c)[:3]),
         ))
 
     body = """

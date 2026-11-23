@@ -890,22 +890,35 @@ td b{color:var(--ink)}
 
 <!-- ================= ZH 09 ================= -->
 <section class="sec" id="zh-post" data-sec="post">
-  <div class="sec-head"><div class="sec-num">08 / POST-TRAIN</div><h2>close loop training 可能并入 pretrain</h2></div>
-  <p class="lead"><span class="badge hyp">推测</span> V15 可能把 close loop training 放进 pretrain 后期；这是一个重要推测，是否成立不确定。</p>
+  <div class="sec-head"><div class="sec-num">08 / POST-TRAIN</div><h2>post-training 并进 pretrain 之后，叫 close loop training</h2></div>
+  <p class="lead"><span class="badge hyp">推测</span> V15 可能已经把 post-training 并进 pretrain；并入之后，这一段叫 close loop training。是否成立不确定。</p>
 
   <figure>
-    <div class="figure-card"><img src="assets/fig-08.png" alt="后训练闭环：策略、动作、4D 世界模型、想象未来、奖励/安全，回到策略更新。"></div>
+    <div class="figure-card"><img src="assets/fig-08.png" alt="post-training 闭环：策略、动作、4D 世界模型、想象未来、奖励/安全，回到策略更新。"></div>
     <figcaption><span class="fno">FIG.08</span><span><b>当仿真器变成同一个模型。</b>策略在 4D 渲染器里 rollout，奖励/安全模块打分，梯度回到策略。真实车队是防止 reward hacking 的锚。</span></figcaption>
   </figure>
 
-  <h3>V14 的 post-train 为什么独立</h3>
-  <p>因为仿真器和策略是两套东西：策略在真实数据上做模仿学习，然后在仿真器里做 RL/闭环评估；仿真器负责生成状态，策略负责动作，两者通过接口交换。这个接口既是工程边界，也是组织边界。</p>
-  <p>V15 的 4D 渲染器具备<b>反事实动作能力</b>：给定“如果此时左转”，它能生成物理合理、时序一致的未来。因此它是 post-train 的载体，而不是只回放训练时见过的轨迹。</p>
+  <h3>V14 的 post-training 为什么独立</h3>
+  <ul class="tight">
+    <li>仿真器和策略是两套东西。</li>
+    <li>策略在真实数据上做模仿学习，再在仿真器里做 RL/闭环评估。</li>
+    <li>仿真器生成状态，策略生成动作，两者通过接口交换。</li>
+    <li>这个接口既是工程边界，也是组织边界。</li>
+  </ul>
 
-  <h3>close loop training：区别在调度，不在数据或目标</h3>
-  <ul class="tight"><li>数据和目标没有区别：都是驾驶数据，都是轨迹/动作监督。</li><li>区别只在调度：训练时可以在 pretrain 的某个区间插入 close loop training，让模型给出 action，渲染器给出对应的 vision future，再计算 reward。</li></ul>
-  <p>因此“post-train 是否独立”不是数据或 loss 问题，而是训练日程问题：close loop training 可以作为 pretrain 里的一段，也可以留在 pretrain 之后单独做。</p>
-  <p>如果这个推测成立，V15 的 close loop training 就在 pretrain 内部完成，post-train 不再必须是一个独立阶段。</p>
+  <h3>V15：反事实动作能力</h3>
+  <p>V15 的 4D 渲染器具备<b>反事实动作能力</b>：给定“如果此时左转”，它能生成物理合理、时序一致的未来。</p>
+  <p>因此它是 post-training 的载体，而不是只回放训练时见过的轨迹。</p>
+
+  <h3>close loop training：并入之后的名字</h3>
+  <ul class="tight">
+    <li>post-training 是原来的名字。</li>
+    <li>并进 pretrain 之后，这一段叫 close loop training。</li>
+    <li>数据和目标没有区别：都是驾驶数据，都是轨迹/动作监督。</li>
+    <li>区别只在调度：在 pretrain 的某个区间插入 close loop training，让模型给出 action，渲染器给出对应的 vision future，再计算 reward。</li>
+  </ul>
+  <p>问题不是 post-training 有没有数据或 loss，而是它是否还被单独调度。</p>
+  <p>如果这个推测成立，post-training 已经在 pretrain 内部完成，名字变成 close loop training，不再是一个独立阶段。</p>
 
   <h3>close loop training 的 balance</h3>
   <div class="grid">
@@ -914,7 +927,6 @@ td b{color:var(--ink)}
     <div class="card"><div class="tag">Balance 3</div><h4>闭环分布 vs 真实分布</h4><p>闭环跑久了会进入模型自己生成的状态分布，需要真实车队持续校准。</p></div>
     <div class="card"><div class="tag">Balance 4</div><h4>算力成本 vs 闭环时长</h4><p>闭环 rollout 比监督学习贵一个量级；并进 pretrain 只是把账单移到 pretrain，不是免费。</p></div>
   </div>
-
 </section>
 
 <!-- ================= ZH 10 ================= -->
@@ -990,9 +1002,25 @@ td b{color:var(--ink)}
   </div>
 
   <h3>三条路线</h3>
-  <ul class="tight"><li><b>路线 A：全栈通用预训练。</li><li></b>自己拥有基础模型、VLA、世界模型和蒸馏部署管线。</li><li>上限最高，固定成本也最高。</li><li>特斯拉是代表；</li><li>如果华为或小米能把自家大模型与 VLA 合并，也有机会。</li><li>但“有模型”不等于“有驾驶数据、安全验证和组织协同”，这不是自动成立的。</li></ul>
-  <ul class="tight"><li><b>路线 B：借大模型 + SFT + 蒸馏部署。</li><li></b>用外部 LLM/VLM/世界模型，SFT 代替完整的预训练，再做蒸馏/量化。</li><li>这是大多数国内车企和具身智能公司更现实的动作：不需要重建预训练基建，先把蒸馏部署管线跑通。</li><li>代价是模型不可控、授权/合规风险、能力上限受制于人。</li></ul>
-  <p><b>路线 C：垂直数据/场景。</b>区域数据、长尾场景、监管关系、成本控制。在 L4 限定场景或城市仍然能形成壁垒；但如果基础模型代差拉大，场景壁垒的作用会下降。</p>
+  <ul class="tight">
+    <li><b>路线 A：全栈通用预训练。</b></li>
+    <li>自己拥有基础模型、VLA、世界模型和蒸馏部署管线。</li>
+    <li>上限最高，固定成本也最高。特斯拉是代表。</li>
+    <li>如果华为或小米能把自家大模型与 VLA 合并，也有机会。</li>
+    <li>但“有模型”不等于“有驾驶数据、安全验证和组织协同”。</li>
+  </ul>
+  <ul class="tight">
+    <li><b>路线 B：借大模型 + SFT + 蒸馏部署。</b></li>
+    <li>用外部 LLM/VLM/世界模型，SFT 代替完整预训练，再做蒸馏/量化。</li>
+    <li>大多数国内车企和具身智能公司会先走这条路：不重建预训练基建，先把蒸馏部署管线跑通。</li>
+    <li>代价是模型不可控、授权/合规风险、能力上限受制于人。</li>
+  </ul>
+  <ul class="tight">
+    <li><b>路线 C：垂直数据/场景。</b></li>
+    <li>区域数据、长尾场景、监管关系、成本控制。</li>
+    <li>在 L4 限定场景或城市仍能形成壁垒。</li>
+    <li>如果基础模型代差拉大，场景壁垒的作用会下降。</li>
+  </ul>
 
   <h3>蔚小理、华为、小米：方向与投入</h3>
   <ul class="tight"><li>“御三家”指<b>蔚小理</b>。</li><li>三家都在朝通用预训练 + 车端闭环的方向走，已经投入巨额研发费用：小鹏释放端到端/VLA 的正向信号，蔚来发布新一代方案，理想把 pretrain 与量产闭环/世界模型结合。</li><li>方向是对的，是否走通不确定，但都在朝 FSD V15 这条路努力。</li></ul>
@@ -1150,7 +1178,7 @@ td b{color:var(--ink)}
         <tr><td>05</td><td>Compact token = implicit scene + explicit instance；V15 弱化 instance</td><td>成立</td><td>implicit 4D scene token 为主，explicit token 可选保留。见 <a href="#zh-token">§06</a>。</td></tr>
         <tr><td>06</td><td>Traj head 改动不大；与 scene token 交互加速；推理可移除辅助头</td><td>成立</td><td>trajectory head 直接读 scene token；辅助头推理可删。见 <a href="#zh-token">§06</a>。</td></tr>
         <tr><td>07</td><td>合并任务：dense VLM/4D gen、perception、planner，共四类</td><td>修正为四个任务集</td><td>4D dense、4D sparse、planner、language。见 <a href="#zh-tasks">§07</a>。</td></tr>
-        <tr><td>08</td><td>close loop training 并入 pretrain（推测）</td><td>推测</td><td>区别在调度：action → vision future → reward；是否成立不确定。见 <a href="#zh-post">§08</a>。</td></tr>
+        <tr><td>08</td><td>post-training 并入 pretrain 后称 close loop training（推测）</td><td>推测</td><td>区别在调度：action → vision future → reward；是否成立不确定。见 <a href="#zh-post">§08</a>。</td></tr>
         <tr><td>09</td><td>3+1B：3B backbone，1B NVS decoder；SR 是工程外挂</td><td>成立</td><td>3B + 1B = 4B；Grok 5 约 1.5 万亿参数。见 <a href="#zh-distill">§09</a>。</td></tr>
         <tr><td>10</td><td>范式从 pretrain→SFT→post-train 变成 pretrain→distillation；大模型到 4B</td><td>成立</td><td>蒸馏部署是一个环节。见 <a href="#zh-distill">§09</a>。</td></tr>
         <tr><td>11</td><td>国内少数公司能月投 2 亿做 pretrain；蔚小理、华为/小米；VLA 成为主线；借模型 + SFT + 蒸馏</td><td>产业判断</td><td>“2 亿/月”是量级参考；公司位置是示意。见 <a href="#zh-industry">§10</a>。</td></tr>
@@ -1499,31 +1527,43 @@ td b{color:var(--ink)}
 
 <!-- ================= EN 09 ================= -->
 <section class="sec" id="en-post" data-sec="post">
-  <div class="sec-head"><div class="sec-num">08 / POST-TRAIN</div><h2>Close loop training may fold into pretraining</h2></div>
-  <ul class="tight lead-list"><li><span class="badge hyp">Speculation</span> V15 may fold close loop training into late pretraining.</li><li>This is an important speculation; whether it holds is uncertain.</li></ul>
+  <div class="sec-head"><div class="sec-num">08 / POST-TRAIN</div><h2>Post-training becomes close loop training inside pretraining</h2></div>
+  <p class="lead"><span class="badge hyp">Speculation</span> V15 may have folded post-training into pretraining; after the merge, this stage is called close loop training. Whether it holds is uncertain.</p>
 
   <figure>
     <div class="figure-card"><img src="assets/fig-08-en.png" alt="Post-training loop: policy, action, 4D world model, imagined future, reward/safety, back to policy update."></div>
-    <figcaption><span class="fno">FIG.08</span><span><b>When the simulator is the model.</b> The policy rolls out inside the 4D renderer; reward/safety scores the future; gradients return to the policy. The real fleet is the anchor against reward hacking.</span></figcaption>
+    <figcaption><span class="fno">FIG.08</span><span><b>When the simulator becomes the model.</b> The policy rolls out inside the 4D renderer; reward/safety scores the future; gradients return to the policy. The real fleet is the anchor against reward hacking.</span></figcaption>
   </figure>
 
-  <h3>Why V14's post-train was separate</h3>
-  <ul class="tight"><li>Because the simulator and the policy were two different things: the policy learned from real data, then RL/closed-loop evaluation ran in a simulator; the simulator generated states, the policy generated actions, and they exchanged data through an interface.</li><li>That interface was both an engineering boundary and an organizational one.</li></ul>
-  <ul class="tight"><li>The V15 4D renderer has <b>counterfactual action capability</b>: given “what if the ego turns left here,” it generates a physically plausible, temporally consistent future.</li><li>It is therefore the carrier for post-training, not a replay of seen trajectories.</li></ul>
+  <h3>Why V14's post-training was separate</h3>
+  <ul class="tight">
+    <li>The simulator and the policy were two different things.</li>
+    <li>The policy learned from real data, then ran RL/closed-loop evaluation in a simulator.</li>
+    <li>The simulator generated states; the policy generated actions; the two exchanged data through an interface.</li>
+    <li>That interface was both an engineering boundary and an organizational one.</li>
+  </ul>
 
-  <h3>Close loop training: the difference is scheduling, not data or objective</h3>
-  <ul class="tight"><li>Data and objective are not different: both are driving data and trajectory/action supervision.</li><li>The difference is scheduling.</li><li>Close loop training can be inserted into a pretraining interval: the model outputs an action, the renderer produces the corresponding vision future, and reward is computed.</li></ul>
-  <ul class="tight"><li>So “is post-train separate?” is not a data or loss question; it is a scheduling question.</li><li>Close loop training can be a stretch inside pretraining, or remain a separate stage after it.</li></ul>
-  <p>If this speculation holds, V15 completes close loop training inside pretraining, and post-train no longer has to be a separate stage.</p>
+  <h3>V15: counterfactual action capability</h3>
+  <p>The V15 4D renderer has <b>counterfactual action capability</b>: given “what if the ego turns left here,” it generates a physically plausible, temporally consistent future.</p>
+  <p>It is therefore the carrier for post-training, not a replay of seen trajectories.</p>
+
+  <h3>Close loop training: the name after the merge</h3>
+  <ul class="tight">
+    <li>Post-training is the original name.</li>
+    <li>After it moves into pretraining, the stage is called close loop training.</li>
+    <li>Data and objective are not different: both are driving data and trajectory/action supervision.</li>
+    <li>The difference is scheduling: insert close loop training into a pretraining interval, where the model outputs an action, the renderer produces the vision future, and reward is computed.</li>
+  </ul>
+  <p>The question is not whether post-training has data or loss, but whether it is still scheduled separately.</p>
+  <p>If this speculation holds, post-training is completed inside pretraining, renamed close loop training, and no longer a separate stage.</p>
 
   <h3>The balance of close loop training</h3>
   <div class="grid">
-    <div class="card"><div class="tag">Balance 1</div><h4>Fidelity vs coverage</h4><ul class="tight"><li>Rendering must be physically correct, not just good-looking;</li><li>collisions, occlusion, lighting, and other agents' reactions all affect the policy.</li></ul></div>
+    <div class="card"><div class="tag">Balance 1</div><h4>Fidelity vs coverage</h4><p>Rendering must be physically correct, not just good-looking; collisions, occlusion, lighting, and other agents' reactions all affect the policy.</p></div>
     <div class="card"><div class="tag">Balance 2</div><h4>Reward signal vs reward hacking</h4><p>Reward must move the policy while real interventions, collisions, comfort, and rules anchor it.</p></div>
-    <div class="card"><div class="tag">Balance 3</div><h4>Closed-loop vs real distribution</h4><ul class="tight"><li>A long closed loop drifts into model-generated states;</li><li>the real fleet must recalibrate continuously.</li></ul></div>
-    <div class="card"><div class="tag">Balance 4</div><h4>Compute cost vs loop length</h4><ul class="tight"><li>Closed-loop rollout is an order of magnitude more expensive;</li><li>moving it into pretraining changes the bill, not the cost.</li></ul></div>
+    <div class="card"><div class="tag">Balance 3</div><h4>Closed-loop vs real distribution</h4><p>A long closed loop drifts into model-generated states; the real fleet must recalibrate continuously.</p></div>
+    <div class="card"><div class="tag">Balance 4</div><h4>Compute cost vs loop length</h4><p>Closed-loop rollout is an order of magnitude more expensive; moving it into pretraining changes the bill, not the cost.</p></div>
   </div>
-
 </section>
 
 <!-- ================= EN 10 ================= -->
@@ -1598,9 +1638,9 @@ td b{color:var(--ink)}
   <ul class="tight"><li><b>Route B: borrow a model + SFT + distillation deployment.</b> Use an external LLM/VLM/world model, replace full pretraining with SFT, then distill/quantize.</li><li>This is the more realistic move for most Chinese automakers and embodied-AI companies: no need to rebuild pretraining infrastructure; get the distillation deployment pipeline working first.</li><li>The price is model dependence, licensing/compliance risk, and a ceiling set by someone else.</li></ul>
   <ul class="tight"><li><b>Route C: vertical data/scenarios.</b> Regional data, long-tail scenes, regulatory relationships, cost control.</li><li>This still creates an advantage in limited L4 scenarios/cities; but if the foundation-model gap widens, the value of that advantage falls.</li></ul>
 
-  <h3>蔚小理, Huawei, Xiaomi: separate narrative from fact</h3>
-  <ul class="tight"><li>“御三家” means <b>NIO, XPeng, Li Auto</b>.</li><li>All three are moving toward general pretraining plus an on-car closed loop, and have invested heavily: XPeng signals end-to-end/VLA, NIO has a new-generation stack, and Li Auto combines pretraining with production closed loops and world models.</li><li>The direction is right; whether each succeeds is uncertain, but all are pushing toward FSD V15.</li></ul>
-  <ul class="tight"><li>The potential advantage for Huawei and Xiaomi is the combination of <b>their own foundation model + their own cars/chips/channels</b>.</li><li>If they can combine a general model with VLA and reuse a cloud training/distillation deployment pipeline, it will pressure companies that only do driving algorithms.</li><li>But the hard part is not only the model; it is the driving data loop, functional safety, organizational coordination, and regulation.</li><li>If any link fails, it look formidable and land slowly.</li></ul>
+  <h3>NIO, XPeng, Li Auto, Huawei, Xiaomi: direction and investment</h3>
+  <ul class="tight"><li>The “big three” are <b>NIO, XPeng, and Li Auto</b>.</li><li>All three are moving toward general pretraining plus an on-car closed loop, and have invested heavily: XPeng signals end-to-end/VLA, NIO has a new-generation stack, and Li Auto combines pretraining with production closed loops and world models.</li><li>The direction is right; whether each succeeds is uncertain, but all are pushing toward FSD V15.</li></ul>
+  <ul class="tight"><li>The potential advantage for Huawei and Xiaomi is the combination of <b>their own foundation model + their own cars/chips/channels</b>.</li><li>If they can combine a general model with VLA and reuse a cloud training/distillation deployment pipeline, it will pressure companies that only do driving algorithms.</li><li>But the hard part is not only the model; it is the driving data loop, functional safety, organizational coordination, and regulation.</li><li>If any link fails, it looks formidable and lands slowly.</li></ul>
 
   <p><b>Conclusion:</b> borrowing a big model + SFT instead of full pretraining + distillation deployment is the fastest next-quarter path for some companies.</p>
 
@@ -1756,7 +1796,7 @@ td b{color:var(--ink)}
         <tr><td>05</td><td>Compact token = implicit scene + explicit instance; V15 weakens instances</td><td>Stands</td><td>The implicit 4D scene token is primary; explicit tokens are optional. See <a href="#en-token">§06</a>.</td></tr>
         <tr><td>06</td><td>Traj head barely changes; scene-token interaction accelerates; auxiliary heads can be removed at inference</td><td>Stands</td><td>The trajectory head reads the scene token directly; auxiliary heads are prunable. See <a href="#en-token">§06</a>.</td></tr>
         <tr><td>07</td><td>Merge tasks into four families: dense VLM/4D generation, perception, planner</td><td>Revised to four task sets</td><td>4D dense, 4D sparse, planner, language. See <a href="#en-tasks">§07</a>.</td></tr>
-        <tr><td>08</td><td>Close loop training folds into pretraining (speculation)</td><td>Speculation</td><td>The difference is scheduling: action → vision future → reward; whether it holds is uncertain. See <a href="#en-post">§08</a>.</td></tr>
+        <tr><td>08</td><td>Post-training folds into pretraining and is renamed close loop training (speculation)</td><td>Speculation</td><td>The difference is scheduling: action → vision future → reward; whether it holds is uncertain. See <a href="#en-post">§08</a>.</td></tr>
         <tr><td>09</td><td>3+1B: 3B backbone, 1B NVS decoder; SR is an add-on</td><td>Stands</td><td>3B + 1B = 4B; Grok 5 is about 1.5T parameters. See <a href="#en-distill">§09</a>.</td></tr>
         <tr><td>10</td><td>Paradigm moves from pretrain→SFT→post-train to pretrain→distillation; big model to 4B</td><td>Stands</td><td>Distillation deployment is one step. See <a href="#en-distill">§09</a>.</td></tr>
         <tr><td>11</td><td>Few Chinese companies can spend RMB 200M/month on pretraining; NIO/XPeng/Li Auto, Huawei/Xiaomi; VLA becomes the main line; borrow model + SFT + distillation</td><td>Industry judgment</td><td>RMB 200M/month is an order-of-magnitude reference; company positions are illustrative. See <a href="#en-industry">§10</a>.</td></tr>
