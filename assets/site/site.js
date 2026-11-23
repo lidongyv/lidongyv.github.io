@@ -161,6 +161,108 @@
     }
   });
 
+  /* ---------- Blog search + tag filter ---------- */
+  var searchInput = doc.getElementById('blog-search');
+  var searchClear = doc.getElementById('blog-search-clear');
+  var countEl = doc.getElementById('blog-count');
+  var emptyEl = doc.getElementById('blog-empty');
+  var tagChips = Array.prototype.slice.call(doc.querySelectorAll('[data-tag-filter]'));
+  var postItems = Array.prototype.slice.call(doc.querySelectorAll('.post-item[data-search]'));
+
+  if (postItems.length) {
+    var total = postItems.length;
+    var state = { q: '', tag: '' };
+
+    function readUrl() {
+      try {
+        var p = new URLSearchParams(window.location.search);
+        state.q = (p.get('q') || '').trim();
+        state.tag = (p.get('tag') || '').trim();
+      } catch (e) { /* very old browser */ }
+    }
+    function writeUrl() {
+      try {
+        var p = new URLSearchParams(window.location.search);
+        if (state.q) { p.set('q', state.q); } else { p.delete('q'); }
+        if (state.tag) { p.set('tag', state.tag); } else { p.delete('tag'); }
+        var qs = p.toString();
+        history.replaceState(null, '', window.location.pathname + (qs ? '?' + qs : ''));
+      } catch (e) { /* ignore */ }
+    }
+    function apply(scroll) {
+      var q = state.q.toLowerCase();
+      var shown = 0;
+      postItems.forEach(function (item) {
+        var hay = item.getAttribute('data-search') || '';
+        var tags = (item.getAttribute('data-tags') || '').split('|');
+        var okQ = !q || hay.indexOf(q) !== -1;
+        var okT = !state.tag || tags.indexOf(state.tag) !== -1;
+        var show = okQ && okT;
+        item.hidden = !show;
+        if (show) { shown++; }
+      });
+      tagChips.forEach(function (c) {
+        c.setAttribute('aria-pressed', (c.getAttribute('data-tag-filter') || '') === state.tag ? 'true' : 'false');
+      });
+      if (searchInput && searchInput.value !== state.q) { searchInput.value = state.q; }
+      if (searchClear) { searchClear.hidden = !state.q; }
+      if (countEl) {
+        countEl.textContent = shown === total
+          ? ''
+          : (countEl.getAttribute('data-tpl') || '%s / %s').replace('%s', shown).replace('%s', total);
+      }
+      if (emptyEl) { emptyEl.hidden = shown !== 0; }
+      if (scroll) {
+        var list = doc.querySelector('.tag-filters');
+        if (list) { window.scrollTo({ top: list.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' }); }
+      }
+    }
+
+    if (countEl) {
+      countEl.setAttribute('data-tpl',
+        doc.documentElement.lang === 'en' ? '%s of %s entries' : '显示 %s / %s 条');
+    }
+    readUrl();
+    apply(false);
+
+    if (searchInput) {
+      var t = null;
+      searchInput.addEventListener('input', function () {
+        clearTimeout(t);
+        t = setTimeout(function () {
+          state.q = searchInput.value.trim();
+          apply(false);
+          writeUrl();
+        }, 120);
+      });
+      searchInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { searchInput.value = ''; state.q = ''; apply(false); writeUrl(); }
+      });
+    }
+    if (searchClear) {
+      searchClear.addEventListener('click', function () {
+        if (searchInput) { searchInput.value = ''; searchInput.focus(); }
+        state.q = ''; apply(false); writeUrl();
+      });
+    }
+    tagChips.forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        var v = chip.getAttribute('data-tag-filter') || '';
+        state.tag = (state.tag === v) ? '' : v;
+        apply(true);
+        writeUrl();
+      });
+    });
+    doc.querySelectorAll('.tag--link').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        state.tag = a.getAttribute('data-tag') || '';
+        apply(true);
+        writeUrl();
+      });
+    });
+  }
+
   /* ---------- Year ---------- */
   doc.querySelectorAll('[data-year]').forEach(function (el) {
     el.textContent = String(new Date().getFullYear());

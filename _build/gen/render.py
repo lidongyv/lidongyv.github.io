@@ -4,6 +4,8 @@
 import html
 import os
 
+from urllib.parse import quote
+
 from . import layout as L_
 from . import releases
 from .blog import parse_front_matter, render_markdown, plain, word_count
@@ -411,20 +413,68 @@ def _blog_rows(lang, posts, include_design=True):
     return rows
 
 
-def blog_list_html(lang, posts, limit=None, include_design=True):
+def _row_tags(r):
+    return [x.strip() for x in r["tags"].split("/") if x.strip()]
+
+
+def tag_bar(lang, rows):
+    """Every tag on the page, with a count, as filter chips."""
+    counts = {}
+    for r in rows:
+        for tg in _row_tags(r):
+            counts[tg] = counts.get(tg, 0) + 1
+    ordered = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    chips = ['<button class="chip" type="button" data-tag-filter="" aria-pressed="true">%s<span class="count">%d</span></button>'
+             % (esc("全部" if lang == "zh" else "All"), len(rows))]
+    for tg, n in ordered:
+        chips.append('<button class="chip" type="button" data-tag-filter="%s" aria-pressed="false">%s<span class="count">%d</span></button>'
+                     % (esc(tg), esc(tg), n))
+    return '<div class="filters tag-filters" role="group" aria-label="%s">%s</div>' % (
+        esc("按标签筛选" if lang == "zh" else "Filter by tag"), "".join(chips))
+
+
+def search_box(lang):
+    placeholder = "搜索标题、摘要或标签…" if lang == "zh" else "Search titles, summaries or tags…"
+    return """
+    <div class="blog-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+      <input id="blog-search" type="search" inputmode="search" autocomplete="off"
+             placeholder="{ph}" aria-label="{ph}">
+      <button class="blog-search__clear" type="button" id="blog-search-clear" aria-label="{clear}">×</button>
+    </div>
+    <p class="blog-count small muted" id="blog-count" aria-live="polite"></p>""".format(
+        ph=esc(placeholder), clear=esc("清空" if lang == "zh" else "Clear"))
+
+
+def blog_list_html(lang, posts, limit=None, include_design=True, filterable=False):
     rows = _blog_rows(lang, posts, include_design=include_design)
+    all_rows = list(rows)
     if limit:
         rows = rows[:limit]
     if not rows:
         return '<p class="muted">%s</p>' % esc(ui("empty_blog", lang))
     items = []
     for r in rows:
+        tags = _row_tags(r)
         note = '<span class="tag tag--mono">%s</span>' % esc(r["badge"]) if r["badge"] else ""
-        meta = [note, "<span>%s</span>" % esc(r["tags"])]
+        if filterable:
+            tag_html = "".join(
+                '<a class="tag tag--link" href="?tag=%s" data-tag="%s">%s</a>'
+                % (esc(quote(tg)), esc(tg), esc(tg)) for tg in tags)
+        else:
+            tag_html = "<span>%s</span>" % esc(r["tags"])
+        meta = [note, tag_html]
         if r["minutes"]:
             meta.append("<span>·</span><span>%d %s</span>" % (r["minutes"], esc(ui("min_read", lang))))
+        if filterable:
+            haystack = " ".join([r["title"], r["summary"]] + tags).lower()
+            attrs = ' data-tags="%s" data-search="%s"' % (
+                esc("|".join(tags)), esc(haystack))
+        else:
+            attrs = ""
         items.append("""
-      <article class="post-item">
+      <article class="post-item"{attrs}>
         <time datetime="{date}">{date}</time>
         <div>
           <h3><a href="{href}">{title}</a></h3>
@@ -432,9 +482,15 @@ def blog_list_html(lang, posts, limit=None, include_design=True):
           <div class="post-item__meta">{meta}</div>
         </div>
       </article>""".format(
+            attrs=attrs,
             date=esc(r["date"]), href=esc(r["href"]), title=esc(r["title"]),
             summary=esc(r["summary"]), meta="".join(meta)))
-    return '<div class="post-list">%s</div>' % "".join(items)
+    html = '<div class="post-list">%s</div>' % "".join(items)
+    if filterable:
+        empty = ('<p class="muted small" id="blog-empty" hidden>%s</p>'
+                 % esc("没有匹配的条目。" if lang == "zh" else "Nothing matches."))
+        return tag_bar(lang, all_rows) + html + empty
+    return html
 
 
 def person_jsonld(lang):
@@ -826,6 +882,7 @@ def render_blog_index(lang, posts):
   <div class="wrap wrap--narrow">
     {head}
     {note}
+    {search}
     {list}
     <div class="notice" style="margin-top:20px">
       <div class="notice__title">RSS</div>
@@ -836,7 +893,8 @@ def render_blog_index(lang, posts):
 """.format(
         head=section_head(lang, "博客" if lang == "zh" else "Blog", level=1),
         note=note,
-        list=blog_list_html(lang, posts),
+        search=search_box(lang),
+        list=blog_list_html(lang, posts, filterable=True),
         rss_note=esc("订阅：" if lang == "zh" else "Subscribe: "),
         feed=("/blog/feed.xml" if lang == "zh" else "/en/blog/feed.xml"),
     )
