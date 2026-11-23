@@ -1,0 +1,186 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>CoSMo3D: Open-World Promptable 3D Semantic Segmentation through LLM-Guided Canonical Spatial Modeling</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>CoSMo3D: Open-World Promptable 3D Semantic Segmentation through LLM-Guided Canonical Spatial Modeling</h1>
+    <div class="au2" style="color:var(--mut)">Li Jin ⋅ Weikai Chen ⋅ Yujie Wang ⋅ Yingda Yin ⋅ Zeyu HU ⋅ Runze Zhang ⋅ Keyang Luo ⋅ Shengju Qian ⋅ Xin Wang ⋅ Xueying Qin</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2026/papers/Jin_CoSMo3D_Open-World_Promptable_3D_Semantic_Segmentation_through_LLM-Guided_Canonical_Spatial_CVPR_2026_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=CoSMo3D%3A%20Open-World%20Promptable%203D%20Semantic%20Segmentation%20through%20LLM-Guided%20Canonical%20Spatial%20Modeling">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Open-world promptable 3D semantic segmentation remains brittle as semantics are inferred in the input sensor coordinates. Yet, humans, in contrast, interpret parts via functional roles in a canonical space -- wings extend laterally, handles protrude to the side, and legs support from below. Psychophysical evidence shows that we mentally rotate objects into canonical frames to reveal these roles. To fill this gap, we propose CoSMo3D, which attains canonical space perception by inducing a latent canonical reference frame learned directly from data. By construction, we create a unified canonical dataset through LLM-guided intra- and cross-category alignment, exposing canonical spatial regularities across 200 categories. By induction, we realize canonicality inside the model through a dual-branch architecture with canonical map anchoring and canonical box calibration, collapsing pose variation and symmetry into a stable canonical embedding. This shift from input pose space to canonical representation yields far more stable and transferable part semantics. Experimental results show that CoSMo3D establishes new state of the art in open-world promptable 3D segmentation.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-cosmo3d-open-world-promptable-3d-semantic-segmentation- -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">现有 open-world promptable 3D 部件分割在<b>输入传感器坐标系</b>里推语义（脆弱、对 pose/对称/跨类不稳）；人却在<b>标准空间(canonical space)</b>里按功能角色理解部件（翅膀向两侧伸、把手向侧突、腿从下方支撑），还会“心理旋转”物体到标准姿态。CoSMo3D 让模型<b>从数据里诱导出一个 latent canonical 参考系</b>：外部用 <b>LLM 引导</b>构建跨 200 类对齐的统一 canonical 数据集，内部用 <b>dual-branch</b>（canonical map anchoring + canonical box calibration）把 pose 变化与对称<b>坍缩成稳定 canonical embedding</b> → 部件语义空间 grounded、天然 pose-invariant。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">Find3D 开创了 open-world promptable 3D 分割（自由文本 query 分割任意物体、零样本泛化），但靠 <b>geometry-text matching</b>、假设“几何相似→语义相似”——这常 break：椅子 arm/leg 几何像但功能不同；飞机翅膀 vs 鸟翅膀形不同但语义同。缺了 canonical-space 规律的显式推理，模型<b>不知道某语义部件该出现在整体的哪个相对位置</b> → pose 旋转 / 对称 / 跨类时预测不一致。数据增广只给有限鲁棒，仍缺“空间语义”这一人类知觉核心。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b"><b>外部（§3.2 数据）</b>：现有 canonical 数据集逐类处理、<b>无跨类对齐</b>→限制 open-world。构建统一跨类 canonical 数据集（基于 3Dcompat200，200 类 17K shapes）：① intra-category（已有工作）；② <b>cross-category</b>（难）用分层对齐——<b>LLM(GPT) 把 200 类聚成 19 个语义连贯 group</b>（transportation/tools…），cluster 内按功能特征对齐（多为 90/180/270° 离散旋转，高效），cluster 间验证高层语义一致（如 transportation 与 animal 共享 forward 方向），再加 axis-aligned 形变增多样性。<br><b>内部（§3.3 dual-branch）</b>：① <b>feature extraction branch</b>（训练+推理都用，沿用 Find3D）：PointTransformerV3 编码点云 768D + SigLIP 编码文本 768D，3-layer MLP 投到同空间算 cross-modal similarity。② <b>canonical embedding branch（仅训练）</b>：两个 head——canonical map（回归 3 个连续标量场、编码成 RGB color map 以保空间连续）+ semantic bbox（文本当 query 提 region，出 6D bbox）。<br><b>三个损失</b>：L<sub>h</sub>（式1-2，软 point-text 对比 + <b>Hard Negative Sampling</b> 从 inter-part 边界采难负样本，双向）；<b>L<sub>ca</sub> Canonical Map Anchoring（式3，关键）</b>——把每个语义部件当 canonical 空间的<b>分布</b>、用 bidirectional Chamfer distance 匹配预测/GT 分布，<b>绕过 point-wise 对应</b>（对称物体多 pose 都 valid、point-wise 监督不可靠）→ 自动对称鲁棒、不需对称标注；<b>L<sub>cb</sub> Canonical Box Calibration（式4）</b>——每部件预测 canonical 空间 3D bbox（L1）锐化边界、抑制 spurious activation。总 L<sub>total</sub>=λ<sub>h</sub>L<sub>h</sub>+λ<sub>ca</sub>L<sub>ca</sub>+λ<sub>cb</sub>L<sub>cb</sub>（式5，1/10/3），两阶段训练。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">4 benchmark（3Dcompat-Coarse/Fine + ShapeNet-Part + PartNet-E）× 2 prompt（{Part} / {Part} of {Obj.}）× 2 pose（Canonical/Rotated）。<b>Ours 全面最佳</b>：3Dcompat 上平均比次优 Find3D <b>+25.55%</b>；coarse 比 Find3D（含同数据 retrain 的 Find3D*）在 canonical/rotated 都 +8–11% mIoU，fine +4–7%；ShapeNet-Part +29.89%、PartNet-E +5.01%（over strongest baseline）。<b>pose-invariant 强</b>：coarse {Part} canonical 54.52 vs rotated 54.55（几乎不掉）。<b>比 2D rendering 法快两个数量级</b>：0.9s/shape vs PartSLIP++ 2.5min 且更准。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 把 open-world 3D 分割<b>重新表述</b>为“canonical-space 规律推理”而非“输入 pose 下 geometry-text 匹配”；② 把 <b>canonicality 做成 learnable latent 结构</b>（LLM 对齐数据集 + dual-branch 正则，不手工指定 canonical pose）；③ <b>canonical map anchoring 用分布匹配（Chamfer）绕过对称对应歧义</b>、无需对称/逐类轴标注 → open-world 可扩展；④ feed-forward 单次推理（0.9s）远快于 2D rendering（分钟级），且 canonical branch 仅训练用、推理零额外开销。</div>
+    <div class="note-h">疑问</div>
+    <div class="note-b">① <b>跨类对齐质量依赖 GPT</b>：cross-category “语义对应”有主观性（如 transportation 与 animal 的 forward 对齐），<b>原文未量化 LLM 对齐错误率</b> → 噪声未评估。② canonical branch 仅训练用，推理不用——canonical 知识是否真“内化”进 feature branch？靠 Fig6 定性 + 消融 A→Full 定量佐证，但无“推理时探针”直接验证。③ <b>PartNet-E 增益仅 +5%</b>，且 2D 的 PartSLIP++（GLIP 27M 图文对预训练）单词 prompt 反而强 → 说明纯 3D 数据的语义先验仍有限，原文也呼吁“从大 2D 数据抽结构化先验”。④ 数据集基于 <b>3Dcompat200 合成形状</b>，真实扫描点云（噪声/不完整）下表现未充分验证。（注：本文是物体部件分割，不与自驾感知硬比；对标 Find3D/PartField/PartSLIP。）</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读：① Abstract 逐句 → ② Intro problem→solution→why → ③ Method 核心机制+关键公式 → ④ 实验/消融关键数值 + 全文一页总结。原文优先、引英文原句、外部概念单开背景块。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文大意：</b>开放世界可提示（promptable）3D 语义分割（按任意文本 query 分割任意 3D 物体的部件）仍然脆弱，因为语义是在<b>输入传感器坐标系</b>里推断的。而人类相反——通过部件在<b>规范空间（canonical space）里的功能角色</b>来理解部件（机翼向两侧伸展、把手向侧面突出、腿在下面支撑）；心理物理学证据表明人会在脑中把物体旋转到规范姿态来揭示这些角色。为填补这一缺口，提出 CoSMo3D：通过<b>从数据中诱导出一个潜在的规范参考系</b>来获得规范空间感知。「by construction」造一个 LLM 引导的跨类对齐统一规范数据集（200 类）；「by induction」在模型里用<b>双分支架构 + canonical map anchoring + canonical box calibration</b> 把姿态变化和对称性<b>坍缩进一个稳定的规范嵌入</b>。这把语义从「输入姿态空间」搬到「规范嵌入空间」，得到更稳定、更可迁移的部件语义。</div>
+    <div class="note-b"><b>逐句拆解（verbatim 引原文）：</b><br>1) 病根 — <b>“Open-world promptable 3D semantic segmentation remains brittle as semantics are inferred in the input sensor coordinates.”</b> 在传感器坐标系里推语义 = 姿态一变语义就乱。<br>2) 人类对照 — <b>“humans … interpret parts via functional roles in a canonical space – wings extend laterally, handles protrude to the side, and legs support from below.”</b><br>3) 核心主张 — <b>“CoSMo3D … attains canonical space perception by inducing a latent canonical reference frame learned directly from data.”</b> 关键是「latent / learned from data」——不手工指定规范姿态。<br>4) 外部（数据）— <b>“By construction, we create a unified canonical dataset through LLM-guided intra- and cross-category alignment, exposing canonical spatial regularities across 200 categories.”</b><br>5) 内部（模型）— <b>“By induction, we realize canonicality inside the model through a dual-branch architecture with canonical map anchoring and canonical box calibration, collapsing pose variation and symmetry into a stable canonical embedding.”</b></div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>Find3D 那套「几何特征↔文本」对齐在传感器坐标系里做，姿态/对称/跨类一变就崩；CoSMo3D 用「数据端 LLM 跨类规范对齐 + 模型端双分支规范正则」把同一功能部件的不同姿态/对称/形变都吸到同一个规范嵌入上，让语义变得 spatially grounded 且 pose-invariant。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文 — 读懂 CoSMo3D 必备）</div>
+    <div class="note-b"><b>① Find3D &amp; promptable 3D 分割：</b>Find3D（ICCV2025）开创「open-world promptable 3D segmentation」——给一个 3D 物体 + 自由文本 query（如 “handle”/“wing”/“paddle”），模型分割出对应部件，靠<b>大规模自动标注数据 + 几何特征与语言嵌入的直接对齐</b>实现 zero-shot 泛化。CoSMo3D 的 primary 分支就沿用 Find3D 这套，是它的「升级版」。<br><b>② canonical space（规范空间）：</b>把同类（乃至跨类）物体对齐到一个共享的标准朝向/坐标系，使「腿总在下面、把手总在侧面」这种空间规律成立。源头是 NOCS（Wang 2019，类别级位姿）。本文创新在于<b>跨类</b>规范化 + <b>从数据诱导</b>而非手工标。<br><b>③ mental rotation（心理旋转）：</b>Shepard &amp; Metzler 1971 经典实验——人识别旋转物体的时间与旋转角成正比，说明人脑会把物体「转正」到规范姿态再识别。这是本文的认知科学动机。</div>
+    <div class="note-b"><b>④ 关键零件：</b><b>Point Transformer V3 (PTv3)</b>=点云 backbone，提 768-D point-wise 特征；<b>SigLIP</b>（sigmoid loss 的图文预训练）=文本编码器，出 768-D 文本嵌入；<b>对比学习（contrastive）</b>=拉近匹配的 point-text、推远不匹配的；<b>Chamfer distance</b>=两点集双向最近邻距离（本文用它做「分布匹配」而非逐点匹配，是规避对称歧义的关键）；<b>LLM（GPT）</b>=用来把 200 类聚成 19 个语义簇并指导跨类对齐。</div>
+
+    <div class="note-h">Q&amp;A · 它要解决的主要问题是什么？</div>
+    <div class="note-b"><b>核心：</b>开放世界 3D 部件分割在<b>传感器坐标系</b>里靠「几何↔文本」匹配，缺乏「某语义部件相对整体应出现在哪」的<b>规范空间感知</b>，导致在姿态变化、对称、跨类时预测不一致。原文 <b>“Without explicit reasoning grounded in canonical-space regularities, these models lack awareness of where a semantic part should occur relative to the whole object, leading to inconsistent predictions under pose variations, symmetries, or across categories.”</b><br><b>它要补的能力：</b>canonical space perception——原文 <b>“the ability to internalize a canonical reference space shared across shapes and categories, and interpret part semantics w.r.t. this reference — not the raw input pose.”</b> 注意 Find3D 用 data augmentation 也只能给有限鲁棒性，仍缺「内在的空间语义概念」。</div>
+
+    <div class="note-h">② §1 Introduction — problem → 现有不足 → solution → why 闭环</div>
+    <div class="note-b"><b>problem：</b>人识别「chair 的腿」不仅靠细长形状，还靠它的规范位置（座位下方、起支撑作用）。这种 canonical space reasoning 是人类 3D 理解的核心，但<b>“remains largely absent in current segmentation models.”</b><br><b>现有不足（Find3D 的根本局限）：</b>原文 <b>“Find3D and similar methods remain fundamentally limited by their reliance on geometric-text matching. They assume that geometrically similar shapes tend to share similar semantics, yet this correlation often breaks in practice.”</b> 两个反例：<b>“the arms and legs of a chair may appear geometrically similar but serve distinct functions, while airplane wings and bird wings differ in form yet share the same semantics.”</b>（几何像但语义不同；几何不像但语义相同——纯几何匹配两头不讨好。）</div>
+    <div class="note-b"><b>solution（两个 level）：</b>原文 <b>“achieving human-like 3D understanding requires canonical space perception”</b>，CoSMo3D 在两层实现：(1) <b>Externally</b>——LLM 引导 intra/cross-category 规范化造统一数据集，让规范性「跨越类别边界共享」；(2) <b>Internally</b>——从数据诱导潜在规范参考系，双分支：primary 保留 Find3D 几何-语言对齐，canonical 分支用两个规范空间目标（map anchoring + box calibration）把点嵌入拉向规范码、收紧部件空间范围。<br><b>why（机理）：</b>原文 <b>“Canonical space thus becomes an emergent attractor manifold: different poses, symmetries, and shape variants of the same functional part collapse to a single canonical embedding, making semantics spatially grounded and inherently pose-invariant.”</b> 「吸引子流形」是机理关键——把变化坍缩成不变嵌入。</div>
+
+    <div class="note-h">Q&amp;A · 为什么 geometry-text matching 会失败？</div>
+    <div class="note-b"><b>失败逻辑：</b>纯几何匹配隐含假设「形状相似 ⟹ 语义相似」，但这是个常被违反的相关性，两个方向都漏：<br>① <b>几何相似但语义不同</b>——chair 的 arm 和 leg 都细长，纯几何分不开；string/hook 和物体主体都细长易混（Fig5 左）。<br>② <b>几何不同但语义相同</b>——airplane wing 和 bird wing 形态差很多但都是「翅膀」；「handle」出现在不同类物体上几何各异（Fig5 cross-category）。<br><b>根因：</b>模型没有「部件相对整体的规范位置」这一概念，只学了「文本↔几何结构」的局部相关。<b>解法直觉：</b>引入规范空间后，「腿」总落在规范空间下方、「把手」总在侧面，于是用「位置 + 几何 + 语义」三者联合判断，规避纯几何的二义性。</div>
+
+    <div class="note-h">②′ §2 Related Work — 三条 3D 分割路线 &amp; Find3D「破坏规范空间」的代价</div>
+    <div class="note-b"><b>① Traditional part segmentation：</b>以 2D 图像/3D 形状为输入，<b>预定义类别 + 部件标签</b>后做 pixel/point-wise 分类；重度依赖预定义标签 → 泛化差、无法 open-world。<br><b>② Class-agnostic 3D segmentation（无预定义类别、靠几何分解）两路：</b>(a) <b>2D 转换法</b>（SAM3D / Segment-Any-Mesh）——render 成 2D 图 → 用 SAM 分割 → back-project 回 3D，再后处理缓解多视角不一致/自遮挡，但<b>慢且多视角一致性问题难免</b>；(b) <b>pure-3D 法</b>——Sampart3D 用 3D 特征提取器 + test-time adaptation（TTA 增算力），PartField 用 contrastive learning 拉大部件特征差异再 clustering。原文批评这类 <b>“are all limited to low-level part segmentation, lacking high-level semantic understanding, with poor interactivity and controllability”</b>，且 <b>“the object features do not have consistency under arbitrary poses”</b>。<br><b>③ Promptable 3D semantic segmentation（输入 3D + 语义文本）两路：</b>(a) <b>2D-based</b>（用 GLIP 等聚合 2D 结果到 3D）——原文指其 <b>“can only handle objects in upright poses (e.g., it fails when objects are upside down)”</b> 且转换耗时；(b) <b>pure-3D</b>（Find3D）——支持「任意文本 / 任意物体 / 任意姿态」、快、不需 2D 转换。<b>关键代价（原文 verbatim）：</b><b>“after breaking the constraints of the canonical space, the network only learns the correspondence between ‘text and geometric structures’ through the constraint of ‘text-part similarity’.”</b> 即 Find3D 用「丢掉规范空间约束」换来姿态自由，却也丢了空间语义 → chair 的 arm/leg 都细长就分不开 → 原文落点 <b>“additional perceptual capabilities are still needed to address semantic ambiguity in open-world segmentation.”</b> 这正是 CoSMo3D 的切入：把规范空间作为<b>可学的 latent 结构「学回来」</b>，而不是手工约束回去。</div>
+
+    <div class="note-h">③ §3.2 统一跨类规范数据集（external，by construction）</div>
+    <div class="note-b"><b>动机：</b>现有规范数据集（ShapeNet 等）<b>逐类单独</b>处理、无跨类对齐，限制开放世界扩展。CoSMo3D 在 <b>3Dcompat200</b>（17K shapes，200 类）上构造跨类对齐的统一规范数据集，两步：(i) <b>intra-category</b> 把类内实例对齐到共享规范空间（已有工作做得多）；(ii) <b>cross-category</b> 把跨类语义对应的部件/landmark 对齐（难点，因几何/功能差异大，如 fork/bicycle/tree trunk）。<br><b>层级对齐策略：</b>用 LLM（GPT）把 200 类聚成 <b>19 个语义簇</b>（如 transportation、tools）→ 簇内对齐（基于共享功能，如 bicycle 与 airplane 的转向部件对齐朝向；因底层数据集已统一类内核心方向，通常只需 90°/180°/270° 离散旋转，高效）→ 跨簇对齐（核对高层语义一致，如 transportation 与 animal 簇共享 forward 方向）；再做 axis-aligned 形变增强多样性。产出 = canonical maps + part boxes + semantic associations 三类监督信号。</div>
+
+    <div class="note-h">④ §3.3 双分支架构（internal，by induction）</div>
+    <div class="note-b"><b>两分支（Fig2）：</b><b>(i) feature-extraction 分支</b>（训练+推理都用）——PTv3 backbone 编码点云出 768-D point-wise 特征，SigLIP 出 768-D 文本特征，一个轻量 3-layer MLP 把点特征投到与文本同一嵌入空间，算 cross-modal 相似度做部件分割（单次前向，不靠 2D 渲染）。<b>(ii) canonical 分支</b>（<b>仅训练</b>，本文独有）——两个 head：① canonical map 预测（用 3D 形状特征，受 3D 生成方法启发，回归<b>三个连续标量场（编码成 RGB 颜色图）</b>而非离散逐点值，以保持空间连续性）；② semantic bbox 预测（文本特征作 query 从形状特征抽相关区域，输出 6 维 bbox）。<b>关键设计</b>：canonical 分支推理时丢弃 → <b>零额外推理开销</b>，只在训练时把规范知识「灌」进 feature 分支。</div>
+
+    <div class="note-h">Q&amp;A · canonical map 为何回归「三个连续标量场(RGB)」而非逐点离散坐标？</div>
+    <div class="note-b"><b>原文（§3.3 architecture）：</b><b>“For canonical map prediction, we use 3D shape features as input and, inspired by 3D generation methods, regress three continuous scalar fields (encoded as RGB color maps) rather than discrete per-point values, to better preserve spatial continuity.”</b><br><b>怎么理解：</b>canonical map 本质是给每个点一个规范空间坐标 \((x,y,z)\)，论文把这三个坐标分量当成 <b>RGB 三通道连续颜色场</b>来回归。① <b>保空间连续性</b>——相邻表面点的规范坐标应平滑过渡，连续标量场天然满足，逐点离散 label 会破坏这种平滑；② <b>借鉴 3D 生成</b>（Hunyuan3D / Craftsman3D 等把几何属性编码成连续场）的成熟做法；③ <b>与 \(L_{ca}\) 分布匹配协同</b>——RGB 编码的规范坐标集合被当成「分布」用双向 Chamfer 匹配（而非逐点对齐），与「绕过 correspondence」的对称鲁棒设计一脉相承。<br><b>两个 head 的分工：</b>canonical map（逐点连续规范坐标分布，管「在规范空间里铺成什么形状、落在哪」）+ semantic bbox（部件级 6D 包围盒，管「占多大的规范空间范围」）——前者细、后者粗，<b>分布级 anchoring + 范围级 calibration 互补</b>。</div>
+
+    <div class="note-h">⑤ §3.3.1 Semantic Contrastive Alignment Loss + Hard Negative Sampling</div>
+    <div class="note-b"><b>为什么对比而非分类：</b>开放世界里语义是<b>非互斥</b>的——瓶子脖子那点既可叫 “neck”（细）也可叫 “body”（粗），单点单标签监督很脆。沿用 Find3D 做软 point-text 亲和对比：<br>\[ L_h=\frac{1}{M}\sum_{i=1}^{M}-\log\frac{f(\bar p_i,t_i)}{\sum_{k\in B}f(\bar p_i,t_k)},\quad f(\bar p_i,t_i)=\exp(\bar p_i^\top t_i/\tau) \]<br>\(\bar p_i\)=第 \(i\) 个语义部件 mask 内点的平均特征，\(t_i\)=文本嵌入，\(M\)=部件标签数，\(B\)=minibatch 内语义标签集合，\(\tau\)=温度。<br><b>Hard Negative Sampling：</b>原文观察均匀采样「biases toward block–text consistency while possibly ignoring deviations of individual points, yielding noisy masks near part boundaries」。于是从<b>部件交界（edge）</b>多采判别性负样本，定义双向 hard 对比：<br>\[ L_h=\frac{1}{2M}\sum_{i=1}^{M}\Big(-\log\frac{f(\bar p_i,t_i)}{\sum_{k\in B_i}f(\bar p_i,t_k)}-\log\frac{f(t_i,\bar p_i)}{\sum_{n\in P_i}f(t_n,\hat p_n)}\Big) \]<br>\( \hat p_n=\frac{1}{W_n}\big(\sum_{p_j\in\Omega_n}p_j+(1+\alpha)\sum_{p_e\in E_n}p_e\big) \)，其中 \(\Omega_n/E_n\)=部件内部/边缘区域，\(\alpha=0\)（当 \(n=i\)）、\(\alpha>0\)（当 \(n\neq i\)，给边缘点加权），\(W_n=|\Omega_n|+(1+\alpha)|E_n|\)。即给「易混的边界点」更大权重。</div>
+
+    <div class="note-h">⑥ §3.3.2 Canonical Map Anchoring Loss（核心机制 + 对称处理）</div>
+    <div class="note-b"><b>目标：</b>让相同/相近语义的部件在规范空间（类内+跨类）有一致的空间分布。做法：用数据集里的 canonicalization metadata + 语义标签来 anchor 每个部件的 canonical map。<b>难点：</b>轴对称/面对称物体有 correspondence 歧义（Fig4a）——对称物体的多个姿态在规范空间里都合法，逐点 canonical 监督不可靠；已有方法靠手标对称轴/类特定约束（Fig4b），不可扩展到开放世界。<br><b>关键洞见（原文）：</b><b>“Our key insight is to avoid correspondence altogether. Instead of supervising canonical coordinate point-wisely, we treat each semantic part as a distribution in canonical space.”</b> 用<b>双向 Chamfer</b> 把预测 canonical map 匹配到 GT canonical 分布：<br>\[ L_{ca}=\frac{1}{M}\sum_{m=1}^{M}\Big(\frac{1}{|G^p_m|}\sum_{a_i\in G^p_m}\min_{b_j\in G^t_m}\|a_i-b_j\|_p+\frac{1}{|G^t_m|}\sum_{b_j\in G^t_m}\min_{a_i\in G^p_m}\|b_j-a_i\|_p\Big) \]<br>\(G^p_m/G^t_m\)=部件 \(m\) 的预测/GT 规范点集，\(p=2\)。<b>因为比的是「分布形状」而非「逐点坐标」，对称构型在规范空间里自动等价，对称点自动收敛到同一规范区域——无需对称标注。</b></div>
+
+    <div class="note-h">Q&amp;A · 为什么用 Chamfer 分布匹配而非 point-wise 监督？</div>
+    <div class="note-b"><b>问题：</b>对称物体（如左右对称的椅子、圆柱）有多个等价的规范姿态，「这个点的规范坐标应该是 A 还是它的镜像 A'」本身无唯一答案。逐点监督会强行指定一个，导致监督信号自相矛盾、训练不稳。<br><b>Chamfer 的妙处：</b>它只要求「预测点集」整体覆盖「GT 点集」（双向最近邻），不关心点的<b>身份对应</b>。所以镜像、旋转后的对称构型，作为<b>集合/分布</b>是等价的 → loss 不会惩罚合法的对称姿态 → 对称点自然聚到同一规范区域。原文：<b>“As the objective compares shapes of distributions rather than individual coordinates, symmetric configurations become equivalent in canonical space.”</b> 这是「order-invariant set loss」的思想，把「需要对称标注」的难题直接绕过去了（sidestep）。</div>
+
+    <div class="note-h">⑦ §3.3.2 Canonical Box Calibration Loss（收紧边界）</div>
+    <div class="note-b"><b>动机：</b>推理时按 point-wise 特征↔文本嵌入匹配做分割，易受局部噪声影响、边界模糊（因前面的 loss 强调部件级分布对齐 > 逐点精度）。canonical 分支为每个语义部件预测一个规范空间 3D bbox，提供「粗但稳」的空间先验，sharpen 边界、抑制 spurious activation（Fig5 中）：<br>\[ L_{cb}=\frac{1}{M}\sum_{m=1}^{M}\frac{1}{6}\big\|b^p_m-b^t_m\big\|_1,\quad b_m\in\mathbb{R}^6=[x_{\min},y_{\min},z_{\min},x_{\max},y_{\max},z_{\max}] \]<br>即预测/GT bbox 的 6 维 L1。与分布级 anchoring 互补——一个管「分布形状」、一个管「空间范围」。</div>
+
+    <div class="note-h">⑧ §3.3.3 全目标 + 两阶段训练</div>
+    <div class="note-b"><b>总损失：</b>\( L_{total}=\lambda_h L_h+\lambda_{ca}L_{ca}+\lambda_{cb}L_{cb} \)（式5），权重 \(\lambda_h=1,\ \lambda_{ca}=10,\ \lambda_{cb}=3\)（canonical map anchoring 权重最大，是主力正则）。<b>两阶段</b>（稳定收敛）：<b>stage-1</b> 先只用对齐损失 \(L_h\) 训到收敛（先把几何-语言对齐学稳）；<b>stage-2</b> 再加入 \(L_{ca}+L_{cb}\) 继续训（在已对齐基础上注入规范空间正则）。这种「先对齐、后规范」的 curriculum 避免一上来多目标互相干扰。</div>
+
+    <div class="note-h">⑨ §4 实验设置 + 3Dcompat 主结果</div>
+    <div class="note-b"><b>设置：</b>训练集 3Dcompat200（17K shapes/200 类，归一化到 unit bbox、每物体均匀采 5000 表面点含 RGB+normal）；backbone PTv3（768-D），文本 SigLIP-Base/16-224（768-D）。评测集：3Dcompat-Coarse/Fine、ShapeNet-Part（16 类）、PartNet-E（45 类）。两个测试维度：prompt（{Part} vs {part} of a {category}）、pose（Canonical vs Rotated）。指标 mIoU。Find3D* = 用本文构造的数据重训的 Find3D（公平对比）。<b>3Dcompat 主结果（mIoU %）：</b>
+<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0;color:#d7dcff">
+<tr style="color:#ffd35c"><td style="border:1px solid #2a2f5c;padding:3px">方法</td><td style="border:1px solid #2a2f5c;padding:3px">Coarse·Canon {P}of{O} / {P}</td><td style="border:1px solid #2a2f5c;padding:3px">Coarse·Rot</td><td style="border:1px solid #2a2f5c;padding:3px">Fine·Canon</td><td style="border:1px solid #2a2f5c;padding:3px">Fine·Rot</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">Find3D（原）</td><td style="border:1px solid #2a2f5c;padding:3px">31.72 / 25.36</td><td style="border:1px solid #2a2f5c;padding:3px">32.47 / 26.23</td><td style="border:1px solid #2a2f5c;padding:3px">12.69 / 12.57</td><td style="border:1px solid #2a2f5c;padding:3px">12.73 / 12.79</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">Find3D*（重训）</td><td style="border:1px solid #2a2f5c;padding:3px">37.16 / 45.96</td><td style="border:1px solid #2a2f5c;padding:3px">38.19 / 46.75</td><td style="border:1px solid #2a2f5c;padding:3px">18.43 / 27.11</td><td style="border:1px solid #2a2f5c;padding:3px">19.08 / 28.81</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">Ours</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">47.51 / 54.52</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">47.74 / 54.55</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">24.48 / 31.29</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">24.46 / 30.97</td></tr>
+</table>
+平均比次优 Find3D <b>+25.55%</b>；coarse 在 canonical/rotated 下比 Find3D 涨 <b>8%–11%</b> 绝对 mIoU，fine 涨 4%–7%。关键看 <b>Rotated 列</b>：Ours 几乎不随旋转掉点（47.74 vs canonical 47.51），印证 pose-invariance。</div>
+
+    <div class="note-h">⑩ ShapeNet-Part / PartNet-E + 速度</div>
+    <div class="note-b"><b>跨数据集泛化：</b>ShapeNet-Part Ours 36.16/33.31（Canonical）、34.20/32.84（Rotated），比最强基线平均 <b>+29.89%</b>；PartNet-E Ours 17.59/17.19/18.48/18.17，平均 <b>+5.01%</b>。PartNet-E 涨幅小，原文解释其标注强调物体材质和极细粒度细节，在别的 3D 语义数据里罕见；且 2D 渲染的 PartSLIP++ 在单词 prompt 下表现不错（owing to GLIP 在 ∼27M 图文对预训练 + 在 canonical PartNet-E 上微调），但 2D 法慢且有多视角不一致。<br><b>速度：</b>feedforward 模型 <b>0.9 秒/shape</b>，对比 PartSLIP++ 的 <b>2.5 分钟/shape</b>（快两个数量级），且不需 2D 渲染/后处理。</div>
+
+    <div class="note-h">⑪ §4.3 消融全表（A→D→Full 逐个验证）</div>
+    <div class="note-b"><b>逐组件消融（Table 2，mIoU，全实例全部件）：</b>
+<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0;color:#d7dcff">
+<tr style="color:#ffd35c"><td style="border:1px solid #2a2f5c;padding:3px">变体（累加）</td><td style="border:1px solid #2a2f5c;padding:3px">Canon {P}of{O}/{P}</td><td style="border:1px solid #2a2f5c;padding:3px">Rot {P}of{O}/{P}</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">A 基线</td><td style="border:1px solid #2a2f5c;padding:3px">36.89 / 45.00</td><td style="border:1px solid #2a2f5c;padding:3px">38.14 / 46.02</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">B +Hard-Negative 采样</td><td style="border:1px solid #2a2f5c;padding:3px">38.30 / 48.30</td><td style="border:1px solid #2a2f5c;padding:3px">39.28 / 48.76</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">C +Canon Map Anchoring</td><td style="border:1px solid #2a2f5c;padding:3px">41.71 / 52.01</td><td style="border:1px solid #2a2f5c;padding:3px">42.48 / 52.57</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">D +Cross-Cat Canon（数据）</td><td style="border:1px solid #2a2f5c;padding:3px">43.34 / 54.15</td><td style="border:1px solid #2a2f5c;padding:3px">42.63 / 53.70</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">Full +Canon Box Calib</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">47.51 / 54.52</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">47.74 / 54.55</td></tr>
+</table>
+<b>读法：</b>B（Hard-Negative）小幅提升对比对齐鲁棒性；C（Canon Map Anchoring）<b>较大涨幅</b>（强制 pose-robust 的规范空间部件特征，{P}of{O} 38.30→41.71）；D（跨类规范化数据）在所有设定一致再涨，证明<b>跨类规范监督</b>的价值；Full 再加 Canon Box Calibration 取得最佳（尤其把 {P}of{O} 从 43.34→47.51，box 收紧边界）。每个组件都正贡献，无注水。</div>
+
+    <div class="note-h">⑫ §4.3 3D 形状特征分析（Fig6，副产物洞见）</div>
+    <div class="note-b"><b>定性对比特征质量：</b>① PartField（class-agnostic 分解）——部件划分清晰但<b>跨形状/跨姿态不一致</b>；② Find3D——跨形状/跨姿态一致性更强，但单物体内<b>部件边界模糊</b>、相邻部件点常混；③ <b>Ours</b>——<b>既语义对齐又结构清晰分离</b>：不同部件边界清楚，跨形状/跨姿态的对应部件共享高度相似特征模式。原文据此推断 CoSMo3D 「has the potential to serve as a strong backbone for 3D shape feature learning beyond the specific semantic segmentation task」——规范空间正则学到的特征可迁移到分割以外。</div>
+
+    <div class="note-h">📊 关键讨论 · PartNet-E 上 2D 的 PartSLIP++ 为何不弱？(纯 3D 语义先验的天花板)</div>
+    <div class="note-b"><b>反常现象：</b>PartNet-E 上 Ours 仅 <b>+5.01%</b>（远小于 ShapeNet-Part 的 +29.89%），且 2D 渲染的 <b>PartSLIP++*</b> 在单词 prompt {Part} 列拿到 <b>32.71</b>（canonical），反超多数 3D 法（Ours 该列 17.19）。<br><b>原文归因：</b>① PartNet-E <b>“annotations emphasize object materials and fine-grained details rarely present in other 3D semantic datasets”</b>——材质/极细粒度语义，规范<b>空间位置</b>对它帮助小（规范规律主要约束「结构/功能部件该在哪」）；② PartSLIP++ 强是 <b>“owing to its GLIP backbone pretrained on ∼27 million image–text pairs and further fine-tuned on canonical PartNet-E data”</b>——靠 2D 大数据的图文先验 + 在 canonical 视角微调。<br><b>论文最有洞察的一段判断（verbatim）：</b><b>“these findings highlight the importance of better extracting structured semantic priors from large 2D datasets—while addressing noisy labels and domain gaps—and effectively integrating such knowledge with limited yet high-quality 3D segmentation annotations.”</b> 即承认纯 3D 语义先验受限于 3D 标注规模，2D 大数据是补充方向。<b>但</b> 2D 法慢（2.5min/shape）、多视角不一致、只能处理 upright——所以 pure-3D feedforward（0.9s、任意 pose）仍是更可扩展的底座，2D 先验是「该融进来的料」而非「替代方案」。</div>
+
+    <div class="note-h">🔭 §5 结论 · 把 canonical reference 提升为 3D 理解栈的「一等表示」</div>
+    <div class="note-b"><b>原文 conclusion：</b><b>“We revisit open-world promptable 3D segmentation and identify canonical space as the key missing representation.”</b> 作者把贡献定位得比「一个分割系统」更高：<b>“Learnable canonicality empowers richer tasks including compositional 3D query answering, cross-modal CAD/video grounding, and 3D agents acting in canonical space before Euclidean space.”</b> 并明言 <b>“We regard CoSMo3D not just a system, but step toward 3D understanding stack where canonical reference is a first-class representation.”</b><br><b>读法：</b>本文真正的野心不止部件分割，而是论证「规范空间应当像坐标系 / 特征图一样，成为 3D 理解的<b>基础表示层</b>」——下游的 3D 问答、CAD/视频跨模态 grounding、具身 3D agent 都可先在规范空间推理、再回欧氏空间。这也呼应 Fig6 的发现：规范正则学到的特征 <b>“has the potential to serve as a strong backbone for 3D shape feature learning beyond the specific semantic segmentation task.”</b>（可迁移到分割以外）。</div>
+
+    <div class="note-h">⚠ 诚实边界 &amp; 疑问（推断标 [推测]）</div>
+    <div class="note-b"><b>① 训练依赖规范标注：</b>canonical map/box 监督来自 3Dcompat200 + LLM 对齐 metadata，<b>训练强依赖规范化数据集</b>；对完全没有规范对齐先验的全新类别，迁移效果原文未充分量化 [推测]。<br><b>② LLM 对齐的可靠性：</b>用 GPT 聚 19 簇 + 指导跨类对齐，但 LLM 判断可能出错（如把功能不同的部件错配），论文未给对齐质量的定量审计 [推测]。<br><b>③ PartNet-E 涨幅仅 +5.01%：</b>在材质/极细粒度标注的数据上优势有限，说明规范空间对「材质类语义」帮助小（规范位置主要约束「结构/功能部件」）。<br><b>④ canonical 分支训练开销：</b>多两个 head + 两阶段训练增加训练成本（虽推理无额外开销），论文未给训练时间对比 [推测]。<br><b>⑤ 数值口径：</b>主表与消融表的「baseline/Full」mIoU 略有差异（如 Full 47.51 在两表一致，但 baseline A=36.89 vs 主表 Find3D* 37.16），因统计口径不同（消融注明「over parts from all instances across all categories」），对比时需同表内看。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>开放世界 promptable 3D 分割在传感器坐标系里靠几何-文本匹配，缺规范空间感知 → 姿态/对称/跨类下不一致（几何像≠语义同，几何异≠语义异）。<br><b>method：</b>CoSMo3D 双管齐下——<b>数据端</b> LLM 引导 intra/cross-category 规范化造统一数据集（200 类聚 19 簇，离散旋转对齐）；<b>模型端</b> 双分支（推理用的 feature 分支 PTv3+SigLIP + 仅训练的 canonical 分支），三损失：hard 双向对比对齐 \(L_h\)（式1-2）+ canonical map anchoring \(L_{ca}\)（式3，Chamfer 分布匹配规避对称歧义）+ canonical box calibration \(L_{cb}\)（式4，收紧边界），两阶段训练，\(\lambda=1/10/3\)。<br><b>takeaway 1：</b>把语义从「输入姿态空间」搬到「学出来的潜在规范嵌入空间」是关键——规范空间成为 attractor manifold，同功能部件的不同姿态/对称/形变坍缩到同一嵌入 → pose-invariant（Rotated 几乎不掉点）。<br><b>takeaway 2：</b>用 Chamfer<b>分布</b>匹配代替逐点 canonical 监督，自动等价对称构型，<b>无需任何对称轴标注</b>，是可扩展到开放世界的工程关键。<br><b>takeaway 3：</b>canonical 分支<b>仅训练期存在</b>，把规范知识蒸进 feature 分支，推理零额外开销且单次前向 0.9s（vs 2D 法 2.5min）；平均比 Find3D +25.55% mIoU，跨类一致 SOTA。<br><b>适用边界：</b>训练强依赖规范化数据 + LLM 对齐质量；对材质类细粒度语义（PartNet-E）增益有限（+5%）。</div>
+    <!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-cosmo3d-open-world-promptable-3d-semantic-segmentation-/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. We propose CoSMo3D, an open-world promptable 3D semantic segmentation method. It introduces canonical space perception to break the limitation of any pose and shape, achieves state-of-the-art performance across multiple settings, and significantly outperforms geometry-mapping-only methods.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-cosmo3d-open-world-promptable-3d-semantic-segmentation-/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. We propose a dual-branch framework for open-world promptable 3D semantic segmentation: the feature extraction branch encodes 3D shape features (via Point Transformer) and text semantic features (via SigLIP) to enable cross-modal part segmentation. A training-only canonical embedding branch then enforces consistent canonical space perception via semantic contrastive alignment, canonical m</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-cosmo3d-open-world-promptable-3d-semantic-segmentation-/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. (a) Prior works perform category-level canonicalization, aligning intra-category shapes but neglecting cross-category con- sistency. (b) We cluster categories via LLM and align different cat- egories relying on key semantic parts and functional consistency.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-cosmo3d-open-world-promptable-3d-semantic-segmentation-/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Handling Symmetric Objects for Canonical Map An- choring. (a) For symmetric shapes, multiple valid poses in- duce ambiguous point-wise canonical labels, making direct point- wise supervision unreliable. (b) Prior works rely on category- specific processing with manual symmetry annotation, limiting open-world scalability. (c) We instead apply an order-invariant set loss on RGB-encoded can</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-cosmo3d-open-world-promptable-3d-semantic-segmentation-/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Qualitative comparison of promptable 3D part segmentation. Across challenging cases (similar geometry with different se- mantics, noise-prone objects, cross-category semantics, and arbitrary poses), our method produces more accurate and consistent part localizations than existing baselines.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-cosmo3d-open-world-promptable-3d-semantic-segmentation-/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Shape feature analysis. (a) PartField [11] yields clear part partitions but lacks cross-shape and cross-pose consistency. (b) Find3D [13] improves consistency but produces blurry part boundaries. (c) Our method achieves both clear part separation and consistent features across shapes and poses.</figcaption></figure>
+    </div>
+  </div></body></html>

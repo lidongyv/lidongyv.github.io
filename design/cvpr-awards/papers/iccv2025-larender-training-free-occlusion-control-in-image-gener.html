@@ -1,0 +1,201 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>LaRender: Training-Free Occlusion Control in Image Generation via Latent Rendering</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">ICCV 2025</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>LaRender: Training-Free Occlusion Control in Image Generation via Latent Rendering</h1>
+    <div class="au2" style="color:var(--mut)">Xiaohang Zhan · Dingming Liu</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/ICCV2025/papers/Zhan_LaRender_Training-Free_Occlusion_Control_in_Image_Generation_via_Latent_Rendering_ICCV_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=LaRender%3A%20Training-Free%20Occlusion%20Control%20in%20Image%20Generation%20via%20Latent%20Rendering">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:iccv2025-larender-training-free-occlusion-control-in-image-gener -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">（Tencent，ICCV 2025 Finalist）一个<b>训练-free</b> 的图像生成机制，能<b>精确控制物体间的遮挡关系</b>（谁挡谁）。核心洞察：遮挡本质上和 3D 渲染同源（都是相机/人眼看到的前后叠加）。于是把<b>体渲染（volume rendering）原理搬到扩散模型的 latent 空间</b>——用一个<b>非参数的 Latent Rendering 层替换原 cross-attention 层</b>，按遮挡顺序 + 估计的透射率把各物体的 latent 特征物理地"渲染"融合。不需重训/微调。彩蛋：调物体的"semantic density/opacity"还能控玻璃透明度、雾浓度、森林密度、光强、镜头效果等。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">遮挡控制在广告/概念设计/复杂场景生成里很关键，但现有方法做不好：① <b>text-to-image</b> 靠 prompt（"狗在猫后面"）控遮挡，不精确，连 SOTA FLUX 在多物体互相遮挡时也常错；② <b>layout-to-image</b>（bbox）能控位置但<b>控不了遮挡</b>——同一组 bbox 对应不同遮挡情形它分不出（Fig 1(1)）；③ 训练一个 occlusion-conditioned 模型需<b>昂贵的成对图像-遮挡标注</b>。本文不训练，借体渲染解决。</div>
+    <div class="note-h">核心方法（Latent Rendering，关键公式）</div>
+    <div class="note-b"><b>背景：体渲染（式1）</b>C=∫T(t)σ(t)c(t)dt，T(t)=exp(−∫σds)（沿光线累积颜色，T=累积透射率、σ=体密度、c=颜色）；NeRF 数值化（式2）Ĉ=ΣTi(1−exp(−σiδi))ci。<b>① Latent 重排</b>：给定遮挡图 + bbox，拓扑排序物体 1..N；改 cross-attention 让 latent R^(l) 分别 attend 每个物体 prompt 得 N 个对象级 latent R^(l)_i，从后到前堆叠、放<b>正交虚拟相机</b>朝向它们（正交→省去距离 δi）；用 R^(l)_i 替代体渲染里的"颜色"、用标量<b>语义密度 σi</b> 替代体密度。<b>② 透射率图 Mi</b>：拓扑序只给顺序、不给遮挡区域；用 bbox mask 估，再<b>乘上 cross-attention map</b>（依存分析取 subject token、归一化到[0,1]）修正 bbox 与真实物体区域的偏差。<b>③ Latent Rendering（式3）</b>：R^(l+1)=(1/S)·ΣTi(1−exp(−σi))Mi·R^(l)_i，S=ΣTi(1−exp(−σi))Mi（归一化保持 latent 分布），<b>Ti=exp(−Σ_{j&lt;i}Mjσj)</b>（累积透射率）。替换<b>所有</b> cross-attention 层、<b>零可学习参数</b>→全程 training-free。<b>④ 密度调度（式4）</b>σi(t)=Di·T/(T+1−t)：早期 step latent 物体概念脆弱、大 σ 进"opaque 模式"防混淆，后期降到目标密度 Di。<b>语义不透明度</b> αi=1−exp(−Di)∈[0,1)：0=全透明消失、→1=完全不透明。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">base=SDXL(IterComp)，唯一超参=语义不透明度 α(定量取 0.8)，遮挡图/bbox 用 DeepSeek R1 解析(&gt;95% 顺序准确)。对比 SDXL/FLUX(text)、MIGC/3DIS(layout)。<b>遮挡准确度 UniDet↑</b>：LaRender <b>0.416</b>（SDXL 0.357 / FLUX 0.401 / MIGC 0.373 / 3DIS 0.337）。<b>User study</b>（T2I-CompBench++ / RealOcc）：AUR <b>4.94/4.81</b>（满分5）、HPSR <b>0.767/0.767</b>，远超次优 MIGC 的 0.448/0.433。CLIP 略降(30.98 vs SDXL 31.12，因输入是物体列表非完整 prompt)。<b>耗时 7.46s≈SDXL 7.44s</b>（FLUX 122s / 3DIS 104s），开销可忽略（逐元素乘加、可并行）。消融：密度调度 inverse-proportional 0.416 ＞ fixed density 0.393 ＞ fixed opaque 0.240；用 attn map 修透射率 0.416 ＞ 不用 0.395。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>物理接地</b>：把"遮挡≡渲染"的洞察落成 latent 空间的体渲染公式，遮挡由透射率累积自然涌现，不靠数据硬学。② <b>真·零成本</b>：非参数、替换 cross-attention 即可，不重训不微调、耗时几乎不增、即插即用于不同扩散模型(SDXL/FLUX)。③ <b>"免费午餐"副产品</b>：semantic opacity 这一旋钮意外解锁高层"半透明"——雾浓度/森林密度/光强/长曝光/反射/镜头效果(Fig 5)，甚至作用于非物体概念。④ 新建 <b>RealOcc</b> 遮挡评测集补 T2I-CompBench++ 之缺。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① <b>失败模式</b>(Fig 6)：位置不准、概念混合、遮挡错、概念丢失——因 latent 可能被"混合/擦除"而非"部分遮挡"以迁就生成先验，根因与缓解原文只点到为止。② 布局<b>不合理时遮挡会错</b>；bbox 只是粗提示、不追求精确位置控制（与 layout 控制正交）。③ 不同 cross-attention 层的 Latent Rendering 行为不同，作者"留给后人探索"，<b>逐层最优配置未给</b>。④ RealOcc 仅 70 例、无法算 FID（&lt;3K 图），泛化证据规模有限；FLUX 结果在 supp。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文 41.3k 字符 / 10 页提取）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）逐句精读</div>
+    <div class="note-b"><b>原文逐句 + 中文指路：</b><br>
+    1) <i>"We propose a novel training-free image generation algorithm that precisely controls the occlusion relationships between objects in an image."</i> → 一句话定位：<b>免训练</b>地精确控制图中物体间的<b>遮挡关系</b>。<br>
+    2) <i>"Existing image generation methods typically rely on prompts to influence occlusion, which often lack precision. While layout-to-image methods provide control over object locations, they fail to address occlusion relationships explicitly."</i> → 痛点：文生图靠 prompt 控遮挡不精确；布局生图能控<b>位置</b>但不能显式控<b>遮挡</b>。<br>
+    3) <i>"our method leverages volume rendering principles to 'render' the scene in latent space, guided by occlusion relationships and the estimated transmittance of objects."</i> → 核心：借<b>体渲染(volume rendering)</b>原理在<b>潜空间</b>"渲染"场景，由遮挡关系与估计的透射率引导。<br>
+    4) <i>"This approach does not require retraining or fine-tuning the image diffusion model, yet it enables accurate occlusion control due to its physics-grounded foundation."</i> → 不重训/不微调，靠<b>物理根基</b>实现精确遮挡。<br>
+    5) <i>"by adjusting the opacities of objects or concepts during rendering, our method can achieve a variety of effects, such as altering the transparency… the density of mass (e.g., forests), the concentration of particles (e.g., rain, fog), the intensity of light, and the strength of lens effects."</i> → 调"不透明度"还能控透明度/植被密度/雨雾浓度/光强/镜头效果。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>把"遮挡"看成与"3D 渲染"同源的现象——用<b>体渲染公式在 latent 层面融合分层的物体潜特征</b>：把扩散模型的 cross-attention 层替换成无参数的 Latent Rendering 层，按拓扑序由后向前叠放各物体 latent，用语义密度 σ + 透射率 M 做体渲染积分，从而<b>免训练</b>地精确控遮挡，并"免费"获得语义不透明度等丰富效果。</div>
+
+    <div class="note-h">② §1 Introduction · problem（三条路都不行）</div>
+    <div class="note-b"><b>为什么重要：</b><i>"Precise occlusion control ensures that objects are correctly layered and interact in a visually coherent manner, which is essential for creating realistic and immersive scenes."</i>（广告、概念设计、复杂场景）<br>
+    <b>路一·文生图靠 prompt：</b>如"a dog behind a cat, and a bird is in front of the cat"，但 <i>"even the state-of-the-art method [FLUX] performs poorly in occlusion control, especially in complex scenes with multiple objects occluding each other."</i><br>
+    <b>路二·布局生图(bbox)：</b>能生成复杂场景，但 <i>"due to the complexity of the occlusion phenomenon, these methods cannot accurately control the occlusion relationships. As shown in Figure 1(1), each object shares the same bounding box in different occlusion cases."</i>——同样的 bbox 对应多种遮挡，bbox 区分不了。<br>
+    <b>路三·训练条件模型：</b><i>"requires additional paired data of images and ground-truth occlusions, which are often expensive to collect."</i>——要昂贵的"图像+遮挡真值"配对数据。</div>
+
+    <div class="note-h">③ §1 Introduction · 核心洞察 + solution</div>
+    <div class="note-b"><b>关键洞察：</b><i>"The occlusion phenomenon shares the same essence as 3D rendering, whether from the perspective of human vision or a camera."</i>——遮挡与 3D 渲染同源（相机/人眼成像本就是"近的挡远的"）。<br>
+    <b>solution：</b><i>"we propose a non-parametric Latent Rendering mechanism that replaces vanilla cross-attention layers of a pre-trained image diffusion model."</i> 流程：给定遮挡图 → 拓扑排序物体由底到顶 → 重排物体 latent（denoising 网络的 hidden states）→ 架一个面向 latent 的<b>虚拟相机</b> → 执行 Latent Rendering（体渲染原理但作用在 latent 而非像素）。<i>"latent features of objects are integrated according to physical rules that consider both occlusion relationships and object transmittance."</i></div>
+
+    <div class="note-h">③b §2 Related Work · 与四类方法的定位差异</div>
+    <div class="note-b"><b>① 布局生图(Layout-to-image)：</b>用 bbox 控物体空间布局。部分(GLIGEN/MIGC 等)<i>"fine-tune diffusion models using datasets with bounding box annotations, such as MS COCO"</i>；3DIS[46]<i>"generates depth maps first, then renders textures from depth"</i>，但 <i>"depth does not equate to occlusion, and object depths remain uncontrollable."</i>——深度≠遮挡，且深度本身不可控。LaRender 虽用 bbox 算透射率，但 <i>"it prioritizes occlusion control over precise positioning"</i>，与布局控制是<b>正交</b>关系。<br>
+    <b>② 场景图生图(Scene graph-to-image)：</b>有"in front of / behind"等关系，但 <i>"these concepts focus on relative spatial positioning rather than the occlusion from the photographic perspective."</i> 反例：<i>"'a boy standing in front of a girl' can be a scene where they stand face to face, one on the left and the other on the right, with no visual occlusion."</i>——"前后"是空间相对位置，不等于成像视角的"遮挡"。且这类方法依赖场景图标注。<br>
+    <b>③ 多层图像生成(Multi-layer)：</b>MULAN[33] 出 RGBA 分解数据集、Zhang et al.[41] 在 1M 透明图层对上微调 latent diffusion、LayerFusion[7] 生成前景/背景/混合图，<i>"these methods are not designed for complex scenes with multiple occluding objects."</i><br>
+    <b>④ 3D-aware 生成：</b>π-GAN/EG3D 等把可学体/triplane 装进 GAN 生成多视角一致图，但 <i>"typically limited to constrained domains such as faces, cars, or animals"</i>；ViewDiff[11] 用多视角监督+体渲染更通用。<b>本文不同：</b><i>"a non-parametric volumetric rendering mechanism applied in the latent space of diffusion models, enabling generating complex scenes in a training-free manner."</i> 并且从生成视角看，<i>"We are the first to address this challenge [occlusion handling] in the generative domain."</i></div>
+
+    <div class="note-h">📚 背景知识：体渲染 / NeRF / cross-attention</div>
+    <div class="note-b"><b>① 体渲染(Volume Rendering)[8]：</b>一条相机光线上像素颜色是"沿光线对 体密度×颜色×累积透射率 积分"——近处不透明物体会遮住后面。透射率 \(T(t)\) 表示光从近界走到 \(t\) 还剩多少未被吸收。<br>
+    <b>② NeRF[21]：</b>用离散求积近似该连续积分，给每个采样点估 \((\sigma_i, c_i)\)，加权合成像素颜色。LaRender 正是把这套"分层加权合成"搬到 latent。<br>
+    <b>③ Cross-Attention（扩散模型里）：</b>把图像 latent(query) 与文本 prompt(key/value) 做注意力，是文本控制生成的关键层。LaRender 的巧思：<b>让 latent 分别 attend 每个物体的 prompt</b> 得到 N 份"物体专属 latent"，再用体渲染把它们按遮挡序融合——既复用现成模型、又零新增参数。</div>
+
+    <div class="note-h">④ §3.1 体渲染前置公式（公式1-2）</div>
+    <div class="note-b"><b>连续体渲染（式1）：</b>\[ C=\int_{t_n}^{t_f}T(t)\,\sigma(t)\,c(t)\,dt,\quad T(t)=\exp\!\Big(-\int_{t_n}^{t}\sigma(s)\,ds\Big) \] \(t\) 是光线上位置（近界 \(t_n\)、远界 \(t_f\)），\(T(t)\) 累积透射率，\(\sigma(t)\) 体密度，\(c(t)\) 颜色。<br>
+    <b>NeRF 求积近似（式2）：</b>\[ \hat{C}=\sum_{i=1}^{N}T_i\,(1-\exp(-\sigma_i\delta_i))\,c_i,\quad T_i=\exp\!\Big(-\sum_{j=1}^{i-1}\sigma_j\delta_j\Big) \] \(\delta_i=t_{i+1}-t_i\) 是相邻采样间距。LaRender 把 \(c_i\) 换成物体 latent、\(\sigma_i\) 换成"语义密度"标量、并因正交相机省去 \(\delta_i\)。</div>
+
+    <div class="note-h">⑤ §3.2 Latent Rendering（一）· latent 重排 + 虚拟相机</div>
+    <div class="note-b"><b>核心思想：</b><i>"to adapt the volume rendering formula to 'render' a stack of layered latent features of objects, resulting in a fusion of object latent features that physically ensures occlusion relationships."</i><br>
+    <b>latent 重排：</b>给遮挡图 + 各物体 bbox，先<b>拓扑排序</b>把物体从顶到底编号 \(1,2,\dots,N\)；对第 \(l\) 个 cross-attention 层，让 latent \(R^{(l)}\) 分别 attend 每个物体 prompt，得到 \(N\) 份物体级 latent \(R^{(l)}_i\)。<br>
+    <b>虚拟相机：</b>把 \(R^{(l)}_i\) 由后向前堆叠，在最顶物体上方架一个<b>正交相机</b>面向 latent。<i>"Since the camera is orthographic, the distance between adjacent latent features is not necessarily defined - we omitted the distance \(\delta_i\) in our rendering formula."</i> 用 \(R^{(l)}_i\) 替代体渲染里所有采样点的颜色，定义<b>语义密度 \(\sigma_i\)（标量）</b>替代体密度。</div>
+
+    <div class="note-h">⑥ §3.2 Latent Rendering（二）· 透射率图估计</div>
+    <div class="note-b">拓扑序只给了<b>遮挡顺序</b>，但具体<b>遮挡区域</b>由"透射率图"决定。<i>"There regions are essentially determined by the transmittance map - the spatial distribution of transmittance for each layer of objects."</i><br>
+    <b>估计步骤：</b>① 主要用用户/LLM 给的 <b>bbox 掩码</b>；但 <i>"transmittance can be inaccurate in the interval between the bounding box mask and the actual area occupied by the object"</i>（bbox 是矩形，物体不是）。② 故复用 cross-attention 图细化：用 <b>Dependency Parsing[12]（spaCy）</b>提取主语 token 的索引，把该 token 的 cross-attention 图归一化到 \([0,1]\)，再与 bbox 掩码<b>逐元素相乘</b>得最终透射率图 \(M_i\)——既限定在框内、又贴合物体真实轮廓。</div>
+
+    <div class="note-h">⑦ §3.2 Latent Rendering（三）· 渲染公式（公式3）</div>
+    <div class="note-b">\[ R^{(l+1)}=\frac{1}{S}\sum_{i=1}^{N}T_i\,(1-\exp(-\sigma_i))\,M_i\,R^{(l)}_i \] \[ S=\sum_{i=1}^{N}T_i\,(1-\exp(-\sigma_i))\,M_i,\qquad T_i=\exp\!\Big(-\sum_{j=1}^{i-1}M_j\sigma_j\Big) \] \(R^{(l+1)}\) 是送入下一层的融合 latent；\(S\) 是<b>归一化项</b>（防输出偏离原 latent 分布）；\(M_i\) 透射率图；\(T_i\) 累积透射率（表示物体 \(i\) 各像素从虚拟相机看的可见度，初始为 1）；\(\sigma_i>0\) 语义密度。<i>"we replace all cross-attention layers in the denoising network with our proposed Latent Rendering and follow the standard sampling steps."</i> <b>无任何可学习参数 ⇒ 完全 training-free。</b></div>
+
+    <div class="note-h">⑧ §3.2 密度调度 Density Scheduling（公式4）</div>
+    <div class="note-b"><b>问题：</b>语义密度 \(\sigma_i\)（≠opacity）反映物体概念的语义强度。早期去噪步 latent 还没形成强概念，<i>"Latent Rendering can disrupt this fragile concept by mixing the latent features."</i> 又发现 \(\sigma_i\to+\infty\) 时退化为 <b>"opaque mode"</b>（全 latent 不透明、互不混合），<b>恰适合早期步</b>。结合 eDiff-I[1] 的观察（<i>"object concepts rapidly form during denoising, and late steps focus more on refining image quality"</i>），提出<b>fast-to-slow 下降调度</b>：\[ \sigma_i(t)=\frac{D_iT}{T+1-t} \] \(D_i\ge0\) 用户设定的语义密度，\(T\) 总步数，\(t=T,\dots,1\)。\(t{=}T\) 时 \(\sigma_i(T)=D_iT\) 很大（近 opaque mode 保概念），\(t{=}1\) 时 \(\sigma_i(1)=D_i\) 收敛到目标密度。</div>
+
+    <div class="note-h">⑨ §3.2-3.3 输入模式 + 语义不透明度</div>
+    <div class="note-b"><b>输入模式：</b>用户难指定遮挡图/bbox 时，可让 LLM 解析原 prompt 输出遮挡图与 bbox。<i>"We tried several LLMs, including those from GPT series, DeepSeek, and Claude, and observed over 95% accuracies in parsing the ordering."</i> 背景不想指定可用空 prompt ""。<br>
+    <b>语义不透明度：</b>因 \(D_i\) 是无界正数，定义 <b>语义不透明度 \(\alpha_i=1-\exp(-D_i)\in[0,1)\)</b> 来操控。\(\alpha_i=0\) 物体全透明(消失)；\(\alpha_i\to1\) 则 \(D_i\to+\infty\) 不透明高密度(挡住其后一切)。<b>关键：\(\alpha_i\in(0,1)\) 不是 RGB 半透明</b>，而是 latent 层面的<b>高层"半透明"</b>——表现为植被/质量密度、雨雾粒子浓度、光强、镜头效果强度等的变化。</div>
+
+    <div class="note-h">⑩ §4.1-4.2 实验设置 + 评测协议</div>
+    <div class="note-b"><b>基模型：</b>SDXL（由 IterComp[43] 预训练，质量/效率均衡），FLUX.1-dev 结果在补充材料。<i>"we did not employ prompt modification tricks or negative prompts. The only hyperparameter is the semantic opacity α."</i> 量化全用 \(\alpha=0.8\)，密度控制实验里 0.1~0.9；遮挡图/bbox 用 DeepSeek R1。<br>
+    <b>baseline（无现成遮挡控制工作，尽量发挥其能力）：</b>SDXL(text)、FLUX.1-dev(text)、MIGC[45](layout, COCO 微调)、3DIS[46](layout→depth→image, COCO 微调, 用 FLUX depth 版)。<br>
+    <b>数据/指标：</b>① <b>T2I-CompBench++ (3D Spatial)</b>：300 prompt、两物体简单空间关系，用 <b>UniDet</b> 指标（检测+深度估计推断物体序）。② <b>RealOcc</b>（自建，源自 COCOA 验证集，2-5 物体，70 例 / 249 物体 / 261 遮挡对，含 amodal bbox）。还做 user study：每数据集 15 对比样本、30+ 问卷，报 <b>AUR(平均排名↑)+HPSR(人类感知成功率↑)</b>；并算 CLIP 验证不损生成力。不算 FID（图太少/无真图）。</div>
+
+    <div class="note-h">⑪ §4.3 主结果表（Table 1 真实数值）</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;color:#e3e7ff;margin:4px 0 10px">
+    <tr style="color:#9aa3c7;border-bottom:1px solid #2a2f5c;text-align:left"><th>Method(控制)</th><th>UniDet↑</th><th>AUR↑(C++)</th><th>HPSR↑</th><th>CLIP</th><th>AUR↑(Real)</th><th>time(s)</th></tr>
+    <tr><td>SDXL (text)</td><td>0.357</td><td>2.36</td><td>0.322</td><td>31.12</td><td>3.08</td><td>7.44</td></tr>
+    <tr><td>FLUX (text)</td><td>0.401</td><td>1.94</td><td>0.293</td><td>30.86</td><td>1.36</td><td>122</td></tr>
+    <tr><td>MIGC (layout)</td><td>0.373</td><td>3.56</td><td>0.448</td><td>30.73</td><td>3.31</td><td>11.1</td></tr>
+    <tr><td>3DIS (layout)</td><td>0.337</td><td>2.19</td><td>0.311</td><td>30.11</td><td>2.44</td><td>104</td></tr>
+    <tr style="color:#ffd35c"><td><b>LaRender (occlusion)</b></td><td><b>0.416</b></td><td><b>4.94</b></td><td><b>0.767</b></td><td>30.98</td><td><b>4.81</b></td><td>7.46</td></tr>
+    </table>
+    <div class="note-b"><b>读法：</b>LaRender 在<b>遮挡相关指标</b>(UniDet 0.416、AUR 4.94/4.81、HPSR 0.767) 全面第一；CLIP(30.98) 仅比 SDXL(31.12) 略降，<i>"mainly because LaRender receives a list of objects as input, instead of a complete text prompt"</i>。耗时 7.46s ≈ SDXL(7.44s)，远快于 FLUX(122s)/3DIS(104s)——因 Latent Rendering 只是逐元素乘加、可完全并行。</div>
+
+    <div class="note-h">⑫ §4.4 消融实验（Table 2 密度调度 + Table 3 attn 图）</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;color:#e3e7ff;margin:4px 0 10px">
+    <tr style="color:#9aa3c7;border-bottom:1px solid #2a2f5c;text-align:left"><th>密度调度</th><th>公式</th><th>UniDet↑</th><th>CLIP↑</th></tr>
+    <tr><td>Fixed opaque mode</td><td>σi=DiT</td><td>0.240</td><td>28.32</td></tr>
+    <tr><td>Fixed density</td><td>σi=Di</td><td>0.393</td><td>30.44</td></tr>
+    <tr style="color:#ffd35c"><td><b>Inverse proportional(采用)</b></td><td>DiT/(T+1−t)</td><td><b>0.416</b></td><td><b>30.98</b></td></tr>
+    </table>
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;color:#e3e7ff;margin:4px 0 10px">
+    <tr style="color:#9aa3c7;border-bottom:1px solid #2a2f5c;text-align:left"><th>透射率图是否用 attn 图</th><th>UniDet↑</th><th>CLIP↑</th></tr>
+    <tr><td>LaRender w/o attn. map</td><td>0.395</td><td>31.00</td></tr>
+    <tr style="color:#ffd35c"><td><b>LaRender w/ attn. map</b></td><td><b>0.416</b></td><td>30.98</td></tr>
+    </table>
+    <div class="note-b"><b>读法：</b>① 密度调度：固定 opaque(σ 恒大)严重退化(UniDet 仅 0.240)；固定常density 概念易被破坏(0.393)；fast-to-slow 反比例调度最佳(0.416)——印证"早期需 opaque 保概念、中后期可混合"。② attn 图细化轮廓让透射率图更准，UniDet 0.395→0.416 而几乎不损 CLIP。</div>
+
+    <div class="note-h">⑬ §4.5 应用 + §5 失败案例</div>
+    <div class="note-b"><b>应用：</b>① <b>控遮挡</b>：相似布局给不同遮挡关系，都能生成高质量且遮挡精确的图(Fig.4)。② <b>交互</b>：默认收独立物体 prompt，但给背景赋完整 prompt 可支持物体间交互。③ <b>调语义不透明度</b>(Fig.5)：同一参数 \(\alpha\) 对不同物体有不同表现——玻璃门透明度、雾浓度、棕榈树密度，甚至非物体概念如反射强度、长曝光效果、阳光强度。<br>
+    <b>失败案例（Fig.6）：</b>位置不准、概念混合(concept mixed)、遮挡错误、概念丢失(concept lost)。原文归因：<i>"the latent features can happen to be mixed or erased rather than partially occluded to satisfy its generative prior."</i>——为满足生成先验，latent 有时被混合/抹除而非按预期部分遮挡。</div>
+
+    <div class="note-h">Q&amp;A · 追问 why</div>
+    <div class="note-b"><b>Q1：为什么"在 latent 层做体渲染"能控遮挡，而 bbox 布局不行？</b><br>bbox 只给"物体在哪"，给不出"谁在前谁在后"——同一组 bbox 可对应任意遮挡序（Fig.1(1)）。LaRender 把遮挡显式建模成体渲染：拓扑序定"前后"、透射率 \(M_i\) 定"哪块被挡"、累积透射率 \(T_i=\exp(-\sum_{j<i}M_j\sigma_j)\) 让前面高密度物体自然"吸收"掉后面物体的 latent 贡献——这是物理规则强制的，不靠模型猜，所以精确。</div>
+    <div class="note-b"><b>Q2：为什么要做密度调度，而不是全程用固定 \(\sigma\)？</b><br>因为去噪早期 latent 还没形成稳定概念，此时若按目标密度混合多物体 latent 会"污染"脆弱概念（消融里固定常密度 UniDet 0.393 &lt; 0.416）；而 \(\sigma\to\infty\) 的 opaque mode 让各 latent 不混合、能保护概念，恰适合早期。中后期概念已稳，可放心按真实密度混合做遮挡。反比例调度 \(D_iT/(T+1-t)\) 正好实现"早期近 opaque、末步收敛到 \(D_i\)"的 fast-to-slow。</div>
+    <div class="note-b"><b>Q3：为什么不用 RGB 像素渲染，而坚持在 latent 渲染？</b><br>① 像素级渲染需要每物体的完整 RGBA 图层（要么训练分解模型、要么贵数据），而 latent 渲染直接复用扩散模型 cross-attention 的 hidden states，零额外数据/训练。② latent 渲染带来意外红利——\(\alpha\in(0,1)\) 表现为<b>高层语义半透明</b>(雾浓度/植被密度/光强)，而非简单 RGB 透明叠加，这是像素渲染给不出的"免费午餐"。代价：latent 可能被混合/抹除导致概念丢失(Fig.6 失败案例)。</div>
+
+    <div class="note-h">📌 全文总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>遮挡控制对真实/沉浸场景至关重要，但文生图靠 prompt 不精确(连 FLUX 都差)、布局生图能控位置不能控遮挡、训练条件模型需昂贵遮挡配对数据。<br>
+    <b>method：</b>洞察"遮挡 ≡ 3D 渲染"，提出无参数 <b>Latent Rendering</b> 替换扩散模型 cross-attention 层：拓扑序排物体→各 latent attend 各物体 prompt→正交虚拟相机→按体渲染公式 \(R^{(l+1)}=\frac{1}{S}\sum_i T_i(1-e^{-\sigma_i})M_iR^{(l)}_i\) 融合（透射率图 \(M_i\) 由 bbox×归一化 attention 细化），配 fast-to-slow 语义密度调度 \(\sigma_i(t)=D_iT/(T+1-t)\) 防早期概念被破坏。<br>
+    <b>experiment：</b>T2I-CompBench++ 与自建 RealOcc 上，UniDet 0.416 / AUR 4.94,4.81 / HPSR 0.767 全面超 SDXL/FLUX/MIGC/3DIS，CLIP 仅略降，耗时 7.46s≈SDXL；消融证反比例密度调度(0.416 vs 0.240/0.393)与 attention 细化透射率(0.416 vs 0.395)均有效。<br>
+    <b>takeaway：</b>① <b>把生成问题映射到成熟物理模型</b>(体渲染)，能"免训练"拿到精确可控性与物理一致性；② <b>在 latent 层而非像素层渲染</b>是关键——复用 cross-attention 隐状态、零新增参数，还意外解锁语义半透明等丰富效果；③ <b>密度调度</b>对应"扩散先建概念后修细节"的特性，是让 training-free 机制不破坏生成质量的工程关键。<br>
+    <b>局限[原文]：</b>布局不合理时遮挡会出错；bbox 只是粗提示不追求精确定位；为满足生成先验，概念可能被混合/抹除而非部分遮挡(Fig.6)。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-larender-training-free-occlusion-control-in-image-gener/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. This work enables precise control of occlusion relationships among objects, and performs well in situations including complex, unusual and surreal occlusion. It also enables rich effects such as opacity control. All of these do not require training or fine-tuning. The background is omitted from the graph for clarity.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-larender-training-free-occlusion-control-in-image-gener/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. LaRender simply replaces vanilla cross attention layers to Latent Rendering layers. Given an occlusion graph with bounding boxes provided by users or parsed by LLMs, we rearrange these objects from back to front via topological sorting. For each cross-attention layer in a trained image diffusion model, we allow the input feature attend to each object prompt, obtaining object-wise latent </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-larender-training-free-occlusion-control-in-image-gener/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Qualitative comparison. The first column represents the occlusion graph. The cases in top two rows are results from T2I- CompBench++ (3D Spatial) dataset, the third row is a case in the RealOcc dataset, the case in last row is invented by ourselves.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-larender-training-free-occlusion-control-in-image-gener/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Our generated results given similar layouts but different occlusion relationships.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-larender-training-free-occlusion-control-in-image-gener/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Controlling the concept density/strength via adjusting the semantic opacity α. In the first column, gray concepts keep the same opacities, orange concepts are increasing their opacities, and the blue concept is decreasing its opacity. Please find the dual-element grid figure for the last case in the supplementary materials.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-larender-training-free-occlusion-control-in-image-gener/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Failure cases of LaRender. See Section 5 for analysis.</figcaption></figure>
+    </div>
+  </div><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"]],displayMath:[["\\[","\\]"]]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body></html>

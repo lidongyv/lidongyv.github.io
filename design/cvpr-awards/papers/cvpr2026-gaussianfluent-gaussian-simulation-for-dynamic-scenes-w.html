@@ -1,0 +1,176 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>GaussianFluent: Gaussian Simulation for Dynamic Scenes with Mixed Materials</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>GaussianFluent: Gaussian Simulation for Dynamic Scenes with Mixed Materials</h1>
+    <div class="au2" style="color:var(--mut)">Bei Huang ⋅ Yixin Chen ⋅ Ruijie Lu ⋅ Gang Zeng ⋅ Hongbin Zha ⋅ Yuru Pei ⋅ Siyuan Huang</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2601.09265">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2601.09265">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=GaussianFluent%3A%20Gaussian%20Simulation%20for%20Dynamic%20Scenes%20with%20Mixed%20Materials">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">3D Gaussian Splatting (3DGS) has emerged as a prominent 3D representation for high-fidelity and real-time rendering. Prior work has coupled physics simulation with Gaussians, but predominantly targets soft, deformable materials, leaving brittle fracture largely unresolved. This stems from two key obstacles: the lack of volumetric interiors with coherent textures in GS representation, and the absence of fracture-aware simulation methods for Gaussians. To address these challenges, we introduce GaussianFluent, a unified framework for realistic simulation and rendering of dynamic object states. First, it synthesizes photorealistic interiors by densifying internal Gaussians guided by generative models. Second, it integrates an optimized Continuum Damage Material Point Method (CD-MPM) to enable brittle fracture simulation at remarkably high speed. Our approach handles complex scenarios including mixed-material objects and multi-stage fracture propagation, achieving results infeasible with previous methods. Experiments clearly demonstrate GaussianFluent&#x27;s capability for photo-realistic, real-time rendering with structurally consistent interiors, highlighting its potential for downstream application, such as VR and Robotics.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-gaussianfluent-gaussian-simulation-for-dynamic-scenes-w -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">给 3D Gaussian Splatting <b>补内部 + 会碎裂</b>：先用预训练生成模型（MVInpainter + SD-XL）<b>无训练</b>地给 GS 填充带真实纹理的内部体积，再把点云断裂法 <b>CD-MPM</b> 搬进 GS 并修好它的<b>数值不连续</b>（连续 return mapping）+ GPU 并行（4 min/帧→1 s/帧），从而第一次在 GS 框架里做出<b>脆性断裂 + 混合材质 + 流体</b>的物理可信仿真渲染。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">3DGS 是 surface-based 表示，两大硬伤挡住动态仿真：① <b>没有内部</b>——原文 “Gaussian Splatting inherently lacks representation of internal structures”，应力/惯性/接触力算不出，断裂时新暴露的内表面是空心无纹理的（西瓜掉地摔开看不到红瓤黑籽）；② <b>没有断裂仿真</b>——PhysGaussian/OmniPhysGS/Pixie 只做弹性形变，原始 CD-MPM 点云法 CPU-bound、缺连续 return-mapping → 物理不可信且慢。</div>
+    <div class="note-h">核心方法（两件套 + 关键公式）</div>
+    <div class="note-b">① <b>内部纹理合成（training-free）</b>：scale 正则（式1 L=L_MSE+L_SSIM+λ·Σ‖s_i‖²）逼高斯变小→密度场 d(x)（式2）定边界→内部填新高斯→opacity-only 优化把多余高斯 opacity 压到 0 再剪枝；纹理两阶段：单视 X 切片 inpaint 起步（MVInpainter+SD-XL，式3 初始化 SH0）→ X/Y/Z 三轴低强度迭代 inpaint 求三轴一致。<br>② <b>GS 版 CD-MPM + 混合材质</b>：每个高斯当 MPM 粒子，用形变梯度 F_p（式5）演化协方差+SH；NACC 屈服面 y(p,q)=q²(1+2β)+M²(p+βp0)(p−p0)，p0=K·sinh(ξ·max(−α,0))，α 是损伤变量；<b>关键创新</b>=连续 return mapping，用动态中心 p′_c=p_c+φ_k·(p_tr−p_c)，φ_k=((p_tr−p_c)/(p0−p_c))^k（取 k=2）消除原法在 p=p0 处的跳变；混合材质=给不同部位赋不同 β；p0→0 退化成流体。GPU(NVIDIA Warp) 4 min/帧→1 s/帧。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>内部填充</b>（Table 1）CLIP 22.3(PhysGaussian)/30.1(2D Inpaint)/<b>35.4(Ours)</b>，用户偏好 3.57%/25.00%/<b>71.43%</b>。<b>动态仿真</b>（Table 2）CLIP 12.2/13.1/<b>22.7(Ours)</b>，用户偏好 3.84%/7.69%/<b>88.46%</b>。耗时（Table A1）西瓜 3.56 s/帧(27M 粒子)、jelly 0.39 s/帧(1M)，显存 ~10GB（峰值 &lt;16GB）。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 第一个在 GS 里做脆性断裂；② 内部纹理合成完全 training-free（不像 FruitNinja 要 fine-tune 自采数据集，原文评其 “extremely costly and lacks generalizability”）；③ 一个 CD-MPM 框架靠调 β/p0 统一覆盖脆性固体↔粘弹凝胶↔流体↔颗粒；④ 把不连续 return mapping 修成连续、解决数值不稳定（带极限推导）。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① 物理参数（β/E/ν 等）目前<b>手动设</b>（Limitations 自陈），未自动反演；② 材质划分需先靠分割/part-aware 生成/启发式，pipeline 偏重；③ 评测主要用 CLIP + user study（无 ground-truth 物理量化），偏感知层。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文）：① Abstract 逐句 ② Intro 闭环 ③ Method 核心机制+公式 ④ 实验数值表 + 全文一页总结。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>第 1 句（定位 + 痛点）：</b><i>"3D Gaussian Splatting (3DGS) has emerged as a prominent 3D representation for high-fidelity and real-time rendering. Prior work has coupled physics simulation with Gaussians, but predominantly targets soft, deformable materials, leaving brittle fracture largely unresolved."</i> —— 在说什么：3DGS 渲染又快又真，已有工作把物理仿真接到高斯上，但几乎只做<b>软/可变形</b>材质；<b>脆性断裂（brittle fracture，会碎的）</b>基本没解决。这是本文的靶。</div>
+    <div class="note-b"><b>第 2 句（两个根因）：</b><i>"This stems from two key obstacles: the lack of volumetric interiors with coherent textures in GS representation, and the absence of fracture-aware simulation methods for Gaussians."</i> —— 两个拦路虎：① GS 没有"带连贯纹理的体积内部"（表面表示，里面是空的）；② 没有"针对高斯的断裂感知仿真方法"。下文两个模块各打一个。</div>
+    <div class="note-b"><b>第 3-4 句（两贡献，逐一对应两根因）：</b><i>"First, it synthesizes photorealistic interiors by densifying internal Gaussians guided by generative models. Second, it integrates an optimized Continuum Damage Material Point Method (CD-MPM) to enable brittle fracture simulation at remarkably high speed."</i> —— ① 用生成模型引导<b>致密化内部高斯</b>合成真实内部纹理（补根因①）；② 集成<b>优化版 CD-MPM</b>（连续损伤物质点法）实现高速脆性断裂（补根因②）。</div>
+    <div class="note-b"><b>第 5 句（能力面 + 落地）：</b><i>"Our approach handles complex scenarios including mixed-material objects and multi-stage fracture propagation, achieving results infeasible with previous methods ... highlighting its potential for downstream application, such as VR and Robotics."</i> —— 能做<b>混合材质 + 多阶段断裂传播</b>（前作做不到），面向 VR / 机器人。<b>一句话抓 Abstract：</b>给 3DGS 补上"会碎且内部真实"的能力——内部纹理合成 + 优化 CD-MPM，做混合材质脆性断裂的实时仿真渲染。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原创，理解 GaussianFluent 必备）</div>
+    <div class="note-b"><b>① 3DGS（Kerbl 2023）：</b>用一堆各向异性 3D 高斯椭球（位置 \(x_p\)、协方差 \(A_p\)、不透明度 \(\alpha_p\)、球谐 SH 颜色 \(C_p\)）<b>显式</b>表示场景，splatting 光栅化实时渲染。<b>关键缺陷</b>：高斯只贴在物体<b>表面</b>、内部是空的——这正是本文要补的。<b>② MPM（Material Point Method，物质点法）：</b>混合 Lagrangian 粒子 + Eulerian 背景网格的仿真法，单步三阶段——<b>P2G</b>（粒子质量/动量插值到网格）→ <b>Grid Update</b>（网格算力更新速度 \(v_i^{n+1}=v_i^{n}+\Delta t\,f_i/m_i\)，eq A4）→ <b>G2P</b>（网格速度插回粒子、更新形变梯度 \(F_p^{n+1}=(I+\Delta t\,\nabla v_p)F_p^n\)，eq A7 + 位置）。GS 与 MPM 天然兼容，因为<b>两者都是粒子</b>（原文 "particle-like primitives"），PhysGaussian 首次结合二者。<b>③ Cam-Clay / NACC 屈服面：</b>源自土力学的弹塑性本构，屈服面 \(y(p,q)=0\) 是应力空间的分界：\(y\le 0\) 内是弹性，越界要把试探应力"拉回"面上（return mapping）；\(p\)=体积应力、\(q\)=剪切应力。NACC = Non-Associated Cam-Clay。<b>损伤变量 \(\alpha\)</b> 随形变累积 → 屈服面收缩 → 可承受弹性应力变小 → 塌缩即断裂。<b>④ CD-MPM（Wolper 2019）：</b>Continuum Damage MPM，把连续损伤力学引入 MPM 做动态断裂，原是<b>点云 / CPU</b> 方法；本文把它<b>搬进 GS、修连续性、GPU 化</b>。<b>⑤ SH（球谐）：</b>3DGS 用球谐系数表达视角相关颜色；零阶 \(sh^0\) 对应各向同性基色。<b>⑥ SDS：</b>Score Distillation Sampling，用 2D 扩散模型梯度优化 3D 资产，本文借其"逐步纠正"思想做低强度迭代 inpaint。</div>
+
+    <div class="note-h">② §1 Introduction — problem → 现有不足 → solution → why 闭环</div>
+    <div class="note-b"><b>problem（两个 fundamental issues）：</b>(1) 原文 <i>"as a surface-based method, Gaussian Splatting inherently lacks representation of internal structures"</i> → 因此固体仿真需要的应力/惯性/接触力 <i>"remain undefined"</i>，断裂时 <i>"GS cannot realistically render the newly exposed surfaces"</i>（西瓜例：绿皮下红瓤黑籽，现有 GS 重建 <i>"hollow and textureless"</i>）。(2) 前作只做弹性：PhysGaussian / OmniPhysGS / Pixie 即便自动估材质参数（Young's modulus、Poisson's ratio）仍 <i>"remain confined to elastic deformation"</i>。</div>
+    <div class="note-b"><b>现有不足（为什么旧法不行）：</b>已有点云断裂法（CD-MPM 原版）与 GS 不兼容——原文 <i>"they lack a continuous return-mapping scheme, resulting in physically implausible fracture dynamics, and their reliance on CPU-bound execution, with limited parallelism, imposes severe performance bottlenecks"</i>（不连续 → 物理不可信；CPU → 慢）。内部纹理方面，FruitNinja 用自采数据 fine-tune 扩散模型 <i>"extremely costly and lacks generalizability"</i>。</div>
+    <div class="note-b"><b>solution（Intro 自包含）：</b>原文 <i>"we introduce: 1) internal texture synthesis ... leveraging publicly available generative models, requiring no additional training data, and 2) optimized CD-MPM for GS ... resolving instability issues in the previous algorithm and implementing GPU parallelism."</i> —— ① <b>免额外训练</b>的内部纹理合成；② <b>修不稳定 + GPU 并行</b>的 CD-MPM。两条直接对消两个 fundamental issues。</div>
+
+    <div class="note-h">Q&amp;A · 为什么"在 GS 上做脆性断裂"特别难？</div>
+    <div class="note-b"><b>三层难点（被现有方案的具体失败逼出来）：</b>① <b>没内部</b>——GS 是表面表示，断裂会暴露新表面，但内部既无几何也无纹理，无法渲染；且固体力学量（应力/惯性/接触）在"空壳"上无定义。② <b>没断裂模型</b>——主流 GS 仿真（PhysGaussian 系）只建弹性形变，无法表达"开裂 + 拓扑变化"。③ <b>能用的断裂法不兼容</b>——CD-MPM 原版是点云 + CPU，return mapping 在 tip 处不连续会数值爆，且 CPU 串行慢到 4 min/帧无法交互。<b>[点评]</b> 本文的聪明在于"不发明新物理"，而是把成熟的 CD-MPM <b>移植 + 修 bug（连续性）+ 工程化（GPU）</b>到 GS，并配一个 training-free 的内部纹理管线——是"系统集成 + 关键修复"型创新，落点清晰。</div>
+
+    <div class="note-h">③ §3.1.1 内部体积初始化（公式 1/2）</div>
+    <div class="note-b"><b>① scale 正则化（式 1）：</b>multiview 训初始 3DGS 时，给渲染损失加一项 scale 正则，逼高斯变小、别跨边界：\[ L_{total}=L_{MSE}+L_{SSIM}+\lambda\sum_{i=1}^{N}\|s_i\|_2^2 \]其中 \(s_i\) 是高斯 \(i\) 的 scale，\(\lambda\) 控强度。原文：<i>"This encourages smaller, more localized Gaussians, crucial for interior definition and plausible performance under relighting."</i>（小而局部的高斯才能清晰分内外、relighting 也稳——这条 scale 正则后面还被复用来算法线做 Blinn-Phong 光照）。</div>
+    <div class="note-b"><b>② 密度场定边界（式 2）：</b>把场景空间离散成 \(n^3\) 网格，每格中心算密度：\[ d(x)=\sum_{p\in P}\alpha_p\exp\!\Big(-\tfrac{1}{2}(x-x_p)^\top A_p^{-1}(x-x_p)\Big) \]（\(\alpha_p,x_p,A_p\) 为高斯 \(p\) 的不透明度/中心/协方差）。\(d(x)\ge\tau_d\) 标为高密度 = 物体边界，内部按 PhysGaussian 填新高斯。<b>③ opacity-only 优化 + 剪枝：</b>密度阈值填充会把高斯误填到真实边界外，故<b>固定其它属性、只优化新高斯的 opacity</b>，用渲染损失把"多余高斯"的 opacity 压到 ~0 再剪枝 → 干净实心体（Fig 2）。</div>
+
+    <div class="note-h">④ §3.1.2 内部纹理生成（training-free 两阶段，公式 3）</div>
+    <div class="note-b"><b>为何 training-free：</b>物体内部纹理<b>训练数据稀缺</b>（原文 <i>"scarce training data for object interiors"</i>），所以借现成生成模型、不另训。<b>阶段 1（Coarse）：</b>沿 X 轴均匀切片，每片渲初始外观 \(C_{initial}\) + 内部 mask \(M_{init}\)；mask 区用 <b>MVInpainter</b>（文本 prompt \(P\) + SD-XL 参考图引导）inpaint 成 \(C_{inpaint}\)；落在 inpaint 区的内部高斯 \(i\) 双线性采色 \(c_i\)，初始化零阶 SH（式 3）：\[ sh_i^0=\frac{c_i-0.5}{C_0},\quad C_0=\frac{1}{2\sqrt{\pi}} \]高阶 SH 置 0（初始各向同性）。</div>
+    <div class="note-b"><b>阶段 2（Iterative Refine）：</b>受 SDS"逐步纠正"启发，做 <b>successive low-strength inpainting</b>，循环两步——(a) <b>Generative Inpainting</b>：沿 X/Y/Z 三轴切片，用<b>低 inpaint strength</b> 喂 SD-XL（约束去噪，小幅注入新细节、保全局结构）；(b) <b>Gaussian Optimization</b>：把 inpaint 后的 2D 图当 target，小步优化内部高斯的 SH 系数以最小化渲染差异。循环到收敛。原文对比：本策略产出 sharp/realistic 纹理，<i>"in stark contrast to vanilla SDS, which leads to blurry and oversaturated results"</i>。</div>
+
+    <div class="note-h">Q&amp;A · 为什么"三轴 + 低强度"迭代能得到 3D 一致的内部纹理？</div>
+    <div class="note-b"><b>机理：</b>单视图初始化只在一个轴上一致，跨 3D 结构/视角会矛盾。关键在于<b>不同轴的切片在交线处天然耦合</b>（co-dependent through intersections）：MVInpainter 先让所有 X 切片符合参考图结构（如三层蛋糕的三层），随后 SD-XL 的低强度 inpaint 把这一约束<b>传播到 Y/Z 切片</b>——因为任何偏离都会与已确立的 X 切片结构矛盾。<b>低强度</b>是关键：每步只小幅修改，避免一次性大改破坏已有一致性（类似 SDS 的"温和纠正"），从而逐步收敛到<b>三轴一致</b>。<b>[点评]</b> 用"正交切片的交线约束 + 小步迭代"实现 3D 一致，是个聪明且 training-free 的工程技巧。</div>
+
+    <div class="note-h">⑤ §3.2 CD-MPM：GS 属性如何随仿真演化（公式 4/5 + eq A10）</div>
+    <div class="note-b"><b>赋物理量：</b>每个高斯被赋 mass / velocity / volume / stress，经背景 Eulerian 网格交互（同 PhysGaussian）；新增内部高斯初始化为球形协方差，半径 = 每粒子体积，保证 GS 与 MPM 离散的空间一致。<b>连续介质演化：</b>形变图 \(x=\varphi(X,t)\)（式 4，\(\varphi\) 是 MPM 仿真函数，\(X\)/\(x\) 是仿真前/后状态），形变梯度 \[ F_p(t)=\frac{\partial x}{\partial X}=\frac{\partial \varphi(X,t)}{\partial X} \]（式 5，编码局部旋转 + 拉伸剪切）。每步把 \(F_p\) 作用到协方差与 SH：<b>动态协方差</b> \(a_p(t)=F_p(t)\,A_p\,F_p(t)^\top\)（eq A10），<b>旋转</b> 经极分解 \(F_p=R_pS_p\) 提出用于渲染各向异性外观；opacity 与 SH 幅值视为时不变。</div>
+
+    <div class="note-h">Q&amp;A · MPM 单步三阶段（P2G → Grid Update → G2P）到底在算什么？（Supp.A，公式 A2-A8）</div>
+    <div class="note-b"><b>① P2G（粒子 → 网格，rasterization）：</b>用插值函数（shape function）\(N_{ip}\) 把每个粒子的质量、动量摊到周围网格节点：\[ m_i=\sum_p m_p N_{ip},\qquad p_i=\sum_p m_p v_p N_{ip} \]节点速度 \(v_i=p_i/m_i\)（当 \(m_i\gt 0\)）。<b>② Grid Update（核心物理在网格上算）：</b>节点总力 \(f_i=f_i^{internal}+f_i^{external}\)（内力来自粒子应力，外力如重力），显式时间积分更新节点速度：\[ v_i^{n+1}=v_i^{n}+\Delta t\,\frac{f_i}{m_i} \]（eq A4），并在网格上施加边界/碰撞。<b>③ G2P（网格 → 粒子，gather）：</b>把更新后的网格速度插回粒子 \(v_p^{n+1}=\sum_i v_i^{n+1}N_{ip}\)（eq A5），算速度梯度 \(\nabla v_p=\sum_i v_i^{n+1}\nabla N_{ip}^\top\)（eq A6），推进形变梯度 \(F_p^{n+1}=(I+\Delta t\,\nabla v_p)F_p^{n}\)（eq A7），更新位置 \(x_p^{n+1}=x_p^{n}+\Delta t\,v_p^{n+1}\)（eq A8）。<b>为什么这样：</b>粒子（=高斯）擅长携带物质属性与大变形/拓扑变化，网格擅长算空间微分（力、梯度）；MPM 每步在两者间来回搬数据，兼得二者之长——这正是 GS（粒子）能天然接入物理仿真的根本原因。每步算出的 \(F_p\) 再喂给下面的断裂判据。</div>
+
+    <div class="note-h">⑥ §3.2 断裂机制：NACC 屈服面 + softening（不是硬阈值）</div>
+    <div class="note-b"><b>软化律而非硬阈值：</b>原文 <i>"Fracture is not triggered by a sharp threshold but emerges when this capacity becomes negligible and fails to sustain internal forces."</i> 把 \(F_p\) 分解成 rigid + non-rigid，只有 non-rigid 部分（体积拉伸 \(p\)、剪切 \(q\)）致断。弹性（产应力）区由屈服面 \(y(p,q)\le 0\) 定义，随形变累积在 \((p,q)\) 平面<b>收缩</b>，可承受弹性应力消失即断。<b>NACC 屈服面（原文式）：</b>\[ y(p,q;p_0,\beta,M)=q^2(1+2\beta)+M^2(p+\beta p_0)(p-p_0),\quad p_0=K\sinh(\xi\max(-\alpha,0)) \]\(\beta,M,K,\xi\) 为超参，\(\alpha\) 是关键<b>损伤变量</b>。每步用 return mapping 强制 \(y\le 0\) 并更新 \(\alpha\)（Fig 4 可视化 jelly 内的 \(\alpha\) 热力图：\(\alpha\) 升高的区域开裂）。</div>
+
+    <div class="note-h">⑦ §3.2 连续 Return Mapping（本文的核心修复 + 同伦证明，公式 6）</div>
+    <div class="note-b"><b>原算法的病（不连续 → 数值不稳）：</b>试探态 \((p_{tr},q_{tr})\) 越界（\(y\gt 0\)）需投影回 \(y=0\)。内部压力区 \(-\beta p_0\lt p_{tr}\lt p_0\) 原法连到<b>固定中心</b> \(p_c=\tfrac{1-\beta}{2}p_0\) 求交点，但在 \(p=p_0\)、\(p=-\beta p_0\) 处<b>不连续</b>：令 \(q_{tr}\to\infty\)，\(\lim R(p_0-\varepsilon,q_{tr})\) 跳到椭圆<b>上顶点</b>，而 \(\lim R(p_0+\varepsilon,q_{tr})=(p_0,0)\)<b>右尖</b>。原文：<i>"This jump triggers numerical instability: a machine-precision fluctuation δ about p0 can map an identical geometric state to completely different return points."</i></div>
+    <div class="note-b"><b>修法（动态中心，式 6 / eq A19）：</b>把固定 \(p_c\) 换成自适应 \(p'_c\)：\[ p'_c=p_c+\phi_k(p_{tr})(p_{tr}-p_c),\qquad \phi_k(p_{tr})=\Big(\frac{p_{tr}-p_c}{p_0-p_c}\Big)^{k} \]<b>连续性证明：</b>任意有限 \(k\)，当 \(p_{tr}\to p_0^-\) 有 \(\phi_k\to 1\Rightarrow p'_c\to p_{tr}\)，故两侧极限都 \(\to(p_0,0)\)，连续；又 \(k\to\infty\) 时对任意内部 \(p_{tr}\) 有 \(\phi_k\to 0\Rightarrow p'_c\to p_c\)，<b>退化回原不连续法</b>——即 \(k\) 是"连续正则法（有限 \(k\)）↔ 原法（\(k\to\infty\)）"的<b>同伦（homotopy）</b>。实现取 \(k=2\)（robust + smooth）。投影后合成 \(p,q\) 得 \(F_p\)，更新硬化参数 \(\alpha\leftarrow\alpha+\ln(J_{tr}/J_{new})\)（\(J=\det F_p\)）。<b>注：</b>Supp.B.2 另给等价的"最近点投影"（normal closest-point return）版本，二者都达成连续映射 + well-defined consistent tangent。</div>
+
+    <div class="note-h">⑧ §3.2 混合材质 + 流体退化（统一框架的关键 insight）</div>
+    <div class="note-b"><b>混合材质：</b>不像 PhysGaussian 假设均匀材质，本文给同一物体不同部位赋<b>不同 \(\beta\)</b>。西瓜例（Fig 5 + Table A1 实测参数）：按 GS 颜色分——<b>黑籽 \(\beta=5\)（高）、红瓤 \(\beta=0.6\)（低）、绿皮 \(\beta=2\)（中）</b>，比统一 \(\beta\) 产生更自然的裂纹（统一 \(\beta\) 会出 artifact）。材质划分靠分割 / part-aware 生成 / 启发式。</div>
+    <div class="note-b"><b>流体退化（一个 solver 通吃固体↔流体）：</b>原文 <i>"our NACC model naturally degenerates to fluid behavior when p0→0"</i>——当 \(p_0\to 0\) 弹性区消失、材料失去抗分离能力 → 像液体自由流。实操把 \(\alpha_0\) 和 \(\beta\) 设近 0 达成 \(p_0\to 0\)。且<b>与弹性本构无关</b>：只要 \(p_0\) 够小，linear / Neo-Hookean 都呈同样流体行为；留个小屈服面则得 clay 黏塑性流。→ 不换 solver、同一 CD-MPM 覆盖脆性固体、黏弹凝胶、软组织、流体、颗粒（Supp Fig A2 牛奶/沙堡）。</div>
+
+    <div class="note-h">⑨ §3.2 GPU 并行（让它能用的工程关键）</div>
+    <div class="note-b"><b>从分钟级到秒级：</b>原 CD-MPM 是 CPU-bound，本文做<b>完整重实现</b>，用 <b>NVIDIA Warp</b> 库并行化核心仿真循环。原文（Supp.B.3）：<i>"Our implementation reduces simulation times from 4 minutes per frame to a single second."</i>——<b>4 min/帧 → 1 s/帧</b>，约 240× 加速，才使复杂场景可交互。硬件：约 103 Tensor TFLOPS（FP16），显存约 10GB、峰值 \(\lt\) 16GB。</div>
+
+    <div class="note-h">⑩ §4.1 实验 — 内部纹理填充（Table 1，真实数值）</div>
+    <div class="note-b"><b>对比 PhysGaussian / 2D Inpainting（CLIP Score + 用户研究）：</b>
+    <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:13px">
+    <tr style="color:#9aa3c7"><td style="padding:4px 8px;border-bottom:1px solid #2a2f5c">Method</td><td style="padding:4px 8px;border-bottom:1px solid #2a2f5c">CLIP Score ↑</td><td style="padding:4px 8px;border-bottom:1px solid #2a2f5c">User study ↑</td></tr>
+    <tr><td style="padding:4px 8px">PhysGaussian</td><td style="padding:4px 8px">22.3</td><td style="padding:4px 8px">3.57% (3/84)</td></tr>
+    <tr><td style="padding:4px 8px">2D Inpainting</td><td style="padding:4px 8px">30.1</td><td style="padding:4px 8px">25.00% (21/84)</td></tr>
+    <tr style="color:#ffd35c"><td style="padding:4px 8px"><b>Ours</b></td><td style="padding:4px 8px"><b>35.4</b></td><td style="padding:4px 8px"><b>71.43% (60/84)</b></td></tr>
+    </table>
+    原文解释：<i>"PhysGaussian's direct color copying results in blurred textures, whereas 2D inpainting fails on oblique viewpoints."</i>（PhysGaussian 把外表色直接复制到内部 → 模糊；2D inpaint 斜视角失败、多视不一致）。本文 CLIP 与用户偏好都<b>大幅领先</b>。</div>
+
+    <div class="note-h">⑪ §4.2 实验 — 动态仿真（Table 2）+ 计时（Table A1）</div>
+    <div class="note-b"><b>动态仿真对比（CLIP + 用户研究）：</b>
+    <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:13px">
+    <tr style="color:#9aa3c7"><td style="padding:4px 8px;border-bottom:1px solid #2a2f5c">Method</td><td style="padding:4px 8px;border-bottom:1px solid #2a2f5c">CLIP Score ↑</td><td style="padding:4px 8px;border-bottom:1px solid #2a2f5c">User study ↑</td></tr>
+    <tr><td style="padding:4px 8px">PhysGaussian</td><td style="padding:4px 8px">12.2</td><td style="padding:4px 8px">3.84% (1/26)</td></tr>
+    <tr><td style="padding:4px 8px">OmniPhysGS</td><td style="padding:4px 8px">13.1</td><td style="padding:4px 8px">7.69% (2/26)</td></tr>
+    <tr style="color:#ffd35c"><td style="padding:4px 8px"><b>Ours</b></td><td style="padding:4px 8px"><b>22.7</b></td><td style="padding:4px 8px"><b>88.46% (23/26)</b></td></tr>
+    </table>
+    原文：<i>"PhysGaussian fails to produce brittle fracture, and OmniPhysGS is constrained by the PhysGaussian framework."</i> 用户偏好 88.46% 压倒性。</div>
+    <div class="note-b"><b>计时（Table A1，s/帧，GPU FP16 ≈103 TFLOPS）：</b>jelly 0.39（1M 粒子）/ kiwi 1.58（1M）/ pineapple 1.16（1M）/ dragonfruit 2.27（1M）/ sandcastle 2.09（8M）/ tosta 3.18（8M）/ watermelon 3.56（27M，\(\beta\)=2/0.6/5）/ pumpkin 5.12（27M）。<b>诚实标注：</b>本文消融以<b>定性为主</b>（Fig 5 不同 \(\beta\) 对比、vanilla-SDS 对比、CPU↔GPU 计时），<b>没有独立的消融数值表</b>；上表均为主实验 / 计时表的真实数字。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>① problem：</b>3DGS 是表面表示、内部空且无纹理，又缺断裂仿真模型 → 做不了"脆性断裂 + 暴露真实内部"的动态场景；可用的 CD-MPM 又是点云/CPU、return mapping 不连续。</div>
+    <div class="note-b"><b>② method：</b>(a) <b>training-free 内部纹理合成</b>——scale 正则（式1）+ 密度场填充（式2）+ opacity 剪枝；MVInpainter/SD-XL <b>三轴低强度迭代 inpaint</b>（式3 初始化 SH）保三轴一致；(b) <b>GS 版优化 CD-MPM</b>——形变梯度驱动协方差/SH（eq A10）、<b>NACC 屈服面 + softening</b> 断裂、<b>连续 return mapping（\(k=2\) 同伦，式6）</b>修数值不稳、<b>混合 \(\beta\)</b> 做多材质、<b>\(p_0\to 0\) 流体退化</b>统一固体/流体、<b>NVIDIA Warp GPU</b> 把 4min/帧 → 1s。</div>
+    <div class="note-b"><b>③ experiment：</b>内部填充 CLIP <b>35.4</b>（vs 2D-inpaint 30.1 / PhysGaussian 22.3）、用户偏好 <b>71.43%</b>；动态仿真 CLIP <b>22.7</b>（vs OmniPhysGS 13.1 / PhysGaussian 12.2）、用户偏好 <b>88.46%</b>；计时 1M 粒子 jelly 0.39 s/帧、27M watermelon 3.56 s。</div>
+    <div class="note-b"><b>④ takeaway（≥3 条 + 适用边界）：</b><br>• <b>Takeaway 1：</b>这是<b>第一个在 3DGS 框架内做出脆性断裂 + 混合材质 + 流体</b>的统一物理仿真渲染——靠"补内部纹理 + 移植并修好 CD-MPM"，而非发明新物理。<br>• <b>Takeaway 2：</b>断裂仿真的工程命门是 return mapping 的<b>连续性</b>——用 \(k\) 参数化的动态中心（式6）把"连续正则法"与"原不连续法"做成<b>同伦</b>，一举消除 tip 处的数值不稳。<br>• <b>Takeaway 3：</b>NACC 在 \(p_0\to 0\) 时<b>自然退化为流体</b>，使同一个 CD-MPM solver 无缝覆盖脆性固体→黏弹→软组织→流体→颗粒，是"统一仿真"的关键洞察。<br>• <b>适用边界 / 诚实点：</b>① <b>物理参数全手动设</b>（\(\beta,M,K,\xi,\alpha_0\)、各部位材质），原文将"用 inverse rendering / 学习法自动估参"列为 future work；② 材质划分<b>依赖外部分割 / part-aware 生成</b>，非端到端；③ 评测靠 <b>CLIP + 用户研究</b>，<b>无物理 ground-truth</b>（缺真实断裂的定量对照），消融偏定性；④ 仅在 food / fruit / 液体等可控对象上验证，复杂真实场景的可扩展性未充分检验。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-gaussianfluent-gaussian-simulation-for-dynamic-scenes-w/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Physical simulation of dynamic object states with 3D Gaussian Splatting. GaussianFluent is capable of generating realistic internal texture, simulating and rendering complex object dynamics (e.g., elastic deformation, fracture, and slicing) with mixed materials (e.g., jelly with internal blue sugar penetrated by a rigid bullet in top row), in response to different lighting conditions.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-gaussianfluent-gaussian-simulation-for-dynamic-scenes-w/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Internal Gaussian filling and refinement. The opac- ity optimization improves the smoothness of the GS surface after internal filling, beneficial for texture inpainting and simulation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-gaussianfluent-gaussian-simulation-for-dynamic-scenes-w/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Overview of GaussianFluent. Our model first populates Gaussians in the internal volume and generates interior realistic texture with pretrained image generative models (Sec. 3.1). We then incorporate optimized CD-MPM simulation with mixed materials for Gaussian Splatting (Sec. 3.2) and introduce Blinn-Phong reflection in the rendering pipeline ( Supplementary Sec. C.1).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-gaussianfluent-gaussian-simulation-for-dynamic-scenes-w/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. A jelly-like material is shot with a bullet. We compare our method with PhysGaussian to demonstrate the effectiveness of our simulation and visualize the damage variable α.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-gaussianfluent-gaussian-simulation-for-dynamic-scenes-w/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Comparison between our mixed material modeling and fixed β setting. Our approach assigns distinct β values, i.e., 2, 0.6, and 5, to the rind, flesh, and seed, respectively. This yields more realistic simulation results compared to settings that apply a single, uniform β value to the entire watermelon.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-gaussianfluent-gaussian-simulation-for-dynamic-scenes-w/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Qualitative comparison of internal texture filling. Our method yields more realistic and consistent interior textures from GS rendering. PhysGaussian copies exterior colors to internal Gaussians, resulting in blurring, while 2D inpainting fails on oblique views and suffers from multi-view inconsistency.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-gaussianfluent-gaussian-simulation-for-dynamic-scenes-w/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Qualitative comparison of object state simulation. We present a comparison for a lollipop, where our result correctly simulates its fracture of mixed materials, outperforming PhysGaussian and OmniPhysGS.</figcaption></figure>
+    </div>
+  </div></body></html>

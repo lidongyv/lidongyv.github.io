@@ -1,0 +1,182 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Chorus: Multi-Teacher Pretraining for Holistic 3D Gaussian Scene Encoding</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Chorus: Multi-Teacher Pretraining for Holistic 3D Gaussian Scene Encoding</h1>
+    <div class="au2" style="color:var(--mut)">Yue Li ⋅ Qi Ma ⋅ Runyi Yang ⋅ Mengjiao Ma ⋅ Bin Ren ⋅ Nikola Popovic ⋅ Nicu Sebe ⋅ Theo Gevers ⋅ Luc Van Gool ⋅ Danda Paudel ⋅ Martin R. Oswald</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2512.17817">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2512.17817">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Chorus%3A%20Multi-Teacher%20Pretraining%20for%20Holistic%203D%20Gaussian%20Scene%20Encoding">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">While 3DGS has emerged as a high-fidelity scene representation, encoding rich, general-purpose features directly from its primitives remains under-explored. We address this gap by introducing Chorus, a multi-teacher pretraining framework that learns a holistic feed-forward 3D Gaussian Splatting (3DGS) scene encoder by distilling complementary signals from 2D foundation models. Chorus employs a shared 3D encoder and teacher-specific projectors to learn from language-aligned, generalist, and object-aware teachers, encouraging a shared embedding space that captures signals from high-level semantics to fine-grained structure.We evaluate Chorus on a wide range of tasks: open-vocabulary semantic and instance segmentation, linear and decoder probing, as well as data-efficient supervision. Besides 3DGS, we also test Chorus on several benchmarks that only support point clouds by pretraining a variant using only Gaussians’ centers, colors, estimated normals as inputs. Interestingly, this encoder shows strong transfer and outperforms the point clouds baseline while using $39.9\times$ fewer training scenes. Finally, we propose a render-and-distill adaptation that facilitates out-of-domain finetuning. Our code and model will be released upon publication.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-chorus-multi-teacher-pretraining-for-holistic-3d-gaussi -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">把 <b>3DGS 场景本身当成一种“可挖特征的模态”</b>：用<b>一个共享的 feed-forward 3DGS 编码器 + 每个 teacher 一个轻量 projector</b>，从 3 个互补的 2D 基础模型——<b>SigLIP2（语言对齐）/ DINOv3（通用）/ PE-Spatial（物体感知 + SAM）</b>——蒸馏知识到统一的 3D embedding 空间。一个预训练编码器就能同时在语义/实例分割、open-vocab、VQA 等一大堆场景理解任务上 SOTA，且数据效率极高（比点云预训练基线少用 <b>8.32×</b> / <b>39.9×</b> 训练场景）。本质是把前作 SceneSplat 从“单 teacher、只做语义”升级成“<b>多 teacher、全任务 holistic 编码器</b>”。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">NeRF→3DGS 已能高保真渲染，社区也在给它们“贴”语义（LERF/LangSplat 等），但<b>很少有人把 3D 表示本身当模态去直接、大规模挖可迁移特征</b>。3DGS 特别适合：同时保留几何-外观 primitive + 支持快速可微渲染。前作 SceneSplat 用 “lift-then-align” 把 2D 语言特征 lift 到 3D 当 pseudo-label 训 feed-forward 编码器，但<b>只对齐语义、只演示语义分割</b>，更广的下游（实例 grouping、推理）几乎没探索。Chorus 用多 teacher 显式监督多样信号，学出一个 versatile 的 3D 表示。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b"><b>① Lifting 2D Teachers（§3.1）</b>：3DGS 场景 = N 个高斯 {x<sub>i</sub>,s<sub>i</sub>,q<sub>i</sub>,α<sub>i</sub>,c<sub>i</sub>}（式1），渲染用 alpha-composition、权重 w<sub>i</sub>=T<sub>i</sub>·α<sub>i</sub>，T<sub>i</sub>=∏<sub>j&lt;i</sub>(1−α<sub>j</sub>)（式2）。把 2D teacher 特征 F<sub>p,u</sub> 用<b>同样渲染权重加权平均</b> lift 到每个高斯 f<sub>i</sub>（式3）。3 teacher 用 <b>PHI-S</b>（PCA 旋转 + 各向同性 Hadamard 缩放）标准化激活 → 简化 loss 平衡（equal weights 即可）。<br><b>② Multi-Teacher Pretraining（§3.2）</b>：共享 encoder g<sub>θ</sub>（改自 Sonata 的 5-stage transformer，512D bottleneck）出 per-Gaussian 特征 Z（式4）；每 teacher 一个 2-layer MLP projector h<sub>t</sub> 出预测 f̂<sup>(t)</sup>。Matching loss = <b>cosine + SmoothL1</b>（式5，保角度+幅度）；可选 teacher-specific contrastive（SigLIP 按 class、PE 按 instance 做 InfoNCE）。<b>Staged</b>：先 {lang,dino} 后加 pe（式6 total loss）。<br><b>③ Rendering-Based Adaptation（§3.3）</b>：新域<b>不预算 3D pseudo-label</b>，online 采 pose→render RGB→2D teacher 在线推理→把 per-Gaussian 预测 render 回 2D（式7）→同样 matching loss 在 2D 上监督（式8）。<br><b>④ 3DGS-Aware Augmentations（§3.4）</b>：点云 jitter 对 3DGS 不合适（乱改 α/T）；提出 Rendering-Equivalent 扰动（往低 opacity splat 注 covariance-aware 位置噪声，Taylor 展开证一阶项期望为 0、外观近似不变）+ Immature-Manifold 扰动（膨胀 covariance 模拟优化早期模糊态）。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>zero-shot 语义分割（Tab1）</b>：joint 训后 ScanNet200 比 SceneSplat <b>+2.1 f-mIoU / +6.0 f-mAcc</b>，新数据 InteriorGS <b>+5.7 f-mIoU / +5.8 f-mAcc</b>，比点云法 Mosaic3D 少用 <b>8.32×</b> 数据。<b>open-vocab 实例分割（Tab2）</b>：3D-only SOTA，66 个 tail 类 <b>+7.6 mAP</b>。<b>VQA（Tab3）</b>：换掉 GaussianVLM 的 3D backbone，Nr3D Sim 20.8→22.5、R 19.2→28.8。<b>点云变体（Tab4，只用 center/color/normal）</b>：linear probing 超 Sonata（ScanNet200 36.0 vs 28.8），full finetune 5 benchmark 中 4 个 SOTA（ScanNet200 40.9，+6.5），却少用 <b>39.9×</b> 训练场景。<b>data efficiency（Tab5）</b>：20 labels 时 +4.5 mAP。render-and-distill 把存储从 ~1080GB 降到 8GB（Tab7）。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>首次</b>把多 teacher 蒸馏专门落到 3DGS（“specialize it to 3DGS for the first time”）；② 一个编码器跨语义/实例/open-vocab/VQA <b>全任务最优</b> + 极致数据效率；③ <b>点云变体惊人迁移</b>（分布 gap 下少 39.9× 数据仍 competitive Sonata）；④ <b>render-and-distill</b> 省掉昂贵 3D pseudo-label 预处理；⑤ <b>3DGS-aware 增广有理论支撑</b>（rendering-equivalent 的 Taylor 一阶项消去、二阶 bias 受 η²w(α)²Σ² 控制，集中在低 opacity splat）。</div>
+    <div class="note-h">疑问</div>
+    <div class="note-b">① <b>点云变体为何这么强</b>，论文给两个假设（3DGS 预训练≈强增广→noise-robust；多 teacher 比自监督更 data-efficient）+ 实证（Tab8 retrieval R@1 85.4% vs 79.8%、Fig6 scaling、UMAP），但“分布 gap 下迁移如此好”仍是<b>经验观察、无严格理论</b>。② <b>多 teacher 为何不互相打架</b>，靠引 Platonic representation hypothesis + Rosetta neurons 做<b>事后解释</b>（异构 teacher 有可对齐子空间，共享 backbone 学公因子 / per-teacher projector 吸收差异 / PHI-S 平衡），非设计时验证。③ offline 预计算 teacher pseudo-label 仍贵（conclusion 自承 limitation）。④ “少 39.9× 场景”对比 Sonata（自监督、数据源不同）是否<b>完全同口径</b>需留意，论文已尽量同设置对齐。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读：① Abstract 逐句 → ② Intro problem→solution→why → ③ Method 核心机制+关键公式 → ④ 实验/消融关键数值 + 全文一页总结。原文优先、引英文原句、外部概念单开背景块。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文（verbatim）：</b>“While 3DGS has emerged as a high-fidelity scene representation, <b>encoding rich, general-purpose features directly from its primitives remains under-explored</b>. We address this gap by introducing Chorus, a <b>multi-teacher pretraining</b> framework that learns a holistic feed-forward 3D Gaussian Splatting (3DGS) scene encoder by <b>distilling complementary signals from 2D foundation models</b>.”</div>
+    <div class="note-b"><b>在说什么：</b>3DGS 已是高保真"渲染"表示，但"把 3DGS 基元本身当成一种<b>可直接提取通用特征的模态</b>"几乎没人做。Chorus 填这个空：训练一个前馈 3DGS 场景编码器，从多个 2D 基础模型蒸馏<b>互补</b>信号到一个共享嵌入。<b>为什么重要：</b>过去都是给 3D 表示"贴"语义特征（attach），Chorus 主张直接"从 3D 表示里挖"特征（mine）——把 3DGS 升格为预训练的原生底座。</div>
+    <div class="note-b"><b>原文（机制句）：</b>“Chorus employs a <b>shared 3D encoder and teacher-specific projectors</b> to learn from <b>language-aligned, generalist, and object-aware teachers</b>, encouraging a shared embedding space that captures signals from high-level semantics to fine-grained structure.”</div>
+    <div class="note-b"><b>逐词指路：</b>① “shared 3D encoder + teacher-specific projectors”——一个共享骨干 + 每个老师一个轻量投影头（关键架构）。② 三类老师：language-aligned（SigLIP2，懂语言）、generalist（DINOv3，通用视觉）、object-aware（PE-Spatial，懂物体/实例）。③ 结论 “outperforms the point-cloud baseline while using <b>39.9× fewer training scenes</b>”——纯靠 3DGS 多教师蒸馏，用少得多的数据反超点云自监督 SoTA。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>Chorus = 一个共享 3DGS 编码器 + 三个互补 2D 老师（SigLIP2/DINOv3/PE-Spatial）的多教师蒸馏，产出"从高层语义到细粒度结构"通吃的 holistic 3D 嵌入，且数据效率极高（8.32×/39.9× fewer scenes）。</div>
+
+    <div class="note-h">② 📚 背景知识（外部 — 读懂 Chorus 必备）</div>
+    <div class="note-b"><b>① 3DGS（3D Gaussian Splatting）：</b>把场景表示成一堆各向异性 3D 高斯基元（每个含中心、尺度、朝向、不透明度、颜色），通过 alpha 合成快速可微渲染出多视角图像。优点：几何-外观耦合 + 实时渲染——天然适合"渲染监督"。</div>
+    <div class="note-b"><b>② 知识蒸馏 / cross-modal distillation：</b>把 2D 基础模型（CLIP/DINO 等）的先验"注入"3D，缓解 3D 标注稀缺。Chorus 把 2D 已成熟的<b>多教师聚合</b>（multi-teacher）范式<b>首次专门搬到 3DGS</b>。</div>
+    <div class="note-b"><b>③ lift-then-align 范式（SceneSplat）：</b>Chorus 的直接前作。SceneSplat 把 2D 语言特征"提升（lift）"到 3D 高斯当伪标签，训一个前馈 3DGS 编码器做开放词表语义分割。<b>局限：</b>原文 “SceneSplat’s encoder was predominantly aligned with semantic information … leaving broader downstream applications (e.g., instance grouping) and reasoning capabilities largely unexplored.”——只对齐语义、只做语义分割。Chorus 用多教师把它推广成"通用"。</div>
+    <div class="note-b"><b>④ 三个老师各管什么 + PHI-S：</b>SigLIP2（language-aligned，开放词表/语义）、DINOv3（generalist，通用判别特征）、PE-Spatial（object-aware，结合 self-alignment + SAM-logit 对齐，强空间局部性/实例感知）。因各老师激活的 scale/variance 不同，用 <b>PHI-S</b>（PCA 旋转 + 各向同性 Hadamard 缩放）标准化到单位逐通道方差、同时保留跨通道关系——原文称它 “simplifies loss balancing”（让各老师等权 \(\lambda_t\) 即可）。</div>
+
+    <div class="note-h">③ §1 Introduction — problem → 现有不足 → solution → why（闭环）</div>
+    <div class="note-b"><b>problem：</b>原文 “comparatively little attention has been paid to <b>treating the 3D representation itself as a modality from which we can directly mine general-purpose, transferable features at scale</b>.”——大家忙着给 3D 贴语义，却没把 3DGS 当成"能大规模挖通用特征"的模态。3DGS 恰恰适合：“preserves geometry–appearance primitives and supports fast differentiable rendering”。</div>
+    <div class="note-b"><b>现有不足：</b>① SceneSplat 单教师、只语义、只 semseg（见背景③）。② 此前通用 3D 理解方法各自专精一小撮任务——原文 “prior methods … typically specialize in a limited subset of tasks such as open-vocabulary tasks, semantics and instances, and VQA reasoning.” 没有一个编码器能同时通吃。</div>
+    <div class="note-b"><b>solution：</b>原文 “Chorus generalizes this paradigm with <b>multi-teacher pretraining</b> to explicitly supervise with diverse signals in order to learn a versatile 3D feature representation … producing a <b>holistic 3D scene encoder</b>.” 三类互补老师 + 共享编码器 + 每老师投影头。</div>
+    <div class="note-b"><b>why it works：</b>原文 “Our multi-teacher design teaches the scene encoder <b>breadth and complementarity</b>, capturing high-level semantics, instance grouping, and fine spatial structure within a single 3D embedding space.”——不同老师覆盖不同信号粒度（语义/实例/结构），强制对齐到同一嵌入 → 单个嵌入同时具备多种下游所需能力。</div>
+
+    <div class="note-h">Q&amp;A · 为什么要"多教师"而不是单教师？为什么偏偏是这三个？</div>
+    <div class="note-b"><b>多教师的理由：</b>单教师（如 SceneSplat 只用语言对齐）的嵌入只擅长它对齐的那类任务（语义），换到实例分组/推理就乏力。多教师把"互补"的监督灌进同一编码器，让一个嵌入同时编码语义、实例、结构——这是"holistic（通吃）"的来源。<b>三个老师的分工（覆盖信号谱）：</b>SigLIP2 提供"<b>语言对齐的高层语义</b>"（支撑开放词表/VQA）；DINOv3 提供"<b>通用判别视觉特征</b>"（泛化、迁移的底座）；PE-Spatial 提供"<b>物体/实例感知 + 空间局部性</b>"（支撑实例分割，尤其它用 SAM-logit 对齐补强了空间精度）。三者从"粗语义→细结构"互补，缺一类就掉一类任务的能力。<b>关键工程点：</b>PHI-S 标准化抹平了老师间量纲差异，使等权融合就够，不必精调各损失权重。</div>
+
+    <div class="note-h">④ §3.1 Lifting 2D Teachers — 把 2D 特征"提升"到高斯（式2–3 + PHI-S）</div>
+    <div class="note-b"><b>3DGS 与渲染（式1–2）：</b>场景是 \( \mathcal{G}=\{(\mathbf{x}_i,\mathbf{s}_i,\mathbf{q}_i,\alpha_i,\mathbf{c}_i)\}_{i=1}^{N} \)（中心/尺度/四元数朝向/不透明度/颜色）。对视点 \(p\)、像素 \(\mathbf{u}\)，颜色按 alpha 合成：\( \mathbf{C}(\mathbf{u}\mid p)=\sum_{i\in\mathcal{S}_{d,\mathbf{u}}} w_i(p,\mathbf{u})\,\mathbf{c}_i \)，其中合成权重 \( w_i=T_i\,\alpha_i(\mathbf{u}\mid p),\ T_i=\prod_{j\lt i}(1-\alpha_j(\mathbf{u}\mid p)) \)（\(T_i\) 是透射率）。</div>
+    <div class="note-b"><b>归一化 uplifting（式3，核心）：</b>设 2D 老师在视点 \(p\)、像素 \(\mathbf{u}\) 的特征为 \(F_{p,\mathbf{u}}\)，要赋给高斯 \(i\) 的目标特征 \(f_i\)。<b>复用与渲染同一套权重</b>做加权平均：</div>
+    <div class="note-b">\[ f_i=\sum_{(p,\mathbf{u})\in\mathcal{S}_i}\bar w_i(p,\mathbf{u})\,F_{p,\mathbf{u}},\qquad \bar w_i(p,\mathbf{u})=\frac{w_i(p,\mathbf{u})}{\sum_{(p',\mathbf{u}')\in\mathcal{S}_i} w_i(p',\mathbf{u}')} \]</div>
+    <div class="note-b">即：高斯 \(i\) 的伪标签 = 所有"它参与渲染过的视图-像素"上 2D 老师特征的渲染权重加权平均。<b>之后做 teacher standardization（PHI-S）</b>得 \( \tilde F_{p,\mathbf{u}} \)。这步把 2D 老师的知识"凝固"成 3D 高斯上的逐基元伪标签，是离线监督的来源。</div>
+
+    <div class="note-h">⑤ §3.2 Multi-Teacher Pretraining — 架构与损失（式4–6）</div>
+    <div class="note-b"><b>共享编码器 + 投影头（式4）：</b>共享 3DGS 编码器 \( Z=g_\theta(\mathcal{G})\in\mathbb{R}^{N\times d_z} \)（骨干用 Sonata 的 5-stage transformer、512 维瓶颈）。每个老师 \(t\in\{\text{lang},\text{dino},\text{pe}\}\) 配一个轻量投影头 \( \hat f^{(t)}=h_t(Z)\in\mathbb{R}^{N\times d_t} \)（2 层 MLP + LayerNorm + GELU）。<b>"共享骨干 + 分头"是多教师的关键</b>：骨干学通用表示，分头各自对齐到对应老师空间，互不打架。</div>
+    <div class="note-b"><b>匹配损失（式5）：</b>\( \mathcal{L}^{(t)}_{\text{match}}=\frac{1}{|M^{(t)}|}\sum_{i\in M^{(t)}}\big[\lambda_1(1-\cos(\hat f^{(t)}_i,\tilde f^{(t)}_i))+\lambda_2\,\mathrm{SmoothL1}(\hat f^{(t)}_i,\tilde f^{(t)}_i)\big] \)。<b>cosine 管角度对齐、SmoothL1 管幅值</b>，两者兼顾（cosine 前先 \(\ell_2\) 归一化）；\(M^{(t)}\) 是由特征范数/可见性导出的有效性掩码。</div>
+    <div class="note-b"><b>可选对比损失 + 总目标（式6）：</b>当源数据有语义/实例标签时，加紧凑对比正则——SigLIP2 老师按<b>类</b>池化均值做双向 InfoNCE（语义），PE-Spatial 老师按<b>实例</b>池化做 InfoNCE。总目标 \( \mathcal{L}_{\text{total}}(e)=\sum_{t\in\mathcal{A}(e)}\lambda_t\big(\mathcal{L}^{(t)}_{\text{match}}+\eta_t\mathcal{L}^{(t)}_{\text{con}}\big) \)，其中 \(\mathcal{A}(e)\) 是第 \(e\) epoch 的<b>活跃老师集</b>（staged pretraining：先 {lang,dino} 起步，后加 pe）。实测 \(\lambda_t=1.0\)、\(\eta_t=0.02\) 等权即可（得益于 PHI-S）。</div>
+
+    <div class="note-h">Q&amp;A · uplift（2D→3D）到底怎么把 2D 老师特征"搬"到高斯上？</div>
+    <div class="note-b"><b>核心思路：</b>3DGS 渲染本身就是"3D 高斯 → 2D 像素"的加权合成（式2 的 \(w_i\)）。Uplift 把这个过程<b>反过来用</b>：既然像素 \(\mathbf{u}\) 的颜色是若干高斯按 \(w_i\) 加权来的，那像素上的 2D 老师特征也按<b>同一套 \(w_i\)</b> 反向分摊回参与渲染的高斯（式3），并对每个高斯把它在所有视图里收到的贡献做归一化加权平均。<b>为什么复用渲染权重而不是简单最近邻投影：</b>渲染权重天然编码了"哪个高斯对这个像素贡献多大"（含遮挡/透射率 \(T_i\)），用它分摊特征比几何最近邻更符合"谁真正被看到"，从而伪标签更干净。这一步把 2D 老师的语义/结构知识转成 3D 高斯上的逐基元监督，编码器再去拟合它。</div>
+
+    <div class="note-h">⑥ §3.3 Rendering-Based Adaptation（render-and-distill，式7–8）</div>
+    <div class="note-b"><b>动机：</b>换到新域时，离线预计算 3D 伪标签很贵（原文：为 800 训练场景预存老师特征需 <b>~1 TB</b> 存储）。Chorus 用 3DGS 自带的渲染能力做<b>在线</b>蒸馏：给新场景，采相机位姿、可见性剔除、对渲染出的 RGB 在线跑 2D 老师得 \(F^{(t)}_{p,\mathbf{u}}\)，同时用当前编码器+投影头预测 \(\hat f^{(t)}_i\)，再用<b>同样的合成权重</b>渲染出推理特征图（式7）：\( \hat F^{(t)}_{p,\mathbf{u}}=\sum_{i\in\mathcal{S}_{p,\mathbf{u}}}w_i(p,\mathbf{u})\,\hat f^{(t)}_i \)。</div>
+    <div class="note-b"><b>适配损失（式8）：</b>在有足够透射率的有效像素集 \(\Omega\) 上，复用式5 的匹配损失（同样 cosine+SmoothL1）但作用在 2D 特征图上：\( \mathcal{L}^{(t)}_{\text{img}}=\frac{1}{|\Omega|}\sum_{(p,\mathbf{u})\in\Omega}\ell_{\text{match}}(\hat F^{(t)}_{p,\mathbf{u}},\tilde F^{(t)}_{p,\mathbf{u}}) \)。<b>效果：</b>每视图仅多 ≤0.1s 在线特征光栅化、免去 ~1TB 存储；在 InteriorGS 上多训 100 场景，linear probing mIoU +2.7%。视图采样用最远点采样保覆盖 + 按可见性重叠配对保跨视一致。</div>
+
+    <div class="note-h">⑦ §3.4 3DGS-Aware Augmentations（为什么点云增强不行）</div>
+    <div class="note-b"><b>问题：</b>原文 “Point-cloud augmentations (dropout, elastic distortions, color/geometry jitter) are designed for i.i.d. sets of points … In contrast, a 3DGS scene is an <b>optimized parameter space</b>. Naïve point-cloud jitter alters \(\alpha_i\) and \(T_i\) in ways that are not motivated for splat-based rendering”——点云增强假设点是 i.i.d. 的直接观测，但 3DGS 是<b>优化出来的参数</b>，乱 jitter 会破坏不透明度/透射率，实测掉点。</div>
+    <div class="note-b"><b>两种 3DGS-aware 增强：</b>① <b>Rendering-Equivalent perturbation</b>——只扰动"渲染出近似相同图像"的参数，主要给低不透明度 splat 注入协方差感知的小位置噪声（渲染等价 → 不改变监督语义）；② <b>Immature-Manifold perturbation</b>——选择性放大每个 splat 的协方差，模拟优化早期（更模糊）阶段。两者都基于渲染方程（式2）与 3DGS 优化动力学设计。<b>意义：</b>增强必须尊重"3DGS 是参数空间"这一本质，否则适得其反。</div>
+
+    <div class="note-h">⑧ §4.1 主结果一 — 开放词表语义分割（Table 1 真实数值）</div>
+    <div class="note-b"><b>设置：</b>零样本语义分割，4 个细粒度基准（ScanNet200/Matterport3D/ScanNet++/自建 InteriorGS）；报 foreground mIoU/mAcc（排除墙/地/天花板）。✾=3DGS 模态输入。</div>
+    <div class="note-b"><b>Table 1（f-mIoU / f-mAcc，joint 训练 SN+SN+++MP3D，×2.92 数据）：</b>
+<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0;color:#d7dcff">
+<tr style="color:#ffd35c"><td style="border:1px solid #2a2f5c;padding:3px">方法</td><td style="border:1px solid #2a2f5c;padding:3px">ScanNet200</td><td style="border:1px solid #2a2f5c;padding:3px">MP3D</td><td style="border:1px solid #2a2f5c;padding:3px">ScanNet++</td><td style="border:1px solid #2a2f5c;padding:3px">InteriorGS</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">Mosaic3D (点云,×24.3)</td><td style="border:1px solid #2a2f5c;padding:3px">15.7 / 28.3</td><td style="border:1px solid #2a2f5c;padding:3px">13.1 / 27.7</td><td style="border:1px solid #2a2f5c;padding:3px">18.0 / 29.0</td><td style="border:1px solid #2a2f5c;padding:3px">9.4 / 16.0</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">SceneSplat (3DGS)</td><td style="border:1px solid #2a2f5c;padding:3px">22.5 / 41.7</td><td style="border:1px solid #2a2f5c;padding:3px">14.0 / 32.4</td><td style="border:1px solid #2a2f5c;padding:3px">28.6 / 50.9</td><td style="border:1px solid #2a2f5c;padding:3px">10.0 / 18.3</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">Chorus (本文,3DGS)</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">24.6 / 47.7</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">18.7 / 38.5</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">29.6 / 53.5</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">15.7 / 24.1</td></tr>
+</table>
+<b>读表：</b>Chorus 全面领先 SceneSplat（ScanNet200 +2.1% f-mIoU / +6.0% f-mAcc），新数据 InteriorGS 上 +5.7% / +5.8%；且 “using <b>8.32× less training data</b> than the point-cloud-based pretraining method”。验证了多教师 holistic 嵌入的语义优势 + 数据效率。</div>
+
+    <div class="note-h">⑨ §4.1 主结果二 — 实例分割（Table 2）+ 3D 问答（Table 3）</div>
+    <div class="note-b"><b>开放词表实例分割（Table 2，ScanNet200，mAP/AP50/head/tail）：</b>仅用 3D 输入时 Chorus SoTA：mAP <b>19.6</b>（vs Mosaic3D 17.8），尤其 <b>tail（66 个稀有类）mAP 13.0 vs Mosaic3D 5.4 = +7.6</b>。原文：“our encoder’s strong open-vocabulary semantic understanding translates to the instance level … especially on the 66 tail classes.”——语义能力迁移到实例级，且对稀有类识别大幅提升（PE-Spatial 实例老师的功劳）。注：3D+2D 方法（Open3DIS 等）mAP 更高但需昂贵多视图处理，Chorus 是纯前馈 3D。</div>
+    <div class="note-b"><b>3D 场景问答（Table 3）：</b>把 GaussianVLM 的 3D 骨干<b>直接换成 Chorus</b>（只喂最后一层、其余不变）。ScanQA：EM@1 14.4→<b>14.8</b>、ROUGE 34.8→<b>37.4</b>；Nr3D：Sim 48.2→<b>50.6</b>、ROUGE 19.2→<b>28.8</b>（大涨）。原文：“swapping in Chorus yields consistent improvements on both benchmarks”，且只用最后一层 “lighter and faster”。<b>诚实标注：</b>ScanQA 的 METEOR 由 22.9 微降到 22.5（个别指标小波动），整体仍一致提升。</div>
+
+    <div class="note-h">⑩ §4.2 point-cloud 变体 + 数据效率（最反直觉的发现）</div>
+    <div class="note-b"><b>设置：</b>额外训一个<b>点云兼容</b>变体——只用高斯的中心、颜色、估计法向当输入（丢掉尺度/朝向/不透明度），其余损失/信号不变，用于和点云编码器公平比。</div>
+    <div class="note-b"><b>惊人结果：</b>原文 “this variant is competitive with the recent self-supervised point cloud pretraining method <b>Sonata</b> while using <b>~39.9× fewer training scenes</b>.” 即：丢掉 3DGS 专属参数、退化成点云输入，靠多教师蒸馏仍能逼平专门的点云自监督 SoTA，而训练场景少近 40 倍。原文归因：“our multi-teacher pretraining successfully mines semantics, spatial locality, and instance grouping that <b>carry over</b> when the encoder is evaluated on point-cloud tasks, despite the distribution difference.”——多教师挖到的语义/空间局部性/实例分组是跨模态可迁移的。</div>
+
+    <div class="note-h">Q&amp;A · 为什么点云变体能 work？数据效率为何这么高？</div>
+    <div class="note-b"><b>能 work 的原因：</b>多教师蒸馏学到的不是"3DGS 参数的表面统计"，而是"语义 + 空间局部性 + 实例分组"这些<b>与输入模态弱相关的高层结构</b>。即便把输入退化成点云（中心+颜色+法向），编码器仍能从这些通用结构受益，所以能迁移到只支持点云的基准并逼平 Sonata。<b>数据效率高的原因：</b>① 老师是已在海量 2D 上预训练好的强模型，蒸馏等于"借用"了它们消化过的世界知识，3D 端不必从零学，少量场景即可对齐；② 三教师互补 + PHI-S 等权融合让监督密度高、信号干净；③ 渲染权重 uplift 提供的逐基元伪标签比稀疏人工标注密集得多。三者叠加 → 8.32×/39.9× fewer scenes 仍 SoTA。</div>
+
+    <div class="note-h">⑪ §4.2–4.3 探针实验 &amp; 数据效率（特征质量的压力测试）</div>
+    <div class="note-b"><b>三类探针：</b>原文用 linear probing（冻结编码器、只训一个线性头）、decoder probing（冻结编码器、训一个解码器）、以及 full finetuning，在语义/实例分割上 across ScanNet/ScanNet200/ScanNet++/Matterport3D/InteriorGS 评测，目的是 “assess the feature quality across the same datasets.”<b>为什么 linear probing 关键：</b>线性头几乎没有表达力，linear-probing 分数高 ⇒ 编码器输出的特征<b>本身就线性可分、语义清晰</b>，而不是靠下游大模型硬拟合出来的——这是判断"预训练是否真学到通用表示"的金标准。</div>
+    <div class="note-b"><b>数据效率研究：</b>原文 “conduct data-efficiency studies that restrict supervision to limited scenes and sparse annotations, thereby <b>stress-testing how much the pretrained encoder alone carries</b>.”——把监督砍到极少场景 + 稀疏标注，看编码器单独能扛多少。结合 render-and-distill 适配，在 InteriorGS 多训 100 场景即 linear probing <b>+2.7% mIoU</b>。<b>结论：</b>高 linear-probing + 低数据仍强，三者印证 Chorus 的预训练嵌入是"开箱即用的高质量通用特征"，下游只需轻量读出，呼应 8.32×/39.9× fewer scenes 的数据效率主线。</div>
+
+    <div class="note-h">Q&amp;A · 为什么把 Chorus 当 VLM 的"场景 tokenizer"，且只喂最后一层就够？</div>
+    <div class="note-b"><b>思路：</b>Chorus 把整个 3DGS 场景编码成结构化的逐高斯嵌入，相当于给 LLM 提供一组"场景 token"，让语言模型能对 3D 场景做问答/grounding。<b>关键观察：</b>GaussianVLM 原本要用 SceneSplat 的<b>多层</b>特征拼接，而换成 Chorus 后<b>只喂最后一层</b>就一致提升（ScanQA EM@1 14.4→14.8、Nr3D ROUGE 19.2→28.8）。<b>为什么够：</b>多教师预训练让最后一层嵌入已经 “holistic”——同时编码语义/实例/结构，信息密度足够，不必再靠多层拼接去补不同粒度的信息；副作用是 “lighter and faster”（更轻更快）。<b>意义：</b>这直接证明 Chorus 的嵌入语义可被语言模型<b>直接消费</b>，把"3D 表示学习"和"多模态推理"接到了一起——一个通用嵌入服务从分割到语言推理的全谱下游。</div>
+
+    <div class="note-h">📌 全文一页总结（问题 → 方法 → 实验 → takeaway）</div>
+    <div class="note-b"><b>问题（§1）：</b>3DGS 被当渲染表示而非"可挖通用特征的模态"；前作 SceneSplat 单教师、只语义、只 semseg，缺一个能通吃语义/实例/推理的 holistic 3D 编码器。</div>
+    <div class="note-b"><b>方法（§3）：</b>多教师预训练——共享 3DGS 编码器 \(g_\theta\) + 每老师轻量投影头，从 SigLIP2(语义)/DINOv3(通用)/PE-Spatial(实例) 三类互补老师蒸馏；2D 特征经"渲染权重 uplift"（式3）变 3D 逐基元伪标签 + PHI-S 标准化；匹配损失(cos+SmoothL1,式5) + 可选 InfoNCE 对比 + staged 总目标(式6)；render-and-distill 在线适配(式7–8)免 ~1TB 预存；3DGS-aware 增强尊重"参数空间"本质。</div>
+    <div class="note-b"><b>实验（§4）：</b>开放词表 semseg（Table1，ScanNet200 +2.1% f-mIoU、InteriorGS +5.7%，8.32× less data）、实例分割（Table2，tail +7.6 mAP）、3D 问答（Table3，Nr3D ROUGE 19.2→28.8）全面 SoTA；点云变体用 39.9× fewer scenes 逼平 Sonata。</div>
+    <div class="note-b"><b>Takeaway（≥3 条 + 适用边界）：</b><br>① <b>3DGS 是一等模态：</b>不必给 3D"贴"特征，可直接把 3DGS 当预训练底座"挖"通用特征——渲染能力让 uplift（离线）与 render-and-distill（在线）两条监督路都通。<br>② <b>多教师互补 = holistic：</b>语义(SigLIP)/通用(DINO)/实例(PE) 三类信号灌进同一共享嵌入，使单个编码器通吃 semseg/instance/VQA，破解"各方法各专精一小撮任务"的碎片化。<br>③ <b>蒸馏即数据效率：</b>借用 2D 大模型消化过的知识，3D 端用 8.32×/39.9× 更少场景即达/超 SoTA；学到的高层结构甚至跨模态迁移到点云。<br><b>适用边界 / 诚实：</b>(a) 纯 3D 输入下实例分割仍逊于 3D+2D 方法（Open3DIS mAP 32.8 vs Chorus 19.6）——代价是后者需昂贵多视图处理，定位不同；(b) 多数公式细节（对比损失 InfoNCE 全式、PHI-S、增强方程）在 supplement [需查附录]；(c) 个别 VQA 指标（ScanQA METEOR）有微小波动，非全项第一；(d) 强依赖 2D 老师质量与 3DGS 重建质量，老师/重建差时上限受限 [推测，论文未系统消融老师替换]。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-chorus-multi-teacher-pretraining-for-holistic-3d-gaussi/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Chorus Framework. (a) Multi-Teacher Pretraining. A feed-forward 3DGS scene encoder with per-teacher projectors distills complementary signals—language-aligned, generalist, and object-aware—into a shared embedding. (b) Example Feature PCA (results on novel scenes). At inference we input the full 3DGS scene; PCA on encoder features presents clear semantic awareness despite domain shift. (c</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-chorus-multi-teacher-pretraining-for-holistic-3d-gaussi/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Chorus Overview. (a) Multi-Teacher Pretraining. We train a feed-forward 3DGS scene encoder to distill complementary signals–language-aligned (SigLIP), generalist (DINO), and object-aware (PE)–from 2D teachers. This knowledge is transferred into a shared embedding space via lightweight per-teacher projectors and losses. To accelerate out-of-domain adaptation, we support finetuning the enc</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-chorus-multi-teacher-pretraining-for-holistic-3d-gaussi/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Rendering-Based View Sampling and Pairing: (a) Camera Location Sampling: We use Furthest Point Sampling to select camera positions that achieve broad spatial coverage across the entire navigable scene space. (b) Visibility Culling: For each location, we sample view angles and track the visibility of the 3D Gaussians across frames. (c) View Pairing and Selection: We ob- tain a minimum 2D </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-chorus-multi-teacher-pretraining-for-holistic-3d-gaussi/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. 2D Adaptation Ablation. Performance improves with higher teacher render resolution (left) and more adaptation scenes (right). The left x-axis denotes the 2D teacher’s feature resolution, formatted as (feature size) × bilinear upsample factor.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-chorus-multi-teacher-pretraining-for-holistic-3d-gaussi/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Scaling Trend Together With Rendering-Based Adaptation. Linear probing performance on InteriorGS vs. num- ber of pretraining scenes. We compare our multi-teacher pretrain- ing with the self-supervised pretraining [63] on 3DGS; Chorus scales faster and to higher accuracy. Our adaptation recipe yields a +2.7% mIoU gain on this new dataset using only 100 scenes.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-chorus-multi-teacher-pretraining-for-holistic-3d-gaussi/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. VLM Qualitative Results. We visualize a ScanNet scene with object grounding (left) and QA results (right).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-chorus-multi-teacher-pretraining-for-holistic-3d-gaussi/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Design Choice Ablation. We validate the choices by evaluating zero-shot segmentation on ScanNet++ Val using a sub- set of training scenes. SmoothL1 loss, 3DGS-aware augmenta- tions, introducing PE-Spatial in a separate stage, and an instance- level contrastive term each provide incremental gains.</figcaption></figure>
+    </div>
+  </div></body></html>

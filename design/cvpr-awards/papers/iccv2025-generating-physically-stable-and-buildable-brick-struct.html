@@ -1,0 +1,205 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Generating Physically Stable and Buildable Brick Structures from Text</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">ICCV 2025</span> &nbsp; <span class="badge b-best_paper">🏆 Best Paper</span></div>
+    <h1>Generating Physically Stable and Buildable Brick Structures from Text</h1>
+    <div class="au2" style="color:var(--mut)">Ava Pun · Kangle Deng · Ruixuan Liu · Deva Ramanan · Changliu Liu · Jun-Yan Zhu</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/ICCV2025/papers/Pun_Generating_Physically_Stable_and_Buildable_Brick_Structures_from_Text_ICCV_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Generating%20Physically%20Stable%20and%20Buildable%20Brick%20Structures%20from%20Text">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:iccv2025-generating-physically-stable-and-buildable-brick-struct -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">（ICCV 2025 <b>Best Paper</b>，CMU Jun-Yan Zhu 组）首个<b>从文本直接生成"物理稳定 + 可搭建"的互锁积木（LEGO）结构</b>的方法 BrickGPT。核心洞察：把自回归 LLM 的"next-token prediction"<b>改造成"next-brick prediction"</b>——把积木设计写成简单文本格式、当文本生成任务做。稳定性靠两招保证：训练用大规模稳定数据集；推理时用<b>有效性检查（拒绝采样）+ 物理感知回滚（rollback）</b>，按物理定律和装配约束剪掉不可行的砖。生成结果可<b>人工手搭、也可双臂机器人自动装配</b>。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">3D 生成模型能出高保真<b>数字</b>设计，但常<b>无法物理实现</b>：① 难用标准部件装配；② 即使能装也<b>物理不稳</b>（悬空/坍塌/断开）。积木(LEGO)是好试验场：教育/艺术/原型常用、部件标准可复现。已有积木方法只能<b>从给定 3D 形状</b>转换[46] 或<b>单一类别</b>[13,14]。本文目标=<b>从自由文本</b>直接生成且保证：<b>physically stable</b>（建在底板、无悬空坍塌）+ <b>buildable</b>（兼容标准砖、可逐砖被人/机器人搭）。</div>
+    <div class="note-h">核心方法（LLM 微调 + 物理回滚，关键公式）</div>
+    <div class="note-b"><b>① 表示与微调（§4.1）</b>：结构 B=[b1,…,bN]，每砖 bi=[hi,wi,xi,yi,zi]（h/w=X/Y 方向长度，(x,y,z)=最靠原点的 stud 位置，20³ 网格）。自定义文本格式每砖一行 "{h}x{w} ({x},{y},{z})"（比 LDraw 更紧凑、含尺寸、省去冗余朝向/缩放），按<b>从底到顶 raster-scan</b> 排序、每砖≈10 token。指令模板 "Create a LEGO model of {caption}."，微调 <b>LLaMA-3.2-1B-Instruct</b>，自回归 p(b1..bN)=∏ p(bi|b1..bi−1,θ)（式1）。<b>② 物理稳定性（§4.2）</b>：力模型(Fig 4)含重力、与上下砖的竖直力、knob 连接与相邻砖的水平剪力；解非线性规划(式3,Gurobi)求<b>静力平衡</b>的最小内应力力分布，得每砖 stability score si(式4)：无法平衡或所需摩擦超过摩擦容量 FT 则 si=0(不稳)，否则 si=(FT−Dmax_i)/FT；稳定要求 si&gt;0 ∀i。<b>③ 何时查 + 怎么修</b>：不逐砖查(慢、且搭建中途常不稳但完工稳)。改用 <b>brick-by-brick 拒绝采样</b>（每砖须格式合法、在世界内、与已有砖无碰撞 Vt∩Vi=∅，违则重采）+ <b>物理感知回滚</b>（完工后算稳定性，若不稳则回退到第一个不稳砖之前 B*=[b1..b_{minI−1}] 再续生成，重复至稳，Algorithm 1）。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">数据集 <b>StableText2Brick</b>：47,000+ 结构、28,000+ 物体、21 类（ShapeNetCore voxel 化 + delete-and-rebuild + 稳定性过滤 + GPT-4o 24 视角生 caption）。主表(Table 1, 250 prompt)：<b>BrickGPT 100% valid / 98.8% stable / mean stability 0.996 / min 0.915 / CLIP 0.324</b>，全面超 baseline——Hunyuan3D-2 等 mesh→brick 仅 75.2% stable（加本文稳定性分析后 88.4%），5-shot ICL 仅 2.4% valid、0-shot 0%。<b>消融</b>：去拒绝采样+回滚 valid 仅 37.2%、stable 12.8%；只去回滚 valid 100% 但 stable 仅 24.0%——<b>拒绝采样保 validity、回滚保 stability，缺一不可</b>。中位回滚 2 次、中位生成 40.8s/结构。可双臂机器人自动装配、可文本上色/贴图(FlashTex)。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>范式迁移</b>："next-token"→"next-brick"，把 LLM 的序列建模与语言理解能力直接迁到物理结构设计，不需中间 voxel 表示。② <b>训练-推理双重保险</b>：训练只喂稳定数据 + 推理用物理回滚剪枝——把"硬物理约束"嵌进自回归生成，而非生成后再筛。③ <b>真·可实现</b>：不止数字模型，标准砖即可，人工与机器人都验证过搭建；连 buildable 顺序(raster-scan 从底到顶)都对齐真实装配。④ <b>回滚 &gt; 逐砖检查</b>的洞察：中途不稳但完工稳的结构很多，逐砖查会过度约束探索空间。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① 受限于 20³ 网格 + ShapeNetCore 21 类（排除 cuboid 类），<b>分辨率与类别覆盖有限</b>，超出域的复杂/大型结构能力正文未量化。② 稳定性分析单结构 ~0.35s、加回滚后中位 40.8s/结构，<b>非实时</b>；最坏需多达 100 次回滚。③ 力模型/NLP 细节（FT=0.98N、λ=1e-3、μ=1e-6 等）与训练细节多在 Appendix，<b>正文未给全</b>。④ 砖库为 1-unit-tall 轴对齐 cuboid，<b>不含斜砖/特殊件</b>，表达力受砖型限制。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文 57.8k 字符 / 12 页提取）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）逐句精读</div>
+    <div class="note-b"><b>原文逐句 + 中文指路：</b><br>
+    1) <i>"We introduce BRICKGPT, the first approach for generating physically stable interconnecting brick assembly models from text prompts."</i> → 首个"从文本生成<b>物理稳定、可互锁拼接</b>积木结构"的方法。<br>
+    2) <i>"we construct a large-scale, physically stable dataset of brick structures, along with their associated captions, and train an autoregressive large language model to predict the next brick to add via next-token prediction."</i> → 造数据集 + 训练自回归 LLM，把"下一个 token"预测变成"<b>下一块砖</b>"预测。<br>
+    3) <i>"we employ an efficient validity check and physics-aware rollback during autoregressive inference, which prunes infeasible token predictions using physics laws and assembly constraints."</i> → 推理期用<b>有效性检查 + 物理感知回滚</b>剪掉违反物理/装配约束的预测。<br>
+    4) <i>"We also develop a text-based brick texturing method to generate colored and textured designs."</i> → 还能上色/贴纹理。<br>
+    5) <i>"We release our new dataset, StableText2Brick, containing over 47,000 brick structures of over 28,000 unique 3D objects accompanied by detailed captions."</i> → 开源 47k+ 结构 / 28k+ 物体 数据集。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>把"积木搭建"形式化成<b>自回归文本生成</b>——微调 LLaMA-3.2-1B 逐块预测 "{h}x{w} (x,y,z)"，训练数据来自新建的 StableText2Brick（ShapeNet 体素化 + 删重建 + 稳定性过滤 + GPT-4o 描述）；推理期叠加<b>逐砖拒绝采样(格式/库内/不碰撞)+ 物理感知回滚(失稳就退到第一块失稳砖之前重生成)</b>，保证结果既贴文本又真能搭起来不塌，且能被人/双机械臂装配。</div>
+
+    <div class="note-h">② §1 Introduction · problem（可实现性的两大挑战）</div>
+    <div class="note-b">现有 3D 生成擅长几何/外观，但 <i>"these digital designs often cannot be physically realized due to two key challenges. First, the objects may be difficult to assemble using standard components. Second, the resulting structure may be physically unstable even if assembly is possible. Without proper support, parts of the design could collapse, float, or be disconnected."</i> → 两难：① 难用<b>标准件</b>装配；② 即便能装也可能<b>失稳</b>（塌/悬空/断开）。<br>
+    选积木(LEGO)为载体的理由：<i>"widely used in education, artistic creation, and manufacturing prototyping… they can serve as a reproducible benchmark, as all standard components are readily available."</i> 已有积木方法的局限：<i>"existing approaches primarily create structures from a given 3D object or focus on a single object category."</i>——多是"给定 3D 形状再转积木"或限定单类目。</div>
+
+    <div class="note-h">③ §1 Introduction · 两条硬目标 + key insight</div>
+    <div class="note-b"><b>目标（设计须满足）：</b>• <b>Physically stable</b>：<i>"Built on a baseplate with strong structural integrity, without floating or collapsing bricks."</i> • <b>Buildable</b>：<i>"Compatible with standard toy brick pieces and able to be assembled brick-by-brick by humans or robots."</i><br>
+    <b>Key insight：</b><i>"repurposing autoregressive large language models, originally trained for next-token prediction, for next-brick prediction."</i> 把积木设计写成自回归文本生成任务，<b>训练与推理双管齐下</b>地注入物理约束：训练用稳定数据集；推理用 validity check + physics-aware rollback。</div>
+
+    <div class="note-h">📚 背景知识：自回归 LLM / SDS-free / 稳定性分析</div>
+    <div class="note-b"><b>① 自回归 LLM 生成 3D：</b>近期 MeshGPT/PolyGen/LLaMA-Mesh[81] 等把 3D mesh 当 token 序列用 transformer 生成；LLaMA-Mesh 证明 LLM 微调后能<b>纯文本输出</b> 3D 形状。本文不同点：生成的是<b>互锁积木结构</b>（带装配/物理约束），不是 mesh。<br>
+    <b>② 与 text-to-3D(DreamFusion/SDS) 的区别：</b>主流 text-to-3D 优化 NeRF/mesh 求高保真几何外观，但<b>不考虑真实装配与稳定性</b>，无法直接搭出来。<br>
+    <b>③ 稳定性分析[38] StableLego：</b>把"结构会不会塌"形式化成<b>静力平衡</b>问题——每块砖受重力、上下砖竖直力、knob 连接与相邻砖的水平(剪)力；解非线性规划求一组让全结构静平衡、内应力最小的力分布，由此给每块砖打 stability score。</div>
+
+    <div class="note-h">③b §2 Related Work · 积木生成前人工作与本文差异</div>
+    <div class="note-b"><b>给定 3D 形状再转积木（主流但受限）：</b>已有大量工作研究"给参考 3D 形状、生成积木结构"。<i>"Existing works formulate the generation as an optimization problem guided by hand-crafted heuristics, such as ensuring that all bricks are interconnected and minimizing the number of bricks."</i> 代表作 Legolization[46]（Luo et al.）<i>"use stability analysis to find weak structural parts and rearrange the local brick layout to generate physically stable designs"</i>，本文的 delete-and-rebuild 数据构造与稳定性分析正是沿用/扩展这一脉络。还有 Kim/Liu 等把它形式化成<b>规划问题</b>顺序填充目标 3D 模型。但 <i>"these methods only generate designs given an input 3D shape, assuming a valid brick structure exists, which is difficult to verify in practice."</i>——都假设"已有 3D 形状且其积木解存在"，难验证，且不能直接从文本生成。<br>
+    <b>学习式积木生成（少且受限）：</b>Thompson et al.[72] 用深度图生成模型编码砖连通性，但 <i>"limited to generating simple classes using a single brick type"</i>；Ge et al.[14] 用扩散模型预测语义体素再转 micro building，<i>"produces impressive results for a single category"</i>（单类目）；Goldberg et al.[15] Blox-Net 查询 VLM 生成装配结构，但 <i>"use regular building blocks instead of bricks with interlocking connections, and thus the structures have limited expressiveness"</i>（无互锁、表达力有限）；Lennon et al.[31] Image2Lego 把图像体素化再启发式转砖，<i>"without considering physical constraints."</i><br>
+    <b>本文差异：</b><i>"our method performs the text-to-brick task without requiring intermediate voxel representations"</i>——直接<b>从自由文本</b>生成 3D 互锁积木结构，并<b>显式保证物理稳定与可装配</b>，是<i>"the first attempt to incorporate physics-aware constraints into text-based brick assembly structure generation."</i></div>
+
+    <div class="note-h">④ §3 Dataset · StableText2Brick + 砖表示</div>
+    <div class="note-b"><b>规模：</b>47,000+ 结构，28,000+ 唯一 3D 物体，<b>21 个 ShapeNetCore 类目</b>（选多样、排除像长方体的类）。每结构配一组文本描述 + 稳定性分数。<br>
+    <b>砖表示：</b>固定底板上 \( B=[b_1,\dots,b_N] \)，每块 \( b_i=[h_i,w_i,x_i,y_i,z_i] \)：\(h_i,w_i\) 为 X/Y 方向长度，\((x_i,y_i,z_i)\) 是最靠近原点的 stud 位置；网格 \(H{=}W{=}D{=}20\)（\(20\times20\times20\)）。<br>
+    <b>构建流程（Fig.2）：</b>ShapeNet mesh → 体素化下采样到 \(20^3\) → <b>delete-and-rebuild</b> 算法生成砖布局 → 每物体随机生成多个变体（增稳定概率+多样性）→ 用稳定性分析[38]<b>过滤掉失稳结构</b> → 24 视角渲染拼图喂 <b>GPT-4o</b> 出 5 条不同详细度描述（<i>"ask GPT-4o to omit color information and focus only on geometry"</i>）。典型(&lt;200 砖)结构稳定性分析平均 ≈ <b>0.35 秒</b>。</div>
+
+    <div class="note-h">⑤ §4.1 模型微调 · 自定义文本格式（公式1）</div>
+    <div class="note-b"><b>基模型：</b>LLaMA-3.2-1B-Instruct[11]。<i>"the base model can generate brick structures through in-context learning… However, the generated structures fail to follow the input prompt, and they contain intersecting or disconnected bricks."</i>——故必须用 StableText2Brick 微调。<br>
+    <b>指令格式：</b><i>"(user) Create a LEGO model of {caption}. (assistant) {brick-structure}."</i><br>
+    <b>为什么不用 LDraw：</b>① LDraw <i>"does not directly include brick dimensions"</i>（缺尺寸，难校验放置）；② 含冗余的任意 orientation/scale。<b>自定义格式：</b>每行一块砖 "{h}x{w} ({x},{y},{z})"，全是 1 单位高、轴对齐立方体，h/w 的顺序编码绕竖轴朝向；按 raster-scan 自底向上排序；<b>每块砖=10 tokens</b>，省 token 又保留 3D 推理必需的尺寸。<br>
+    <b>自回归：</b>\[ p(b_1,\dots,b_N\mid\omega)=\prod_{i=1}^{N}p(b_i\mid b_1,\dots,b_{i-1},\omega) \]</div>
+
+    <div class="note-h">⑥ §4.2 物理稳定性 · 力模型 + 静平衡（公式2）</div>
+    <div class="note-b">虽训练于稳定数据，模型仍偶尔违反物理，故把稳定性校验并入推理。力模型(Fig.4a)：单块砖受 gravity、与上/下砖的竖直力、因 knob 连接与相邻砖的<b>水平(剪)力</b>。扩展为结构力模型 \(F\)，每块 \(b_i\) 有 \(M_i\) 个候选力 \(F_i^j\)。<b>结构稳定 ⇔ 所有砖可达静平衡：</b>\[ \sum_{j}^{M_i}F_i^{j}=0,\qquad \sum_{j}^{M_i}\tau_i^{j}=\sum_{j}^{M_i}L_i^{j}\times F_i^{j}=0 \] 其中 \(L_i^j\) 是力臂——即合力为零且合力矩为零。</div>
+
+    <div class="note-h">⑦ §4.2 稳定性分数：非线性规划（公式3-4）</div>
+    <div class="note-b">把稳定性分析写成非线性规划（用 <b>Gurobi[18]</b> 解）：\[ \arg\min_{F}\sum_{i}^{N}\Big(\big\|\textstyle\sum_j F_i^j\big\|+\big\|\sum_j \tau_i^j\big\|+\vartheta D_i^{max}+\varpi\textstyle\sum D_i\Big) \] 三约束：① 所有候选力非负；② 同一砖上某些力不能共存（如 pulling vs pressing、dragging vs supporting）；③ 牛顿第三定律（连接点上砖的支撑力=下砖的压力）。求解得"最小内应力、抑制摩擦、避免极值"的力分布，进而算每砖分数：\[ s_i=\begin{cases}0 & \text{无法静平衡 或 } D_i^{max}>F_T\\ \frac{F_T-D_i^{max}}{F_T} & \text{otherwise}\end{cases} \] \(F_T\) 是砖间摩擦容量常数；\(s_i=0\) 即失稳砖。<b>物理稳定要求 \(s_i>0,\ \forall i\)。</b></div>
+
+    <div class="note-h">⑧ §4.2 推理 · 拒绝采样 + 物理回滚（Algorithm 1）</div>
+    <div class="note-b"><b>为何不每砖都查稳定性：</b><i>"this step-by-step validation could be time-consuming. More importantly, many structures are unstable during construction yet become stable when fully assembled; adding a stability check after each brick generation could overly constrain the model exploration space."</i><br>
+    <b>逐砖拒绝采样(放松约束)：</b>每块须 well-formatted(库内/界内) 且<b>不碰撞</b> \( V_t\cap V_i=\varnothing,\ \forall i\in[1,t-1] \)（\(V_i\)=砖占用体素）；违规就 resample。<i>"most bricks are valid, and rejection sampling does not significantly affect inference time."</i><br>
+    <b>物理感知回滚：</b>结构生成完算 \(S\)；若失稳，回退到<b>第一块失稳砖之前</b> \( B'=[b_1,\dots,b_{\min I-1}] \)（\(I\)=失稳砖下标集），从该部分结构继续生成，迭代直到稳定。<br>
+    <b>Alg.1：</b>loop{ 拒绝采样最多 max_rejections 次得有效砖 → add；若含 EOF：若稳定/超 max rollbacks 则 return，否则 while 失稳{找 min I 回退} }。</div>
+
+    <div class="note-h">⑨ §4.3 纹理与上色（公式5-7）</div>
+    <div class="note-b"><b>UV 纹理：</b>给结构 \(B\) 及 mesh \(M\)，先去掉六面全被遮挡的 occluded 砖 \(B_{occ}\)（提效），剩余 \(B_{vis}\) 用 ImportLDraw[74] 合并清理 → cube projection 得 UV → 用 <b>FlashTex[8]</b>（快速文本 mesh 纹理）：\( I_{texture}=\text{FlashTex}(M,UV_M,c) \)（式5）。<br>
+    <b>统一上色：</b>转体素网格 → UV 展开 mesh → FlashTex 生成纹理（式6）→ 每体素颜色 \( C(v)=\frac{1}{N_v}\sum_{i=1}^{N_v}C(f_i^v) \)（式7，对可见面取平均）→ 每砖 \( C(b_t)=\frac{1}{|V_t|}\sum_{v\in V_t}C(v) \) → 取标准色库最近色。<i>"While UV texturing offers higher-fidelity details, uniform coloring allows us to use standard toy bricks."</i></div>
+
+    <div class="note-h">⑩ §5.1 实验设置 + 评测指标</div>
+    <div class="note-b"><b>数据/训练：</b>240k 不同 prompt、47k+ 不同结构，留 10% 评测，仅取 ≤4096 tokens 样本。<b>推理：</b>从验证集随机选 <b>250 个 prompt</b> 各生成 1 个结构；Gurobi 解式(3)，\(F_T{=}0.98\)N、\(\vartheta{=}10^{-3}\)、\(\varpi{=}10^{-6}\)；最多 100 次回滚。<b>中位回滚数=2，中位生成时间=40.8 秒。</b><br>
+    <b>指标：</b>% valid（无 out-of-library / out-of-bounds / colliding）、% stable、mean/min stability、CLIP（渲染图 vs "A LEGO model of {prompt}" 文本相似）、DINOv2（与同 prompt 的 GT 结构图像余弦相似）。Stability/CLIP/DINO 仅在 valid 结构上算。</div>
+
+    <div class="note-h">⑪ §5.2 主结果表（Table 1 真实数值）</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;color:#e3e7ff;margin:4px 0 10px">
+    <tr style="color:#9aa3c7;border-bottom:1px solid #2a2f5c;text-align:left"><th>Method</th><th>%valid</th><th>%stable</th><th>mean</th><th>min</th><th>CLIP</th><th>DINO</th></tr>
+    <tr><td>Pre-trained LLaMA (0-shot)</td><td>0.0%</td><td>0.0%</td><td>N/A</td><td>N/A</td><td>N/A</td><td>N/A</td></tr>
+    <tr><td>In-context (5-shot)</td><td>2.4%</td><td>1.2%</td><td>0.675</td><td>0.479</td><td>0.284</td><td>0.814</td></tr>
+    <tr><td>LLaMA-Mesh [81]</td><td>94.8%</td><td>50.8%</td><td>0.894</td><td>0.499</td><td>0.317</td><td>0.851</td></tr>
+    <tr><td>LGM [70]</td><td>100%</td><td>25.2%</td><td>0.942</td><td>0.231</td><td>0.300</td><td>0.851</td></tr>
+    <tr><td>XCube [62]</td><td>100%</td><td>75.2%</td><td>0.964</td><td>0.686</td><td>0.322</td><td>0.859</td></tr>
+    <tr><td>Hunyuan3D-2 [89]</td><td>100%</td><td>75.2%</td><td>0.973</td><td>0.704</td><td>0.324</td><td>0.868</td></tr>
+    <tr><td>Hunyuan3D-2 + our stab.</td><td>100%</td><td>88.4%</td><td>0.976</td><td>0.813</td><td>0.324</td><td>0.868</td></tr>
+    <tr><td>Ours w/o reject.+rollback</td><td>37.2%</td><td>12.8%</td><td>0.956</td><td>0.325</td><td>0.329</td><td>0.888</td></tr>
+    <tr><td>Ours w/o rollback</td><td>100%</td><td>24.0%</td><td>0.947</td><td>0.228</td><td>0.322</td><td>0.882</td></tr>
+    <tr style="color:#ffd35c"><td><b>Ours (BRICKGPT)</b></td><td><b>100%</b></td><td><b>98.8%</b></td><td><b>0.996</b></td><td><b>0.915</b></td><td>0.324</td><td>0.880</td></tr>
+    </table>
+    <div class="note-b"><b>读法：</b>预训练 LLaMA 0-shot 完全失败(0/0)；mesh-to-brick 基线即便配上"+our stability analysis"(生成多个挑第一个稳定的)，Hunyuan3D-2 也只到 88.4% stable；本方法 <b>100% valid / 98.8% stable / mean 0.996 / min 0.915</b>，全面领先，CLIP/DINO 仍有竞争力。</div>
+
+    <div class="note-h">⑫ §5.2 消融实验（Table 1 下三行 + Fig.6）</div>
+    <div class="note-b">同表底部直接构成消融：<br>
+    • <b>Ours w/o rejection sampling or rollback</b>：%valid 暴跌到 <b>37.2%</b>、%stable 仅 12.8%（大量碰撞/越界/库外砖）。<br>
+    • <b>Ours w/o rollback</b>（只留拒绝采样）：%valid 回到 100%（格式/碰撞合法），但 %stable 只 <b>24.0%</b>、min stability 0.228（合法≠稳定）。<br>
+    • <b>Ours（全)</b>：%stable 飙到 <b>98.8%</b>。<br>
+    结论：<i>"rejection sampling eliminates invalid bricks… while rollback helps to ensure the final assembly structure is stable."</i>——拒绝采样管"合法"、回滚管"稳定"，二者缺一不可。</div>
+
+    <div class="note-h">⑬ §5.3 应用：机器人/手工装配 + 纹理上色</div>
+    <div class="note-b"><b>机器人装配：</b>双机械臂系统，用 manipulation policy[39] + 异步多智能体规划器 APEX-MR[24] 操作积木搭建。<i>"Since the generated structures are physically stable, efficient automated assembly can be performed."</i>——物理稳定是自动装配可行的前提。<br>
+    <b>手工装配：</b>设计物理有效，可按 brick-by-brick 步骤手工搭(Fig.1 给中间步骤)。<br>
+    <b>纹理/上色（Fig.7）：</b>同一几何配不同外观 prompt（如 Gothic cathedral bookshelf / Cyberpunk holographic / Sunburst Les Paul）生成多样纹理与配色，<i>"while preserving the underlying geometry."</i></div>
+
+    <div class="note-h">Q&amp;A · 追问 why</div>
+    <div class="note-b"><b>Q1：为什么把积木生成做成"自回归文本"，而不是体素/mesh 扩散？</b><br>积木装配本质是<b>有序、离散、组合</b>的过程（一块块往上搭），与 LLM 的 next-token 范式天然契合；用文本格式 "{h}x{w}(x,y,z)" 既复用 LLaMA tokenizer、又显式带尺寸便于校验放置；且能借 LLM 的语言理解力对齐 prompt。对比基线"mesh→delete-and-rebuild 转砖"会丢稳定性控制（Table 1 里它们 stable 率低）。</div>
+    <div class="note-b"><b>Q2：既然训练数据全是稳定结构，为什么推理还会失稳、还要回滚？</b><br>自回归是逐 token 采样，存在分布外组合与累积误差，模型仍会产出训练集没有的失稳布局。且 1B 小模型容量有限。回滚是"事后修复"：用每砖 stability score 精确定位<b>第一块失稳砖</b>，退到它之前再续写——比"每砖都查"省时，也不会过度约束探索空间（很多结构搭一半不稳、搭完才稳）。</div>
+    <div class="note-b"><b>Q3：为什么用"逐砖拒绝采样 + 最终回滚"两段式，而不是把稳定性直接编码进生成？</b><br>因为"格式/碰撞合法性"是<b>局部、廉价</b>的（每砖即时可判），适合拒绝采样实时挡掉；而"整体静平衡稳定性"是<b>全局、昂贵</b>的（需解非线性规划、且依赖完整结构），只在结构完成时判、失稳再回滚最划算。消融证明：只做拒绝采样 stable 仅 24%，加回滚才到 98.8%。</div>
+    <div class="note-b"><b>Q4：数据集为什么要对同一物体生成多个变体、还要让 GPT-4o 只描述几何不描述颜色？</b><br>① 多变体（delete-and-rebuild 引入随机性）有两层收益：<i>"This increases the chance of obtaining a stable structure and more diverse layouts."</i>——既提高"至少能拿到一个稳定布局"的概率，又让同一形状对应多种合法砖排布，扩充训练多样性、防止模型死记单一解。② 让 GPT-4o <b>只聚焦几何、刻意省略颜色</b>，是因为形状生成阶段只学"几何↔砖布局"映射；颜色/纹理交给独立的 FlashTex 上色模块（式5-7）处理。若描述里混入颜色，会让"文本→几何"的监督信号被外观噪声干扰，破坏几何对齐。这是一种典型的<b>关注点分离</b>设计。</div>
+    <div class="note-b"><b>Q5：稳定性分数 \(s_i\) 为什么取 \((F_T-D_i^{max})/F_T\) 这种形式，物理含义是什么？</b><br>\(D_i^{max}\) 是该砖连接处所需的最大摩擦/拖拽力，\(F_T\) 是砖间能提供的摩擦容量上限。当 \(D_i^{max}>F_T\)（需要的摩擦超过材料能给的）或无法静平衡时 \(s_i=0\)（必塌）；否则 \(s_i=(F_T-D_i^{max})/F_T\in(0,1]\)，即"剩余摩擦裕度占容量的比例"——越接近 1 说明这块砖离打滑/失效越远、越稳。这把抽象的"会不会塌"量化成每块砖的连续裕度，既能判稳(全 \(s_i>0\))，又能在回滚时精确定位最先失稳的砖。</div>
+
+    <div class="note-h">📌 全文总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>主流 3D 生成做不出"可用标准件装配、且物理稳定"的真实物体；已有积木法多需给定 3D 形状或限单类目。<br>
+    <b>method：</b>BRICKGPT 把积木设计形式化成自回归文本生成——自定义 "{h}x{w}(x,y,z)" 格式(每砖 10 token、raster-scan)微调 LLaMA-3.2-1B，训练数据用新建 StableText2Brick(ShapeNet 体素化+删重建+稳定性[38]过滤+GPT-4o 描述, 47k+/28k+)；推理叠加<b>逐砖拒绝采样(格式/库内/不碰撞)+ 物理感知回滚(失稳退到第一块失稳砖前)</b>，稳定性由 Gurobi 解静平衡非线性规划打分。<br>
+    <b>experiment：</b>250 prompt 上 <b>100% valid / 98.8% stable / mean 0.996 / min 0.915</b>，碾压预训练 LLaMA(0/0)、in-context(2.4%/1.2%) 及 mesh-to-brick 基线(Hunyuan3D-2+稳定性 88.4%)；消融证拒绝采样(→100% valid)与回滚(→98.8% stable)缺一不可；中位 2 次回滚、40.8s/结构；可被双机械臂自动装配。<br>
+    <b>takeaway：</b>① "<b>next-token → next-brick</b>"是把 LLM 序列能力迁到物理装配的有效范式；② <b>把物理约束分两层施加</b>——廉价局部约束(碰撞)用即时拒绝采样、昂贵全局约束(稳定)用最终回滚——兼顾质量与效率；③ <b>训练期数据过滤 + 推理期物理校验</b>双管齐下，才能让生成结果"真能搭起来不塌"，并打通到真实机器人装配。<br>
+    <b>局限[推测]：</b>\(20^3\) 网格 + 1B 模型限制了结构精细度与规模；稳定性依赖 Gurobi 求解非线性规划，超大结构耗时上升；纹理依赖外部 FlashTex。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-generating-physically-stable-and-buildable-brick-struct/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Overview of BRICKGPT. (a) Our method generates physically stable interconnecting brick assembly structures from text descriptions through an end-to-end approach, showing intermediate brick-by-brick steps. (b) The generated designs are buildable both by hand and by automated robots. (c) We show example results with corresponding text prompts. Besides basic brick designs (top), our method </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-generating-physically-stable-and-buildable-brick-struct/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. StableText2Brick Dataset. (a) From a ShapeNetCore [2] mesh, we generate a brick structure by voxelizing it onto a 20 →20 →20 grid, then constructing its brick layout with a delete-and-rebuild algorithm. (b) We augment each shape with multiple structural variations by randomizing the brick layout while preserving the overall shape. (c) Stability analysis [38] is performed on each variatio</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-generating-physically-stable-and-buildable-brick-struct/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Method. (a) Our system tokenizes a brick structure into a sequence of text tokens, ordered in a raster-scan manner from bottom to top. (b) We create an instruction dataset pairing brick sequences with descriptions to ﬁne-tune LLaMA-3.2-Instruct-1B. (c) At inference time, BRICKGPT generates brick structures incrementally by predicting one brick at a time given a text prompt. For each gene</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-generating-physically-stable-and-buildable-brick-struct/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2(e) shows several data samples from Stable- Text2Brick. The rich variations within each category and the comprehensive text-brick pairs make it possible to train large- scale generative models. More insights on StableText2Brick are discussed in Appendix A.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-generating-physically-stable-and-buildable-brick-struct/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Force Model. (a) We consider all forces exerted on a single brick, including gravity (black), vertical forces with the top brick (red/blue) and bottom brick (green/purple), and horizontal (shear) forces due to knob connections (cyan), and adjacent bricks (yellow). (b) The structural force model F extends the individual force model to multiple bricks. Solving for static equilibrium in F d</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-generating-physically-stable-and-buildable-brick-struct/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Result Gallery and Baseline Comparisons. Our method generates high-quality, diverse, and novel brick structures aligned with the given text prompts. Black bricks are colliding. For LLaMA-Mesh [81], LGM [70], XCube [62], and Hunyuan3D-2 [89], an inset of the generated mesh is shown in the top-left corner.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-generating-physically-stable-and-buildable-brick-struct/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Ablation Study. Brick-by-brick rejection sampling and physics-informed rollback help to ensure that the generated struc- ture is both valid and stable. Black indicates colliding bricks.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-generating-physically-stable-and-buildable-brick-struct/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Brick Texture and Color Generation. Our method can generate diverse textured (top two rows) and colored (bottom) struc- tures based on the same shape with different appearance prompts.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-generating-physically-stable-and-buildable-brick-struct/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5 shows a gallery of diverse, high-quality brick struc- tures that closely follow the input prompts.</figcaption></figure>
+    </div>
+  </div><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"]],displayMath:[["\\[","\\]"]]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body></html>

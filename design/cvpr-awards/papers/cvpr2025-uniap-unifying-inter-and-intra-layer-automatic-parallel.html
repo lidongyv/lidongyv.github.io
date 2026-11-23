@@ -1,0 +1,177 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>UniAP: Unifying Inter- and Intra-Layer Automatic Parallelism by Mixed Integer Quadratic Programming</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2025</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>UniAP: Unifying Inter- and Intra-Layer Automatic Parallelism by Mixed Integer Quadratic Programming</h1>
+    <div class="au2" style="color:var(--mut)">Hao Lin · Ke Wu · Jie Li · Jun Li · Wu-Jun Li</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2025/papers/Lin_UniAP_Unifying_Inter-_and_Intra-Layer_Automatic_Parallelism_by_Mixed_Integer_CVPR_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=UniAP%3A%20Unifying%20Inter-%20and%20Intra-Layer%20Automatic%20Parallelism%20by%20Mixed%20Integer%20Quadratic%20Programming">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2025-uniap-unifying-inter-and-intra-layer-automatic-parallel -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">把"大模型分布式训练该怎么切"这件事，<b>第一次做成 inter-layer（流水线 PP）和 intra-layer（DP/TP/FSDP）联合最优</b>——以前的自动并行（AP）要么只优化一类、要么"先定 PP 再定层内"分层贪心，必然次优。UniAP 把整个并行策略空间编码成一个 <b>混合整数二次规划（MIQP）</b>，目标=最小化每次迭代时间（TPI），交给 Gurobi 多线程求全局最优。5 个 Transformer 上吞吐最高 <b>+3.80×</b>、找策略最高<b>快 107×</b>。南京大学，CVPR 2025 Finalist。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">手动并行（MP，如 Megatron）要专家调、不灵活；自动并行（AP）虽自动化但<b>把两类策略分开/分层优化</b>→次优。原文：<i>"existing AP methods suffer from sub-optimal solutions because they do not jointly optimize the two categories of parallel strategies (inter-layer and intra-layer)."</i> 而且 MP 让普通用户随机选策略，<b>Llama-7B 有 64.1%、13B 有 87.5% 概率直接训不起来（OOM/报错）</b>，就算能跑也只有 50% 概率优于中位吞吐。</div>
+    <div class="note-h">核心方法（MIQP 统一建模）</div>
+    <div class="note-b">流程（Fig 2）：<b>Profiling</b>（测硬件 all-reduce/P2P 效率、计算-通信重叠系数 CCOC；测模型逐层算时 + 显存）→ <b>Cost model</b>（时间：BP≈2×FP；通信=张量大小/带宽×CCOC；显存式1 m<sub>s</sub>=c<sub>dtype</sub>·ps/(ts·fs)，FP32 c=4、混精 FP16 c=8）→ <b>MIQP</b>（目标式2 min TPI=Σp<sub>i</sub>+Σo<sub>j</sub>+(c−1)·max(P∪O)；约束含 计算阶段/通信阶段/显存不 OOM/PP 子图连续/每层放一个 stage/每层选一个策略）→ <b>UOP</b>（Algorithm 1：枚举 GPU 数 n 的因子作 PP 度 deg、batch 因子作 micro-batch 数 c，逐组合 MIQP 求解取最小 TPI）。复杂度 O(|V|·|S|·√(Bn))。</div>
+    <div class="note-h">关键结果（数值）</div>
+    <div class="note-b">ENVC（8×A100 PCIe）Llama-7B：<b>吞吐 4.63 vs Galvatron 1.22 = 3.80×</b>，找策略快 11.83×（UniAP 选 8-stage PP + micro-batch 1，Galvatron 选 4-stage PP+2-way TP；PCIe 下 PP 通信量远小于 TP，UniAP 选得更对）。ENVA BERT-Huge：找策略 0.37min vs Galvatron 6.44min（<b>17×</b>）vs Alpa &gt;40min（<b>&gt;107×</b>）；Galvatron 在 Swin-Huge 上 CUDA OOM，UniAP 能解。ENVD-32（DCU 国产卡）Llama-7B：找策略 3.07min vs Megatron &gt;8 小时（<b>157×</b>）。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">联合最优（最大策略空间，消融 Fig 6 证明限制成 inter-only/intra-only 都会次优或 OOM）；MIQP 解可<b>多线程并行搜</b>，而 DP/贪心类（Galvatron/Alpa）因强数据依赖只能单线程→UniAP 找策略快几十上百倍；天然处理<b>异构集群</b>（每 stage 显存上限 m 可不同）+ 国产 DCU 卡。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① 依赖商业 solver <b>Gurobi</b>，其它 solver 留作 future work（开源/license 是落地考量）；② MIQP 是 NP-hard，论文给 solver 设了时间上限当超参——<b>超大模型/超多策略时是否仍秒级求解未充分压力测试</b>（推断）；③ 关掉了 activation checkpointing 等正交技术以隔离变量，实际与重计算/offload 联合优化未覆盖；④ 主要在 ≤32 卡规模验证，千卡级未测（与用户 320 卡 PPU 训练规模有差距，需谨慎外推）。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿，基于本地 PDF 全文（52k 字符 / 11 页）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文（痛点句）：</b><i>"Existing AP methods suffer from sub-optimal solutions because they do not jointly optimize the two categories of parallel strategies (i.e., inter-layer parallelism and intra-layer parallelism)."</i><br><b>在说什么：</b>现有自动并行（AP）方法之所以次优，根因是它们<b>没有把两类并行策略放在一起（jointly）优化</b>——一类是 inter-layer（层间，即流水线 PP），一类是 intra-layer（层内，即 DP/TP/FSDP）。<b>为什么这么做（点评）：</b>这一句是全文的"靶心"——作者不打"AP 还不够自动"这种泛问题，而是精准锁定"分开优化 → 丢掉两类之间的耦合 → 次优"这一具体机制缺陷。</div>
+    <div class="note-b"><b>原文（解法句）：</b><i>"we propose a novel AP method called UniAP, which unifies inter- and intra-layer automatic parallelism by mixed integer quadratic programming."</i> 又：<i>"To the best of our knowledge, UniAP is the first parallel method that can jointly optimize the two categories of parallel strategies to find an optimal solution."</i><br><b>在说什么：</b>用<b>混合整数二次规划（MIQP）</b>把两类策略统一进同一个优化问题，号称是首个能"联合求全局最优"的并行方法。<b>点评：</b>"unify…by MIQP" 把工程选择题改写成数学规划题，是本文方法论的核心动作。</div>
+    <div class="note-b"><b>原文（结果句）：</b><i>"Experimental results show that UniAP outperforms state-of-the-art methods by up to 3.80× in throughput and reduces strategy optimization time by up to 107× across five Transformer-based models."</i><br><b>在说什么：</b>在 5 个 Transformer 模型上，训练吞吐最高 <b>+3.80×</b>、找策略时间最高<b>快 107×</b>。两个数分属两个维度：跑得更快（throughput）+ 找得更快（optimization time）。<b>一句话抓 Abstract：</b>把 PP+DP+TP+FSDP 一起塞进一个 MIQP 求全局最优，既找到更快的并行策略、又把搜策略时间从小时压到分钟。</div>
+
+    <div class="note-h">📚 背景知识（外部补充，非本文原文）：四种并行 + 两类划分</div>
+    <div class="note-b"><b>四种并行策略（§2.1 原文定义）：</b><br>• <b>DP 数据并行：</b><i>"each worker holds a replica of the whole model and partitions training samples"</i>，迭代后用 all-reduce 同步梯度。<br>• <b>TP 张量并行：</b><i>"each worker holds a replica of training samples and partitions within model layers"</i>，FP/BP 中 all-reduce 拼回。<br>• <b>PP 流水线并行：</b><i>"each worker holds a subset of model layers"</i>，相邻 worker 在 FP 传激活、BP 传梯度。<br>• <b>FSDP 全分片数据并行：</b><i>"partitions optimizer states, parameters and gradients of the model into separate workers"</i>，用时 all-gather 取回、算完 reduce-scatter 分发。</div>
+    <div class="note-b"><b>两类划分（本文分类轴心）：</b>原文 <i>"Inter-layer parallelism, which includes PP, partitions the model into disjoint sets without partitioning tensors in each layer"</i>（层间=切层不切张量）；<i>"Intra-layer parallelism, which includes DP, TP, and FSDP, partitions tensors in a layer along one or more axes"</i>（层内=切张量）。UniAP 的全部创新，就是把这两类<b>合到一个优化问题里</b>。</div>
+    <div class="note-b"><b>MIQP / QIP / DP 求解器术语：</b>MIQP=混合整数二次规划——变量含 0/1 整数（如"层 u 选第 k 个策略"\(S_{uk}\in\{0,1\}\)、"层 u 放第 i 个 stage"\(P_{ui}\in\{0,1\}\)），目标/约束含<b>二次项</b>（两个 0/1 变量相乘，刻画"两层是否同 stage"的交互成本）。以前 AP 用动态规划（DP）/贪心/整数规划（IP）分步解；UniAP 直接整体建成一个 MIQP 交 Gurobi 求全局最优。</div>
+
+    <div class="note-h">② Introduction（引言）— problem → 现有不足 → solution → why 闭环</div>
+    <div class="note-b"><b>problem（手动并行之痛）：</b>原文 <i>"MP methods require extensive domain knowledge in deep learning models and hardware architectures"</i> 且 <i>"MP methods demand considerable human effort and have limited flexibility"</i>。手动并行（Megatron / Mesh-TensorFlow / GSPMD）要专家逐个调，换模型/换硬件就得重来。</div>
+    <div class="note-b"><b>现有不足（AP 的真缺陷）：</b>原文 <i>"they optimize the two categories of parallel strategies separately rather than jointly"</i>，细分为两种失败模式：<i>"some methods optimize only one category of parallel strategies, and the others optimize inter- and intra-layer parallelism hierarchically"</i>——要么只优化一类，要么"先贪心/DP 定 PP，再对每个固定 PP 优化层内"的<b>分层（hierarchical）</b>方式。结论一句：<i>"Hence, existing AP methods suffer from sub-optimal solutions."</i></div>
+    <div class="note-b"><b>solution + why（Fig 1 一图四范式）：</b>inter-only / intra-only 只在各自的小策略空间里搜；hierarchical 先定 inter 再优 intra，<b>错过 inter–intra 的耦合最优</b>；UniAP 在"所有策略"的最大空间里联合搜（joint optimization）→ 才可能真最优。<b>why it works（机理）：</b>"PP 怎么切层" 与 "每层用 DP/TP/FSDP 哪种" 本质<b>互相耦合</b>——某 stage 显存紧→该 stage 内更想用 TP/FSDP 省显存；某链路通信慢→更想少跨 stage。分层优化把它们拆开就丢了耦合最优；MIQP 把耦合写成<b>二次项</b>一起解，所以能更优。</div>
+
+    <div class="note-h">Q&amp;A · 为什么"分层优化"一定次优？</div>
+    <div class="note-b"><b>核心：</b>分层 = 先在外层固定一个 inter-layer 方案，再在内层对它优化 intra-layer。这等于把联合解空间 \(\mathcal{S}_{inter}\times\mathcal{S}_{intra}\) 砍成"先选一条 inter 切片、再在切片内找最优"。只要最优解所在的 inter 切片没被外层贪心/DP 选中，内层再怎么优也够不到全局最优。<b>UniAP 的做法：</b>不分层、不固定任何一维，把"层放哪个 stage（\(P_{ui}\)）"和"层选哪个内层策略（\(S_{uk}\)）"作为<b>同一组决策变量</b>交给 MIQP 同时定，二次项 \(P_{ui}P_{vi}(S_u^\mathsf{T}R_{uv}S_v)\) 正好编码"两层同处一个 stage 时、它们各自内层策略带来的 resharding 成本"这种跨维耦合。</div>
+
+    <div class="note-h">③ §3 Method 总览（Fig 2 流程 + UOP）</div>
+    <div class="note-b"><b>四步流水线：</b>① <b>Profiling</b> 测硬件与模型的运行时信息 → ② <b>Cost model</b> 估时间/显存成本 → ③ <b>MIQP</b> 把成本+计算图编成优化问题 → ④ <b>UOP（Unified Optimization Process）</b> 反复调用 cost model + MIQP 取最小 TPI。原文界定目标：<i>"The objective function of the MIQP is to maximize the training throughput, or in other words, to minimize the training time per iteration (TPI)."</i> 即<b>最大化吞吐 ≡ 最小化每迭代时间 TPI</b>。</div>
+
+    <div class="note-h">④ §3.1 Profiling — 测什么</div>
+    <div class="note-b"><b>硬件侧：</b>评估不同设备子集上的 all-reduce 与 P2P 通信效率（例：4 GPU 节点会测各种 DP/TP/FSDP 组合的 all-reduce 效率，并对两种流水线编号方案测 P2P 速度），还估计<b>计算-通信重叠系数</b>原文 <i>"UniAP estimates the computation-communication overlap coefficient (CCOC)"</i>。<b>模型侧：</b>两类信息——逐类隐藏层的<b>单样本前向计算时间</b> + 各层<b>显存占用</b>（参数显存 + 不同 TP size 下的单样本激活显存）。<b>为什么先 profiling：</b>cost model 要的是"这台机器、这个模型"的真实数，而非纸面 FLOPs，profiling 把硬件异质性灌进模型。</div>
+
+    <div class="note-h">⑤ §3.2 Cost model — 时间 + 显存（式1 LaTeX）</div>
+    <div class="note-b"><b>时间成本模型：</b>前向时间 = batch size × 单样本前向时间；反向≈两倍前向，原文 <i>"the computation time in the BP stages is roughly twice that of the FP stages"</i>；通信时间 = 传输张量大小 / profiled 通信效率，再<b>乘 CCOC</b> 把可重叠部分折掉；跨 stage 成本 = 相邻 stage 间 P2P 成本求和。</div>
+    <div class="note-b"><b>显存成本模型（式1）：</b>模型状态显存 \[ m_s=\frac{c_{dtype}\times ps}{ts\times fs} \] 其中 \(ps\)=层参数量，\(ts\)=TP 度，\(fs\)=FSDP 度，\(c_{dtype}\)=数据类型系数。原文给了两组取值：<i>"if we choose precision as FP32, then cdtype = (4 + 4 + 4 + 4)/4 = 4"</i>（参数/梯度/动量/方差各 4 字节）；<i>"if we opt for mixed precision with FP16 activated, then cdtype = (4 + 4 + 4 + 2 + 2)/2 = 8"</i>。直觉：TP/FSDP 把参数切到更多卡，单卡显存被 \(ts\times fs\) 除小。最后把激活显存 \(m_a\)、模型状态 \(m_s\)、上下文显存 \(m_c\) 聚成常量矩阵 \(M\)，\(M_{uk}\)=层 u 第 k 个内层策略在单卡上的显存成本。</div>
+
+    <div class="note-h">⑥ §3.3.1 MIQP 目标函数（式2 LaTeX）</div>
+    <div class="note-b"><b>GPipe 风格 TPI（式2）：</b>\[ \min\ tpi_{gpipe}=\sum_{i=1}^{deg}p_i+\sum_{j=1}^{deg-1}o_j+(c-1)\max\!\left(\mathbb{P}\cup\mathbb{O}\right) \] 其中 \(deg\)=计算阶段数=流水线并行度，\(c\)=micro-batch 数，\(p_i=fp_i+bp_i\)=计算阶段 i 的前+反向计算成本，\(o_j=fo_j+bo_j\)=通信阶段 j 成本。前两项=<b>填满流水线一遍</b>的总代价；第三项 \((c-1)\max(\mathbb{P}\cup\mathbb{O})\)=流水线<b>稳态由最慢阶段决定</b>。原文：<i>"the total TPI is determined by the latency of all computation and communication stages and the latency of the slowest stage."</i></div>
+
+    <div class="note-h">⑦ §3.3.2 约束（式3–8，关键用 LaTeX）</div>
+    <div class="note-b"><b>计算阶段约束（式3）：</b>\[ \sum_{u\in\mathbb{V}}P_{ui}S_u^\mathsf{T}A_u+\sum_{\langle u,v\rangle\in\mathbb{E}}P_{ui}P_{vi}\,(S_u^\mathsf{T}R_{uv}S_v)=p_i \] 第一项=放在 stage i 的各层选定内层策略的执行成本；第二项（二次项）=stage i 内部的 <b>resharding（重切分）成本</b>。这里的 \(P_{ui}P_{vi}\) 与 \(S_u^\mathsf{T}R_{uv}S_v\) 就是"二次规划"里二次的来源。</div>
+    <div class="note-b"><b>通信阶段约束（式4）：</b>\(\sum_{\langle u,v\rangle\in\mathbb{E}}P_{uj}P_{v(j+1)}(S_u^\mathsf{T}R'_{uv}S_v)=o_j\)，把<b>跨相邻 stage</b> 的 P2P 成本汇到 \(o_j\)。<b>显存约束（式5）：</b>\[ \sum_{u\in\mathbb{V}}P_{ui}S_u^\mathsf{T}M_u\leqslant m \] 原文动机 <i>"We need to guarantee that no devices (GPUs) will encounter out-of-memory (OOM) exceptions during training process."</i> 异构集群下 \(m\) 可随 stage 变。</div>
+    <div class="note-b"><b>保序约束（式6）：</b>原文 <i>"PP is not a single-program multiple-data (SPMD) parallel strategy"</i>，所以要求子图<b>连续（contiguous）</b>，定义 <i>"A set W ⊆ V is contiguous if there do not exist nodes u ∈ W, v ∈ V \ W, and w ∈ W such that v is reachable from u and w is reachable from v"</i>——不能把模型层乱序拆到不同 stage（用辅助变量 \(Z\) 线性化）。<b>放置约束（式7）：</b><i>"All layers should be placed on exactly one pipeline stage and at least one layer should be placed on each pipeline stage."</i> <b>选择约束（式8）：</b><i>"Each layer must and can choose only one strategy."</i></div>
+
+    <div class="note-h">⑧ §3.4 UOP（Algorithm 1）逐行</div>
+    <div class="note-b"><b>输入/输出：</b>输入 profiling 结果 PR、策略字典 SD、mini-batch B、计算图 G、GPU 数 n；输出最优成本 cost*、PP 度 deg*、micro-batch 数 c*、层放置 P*、内层策略 S*。<b>流程：</b>① 先解 \(deg=1\)（不用 PP）的纯层内 <b>QIP</b>（\(c^*=B\)）；② 原文 <i>"UOP enumerates all factors of n except 1 as the pipeline parallel size deg"</i>，内层再枚举 B 的因子作 micro-batch 数 c（<i>"These enumerations aim to achieve load balance on a homogeneous cluster"</i>）；③ 每个 (deg, c) 组合做 CostModeling + MIQP，若 cost &lt; cost* 就更新；④ 返回全局最小。<b>关键：</b>PP 度与 micro-batch 数在外层枚举，层放置与内层策略交给 MIQP——把"难枚举的连续耦合"留给求解器、把"少量离散选项"用枚举兜住。</div>
+
+    <div class="note-h">⑨ §3.5 复杂度分析</div>
+    <div class="note-b"><b>结论：</b>两层枚举（n 的因子 × B 的因子）复杂度 \(O(\sqrt{Bn})\)，加上内层 CostModeling 与给 MIQP 设的求解时间上限（常量超参），整体 <i>"the overall computational complexity of UniAP is O(|V||S|√(Bn))"</i>，即 \(O(|V|\,|S|\,\sqrt{Bn})\)，\(|V|\)=层数、\(|S|\)=策略数。<b>点评：</b>对 MIQP 设时间上限是工程上让"NP-hard 求解"可控的关键——把最坏情况钉成常量，换取实践中的分钟级求解。</div>
+
+    <div class="note-h">⑩ §4 实验设置 + Table 1 主结果（真实数值）</div>
+    <div class="note-b"><b>环境：</b>ENVA（1 节点 8×V100-SXM2 32GB）、ENVB（4 节点×4 TITAN Xp 12GB，10Gbps 互联）、ENVC（8×A100 40GB <b>PCIe</b>）、ENVD（16 节点×4 <b>DCU</b> 国产非 NVIDIA 卡）。模型：BERT-Huge / T5-Large / ViT-Huge / Swin-Huge / Llama。Solver=Gurobi；baseline=Galvatron、Alpa（A/B/C），Megatron、DeepSpeed ZeRO-3（D）。</div>
+    <div class="note-b"><b>Table 1（吞吐 samples/s ｜ 找策略 min）：</b></div>
+    <div class="note-b kv">
+&nbsp;&nbsp;[ENVA] BERT-Huge 吞吐：UniAP 33.46 ｜ Galvatron 33.46 ｜ Alpa 31.56　（找策略 0.37 vs 6.44 vs &gt;40）<br>
+&nbsp;&nbsp;[ENVA] ViT-Huge 吞吐：UniAP 109.51 ｜ Galvatron 109.51 ｜ Alpa 97.66<br>
+&nbsp;&nbsp;[ENVA] Swin-Huge：UniAP <b>67.96</b> ｜ Galvatron <b>CUDA OOM</b> ｜ Alpa N/A<br>
+&nbsp;&nbsp;[ENVB-8] BERT 吞吐：UniAP <b>10.77</b> ｜ Alpa 8.95 ｜ Galvatron 6.27（<b>1.71×</b>）<br>
+&nbsp;&nbsp;[ENVB-8] ViT 吞吐：UniAP <b>45.58</b> ｜ Alpa 38.74 ｜ Galvatron 32.20（1.41×）<br>
+&nbsp;&nbsp;[ENVC] Llama-7B 吞吐：UniAP <b>4.63</b> ｜ Galvatron 1.22（<b>3.80×</b>）；找策略 0.58 vs 6.84min（11.83×）
+    </div>
+    <div class="note-b"><b>为何 ENVC 上赢 3.80×（机理）：</b>UniAP 选 8-stage PP + micro-batch 1；Galvatron 选 4-stage PP + 2-way TP。原文 <i>"Since PP has significantly less inter-device communication volume than TP, the parallel strategy discovered by UniAP is more reasonable than Galvatron in this case."</i> 即 PCIe 卡间带宽低时，纯 PP 通信量远小于 TP，联合优化能挑出这条"少通信"路径。找策略快的根因：<i>"This is mainly due to the ability of the MIQP solver to search for an optimal strategy on multiple threads, while the dynamic programming based methods like Galvatron and Alpa run on a single thread due to their strong data dependency."</i></div>
+
+    <div class="note-h">⑪ Table 2 国产 DCU + Table 3 为何要 AP 不要 MP</div>
+    <div class="note-b"><b>Table 2（ENVD-32 DCU）：</b>Llama-7B 找策略 UniAP <b>3.07min</b> vs Megatron <b>&gt;8 小时</b>（约 <b>157×</b>）；Llama-13B 1.95min vs &gt;2.5 小时（77×）；吞吐持平 Megatron。DeepSpeed ZeRO-3 因 <i>"It requires the mini-batch size to be divisible evenly by the total number of computation devices"</i> 在 32 DCU 上直接 SOL×（无解）。<b>说明 UniAP 能落地国产异构卡。</b></div>
+    <div class="note-b"><b>Table 3（候选策略统计，验证"AP 优于人工随机选"）：</b>原文 <i>"a 64.1% (41/64) chance of failing to train Llama-7B and an 87.5% (42/48) chance of failing to train Llama-13B even when the hardware resources are sufficient"</i>——硬件足够也有 64.1% / 87.5% 概率直接训不起来；即便排除全部不可行，仍只 50% 概率拿到优于中位的吞吐，可能白白牺牲 ≥4.4%(7B) / 29.2%(13B) 吞吐。Llama-7B 候选 64 个、1st 吞吐 2.01 / median 0.82 / slowest 0.22。</div>
+
+    <div class="note-h">⑫ §4.3 可扩展性 + §4.4 消融（Fig 6，验证"联合"是性能来源）</div>
+    <div class="note-b"><b>可扩展性：</b>吞吐随节点数<b>近线性</b>（Fig 5a），找策略时间符合 \(O(|V||S|\sqrt{Bn})\)（Fig 5b）；DCU 16/32/64 卡吞吐 0.1726 / 0.3393 / 0.6656 samples/s（Table 4，近线性）。<b>消融（Fig 6）：</b>把策略空间限制成 inter-layer-only 或 intra-layer-only，原文 <i>"constraining the strategy space compromises the optimality of parallel strategies or gets strategies that encounter OOM across different models"</i>——要么次优、要么 OOM；只有 full UniAP 全面最好。结论句 <i>"unifying inter- and intra-layer AP for joint optimization makes UniAP outperform other AP methods."</i> 这正是对 Abstract 痛点句的实证闭环。</div>
+
+    <div class="note-h">Q&amp;A · 与训练基础设施 / TorchEngine 的关系（强相关）</div>
+    <div class="note-b"><b>正中训练平台命门：</b>本文解决的就是"模型 + 集群定了，PP/DP/TP/FSDP 怎么配才最快又不 OOM"——这正是 TorchEngine / PPU 这类框架每天的决策。可借鉴：① <b>cost model</b>（BP≈2×FP、式1 显存估计、CCOC 重叠）可做训练前 OOM 预检 + 吞吐预估，省掉"撞 OOM 才知道"；② <b>MIQP 联合搜</b>对多任务 BEV onemodel 这种"各 head 显存差异大、层异构"的模型尤其有用，分层贪心容易次优；③ <b>异构 \(m\)</b>（每 stage 显存上限可不同）对应混合卡型集群。<b>边界（诚实）：</b>本文仅在 ≤32 卡验证、关掉了 activation checkpointing 等正交技术、依赖商业求解器 Gurobi；用户 320 卡 + turbox + 重计算的真实场景更复杂，需自研 cost model 标定、可能换开源 solver，<b>不能直接套数</b>。</div>
+
+    <div class="note-h">Q&amp;A · micro-batch 数 c 怎么影响 TPI（读懂式2第三项）</div>
+    <div class="note-b"><b>问题：</b>式2 \(\min\,tpi=\sum_i p_i+\sum_j o_j+(c-1)\max(\mathbb{P}\cup\mathbb{O})\) 里 \(c\)（micro-batch 数）越大越好还是越小越好？<b>答：</b>前两项 \(\sum p_i+\sum o_j\) 是"填满 + 排空流水线"的固定开销（bubble，与 c 无关）；第三项 \((c-1)\max(\cdot)\) 是稳态——micro-batch 越多，稳态阶段越长但每个都被最慢 stage 限速。把 mini-batch 切成更多 micro-batch（c↑）能<b>用更多稳态步摊薄固定 bubble 占比</b>，但 micro-batch 太小又会让单步计算效率下降、显存/通信粒度变差。所以 UOP 才要<b>枚举 B 的各因子作 c</b> 逐个求解取最优，而不是拍一个 c。这正是"把难以解析的权衡交给搜索"的体现。</div>
+    <div class="note-b"><b>异构集群天然支持：</b>式5 显存约束 \(\sum_u P_{ui}S_u^\mathsf{T}M_u\leqslant m\) 中的上限 \(m\) 原文明确 <i>"the value of m varies in the case of heterogeneous computing devices"</i>——同构集群 \(m\) 是常量、异构时每个 stage 的 \(m\) 可不同。这意味着 MIQP 能在"混合卡型/国产 DCU + NVIDIA 混插"的真实集群上，把"显存大的卡多放几层"自动解出来，而手动并行很难照顾这种不均衡。</div>
+
+    <div class="note-h">📚 背景：为什么 BP≈2×FP、CCOC 又是什么</div>
+    <div class="note-b"><b>BP≈2×FP（cost model 的关键近似）：</b>对以 MatMul 为主的 Transformer，前向每层算一次矩阵乘 \(Y=WX\)；反向要算<b>两类</b>梯度——对输入的 \(\partial L/\partial X\) 和对权重的 \(\partial L/\partial W\)，各约一次同规模矩阵乘，故反向计算量≈前向两倍（原文 <i>"the computation time in the BP stages is roughly twice that of the FP stages"</i>，业界通识，论文据此把 BP 时间直接按 2×FP 估）。<b>CCOC（computation-communication overlap coefficient）：</b>刻画通信能被计算掩盖多少——现代框架里 all-reduce/all-gather 常与反向计算重叠，CCOC 把"名义通信时间"折算成"无法被掩盖的净通信时间"，让 cost model 的吞吐估计更贴近真实。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>problem：</b>大模型分布式训练要选并行策略，MP 要专家且易踩 OOM、AP 因"分开/分层优化"必然次优。<b>method：</b>把 PP/DP/TP/FSDP 全编码进一个 MIQP——目标式2 min TPI（填流水线 + 稳态瓶颈），约束含计算阶段 resharding（式3）/通信 P2P（式4）/显存不 OOM（式5）/PP 保序（式6）/单层单 stage（式7）/单层单策略（式8）；UOP（Alg 1）枚举 (PP 度 deg, micro-batch 数 c) 逐组合 MIQP 求最小，复杂度 \(O(|V||S|\sqrt{Bn})\)。</div>
+    <div class="note-b"><b>experiment：</b>Llama-7B 吞吐 3.80× over Galvatron、找策略最高 157× over Megatron；消融（Fig 6）证明限制成 inter-only/intra-only 都会次优或 OOM；近线性扩展、支持异构国产 DCU。</div>
+    <div class="note-b"><b>Takeaway（≥3 条）：</b>① <b>范式升级</b>——把并行策略选择从"分层贪心"重写成"全局 MIQP 联合最优"，第一次能同时定"层放哪 stage + 层选哪策略"，捕获两类策略的耦合；② <b>双重提速</b>——MIQP 可多线程并行搜，而 DP/贪心因强数据依赖只能单线程，所以找策略快 17–157×，同时跑得也更快（PCIe 下自动选少通信的 PP）；③ <b>OOM 前置</b>——显存约束式5 把 OOM 挡在求解阶段，不像 MP 随机选有 64–87% 概率训不起来；④ <b>适用边界</b>——验证规模 ≤32 卡、关正交技术、绑定 Gurobi，千卡级与重计算/offload 联合优化尚未覆盖，外推需谨慎。</div>
+    <!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-uniap-unifying-inter-and-intra-layer-automatic-parallel/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Parallel methods for optimizing parallel strategies for a three-layer model. The different arrangements of slices with varying transparency within the same layer block indicate different intra-layer parallelism strategies adopted by layers. The different arrangements of gray blocks which wrap the layer blocks indicate different inter-layer parallelism strategies.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-uniap-unifying-inter-and-intra-layer-automatic-parallel/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Flowchart of UniAP.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-uniap-unifying-inter-and-intra-layer-automatic-parallel/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3 depicts the time cost decomposition of a GPipe- style PP with non-negligible communication costs. The time needed to apply gradients at the end of each iteration is not included, as it depends on the optimizer and is insignificant compared to the total time spent on FP and BP.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-uniap-unifying-inter-and-intra-layer-automatic-parallel/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Time cost decomposition of a GPipe-style PP.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-uniap-unifying-inter-and-intra-layer-automatic-parallel/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. A contiguous set.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-uniap-unifying-inter-and-intra-layer-automatic-parallel/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Ablation study. SOL× indicates no feasible solution during strategy optimization, and CUDA× indicates CUDA OOM exceptions during training.</figcaption></figure>
+    </div>
+  </div></body></html>

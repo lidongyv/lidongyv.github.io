@@ -1,0 +1,187 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>UnReflectAnything: RGB-Only Highlight Removal by Rendering Synthetic Specular Supervision</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\(','\)']],displayMath:[['\[','\]']]}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>UnReflectAnything: RGB-Only Highlight Removal by Rendering Synthetic Specular Supervision</h1>
+    <div class="au2" style="color:var(--mut)">Alberto Rota ⋅ Mert Kiray ⋅ Mert Asim Karaoglu ⋅ Patrick Ruhkamp ⋅ Elena De Momi ⋅ Nassir Navab ⋅ Benjamin Busam</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2512.09583">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2512.09583">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=UnReflectAnything%3A%20RGB-Only%20Highlight%20Removal%20by%20Rendering%20Synthetic%20Specular%20Supervision">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Specular highlights distort appearance, obscure texture, and hinder geometric reasoning in both natural and surgical imagery. We present UnReflectAnything, an RGB-only framework that removes highlights from a single image by predicting a highlight map together with a reflection-free diffuse reconstruction. The model uses a frozen vision transformer encoder to extract multi-scale features, a lightweight head to localize specular regions, and a token-level inpainting module that restores corrupted feature patches before producing the final diffuse image. To overcome the lack of paired supervision, we introduce a Virtual Highlight Synthesis pipeline that renders physically plausible specularities using monocular geometry, Fresnel-aware shading, and randomized lighting which enables training on arbitrary RGB images with correct geometric structure. UnReflectAnything generalizes across natural and surgical domains where non-Lambertian surfaces and non-uniform lighting create severe highlights and it achieves competitive performance with state-of-the-art results on several benchmarks.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-unreflectanything-rgb-only-highlight-removal-by-renderi -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b"><b>RGB-only 单图去高光(去镜面反射)</b>，靠“<b>自己造监督</b>”解决无配对数据：用单目几何(深度+法线)在任意 RGB 图上<b>物理渲染</b>逼真高光(Schlick-Fresnel + Blinn-Phong + 随机光源)得到伪配对。模型=冻结 <b>DINOv3</b> 编码 → 轻量头预测软高光图 → <b>token 空间 inpainting</b>(在特征里补被高光污染的 patch) → DPT 解码出无反射 diffuse 图。在自然 + 外科(内窥镜)双域泛化，多个 benchmark SOTA，还能提升下游位姿估计。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">镜面高光(saturated、view-dependent)遮纹理、坏几何推理，在分割/匹配/光度推断/深度/立体重建上都是杀手——尤其<b>内窥镜</b>(湿组织 + 强非均匀光)高光严重、影响临床决策。单图去高光<b>本质 ill-posed</b>(高光饱和、稀疏、与几何/材质/光照纠缠)。偏振相机能物理分离但要特殊硬件；经典法(color prior/ratio/dichromatic)在真实复杂材质下崩；深度学习受<b>配对监督稀缺 + 合成→医学域漂移</b>限制，常 over-smooth 或边界 hue 失真。</div>
+    <div class="note-h">核心方法（造监督 + token inpainting）</div>
+    <div class="note-b">① <b>Virtual Highlight Synthesis</b>(关键)：单目几何网络(MoGe-2)估深度/法线/内参 → 反投影到 3D 点云 → 相机系随机采点光源 → 用 Schlick-Fresnel + Blinn-Phong 渲染物理合理的高光强度图 → alpha 合成到原图。这样<b>任意 RGB 图都能配出</b>(干净图, 高光图)伪对。② 模型四件套：frozen <b>DINOv3-L</b> 多尺度特征 → DPT 式 <b>highlight predictor</b> 出软高光图(当 mask) → ViT 式 <b>token inpainter</b>(在特征空间补被 mask 的 patch) → DPT <b>RGB decoder</b> 出 diffuse 图。③ 处理“数据本身就有的真高光”：按亮度阈值检测、<b>排除出监督</b>(否则模型会把饱和白当 diffuse)。</div>
+    <div class="note-h">关键公式</div>
+    <div class="note-b">视/光方向 <b>v=X/‖X‖, l=(L−X)/‖L−X‖</b>(式1)；半向量 h=(l+v)/‖l+v‖。<b>Schlick-Fresnel</b>：<b>R=R0+(1−R0)(1−v·h)⁵</b>(式2，R0=0.04)。<b>Blinn-Phong 高光</b>：<b>H=K_H·R·(n·h)^S</b>(式3，K_H 全局强度、S 光泽度，训练时 K_H/S/光源 L 从均匀分布随机采)。合成：<b>I_high=(1−H)·I + H·(I+K_H·1₃)</b>(式4)。token inpainting：seed <b>F_seed=P⊙(λ·f_mask+(1−λ)·F_mean)+(1−P)⊙F+E_pos</b>(式6)，<b>F_comp=P⊙ViT(F_seed)+(1−P)⊙F</b>(式7)；inpaint 损失 cosine+L1(式8)。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>有 diffuse GT(Tab.1)</b>：SSIM PSD <b>0.911</b>/SHIQ <b>0.988</b>/SSHR 0.971 多项最佳(结构保真最稳)，MSEm 也低；但 <b>PSNR 偏低</b>(非高光区细节保留不如对手，作者诚实承认)。<b>无 GT(Tab.2, LSR↓/NIQE↓)</b>：自然 3 集 + 外科 3 集的 <b>LSR(高光抑制率)全部最低</b>(如 Cholec80 0.002、SCRREAM 0.002)，NIQE 也具竞争力。<b>下游位姿(Tab.3)</b>：CroMo epipolar error 0.301 最低、StereoMIS 0.167 最低，外科域 inlier ratio 领先。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 首个把“单目几何 + Fresnel 高光渲染 + 随机光照”结合来<b>无配对造监督</b>(自然 + 外科通吃)；② <b>特征空间 inpainting</b>(补 DINOv3 token 而非像素)→ 借全局语义恢复 diffuse，消融里换成 RGB 空间 inpainting SSIM 从 0.957 掉到 0.816；③ 显式排除“数据自带真高光”出监督(去掉它 MSEm 0.003→0.022，最伤)；④ 去高光直接提升下游几何匹配/位姿。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① <b>PSNR 普遍不占优</b>——MSEm 低但 PSNR 低，说明非高光区细节有损(作者归因缺 structure-aware prior，<i>“less effective at preserving fine details in the non-highlighted regions”</i>)；② 高光检测靠<b>亮度</b>，会把亮天空/白色解剖结构<b>误判成高光</b>而错误 inpaint(supp 失败案例)；③ 对<b>透明/折射物</b>及低梯度缓变高光处理差，seam 不连贯。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文大意：</b>镜面高光扭曲外观、遮蔽纹理、阻碍几何推理（自然图与外科图皆然）。提出 <b>UnReflectAnything</b>：一个 RGB-only 框架，单图去高光——同时预测一张高光图 + 一张无反射 diffuse 重建。模型用<b>冻结的 ViT 编码器</b>提多尺度特征、一个<b>轻量头</b>定位镜面区域、一个 <b>token 级 inpainting 模块</b>在产出最终 diffuse 图前修复被污染的特征 patch。为克服<b>无配对监督</b>，提出 <b>Virtual Highlight Synthesis</b> 管线：用单目几何 + Fresnel-aware shading + 随机光照渲染物理合理的高光，使任意带正确几何结构的 RGB 图都能用来训练。在自然 + 外科两域泛化，多个 benchmark 取得有竞争力/SOTA 结果。</div>
+    <div class="note-b"><b>逐句指路（verbatim 英文 + 中文）：</b><br>1) <i>“Specular highlights distort appearance, obscure texture, and hinder geometric reasoning in both natural and surgical imagery.”</i> — 动机一句话：高光坏几何，外科尤甚。<br>2) <i>“an RGB-only framework that removes highlights from a single image by predicting a highlight map together with a reflection-free diffuse reconstruction.”</i> — 双输出：高光图 + diffuse 图，且纯 RGB（不要偏振硬件）。<br>3) <i>“a frozen vision transformer encoder … a token-level inpainting module that restores corrupted feature patches before producing the final diffuse image.”</i> — 架构核心：冻结 ViT + <b>特征空间 inpainting</b>（不是像素空间）。<br>4) <i>“To overcome the lack of paired supervision, we introduce a Virtual Highlight Synthesis pipeline that renders physically plausible specularities using monocular geometry, Fresnel-aware shading, and randomized lighting.”</i> — 核心贡献：用渲染造监督，三要素=单目几何 / Fresnel 着色 / 随机光照。<br>5) <i>“achieves competitive performance with state-of-the-art results on several benchmarks.”</i> — 结论定调。</div>
+
+    <div class="note-h">📚 背景知识①：镜面 vs 漫反射 / dichromatic / 为什么 ill-posed（外部补充）</div>
+    <div class="note-b">物体反射光 = <b>diffuse 漫反射</b>（各向均匀、携带本征颜色与纹理）+ <b>specular 镜面</b>（像镜子、视角相关 view-dependent、常饱和发白）。<b>二色反射模型 dichromatic reflection model</b>（Shafer 1985）把观测拆成这两层。去高光 = 估出并去掉 specular、还原 diffuse。本质 <b>ill-posed</b>：原文 <i>“the specular component is often saturated, spatially sparse, and entangled with scene geometry, material properties, and illumination.”</i> —— 高光区像素被“烧”到饱和、信息丢失，且与几何/材质/光照纠缠，单图不可能逆出唯一解。偏振相机能物理分离 diffuse/specular，但 <i>“their specialized hardware limits practicality in most consumer and surgical systems.”</i></div>
+
+    <div class="note-h">📚 背景知识②：Blinn-Phong / Schlick-Fresnel / 半向量（理解式 1-4 必备）</div>
+    <div class="note-b">都是图形学经典光照模型。<b>半向量 half-vector</b> \(h=\frac{l+v}{\lVert l+v\rVert}\) 是光方向 \(l\) 与视方向 \(v\) 的归一化中分线；<b>Blinn-Phong</b> 镜面项 \(\propto (n\cdot h)^S\)，\(S\)（shininess/光泽度）越大高光越锐越小。<b>Fresnel 效应</b>=掠射角（大入射角）反射更强，<b>Schlick 近似</b> \(R=R_0+(1-R_0)(1-v\cdot h)^5\) 是廉价算反射系数的常用公式，\(R_0\) 为正入射反射率。本文反其道而行：不是“去”高光的物理模型，而是用它们<b>正向渲染</b>出逼真高光去“污染”干净图，从而无配对地造出（干净图，高光图）伪配对。</div>
+
+    <div class="note-h">📚 背景知识③：DINOv3 / DPT / MoGe-2 / 偏振对手</div>
+    <div class="note-b"><b>DINOv3</b>（Siméoni et al. 2025）=自监督 ViT 大模型，本文当<b>冻结编码器</b> \(E\) 提语义特征，并在其 token 上做 inpainting。<b>DPT</b>（Dense Prediction Transformer, Ranftl 2021）=把 ViT 特征解码成稠密图，本文的高光头 \(H\) 与 RGB 解码器 \(D\) 都是 DPT 式。<b>MoGe-2</b>（Wang et al. 2025）=单目几何大模型，估 metric 深度 + 法线 + 内参，提供渲染所需 3D 结构。偏振路线对手 <b>PolarAnything (PA)</b> / <b>PolarFree (PF)</b> 能借 DoLP/AoLP 分离 diffuse/specular，但需偏振输入；本文要的正是<b>免偏振、纯 RGB</b>。</div>
+
+    <div class="note-h">② §1 Introduction — problem（动机闭环之“病”）</div>
+    <div class="note-b"><b>problem：</b>高光遮内容、坏下游——原文 <i>“corrupt downstream perception tasks such as segmentation, correspondence, and photometric inference.”</i> 外科内窥镜里 <i>“bodily fluids, moist tissue and strong non-uniform lighting introduce intense specularities that occlude anatomy, bias texture cues, and hinder navigation and decision-making.”</i> 且 <i>“visual ambiguity can carry clinical consequences.”</i>（有临床后果）。单图去高光 <i>“is fundamentally ill-posed.”</i> 现有路线三条全有短板：① 偏振要专用硬件；② 经典法（color prior / color ratio / dichromatic）<i>“often break down under real-world conditions involving complex materials or uncontrolled illumination.”</i>；③ 深度学习受 <i>“the scarcity of paired supervision and the domain shift between synthetic and medical imagery”</i> 限，常 <i>“over-smooth texture or introduce hue distortions near highlight boundaries.”</i></div>
+
+    <div class="note-h">③ §1 Introduction — 三大贡献 solution → why 闭环</div>
+    <div class="note-b"><b>solution（原文三条贡献逐字）：</b><br>• <i>“Virtual highlight synthesis. We render realistic specularities from monocular geometry using Fresnel-aware shading and randomized lighting, enabling supervision without paired diffuse-only data.”</i><br>• <i>“Token-space diffuse inpainting. A transformer inpainter reconstructs masked DINOv3 patch tokens directly in feature space, restoring diffuse appearance with global context.”</i><br>• <i>“Hybrid geometry and pixel-level supervision. A unified training scheme couples synthetic highlight rendering with token- and image-space losses, enforcing seamless boundary consistency and cross-domain robustness.”</i></div>
+    <div class="note-b"><b>why（为什么“渲染造监督”成立、为什么在特征空间补）：</b>① <b>渲染合理性</b>——只要单目几何（尤其法线）够准，按物理（Fresnel + Blinn-Phong）合成的高光就与真实场景结构<b>光度一致 photometrically consistent</b>，于是“干净原图”天然成为“合成高光图”的 diffuse GT；消融证实：把 MoGe-2 法线换成粗糙 depth-gradient 法线，MSEm 0.003→0.012 明显变差。② <b>特征空间 inpainting</b>——高光区像素已饱和丢失，但 DINOv3 token 携带<b>全局语义/上下文</b>，在特征层补再解码比直接补像素更能恢复结构；消融：换成 RGB 空间 inpainting，SSIM 0.957→0.816（掉最多）。这两点正面回应“无 GT 怎么训、丢失信息怎么补”。</div>
+
+    <div class="note-h">📚 §2 Related Work — 谱系定位</div>
+    <div class="note-b"><b>经典物理先验：</b>Tan & Shen 用 color constancy / intensity ratio 拆 diffuse-specular；dichromatic 模型给出简化前提下的原理化公式；multi-flash、偏振相机能更显式分离但需特殊采集。<b>学习法：</b>HighlightNet 建首个大规模合成+真实联合检测/去除数据集；SpecularityNet 用 cross-polarization + 对抗训练；MG-CycleGAN 用软高光 mask + cycle-consistency 做<b>无配对</b>学习；DHAN-SHR 用 local-global 混合 transformer 不需显式 mask；StableDelight（受 StableNormal 启发）用扩散先验。<b>外科专用：</b>RPCA 分解、partial conv inpainting、Endo-STTN（时序 transformer 跨帧传纹理，但 <i>“relies on binary highlight masks as explicit input queries, which are often unavailable in practice.”</i>）。本文自我定位：<i>“To our knowledge, UnReflectAnything is the first work to combine monocular geometry, Fresnel-aware specular rendering, and randomized lighting to generate physically plausible paired supervision for RGB-only highlight removal across both natural and surgical imagery.”</i></div>
+
+    <div class="note-h">④ §3.1 Virtual Highlight Synthesis — 单目几何 + 视/光方向（式1）</div>
+    <div class="note-b"><b>机制：</b>给定线性 RGB 图 \(I\in[0,1]^{H\times W\times 3}\)，三步造高光：(i) 单视图推几何，(ii) 相机系采点光源，(iii) 渲一个带 Fresnel 调制的 Blinn-Phong 镜面瓣。<b>单目几何</b>用现成方法（MoGe-2）估 metric 深度 \(D\in\mathbb{R}_+^{H\times W}\)、法线 \(n\in\mathbb{R}^{H\times W\times3}\)、内参 \(K\in\mathbb{R}^{3\times3}\)。每个齐次像素 \(p=(u,v,1)^\top\) 反投影到相机系 3D 点 \[ X = D(p)\,K^{-1}p \] 点光源位置 \(L\in\mathbb{R}^3\) 在相机系 3D 采样。归一化的视方向与光方向（式1）：\[ v=\frac{X}{\lVert X\rVert},\qquad l=\frac{L-X}{\lVert L-X\rVert} \]</div>
+
+    <div class="note-h">⑤ §3.1 Specular Core — Fresnel（式2）/ Blinn-Phong（式3）/ 合成（式4）/ 数据自带高光</div>
+    <div class="note-b"><b>半向量</b> \(h=\frac{l+v}{\lVert l+v\rVert}\)。<b>Schlick-Fresnel 反射系数（式2）</b>：\[ R=R_0+(1-R_0)(1-v\cdot h)^5 \] \(R_0\) 为正入射 Fresnel 反射率近似（实现取 \(R_0=0.04\)）。<b>Blinn-Phong 逐像素高光强度（式3）</b>：\[ H=K_H\,R\,(n\cdot h)^S \] \(K_H>0\) 控全局高光强度、\(S\) 量化表面光泽度；训练时 <i>“KH, S and the light position L are sampled from empirically tuned uniform distributions”</i>，以增加监督信号多样性。<b>RGB 合成（式4，alpha 叠加）</b>：\[ I_{high}=(1-H)\,I + H\,(I+K_H\,\mathbf{1}_3) \] <b>关键工程细节——dataset highlights：</b>原图 \(I\) 并非天然无高光（内窥镜尤甚），这些<b>数据自带真高光</b>按高亮度阈值 \(\tau_L\) 检测；<i>“supervising these pixels would mislead the network into interpreting saturated highlight regions as diffuse ‘white’ surfaces”</i>，故<b>显式从监督中排除</b>所有 dataset-highlight 像素。</div>
+
+    <div class="note-h">⑥ §3.2 Architecture — E/H/T/D 四件套（式5）</div>
+    <div class="note-b">模型 \(M\) 输入 \(I\)，联合输出无反射 diffuse 图 \(I_{diff}\in[0,1]^{H\times W\times3}\) 与高光得分图 \(I_{high}\in[0,1]^{H\times W}\)，即 \((I_{diff},I_{high})=M(I)\)，形式化 \(I_{high}=H(E(I))\)、\(I_{diff}=D(T(E(I),I_{high}))\)。四组件：<br>• <b>编码器 \(E\)</b>=冻结 DINOv3-Large，取四个深度的多尺度 patch token（式5）：\[ F=\{F_1,F_2,F_3,F_4\}=E(I),\quad F_\ell\in\mathbb{R}^{N\times C} \] • <b>高光头 \(H\)</b>=轻量 DPT 解码器，出单通道连续高光图 \(I_{high}\in[0,1]^{H\times W}\)，<i>“providing a guidance signal for subsequent token inpainting.”</i><br>• <b>token inpainter \(T\)</b>=在<b>特征空间</b>重建被高光污染的 token（详见⑦）。<br>• <b>RGB 解码器 \(D\)</b>=从补全后的多尺度 token 合成 diffuse 图。</div>
+
+    <div class="note-h">⑦ §3.2 Patch-Token Diffuse Inpainting — seed 与合并（式6/式7）</div>
+    <div class="note-b">patch mask \(P\in[0,1]^N\) 由 \(I_{high}\) 平均池化到 patch 分辨率再阈值化得到（逐层 \(\ell\) 独立，略去 \(\ell\)）。待补 token 先换成<b>可学 mask token</b> \(f_{mask}\)，再混入由可见邻居经 depthwise conv 算出的 <b>local mean prior</b> \(F_{mean}\)，并加固定 2D 位置编码 \(E_{pos}\) 得 seed（式6）：\[ F_{seed}=P\odot\big(\lambda f_{mask}+(1-\lambda)F_{mean}\big)+(1-P)\odot F+E_{pos} \] \(\lambda\) 为 local mean prior 系数（取 0.5）。seed 过<b>六层 ViT</b> 自注意（对可见+被 mask token 一起做），最终把补全与原可见 token 合并（式7）：\[ F_{comp}=P\odot\mathrm{ViT}(F_{seed})+(1-P)\odot F \] 得到 <i>“highlight-free features that preserve both spatial structure and semantic coherence”</i>，再交 \(D\) 解码出 \(I_{diff}\)。</div>
+
+    <div class="note-h">⑧ §3.3 Supervision — 双 mask + 特征损失（式8）+ 解码器 9/10/11/12</div>
+    <div class="note-b"><b>两 mask：</b>监督 mask \(m_{sup}\)（GT 可信处=排除真高光）、hole mask \(m_{hole}\)（待补=合成∪真高光）；下采到 patch 网格得 \(M_{sup},M_{hole}\)。<b>高光头</b>：\(L_H=w_{dice}L_{dice}+w_{L1}L_{L1}+w_{TV}L_{TV}\)。<b>token inpainting</b>：只在交集 \(M=M_{hole}\cap M_{sup}\)（被补且有可信 GT）上算，GT token 取合成前干净图 \(F^*_\ell=E(I)\)，损失含 cosine + L1（式8）：\[ L_{inp}=\frac{1}{|M|}\sum_{i\in M}\Big[\alpha\lVert F^*_i-F_i\rVert_1+(1-\alpha)\big(1-F^*_i F_i^\top\big)\Big] \] α=0.25。<b>解码器两段</b>：先 autoencoder 预训练（式9）\(L_{AE}=\lVert D(E(I))-I\rVert_1+(1-\mathrm{SSIM}(D(E(I)),I))\)；再 fine-tune 加 <b>seam 边界连续</b>（式10）\(L_{seam}=\lVert(I_{diff}-I)\odot r\rVert_1+\lambda_g\lVert\nabla I_{diff}-\nabla I\rVert_1\)（\(r=\mathrm{dilate}(m_{hole})-m_{hole}\) 薄边界环）、抑制重现高光的 <b>Charbonnier</b>（式11）\(L_{spec}=\frac{1}{|m_{hl}|}\sum_{p\in m_{hl}}\sqrt{(B(p)-\tau)^2+\varepsilon^2}\)、<b>RGB 重建</b>（式12）\(L_{RGB}=\lVert I_{diff}-I^*_{diff}\rVert_1+(1-\mathrm{SSIM}(I_{diff},I^*_{diff}))\)（用 \(m_{sup}\) 排除真高光）。</div>
+
+    <div class="note-h">⑨ §4 实验设置 + 超参（PDF 抄真值）</div>
+    <div class="note-b"><b>训练：</b>1× NVIDIA A100 (80 GB)，batch size 32，50 epochs，初始 lr \(5\times10^{-4}\)、每 10 epoch 线性衰减；几何用 MoGe-2，高光头/解码器用 DPT，inpainter 用 6 层 ViT。<b>超参</b>：\(R_0=0.04\)、亮度阈值 \(\tau_L=0.95\)、\(\lambda=0.5\)、α=0.25、解码器微调 mask 阈值 \(\tau_m=0.85\)、稳定项 \(\varepsilon=10^{-6}\)。<b>loss 权重（Table 5）</b>：\(w_{dice}=0.2,\ w_{L1}=0.7,\ w_{TV}=0.1,\ w_{seam}=0.25,\ w_{spec}=0.25,\ w_{RGB}=0.5\)。<b>数据</b>：室内 SCRREAM / HouseCat6D、室外 CroMo、内窥镜 SCARED / Cholec80；按有无 diffuse GT 分两类评测——<b>diffuse-referenced</b>（PSD/SHIQ/SSHR 有配对 GT）与 <b>non-referenced</b>（其余，含全部外科集，<i>“no publicly available surgical dataset provides paired reflection-free ground truth.”</i>）。</div>
+
+    <div class="note-h">⑩ §4.2 有 GT 评测 — Table 1 真实数值（MSEm↓/PSNR↑/SSIM↑）</div>
+    <div class="note-b"><table style="width:100%;border-collapse:collapse;font-size:12px;color:#e3e7ff">
+    <tr style="color:#ffd35c;border-bottom:1px solid #2a2f5c"><td>方法</td><td>PSD MSEm↓</td><td>PSD PSNR↑</td><td>PSD SSIM↑</td><td>SHIQ SSIM↑</td><td>SSHR SSIM↑</td></tr>
+    <tr><td>DHAN-SHR</td><td>0.006</td><td>24.863</td><td>0.868</td><td>0.982</td><td>0.971</td></tr>
+    <tr><td>SpecularityNet</td><td>0.007</td><td>23.675</td><td>0.839</td><td>0.961</td><td>0.952</td></tr>
+    <tr><td>StableDelight</td><td>0.007</td><td>23.384</td><td>0.838</td><td>0.921</td><td>0.886</td></tr>
+    <tr><td>PA+PF</td><td>0.050</td><td>14.101</td><td>0.645</td><td>0.604</td><td>0.432</td></tr>
+    <tr style="color:#7ee0c0"><td><b>OURS</b></td><td><b>0.004</b></td><td>17.230</td><td><b>0.911</b></td><td><b>0.988</b></td><td>0.971</td></tr>
+    </table></div>
+    <div class="note-b"><b>读表：</b>结构保真 <b>SSIM 多项第一/并列第一</b>（PSD 0.911、SHIQ 0.988、SSHR 0.971），MSEm 也最低（PSD 0.004）。但 ⚠️ <b>PSNR 偏低</b>（PSD 17.230 vs DHAN-SHR 24.863）——作者诚实承认：<i>“Our model attains lower MSEm but also lower PSNR, indicating it may be less effective at preserving fine details in the non-highlighted regions despite achieving lower global error.”</i></div>
+
+    <div class="note-h">⑪ §4.3 无 GT 评测 — Table 2 真实数值（LSR / NIQE，越低越好）</div>
+    <div class="note-b"><table style="width:100%;border-collapse:collapse;font-size:12px;color:#e3e7ff">
+    <tr style="color:#ffd35c;border-bottom:1px solid #2a2f5c"><td>方法</td><td>CroMo LSR</td><td>SCRREAM LSR</td><td>Cholec80 LSR(外科)</td><td>SCARED LSR(外科)</td><td>StereoMIS LSR(外科)</td></tr>
+    <tr><td>DHAN-SHR</td><td>0.063</td><td>0.073</td><td>0.115</td><td>0.114</td><td>0.077</td></tr>
+    <tr><td>EndoSTTN</td><td>0.028</td><td>0.039</td><td>0.021</td><td>0.020</td><td>0.052</td></tr>
+    <tr><td>StableDelight</td><td>0.176</td><td>0.270</td><td>0.316</td><td>0.262</td><td>0.278</td></tr>
+    <tr style="color:#7ee0c0"><td><b>OURS</b></td><td><b>0.012</b></td><td><b>0.002</b></td><td><b>0.002</b></td><td><b>0.011</b></td><td><b>0.022</b></td></tr>
+    </table></div>
+    <div class="note-b"><b>读表：</b>自然 + 外科<b>全部数据集 LSR 最低</b>（高光抑制最强），NIQE 也具竞争力（如 SCRREAM NIQE 0.056、CroMo 0.061 最低）。原文：<i>“our approach systematically attains the lowest LSR across Cholec80, SCARED, and StereoMIS-Tracking … while remaining comparable to competing methods in terms of NIQE.”</i></div>
+
+    <div class="note-h">⑫ §4.4 下游位姿 — Table 3 + Q&A：去高光真的帮几何吗？</div>
+    <div class="note-b"><b>设置：</b>DISK 关键点 + LightGlue 匹配 + MAGSAC++ 估本质矩阵，指标=对称 epipolar error \(E_{ep}\)↓ 与 inlier ratio \(IR\)↑。<b>真实数值：</b>自然域 CroMo <b>OURS \(E_{ep}=0.301\)（最低）/ IR 0.997</b>；外科 StereoMIS-Tr <b>OURS \(E_{ep}=0.167\)（最低）/ IR 1.000</b>；Cholec80 OURS \(E_{ep}=0.355\) / IR 0.998（领先/并列领先 inlier）。</div>
+    <div class="note-b"><b>Q&amp;A · 为什么去高光能改善位姿？</b>高光是 view-dependent 的，在两视图里位置/亮度不一致，会制造<b>假对应</b>、干扰关键点定位。去掉它后关键点更稳、匹配更可靠。原文：<i>“reducing specular contamination helps preserve keypoint localization under challenging clinical illumination, where reflections often interfere directly with geometric cues.”</i> 外科域 <i>“our model shows a more uniform advantage”</i>，因为外科高光更强更广。</div>
+
+    <div class="note-h">⑬ §C 消融 — Table 4 真实数值（MSEm↓/SSIM↑，PSD/SSHR/SHIQ 均值）</div>
+    <div class="note-b"><table style="width:100%;border-collapse:collapse;font-size:12.5px;color:#e3e7ff">
+    <tr style="color:#ffd35c;border-bottom:1px solid #2a2f5c"><td>配置</td><td>MSEm↓</td><td>SSIM↑</td></tr>
+    <tr><td>w/o MoGe-2（depth-gradient 法线）</td><td>0.012</td><td>0.909</td></tr>
+    <tr><td>w/o token inpainting（改 RGB 空间补）</td><td>0.007</td><td><b>0.816</b></td></tr>
+    <tr><td>w/o local mean prior</td><td>0.004</td><td>0.911</td></tr>
+    <tr><td>w/o decoder 预训练</td><td>0.006</td><td>0.873</td></tr>
+    <tr><td>w/o dataset-highlight 排除</td><td><b>0.022</b></td><td>0.933</td></tr>
+    <tr style="color:#7ee0c0"><td><b>Full（OURS）</b></td><td><b>0.003</b></td><td><b>0.957</b></td></tr>
+    </table></div>
+    <div class="note-b"><b>读表：</b>① 去 <b>token inpainting</b> 改 RGB 空间补，SSIM 从 0.957 暴跌到 <b>0.816</b>（结构最伤）——证实“特征空间补”是核心。② 去 <b>dataset-highlight 排除</b>，MSEm 从 0.003 暴涨到 <b>0.022</b>（最伤误差）——证实“把饱和真高光当 GT 会带偏模型”。③ 去 MoGe-2 法线（用粗糙 depth-gradient），MSEm 0.003→0.012——证实“准法线→真高光”。原文：<i>“inaccurate normals produce unrealistic synthetic highlights and weaken supervision … restoring corrupted features before decoding is essential for preserving structure.”</i></div>
+
+    <div class="note-h">⑭ §4.5 Discussion / Limitations + 我的疑问</div>
+    <div class="note-b"><b>作者承认的局限：</b>① <i>“tends to struggle with transparent or refractive objects, where the distinction between diffuse and specular components is inherently ambiguous.”</i>（透明/折射物难分）② 非高光区细节保留次优 <i>“sub-optimal performance in retaining structure and resolution in the non-highlight regions”</i>，建议加 structure-aware prior / edge constraint。③ 当前依赖<b>亮度线索</b>检测高光 <i>“the current predictions rely predominantly on luminance cues”</i>，会把亮天空/白色解剖结构误判成高光而错误 inpaint（supp Fig.8 失败案例）。④ <i>“degraded reconstruction quality in cases of gradual, low-gradient highlights with smooth falloffs, where the inpainted seams may appear less coherent.”</i><br><b>我的疑问 [推测]：</b>合成高光的 \(K_H,S\) 分布是“empirically tuned”，跨域（外科 vs 室外）是否需重调？论文未给跨域分布敏感性消融，存疑。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>problem：</b>RGB 单图去镜面高光本质 ill-posed、缺配对监督、合成→医学域漂移、外科高光严重坏几何与临床决策。<b>method：</b>Virtual Highlight Synthesis（单目几何 MoGe-2 + Schlick-Fresnel 式2 + Blinn-Phong 式3 + 随机光照，alpha 合成式4，任意图造伪配对）+ 冻结 DINOv3 编码 + DPT 高光头 + <b>token 空间 inpainting</b>（式6/7 补污染特征）+ DPT 解码出 diffuse；混合 token/像素监督（式8-12）+ 显式排除数据自带真高光。<b>experiment：</b>有 GT 结构保真 SSIM 多项最佳（PSD 0.911 / SHIQ 0.988，但 PSNR 偏低 17.23）；无 GT 自然+外科 LSR 全部最低（SCRREAM/Cholec80 0.002）；下游位姿 CroMo \(E_{ep}\) 0.301、StereoMIS 0.167 最低。<b>takeaway（≥3）：</b>① <b>物理渲染可无配对造高光监督</b>，且能跨自然/外科泛化——只要单目几何准，干净图就是合成高光图的 diffuse GT。② <b>特征空间 inpainting 远胜像素空间</b>（SSIM 0.957 vs 0.816）：借 DINOv3 全局语义恢复被烧没的结构。③ <b>必须把“数据自带真高光”排除出监督</b>（MSEm 0.022 vs 0.003），否则模型把饱和白当 diffuse。④ 去高光是“几何友好”预处理：直接提升关键点匹配与相对位姿。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-unreflectanything-rgb-only-highlight-removal-by-renderi/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. UnReflectAnything removes specular highlights from RGB images without paired supervision. A Virtual Highlight Synthesis pipeline renders physically plausible reflections from estimated geometry, providing realistic pseudo-pairs across natural and surgical domains. The model predicts a soft highlight map and inpaints masked DINOv3 tokens, reconstructing reflection-free diffuse images. It </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-unreflectanything-rgb-only-highlight-removal-by-renderi/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Synthetic Highlight Generation Pipeline from any image. Given a single RGB image (left), a per-pixel depth and surface normals is first estimated using a monocular geometry network. The recovered geometry defines a 3D point cloud X with associated surface normals n and view directions v. The light source position L is sampled in camera coordinates, producing local illumination vectors l.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-unreflectanything-rgb-only-highlight-removal-by-renderi/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. UnReflectAnything model architecture. A pretrained DINOv3 encoder backbone E extracts a hierarchy of multi-scale patch features from the input image (only the last feature map in the hierarchy is shown for clarity). A DPT-inspired highlight predictor H produces a soft, pixel-level highlight map, serving as a mask on the feature maps. A lightweight ViT-based Token Inpainter T operates on </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-unreflectanything-rgb-only-highlight-removal-by-renderi/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Patch token inpainting logic. A local neighborhood (purple borders) for each token to be inpainted is used to com- pute the local mean priors. This mean priors are summed with the Positional Embeddings and a learned mask token and fed into a sequence of transformer blocks which refine the tokens to the final feature.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-unreflectanything-rgb-only-highlight-removal-by-renderi/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Supervision masks for the token inpainting module. Reliable supervision excludes dataset highlight regions (red). The inpainter must, however, learn to complete all highlight regions, including both synthetic (green) and dataset highlights.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-unreflectanything-rgb-only-highlight-removal-by-renderi/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Qualitative examples for pairs of raw images with highlights (left) and their UnReflectAnything-processed counterpart (right). Our framork consistently removes, inpaints or attenuates specular highlights from images in several different domains.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-unreflectanything-rgb-only-highlight-removal-by-renderi/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Qualitative comparison between UnReflectAnything, PolarAnything &amp; PolarFree (PA+PF), and StableDelight. OURS provides more consistent and effective attenuation of specular highlights across domains, while avoiding noticeable artefacts.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-unreflectanything-rgb-only-highlight-removal-by-renderi/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Representative failure modes of UnReflectAnything.</figcaption></figure>
+    </div>
+  </div></body></html>

@@ -1,0 +1,173 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Generative Multimodal Pretraining with Discrete Diffusion Timestep Tokens</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2025</span> &nbsp; <span class="badge b-honorable_student">🎓 Best Student 提名</span></div>
+    <h1>Generative Multimodal Pretraining with Discrete Diffusion Timestep Tokens</h1>
+    <div class="au2" style="color:var(--mut)">Kaihang Pan · Wang Lin · Zhongqi Yue · Tenglong Ao · Liyu Jia · Wei Zhao · Juncheng Li · Siliang Tang · Hanwang Zhang</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2025/papers/Pan_Generative_Multimodal_Pretraining_with_Discrete_Diffusion_Timestep_Tokens_CVPR_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Generative%20Multimodal%20Pretraining%20with%20Discrete%20Diffusion%20Timestep%20Tokens">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2025-generative-multimodal-pretraining-with-discrete-diffusi -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">先指出统一理解+生成的 MLLM 一直用的 <b>spatial visual token（图块按光栅顺序排）是"不可能语言"</b>（缺语言的递归结构、打乱顺序 LLM 收敛几乎不变），再用<b>扩散的 timestep</b> 造出有递归结构的离散视觉 token：<b>DDT（Discrete Diffusion Timestep）token</b>——第 t 个 token 专门补偿"加噪到 t 步时丢失的那部分视觉属性"，token 序列随 t 递归展开、coarse→fine。基于它训出 <b>DDT-LLaMA</b>，在理解+生成上同时刷新 MLLM SOTA（且 tokenizer 只在 ImageNet 上训）。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">MLLM 想用同一个 next-token-prediction 统一"理解"（many-to-one 抽象细节，多张柯基→"corgi"）和"生成"（one-to-one 保细节）。但所有现有法都用 <b>spatial token</b>。作者借 [Kallini 2024] 的"impossible language"检验发现（Fig.1 右）：<b>打乱 spatial token 顺序，LLM 收敛几乎不受影响</b>——这与人类语言相反（打乱语言顺序性能应骤降）。根因：spatial token <b>缺语言的递归结构</b>（语言可递归嵌套，"a man"→"a man [[walking] in the park]"）⇒ 对 LLM 是"无法掌握的语言"。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b">① <b>DDT 递归 token 定义</b>：扩散前向逐步加噪，把不同图像"塌缩"成相似的噪声（渐进丢失区分属性）。学一个<b>展开的</b>离散 token 序列补偿这种丢失：f₀(x₀)=∅（无丢失），训练 DM 用 xt + 前 t 个 token 重建 x₀；递归关系 <b>f_{t+1}(x₀)=(f_t(x₀), V_{t+1})</b>，新增 token V_{t+1} 只补 x_{t+1} 比 x_t 多丢的那部分属性；t=T 时 x_T 纯噪声、所有属性丢光，f_T(x₀) 即整图 token 序列。② <b>Tokenizer 架构（§3）</b>：encoder=transformer + T 个 learnable query（输出长度=T，仿 SD3 双 transformer 处理 query/image 再 join attention）；quantizer=VQ，码本 <b>|C|=65536</b>、维度 m=16、cosine 最近邻 + EMA + 死码重置；decoder=MMDiT，吃量化 token 重建 x₀。<b>训练损失（式1）</b>：L=E‖d(tϵ+(1−t)x₀, t, (V₁..V_t)) − x₀‖²（Rectified Flow 采样 xt=tϵ+(1−t)x₀）+ commitment loss。③ <b>DDT-LLaMA（§4）</b>：图→1D 递归离散序列，与文本 token 拼接、[BOV]/[EOV] 分隔，<b>从 LLaMA3-8B 初始化、词表扩 65,536 个视觉码</b>，统一 LM 目标（式2）。两阶段：Stage1 预训练（Laion+Coyo 200M 图文对、10% 纯文本防遗忘、512 Ascend 910B NPU 约两周）；Stage2 指令微调。推理：出 [BOV] 后连续 T 次预测出 {V₁..V_T} → 喂 decoder 经 T 步 DDPM 去噪成图（时刻 t 只给前 t 个 token、其余 mask 为 0）。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">T2I 生成（GenEval overall）：<b>0.66</b>，超所有 MLLM（SEED-X 0.49 / Emu3 0.54）甚至专用 SDXL 0.55，逼近 SD3 0.74 / DALL-E3 0.67；尤擅 color/counting/position。图像编辑（Table 2）：zero-shot 全面超 MLLM、且超专用编辑模型（MagicBrush CVS 92.4）。理解（Table 3）：<b>encoder-free（无 CLIP）</b> 仍强——NoCaps 124.2 / Flickr 88.5 / VQA 76.4 / GQA 66.3 / OKVQA 65.9，超不少"只做理解"的 MLLM。重建+类条件生成（Table 4）：ImageNet 重建 PSNR <b>21.7</b>（&gt;同 token 数的 spatial tokenizer），类条件 <b>FID 6.1</b>（&lt; MoVQ 7.1 / VQGAN 15.8）。递归性证据：counterfactual interpolation（替换子集 token 只改对应属性=语义融合，VQGAN 则是 CutMix 区域拼接）；扩展子集解码（token 越多属性越全，contour/color→完整结构）；DDT token 让<b>文本困惑度训练中下降</b>而 VQGAN 上升（Fig.9a）。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 用"impossible language"诊断出 spatial token 的根本缺陷（无递归结构）——重新定义"视觉该用什么 token 喂 LLM"；② 巧借扩散 timestep 造出 coarse→fine、属性级解耦的递归 token；③ 解耦性有多组实证（插值/扩展解码/困惑度/AB test）；④ encoder-free（不靠 CLIP）也能强理解；⑤ 仅用 ImageNet 训 tokenizer 就同时刷新理解+生成。</div>
+    <div class="note-h">疑问 / 边界（原文标注）</div>
+    <div class="note-b">① <b>美学质量不如 Emu3 等</b>：自认因 tokenizer 仅在 <b>ImageNet 256×256</b> 训、开放域重建弱，限制了 T2I 上限。② <b>TwoObj 偏弱</b>：训练 caption 很少用"生成两个物体"这种简单 prompt 格式。③ 每图 token 数大（Fig.8 到 480），推理要 T 次自回归 + T 步 DDPM，<b>速度正文未计时</b>。④ 训练吃 512 NPU 两周（大算力）。⑤ scaling law 只是"preliminary indications"（Fig.7），递归性结论偏定性实证。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文，PyMuPDF 提取）。原文英文原句引用 + 中文指路 + 追问 why。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文（目标）：</b>“Recent endeavors in Multimodal Large Language Models (MLLMs) aim to unify visual comprehension and generation by combining LLM and diffusion models, the state-of-the-art in each task, respectively.” → 大背景：MLLM 想把"理解"（LLM 强）和"生成"（扩散强）统一进一个模型。</div>
+    <div class="note-b"><b>原文（病灶）：</b>“Existing approaches rely on spatial visual tokens, where image patches are encoded and arranged according to a spatial order (e.g., raster scan). However, we show that spatial tokens lack the recursive structure inherent to languages, hence form an impossible language for LLM to master.” → 核心论断：现有法用<b>空间 token</b>（图块按光栅扫描排），但它<b>缺语言的递归结构</b>，对 LLM 是"不可能语言（impossible language）"。</div>
+    <div class="note-b"><b>原文（解法）：</b>“we build a proper visual language by leveraging diffusion timesteps to learn discrete, recursive visual tokens. Our proposed tokens recursively compensate for the progressive attribute loss in noisy images as timesteps increase, enabling the diffusion model to reconstruct the original image at any timestep.” → 用<b>扩散 timestep</b> 造递归离散视觉 token；每个 token 补偿"随 t 增大而渐失的视觉属性"，使扩散模型能在任意 t 重建原图。</div>
+    <div class="note-b"><b>原文（结论）：</b>“This approach allows us to effectively integrate the strengths of LLMs in autoregressive reasoning and diffusion models in precise image generation ... a new SOTA for multimodal comprehension and generation simultaneously.” <b>逐句抓 Abstract</b>：空间 token 非语言 → 用 timestep 造递归 token（补属性丢失）→ LLM 自回归推理 + DM 精确生成 → 理解+生成<b>同时</b> SOTA。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文，理解 DDT 必备）</div>
+    <div class="note-b"><b>① 统一理解+生成的 MLLM 三条路线：</b><b>cascading</b>（LLM 规划→DM 生成，两段独立，如 LLaVA-Plus）；<b>tokenization</b>（把图像量化成离散 token，单 transformer 纯 next-token，如 SEED/Emu3/VILA-U）；<b>混合</b>（一个 transformer 里掺 AR + diffusion，如 Transfusion[67]/Show-o[58]）。本文属 tokenization 路线，但<b>换掉了 token 的"语言性"</b>——这是它与 Emu3 等同路线工作的根本区别。</div>
+    <div class="note-b"><b>② spatial token / VQGAN：</b>把图像切 patch、VQGAN/VQ 编码成离散码、按<b>光栅顺序（raster scan, row by row）</b>排成 1D 序列喂 LLM。问题=这个顺序只是"空间排布"，token 间是平铺的网格邻接，<b>不是语言那种可递归嵌套</b>的层级关系。</div>
+    <div class="note-b"><b>③ "impossible language"检验（Kallini 2024 [26]）：</b>真语言里 token 顺序极重要，打乱后 LLM 收敛/困惑度应骤变；反之若打乱某种 token 序列的顺序对 LLM 收敛<b>几乎无影响</b>，说明它不具备语言的结构性。本文借此判定：<b>spatial token "非语言"（Fig.1 右，打乱顺序收敛曲线几乎重合）、DDT token "像语言"（Fig.1 左，打乱后明显变差）</b>。</div>
+    <div class="note-b"><b>④ many-to-one vs one-to-one（两任务的本质冲突）：</b>原文 “Comprehension pursues a many-to-one mapping that abstracts visual details (e.g., many photos of corgi dogs result in recognition of 'corgi'). On the other hand, generation finds a one-to-one mapping that preserves visual details.” —— 理解要<b>抹掉</b>细节做抽象、生成要<b>保住</b>细节做还原，目标相反，这正是统一框架的难点。</div>
+    <div class="note-b"><b>⑤ 扩散 / Rectified Flow / VQ / MMDiT：</b>扩散前向逐步加噪 x_t；<b>Rectified Flow</b>（[36]）用<b>直线插值</b> x_t=tϵ+(1−t)x₀（t∈[0,1]，t=1 纯噪声）；<b>VQ</b>（[54]）=把连续特征量化到码本最近码（commitment loss 拉近编码器输出与所选码、EMA 更新码本）；<b>MMDiT</b>=SD3（[16]）的多模态 Diffusion Transformer（双流处理两种模态再 join attention）。</div>
+
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环</div>
+    <div class="note-b"><b>problem（两层）：</b>① 任务层——理解（many-to-one 抽象细节）与生成（one-to-one 保真细节）<b>目标冲突</b>；② token 层——现有 MLLM 全用 spatial token，经 impossible-language 检验发现它"非语言"：原文 “when we train an LLM to model spatial token sequences in Figure 1 right, the order of tokens has minimal impact on the convergence of the LLM, deviating from phenomenons observed in human language.” 根因 “spatial tokens lack the recursive structure that characterizes languages”（语言可递归嵌套：“one can extend 'a man' by recursively embedding phrases to get 'a man [[walking] in the park]'”）⇒ 与自然语言无法在 LLM 内互相增强 ⇒ MLLM 生成不如 SDXL、理解不如 LLaVA-1.6。</div>
+    <div class="note-b"><b>solution（Intro 即给 method）：</b>DDT tokenization——原文 “We aim to learn an expanding sequence of discrete tokens to make up for the incremental attribute loss as t increases.” 给定 x₀，编码器 f 出 t-specific 序列 f_t(x₀)，初值 f₀(x₀)=∅（无属性丢失）；训练 DM 用 x_t + f_t(x₀) 重建 x₀；递归 <b>f_{t+1}(x₀)=(f_t(x₀), V_{t+1})</b>，新 token V_{t+1} 只补 x_{t+1} 比 x_t 多丢的属性；t=T 时 x_T 纯噪声、属性全失，f_T(x₀) 即整图 token 序列、编码全部属性。</div>
+    <div class="note-b"><b>why（为什么递归 token 更好）：</b>递归 = coarse→fine 的属性层级，天然像语言的嵌套结构 ⇒ LLM 能像学语言一样学它（Fig.1 左、Fig.9a 文本困惑度训练中下降）；属性<b>解耦</b> ⇒ 编辑只改对应 token、保其余（Fig.6 counterfactual interpolation、Fig.9b A/B test）。<b>★ Intro 已自包含闭环</b>。</div>
+    <div class="note-b"><b>三点贡献（原文）：</b>(i) 提出 DDT，靠"恢复扩散过程丢失的视觉属性"学离散递归视觉 token；(ii) 用 DDT token 把 LLM 与扩散模型整合成对理解+生成都有效的 MLLM；(iii) <b>tokenizer 仅在 ImageNet 上训</b>，却在多模态理解+生成（图像生成/编辑/视觉理解）同时刷新 SOTA，超过用 Laion/Coyo 大规模数据训 tokenizer 的 MLLM。</div>
+    <div class="note-h">②′ §2 Related Work — cascading vs tokenization vs 混合</div>
+    <div class="note-b"><b>cascading（[19,20,25,49]）：</b>各模态独立预训练的 encoder/decoder，用投影层融合。代表 EMU2[49]=预训练 LLM + EVA-02-CLIP-E 做理解 + 级联 SDXL-初始化扩散做生成。<b>tokenization（[9,32,39,51,55-57,69]）：</b>把视觉/文本都转离散空间，单 transformer 纯 next-token，去掉扩散/组合式。<b>混合：</b>TransFusion[67]/Show-o[58] 在一个 transformer 里掺扩散 + 自回归。原文批判：“most of them focus on spatial tokens for vision ... These spatial tokens lack the traits of human language, resulting in an inability to seamlessly integrate with human natural language within an MLLM to mutually enhance each other.” → 所以 “existing MLLMs still lag behind specialized architectures like SDXL in visual generation tasks and LLaVA-1.6 in visual comprehension tasks.” 这就是本文要补的缺口。</div>
+
+    <div class="note-h">③ §3 Diffusion Timestep Tokenizer — Encoder（learnable query + 仿 SD3 双流）</div>
+    <div class="note-b"><b>三件套总览（原文）：</b>“1) an encoder f that maps a noise-free image x0 to a sequence of continuous features (V̂1,...,V̂T); 2) a quantizer that assigns each continuous feature V̂i to its token embedding Vi ∈ C in a fixed size dictionary C; 3) a Diffusion Model (DM) d as a decoder that reconstructs x̂0 = d(xt, t, (V1,...,Vt)).” 三件套端到端用重建损失训。</div>
+    <div class="note-b"><b>Encoder（§3）：</b>transformer + <b>T 个 learnable query token</b>（query 数 = 期望输出 token 数 T）。输入 = 无噪图（patchify+flatten 成 ViT 式 image token） + T 个 query token；query 上加 <b>1D 正弦 PE</b>、image token 上加 <b>2D 正弦 PE</b>；仿 SD3 用<b>两个独立 transformer</b> 分别处理 query 与 image token、再 join 做 attention；最后<b>只保留变换后的 query token</b> 作输出 (V̂1,…,V̂T)。<b>直觉</b>：T 个 query 像 T 个"探针"，各自去图像里抽取"第 t 步该补的那层属性"。</div>
+    <div class="note-h">③′ §3 Quantizer（VQ，|C|=65536）+ Decoder（MMDiT）</div>
+    <div class="note-b"><b>Quantizer（VQ，[54]）：</b>固定码本 C，<b>|C|=65536</b>、每条 dim m；先用 linear 把编码器输出投到 m 维，再在 C 里找与每个特征 <b>cosine 相似度最大</b>的码 Vi。用 <b>EMA 变体</b>（把码本条目逐步移向匹配它的编码输出的簇心）稳训练。<b>提升码本利用率两招</b>：① 用<b>小 m=16</b>（据 [60] 经验）；② 监控<b>死码</b>（很少被匹配的条目）并把它<b>重置成当前 batch 里的随机码</b>（据 [62]）。</div>
+    <div class="note-b"><b>Decoder（DM，MMDiT）：</b>沿用 SD3 的 MMDiT，三处改动（原文）：“1) Instead of inputting text tokens, we input a sequence of quantized tokens; 2) We use a linear layer to project the m-dimensional vector to the latent dimension of the MMDiT; 3) We do not use pooled token embedding as in SD3.” 给定 t、噪图 x_t、前 t 个 token，输出重建图。</div>
+    <div class="note-h">③″ §3 训练损失（式1）— 递归性是怎么被"逼"出来的（全文最妙处）</div>
+    <div class="note-b"><b>重建损失（式1）：</b>L = E[ ‖ d( tϵ + (1−t)x₀, t, (V₁,…,V_t) ) − x₀ ‖² ]，按 Rectified Flow 采样 x_t = tϵ + (1−t)x₀；外加 commitment loss Σ ‖编码输出 − 所选码‖² 拉近两者。<b>递归性的"逼"法：</b>训练第 t 步时<b>只给前 t 个 token (V₁,…,V_t)</b> 当条件去重建原图，而 x_t 已丢掉"加噪到 t 步"对应的属性。由于第 t−1 步已能用 (V₁,…,V_{t−1}) 补到 x_{t−1}，<b>第 t 个 token V_t 被迫只承担"x_t 比 x_{t−1} 多丢的那一层属性"</b> → token 序列自然形成 coarse→fine 的递归展开（大噪声的 token 管粗结构/语义，小噪声的 token 管细节）。这就是 DDT 递归结构的来源。</div>
+    <div class="note-h">③‴ 具体化：DDT 递归 token 走一遍（t=1…T）</div>
+    <div class="note-b"><b>给定无噪图 x₀</b>，编码器一次出 T 个 query 特征 → VQ 量化成 (V₁,…,V_T)。<b>t=T（最大噪声 x_T≈纯噪声，属性全失）：</b>要从纯噪声重建原图，得给全部 T 个 token —— 所以全序列编码"全部属性"。<b>某中间 t：</b>x_t 还保留图像的"低频/粗结构"（噪声只盖住了细节），只需前 t 个 token 补回"被噪声盖住的那部分"，故 V_t 专补这一层。<b>t→1：</b>x₁ 几乎是原图、只缺最精细纹理，V₁ 补最细的细节。<b>所以读 token 序列 = 从"该图最稳健的粗属性"逐步加到"最精细细节"</b>，正像语言的 "a man → a man walking → a man walking in the park" 式递归加细。</div>
+    <div class="note-h">④ §4 DDT-LLaMA — 词表扩 65536 + 两阶段 + 推理</div>
+    <div class="note-b"><b>架构：</b>把图转成"1D 递归离散序列，像 LLM 能读的外语"；视觉 token 与文本 token 拼接，用 <b>[BOV]/[EOV]</b> 标出视觉段；<b>从 LLaMA3-8B 初始化、词表扩 65,536 个视觉码</b>。统一 LM 目标（式2）：p(y) = Σ log P_θ(y_i | y_{&lt;i})，图文都是离散 token ID、<b>共享预测头</b>、交叉熵监督。</div>
+    <div class="note-b"><b>两阶段训练：</b><b>Stage1 预训练</b>——对齐 DDT token 与文本，数据 Laion[46]+Coyo[6] <b>200M 图文对</b>，格式 “[BOS] &lt;caption&gt; [BOV] &lt;DDT tokens&gt; [EOV] [EOS]”，掺 <b>10% 纯文本防遗忘</b>；跑在 <b>512 张 Ascend 910B NPU、约两周</b>。<b>Stage2 指令微调</b>——监督微调，格式 “USER: &lt;Instructions&gt; ASSISTANT: &lt;Answers&gt;”、<b>只对 Answer 算损失</b>。<b>推理</b>：预测出 [BOV] 后连续做 T 次 next-token-prediction 得 {V₁,…,V_T} → 喂 decoder 经 <b>T 步 DDPM</b> 去噪成图；时刻 t 只给前 t 个 token、其余 (T−t) mask 为 0（与训练一致）。</div>
+    <div class="note-h">Q&amp;A · 几个 why 追问</div>
+    <div class="note-b"><b>1 为什么扩散 timestep 天然能造"递归"token？</b>扩散前向是个"按重要性逐步抹掉属性"的过程——先丢细节、后丢粗结构（大噪声把不同图塌缩成相似噪声）。把"第 t 步丢了什么"一一对应到"第 t 个 token 补什么"，token 序列就自带一个 coarse→fine 的天然顺序（recursive coordinate）。这比人为给 spatial token 排光栅顺序"有意义"得多。</div>
+    <div class="note-b"><b>2 为什么训练只给前 t 个 token 是关键？</b>若每步都给全部 T 个 token，模型没有动机让"第 t 个 token 只补第 t 层属性"——token 职责会纠缠。只给前 t 个 + 让 x_t 已丢了 t 步属性，等于给每个 token 强加"边界职责"（你只负责这一层增量），递归结构才被逼出来。这是 DDT 设计的命门。</div>
+    <div class="note-b"><b>3 为什么属性解耦对"编辑"特别有用？</b>编辑=只改一个属性（颜色/季节/某物体）、保其余。DDT token 各管一层属性 → 改对应 token、其余不动即可（Fig.6：换 DDT 子集只改对应属性=语义融合；换 VQGAN token 则是 CutMix 式区域拼接，因为 spatial token 各管一个空间块而非一类属性）。</div>
+    <div class="note-b"><b>4 encoder-free 还能强理解，为什么？</b>DDT-LLaMA <b>不挂 CLIP 这类预训练视觉编码器</b>（“an encoder-free MLLM without pretrained encoders such as CLIP”），图像直接走 DDT token。能强理解的原因：DDT token 本身"像语言"，与文本在同一 LM 目标下互相增强（Fig.9a 文本困惑度训练中下降即证据）——token 选对了，不靠 CLIP 也能对齐语义。</div>
+
+    <div class="note-h">⑤ §5.1 实验 — Text-to-Image 生成（Table 1，越高越好）</div>
+    <div class="note-b"><b>设置：</b>zero-shot T2I，3 个 benchmark：GenEval[21]、T2I-CompBench[23]、DrawBench[45]。下表节选 GenEval（部分维度）：</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:12px;margin:2px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c">方法</td><td style="border-bottom:1px solid #2a2f5c">Overall</td><td style="border-bottom:1px solid #2a2f5c">Counting</td><td style="border-bottom:1px solid #2a2f5c">Position</td><td style="border-bottom:1px solid #2a2f5c">ColorAttri</td></tr>
+<tr><td style="padding:2px 6px">SDXL(专用)</td><td>0.55</td><td>0.39</td><td>0.15</td><td>0.23</td></tr>
+<tr><td style="padding:2px 6px">SD3(专用)</td><td>0.74</td><td>0.72</td><td>0.33</td><td>0.60</td></tr>
+<tr><td style="padding:2px 6px">SEED-X(MLLM)</td><td>0.49</td><td>0.29</td><td>0.14</td><td>0.15</td></tr>
+<tr><td style="padding:2px 6px">Emu3(MLLM)</td><td>0.54</td><td>0.34</td><td>0.17</td><td>0.21</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 6px"><b>DDT-LLaMA</b></td><td><b>0.66</b></td><td><b>0.56</b></td><td><b>0.39</b></td><td><b>0.48</b></td></tr>
+</table></div>
+    <div class="note-b"><b>读表 + 原文：</b>MLLM 阵营 overall 最高（<b>0.66</b>），counting/position/colorAttri 大幅领先（属性绑定/空间关系强=token 解耦红利），甚至超专用 SDXL 0.55、并优于 Transfusion 0.63 / Emu3 0.54；只输给 SD3 0.74 / DALL-E3 0.67 这类纯生成专用大模型。原文：“in the overall GenEval score, DDT-LLaMA significantly outperforms SEED-X, Emu3, and the specialist method, SDXL.” <b>诚实标注短板：</b>'TwoObj' 偏弱（0.64），原文归因 “the image-text captions in our training data rarely include this straightforward prompt format”。</div>
+    <div class="note-h">⑤′ §5.2 图像编辑（Table 2）+ §5.3 理解（Table 3）</div>
+    <div class="note-b"><b>编辑（zero-shot，EVR/MA5K/MagicBrush）：</b>Ours EVR L1 14.5 / CVS 85.5、MA5K L1 14.2 / LPIPS 29.6、MagicBrush L1 7.1 / CVS 92.4，<b>全面超 MLLM（SEED-X-Edit 等），且超专用编辑模型</b>（InsPix2Pix/MGIE/UltraEdit）。原文：“excels at preserving image fidelity, which is rarely seen in prior work ... achieves a great trade-off between fidelity and editability.”</div>
+    <div class="note-b"><b>理解（Table 3，8B，encoder-free 无 CLIP）：</b>NoCaps 124.2 / Flickr30K 88.5 / VQAv2 76.4 / GQA 66.3 / OKVQA 65.9 / VizWiz 57.3 / MME 1378.9 / SEEDBench 67.9 / POPE 86.9，超 SEED-LLaMA/VILA-U/LaVIT/Emu3 等生成型 MLLM，且不少指标<b>超只做理解的 MLLM</b>。原文强调 “DDT-LLaMA is an encoder-free MLLM without pretrained encoders such as CLIP”。</div>
+    <div class="note-h">⑤″ §5.4.1 重建 + 类条件生成（Table 4）— "token 选对了本身就涨点"</div>
+    <div class="note-b"><b>Table 4（ImageNet 256×256）：</b>重建 PSNR↑：VQGAN 18.9 / VQGAN-LC 20.8 / MoVQ 21.5 / <b>Ours 21.7</b>；类条件生成 FID↓：VQGAN 15.8 / RQ-Transformer 7.6 / MoVQ 7.1 / <b>Ours 6.1</b>。<b>关键对照</b>：在<b>同一自回归范式</b>下，把 spatial tokenizer 换成 DDT tokenizer，重建更准 + 生成 FID 更低 → 证明收益来自"token 选得对"，而非更大模型/更多数据。</div>
+    <div class="note-h">⑥ §5.4 递归性/解耦的多组实证 + scaling law</div>
+    <div class="note-b"><b>① Counterfactual Interpolation（Fig.6）：</b>替换一张图 token 序列里的一个子集为另一张图的对应 token。VQGAN token → 实际是 <b>CutMix</b>（两图区域拼接，因 spatial token 各管一个空间块）；DDT token → <b>只改被替换 token 对应的那类属性</b>、其余不变，得两图的<b>语义融合</b>（证明属性解耦）。</div>
+    <div class="note-b"><b>② 扩展子集解码（Fig.8）：</b>只把 MLLM 自回归采样的<b>前 t 个 token</b>（t 从 1 到 <b>480</b>）喂 decoder。随 t 增大，图像属性<b>渐进恢复</b>：先出 contour/color，再逐步补全到完整结构 → 直接可视化"token 序列是 coarse→fine 递归"。<b>（t 最大到 480 说明每图 DDT token 数 T≈480。）</b></div>
+    <div class="note-b"><b>③ 文本困惑度（Fig.9a）：</b>多模态预训练中，用 DDT token 训练 → <b>文本生成困惑度下降</b>；用 VQGAN token 训练 → <b>上升</b>。说明 DDT token 与文本"互不打架、反而互助"，更适合统一自回归建模（“like a foreign language that LLMs can read”）。</div>
+    <div class="note-b"><b>④ A/B test（Fig.9b）+ scaling（Fig.7）：</b>同 Gemma2-2B 骨架、同 200M 预训练 + 同编辑微调，DDT-Gemma 在 <b>65 个编辑案例胜出</b> vs MoVQ-Gemma 仅 10 胜。Scaling：2B→8B、训练量 50%→75%→100%，视觉质量随规模提升（原文称 “preliminary indications of scaling laws”，定性）。</div>
+
+    <div class="note-h">⑦ 局限 &amp; 诚实边界（原文自陈 + 推断）</div>
+    <div class="note-b"><b>① 美学质量不如 Emu3 等：</b>原文自认 tokenizer 仅在 <b>ImageNet 256×256</b> 训，“its performance in reconstructing open-domain images is inferior to that of baseline methods (e.g., the EMU3 tokenizer MOVQ), which restricts our capability in T2I generation.” <b>② TwoObj 偏弱：</b>训练 caption 很少用"生成两个物体"这种简单 prompt 格式。<b>③ 推理偏重：</b>每图 T≈480 个 token → 要 T 次自回归 + T 步 DDPM 去噪，<b>正文未给推理计时</b>[推测较慢]。<b>④ 算力大：</b>Stage1 预训练吃 <b>512 张 Ascend 910B NPU 约两周</b>。<b>⑤ scaling law 仅"preliminary indications"</b>（Fig.7），递归性结论以定性实证为主（插值/解码/困惑度/AB）。</div>
+    <div class="note-h">📌 全文一页总结（问题→方法→实验→takeaway）</div>
+    <div class="note-b"><b>问题(§1)：</b>统一理解+生成的 MLLM 用 spatial token，但它经 impossible-language 检验是"非语言"（无递归结构、打乱顺序对 LLM 收敛无感），与自然语言无法在 LLM 内互相增强 → 生成不如 SDXL、理解不如 LLaVA-1.6；底层还有 many-to-one（理解）vs one-to-one（生成）的目标冲突。</div>
+    <div class="note-b"><b>方法(§3-4)：</b><b>DDT tokenization</b>——用扩散 timestep 定义递归 token，第 t 个 token 补偿"加噪到 t 步丢失的属性"，f_{t+1}=(f_t, V_{t+1})，coarse→fine 属性解耦；tokenizer = transformer encoder（T 个 learnable query + 仿 SD3 双流）+ VQ（|C|=65536, m=16, EMA + 死码重置）+ MMDiT decoder，训练损失（式1）<b>只给前 t 个 token 重建</b>逼出递归性；<b>DDT-LLaMA</b> 从 LLaMA3-8B 扩 65536 视觉码、两阶段统一 next-token 训练，推理用 DM 经 T 步 DDPM 解码。</div>
+    <div class="note-b"><b>实验(§5)：</b>GenEval 0.66（MLLM 最高、超 SDXL、近 SD3）、编辑超专用模型、encoder-free 理解强（NoCaps 124.2 / POPE 86.9）、ImageNet 重建 PSNR 21.7 / 类条件 FID 6.1 均超 spatial tokenizer；counterfactual interpolation / 扩展解码 / 文本困惑度 / A/B test 四组实证 token 递归且属性解耦。</div>
+    <div class="note-b"><b>Takeaway：</b>① 把"视觉该用什么 token 喂 LLM"重述为"要造有递归结构、像语言的 token"——<b>扩散 timestep 是天然的递归坐标</b>；② "只给前 t 个 token 重建"是逼出递归性的命门；③ token 选对了，<b>同范式同算力下就涨点</b>（Table 4），且 encoder-free 也能强理解；④ 边界=美学受 ImageNet-only tokenizer 限、TwoObj 弱、推理 T 步偏重、算力大、scaling 仅初步。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-generative-multimodal-pretraining-with-discrete-diffusi/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Auto-regressive training curves of diffusion timestep tokens (left) and spatial tokens (right) under different degrees of sequence perturbation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-generative-multimodal-pretraining-with-discrete-diffusi/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. The overview of our methods. (a): The architecture of diffusion timestep tokenizer encodes an image to a recursive sequence of discrete tokens. (b): An MLLM architecture that uniﬁes comprehension and generation based on next token prediction.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-generative-multimodal-pretraining-with-discrete-diffusi/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Qualitative results of DDT-LLaMA text-to-image generation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-generative-multimodal-pretraining-with-discrete-diffusi/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Qualitative comparison with EMU3 on T2I generation. DDT-LLaMA better responses to prompts related to counting or position.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-generative-multimodal-pretraining-with-discrete-diffusi/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Qualitative comparison on image editing.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-generative-multimodal-pretraining-with-discrete-diffusi/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Results of Counterfactual Interpolation with DDT tokens and VQGAN tokens.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-generative-multimodal-pretraining-with-discrete-diffusi/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Scaling MLLM size (2B, 8B) and training compute (50%, 75%, 100% of total tokens) improves visual quality.      </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-generative-multimodal-pretraining-with-discrete-diffusi/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Decoding images with an expanding subset of autoregressive-sampled DDT tokens.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-generative-multimodal-pretraining-with-discrete-diffusi/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. (a) Perplexity of MLLM in text generation during image- generation training. (b) A/B test on image editing.</figcaption></figure>
+    </div>
+  </div></body></html>

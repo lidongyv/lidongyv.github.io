@@ -1,0 +1,204 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>3D Student Splatting and Scooping</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2025</span> &nbsp; <span class="badge b-honorable">🥈 Best Paper 提名</span></div>
+    <h1>3D Student Splatting and Scooping</h1>
+    <div class="au2" style="color:var(--mut)">Jialin Zhu · Jiangbei Yue · Feixiang He · He Wang</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2025/papers/Zhu_3D_Student_Splatting_and_Scooping_CVPR_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=3D%20Student%20Splatting%20and%20Scooping">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2025-3d-student-splatting-and-scooping -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">把 3DGS 的两根支柱——<b>Gaussian</b> 与 <b>splatting（密度只做加法）</b>——同时换掉：primitive 改成更具表达力的 <b>Student's t 分布</b>（带可学习尾肥参数 ν，从 Cauchy 到 Gaussian 连续可调），并引入 <b>负密度组件 scooping（做减法、挖洞）</b>；再用 <b>SGHMC 原理性采样</b>解参数耦合。结果：同等渲染质量下组件数最多减 <b>82%</b>（个别场景减 98.3%）。命名 <b>Student Splatting and Scooping (SSS)</b>。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">3DGS 本质是个 unnormalized 3D Gaussian mixture 拟合 radiance field。原文点名两大短板：① 表达力不足，原文 “can still suffer from insufficient expressivity”；② 参数效率低，原文 “needing a large number of components”（动辄 1m–6m 个）。作者主张：底层只是"拿 3D 混合模型拟合辐射场"，所以 “it needs not to be restricted to Gaussians or splatting”——Gaussian / splatting / 优化 三件都可换。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b">① <b>t 分布 primitive</b>（式3）：T(x|ν)=[1+(1/ν)(x−µ)ᵀΣ⁻¹(x−µ)]^(−(ν+3)/2)，ν→1 退化 Cauchy（肥尾、单组件覆盖大区域）、ν→∞ 退化 Gaussian；ν 可学习 → 从"无穷多分布族"里学组件。t 也 close under affine transformation，2D 投影有闭式（式4）→ 闭式梯度、无需近似。② <b>Splatting &amp; Scooping</b>：放开权重 w∈R（opacity o∈[−1,1] 用 tanh 约束动态变号），负组件=减颜色/挖洞；避开 squaring 法（式5）的 O(n²) 复杂度。③ <b>SGHMC 采样</b>（式9/10）：用能量形式 P(θ,r)∝exp(−L(θ)−½rᵀIr) 绕开"w∈R 非良定义分布"，对 µ 用带 friction+noise 的采样、其余参数用 Adam，只对 opacity&lt;0.005 的组件激活摩擦/噪声。④ <b>Relocation</b>（式11/12）：迁移低 opacity 组件时最小化全域像素颜色变化积分，保证前后分布不变；不用 3DGS 的 clone/split。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">三数据集（Mip-NeRF360 / Tanks&amp;Temples / Deep Blending）共 9 个指标：SSS 拿 <b>6 项第一、2 项第二</b>，唯一落后是 Deep Blending 的 LPIPS（与最佳差 7×10⁻³）。提升最大的 Train 场景：23.23/0.844/0.170 vs 次优 3DHGS 22.95/0.827/0.197 = +1.22%/+2.05%/<b>+13.7%</b>（PSNR/SSIM/LPIPS）。<b>参数效率 15/15 setting 全胜</b>：Tanks&amp;Temples 用 180k 组件即超过 Mip-NeRF/3DGS/GES，364k–468k 即可对标用 1m+ 组件的 baseline（Train 3DGS 1.1m→SSS 364k，<b>减 82%</b>；Stump 减 98.3%）。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① t 分布把 Cauchy↔Gaussian 统一成连续谱、尾肥可学；② 负密度 scooping 直观"挖洞"（torus：纯正组件需 5 个，1 正+1 负只需 2 个）；③ 2D 投影闭式 → 闭式梯度（区别于 GES 需近似）；④ SGHMC 解 ν–µ–Σ 参数耦合。</div>
+    <div class="note-h">疑问 / 边界（原文未给）</div>
+    <div class="note-b">① <b>训练/渲染耗时无表</b>：SSS 比 3DGS 慢多少？正文只说避开了 O(n²) 的 squaring，但 t 分布渲染 + SGHMC 的实际 FPS/训练时长原文未给（需查 SM）。② <b>消融数值在 SM</b>：正文 4.4 只说"做了 ablation"，每个设计（负组件 / SGHMC / t 分布）各贡献多少 PSNR 无表（违反"消融全表"靠 SM 补）。③ 负组件比例是需手调的超参（作者在 Limitation 自认）。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文，PyMuPDF 提取）。原文英文原句引用 + 中文指路 + 追问 why。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句拆解</div>
+    <div class="note-b"><b>原文：</b>“As 3DGS is becoming a foundational component of many models, any improvement on 3DGS itself can bring huge benefits.” → <b>立意</b>：3DGS 已是重建/自驾仿真等系统的底座（原文 §1 “geometry reconstruction, autonomous driving”），改动底座本身收益被放大——这是选题的杠杆论证。</div>
+    <div class="note-b"><b>原文：</b>“We argue that as an unnormalized mixture model, it needs to be neither Gaussians nor splatting.” → <b>核心主张（全文最关键的一句）</b>：3DGS 的本质只是一个<b>未归一化的混合模型</b>在拟合辐射场，所以组件不必是 Gaussian、机制不必是 splatting。这句话直接锁定了三个可替换的靶子。</div>
+    <div class="note-b"><b>原文：</b>“a new mixture model consisting of flexible Student's t distributions, with both positive (splatting) and negative (scooping) densities.” → 两处创新一句点清：<b>flexible t 分布</b>（换 primitive）+ <b>正/负密度</b>（换机制）。"Scooping"（舀/挖）是与 splatting（泼溅）对仗造的词。</div>
+    <div class="note-b"><b>原文：</b>“SSS also poses new challenges in learning. Therefore, we also propose a new principled sampling approach for optimization.” → 第三换：表达力变强 → 学习变难（参数耦合）→ 用<b>原理性采样</b>（SGHMC）替代朴素 SGD。</div>
+    <div class="note-b"><b>原文：</b>“obtaining comparable results while reducing the component number by as much as 82%.” → 卖点量化：同等质量下组件数最多砍 82%。<b>逐句抓 Abstract</b>：换 primitive（t）+ 换机制（加/减密度）+ 换优化（SGHMC）→ 更强表达力 + 更高参数效率，这三换正好对应正文 §3.2 / §3.3 / §3.4。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文，理解 SSS 必备）</div>
+    <div class="note-b"><b>① 3DGS（Kerbl 2023，本文 [13]）：</b>把场景表示成一堆 3D Gaussian（位置 µ、协方差 Σ=RSSᵀRᵀ 保半正定、opacity o∈[0,1]、球谐颜色 c∈R²⁷），投影到 2D 后用 α-blending 光栅化（式2）。它用<b>可微光栅化</b>替代 NeRF 的体渲染射线积分 → 实时渲染（原文 §2 “solves the above problem for real-time rendering... by replacing the volume rendering with a differentiable rasterization”）。关键性质：是<b>单调（monotonic / additive，wᵢ&gt;0）</b>混合，只在正密度空间工作。</div>
+    <div class="note-b"><b>② Student's t 分布 + 自由度 ν：</b>统计里比 Gaussian 肥尾的分布族，自由度 ν 控制尾厚。原文 Fig.1 直观演示（固定 std=5）：<b>ν→1 退化 Cauchy</b>（极肥尾，远离中心仍有可观密度）；<b>ν→∞ 退化 Gaussian</b>（尾巴指数衰减）；中间是连续谱。所以原文说 “t-distribution can capture what Gaussians capture and beyond”——t 是 Gaussian 的<b>超集</b>。肥尾的物理后果：<b>单个 Cauchy 能以更高密度覆盖更大面积</b>（“a single Cauchy can cover a larger area with comparatively higher densities than a Gaussian”）→ 同样区域用更少组件即可填满。</div>
+    <div class="note-b"><b>③ 负组件 / squaring 混合（Loconte 2024 ICLR，本文 [20]）：</b>传统混合模型只在正密度空间（单调）。Subtractive mixture 允许负权重，但要保证最终密度非负，常见办法是<b>对整体平方</b>（式5：P(x)=(ΣwᵢTᵢ)²）。平方展开 = ΣᵢΣⱼwᵢwⱼTᵢTⱼ → <b>每对组件都交互、复杂度 O(n²)</b>。本文<b>不平方</b>，改用"w∈R + 能量形式"绕开 O(n²)（详见 §3.3）。</div>
+    <div class="note-b"><b>④ HMC → SGHMC → SGLD（Chen 2014，本文 [4]；Welling&amp;Teh 2011，本文 [32]）：</b><b>HMC</b>（Hamiltonian Monte Carlo）引入"动量 r + 势能 U"，在能量面上模拟物理运动来采样，比随机游走更高效探索。<b>SGHMC</b>=随机梯度版，用 minibatch 梯度（会引入噪声），靠 friction 项 C 抵消噪声维持正确分布（式9：dθ=M⁻¹r dt；dr=−∇U dt−CM⁻¹r dt+N(0,2C dt)）。<b>SGLD</b>=去掉动量/friction（F 关掉）后 SGHMC 退化成的一阶 Langevin 采样（原文明说式10 关掉 F 就退化成 SGLD）。本文用它替代 SGD，因为 SSS 的 ν–µ–Σ <b>耦合更紧</b>，SGD 易陷局部最优。</div>
+
+    <div class="note-b"><b>⑤ α-blending 透射率 + EWA splatting 投影（式2/式4 的 W,t,J 来历）：</b>α-blending 沿射线把组件按深度排序，第 i 个组件可见度 = 自身 oᵢG²ᴰᵢ × 前面所有组件的<b>透射率</b>∏(1−oⱼG²ᴰⱼ)（前面越不透明、后面越被遮）。式4 里 µ²ᴰ=(Wµ+t)₁:₂/(Wµ+t)₃ 是<b>透视除法</b>（3D 点投到像平面），Σ²ᴰ=(JWΣWᵀJᵀ) 来自 <b>EWA splatting</b>（Zwicker 2001/2002，本文 [40,41]）：W,t=视图仿射变换、<b>J=投影的雅可比线性近似</b>（把非线性透视在组件中心一阶展开）。3DGS/SSS 都靠这套把 3D 协方差近似投到 2D，所以"closed under affine transformation"才成立。</div>
+
+    <div class="note-h">📚 背景：SSS 在 NVS 谱系中的位置（§2 Related Work 梳理）</div>
+    <div class="note-b"><b>两大现代范式：</b><b>NeRF</b>（Mildenhall 2020，[22]）隐式编码辐射场 + 连续体渲染（射线积分）→ 质量高<b>但慢</b>（“the ray casting process for rendering is time consuming”），后续 Instant-NGP/Plenoxels 加速、Mip-NeRF 提质、D-NeRF 扩动态，仍难实时；<b>3DGS</b>（[13]）用显式 Gaussian + 可微光栅化替代体渲染 → <b>实时 SOTA</b>。</div>
+    <div class="note-b"><b>3DGS 改进的三支（SSS 的同行）：</b>① <b>改训练/密度控制</b>——FreGS（频率正则）、3DGS-MCMC（[14]，MCMC 采样优化）、Scaffold-GS（grid+GS）、Bulò et al.（[26]，修 densification）；② <b>改 primitive</b>——2DGS（2D 面元，更好表面）、GES（[8]，广义指数核，省显存但梯度需近似）、3DHGS（[18]，一个 Gaussian 拆两个半 Gaussian 求非对称）；③ <b>SSS（本文）</b>——<b>同时</b>换 primitive（t）+ 机制（±密度）+ 优化（SGHMC），是少数动"基本表述（fundamental formulation）"的工作。原文定位：“Our research is among the few recent efforts in improving the fundamental formulation of 3DGS.”</div>
+
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环（Intro 已自包含）</div>
+    <div class="note-b"><b>problem（先肯定再否定）：</b>原文 “The key to 3DGS' success lies in its name: Gaussian and splatting.” 先点出成功两支柱——Gaussian 是通用分布（任意密度近似 + 仿射闭式→投影快），splatting 灵活地只挑与图像相关的组件学。<b>但</b>：“the framework can still suffer from insufficient expressivity [16,34], and low parameter efficiency, i.e. needing a large number of components [17,28].” 表达力不足 + 参数效率低（动辄百万组件）。</div>
+    <div class="note-b"><b>solution（Intro 就给出 method 的自然语言版，三换）：</b>① <b>Gaussian→t 分布</b>：“t-distribution can be seen as a generalization of Gaussians and therefore is more expressive”，且尾肥参数 ν 可学 → “a mixture of components learned from an infinite number of distribution families, instead of one family”（不是从一个族里挑，是从无穷多族里学）。② <b>splatting→splat+scoop</b>：“employ both positive and negative components to splat (adding) and scoop (subtracting) densities”，并 “derive their close-form gradients”（闭式梯度，区别于 GES 需近似）。③ <b>SGD→SGHMC</b>：“optimization methods based on naive stochastic gradient descent become insufficient, due to parameter coupling”。</div>
+    <div class="note-b"><b>why（为什么有效）：</b>肥尾 t → 更少组件覆盖大同质区；负组件 → 极少组件表达"洞"等拓扑；采样 → 缓解 ν–µ–Σ 耦合、跳出 SGD 局部最优。三者共同指向 = <b>更强表达力 + 更高参数效率</b>。<b>★ 即 Intro 已把"怎么解决"讲完，§3 只是把这三句话数学化。</b></div>
+    <div class="note-b"><b>四点贡献（原文逐条）：</b>① 提出 SSS（高表达力+参数高效）；② 新混合模型——组件从<b>一组分布族</b>学（而非单一族）；③ 带负组件的混合模型，把学习扩到负密度空间；④ 原理性采样解参数耦合。</div>
+
+    <div class="note-h">③ §3.1 把 3DGS 看成混合模型（深挖 α-blending 的跨组件耦合）</div>
+    <div class="note-b"><b>式1：</b>P(x)=Σwᵢ Gᵢ(x)，Gᵢ=exp(−½(x−µ)ᵀΣ⁻¹(x−µ))，wᵢ&gt;0，Σ=RSSᵀRᵀ。即 3DGS = 未归一化 3D Gaussian 混合拟合辐射场。</div>
+    <div class="note-b"><b>式2 渲染（关键洞察）：</b>C(u)=Σᵢ cᵢoᵢG²ᴰᵢ(u)·∏ⱼ₌₁ⁱ⁻¹(1−oⱼG²ᴰⱼ(u))。原文点破：“C(u) can be seen as a 2D Gaussian mixture, except that now <b>a component weight is also a function of other components</b>, introducing additional cross-component interactions.” —— α-blending 让第 i 个组件的有效权重 wᵢ=cᵢoᵢ∏(1−oⱼG²ᴰⱼ) <b>含前面所有组件的透射率</b>。<b>why 重要</b>：这正是后面参数耦合的根源之一，也是为什么不能简单 SGD 独立更新每个组件。</div>
+    <div class="note-b"><b>Gaussian 的两条数值好处（原文）：</b>“closed under affine transformation and marginalization of variables, so that the forward/backward pass can be quickly computed.” 仿射闭合 → 3D→2D 投影有闭式；边缘化闭合 → 沿射线积分有闭式。<b>SSS 必须证明 t 分布也保有这两条</b>（见 §3.2），否则换 primitive 会拖慢渲染。</div>
+
+    <div class="note-h">④ §3.2 t 分布 primitive（unnormalized + 2D 闭式 + 自由度可学）</div>
+    <div class="note-b"><b>式3（3D t）：</b>T(x|ν)=[1+(1/ν)(x−µ)ᵀΣ⁻¹(x−µ)]^(−(ν+3)/2)，ν∈[1,+∞)。<b>unnormalized 的取舍</b>：原文明说"可安全丢掉归一化常数 Γ((ν+3)/2)/(Γ(ν/2)ν^{3/2}π^{3/2}|Σ|^{1/2})"。<b>why 安全</b>：拟合辐射场只关心密度的相对形状，整体尺度被组件权重 w（=cᵢoᵢ…）吸收；不需要它是合法概率密度（积分=1）。丢常数 → 简化梯度、利学习。</div>
+    <div class="note-b"><b>式4（2D 闭式，最关键的可行性证明）：</b>T²ᴰ(u)=[1+(1/ν)(u−µ²ᴰ)ᵀ(Σ²ᴰ)⁻¹(u−µ²ᴰ)]^(<b>−(ν+2)/2</b>)，其中 µ²ᴰ=(Wµ+t)₁:₂/(Wµ+t)₃、Σ²ᴰ=(JWΣWᵀJᵀ)₁:₂,₁:₂。<b>追问 why 指数从 −(ν+3)/2 变 −(ν+2)/2？</b> 这是 t 分布的<b>边缘化性质</b>：d 维 t 的指数是 −(ν+d)/2，沿一维积分（marginalize）后维度 d:3→2，指数随之 −(ν+3)/2→−(ν+2)/2。正因为 t 像 Gaussian 一样 “close under affine transformation and marginalization”，2D 投影才有闭式。<b>价值</b>：原文 “easily derive the key gradients ... unlike existing research also using alternative mixture components but requiring approximation [8]”——直接点名 GES（[8]）换 primitive 后梯度要近似，而 t 有闭式梯度（具体梯度在 SM）。</div>
+    <div class="note-b"><b>"从无穷多分布族里学"（ν 可学的深意）：</b>原文 “As ν, µ and Σ are learnable, SSS becomes a mixture of components learned from an infinite number of distribution families, instead of one family.” 3DGS 所有组件都被钉死在 Gaussian 这<b>一个</b>族里；SSS 每个组件可独立学一个 ν → 落在 Cauchy↔Gaussian 连续谱上<b>任意一族</b>。大同质区（天空）用小 ν 肥尾组件一笔覆盖、细节区用大 ν 尖组件刻画——这是参数效率的微观来源。</div>
+
+    <div class="note-h">Q&amp;A · 为什么"肥尾 t"就能省组件？（追问 why 到底）</div>
+    <div class="note-b"><b>直觉：</b>Gaussian 尾巴指数衰减，离中心略远密度就近 0 → 要覆盖一大片同色区域（如天空），得用很多 Gaussian 拼贴（每个只管一小块），否则中间会"暗"下去。Cauchy（ν=1）尾巴幂律衰减，<b>同样 std 下远处仍保留可观密度</b>（Fig.1）→ 一个肥尾组件就能把一大片区域填到接近均匀的高密度 → 组件数骤降。</div>
+    <div class="note-b"><b>代价/边界：</b>纯肥尾会让边界变糊（尾巴漏到邻区）；所以 ν 可学很关键——让网络在"同质区用肥尾省组件、边界区用尖尾保细节"间自适应。§4.4 定性正是这个：SSS 同时"分离天空与山"且"保天空同质无噪点"，靠的就是 varying tail-fatness。</div>
+
+    <div class="note-h">⑤ §3.3 Splatting and Scooping（squaring 的 O(n²) → w∈R 能量形式）</div>
+    <div class="note-b"><b>先否掉 squaring（式5）：</b>P(x)=(ΣwᵢTᵢ)²=ΣᵢΣⱼwᵢwⱼTᵢTⱼ，w∈R。负密度在渲染里很合理（“a negative density makes good sense as it can be seen as subtracting a color”），但原文实测 squaring “introduces interactions between every pair of components, increasing the model evaluation complexity to <b>O(n²)</b> ... significantly slower”。<b>why O(n²)</b>：平方后是双重求和，n 个组件 → n² 个交叉项 TᵢTⱼ，每个像素都要算所有对。</div>
+    <div class="note-b"><b>本文方案（不平方）：</b>仍用式3，但放开 <b>wᵢ=cᵢoᵢ∏ₖ₌₁ⁱ⁻¹(1−oₖT²ᴰₖ(u))、o∈[−1,1]</b>（注意还是 α-blending 累乘形式，O(n)）。负 o 在式7 渲染里 = 从混合中"减去一种颜色"。<b>良定义问题</b>：式3 在 w∈R 下不是合法分布（密度可负）；原文用<b>后面的能量形式</b>规避（“we can parameterize the density in an energy-based form explained later which is well defined”）。学习时<b>用 tanh 约束 opacity</b>，让正负组件能<b>动态变号且有界</b>。</div>
+    <div class="note-b"><b>直觉证据（Fig.2 torus，必看的 1+1&lt;5 例子）：</b>目标=用最少组件拟合环面拓扑（中间有洞），组件初始化在中心。<b>纯正组件</b>：2 个 → 欠拟合(b)；要 ≥5 个才能正确拟合洞(c)。<b>1 正 + 1 负</b>：仅 2 个即可(d)——正组件覆盖整个环（含洞），负组件在中间减密度<b>挖出洞</b>，两组件同心。这就是 scooping 表达拓扑的参数效率。</div>
+
+    <div class="note-h">Q&amp;A · 负密度在 α-blending 里到底物理意义是什么？</div>
+    <div class="note-b"><b>渲染式7：</b>C(u)=Σᵢ cᵢoᵢT²ᴰᵢ ∏(1−oⱼT²ᴰⱼ)。当某组件 o&lt;0：它对像素颜色的贡献 cᵢoᵢT²ᴰᵢ 变成<b>负</b> → 等于从累积颜色里"扣掉 cᵢ 这种颜色"；同时它的 (1−oⱼT²ᴰⱼ) 因子 oⱼ&lt;0 → 因子 &gt;1 → 反而<b>放大</b>后面组件的透射。综合效果 = 在该处"挖洞/去色"。<b>用途</b>：表达高频负相关结构（孔洞、暗纹、抵消过冲），纯加法混合需要很多组件才能逼近的，负组件一笔解决。</div>
+
+    <div class="note-h">⑥ §3.4 Learning via sampling（HMC→SGHMC，能量形式 + friction/noise scheduling）</div>
+    <div class="note-b"><b>为什么非要采样？</b>原文 “training SSS involves learning more tightly coupled parameters compared with 3DGS, namely among ν, µ, and Σ. We speculate that this is because <b>changing ν in learning is changing the family of distributions within which we optimize µ and Σ</b>.” —— 改 ν = 换了 µ/Σ 所在的整个分布族，目标地形随之扭曲 → SGD 这种一阶下降极易陷局部最优 + 收敛到次优 Gaussian。采样能更好探索这种耦合地形。</div>
+    <div class="note-b"><b>能量形式（式6）：</b>P(θ,r)∝exp(−L_θ(x)−½rᵀIr)。<b>why 用能量函数</b>：式3 在 w∈R 下"不是良定义分布、直接采样难"，能量形式绕开这点并"刻画好 θ 的高密度区"（采 θ 去最小化 loss L）。动量项 ½rᵀIr <b>给参数空间每个维度造 friction</b>，实现逐参数自适应学习（解耦）。</div>
+    <div class="note-b"><b>损失（式8，含两条压组件正则）：</b>L=(1−ε)L1+ε·L_{D-SSIM} + <b>ε_o Σ|oᵢ|</b>（opacity L1：仅在组件"绝对必要"时 opacity 才大）+ <b>ε_Σ ΣΣ|√λᵢ,ⱼ|</b>（Σ 特征值正则：组件尽量 spiky/小方差）。原文：两条正则 “together, they minimize the needed number of components”——直接服务参数效率卖点。</div>
+    <div class="note-b"><b>SGHMC 更新（式9）：</b>dθ=M⁻¹r dt；dr=−∇U dt−CM⁻¹r dt+N(0,2C dt)。随机梯度引入噪声 ∇Û=∇U+N(0,V)，friction 项 C 抵消之保持正确平稳分布。原文强调 “it is crucial to design good friction and noise scheduling”。</div>
+    <div class="note-b"><b>Friction/Noise scheduling（式10，命门设计）：</b>µ 用 SGHMC、其余参数用 Adam。自适应 F=σ(o)·ε(1−εC)r、N=σ(o)·N(0,2ε^{3/2}C)，开关 σ(o)=σ(−k(o−t))，取 <b>k=100, t=0.995 ⇒ 仅对 opacity&lt;0.005 的组件激活 friction/noise</b>。<b>why 只对快透明的组件</b>：高 opacity 组件已"站稳"，让 Adam 精修（exploitation）；近透明（将死）组件需要噪声<b>探索</b>新位置或被 recycle，避免白白浪费。F 关掉时式10 退化成 <b>SGLD</b>（一阶 Langevin）。</div>
+    <div class="note-b"><b>两阶段训练：</b>SfM 稀疏点（无 normals）初始化 → <b>burn-in</b>（关 F，纯探索，把噪声 N <b>乘以组件 Σ</b> 以维持各向异性）→ <b>full sampling</b>（exploitation，撤掉 Σ、靠动量 r 维持各向异性）。即"先广撒网探索、再收敛精修"。</div>
+
+    <div class="note-h">⑦ §3.4.2 增删组件 Relocation（保分布不变的闭式迁移）</div>
+    <div class="note-b"><b>不删而 recycle：</b>近透明组件（≈0 opacity）3DGS 直接删；本文学 3DGS-MCMC [14] 把它<b>迁移</b>到高 opacity 组件处复用。<b>约束（式11）</b>：min ∫‖C_new(µ)−C_old(µ)‖²dµ —— 全域像素颜色变化最小 → 保证迁移前后<b>整体分布不变</b>（不破坏已学好的渲染）。</div>
+    <div class="note-b"><b>闭式解（式12）：</b>µ_new=µ_old；(1−o_new)ᴺ=(1−o_old)（N=迁移后总数，把 N−1 个低 opacity 挪到 1 个高 opacity 处）；Σ_new 含 beta 函数 β 的闭式。<b>正负不分（巧设计）</b>：relocation <b>不区分正负组件</b>——o_old&gt;0 则迁移后全正、o_old&lt;0 则全负，<b>引入 opacity 符号扰动</b>，原文 “this sign perturbation in practice helps the mixing of the sampling”（符号扰动反而帮采样混合）。稳定性：单次最多迁移 5%；不用 3DGS 的 clone/split，而是"加 5% 零-opacity 新组件再 recycle"。</div>
+
+    <div class="note-h">Q&amp;A · Method 几个实现细节追问</div>
+    <div class="note-b"><b>1 SSS 比 GES 强在哪？</b>都换了 primitive，但 GES（generalized exponential）原文点名 “requiring approximation [8]"——梯度要近似；t 分布<b>2D 闭式（式4）→ 闭式梯度</b>，无近似误差。且 t 有可学 ν 跨族，GES 的指数核灵活度有限。</div>
+    <div class="note-b"><b>2 为什么不直接 squaring 做负组件？</b>squaring（式5）保证非负但代价是 O(n²) 全配对交互，渲染显著变慢；本文用 w∈R+能量形式，保持 α-blending 的 O(n) 累乘。</div>
+    <div class="note-b"><b>3 tanh 约束 opacity 的作用？</b>把 o 限到 [−1,1] 且可微变号，让同一组件在训练中能从"加色"翻成"减色"（动态变号），同时有界防发散。</div>
+    <div class="note-b"><b>4 burn-in 为何把噪声乘 Σ？</b>探索阶段没有动量 r 维持形状，直接各向同性噪声会把 t 分布的各向异性（细长形状）打散；乘 Σ 让噪声沿组件自身形状方向，维持 anisotropy profile。</div>
+
+    <div class="note-h">⑧ §4 实验 — 关键数值表（Table 1 主结果）</div>
+    <div class="note-b"><b>设置：</b>11 场景/3 数据集（Mip-NeRF360 7 个 + Tanks&amp;Temples 2 个 + Deep Blending 2 个），指标 PSNR↑/SSIM↑/LPIPS↓，本文结果取 3 次平均。Baselines 覆盖三类：<b>新 primitive</b>（GES、3DHGS）、<b>新优化/训练</b>（Scaffold-GS、Fre-GS、3DGS-MCMC）、<b>SOTA NeRF</b>（Mip-NeRF）+ 原始 3DGS——故意横跨"换 primitive"和"换优化"两条路线作对照。</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:12px;margin:2px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c">方法</td><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c" colspan="3">Mip-NeRF360 (PSNR/SSIM/LPIPS)</td><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c" colspan="3">Tanks&amp;Temples</td><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c" colspan="3">Deep Blending</td></tr>
+<tr><td style="padding:2px 6px">Mip-NeRF</td><td>29.23</td><td>0.844</td><td>0.207</td><td>22.22</td><td>0.759</td><td>0.257</td><td>29.40</td><td>0.901</td><td>0.245</td></tr>
+<tr><td style="padding:2px 6px">3DGS</td><td>28.69</td><td>0.870</td><td>0.182</td><td>23.14</td><td>0.841</td><td>0.183</td><td>29.41</td><td>0.903</td><td>0.243</td></tr>
+<tr><td style="padding:2px 6px">GES</td><td>26.91</td><td>0.794</td><td>0.250</td><td>23.35</td><td>0.836</td><td>0.198</td><td>29.68</td><td>0.901</td><td>0.252</td></tr>
+<tr><td style="padding:2px 6px">3DHGS</td><td>29.56</td><td>0.873</td><td>0.178</td><td>24.49</td><td>0.857</td><td>0.169</td><td>29.76</td><td>0.905</td><td>0.242</td></tr>
+<tr><td style="padding:2px 6px">Fre-GS</td><td>27.85</td><td>0.826</td><td>0.209</td><td>23.96</td><td>0.841</td><td>0.183</td><td>29.93</td><td>0.904</td><td>0.240</td></tr>
+<tr><td style="padding:2px 6px">Scaffold-GS</td><td>28.84</td><td>0.848</td><td>0.220</td><td>23.96</td><td>0.853</td><td>0.177</td><td>30.21</td><td>0.906</td><td>0.254</td></tr>
+<tr><td style="padding:2px 6px">3DGS-MCMC</td><td>29.89</td><td>0.900</td><td>0.190</td><td>24.29</td><td>0.860</td><td>0.190</td><td>29.67</td><td>0.890</td><td>0.320</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 6px"><b>SSS(本文)</b></td><td><b>29.90</b></td><td>0.893</td><td><b>0.145</b></td><td><b>24.87</b></td><td><b>0.873</b></td><td><b>0.138</b></td><td>30.07</td><td><b>0.907</b></td><td>0.247</td></tr>
+</table></div>
+    <div class="note-b"><b>读表（9 指标拿 6 第一 / 2 第二）：</b>① <b>LPIPS 在两大无界数据集断档第一</b>——Mip360 0.145 vs 次优 3DHGS 0.178、T&amp;T 0.138 vs 0.169，感知质量优势最明显；② PSNR 反超——Mip360 29.90、T&amp;T 24.87 均第一；③ SSIM 在 Mip360 输 3DGS-MCMC（0.893 vs 0.900）属第二；④ <b>唯一短板=Deep Blending 的 LPIPS</b>（0.247，与最佳 Fre-GS 0.240 差 7×10⁻³），原文诚实承认这是唯一例外。<b>单场景最大优势=Train</b>：23.23/0.844/0.170 vs 次优 3DHGS 22.95/0.827/0.197 = +1.22%/+2.05%/<b>+13.7%</b>（LPIPS 提升尤其大）。</div>
+
+    <div class="note-h">⑨ §4.3 参数效率（核心卖点的硬数字）</div>
+    <div class="note-b"><b>实验设计：</b>因不同场景 SfM 初始组件数 δ 不同，用倍数描述上限：测 δ / 1.4δ / 1.8δ / 2.2δ / 2.6δ 五档最大组件数。<b>关键</b>：即便 2.6δ 也<b>远小于 Table 1 的设置</b>。</div>
+    <div class="note-b"><b>结论（原文）：</b>“SSS outperforms all other methods in <b>15 out of 15 settings</b>”——5 档 × 3 数据集全胜；且组件数下降时 SSS 衰减最慢（“deteriorates slowly comparatively”）。</div>
+    <div class="note-b"><b>具体反例（T&amp;T，对照 Table 1 用 ≥1m 组件的 baseline）：</b>SSS 仅 <b>180k</b> 组件即 23.6 PSNR，已超 Mip-NeRF/3DGS/GES；<b>~300k</b> 即 24.4 PSNR，仅比 3DHGS/3DGS-MCMC 差 ~10⁻² 量级。最大缩减：<b>Train 3DGS 1.1m→SSS 364k（减 82%）</b>、<b>Stump 4.75m→83k（减 98.3%）</b>。论文逐场景 2.6δ vs 原 3DGS 组件占比：Train 42.5%、Truck 14%、DrJohnson 6.1%、Playroom 3.8%、Bicycle 2.4%、Bonsai 40%、Counter 34.7%、Garden 7%、Kitchen 34.7%、Room 19.1%、Stump 1.7%。</div>
+
+    <div class="note-h">⑩ §4.4 定性比较 + 消融（含诚实边界）</div>
+    <div class="note-b"><b>180k 组件下的对照（Fig.5，验证"换 primitive / 换优化"两条路都对）：</b>原始 3DGS 和 3DHGS <b>明显模糊</b>——原文归因 “the struggle between stretching Gaussians to cover large areas and narrowing them to reconstruct details” + “SGD ... a local minimum ... sub-optimal”（组件不够 + SGD 陷局部最优）。GES（更灵活 primitive）和 3DGS-MCMC（更好优化）各自改善 → 印证两条改进方向都有效。<b>SSS 同时占两条</b>：既分离天空与山，又保天空同质无噪点（GES 把天空山糊成一片、3DGS-MCMC 在天空造出不存在的白斑）。原文归因 SSS “learning components with varying tail-fatness to adaptively capture large homogeneous areas and small heterogeneous regions”。</div>
+    <div class="note-b"><b>468k 时：</b>所有方法都变好，但 3DGS/3DHGS 仍不及；GES/3DGS-MCMC 用更多组件却仍在天空引入噪点；SSS 从 180k→468k 视觉几乎不变（已饱和）→ <b>感知层面参数效率更高</b>。原文特别注："SSS 252k 组件已达 SOTA 质量、超过多数 baseline"。</div>
+    <div class="note-b"><b>⚠️ 诚实边界（消融数值全在 SM）：</b>正文 §4.4 “Ablation Study” 只有一句 “We conduct an ablation study to show the effectiveness of various components in SSS ... We give details in the SM.”——<b>每个设计（t 分布 / scoop 负组件 / SGHMC 采样）单独去掉各掉多少 PSNR 的消融全表，正文未给、放在补充材料</b>。这是本批次精读受限于正文 PDF 的诚实边界（违反"消融全表"靠 SM 补，需另取 SM）。<b>同理：训练/渲染 timing 表正文也没有</b>——只定性说避开了 squaring 的 O(n²)，但 t 渲染 + SGHMC 的实际 FPS/训练时长正文未报。</div>
+
+    <div class="note-h">⑪ §5 结论 · 局限（原文自陈）</div>
+    <div class="note-b"><b>局限（原文 Limitation）：</b>① primitive 仍限于<b>对称、光滑</b>的 t 分布（限制表达，比如不规则/不连续结构）；② 采样<b>需调超参</b>，尤其"负组件比例"。<b>Future：</b>把 Laplace 等其他族与 t 结合进一步增强表达；让 SGHMC 自适应、更好平衡正负组件。</div>
+
+    <div class="note-h">Q&amp;A · 为什么式8 那两条正则能"压组件数"？</div>
+    <div class="note-b"><b>opacity L1（ε_o Σ|oᵢ|）：</b>对所有组件 opacity 的绝对值施 L1 惩罚 → 鼓励稀疏 → 多余组件被压到 opacity≈0 → 触发 §3.4.2 的 recycle 机制被迁移复用。结果=只有"绝对必要"的组件才保持大 opacity（原文 “the opacity is big only when a component is absolutely needed”）。</div>
+    <div class="note-b"><b>eigenvalue 正则（ε_Σ ΣΣ|√λᵢ,ⱼ|，λ=Σ 的特征值）：</b>惩罚协方差特征值（≈组件的空间尺度）→ 鼓励组件 <b>spiky/小方差</b>（原文 “as spiky as possible”）。<b>why 这能省组件</b>：若放任组件变大，少数巨型组件会糊掉细节、且与 α-blending 耦合产生 artifact；让组件保持小而尖 + 靠肥尾 ν 覆盖大区，二者配合 → 用最少组件既覆盖大同质区又保细节。两条正则原文明说 “together, they minimize the needed number of components”。</div>
+
+    <div class="note-h">Q&amp;A · SSS 能即插到下游（自驾仿真等）吗？（诚实边界）</div>
+    <div class="note-b"><b>原文范围：</b>SSS 只在<b>新视角合成（NVS）基准</b>（Mip-NeRF360 / T&amp;T / Deep Blending）上评测，<b>没有</b>测下游任务（重建/自驾仿真）的端到端效果——尽管 §1 用"3DGS 是自驾仿真底座"做选题动机。<b>推断（非原文）</b>：SSS 输出仍是可光栅化的混合模型，接口与 3DGS 兼容，参数效率高（组件少）对存储/带宽/实时有利，理论上可替换；但负组件、t 渲染是否被现有 3DGS 加速 kernel / 下游 pipeline 支持，原文未验证，属"需查/需实测"。</div>
+
+    <div class="note-h">📌 全文一页总结（问题→方法→实验→takeaway）</div>
+    <div class="note-b"><b>问题(§1)：</b>3DGS=单调（additive）Gaussian 混合拟合辐射场，两短板——表达力不足 + 参数效率低（需百万级组件）。作者把 3DGS 还原成"未归一化混合模型"，指出 Gaussian/splatting/优化 三件皆可换。</div>
+    <div class="note-b"><b>方法(§3，三换)：</b>① primitive 换 <b>Student's t</b>（尾肥 ν∈[1,∞) 可学、Cauchy↔Gaussian 连续谱、unnormalized 丢常数、2D 闭式式4→闭式梯度无近似）；② 机制加 <b>scooping 负密度</b>（w∈R、o∈[−1,1] via tanh、能量形式保良定义、避开 squaring 的 O(n²)、Fig.2 torus 1+1&lt;5）；③ 优化换 <b>SGHMC 采样</b>（能量形式式6、自适应 friction/noise 仅作用 opacity&lt;0.005 组件、burn-in 探索→full sampling 精修、relocation 式11/12 保分布不变且符号扰动助 mixing）。</div>
+    <div class="note-b"><b>实验(§4)：</b>3 数据集 9 指标拿 <b>6 第一 2 第二</b>，LPIPS 在两大无界集断档领先；参数效率 <b>15/15 全胜</b>，同质量组件最多减 <b>82%</b>（极端 Stump 减 98.3%）；定性证明"换 primitive + 换优化"双管齐下，同质区无噪点且细节锐利。</div>
+    <div class="note-b"><b>Takeaway：</b>① "3DGS 不必是 Gaussian、不必只 splat"——用<b>更肥尾 + 可减 + 会采样</b>的混合模型，在质量与参数效率上同时帕累托改进；② t 分布的闭式投影是换 primitive 不掉速的关键（区别于需近似的 GES）；③ 负组件以极少代价表达拓扑/去色；④ 局限=primitive 仍对称光滑、负组件比例需手调、<b>消融全表与 timing 在 SM、正文未给</b>（诚实边界）。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-3d-student-splatting-and-scooping/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Student’s t with varying degrees of freedom ν. (standard deviation is 5).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-3d-student-splatting-and-scooping/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Visual comparison Zoom-in for better visualization. (a) SSS restores better the indentations of the box lid; (b) SSS is the best at detailing windows in the upper center; (c) Only the image rendered by SSS contains the green track detail in the upper right corner; (d) SSS is the best at restoring the reflection in the front window of the truck; (e) SSS perfectly restores the light switch</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-3d-student-splatting-and-scooping/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. All methods with reduced component numbers.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-3d-student-splatting-and-scooping/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Visual results of all methods with varying component numbers. In addition to the well-reconstructed main body of the train compared to other baselines, our method can use a small number of components to restore more details, such as plants on distant mountains, rocks on the ground nearby, etc. Besides, our sky has fewer noises and appears more similarly to the ground truth. Zoom in for d</figcaption></figure>
+    </div>
+  </div></body></html>

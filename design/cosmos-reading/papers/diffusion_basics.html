@@ -1,0 +1,487 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Ch1 · Diffusion 基础（DDPM/DDIM/Flow Matching + NeRF/3DGS 对比）</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--red:#fb7185}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 18% -10%,rgba(167,139,250,.18),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.7;min-height:100vh}
+.wrap{max-width:940px;margin:0 auto;padding:26px 18px 90px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.hero{padding:22px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(126,224,255,.08));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--accent);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(21px,3vw,30px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 35%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13.5px}
+h2.sec{font-size:18px;font-weight:800;margin:28px 0 6px;display:flex;align-items:center;gap:8px}
+h2.sec .bar{width:4px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--accent2),var(--accent))}
+h3{font-size:15px;font-weight:800;color:var(--text);margin:16px 0 4px}
+p{margin:7px 0}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:8px}
+.callout{background:rgba(126,224,255,.07);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:13px 17px;margin:12px 0;font-size:13.5px;color:var(--text2)}.callout b{color:var(--text)}
+.eqbox{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:10px 0;overflow-x:auto;font-size:14px;color:var(--text)}
+pre{background:#0a0e1c;border:1px solid var(--line);border-radius:10px;padding:13px 15px;overflow-x:auto;font-size:12px;line-height:1.55;margin:10px 0}
+code{font-family:SFMono-Regular,Consolas,monospace}pre code{color:#cdd6f4}
+.cmt{color:#6b7394}.kw{color:#c792ea}.st{color:#89ddff}.fn{color:#82aaff}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0}
+th{background:rgba(167,139,250,.2);text-align:left;padding:8px 11px;font-weight:700;border-bottom:2px solid var(--accent2)}
+td{padding:7px 11px;border-bottom:1px solid var(--line);color:var(--text2);vertical-align:top}td b{color:var(--text)}
+.panel{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+.ctrls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+button{background:var(--accent2);border:none;border-radius:8px;padding:7px 15px;color:#fff;font-size:13px;font-weight:700;cursor:pointer}
+button.sec{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--text2)}
+button:hover{filter:brightness(1.12)}
+canvas{image-rendering:pixelated;border-radius:10px;border:1px solid var(--line);background:#000;width:min(300px,80vw);height:min(300px,80vw)}
+.hl{color:var(--accent);font-weight:700}.hlp{color:var(--accent2);font-weight:700}
+.tag{font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:4px;background:rgba(74,222,128,.16);color:var(--green);border:1px solid rgba(74,222,128,.4)}
+.note2{margin-top:20px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+</style></head><body><div class=wrap>
+<a href="../index.html" class=backlink>← 教学文档主页</a>
+<a href="cosmos.html" class=backlink>Ch0 综述</a>
+<a href="method_combos.html" class=backlink>Ch1.5 方法结合谱系 →</a>
+<a href="cosmos_tokenizer.html" class=backlink>Ch4 Tokenizer →</a>
+
+<header class=hero><div class=kick>Ch 1 · 扩散模型基础</div>
+<h1>Diffusion / DDPM / DDIM / Flow Matching — 从零讲起</h1>
+<p class=sub>Cosmos 的扩散 WFM 建在这些基础上。本章从"加噪→学去噪→采样"的直觉，讲到 <b>DDPM（奠基）· DDIM（加速）· Flow Matching（速度场/直线路径）</b> 三条路线的原理、<b>端到端训练/推理代码</b>、公式↔代码对应表与三者对照。不熟扩散模型的话，这是全文档的地基。</p></header>
+
+<!-- ===== 1. 直觉 ===== -->
+<h2 class=sec><span class=bar></span>1 · 一句话直觉</h2>
+<div class=callout>扩散模型干两件事：<b>①</b> 学会"把清晰图一点点<b>加噪声</b>直到变纯雪花"；<b>②</b> 训练网络学会"反过来<b>一步步去噪</b>还原"。生成新图时，<b>从纯噪声出发反复去噪，最后'显影'出全新的图</b>。<br>比喻：像老照片<b>显影</b>——从一片雪花点里逐渐浮现清晰画面。</div>
+
+<!-- ===== 2. 去噪动图 ===== -->
+<h2 class=sec><span class=bar></span>2 · 🎮 去噪过程动图（示意）</h2>
+<div class=secsub>忠实演示 <code>x_σ = x_0 + σ·ε</code>：σ 从大到小，噪声逐步被磨掉，"场景"从雪花里显影。点 ▶ 看采样过程。（示意用，非真实模型输出）</div>
+<div class=panel style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+<canvas id=cv width=96 height=96></canvas>
+<div style="flex:1;min-width:220px">
+<div id=info style="font-family:monospace;font-size:13px;color:var(--accent);margin-bottom:8px"></div>
+<div style="font-size:12px;color:var(--text2)">滑块 = 采样进度（step / 噪声等级 σ）。σ 越大越像纯噪声，σ→0 收敛到干净"场景"。</div>
+<div class=ctrls>
+<button id=play>▶ 播放去噪</button>
+<button class=sec id=reset>⟲ 回到纯噪声</button>
+</div>
+<input id=sld type=range min=0 max=40 value=0 style="width:100%">
+</div>
+</div>
+
+<!-- ===== 3. 原理四步 ===== -->
+<h2 class=sec><span class=bar></span>3 · 原理四步</h2>
+<h3>① 前向（加噪）— 固定规则，无网络</h3>
+<p>清晰图 <span class=hl>x₀</span> 不断撒高斯噪声，越撒越糊，最后成纯噪声。一步公式：</p>
+<div class=eqbox>x_σ = x₀ + σ · ε，　ε ~ N(0, I)</div>
+<p><b>σ（噪声强度）</b>：小=只加一点(还看得清)；大=快看不清；极大=纯噪声。这步<b>没有可学参数</b>。</p>
+<h3>② 反向（去噪）— 训练一个网络学修复</h3>
+<p>给网络<b>带噪图 x_σ</b> 和<b>噪声大小 σ</b>，让它猜<b>原本清晰的 x₀</b>（网络记作 D_θ）。</p>
+<h3>③ 训练目标 — 就是"去噪回归"，超简单</h3>
+<p>自己造数据：取 x₀、随机 σ、加噪得 x_σ，惩罚网络猜的与真实 x₀ 的差（MSE）：</p>
+<div class=eqbox>loss = ‖ D_θ(x_σ, σ) − x₀ ‖²</div>
+<p>（也可让网络预测"噪声 ε"，与预测 x₀ 等价：x₀ = x_σ − σε。DDPM 预测 ε，Cosmos 预测 x₀。）</p>
+<h3>④ 采样（生成）— 从纯噪声一步步显影</h3>
+<p>从纯噪声(σ 最大)出发 → 网络预测干净版 → 只<b>回退一小步</b>(σ 调小) → 再预测再退…… 几十步后 σ→0，浮现出<b>全新的清晰图</b>。</p>
+<div class=callout><b>为什么这么绕反而更好：</b>"从纯噪声直接生成清晰图"极难；扩散把它<b>拆成几十个"只去掉一点点噪声"的简单小问题</b>，每步都好学 → 比 GAN 更稳、质量更高。（正是 Cosmos 原文说的 <i>"decompose a difficult problem into easier sub-problems"</i>。）</div>
+
+<!-- ===== 4. DDPM ===== -->
+<h2 class=sec><span class=bar></span>4 · DDPM（2020）· 地基 <span class=tag>标准公式</span></h2>
+<p>DDPM 把加噪去噪变成严格的概率框架。定义噪声调度 β_t，令 α_t=1−β_t、<b>ᾱ_t=∏α_s</b>。关键：可<b>一步</b>从 x₀ 跳到任意 t：</p>
+<div class=eqbox>x_t = √ᾱ_t · x₀ + √(1−ᾱ_t) · ε　（ᾱ_t 从 1 单调降到 ≈0）</div>
+<p>训练＝预测加进去的噪声（MSE）；采样＝逐步 t=T→1，每步带一点随机噪声（所以 DDPM 采样是<b>随机的</b>、需 ~1000 步、慢）。</p>
+<h3>DDPM 完整实现（端到端可运行：0 公共 → 1 网络 → 2 训练一步 → 3 训练循环 → 4 采样推理）</h3>
+<p class=secsub>每行注释里标了对应公式【①②③】；训练与推理都给出了完整「怎么用」。</p>
+<pre><code><span class=cmt># ===== 0. 公共：噪声调度 + 前向加噪 =====</span>
+<span class=kw>import</span> torch, torch.nn <span class=kw>as</span> nn, torch.nn.functional <span class=kw>as</span> F
+device = <span class=st>'cuda'</span>
+T = 1000
+betas = torch.linspace(1e-4, 0.02, T, device=device)   <span class=cmt># β_t 噪声调度</span>
+alphas = 1.0 - betas                                    <span class=cmt># α_t = 1-β_t</span>
+abar   = torch.cumprod(alphas, 0)                       <span class=cmt># ᾱ_t = ∏α_s (累积)</span>
+
+<span class=kw>def</span> <span class=fn>q_sample</span>(x0, t, eps):                       <span class=cmt># 【公式①】x_t = √ᾱ_t·x0 + √(1-ᾱ_t)·ε</span>
+    ab = abar[t].view(-1,1,1,1)                         <span class=cmt#># 取这些 t 的 ᾱ_t，广播到图像形状</span>
+    <span class=kw>return</span> ab.sqrt()*x0 + (1-ab).sqrt()*eps
+
+<span class=cmt># ===== 1. 去噪网络：输入(x_t, t) → 预测噪声 ε_θ（教学用最小 UNet；实际用更深 UNet/DiT）=====</span>
+<span class=kw>class</span> <span class=fn>TimeEmb</span>(nn.Module):                        <span class=cmt># 把整数步 t 编码成向量，让网络“知道当前噪声档”</span>
+    <span class=kw>def</span> __init__(s, d): super().__init__(); s.d = d
+    <span class=kw>def</span> forward(s, t):
+        f = torch.exp(-torch.arange(s.d//2, device=t.device)*(9.21/(s.d//2)))
+        a = t[:,<span class=kw>None</span>].float()*f[<span class=kw>None</span>]; <span class=kw>return</span> torch.cat([a.sin(), a.cos()], -1)
+<span class=kw>class</span> <span class=fn>UNet</span>(nn.Module):
+    <span class=kw>def</span> __init__(s, C=3, ch=64):
+        super().__init__()
+        s.temb = nn.Sequential(TimeEmb(ch), nn.Linear(ch, ch), nn.SiLU())
+        s.d1=nn.Conv2d(C,ch,3,2,1); s.d2=nn.Conv2d(ch,ch,3,2,1); s.mid=nn.Conv2d(ch,ch,3,1,1)
+        s.u2=nn.ConvTranspose2d(ch,ch,4,2,1); s.u1=nn.ConvTranspose2d(ch,ch,4,2,1); s.out=nn.Conv2d(ch,C,3,1,1)
+    <span class=kw>def</span> forward(s, x, t):
+        e = s.temb(t)[:,:,<span class=kw>None</span>,<span class=kw>None</span>]                 <span class=cmt># 时间条件注入(加到特征图)</span>
+        h = F.silu(s.d1(x)+e); h = F.silu(s.d2(h)+e); h = F.silu(s.mid(h)+e)
+        h = F.silu(s.u2(h)+e); h = F.silu(s.u1(h)+e)
+        <span class=kw>return</span> s.out(h)                               <span class=cmt># 输出预测噪声，形状同 x</span>
+
+<span class=cmt># ===== 2. 训练一步（DDPM 与 DDIM 共用这套训练）=====</span>
+<span class=kw>def</span> <span class=fn>train_step</span>(model, x0):                     <span class=cmt># x0: 一批真实图 [B,C,H,W]，已归一化到 [-1,1]</span>
+    t   = torch.randint(0, T, (x0.size(0),), device=device)  <span class=cmt># 随机噪声档 t</span>
+    eps = torch.randn_like(x0)                          <span class=cmt># 真噪声 ε ~ N(0,I)</span>
+    x_t = q_sample(x0, t, eps)                          <span class=cmt># 【公式①】把 x0 加噪到第 t 步</span>
+    eps_pred = model(x_t, t)                            <span class=cmt># 网络预测噪声 ε_θ(x_t,t)</span>
+    <span class=kw>return</span> F.mse_loss(eps_pred, eps)             <span class=cmt># 【公式②】loss = ‖ε − ε_θ‖²</span>
+
+<span class=cmt># ===== 3. 训练循环（怎么用）=====</span>
+model = UNet().to(device)
+opt   = torch.optim.Adam(model.parameters(), lr=2e-4)
+<span class=kw>for</span> epoch <span class=kw>in</span> range(100):
+    <span class=kw>for</span> x0 <span class=kw>in</span> dataloader:                        <span class=cmt># dataloader 每次给一批真实图 [B,C,H,W](归一化到[-1,1])</span>
+        x0 = x0.to(device)
+        loss = train_step(model, x0)                    <span class=cmt># 加噪→预测→MSE</span>
+        opt.zero_grad(); loss.backward(); opt.step()    <span class=cmt># 标准反向传播更新参数</span>
+
+<span class=cmt># ===== 4. 采样/推理（怎么用）：从纯噪声一步步去噪出新图 =====</span>
+<span class=st>@torch.no_grad()</span>
+<span class=kw>def</span> <span class=fn>ddpm_sample</span>(model, shape):               <span class=cmt># 逐步 / 随机 / ~1000 步</span>
+    x = torch.randn(shape, device=device)              <span class=cmt># 从纯噪声 x_T 起</span>
+    <span class=kw>for</span> t <span class=kw>in</span> reversed(range(T)):              <span class=cmt># t: 999 → 0</span>
+        tt  = torch.full((shape[0],), t, device=device)
+        eps = model(x, tt)                             <span class=cmt># 预测该步噪声</span>
+        a, ab = alphas[t], abar[t]
+        mean = (x - (1-a)/(1-ab).sqrt()*eps) / a.sqrt()  <span class=cmt># 【公式③】反推均值 μ</span>
+        <span class=kw>if</span> t &gt; 0:
+            x = mean + betas[t].sqrt()*torch.randn_like(x)  <span class=cmt># + σ_t·z 随机项(DDPM 随机性)</span>
+        <span class=kw>else</span>:
+            x = mean                                   <span class=cmt># 最后一步不加噪 → 输出 x_0</span>
+    <span class=kw>return</span> x
+
+model.eval()
+imgs = ddpm_sample(model, (16, 3, 32, 32))             <span class=cmt># 生成 16 张 32×32</span>
+imgs = (imgs.clamp(-1,1) + 1) / 2                      <span class=cmt># 反归一化 [-1,1]→[0,1]，可存图/使用</span>
+<span class=cmt># torchvision.utils.save_image(imgs, "ddpm.webp")</span></code></pre>
+
+<!-- ===== 5. DDIM ===== -->
+<h2 class=sec><span class=bar></span>5 · DDIM（2021）· 加速采样 <span class=tag>标准公式</span></h2>
+<p>DDPM 太慢。DDIM <b>复用 DDPM 训练好的同一网络</b>（不重训），构造一个<b>非马尔可夫</b>但边缘分布相同的过程，做到<b>确定性 + 跳步</b>：只用 20–50 步、可复现、可插值。</p>
+<h3>DDIM：复用上面训好的 <code>model</code>，只换采样（不重训）</h3>
+<p class=secsub>训练完全沿用上面 DDPM 的 <code>train_step</code>/<code>model</code>；DDIM 只是换一种「怎么出图」。</p>
+<pre><code><span class=cmt># ===== DDIM 采样/推理：直接用上面 DDPM 训好的 model，不需要重新训练 =====</span>
+<span class=st>@torch.no_grad()</span>
+<span class=kw>def</span> <span class=fn>ddim_sample</span>(model, shape, steps=50, eta=0.0):   <span class=cmt># eta=0 确定性; eta=1 退化回 DDPM</span>
+    seq = list(reversed(torch.linspace(0, T-1, steps).long().tolist()))  <span class=cmt># 从1000步挑steps步(跳步加速)</span>
+    x = torch.randn(shape, device=device)              <span class=cmt># x_T 纯噪声</span>
+    <span class=kw>for</span> i, t <span class=kw>in</span> enumerate(seq):
+        tt   = torch.full((shape[0],), t, device=device)
+        eps  = model(x, tt)                            <span class=cmt># 同一个 ε_θ(x_t,t)</span>
+        ab_t = abar[t]
+        x0   = (x - (1-ab_t).sqrt()*eps) / ab_t.sqrt() <span class=cmt># 【公式④】反推干净图 x0</span>
+        tp   = seq[i+1] <span class=kw>if</span> i+1 &lt; len(seq) <span class=kw>else</span> -1  <span class=cmt># 下一个更干净的档(-1=到x0)</span>
+        ab_p = abar[tp] <span class=kw>if</span> tp&gt;=0 <span class=kw>else</span> torch.tensor(1.0, device=device)
+        sig  = eta*((1-ab_p)/(1-ab_t)).sqrt()*(1-ab_t/ab_p).sqrt()  <span class=cmt># 【公式⑤】η 控随机性</span>
+        x    = ab_p.sqrt()*x0 + (1-ab_p-sig**2).clamp(min=0).sqrt()*eps  <span class=cmt># 指向 x_{t-1}(η=0 无随机)</span>
+        <span class=kw>if</span> eta&gt;0 <span class=kw>and</span> tp&gt;=0: x = x + sig*torch.randn_like(x)  <span class=cmt># η&gt;0 才加随机项</span>
+    <span class=kw>return</span> x
+
+<span class=cmt># 用法：同一个训好的 model，20–50 步出图（比 DDPM 快几十倍）</span>
+model.eval()
+imgs = ddim_sample(model, (16, 3, 32, 32), steps=50, eta=0.0)  <span class=cmt># 确定性、快</span>
+imgs = (imgs.clamp(-1,1) + 1) / 2                     <span class=cmt># 反归一化，可存图/使用</span></code></pre>
+<p><b>η=0</b> 时无随机项 → 完全确定（等价解一条概率流 ODE）；能<b>跳步</b>所以快 20–50 倍。</p>
+
+<!-- ===== 5.5 Flow Matching ===== -->
+<h2 class=sec><span class=bar></span>5.5 · Flow Matching / Rectified Flow（2022+）<span class=tag>标准公式</span></h2>
+<p>第三条主流路线（Stable Diffusion 3、Flux 用的就是它）。它<b>不学"去噪"</b>，而是学一个<b>连续向量场（速度）</b> v_θ(x,t)，把噪声沿 ODE 从 t=0 <b>直线"流"</b>到数据 t=1。路径更直 → 采样步数更少。</p>
+<div class=callout><b>直觉：</b>DDPM/DDIM 是"从噪声一点点擦干净"；Flow Matching 是"给空间每个点一个<b>箭头(速度)</b>，从噪声顺着箭头<b>径直漂</b>到真实图"。训练就是教网络在每个位置和时刻该指哪个方向。</div>
+<h3>核心公式（4 条）</h3>
+<div class=eqbox>直线插值　x_t = (1−t)·x₀ + t·x₁　（x₀~噪声, x₁~真实图, t∈[0,1]）</div>
+<div class=eqbox>目标速度　u_t = dx_t/dt = x₁ − x₀　（这条直线上是常向量）</div>
+<div class=eqbox>训练目标　L = ‖ v_θ(x_t, t) − (x₁ − x₀) ‖²　（网络回归速度）</div>
+<div class=eqbox>采样(解ODE)　x ← x + v_θ(x, t)·dt，　t: 0 → 1</div>
+<h3>Flow Matching 完整实现（复用同款 UNet 骨架，但网络学"速度"，需单独训一个）</h3>
+<pre><code><span class=cmt># Flow Matching (Rectified Flow / 条件OT)：网络学"速度场"而非噪声</span>
+model_fm = UNet().to(device)                        <span class=cmt># 同款 UNet 骨架，但输出解释为速度 v(x,t)</span>
+opt = torch.optim.Adam(model_fm.parameters(), lr=2e-4)
+
+<span class=kw>def</span> <span class=fn>fm_train_step</span>(model, x1):            <span class=cmt># x1: 真实图 [B,C,H,W](归一化[-1,1])</span>
+    x0 = torch.randn_like(x1)                       <span class=cmt># 噪声端 x0 ~ N(0,I)</span>
+    t  = torch.rand(x1.size(0), device=device)      <span class=cmt># 连续时间 t ~ U(0,1)</span>
+    tb = t.view(-1,1,1,1)
+    xt = (1-tb)*x0 + tb*x1                          <span class=cmt># 【公式⑥】直线插值 x_t=(1-t)x0+t·x1</span>
+    target = x1 - x0                                <span class=cmt># 【公式⑦】目标速度 u = x1-x0 (常向量)</span>
+    v = model(xt, t)                                <span class=cmt># 预测速度 v_θ(x_t,t)  (t 为连续[0,1])</span>
+    <span class=kw>return</span> F.mse_loss(v, target)             <span class=cmt># 【公式⑧】loss = ‖v_θ − (x1-x0)‖²</span>
+
+<span class=cmt># 训练循环（用法同 DDPM）</span>
+<span class=kw>for</span> epoch <span class=kw>in</span> range(100):
+    <span class=kw>for</span> x1 <span class=kw>in</span> dataloader:                    <span class=cmt># 只需真实图 x1（x0 在内部现采）</span>
+        loss = fm_train_step(model_fm, x1.to(device))
+        opt.zero_grad(); loss.backward(); opt.step()
+
+<span class=cmt># 采样/推理：从噪声解 ODE 到 t=1（Euler，几十步甚至更少）</span>
+<span class=st>@torch.no_grad()</span>
+<span class=kw>def</span> <span class=fn>fm_sample</span>(model, shape, steps=50):
+    x  = torch.randn(shape, device=device)          <span class=cmt># 从噪声端 x0 起</span>
+    dt = 1.0/steps
+    <span class=kw>for</span> i <span class=kw>in</span> range(steps):
+        t = torch.full((shape[0],), i*dt, device=device)  <span class=cmt># t: 0 → 1</span>
+        v = model(x, t)                             <span class=cmt># 预测速度</span>
+        x = x + v*dt                                <span class=cmt># 【公式⑨】欧拉积分 x_{t+dt}=x_t+v·dt</span>
+    <span class=kw>return</span> x                                  <span class=cmt># x ≈ x1 生成样本</span>
+
+model_fm.eval()
+imgs = fm_sample(model_fm, (16, 3, 32, 32), steps=50)  <span class=cmt># 少步出图(可更少)</span>
+imgs = (imgs.clamp(-1,1) + 1) / 2</code></pre>
+<p><b>和 diffusion 的关系：</b>score-based diffusion 的"概率流 ODE"其实是 Flow Matching 的一个特例；DDIM(η=0) 的确定性采样本质也是解 ODE，与 FM <b>同源</b>。区别在 <b>rectified flow 用直线路径</b>（diffusion 的路径是弯的）→ 更省采样步，常能 few-step 甚至趋近 1-step。</p>
+
+<h2 class=sec><span class=bar></span>公式 ↔ 代码对应表</h2>
+<div class=secsub>把上面代码里标的【①-⑨】和数学公式一一对上（①-⑤ DDPM/DDIM，⑥-⑨ Flow Matching）。</div>
+<table>
+<tr><th>#</th><th>数学公式</th><th>代码实现</th><th>在干嘛</th></tr>
+<tr><td><b>①</b> 前向加噪</td><td>x_t = √ᾱ_t·x₀ + √(1−ᾱ_t)·ε</td><td><code>ab.sqrt()*x0 + (1-ab).sqrt()*eps</code></td><td>把干净图按噪声档 t 加噪；训练造样本用</td></tr>
+<tr><td><b>②</b> 训练损失</td><td>L = ‖ε − ε_θ(x_t, t)‖²</td><td><code>F.mse_loss(eps_pred, eps)</code></td><td>让网络学会预测"加进去的噪声"</td></tr>
+<tr><td><b>③</b> DDPM 采样均值</td><td>μ = (x_t − (1−α_t)/√(1−ᾱ_t)·ε_θ)/√α_t</td><td><code>(x-(1-a)/(1-ab).sqrt()*eps)/a.sqrt()</code></td><td>反推上一步的均值；再 +σ_t·z 得 x_{t-1}</td></tr>
+<tr><td><b>④</b> DDIM 反推 x₀</td><td>x̂₀ = (x_t − √(1−ᾱ_t)·ε_θ)/√ᾱ_t</td><td><code>(x-(1-ab_t).sqrt()*eps)/ab_t.sqrt()</code></td><td>先估计干净图，再重新加噪到下一档</td></tr>
+<tr><td><b>⑤</b> DDIM 噪声系数</td><td>σ = η·√((1−ᾱ_{t-1})/(1−ᾱ_t))·√(1−ᾱ_t/ᾱ_{t-1})</td><td><code>eta*((1-ab_p)/(1-ab_t)).sqrt()*(1-ab_t/ab_p).sqrt()</code></td><td>η=0→σ=0 确定；η=1→回到 DDPM 随机</td></tr>
+<tr><td><b>⑥</b> FM 直线插值</td><td>x_t = (1−t)·x₀ + t·x₁</td><td><code>(1-tb)*x0 + tb*x1</code></td><td>噪声↔真实图之间的直线路径</td></tr>
+<tr><td><b>⑦</b> FM 目标速度</td><td>u_t = x₁ − x₀</td><td><code>target = x1 - x0</code></td><td>这条直线的方向（常向量）</td></tr>
+<tr><td><b>⑧</b> FM 训练损失</td><td>L = ‖v_θ(x_t,t) − (x₁−x₀)‖²</td><td><code>F.mse_loss(v, target)</code></td><td>教网络在每点该指的速度方向</td></tr>
+<tr><td><b>⑨</b> FM 采样(ODE)</td><td>x ← x + v_θ(x,t)·dt</td><td><code>x = x + v*dt</code></td><td>从噪声顺速度场积分到真实图</td></tr>
+</table>
+
+<!-- ===== 5.7 公式细讲 ===== -->
+<h2 class=sec><span class=bar></span>5.7 · 公式细讲：③ DDPM 均值 &amp; ⑤ DDIM σ 从哪来 <span class=tag>推导</span></h2>
+<div class=secsub>对照表里 ③ 和 ⑤ 只给了结果，这里补"为什么长这样"。记号：<code>a=α_t</code>,<code>ab=ᾱ_t</code>,<code>ab_p=ᾱ_{t-1}</code>,<code>eps=ε_θ(x_t,t)</code>,<code>1-a=β_t</code>。</div>
+
+<h3>③ DDPM 反向均值 <code>mean=(x-(1-a)/√(1-ab)·eps)/√a</code></h3>
+<p>三步推出来：</p>
+<div class=eqbox><b>第1步</b> 已知 x₀ 时，反向后验是高斯，其均值（贝叶斯）：<br>μ̃ = [√ᾱ_{t-1}·β_t/(1−ᾱ_t)]·x₀ + [√α_t·(1−ᾱ_{t-1})/(1−ᾱ_t)]·x_t</div>
+<div class=eqbox><b>第2步</b> 采样时不知道 x₀ → 用预测噪声把前向①反解出估计：<br>x̂₀ = (x_t − √(1−ᾱ_t)·ε_θ) / √ᾱ_t</div>
+<div class=eqbox><b>第3步</b> 把 x̂₀ 代回 μ̃，用 β_t=1−α_t、ᾱ_t=α_t·ᾱ_{t-1} 化简，x_t 项与 x₀ 项合并塌缩：<br>μ_θ = <span class=hl>(1/√α_t)·( x_t − (1−α_t)/√(1−ᾱ_t)·ε_θ )</span> &nbsp;←&nbsp; 就是代码</div>
+<div class=callout><b>逐项直觉：</b><code>/√α_t</code> = 撤销前向这一步对信号乘的 √α_t；<code>−(1−α_t)/√(1−ᾱ_t)·ε_θ</code> = 从 x_t 里<b>只剥掉属于这一小步的那份噪声</b>。其中 <b>1−α_t=β_t</b> 是这步注入的噪声方差，<b>√(1−ᾱ_t)</b> 是累计到 t 的总噪声标准差，比值把网络估的"总噪声方向"缩放成"这一步该减的量"。</div>
+
+<h3>⑤ DDIM 的 σ <code>sig=η·√((1-ab_p)/(1-ab_t))·√(1-ab_t/ab_p)</code></h3>
+<p>DDIM 用<b>同一个 ε_θ</b>（不重训），通用更新式把 x_{t-1} 拆成三块：</p>
+<div class=eqbox>x_{t-1} = <span class=hl>√ᾱ_{t-1}·x̂₀</span>(放到t-1档的干净图) + <span class=hlp>√(1−ᾱ_{t-1}−σ²)·ε_θ</span>(指向x_t的确定性方向) + <span style="color:var(--amber)">σ·z</span>(随机)</div>
+<p>σ 控制<b>每步注入多少新随机</b>。关键化简：因 <b>ᾱ_t/ᾱ_{t-1}=α_t</b>，故末因子 √(1−ᾱ_t/ᾱ_{t-1})=√(1−α_t)=√β_t。两个极端：</p>
+<table>
+<tr><th>η</th><th>σ</th><th>结果</th></tr>
+<tr><td><b>η=0</b></td><td>σ=0</td><td>无随机项，轨迹<b>完全确定</b>（=解概率流 ODE）→ 可<b>跳步(20–50步)</b>、可复现、latent 可插值。<span class=hl>DDIM 快的本质</span></td></tr>
+<tr><td><b>η=1</b></td><td>σ²=(1−ᾱ_{t-1})/(1−ᾱ_t)·β_t = <b>β̃_t</b></td><td>恰好是 DDPM 的后验方差 → DDIM <b>完全退化回 DDPM</b></td></tr>
+</table>
+<div class=callout><b>"噪声预算"视角：</b>t−1 档的总噪声量 <b>1−ᾱ_{t-1}</b> 被拆成"确定性方向项 √(1−ᾱ_{t-1}−σ²)"和"随机项 σ"两部分。σ 拿走多少，确定方向就少多少；<b>σ=0 时预算全给确定方向</b>，ε_θ 精确指回 x_t → 轨迹确定。η 就是"确定 ↔ 随机"的连续旋钮。</div>
+
+<!-- ===== 5.8 从噪声怎么生成 ===== -->
+<h2 class=sec><span class=bar></span>5.8 · 从纯噪声开始，怎么就成了"生成"？ <span class=tag>直觉</span></h2>
+<div class=secsub>很多人卡在这："从噪声出发不是没意义吗？" 分两层讲透。</div>
+
+<h3>A · 为什么"从噪声开始"有意义</h3>
+<div class=callout>
+① 训练时对<b>每张真实图</b>在<b>所有档位 t=1..T</b> 加噪、让网络预测噪声（等价于学"去噪方向"/score ∇log p_t）→ 网络在<b>每个噪声档都知道"哪边是数据"</b>。<br>
+② 前向设计使 <b>x_T≈N(0,I)</b>（√ᾱ_T≈0）：任意真实图加满噪都变成标准高斯。所以采样时<b>新抽一个 N(0,I)</b>，和"被加满噪的真实图"无法区分，网络照样往回走。<br>
+③ 采样 = 从简单先验 N(0,I) 顺着学到的去噪场一步步走回数据流形，终点 x₀ 就是数据分布的<b>一个新样本</b>。<br>
+④ <b>多样性来自初始噪声种子</b>（+η&gt;0 每步 z）。不是"无意义噪声→固定输出"，而是<b>每个噪声种子=一张彩票，模型把它解码成一张具体真实图</b>——本质学到了 N(0,I) → p_data 的<b>传输映射</b>。
+</div>
+<div class=panel>
+<svg viewBox="0 0 640 170" style="width:100%;height:auto;font-family:inherit">
+  <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#7ee0ff"/></marker></defs>
+  <text x="70" y="20" fill="#aab1d0" font-size="12" text-anchor="middle">噪声种子空间 N(0,I)</text>
+  <text x="330" y="20" fill="#aab1d0" font-size="12" text-anchor="middle">反向去噪链（学到的传输）</text>
+  <text x="585" y="20" fill="#aab1d0" font-size="12" text-anchor="middle">数据分布 p_data</text>
+  <!-- three seeds -->
+  <g font-size="11">
+  <circle cx="70" cy="55" r="16" fill="rgba(126,224,255,.12)" stroke="#2a3157"/><text x="70" y="59" fill="#7ee0ff" text-anchor="middle">z₁</text>
+  <circle cx="70" cy="95" r="16" fill="rgba(126,224,255,.12)" stroke="#2a3157"/><text x="70" y="99" fill="#7ee0ff" text-anchor="middle">z₂</text>
+  <circle cx="70" cy="135" r="16" fill="rgba(126,224,255,.12)" stroke="#2a3157"/><text x="70" y="139" fill="#7ee0ff" text-anchor="middle">z₃</text>
+  <!-- chain boxes -->
+  <rect x="180" y="70" width="300" height="50" rx="8" fill="rgba(167,139,250,.1)" stroke="#a78bfa"/>
+  <text x="330" y="90" fill="#e7eaf6" font-size="12" text-anchor="middle">x_T → x_{T-1} → … → x₀</text>
+  <text x="330" y="108" fill="#7f87a8" font-size="10" text-anchor="middle">每步 ε_θ 预测噪声 + 走一步（③或④⑤）</text>
+  <!-- outputs -->
+  <rect x="556" y="40" width="58" height="30" rx="6" fill="rgba(74,222,128,.1)" stroke="#4ade80"/><text x="585" y="59" fill="#4ade80" font-size="11" text-anchor="middle">图A</text>
+  <rect x="556" y="80" width="58" height="30" rx="6" fill="rgba(74,222,128,.1)" stroke="#4ade80"/><text x="585" y="99" fill="#4ade80" font-size="11" text-anchor="middle">图B</text>
+  <rect x="556" y="120" width="58" height="30" rx="6" fill="rgba(74,222,128,.1)" stroke="#4ade80"/><text x="585" y="139" fill="#4ade80" font-size="11" text-anchor="middle">图C</text>
+  <line x1="88" y1="55" x2="178" y2="85" stroke="#7ee0ff" marker-end="url(#ar)"/>
+  <line x1="88" y1="95" x2="178" y2="95" stroke="#7ee0ff" marker-end="url(#ar)"/>
+  <line x1="88" y1="135" x2="178" y2="105" stroke="#7ee0ff" marker-end="url(#ar)"/>
+  <line x1="482" y1="85" x2="554" y2="55" stroke="#4ade80" marker-end="url(#ar)"/>
+  <line x1="482" y1="95" x2="554" y2="95" stroke="#4ade80" marker-end="url(#ar)"/>
+  <line x1="482" y1="105" x2="554" y2="135" stroke="#4ade80" marker-end="url(#ar)"/>
+  </g>
+</svg>
+<div style="font-size:11px;color:#7f87a8;text-align:center">不同噪声种子 → 同一个去噪链 → 落到不同真实图（多样性来源）</div>
+</div>
+
+<h3>B · 怎么把它变成"生成任务"（可控）</h3>
+<table>
+<tr><th>玩法</th><th>怎么做</th><th>例子</th></tr>
+<tr><td><b>无条件生成</b></td><td>随机种子 → 反向去噪 → 随机真实样本</td><td>随便生成一张符合训练集的图</td></tr>
+<tr><td><b>条件生成</b></td><td>网络多吃条件 c：<code>ε_θ(x_t,t,c)</code>，用 (图, c) 对训练；采样固定 c</td><td><b>文生图</b> c=文本embedding；类别生成 c=类别；<b>世界模型</b> c=历史帧+动作</td></tr>
+<tr><td><b>CFG 引导</b></td><td>训练随机丢 c(用∅)；采样外推 <code>ε̂=ε_θ(∅)+w·(ε_θ(c)−ε_θ(∅))</code></td><td>w&gt;1 加强"贴 prompt"，文生图清晰又切题的关键旋钮</td></tr>
+<tr><td><b>图生图/编辑</b></td><td>不从纯噪声，从"加了<b>部分</b>噪声的真实图"起(SDEdit)，只加到中间档 t₀ 再去噪</td><td>保结构换风格、局部重绘(inpaint 每步用带噪原图替换已知区)</td></tr>
+</table>
+<div class=panel>
+<svg viewBox="0 0 640 130" style="width:100%;height:auto;font-family:inherit">
+  <defs><marker id="ar2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#a78bfa"/></marker></defs>
+  <rect x="20" y="30" width="120" height="34" rx="7" fill="rgba(126,224,255,.1)" stroke="#7ee0ff"/><text x="80" y="52" fill="#7ee0ff" font-size="12" text-anchor="middle">噪声 x_T</text>
+  <rect x="20" y="80" width="120" height="34" rx="7" fill="rgba(255,211,92,.1)" stroke="#ffd35c"/><text x="80" y="99" fill="#ffd35c" font-size="11" text-anchor="middle">条件 c</text>
+  <text x="80" y="112" fill="#7f87a8" font-size="9" text-anchor="middle">文本/类别/历史帧+动作</text>
+  <rect x="230" y="52" width="200" height="42" rx="8" fill="rgba(167,139,250,.12)" stroke="#a78bfa"/>
+  <text x="330" y="70" fill="#e7eaf6" font-size="12" text-anchor="middle">反向去噪 ε_θ(x_t, t, <tspan fill="#ffd35c">c</tspan>)</text>
+  <text x="330" y="86" fill="#7f87a8" font-size="9" text-anchor="middle">（CFG: 放大 c 的作用）</text>
+  <rect x="510" y="52" width="110" height="42" rx="8" fill="rgba(74,222,128,.1)" stroke="#4ade80"/><text x="565" y="77" fill="#4ade80" font-size="12" text-anchor="middle">符合 c 的图</text>
+  <line x1="140" y1="47" x2="228" y2="65" stroke="#a78bfa" marker-end="url(#ar2)"/>
+  <line x1="140" y1="97" x2="228" y2="80" stroke="#a78bfa" marker-end="url(#ar2)"/>
+  <line x1="430" y1="73" x2="508" y2="73" stroke="#a78bfa" marker-end="url(#ar2)"/>
+</svg>
+<div style="font-size:11px;color:#7f87a8;text-align:center">条件生成：把 c 喂进同一套去噪网络，固定 c 就把"随机生成"变成"按需生成"</div>
+</div>
+<div class=callout><b>连回世界模型：</b>Cosmos 这类 WFM 就是"条件生成"的极致——把 c 换成<b>过去帧 + 相机/动作</b>，x₀ 换成<b>未来帧</b>。同一套"从噪声去噪"的机器，条件换成历史，就成了"预测未来"的世界模型。</div>
+
+<!-- ===== 6. 对照 + 连回 Cosmos ===== -->
+<h2 class=sec><span class=bar></span>6 · DDPM vs DDIM vs Flow Matching 三者对照</h2>
+<div class=secsub>核心一句：DDPM 立框架(慢/随机)；DDIM 同网络换采样(快/确定)；Flow Matching 换建模对象(学速度场/直线路径, 更省步)。</div>
+<table>
+<tr><th>维度</th><th>DDPM (2020)</th><th>DDIM (2021)</th><th>Flow Matching / Rectified Flow (2022+)</th></tr>
+<tr><td><b>建模对象</b></td><td>逐步去噪(马尔可夫链)</td><td>同 DDPM 网络，换确定性采样</td><td>连续<b>向量场/速度</b> v(x,t)</td></tr>
+<tr><td><b>网络学什么</b></td><td>预测噪声 ε_θ</td><td>（同 DDPM，复用）</td><td>预测速度 v_θ = x₁−x₀</td></tr>
+<tr><td><b>路径</b></td><td>加噪扩散(弯曲)</td><td>（同 DDPM）</td><td><b>直线</b> (1−t)x₀+t·x₁</td></tr>
+<tr><td><b>训练目标</b></td><td>‖ε−ε_θ‖²</td><td>（同 DDPM）</td><td>‖v_θ−(x₁−x₀)‖²</td></tr>
+<tr><td><b>训练是否共用</b></td><td colspan=2 style="text-align:center"><b>DDPM/DDIM 共用同一次训练</b></td><td>需<b>单独训</b>(学速度)</td></tr>
+<tr><td><b>采样过程</b></td><td>逐步 + 每步注 z</td><td>跳步 + 确定/可调 η</td><td>解 ODE：x+=v·dt</td></tr>
+<tr><td><b>随机性</b></td><td>随机</td><td>η=0 确定 / η=1→DDPM</td><td>确定(ODE)</td></tr>
+<tr><td><b>步数</b></td><td>~1000（慢）</td><td>20–50（快几十倍）</td><td>少步，常 few-step 甚至趋近 1-step</td></tr>
+<tr><td><b>关系</b></td><td>score-based SDE</td><td>概率流 ODE</td><td>更一般的流框架；diffusion ODE 是其特例</td></tr>
+<tr><td><b>代表/应用</b></td><td>DDPM</td><td>DDIM、Stable Diffusion 采样</td><td>Rectified Flow、SD3、Flux</td></tr>
+</table>
+
+<h2 class=sec><span class=bar></span>6.5 · 代码级对比（DDPM / DDIM / Flow Matching）</h2>
+<div class=secsub>同一个 UNet 接口 <code>model(x, t)</code>，"就这几行不一样"。</div>
+<table>
+<tr><th>关键步骤</th><th>DDPM</th><th>DDIM</th><th>Flow Matching</th></tr>
+<tr><td>① 造训练样本</td><td><code>x_t=√ᾱ·x0+√(1-ᾱ)·ε</code></td><td>（同 DDPM）</td><td><code>x_t=(1-t)·x0+t·x1</code></td></tr>
+<tr><td>② 网络预测</td><td><code>eps=model(x_t,t)</code></td><td>（同 DDPM）</td><td><code>v=model(x_t,t)</code></td></tr>
+<tr><td>③ 训练 loss</td><td><code>mse(eps, ε)</code></td><td>（复用 DDPM 权重）</td><td><code>mse(v, x1-x0)</code></td></tr>
+<tr><td>④ 采样每步</td><td><code>x=μ+σ_t·z</code> 随机</td><td><code>x=√ᾱ_p·x̂0+√(1-ᾱ_p)·eps</code> 确定</td><td><code>x=x+v·dt</code> 解ODE</td></tr>
+<tr><td>⑤ 步数</td><td>~1000</td><td>20–50</td><td>少步 / 趋近 1-step</td></tr>
+</table>
+<div class=callout><b>一眼结论：</b>三者共用同一 UNet 接口；<b>DDPM↔DDIM 连权重都共享</b>（只换"④采样"那一行）；<b>Flow Matching 换了"①样本构造/③训练目标/④采样"</b>（学 <code>x1-x0</code> 而非 ε、直线插值、ODE 积分），所以要单独训一个 <code>model_fm</code>。</div>
+
+<h2 class=sec><span class=bar></span>附 · NeRF &amp; 3D Gaussian Splatting（另一类：3D 重建 / 新视角）</h2>
+<div class=callout><b>先划清定位（重要）：</b>上面 DDPM/DDIM/FM 是<b>生成模型</b>（学数据分布 → 从噪声采样出<b>新</b>样本）；NeRF / 3DGS 是<b>3D 重建 / 新视角合成</b>——对<b>一个已有场景</b>用多视图图片<b>拟合</b>出 3D 表示，渲染它的<b>新视角</b>（不"造新场景"，是"记住场景并换角度看"）。它们是 world model <b>3D 一致性</b>的基础工具：Cosmos §5.3 用多视图几何评估 3D 一致性；自驾里 DriveDreamer4D / ReconDreamer 用 3DGS/NeRF 做<b>闭环 4D 重建</b>（生成先验补重建）。</div>
+
+<h3>NeRF（2020）：隐式 MLP + 体渲染</h3>
+<div class=eqbox>F_θ(x, d) → (颜色 c, 体密度 σ)　；　体渲染 C(r) = ∫ T(t)·σ(t)·c(t) dt，　T = exp(−∫σ)</div>
+<pre><code><span class=cmt># NeRF: 一个 MLP 表示"整个场景" F(x)->(颜色c, 密度σ)；沿相机光线体渲染积分</span>
+<span class=kw>class</span> <span class=fn>NeRF</span>(nn.Module):
+    <span class=kw>def</span> __init__(s, L=10, W=256):
+        super().__init__(); s.L = L
+        din = 3 + 3*2*L                                <span class=cmt># 位置编码后的输入维度</span>
+        s.net = nn.Sequential(nn.Linear(din,W), nn.ReLU(), nn.Linear(W,W), nn.ReLU(), nn.Linear(W,4))
+    <span class=kw>def</span> <span class=fn>posenc</span>(s, x):                          <span class=cmt># Fourier 位置编码，让 MLP 拟合高频细节</span>
+        y = [x]
+        <span class=kw>for</span> i <span class=kw>in</span> range(s.L):
+            <span class=kw>for</span> fn <span class=kw>in</span> (torch.sin, torch.cos): y.append(fn(2.0**i * x))
+        <span class=kw>return</span> torch.cat(y, -1)
+    <span class=kw>def</span> forward(s, x):
+        o = s.net(s.posenc(x)); <span class=kw>return</span> o[...,:3].sigmoid(), o[...,3].relu()  <span class=cmt># 颜色c, 密度σ</span>
+
+<span class=kw>def</span> <span class=fn>render_ray</span>(nerf, ro, rd, tn=2., tf=6., N=64):  <span class=cmt># 沿光线 ro+t·rd 采样 N 点做体渲染</span>
+    t   = torch.linspace(tn, tf, N, device=ro.device)
+    pts = ro[...,None,:] + rd[...,None,:]*t[...,:,None]  <span class=cmt># 采样点 [光线, N, 3]</span>
+    c, sigma = nerf(pts)
+    delta = t[1:] - t[:-1]                              <span class=cmt># 相邻采样间距</span>
+    alpha = 1 - torch.exp(-sigma[...,:-1]*delta)        <span class=cmt># 每小段不透明度</span>
+    T = torch.cumprod(1 - alpha + 1e-10, -1)            <span class=cmt># 透射率(累积“还能透过多少”)</span>
+    w = alpha * T                                       <span class=cmt># 权重 = 不透明度 × 透射率</span>
+    <span class=kw>return</span> (w[...,None] * c[...,:-1,:]).sum(-2)     <span class=cmt># 【体渲染】C(r)=Σ w·c</span>
+
+<span class=kw>def</span> <span class=fn>nerf_train_step</span>(nerf, ro, rd, rgb_gt):    <span class=cmt># ro,rd:一批光线; rgb_gt:对应真实像素</span>
+    rgb = render_ray(nerf, ro, rd)
+    <span class=kw>return</span> F.mse_loss(rgb, rgb_gt)              <span class=cmt># ‖渲染像素 − 真实像素‖² (单场景多视图拟合)</span></code></pre>
+
+<h3>3D Gaussian Splatting（2023）：显式高斯 + 光栅化</h3>
+<div class=eqbox>场景 = {高斯ᵢ: 位置 μᵢ, 协方差 Σᵢ, 不透明度 αᵢ, 颜色(球谐)}　；　投影(splat) + 按深度 α-blend</div>
+<pre><code><span class=cmt># 3D Gaussian Splatting: 一堆“显式3D高斯”表示场景；可微光栅化(投影+α混合)，实时</span>
+<span class=kw>class</span> <span class=fn>Gaussians</span>(nn.Module):
+    <span class=kw>def</span> __init__(s, N):
+        super().__init__()
+        s.xyz     = nn.Parameter(torch.randn(N,3))     <span class=cmt># 位置 μ</span>
+        s.scale   = nn.Parameter(torch.zeros(N,3))     <span class=cmt># 各向异性尺度(log) → 协方差 Σ=R·S·Sᵀ·Rᵀ</span>
+        s.rot     = nn.Parameter(torch.zeros(N,4))     <span class=cmt># 旋转四元数</span>
+        s.opacity = nn.Parameter(torch.zeros(N,1))     <span class=cmt># 不透明度 α(logit)</span>
+        s.sh      = nn.Parameter(torch.zeros(N,3,16))  <span class=cmt># 球谐系数(视角相关颜色)</span>
+
+<span class=kw>def</span> <span class=fn>render</span>(g, cam):                          <span class=cmt># 可微光栅化(官方用 CUDA rasterizer)</span>
+    mean2d, cov2d = project(g.xyz, cov(g.scale, g.rot), cam)  <span class=cmt># 3D高斯 → 投影成 2D 高斯(splat)</span>
+    color = eval_sh(g.sh, view_dir(cam))               <span class=cmt># 由球谐算该视角的颜色</span>
+    order = depth_sort(g.xyz, cam)                      <span class=cmt># 按深度排序(近→远)</span>
+    <span class=kw>return</span> alpha_blend(mean2d, cov2d, color, g.opacity.sigmoid(), order)  <span class=cmt># α 混合成图</span>
+
+<span class=kw>def</span> <span class=fn>gs_train_step</span>(g, cam, gt, lam=0.2):
+    img = render(g, cam)
+    <span class=kw>return</span> (1-lam)*F.l1_loss(img, gt) + lam*dssim(img, gt)  <span class=cmt># L1 + D-SSIM (单场景多视图)</span>
+    <span class=cmt># 训练中周期性 densify(对高梯度高斯分裂/克隆) + prune(剪枝低α) —— 自适应致密化</span></code></pre>
+<p><b>NeRF vs 3DGS：</b>隐式 MLP vs 显式高斯点；体渲染(每像素查 MLP 上百次,<b>慢</b>) vs 光栅化 splatting(<b>实时</b>)；但都是 <b>per-scene</b>(一个场景训一个) + 多视图 + 可微渲染 + 光度 loss。3DGS 现在是新视角/自驾闭环仿真的主流。</p>
+
+<h2 class=sec><span class=bar></span>附 · 五方法总对比（生成 vs 3D 重建）</h2>
+<table>
+<tr><th>维度</th><th>DDPM</th><th>DDIM</th><th>Flow Matching</th><th>NeRF</th><th>3D GS</th></tr>
+<tr><td><b>大类</b></td><td colspan=3 style="text-align:center"><b>生成模型</b>（学分布→采样新样本）</td><td colspan=2 style="text-align:center"><b>3D 重建/新视角</b>（拟合已有场景）</td></tr>
+<tr><td><b>表示</b></td><td>—</td><td>—</td><td>—</td><td>隐式 MLP</td><td>显式 3D 高斯</td></tr>
+<tr><td><b>学什么</b></td><td>噪声 ε</td><td>(同DDPM)</td><td>速度 x₁−x₀</td><td>辐射场 (c,σ)</td><td>高斯参数 μ,Σ,α,SH</td></tr>
+<tr><td><b>训练数据</b></td><td colspan=3 style="text-align:center">大量图/视频（学分布）</td><td colspan=2 style="text-align:center">单场景多视图（+相机位姿）</td></tr>
+<tr><td><b>训练目标</b></td><td>‖ε−ε_θ‖²</td><td>(同)</td><td>‖v−(x₁−x₀)‖²</td><td>‖渲染−真值‖²</td><td>L1 + D-SSIM</td></tr>
+<tr><td><b>推理</b></td><td>迭代去噪</td><td>少步去噪</td><td>解 ODE</td><td>体渲染(光线积分)</td><td>光栅化 splat(实时)</td></tr>
+<tr><td><b>产物</b></td><td colspan=3 style="text-align:center"><b>新</b>样本(新图/视频)</td><td colspan=2 style="text-align:center">该场景的<b>新视角</b></td></tr>
+<tr><td><b>范围</b></td><td colspan=3 style="text-align:center">学通用分布</td><td colspan=2 style="text-align:center">per-scene(一场景一模型)</td></tr>
+<tr><td><b>速度</b></td><td>慢</td><td>中</td><td>快</td><td>渲染慢</td><td>极快(实时)</td></tr>
+<tr><td><b>与 WM 关系</b></td><td>WM 生成骨架</td><td>采样</td><td>现代 WM(SD3/Flux)</td><td>3D 一致性/重建</td><td>自驾闭环 4D 重建</td></tr>
+</table>
+<div class=callout><b>怎么串起来看：</b>生成模型"无中生有造新的"，3D 重建"记住已有场景换角度看"。世界模型两头都要——用<b>生成</b>造多样场景/未来（DDPM→FM→Cosmos），用 <b>3D 重建(NeRF/3DGS)</b> 保证几何一致、做闭环仿真；前沿是二者<b>融合</b>（生成先验补重建看不到的视角，如 DriveDreamer4D）。</div>
+
+<h2 class=sec><span class=bar></span>7 · 连回 Cosmos（下一步 Ch5）</h2>
+<div class=callout>Cosmos 用 <b>EDM 框架</b>：把离散步 t 换成<b>连续噪声等级 σ</b>、网络<b>预测干净 x₀</b>（非 ε，等价）、在 <b>latent</b> 上做（非像素）。
+<br>• 训练：<code>x_σ=x0+σε</code> → D_θ(x_σ,σ,c) 预测 x0，loss=λ(σ)‖·‖²（就是 train_step 的连续σ+预测x0版）。
+<br>• 采样：Cosmos 的 <b>ODE sampler ≈ DDIM(η=0)</b> 连续版；<b>SDE sampler ≈ 带随机项</b>（像 DDPM）。</div>
+<p>一句话：<b>DDPM 立框架(慢/随机)；DDIM 同网络换采样(快/确定=解ODE)；EDM(Cosmos 用) 是这条确定性ODE路线的成熟版</b>。→ 进入 <a href="cosmos_wfm.html" style="color:var(--accent2)">Ch5 WFM 预训练</a> 看 Cosmos 的扩散/自回归 WFM 怎么在 latent 上建模。</p>
+
+<div class=note2><b>说明：</b>DDPM/DDIM 代码为忠实于原论文（Ho 2020 / Song 2021）的教学参考实现，非某 repo 逐行拷贝；<code>model(x_t,t)</code> 骨架用 UNet(DDPM)/DiT(Cosmos)，输入带噪图+时间步、输出同形预测，时间步经正弦嵌入注入。去噪动图为原理示意（x_σ=x0+σε，σ 递减），非真实模型采样。</div>
+</div>
+
+<script>
+// 去噪示意动画：x_σ = target + σ·gaussian，σ 从 1→0 逐步显影出一个迷你场景
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const W=96,H=96, N=40;
+const target=new Float32Array(W*H*3);
+(function buildScene(){
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=(y*W+x)*3; const t=y/H;
+    let r,g,b;
+    if(t<0.68){ r=90+ (150-90)*(1-t); g=140+(190-140)*(1-t); b=210; } // 天空渐变
+    else { r=40; g=75; b=48; }                                        // 地面
+    // 太阳
+    const dx=x-W*0.70, dy=y-H*0.28, d=Math.sqrt(dx*dx+dy*dy);
+    if(d<11){ r=255; g=230; b=150; } else if(d<16){ const k=(16-d)/5; r=r+(255-r)*k; g=g+(230-g)*k; b=b+(150-b)*k; }
+    target[i]=r; target[i+1]=g; target[i+2]=b;
+  }
+})();
+function gauss(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function render(step){
+  const sigma=1-step/N;                       // σ: 1(纯噪声)→0(干净)
+  const img=ctx.createImageData(W,H);
+  for(let i=0;i<W*H;i++){
+    for(let c=0;c<3;c++){
+      let v=target[i*3+c] + gauss()*sigma*95;  // x_σ = x0 + σ·ε
+      v = sigma>0.98 ? 128+gauss()*90 : v;      // 起点近纯噪声
+      img.data[i*4+c]=Math.max(0,Math.min(255,v));
+    }
+    img.data[i*4+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+  document.getElementById('info').textContent='step '+step+' / '+N+'　σ = '+sigma.toFixed(3)+(sigma<0.02?'　→ 干净图 ✓':'');
+  document.getElementById('sld').value=step;
+}
+let step=0, timer=null;
+render(0);
+document.getElementById('sld').oninput=function(){ step=+this.value; render(step); };
+document.getElementById('reset').onclick=function(){ if(timer){clearInterval(timer);timer=null;document.getElementById('play').textContent='▶ 播放去噪';} step=0; render(0); };
+document.getElementById('play').onclick=function(){
+  if(timer){ clearInterval(timer); timer=null; this.textContent='▶ 播放去噪'; return; }
+  this.textContent='⏸ 暂停';
+  timer=setInterval(()=>{ step++; if(step>N){ step=N; clearInterval(timer); timer=null; document.getElementById('play').textContent='▶ 重新播放'; } render(step); }, 160);
+};
+</script>
+</body></html>

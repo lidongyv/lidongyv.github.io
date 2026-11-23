@@ -1,0 +1,161 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>SoccerMaster: A Vision Foundation Model for Soccer Understanding</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>SoccerMaster: A Vision Foundation Model for Soccer Understanding</h1>
+    <div class="au2" style="color:var(--mut)">Haolin Yang ⋅ Jiayuan Rao ⋅ Haoning Wu ⋅ Weidi Xie</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2512.11016">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2512.11016">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=SoccerMaster%3A%20A%20Vision%20Foundation%20Model%20for%20Soccer%20Understanding">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Soccer understanding has recently garnered growing research interest due to its domain-specific complexity and unique challenges.However, prior works typically rely on task-specific expert models, which are resource-intensive and hinder a holistic view of the game.This paper aims to propose a unified framework that enables a single model to handle diverse soccer visual understanding tasks, spanning both fine-grained perception (e.g., athlete detection) and semantic reasoning (e.g., event classification).Concretely, we make the following contributions in this paper:(i) we present **SoccerMaster**, the first soccer-specific vision foundation model that unifies comprehensive understanding tasks within a single framework via **supervised multi-task pretraining**;(ii) we consolidate multiple existing soccer video datasets and develop an automated data curation pipeline, termed as **SoccerFactory**, to produce scalable multi-task training annotations;and (iii) we conduct extensive experiments demonstrating that SoccerMaster consistently outperforms task-specific expert models across diverse downstream tasks, underscoring its breadth and superiority.The data, code, and model will be publicly available to the research community.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-soccermaster-a-vision-foundation-model-for-soccer-under -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">第一个「足球专用」<b>视觉基础模型</b>，用监督式 multi-task 预训练把足球理解的两类任务——<b>细粒度空间感知</b>(球员检测/球衣号/裁判角色/球场配准/相机标定/MOT)与<b>高层语义推理</b>(事件分类/视频-文本对齐/解说生成)——统一进单个模型。配套 <b>SoccerFactory</b>(自动数据标注流水线，从转播视频造大规模空间标注)。在所有预训练任务上超通用 VFM(SigLIP2/DINOv3)与足球专用 MatchVision，轻量微调即下游 SOTA。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">原文：足球理解存在 spatial perception ↔ semantic reasoning 的 dichotomy。当前主流靠 fragmented task-specific expert model(费资源、无全局观)；近期想用 vision-language alignment 统一但 “neglect dense spatial objectives during pretraining”——能说「发生了什么」却说不清「在哪/是谁」。且缺主相机视角的大规模 dense 空间标注。</div>
+    <div class="note-h">核心方法 + 关键结构</div>
+    <div class="note-b">① <b>视觉编码器(§5.2)</b>：ViT + TimeSformer 式。前 Ls=16 层纯空间 attention(逐帧)→空间特征 Fspa(保细粒度)；后 Lst=8 层时空 attention(交替 temporal+spatial)→MAP 注意力池化→语义特征 Fsem。d=1024, T=30 帧, 512², 从 siglip2-large 初始化。<br>② <b>多任务预训练头(§5.3)</b>：athlete detection Ψd(Deformable-DETR decoder，La=λ·(cls+bbox+role+jersey focal))、pitch registration Ψk/Ψl(heatmap+PixelShuffle, MSE)、event cls Ψe(2 层 transformer+avgpool+CE)、VL alignment Ψa(avgpool Fsem 与 SigLIP2 text encoder 对齐, SigLIP 对比 loss)；<b>Ltotal=λa·La+λk·Lk+λl·Ll+λe·Le+λcon·Lcon</b>(Eq.14)。<br>③ <b>SoccerFactory(§4)</b>：field registration(keypoint/line→PnL→相机参数→投影 canonical pitch 精化标注) + tracking&amp;id(YOLOv8 检测→StrongSORT+PRTReID 跟踪→Qwen2.5-VL 认 role/jersey→legibility 滤+team 聚类) + post-processing(SAM2 补漏/纠 ID switch + majority voting + tracklet 合并)。<br>④ <b>下游(§5.4)</b>：commentary(Q-Former+Llama-3-8B)、camera calibration(PnL on 检测的 keypoint/line)、MOT(MOTIP，关联当分类)。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">预训练任务(Table 3，baseline 冻结编码器+训头 / Ours 直接评)：athlete detection AP@50 <b>91.5</b> vs SigLIP2 72.3/DINOv3 70.2/MatchVision 51.9，mAP <b>+17.5</b>；event cls 77.2 vs 65.3(<b>+11.9</b>)；VL 对齐 top-1 <b>39.0</b> vs SigLIP2 3.4(域差巨大)。下游：camera calib 微调 FS 75.8 vs PnlCalib 67.6(+8.2@SN22)；MOT 端到端 HOTA 59.1/DetA 65.2(最佳)/MOTA 81.6；commentary BLEU@1 31.3/CIDEr 38.6 最佳。SoccerFactory 质量 GS-HOTA <b>64.1 ＞ 挑战赛冠军 KIST-GSR 61.5</b>。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 第一个足球 VFM，把空间感知与语义推理「<b>在预训练里联合</b>」，破「会说不会指」的脱节；② SoccerFactory 全自动从转播造 dense 空间标注(质量超人工挑战赛冠军)，省昂贵人工；③ 一个 backbone 微调即覆盖检测/跟踪/标定/事件/解说多任务；④ 消融(Table 12)：足够容量下 multi-task ≈ single-task 单项性能、但额外得通用表示，VL 对齐还涨。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① 限制(原文)：jersey number 当 <b>101 类分类</b>、null 占绝大多数(类不均衡)、且与检测联合(非高分裁剪)→号码识别弱；② <b>goalkeeper 常被误判为 player</b>(样本少+守门服颜色方差大、缺关系推理)；③ 仅做球员+球场，<b>不含 ball detection/tracking</b>；④ 训练成本高(16×H800 ~9 天)；⑤ 多任务消融用 compact 变体时 athlete detection 反降(容量受限)——结论依赖「足够容量」前提。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（本地 PDF 全文 PyMuPDF 提取，~96K 字符，含 supplementary 数据/超参/全表/limitations）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="kv">深化精读（本地 PDF 全文 PyMuPDF 提取，正文 13 页 + supplementary 共 24 页，~95K 字符，含全部 Table 真实数值/Eq.3-14/训练超参）。最后更新 2026-06-23。verbatim 英文引用 + 中文指路，存疑标 [推测]。arXiv:2512.11016v2。</div>
+
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文逐句：</b><br>1) “Unlike prior works that typically rely on isolated, task-specific expert models, this work aims to propose a unified model to handle diverse soccer visual understanding tasks” —— 反对“一任务一专家模型”的碎片化范式，目标<b>单一统一模型</b>。<br>2) “ranging from fine-grained perception (e.g., athlete detection and identification) to high-level semantic reasoning (e.g., event classification)” —— 任务谱跨<b>细粒度感知 ↔ 高层语义推理</b>。<br>3) 贡献三件套：(i) “SoccerMaster, the first soccer-specific vision foundation model that unifies diverse tasks within a single framework via supervised multi-task pretraining”；(ii) “an automated data curation pipeline, SoccerFactory, to generate scalable spatial annotations”；(iii) “SoccerMaster consistently outperforms task-specific expert models across diverse downstream tasks”。<br>4) “The data, code, and model will be publicly available.”</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>首个足球专用视觉基础模型，靠<b>有监督多任务预训练</b>把检测/识别/注册/事件/对齐统一到一个视觉编码器；并配套 SoccerFactory 自动标注管线解决密集空间标签稀缺，下游简单微调即超各路专家模型。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文）</div>
+    <div class="note-b"><b>① Vision Foundation Model（VFM）：</b>大规模预训练学通用视觉表征（CLIP/DINOv2/v3/SigLIP），再迁移到下游。本文把这套搬进<b>足球视频</b>这个高动态垂域。<br><b>② SoccerNet 系列 [10,11,13,20-22]：</b>足球理解的基准基石，覆盖 action spotting、camera calibration、tracking、re-id、jersey 识别、game state reconstruction（GSR）等；但标注 “predominantly tailored for distinct, decoupled tasks”（各任务解耦）。<br><b>③ Deformable DETR [90]：</b>用 learnable query + 注意力做端到端检测，本文检测头复用其 decoder。<br><b>④ TimeSformer [5]：</b>把时空注意力拆成“先时间后空间”交替，省算力地建视频时序。<br><b>⑤ SigLIP 2 [65] / SigLIP loss [86]：</b>sigmoid 对比损失的视觉-语言编码器；本文 backbone 用 siglip2-large 初始化，对齐头用 SigLIP loss。<br><b>⑥ PnLCalib [25]：</b>用 points + lines 优化做球场注册→相机标定，本文注册头与标定下游都基于它。<br><b>⑦ GS-HOTA / HOTA：</b>多目标跟踪综合指标（检测 DetA × 关联 AssA 的几何均衡）；GSR 任务加“游戏状态”维度成 GS-HOTA。<br><b>⑧ MatchVision / UniSoccer [57]：</b>前作足球视频统一模型，但偏语义、忽略密集空间目标（本文的主要对比对象）。</div>
+
+    <div class="note-h">② §1 Introduction — problem（核心矛盾）</div>
+    <div class="note-b"><b>核心二分（原文）：</b>“A central dichotomy in soccer understanding lies between spatial perception and semantic reasoning.” 前者要 “fine-grained geometric precision”（检测/跟踪/jersey/标定），后者要 “high-level abstraction”（action spotting/事件/犯规/解说）。<br><b>现状之痛（原文）：</b>“Current paradigms predominantly rely on fragmented, task-specific expert models ... in isolation.” 即便有统一尝试 [UniSoccer]，“they often neglect dense spatial objectives during pretraining. This omission results in models that can describe what is happening but struggle to pinpoint where or who is involved” —— <b>能说“发生了什么”却定位不了“在哪/是谁”</b>，空间感知与语义推理脱节。</div>
+
+    <div class="note-h">③ §1 — solution（统一框架闭环）</div>
+    <div class="note-b"><b>原文：</b>“SoccerMaster, the first soccer-specific vision foundation model that unifies fine-grained spatial perception and high-level semantic representations within a single framework ... learn holistic representations through multi-task learning. By simultaneously optimizing for (i) athlete detection and identification, (ii) pitch registration, (iii) event classification, and (iv) vision-language alignment, we enforce a shared representation that captures both the geometry of the pitch and the semantics of the game.”<br><b>数据侧解法：</b>“To address the scarcity of dense spatial labels, we develop SoccerFactory, an automated data curation pipeline capable of generating high-quality annotations from broadcast footage at scale.” 兼顾 breadth（事件/联赛/机位多样）与 depth（密集空间标签 + 时序精确语义）。</div>
+
+    <div class="note-h">④ §1 — why（为何统一）+ 四大贡献</div>
+    <div class="note-b"><b>why（原文结果支撑）：</b>“SoccerMaster substantially outperforms both general-purpose vision foundation models (e.g., SigLIP 2, DINOv3) and soccer-specific models (MatchVision) across all pretraining tasks with direct evaluation. Moreover, with only lightweight task-specific fine-tuning, our model establishes state-of-the-art or competitive results on downstream applications” —— 证明学到了 “universal, transferable representations”。<br><b>四大贡献：</b>(i) 首个足球专用 VFM，做统一 backbone；(ii) 有监督多任务预训练策略，<b>联合</b>优化细粒度空间感知 + 高层语义推理，学多粒度表征；(iii) SoccerFactory 自动从转播视频造大规模空间标注；(iv) 充分评测，简单微调即 SOTA / 有竞争力。</div>
+
+    <div class="note-h">⑤ §2 Related Work — 定位</div>
+    <div class="note-b"><b>VFM 视频垂域：</b>VFM 已在 captioning/3D/医学/机器人/自驾铺开，但 “their exploration in video domains, especially in highly dynamic and professional sports visual understanding, remains relatively nascent.”<br><b>Soccer datasets：</b>SoccerNet 是 “the indispensable cornerstone”，但 “there remains a noticeable scarcity of large-scale datasets that provide dense, spatial annotations specifically from the main-camera perspective” —— 主机位密集空间标注稀缺，正是 SoccerFactory 的动机。<br><b>Soccer understanding：</b>早期一任务一模型 “inevitably increases the exploration cost”；近期 MLLM 尝试 [56] “only focus on semantic-level tasks such as question-answering” —— 仍未打通空间+语义。</div>
+
+    <div class="note-h">⑥ §3 任务定义（7 个任务 · 4 预训练 + 3 下游）</div>
+    <div class="note-b"><b>视频 \( V=\{I_1,...,I_T\} \)，\( I_t\in\mathbb{R}^{H\times W\times 3} \)。</b><br><b>预训练任务：</b>(i) <b>Athlete det&id</b>：每帧检测 \( a_i=(b_i;r_i;n_i) \)，bbox \( b_i=(x,y,w,h) \)、role \( r_i\in\{goalkeeper,player,referee\} \)、jersey \( n_i\in\mathbb{N} \)（GK/ref 或遮挡时 \( n_i=null \)）。(ii) <b>Pitch registration</b>：出 keypoints \( K_t \)（Eq.1，含坐标+类型）与 lines \( L_t \)（Eq.2，两无序端点+线型），类型集遵循 PnLCalib [25]。(iii) <b>Event classification</b>：预测 \( e\in\mathbb{E} \)，\( \mathbb{E} \)=SoccerReplay-1988 的 <b>24 类</b>（goal/corner/yellow card…）。(iv) <b>Vision-language alignment</b>：视频语义特征与 SigLIP 2 文本特征在共享空间高相似度。<br><b>下游任务：</b>(v) commentary generation（生成解说 \( \hat T \)）；(vi) camera calibration（估内参 \( K\in\mathbb{R}^{3\times3} \) + 外参 \( [R|t] \)，以 pitch 注册为中间表示）；(vii) MOT（在检测上加唯一 \( id_i \) 维持轨迹）。</div>
+
+    <div class="note-h">⑦ §4.1 SoccerFactory 数据管线（3 阶段）</div>
+    <div class="note-b"><b>原文：</b>“transform raw broadcast footage into structured annotations”，三阶段：<br><b>① Field registration：</b>keypoint/line 检测器 → PnL module [25] 估相机参数 → 用 canonical pitch 投影回来<b>精修</b>关键点/线当训练标注。<br><b>② Tracking & identification：</b>YOLOv8 [67]（足球数据微调）检测 player/GK/referee → StrongSORT [15] + PRTReID [45] ReID 跟踪 → 每个 bbox 用 <b>Qwen2.5-VL</b> [1] 识别 role/jersey（再过 legibility classifier [30] 过滤）→ team affiliation 靠 tracklet 平均 ReID 嵌入 + pitch 坐标聚类。<br><b>③ Post-processing refinement：</b>SAM2 [58] 分割补漏检/纠 ID switch；jersey/role 跨 tracklet <b>majority voting</b> 保时序一致；按 ReID + jersey 一致性<b>合并短 tracklet</b>。<br>产物：bbox+role+team+jersey、keypoints/lines、相机参数、pitch 坐标轨迹。</div>
+
+    <div class="note-h">⑧ §4.2/§4.3 数据质量 + 组成</div>
+    <div class="note-b"><b>质量（Table 1，SoccerNet-GSR Challenge 测试集）：</b>SoccerFactory <b>GS-HOTA 64.1</b> / GS-DetA 51.5 / GS-AssA 79.9，超挑战赛冠军 KIST-GSR（61.5/48.5/78.0）、Metrica-Sports（58.2）、Playbox&MIXI（58.1）—— “offering a practical alternative to expensive manual labeling”。<br><b>组成（Table 2）：</b>共 <b>~7.45M 帧 / 248.3K 视频段</b>（2.75M 空间感知 + 4.71M 语义推理，语义任务 1FPS 采样）。来源：SoccerNet-GSR 42.8K + SoccerFactory-generated 2.7M（空间）；SoccerNet-v2 1.6M + MatchTime 7.1K + SoccerReplay-1988 3.1M（语义）。空间数据来自 SoccerNet-v2 中 <b>500 场</b>主机位 clip（排除 replay/特写/其他机位）。</div>
+
+    <div class="note-h">⑨ §5.2 视觉编码器架构（Eq.3-8）</div>
+    <div class="note-b"><b>整体（Eq.3-4）：</b>\( F=\{F_{spa},F_{sem}\}=\Phi_{enc}(V) \)；所有任务输出 \( \{A,\{id_i\},K,L,\mathbf{K},R,t,e,\hat T\}=\Psi_{out}(F) \)。<br><b>结构：</b>ViT [14] + TimeSformer-like [5]，共 \( (L_s+L_{st}) \) 层。<b>前 \( L_s \) 层只做空间注意力</b>，最后 \( L_{st} \) 层做时空注意力（省算力）。三阶段：<br>(1) Token embedding：每帧切 N patch → d 维 + 空间位置嵌入 \( P_{spa} \)，得 \( z^{(0)}\in\mathbb{R}^{T\times N\times d} \)。<br>(2) Spatial encoding（Eq.6）：\( z^{(l+1)}_{t,i}=\text{SpatialAttn}(z^{(l)}_{t,i},\{z^{(l)}_{t,j}\}_{j=1}^N) \)，帧内注意力、帧间无交换；输出 <b>\( F_{spa}=z^{(L_s)} \)</b> 保细粒度空间。<br>(3) Spatiotemporal（Eq.7-8）：加时间位置嵌入 \( P_{tem} \)，交替 \( \text{TemporalAttn}(z,\{z_{t',i}\}_{t'=1}^T) \)（同空间位、跨帧）与 SpatialAttn；末层经 <b>MAP head（attention pooling）</b> 得 <b>\( F_{sem}=\text{MAP}(z^{(L_s+L_{st})})\in\mathbb{R}^{T\times d} \)</b>。</div>
+
+    <div class="note-h">⑩ §5.3 多任务预训练 heads + loss（Eq.9-14）</div>
+    <div class="note-b"><b>检测头 \( \Psi_d \)（Eq.9-10）：</b>Deformable DETR decoder-like，learnable query 与 \( F_{spa} \) 注意力 → 3 个线性头出 \( \hat b_i/\hat r_i/\hat n_i \)；\( \mathcal{L}_a=\lambda_{cls}\mathcal{L}_{cls}+\lambda_{bbox}\mathcal{L}_{bbox}+\lambda_r\mathcal{L}_r+\lambda_j\mathcal{L}_j \)（role/jersey 用 focal loss [37]）。<br><b>注册头 \( \{\Psi_k,\Psi_l\} \)（Eq.11）：</b>承 PnLCalib heatmap 法，CNN + PixelShuffle [61] 渐进上采样出 keypoint/line heatmap，MSE loss \( \mathcal{L}_k,\mathcal{L}_l \)。<br><b>事件头 \( \Psi_e \)（Eq.12）：</b>两层 transformer encoder + 时间平均池化 + 线性分类，\( \hat e=\Psi_e(F_{sem}) \)，交叉熵 \( \mathcal{L}_e \)。<br><b>对齐头 \( \Psi_a \)（Eq.13）：</b>\( s=\Psi_a(F_{sem},\Phi_{text}(T)) \)，SigLIP loss \( \mathcal{L}_{con} \) 对比学习。<br><b>总损失（Eq.14）：</b>\( \mathcal{L}_{total}=\lambda_a\mathcal{L}_a+\lambda_k\mathcal{L}_k+\lambda_l\mathcal{L}_l+\lambda_e\mathcal{L}_e+\lambda_{con}\mathcal{L}_{con} \)（权重见 supp Table 10：\( \lambda_{con}=4.0 \) 最大）。</div>
+
+    <div class="note-h">⑪ §5.4 下游适配（3 任务）</div>
+    <div class="note-b"><b>Commentary：</b>Q-Former [34] 对 \( F_{sem} \) 时序聚合 → 线性投到 <b>Llama-3-8B</b> [24] 嵌入空间当 prefix，自回归生成解说。<br><b>Camera calibration：</b>基于注册头的 keypoints/lines，用 PnL refinement [25] 估内/外参。<br><b>MOT：</b>承 MOTIP [19]，把关联当<b>分类</b>：从检测头 DETR decoder 取 object 特征 + ID dictionary 的 learnable ID 嵌入拼成历史轨迹当 in-context prompt，ID decoder（transformer）对当前帧每个检测预测一致 ID。</div>
+
+    <div class="note-h">⑫ §6.1/§6.2 实现 + 预训练任务结果（Table 3）</div>
+    <div class="note-b"><b>实现：</b>\( L_s=16 \) 空间块 + \( L_{st}=8 \) 时空块，\( d=1024 \)，\( T=30 \) 帧、512×512、patch 16×16，初始化 siglip2-large-patch16-512；预训练 16× H800、~9 天 float32、20 epoch、AdamW、grad clip 0.1。评测协议：baseline 冻结 encoder 只训轻量头，SoccerMaster 直接评（已预训练过这些任务）。</div>
+    <div class="note-b" style="overflow-x:auto"><b>Table 3（frozen encoder + trainable head；Ours 直接评）：</b><br>| Encoder | AP@50 | mAP | event acc | align top-1 |<br>| SigLIP 2(+data) | 72.3 | 32.0 | 49.8 | 3.4 |<br>| DINOv3(+data) | 70.2 | 28.0 | 51.8 | — |<br>| MatchVision | 51.9 | 17.0 | 65.3 | 4.0 |<br>| <b>Ours</b> | <b>91.5</b> | <b>49.5</b> | <b>77.2</b> | <b>39.0</b> |<br>原文：det&id <b>+17.5% mAP</b>、event <b>+11.9% acc</b>；alignment top-1 <b>39.0</b> 碾压（SigLIP2 仅 3.4，“severe domain gaps”；DINOv3 无文本编码器；MatchVision 4.0）。role 99.1 / jn 79.7 / keypoint acc 95.3 / line acc 95.7 也均最佳。</div>
+
+    <div class="note-h">⑫b §B 训练细节（supp Table 9-11）</div>
+    <div class="note-b"><b>分层学习率（Table 9）：</b>backbone temporal-agnostic 5.0×10⁻⁵、temporal-related（zero-init 的时间注意力 + 时间位置嵌入）1.0×10⁻⁴、各 head 1.0×10⁻⁴，唯独 <b>Line Detection Head 1.0×10⁻³</b>（最大，因从零学）。原文：backbone 从 SigLIP 2 初始化、“zero-initialized temporal attention layers and temporal positional embeddings to enable temporal modeling while preserving the pretrained spatial features”。<br><b>多任务 loss 权重（Table 10）：</b>检测子项 \( \lambda_{cls}=2.0,\lambda_{bbox}=5.0,\lambda_r=2.0,\lambda_j=1.0 \)；任务级 \( \lambda_a=\lambda_k=\lambda_l=\lambda_e=1.0 \)，<b>\( \lambda_{con}=4.0 \)</b>（对齐权重最高）。原文为稳训练 “apply gradient normalization and clipping independently to the backbone and each task-specific head ... clipping the gradient norm to a maximum of 0.1”，防单任务主导。<br><b>数据增强（Table 11）：</b>几何（Random Affine 旋转 ±10°/平移 ±10%/缩放 [0.9,1.1]/shear ±5°、Random Perspective 0.3、Random Crop [0.6,1.0]、Horizontal Flip 0.5）+ 光度（Color Jitter brightness/contrast/saturation 0.4、hue 0.2、Gaussian Noise σ=0.02、Gaussian Blur）。采样：空间任务 25 FPS 取 30 连续帧，语义任务 1 FPS 单样本居中于事件时刻。</div>
+
+    <div class="note-h">⑬ §6.2 下游结果（Table 4/5/6 真实数值）</div>
+    <div class="note-b"><b>Camera calibration（Table 4，@512×512）：</b>SN22-test-center：Ours* <b>zero-shot FS 70.1</b> &gt; PnlCalib 67.6；Ours† fine-tuned <b>FS 75.8（+8.2）</b>。SN23-test：Ours* 44.8（&lt; PnlCalib 51.8，更难的非主机位），Ours† <b>56.2（+4.4）</b>。注：PnlCalib 在原生 960×540 上 FS 78.6/60.9。<br><b>MOT（Table 5，SoccerNet-tracking）：</b>Ours+MOTIP HOTA 59.1 / <b>DetA 65.2（best）</b> / AssA 53.9（2nd）/ <b>MOTA 81.6（best）</b> / <b>IDF1 74.6（best）</b>，且是<b>唯一端到端</b>方法（无独立检测器/ReID/后处理多阶段）。<br><b>Commentary（Table 6，SN-Caption-test-align）：</b>Ours <b>BLEU@1 31.3 / BLEU@4 8.9 / CIDEr 38.6（均 best）</b>，超 MatchVision（30.9/8.7/35.7，CIDEr +2.9）；METEOR 26.2 / ROUGE-L 26.6 略低于 MatchVision 但远超 SigLIP2。</div>
+
+    <div class="note-h">⑭ §6.3/§D 消融全表（Table 7 / Table 12）</div>
+    <div class="note-b"><b>Table 7（SoccerFactory 数据增益；compact 变体 224×224/Ls=8/Lst=4）：</b>加管线生成数据后 athlete det <b>+4.3 AP@50</b>（82.0 vs 77.7）、<b>+7.3 mAP</b>（37.5 vs 30.2），其余任务稳定或微升 —— 证自动标注 “reliable and scalable”。<br><b>Table 12（多任务 vs 单任务；compact 变体）：</b>多任务把 alignment top-1 32.6→36.8（互补语义信号），但 athlete det 退化 AP@50 88.3→82.0 / mAP 43.8→37.5 —— 原文归因 “limited capacity of the compact variant”。<b>关键反证：</b>full-scale 单任务 vs 多任务仅 −0.3 AP@50 / −0.5 mAP（jn +0.8/role +0.1），证明<b>容量够时多任务≈单任务且额外学到可迁移表征</b>。</div>
+
+    <div class="note-h">⑮ 亮点 / 创新点</div>
+    <div class="note-b">① <b>首个足球专用 VFM</b>，一个视觉编码器同时吃细粒度空间感知（检测/注册）与高层语义（事件/对齐），破“能说不能指”脱节；② <b>SoccerFactory</b> 自动标注管线（YOLOv8+StrongSORT+PRTReID+Qwen2.5-VL+SAM2+majority voting+tracklet merge），GS-HOTA 64.1 超人工标注挑战赛冠军，规模化造密集空间标签；③ ViT + TimeSformer 双特征 \( F_{spa}/F_{sem} \) 分层供检测/语义，前 16 层空间、后 8 层时空省算力；④ 下游<b>轻量微调即 SOTA</b>（标定 +8.2FS、MOT 端到端、解说 CIDEr +2.9）；⑤ 实证“容量够时多任务不掉点还涨可迁移性”。</div>
+
+    <div class="note-h">⑯ 疑问 / 边界 / 局限（原文 §F）</div>
+    <div class="note-b">① <b>Jersey number recognition</b>：建模为 101 类（0-99 + null），“the null class dominates ... severe class imbalance”，且联合检测单次前向不如两阶段裁高分辨率 crop 准；② <b>Goalkeeper classification</b>：GK 样本少 + 球衣颜色跨联赛方差大，“difficult without relational reasoning that compares uniform colors across all detected athletes”（缺关系推理）；③ <b>空间感知范围有限</b>：“focuses exclusively on athlete detection and pitch registration, without considering ball detection and tracking”（不含球检测/跟踪）。[推测] compact 变体多任务掉点提醒：多任务收益强依赖模型容量，小模型慎用全任务联合。<br><b>未来：</b>更强 tracking + 更严时序一致约束、引入 audio commentary / player statistics 等辅助模态、继续 scale 数据。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem→method→experiment→takeaway：</b><br><b>problem</b>：足球理解被“空间感知 vs 语义推理”二分割裂，碎片化专家模型成本高，统一模型又常忽略密集空间目标（能说不能指），且主机位密集空间标注稀缺。<br><b>method</b>：① SoccerMaster——ViT+TimeSformer 视觉编码器（\( L_s=16 \) 空间 + \( L_{st}=8 \) 时空），出 \( F_{spa}/F_{sem} \) 双特征，5 个轻量头有监督多任务联合预训练（Eq.9-14）；② SoccerFactory——自动标注管线造 2.7M 帧密集空间标签，凑成 7.45M 帧统一预训练集；③ 下游 commentary/calibration/MOT 轻量适配。<br><b>experiment</b>：预训练任务全面超 SigLIP2/DINOv3/MatchVision（mAP +17.5、event +11.9、align top-1 39.0 vs ≤4）；下游标定 +8.2FS、MOT 端到端 best DetA/MOTA/IDF1、解说 CIDEr +2.9；GSR 标注质量 GS-HOTA 64.1 超挑战赛冠军。<br><b>takeaway 1</b>：<b>有监督多任务预训练</b>能把空间几何 + 语义统一进单一 backbone，且容量够时不牺牲单任务性能。<br><b>takeaway 2</b>：<b>自动数据管线</b>（检测+跟踪+VLM 识别+SAM2 精修+投票合并）可规模化产出超人工的密集空间标注，是垂域 VFM 的关键供给。<br><b>takeaway 3</b>：<b>共享表征可迁移</b>——一次预训练，下游只需轻量头微调即达 SOTA，大幅降低足球 AI 的工程开销。<br><b>边界</b>：jersey 类别失衡、GK 误判、无球检测、小模型多任务掉点。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-soccermaster-a-vision-foundation-model-for-soccer-under/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. SoccerMaster is a unified soccer-specific vision foundation model that leverages diverse soccer content, including images and videos, to support a wide range of soccer understanding tasks, such as commentary generation, detection, tracking, classification, etc.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-soccermaster-a-vision-foundation-model-for-soccer-under/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Automated Data Curation Pipeline. Our pipeline processes input videos through three stages: (i) field registration establishes geometric correspondences between image and canonical pitch coordinates via keypoint detection; (ii) tracking and identification trans- forms frames into athlete trajectories through detection, role and team classification, and ReID-based tracking; and (iii) post</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-soccermaster-a-vision-foundation-model-for-soccer-under/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. SoccerMaster Architecture. (a) The architecture of SoccerMaster, which encodes both soccer videos and images through spatial and temporal attention modules to generate semantically rich representations. (b) The pretraining tasks and downstream adaptations of SoccerMaster across both spatial perception and semantic understanding tasks.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-soccermaster-a-vision-foundation-model-for-soccer-under/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Qualitative Results of SoccerFactory. Comparison between our predictions (left) and ground truth annotations (right) on the SoccerNet-GSR test set. Our pipeline demonstrates robust performance across diverse scenarios.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-soccermaster-a-vision-foundation-model-for-soccer-under/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Top-view Pitch Visualization of SoccerFactory Results. Athlete positions are mapped to standardized pitch coordinates via estimated camera parameters. Each row is organized as: input image (left), our predictions (middle), and ground truth annotations (right). Athletes are color-coded by role: referees (orange, labeled “RE”), left team (red), and right team (blue). Non-referee athletes a</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-soccermaster-a-vision-foundation-model-for-soccer-under/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Qualitative Results of SoccerMaster. SoccerMaster can simultaneously execute multiple soccer understanding tasks on a video clip, including athlete detection, pitch registration, multiple object tracking, event classification, and commentary generation. Frames are arranged in temporal order from left to right and top to bottom.</figcaption></figure>
+    </div>
+  </div></body></html>

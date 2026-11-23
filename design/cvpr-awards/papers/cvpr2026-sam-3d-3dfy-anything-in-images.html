@@ -1,0 +1,204 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>SAM 3D: 3Dfy Anything in Images</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-honorable">🥈 Best Paper 提名</span></div>
+    <h1>SAM 3D: 3Dfy Anything in Images</h1>
+    <div class="au2" style="color:var(--mut)">Xingyu Chen ⋅ Fu-Jen Chu ⋅ Pierre Gleize ⋅ Kevin J Liang ⋅ Alexander Sax ⋅ Hao Tang ⋅ Weiyao Wang ⋅ Michelle Guo ⋅ Thibaut Hardin ⋅ Xiang Li ⋅ Aohan Lin ⋅ Jia-Wei Liu ⋅ Ziqi Ma ⋅ Anushka Sagar ⋅ Bowen Song ⋅ Xiaodong Wang ⋅ Jianing &amp;quot;Jed&quot; Yang ⋅ Bowen Zhang ⋅ Piotr Dollár ⋅ Georgia Gkioxari ⋅ Matt Feiszli ⋅ Jitendra Malik</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2511.16624">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2511.16624">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=SAM%203D%3A%203Dfy%20Anything%20in%20Images">Scholar</a></div>
+    <div class="tldr"><b>一句话：</b>Meta 单图→3D 生成式重建基座模型，human-&amp;-model-in-the-loop 标注突破 3D 数据壁垒，真实物体人评胜率≥5:1。</div>
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">We present SAM 3D, a generative model for visually grounded 3D object reconstruction, predicting geometry, texture, and layout from a single image. SAM 3D excels in natural images, where occlusion and scene clutter are common and visual recognition cues from context play a larger role. We achieve this with a human- and model-in-the-loop pipeline for annotating object shape, texture, and pose, providing visually grounded 3D reconstruction data at unprecedented scale. We learn from this data in a modern, multi-stage training framework that combines synthetic pretraining with real-world alignment, breaking the 3D &quot;data barrier&quot;. We obtain significant gains over recent work, with at least a $5:1$ win rate in human preference tests on real-world objects and scenes. We will release our code and model weights, an online demo, and a new challenging benchmark for in-the-wild 3D object reconstruction.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-sam-3d-3dfy-anything-in-images -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">SAM 系列的<b>“单图 → 3D”基座模型</b>：给一张自然图 <b>I</b> + 一个物体 <b>mask M</b>，生成式地预测该物体的完整 3D 几何 <b>S</b>、纹理 <b>T</b> 与相机系下布局 <b>(R, t, s)</b>。真正的创新不在网络（沿用 Trellis 的 two-stage latent flow matching），而在<b>用 human-&amp;-model-in-the-loop (MITL) 数据引擎 + LLM 式多阶段训练打穿 3D “数据壁垒”</b>：合成预训练 → 半合成中训 → 真实后训 (SFT + DPO + 蒸馏)。真实物体人评胜率 <b>≥5:1</b>、场景 <b>6:1</b>，并开源 code/weights/demo + 新基准 SA-3DAO。</div>
+    <div class="note-h">问题 &amp; 动机（root cause = 数据，不是模型）</div>
+    <div class="note-b"><b>原文：</b>“A fundamental challenge for learning such models is the lack of data: specifically, natural images paired with 3D ground truth are difficult to obtain at scale.” → 单图 3D 重建的根本瓶颈是<b>数据</b>：自然图 ↔ 3D 真值的配对极难规模化。已有 SOTA（Trellis、Yang 2024b）只在<b>孤立合成物体</b>上训，遇到自然场景里远距离/重遮挡物体就崩。<b>why 难：</b>普通标注员造不出 3D mesh（专业艺术家一个都要数小时），不像画框/标 “cat” 那样容易。<b>两个 insight 让其可行：</b>① 合成场景（把渲染的 3D 模型贴进真实图，inspired by Dosovitskiy 2015）；② 人虽不能“造”3D，<b>但能从一组候选里“选”最像的并对齐 pose</b>（或判定全不行）——把“生成 3D”难题转成“选择/排序”易题（best-of-N，即 SAM 的 promptable 标注思想搬到 3D）。</div>
+    <div class="note-h">核心方法（架构 + 关键公式）</div>
+    <div class="note-b"><b>两段式架构（§2.2, Fig 2）：</b>① <b>Geometry model</b>——1.2B <b>MoT (Mixture-of-Transformers)</b> flow transformer，建模 p(O, R, t, s | I, M)：coarse voxel O∈R<sup>64³</sup> + 6D 旋转 R + 平移 t + 尺度 s；② <b>Texture &amp; Refinement model</b>——600M sparse latent flow transformer，建模 p(S, T | I, M, O)，精修几何 + 合成纹理；latent 由共享同一 encoder 的两个 VAE decoder（D<sub>m</sub> mesh / D<sub>g</sub> 3D Gaussian）解码。<b>输入编码：</b>DINOv2 提 <b>4 组 conditioning tokens</b>（cropped 物体 + 其 mask、full image + 其 mask），可选 pointmap（iPhone LiDAR / 单目深度）。</div>
+    <div class="note-b"><b>关键公式 — 多模态 rectified conditional flow matching（式1）：</b> L<sub>CFM</sub> = Σ<sub>m∈M</sub> λ<sub>m</sub> · E‖v<sup>m</sup> − v<sub>θ</sub><sup>m</sup>(x<sub>τ</sub><sup>m</sup>, c, τ)‖²，M = {S, R, t, s}，条件 c = (I, M)；线性插值 x<sub>τ</sub><sup>m</sup> = τ·x<sub>1</sub><sup>m</sup> + (1−τ)·x<sub>0</sub><sup>m</sup>（x<sub>1</sub>=真值 / x<sub>0</sub>~N(0,I) 噪声），目标速度 v<sup>m</sup> = ẋ<sub>τ</sub><sup>m</sup> = (x<sub>1</sub><sup>m</sup> − x<sub>0</sub><sup>m</sup>)。<b>关键洞察（原文）：</b>“flow matching objective is sufficient … without explicitly enforcing geometric constraints” —— 几何先验随数据/算力规模增大可被<b>隐式学到</b>，无需显式几何 loss。</div>
+    <div class="note-b"><b>训练范式（§3, Fig 4，LLM playbook 搬到 3D）：</b>Step1 <b>Pretraining</b>（孤立合成物体 Iso-3DO，2.7M mesh×24 视角，<b>2.5T token</b>）→ Step1.5 <b>Mid-training</b>（render-paste 半合成 RP-3DO，61M 样本/2.8M mesh，<b>2.7T token</b>；学 mask-following / 遮挡鲁棒 / 布局）→ Step2 <b>Post-training</b>（MITL 真实数据 SFT + <b>DPO 偏好对齐</b> + <b>shortcut 蒸馏</b>，<b>0.5T token</b>）。<b>数据引擎飞轮（§3.2, Fig 5）：</b>Stage1 选物体+mask → Stage2 <b>best-of-N (N=8)</b> 选/评候选（model-in-the-loop）→ Stage2.5 最难者交专业艺术家 (Art-3DO) → Stage3 对齐 pose 到 2.5D 点云；模型越训越强，最终 <b>~80% 标注数据由 SAM 3D 自产</b>。</div>
+    <div class="note-h">关键结果（数字）</div>
+    <div class="note-b">① 人评胜率：<b>物体 5:1、场景 6:1</b>（Fig 8）。② SA-3DAO 真实物体（Table 2）：F1@0.01 <b>0.2344</b> vs 最强 baseline Hi3DGen 0.1629（<b>+44%</b>）；Chamfer <b>0.0400</b> vs 最强 baseline TripoSG 0.0844（<b>不到一半</b>）。③ 布局（Table 3）：联合生成 shape+layout 把 ADD-S@0.1 从 <b>~2% 拉到 77%</b>。④ 蒸馏：NFE <b>25→4</b>，1-step <b>38×</b>、4-step <b>10×</b> 加速。⑤ 消融（Table 4）：每个训练阶段几乎单调提升 F1（0.135→0.171→0.203→0.216→0.233→0.234）。</div>
+    <div class="note-h">亮点 — 为何获 Best Paper 荣誉提名（个人解读）</div>
+    <div class="note-b">① <b>把 3D 重建从“孤立合成物体玩具基准”推向 in-the-wild 自然图</b>（遮挡/杂乱/远距），且是 shape+texture+layout 一体的 <b>foundation model</b>；② <b>数据范式创新</b>：MITL best-of-N 把“人造 3D”难题转成“人选 3D”易题（SAM promptable 思想），+ LLM 式多阶段训练（pretrain/mid/post + DPO + 蒸馏）首次在 3D 跑通，<b>打穿数据壁垒</b>；③ <b>全开源</b>（code/weights/demo）+ 贡献新基准 <b>SA-3DAO</b>（1000 张真实图 + 艺术家 3D，作为人类上界）；④ 数据飞轮<b>可持续自增强</b>（Elo 近线性增长、80% 数据自产）。</div>
+    <div class="note-h">疑问 / 诚实边界</div>
+    <div class="note-b">① <b>分辨率受限</b>（O∈R<sup>64³</sup>，每 voxel ≤32 splats）→ 手/脸/薄结构易失真（原文 Limitations 明说）；② <b>逐物体预测、不建模物理交互</b>（接触/穿插/共面）→ 多物体场景几何关系无保证；③ “5:1 / 6:1” 是<b>人评胜率而非绝对质量</b>，主结论多基于 preference test；④ 评测重 perceptual/preference，绝对几何精度（Chamfer 0.04）与真实尺度的关系原文未深挖。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于 arXiv 2511.16624v2 全文 PDF）。原文引用 + 逐句指路，数值均核对原文表格。最后更新 2026-06-19。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 原文逐句讲解</div>
+    <div class="note-b"><b>原文：</b>“We present SAM 3D, a generative model for visually grounded 3D object reconstruction, predicting geometry, texture, and layout from a single image.” → 一句话定义：<b>visually grounded（视觉锚定）的生成式单图 3D 重建</b>，一次输出三样——geometry（几何）、texture（纹理）、layout（相机系下的位姿+尺度）。“visually grounded” 是关键词：重建必须<b>锚定到图里那个具体物体</b>，不是凭空生成一个相似 3D。</div>
+    <div class="note-b"><b>原文：</b>“SAM 3D excels in natural images, where occlusion and scene clutter are common and visual recognition cues from context play a larger role.” → 卖点是<b>自然图</b>（不是干净的孤立物体渲染图）；这里遮挡/杂乱普遍，必须靠<b>上下文识别线索</b>补全看不见的部分。<b>why 这是难点：</b>前作都在孤立物体上训，自然图直接崩——这正是 SAM 3D 要攻的场景。</div>
+    <div class="note-b"><b>原文：</b>“We achieve this with a human- and model-in-the-loop pipeline for annotating object shape, texture, and pose, providing visually grounded 3D reconstruction data at unprecedented scale.” → 怎么做到的？<b>不是新网络，而是新数据引擎</b>：human-&amp;-model-in-the-loop (MITL) 标注 shape/texture/pose，拿到“前所未有规模”的真实图↔3D 配对数据。<b>这是全文的灵魂句</b>——把论文从“又一个 image-to-3D 模型”抬升到“解决了 3D 的数据壁垒”。</div>
+    <div class="note-b"><b>原文：</b>“We learn from this data in a modern, multi-stage training framework that combines synthetic pretraining with real-world alignment, breaking the 3D ‘data barrier’.” → <b>LLM 式多阶段训练</b>：合成预训练打底 + 真实世界对齐收尾，明确喊出“breaking the 3D data barrier（打穿 3D 数据壁垒）”。</div>
+    <div class="note-b"><b>原文：</b>“We obtain significant gains over recent work, with at least a 5:1 win rate in human preference tests on real-world objects and scenes. We will release our code and model weights, an online demo, and a new challenging benchmark…” → 结果：真实世界人评 <b>≥5:1</b> 胜率；全开源 code/weights/demo + 新基准 <b>SA-3DAO</b>。<b>一句话抓 Abstract：</b>数据引擎（MITL）+ LLM 式多阶段训练 → 打穿 3D 数据壁垒 → in-the-wild 单图 3D，人评碾压、全开源。</div>
+    <div class="note-h">📚 背景知识（外部、非本文原文，理解 SAM 3D 必备）</div>
+    <div class="note-b"><b>① 前作 SLAT / Trellis（Xiang 2025，本文架构基座）：</b>SLAT = Structured LATent，把 3D 资产编码成“稀疏体素位置 + 每个 active voxel 的 latent 特征”；Trellis 在 SLAT 上用 rectified flow 生成，可解码成 3D Gaussian / Radiance Field / Mesh。<b>SAM 3D 的关系</b>：直接沿用 Trellis 的 two-stage latent flow matching 与共享 VAE 的多解码器思路；<b>本文的差异</b>不在表示，而在“喂什么数据 + 怎么多阶段训”——把 Trellis 从孤立物体推到自然图，并额外预测 layout (R,t,s)。</div>
+    <div class="note-b"><b>② flow matching / rectified flow（Lipman 2023 / Liu 2022）：</b>与 diffusion 同类但更直的生成范式。训练用<b>直线插值</b> x<sub>τ</sub>=(1−τ)x<sub>0</sub>+τ·x<sub>1</sub>（x<sub>0</sub> 噪声、x<sub>1</sub> 数据），网络回归<b>常速度</b> v=x<sub>1</sub>−x<sub>0</sub>；推理从噪声沿 velocity field 用 ODE 积分到数据。本文式1 就是它的多模态版（shape/R/t/s 各一项 λ<sub>m</sub> 加权）。</div>
+    <div class="note-b"><b>③ Mixture-of-Transformers (MoT)（Liang 2025a）：</b>多模态 Transformer 的一种——<b>不同模态走各自的 transformer 权重（FFN/部分 attn 投影按模态分流），但在 self-attention 层共享上下文做跨模态交互</b>。本文用它把 shape token 与 layout (R,t,s) token 分两流处理，靠 attention mask 控制谁能看谁。<b>好处（本文用法）：</b>可单独冻结/微调某一模态（如只训 layout），又能在前向中让 rotation “看到” shape——因为旋转只有锚定到几何才有意义。</div>
+    <div class="note-b"><b>④ DPO / Diffusion-DPO（Rafailov 2023 / Wallace 2024）：</b>Direct Preference Optimization，给一对“偏好 x<sub>w</sub> / 不偏好 x<sub>l</sub>”样本，直接优化模型更偏向 x<sub>w</sub>（无需训独立 reward model 再 RL）。Diffusion-DPO 把它搬到扩散/流模型上、对 velocity 预测的误差差做 logistic 监督。本文用它对齐“人类偏好的对称性/封闭性”这类 flow matching loss 抓不住的属性。</div>
+    <div class="note-b"><b>⑤ Shortcut Models（Frans 2024）：</b>一种 few-step 蒸馏：网络额外吃一个“步长 d”输入，d=0 退化为普通 flow matching、d&gt;0 学“一步跨 2d 的平均速度”自洽目标——<b>同一个模型既能多步高质、又能少步快推</b>，且训练比 consistency distillation 稳。本文用它把 Geometry model 的 NFE 从 25 压到 4。</div>
+    <div class="note-b"><b>⑥ 6D 连续旋转表示（Zhou 2019）：</b>四元数/欧拉角在 SO(3) 上<b>不连续</b>（有跳变/双覆盖），不利于网络回归；6D 表示取旋转矩阵前两列、用 Gram-Schmidt 正交化恢复 R，<b>连续可微</b>、优化更顺。本文 layout 的 R∈R<sup>6</sup> 即此，消融见 Table 10。</div>
+    <div class="note-b"><b>⑦ DINOv2（Oquab 2023）：</b>自监督视觉特征提取器，给图像产出语义丰富的 patch token。本文用它编码 cropped/full 图 + mask，作为 conditioning（识别线索就来自这里）。<b>哲学背景（Roberts 1963 / Koenderink 1992，原文引用）：</b>“recognition enables 3D reconstruction”——一旦图案被识别成已知物体，其 3D 形状与位姿就能恢复；且能泛化到新物体，因为新物体由见过的“部件”组成。这是 SAM 3D 敢用单图 + 识别线索补全遮挡的理论根基。</div>
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环</div>
+    <div class="note-b"><b>problem（递进）：</b>计算机视觉传统靠 multi-view 几何拿 3D，但人类<b>单图就能感知深度/形状</b>（Koenderink 1992 的 surface normal probe 实验）。核心洞察（Roberts 1963）：<b>“recognition enables 3D reconstruction”</b>——识别出物体即可恢复其 3D。学这种模型的根本障碍是<b>数据</b>：自然图 ↔ 3D 真值难规模化配对；已有强方法（Trellis、Yang 2024b）<b>只在孤立物体上训</b>，自然场景里远/遮挡物体就崩。</div>
+    <div class="note-b"><b>core solution（Intro 已把 method 自然语言版给出）：</b>两个 insight 解锁数据——① <b>合成场景</b>（渲染 3D 模型贴进真实图）；② 人不能造 3D 但<b>能从候选里选最像的 + 对齐 pose</b>。据此设计<b>数据引擎 + LLM 式多阶段训练</b>：先在大规模渲染合成物体上 supervised pretraining（学 shape/texture 的“词汇表”）→ 用“贴图”半合成数据 mid-training → 用 MITL pipeline + 3D 艺术家做 post-training 并对齐人类偏好。原文：“synthetic pretraining generalizes, given adequate post-training on natural images.”</div>
+    <div class="note-b"><b>why 这套能work（virtuous cycle）：</b>标注员从模块（计算式 + 检索式）产出的多个 3D proposal 里<b>选</b>，难例 route 给艺术家；vetted 标注反哺训练，更强的模型再回灌数据引擎 → “This virtuous cycle steadily improves … 3D annotations, labeling rates, and model performance.” 数据生成<b>本身是对齐的副产品</b>。</div>
+    <div class="note-b"><b>贡献列表（原文 4 点）：</b>① SAM 3D —— 预测 shape/texture/pose 的 3D foundation model，开源 code/weights/demo；② MITL pipeline 标注 shape/texture/pose，提供前所未有规模的 visually grounded 3D 数据；③ 通过 LLM 式 pretrain + post-train 的新框架利用该数据，跨越 3D 与 text/image/video 之间数量级的数据鸿沟；④ 发布真实世界 3D 物体重建挑战基准 <b>SA-3DAO</b>（1000 张 image↔artist-mesh，专业艺术家作为“人类上界”）。</div>
+    <div class="note-h">③-a 问题形式化 + 两段式架构（§2）</div>
+    <div class="note-b"><b>原文形式化：</b>拍照把 3D 物体映到 mask M 下的 2D 像素（lossy），SAM 3D 求逆——建模条件分布 <b>p(S, T, R, t, s | I, M)</b>，训一个生成模型 q 去逼近 p。<b>架构（§2.2, Fig 2）：</b>沿用 Trellis 的 two-stage latent flow matching。① <b>Geometry model</b> 先<b>联合</b>预测 coarse shape O∈R<sup>64³</sup> 与 layout (R∈R<sup>6</sup> 6D 旋转, t∈R<sup>3</sup>, s∈R<sup>3</sup>)；② <b>Texture &amp; Refinement model</b> 从 O 抽 active voxel，精修几何 + 合成纹理。<b>与 Trellis 的差异（原文）：</b>“Unlike Xiang et al. (2025) that reconstructs isolated objects, SAM 3D predicts object layout, creating coherent multi-object scenes.”</div>
+    <div class="note-b"><b>输入编码（DINOv2，4 组 token）：</b>① cropped 物体（按 mask 裁）+ 其 mask → 高分辨率聚焦视图；② full image + 其 mask → 全局场景上下文/识别线索（裁剪视图没有的）。可选 pointmap P（iPhone LiDAR 或单目深度估计 Yang 2024a / Wang 2025a）→ 可与其他 pipeline 集成。</div>
+    <div class="note-h">③-b MoT 几何模型细节（§C.1）</div>
+    <div class="note-b"><b>token 化：</b>shape 在 16³×8 的 coarser latent 里 denoise 64³ voxel（following Trellis）；layout 直接在参数空间 (R,t,s) denoise（维度小）。引入<b>模态专属输入/输出投影</b>把 shape 与 layout 都映到 dim=1024 共享特征空间——结果 <b>4096 个 shape token + 1 个 (R,t,s) token</b> 输入 MoT。<b>MoT = 两个 transformer</b>：一个专管 shape token，另一个（参数共享）管 layout。<b>why 两流 + 共享 self-attn：</b>① 可只训某一模态（数据常只标了 shape）、可冻结 shape 只微调 layout；② joint self-attn 做跨模态交互，<b>“rotation is only meaningful when anchored to the predicted shape”</b>——旋转必须看到几何才有意义。</div>
+    <div class="note-h">③-c 训练目标：多模态 rectified flow matching（式1）</div>
+    <div class="note-b"><b>式1：</b> L<sub>CFM</sub> = Σ<sub>m∈M</sub> λ<sub>m</sub> · E<sub>τ,x₀</sub>‖v<sup>m</sup> − v<sub>θ</sub><sup>m</sup>(x<sub>τ</sub><sup>m</sup>, c, τ)‖²，其中 M={S,R,t,s}、c=(I,M)。目标概率路径 x<sub>τ</sub><sup>m</sup>=τx<sub>1</sub><sup>m</sup>+(1−τ)x<sub>0</sub><sup>m</sup>（x<sub>1</sub>=真值、x<sub>0</sub>~N(0,I)），目标速度 v<sup>m</sup>=ẋ<sub>τ</sub><sup>m</sup>=x<sub>1</sub><sup>m</sup>−x<sub>0</sub><sup>m</sup>，λ<sub>m</sub> 为各模态权重。<b>追问 why 不加几何 loss：</b>原文“flow matching objective is sufficient … without explicitly enforcing geometric constraints”，且发现几何 loss 的价值<b>随数据/算力增大而下降</b>——几何先验可被规模隐式学到。优化器 AdamW（无 weight decay）。</div>
+    <div class="note-h">③-d 三阶段训练 + token 预算（§3, Table 1）</div>
+    <div class="note-b"><b>Step1 Pretraining（Iso-3DO）：</b>2.7M Objaverse-XL+授权 mesh，各渲 24 视角的孤立居中物体；学准确 shape/texture，<b>2.5T training token</b>。<b>Step1.5 Mid-training（RP-3DO）：</b>把带纹理 mesh 用 alpha 合成“render-paste”进自然图——一子集是 occluder-occludee 对（学遮挡补全），一子集把真实物体换成相似位置/尺度的合成物体（拿到精确 3D 真值）；<b>61M 样本 / 2.8M unique mesh</b>，学 mask-following / 遮挡鲁棒 / layout，<b>2.7T token</b>。<b>Step2 Post-training：</b>MITL 真实数据 SFT + DPO + 蒸馏，最终一轮 <b>0.5T token</b>。</div>
+    <div class="note-h">③-e 数据引擎：把“造 3D”变“选 3D”（§3.2, Fig 5）</div>
+    <div class="note-b"><b>核心难点（原文）：</b>多数人造不出 mesh（艺术家也要数小时），<b>但给选项时能选出最像的</b>——“This fact forms the foundation of our data collection.” 流程：从当前模型采样候选 → 标注员选最佳 + 按 rubric 打分 r → r&gt;α 的成为训练样本，差的成为 DPO 负例。<b>冷启动：</b>初模型好候选少，先借一组已有 learned/retrieval 模型组成 ensemble 产候选；随训练推进，<b>SAM 3D 自己最终产出约 80% 标注数据</b>。<b>四阶段：</b>Stage1 选 (I,M)；Stage2 在 <b>N=8</b> 候选里 best-of-N 选/评 (S,T)（model-in-the-loop，用模型先筛再人筛把有效 N 放大）；Stage2.5 最难者交艺术家 → <b>Art-3DO</b>；Stage3 相对点云对齐 (R,t,s)。</div>
+    <div class="note-h">③-f Post-training 三件套：SFT → DPO → 蒸馏（§3.2.2 / §C.3 / §C.4）</div>
+    <div class="note-b"><b>SFT：</b>先用较噪的非专家标注 MITL-3DO，再用小而精的艺术家 Art-3DO——后者对齐艺术家审美，抑制常见 failure（floaters 漂浮物、bottomless 无底、缺对称）。<b>DPO（式2）：</b>follow Diffusion-DPO，给同条件 c 下偏好对 (x<sub>w</sub>, x<sub>l</sub>)，对 Δ = [‖v<sub>w</sub>−v<sub>θ</sub>(x<sub>τ</sub><sup>w</sup>)‖² − ‖v<sub>w</sub>−v<sub>ref</sub>(x<sub>τ</sub><sup>w</sup>)‖²] − [对 l 的同式] 做 −E log σ(−βT w(τ)·Δ)；只用 SAM 3D 自产的负例（剔除 retrieval/multi-view 等 OOD 负例）。<b>追问 why DPO：</b>对称/封闭这类人敏感属性 flow matching loss 抓不住，需偏好级监督。<b>蒸馏（shortcut, 式4）：</b>从训好的 ckpt 初始化、再 finetune ~4K 步（75% flow matching + 25% shortcut），把 NFE <b>25→4</b>；蒸馏阶段新增的 step-size embedder 末层权重/偏置初始化为 0。</div>
+    <div class="note-b"><b>3D 解码器（§2.2 / §C.6）：</b>Texture &amp; Refinement 的 latent 可由<b>一对 VAE decoder</b> D<sub>m</sub>（mesh）/ D<sub>g</sub>（3D Gaussian splats）解码；两者<b>分开训但共享同一 VAE encoder、共享同一 structured latent 空间</b>（following Trellis）。纹理 VAE 用“de-lighted rendering”（环境光）消除前作渲染图的反射/阴影伪影（如物体底部恒黑）。</div>
+    <div class="note-h">④-a 实验：单物体 shape/texture（§4.1, Fig 8, Table 2）</div>
+    <div class="note-b"><b>人评：</b>真实图上 head-to-head <b>5:1</b> 胜率（物体）。<b>Table 2（SA-3DAO 有几何真值 / ISO3D 无几何真值只看 perceptual）：</b>SAM 3D 在真实物体上大幅领先，孤立物体 perceptual 也持平或更好。</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:12px;margin:4px 0">
+<tr style="color:#9aa3c7;text-align:left"><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Model</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">F1@0.01↑</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">vIoU↑</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Chamfer↓</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">EMD↓</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">ULIP↑</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Uni3D↑</th></tr>
+<tr><td style="padding:3px 7px">Trellis</td><td>.1475</td><td>.1392</td><td>.0902</td><td>.2131</td><td>.1473</td><td>.3698</td></tr>
+<tr><td style="padding:3px 7px">HY3D-2.1</td><td>.1399</td><td>.1266</td><td>.1126</td><td>.2432</td><td>.1293</td><td>.3546</td></tr>
+<tr><td style="padding:3px 7px">HY3D-2.0</td><td>.1574</td><td>.1504</td><td>.0866</td><td>.2049</td><td>.1484</td><td>.3662</td></tr>
+<tr><td style="padding:3px 7px">Direct3D-S2</td><td>.1513</td><td>.1465</td><td>.0962</td><td>.2160</td><td>.1405</td><td>.3653</td></tr>
+<tr><td style="padding:3px 7px">TripoSG</td><td>.1533</td><td>.1445</td><td>.0844</td><td>.2057</td><td>.1529</td><td>.3687</td></tr>
+<tr><td style="padding:3px 7px">Hi3DGen</td><td>.1629</td><td>.1531</td><td>.0937</td><td>.2134</td><td>.1419</td><td>.3594</td></tr>
+<tr style="color:#ffd35c;font-weight:700"><td style="padding:3px 7px">SAM 3D</td><td>.2344</td><td>.2311</td><td>.0400</td><td>.1211</td><td>.1488</td><td>.3707</td></tr>
+</table>
+<b>读表：</b>SA-3DAO 上 F1@0.01 0.2344 比最强 baseline Hi3DGen(0.1629) <b>高 44%</b>；Chamfer 0.0400 仅为最强 baseline TripoSG(0.0844) 的<b>不到一半</b>。ISO3D（孤立物体，前作主场）SAM 3D 仍小幅领先（Uni3D 0.3707 最高）——证明它没为真实图牺牲孤立物体性能。</div>
+    <div class="note-h">④-b 消融：多阶段训练逐级累加（Table 4，SA-3DAO + 纹理 WR）</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:12px;margin:4px 0">
+<tr style="color:#9aa3c7;text-align:left"><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">训练阶段（累加）</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">F1@0.01↑</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">vIoU↑</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Chamfer↓</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">EMD↓</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">纹理WR↑</th></tr>
+<tr><td style="padding:3px 7px">Pre-training (Iso-3DO)</td><td>.1349</td><td>.1202</td><td>.1036</td><td>.2396</td><td>—</td></tr>
+<tr><td style="padding:3px 7px">+ Mid (RP-3DO)</td><td>.1705</td><td>.1683</td><td>.0760</td><td>.1821</td><td>60.7</td></tr>
+<tr><td style="padding:3px 7px">+ SFT (MITL-3DO)</td><td>.2027</td><td>.2025</td><td>.0578</td><td>.1510</td><td>66.9</td></tr>
+<tr><td style="padding:3px 7px">+ DPO (MITL-3DO)</td><td>.2156</td><td>.2156</td><td>.0498</td><td>.1367</td><td>66.4</td></tr>
+<tr><td style="padding:3px 7px">+ SFT (Art-3DO)</td><td>.2331</td><td>.2337</td><td>.0445</td><td>.1257</td><td>—</td></tr>
+<tr style="color:#ffd35c;font-weight:700"><td style="padding:3px 7px">+ DPO (Art-3DO) = 最终</td><td>.2344</td><td>.2311</td><td>.0400</td><td>.1211</td><td>—</td></tr>
+</table>
+<b>读表：</b>F1 近<b>单调上升</b> 0.135→0.171→0.203→0.216→0.233→0.234；每加一个真实数据阶段都掉一截 Chamfer。纹理 WR 是“本行 vs 上一行”的胜率（&gt;50% 即更好）。<b>结论：</b>验证“synthetic pretrain + real-world post-train”每一级都有贡献。</div>
+    <div class="note-h">④-c 消融：真实数据阶段 knockout（Table 7，SA-3DAO）</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:12px;margin:4px 0">
+<tr style="color:#9aa3c7;text-align:left"><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">设置</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">F1@0.01↑</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">vIoU↑</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Chamfer↓</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">EMD↓</th></tr>
+<tr style="color:#ffd35c;font-weight:700"><td style="padding:3px 7px">Full（完整）</td><td>.2344</td><td>.2311</td><td>.0400</td><td>.1211</td></tr>
+<tr><td style="padding:3px 7px">w/o MITL-3DO</td><td>.2211</td><td>.2220</td><td>.0486</td><td>.1338</td></tr>
+<tr><td style="padding:3px 7px">w/o Art-3DO</td><td>.2027</td><td>.2025</td><td>.0578</td><td>.1510</td></tr>
+<tr><td style="padding:3px 7px">w/o DPO (MITL)</td><td>.2156</td><td>.2156</td><td>.0498</td><td>.1367</td></tr>
+</table>
+<b>读表：</b>去掉任何一块都明显掉点；<b>去掉艺术家 Art-3DO 掉得最狠</b>（F1 0.2344→0.2027，−13.5%），印证“小而精的专家数据对齐审美”价值最高；去 DPO、去 MITL 也各掉一截。</div>
+    <div class="note-h">④-d 实验：场景 layout 联合生成（§4.1, Table 3）</div>
+    <div class="note-b">场景重建人评 <b>6:1</b> 胜过前 SOTA。SAM 3D 把 shape+layout <b>联合(Joint)</b> 生成，把 ADD-S@0.1 从 pipeline/MIDI 的 ~2% 拉到 <b>77%</b>。下表摘关键行（ADD-S@0.1 = 位姿误差 &lt; 物体直径 10% 的样本比例，越高越好）：</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:12px;margin:4px 0">
+<tr style="color:#9aa3c7;text-align:left"><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Model</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">SA-3DAO 3D IoU↑</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">SA-3DAO ADD-S@0.1↑</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">ADT 3D IoU↑</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">ADT ADD-S@0.1↑</th></tr>
+<tr><td style="padding:3px 7px">Trellis+Megapose (pipeline)</td><td>.2449</td><td>.2831</td><td>.2531</td><td>.1971</td></tr>
+<tr><td style="padding:3px 7px">HY3D-2.0+FoundationPose</td><td>.2937</td><td>.5396</td><td>.3864</td><td>.5992</td></tr>
+<tr><td style="padding:3px 7px">SAM 3D+FoundationPose</td><td>.2837</td><td>.5079</td><td>.3661</td><td>.6495</td></tr>
+<tr><td style="padding:3px 7px">MIDI (joint)</td><td>—</td><td>—</td><td>.0336</td><td>.0175</td></tr>
+<tr style="color:#ffd35c;font-weight:700"><td style="padding:3px 7px">SAM 3D (joint)</td><td>.4254</td><td>.7232</td><td>.4970</td><td>.7673</td></tr>
+</table>
+<b>读表：</b>SAM 3D 的联合生成在两个数据集 ADD-S@0.1 都 ~0.72–0.77，<b>远超</b>“先 shape 再 pose”的 pipeline（即便 pipeline 用上 SAM 3D 的 mesh）和联合式 MIDI（ADT 仅 0.0175）。§E.3 进一步显示再叠 render-and-compare 测试时优化可继续涨（ADT ADD-S@0.1 0.7545→0.7617，2D IoU 0.51→0.65）。</div>
+    <div class="note-h">④-e 消融：6D 旋转表示（Table 10）+ 其它</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:12px;margin:4px 0">
+<tr style="color:#9aa3c7;text-align:left"><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">旋转表示</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Chamfer↓</th><th style="padding:3px 7px;border-bottom:1px solid #2a2f5c">ICP-Rot↓</th></tr>
+<tr><td style="padding:3px 7px">Quaternion</td><td>.0061</td><td>17.96</td></tr>
+<tr><td style="padding:3px 7px">6D Rotation</td><td>.0074</td><td>15.54</td></tr>
+<tr style="color:#ffd35c;font-weight:700"><td style="padding:3px 7px">Normalized 6D</td><td>.0049</td><td>14.59</td></tr>
+</table>
+<b>读表：</b>四元数→6D 连续表示，旋转误差 17.96→15.54；再按训练集统计做<b>归一化</b>降到 14.59——印证 6D 给生成模型更平滑的优化面。<b>其它小结论：</b>① <b>蒸馏</b>（§E.8）1-step <b>38×</b>、4-step <b>10×</b> 加速 vs 25-step flow matching(w/ CFG)，几何质量几乎不掉（因几何主要由 voxel 决定）；② <b>best-of-N 奖励模型回收</b>（§E.7, Table 12）把 N=2→N=50 回收被丢样本做 SFT，在 tail/Epic-Kitchens/SA-3DAO 都涨 Chamfer/F1，VLM 与 DPO-implicit reward 与人评一致率 ~65–69%；③ <b>pointmap</b>（§E.5）对 shape 影响极小（带/不带 pointmap 在 LVIS 各被选 48%），意味着可吃单目深度、随深度估计进步而进步。</div>
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>Problem：</b>单图 3D 重建的瓶颈是<b>数据</b>——自然图 ↔ 3D 真值难规模化配对，前作只在孤立合成物体上训、遇自然场景遮挡/杂乱就崩。<br><b>Method：</b>① 架构沿用 Trellis two-stage latent flow matching（1.2B MoT Geometry 预测 coarse voxel O∈R<sup>64³</sup> + layout (R,t,s)；600M sparse latent transformer 做 Texture &amp; Refinement；共享 VAE 解 mesh/Gaussian），训练目标=多模态 rectified flow matching（式1）。② 真正的杀招是 <b>MITL 数据引擎</b>（把“造 3D”转成“从 N=8 候选里选 3D + 对齐 pose”，模型最终自产 80% 数据）+ <b>LLM 式多阶段训练</b>（Iso-3DO 预训 2.5T tok → RP-3DO 中训 2.7T tok → MITL SFT + DPO + shortcut 蒸馏 0.5T tok）。<br><b>Experiment：</b>真实物体人评 5:1、场景 6:1；SA-3DAO F1@0.01 0.2344（+44% vs 最强 baseline）、Chamfer 0.0400（&lt; 一半）；layout ADD-S@0.1 ~2%→77%；消融显示每个训练阶段几乎单调增益、去 Art-3DO 掉得最狠；蒸馏 25→4 步、38×/10× 加速。<br><b>Takeaway：</b>SAM 3D 的贡献不是某个新模块，而是<b>把“LLM/SAM 的数据飞轮 + 多阶段对齐”范式成功移植到 3D，打穿了 3D 数据壁垒</b>，并以 foundation model + 开源 + 新基准 SA-3DAO 的形式交付——这正是其获 CVPR 2026 Best Paper 荣誉提名的核心价值。<b>边界：</b>分辨率 64³ 限制（手/脸/薄结构失真）、逐物体预测不建模物理交互、结论多基于人评偏好。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1 SAM 3D converts a single image into a composable 3D scene made of individual objects. Our method predicts per-object geometry, texture, and layout, enabling full scene reconstruction. Bottom: high-quality 3D assets recovered for each object.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2 SAM 3D architecture. (top) SAM 3D first predicts coarse shape and layout with the Geometry model; (right) the mixture of transformers architecture apply a two-stream approach with information sharing in the multi-modal self-attention layer. (bottom) The voxels predicted by the Geometry model are passed to the Texture &amp; Refinement model, which adds higher resolution detail and textures.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4 SAM 3D training paradigm. We employ a multi-stage pipeline incrementally exposing the model to increasingly complex data and modalities.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5 Life of an example going through the data collection pipeline. We streamline annotation by breaking it into subtasks: annotators first choose target objects (Stage 1); rank and select 3D model candidates (Stage 2); then pose these models within a 2.5D scene (Stage 3). Stages 2 and 3 use model-in-the-loop.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6 Qualitative comparison to competing image-to-3D asset methods. We compare to the recent Trellis (Xiang et al., 2025), Hunyuan3D-2.1 (Hunyuan3D et al., 2025), Direct3D-S2 (Wu et al., 2025a) and Hi3DGen (Ye et al., 2025) on the artist-generated SA-3DAO for single shape reconstruction; we provide the 3D artist-created ground truth mesh as reference.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7 Qualitative comparison to competing scene reconstruction methods. We show SAM 3D’s full 3D scene reconstruc- tions versus alternatives (Wen et al., 2024; Huang et al., 2025).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8 Preference comparison on scene-level and object-level reconstruction. Numbers indicate human preference rates. Objects comparisons are done on textured meshes. SAM 3D is significantly preferred over others on all fronts.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9 Preference comparison on texture. Since SAM 3D provides higher quality shape, we use the geometry results from SAM 3D and only perform texture generations for all methods. SAM 3D significantly outperforms others.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 10 Data engine with additional iterations. The plots show Elo scores of different models; a 400 point Elo difference corresponds to 10:1 odds in a preference test. Models were (a) checkpoints around 3 weeks apart, indicating cumulative improvements as we scale and add different stages and (b) post-trained (SFT) using expanded training data.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig10.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 11 Category distribution of SAM 3D training data. The plot above shows the distribution of the top 80 object categories, which includes a long tail.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig11.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 12 Stage 2 UI sketch. Annotators can only choose between options; they cannot directly edit the meshes or textures.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig12.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 13 Stage 3 UI sketch. The UI supports annotators in directly placing the object in the 2.5D pointcloud.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig13.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 14 Simplified cartoon depiction of data engine improvement. The diagram depicts model sample quality (color) across the real-world distribution of images and masks. During training, the model begins by doing well (teal) on common categories and simple objects (chairs, bottles, signs, cars). Our goal is to both improve accuracy and robustness on these easy examples (teal), and then push the </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig14.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 15 Reward model data recovery pipeline. The diagram shows how we use reward mdoels to increase N in best-of-N search to improve the chance of a successful annotation on challenging tail inputs. We use both a VLM and also DPO implicit reward as reward models.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig15.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 16 Distribution of number of objects per image in SA- 3DAO. The number of objects follows a roughly power-law distribution.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig16.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 17 Ablations for the Texture &amp; Refinement model, grouped by training stage. Percentages denote human pref- erence rate for each ablation, over the model without the ablation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig17.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 18 Model distillation. Geometry model shortcut versus flow matching. Flow matching distillation enables the model to perform significantly better during the early iterations, nearly on par with 25 steps performance.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig18.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 18 illustrates the performance of SAM 3D with and without distillation, plotted against the number of flow matching steps for the Geometry model. Specifically, using 1-step and 4-step methods yields a 38× and 10× inference speed improvement, respectively, compared to 25 steps with flow matching (w/ CFG). In flow matching mode, CFG is applied during the first half of the steps, resulting in </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig19.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 20 SAM 3D robustness to input mask precision. Top: Over-segmentation; Bottom: Under-segmentation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-3dfy-anything-in-images/fig20.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 19 Qualitative examples after distillation. Visualization using difference number of steps in flow matching mode and shortcut mode. The black background displays the mesh rendering without texture, while the grey background shows the rendering of the Gaussian splattings.</figcaption></figure>
+    </div>
+  </div></body></html>

@@ -22,6 +22,15 @@ from gen.data_works import PAPERS, MANUSCRIPTS        # noqa: E402
 from gen.data_repos import REPOS                      # noqa: E402
 from gen.layout import url, t                         # noqa: E402
 
+# private source locations live in a gitignored file so nothing company-specific
+# or machine-specific is committed
+try:
+    import json as _json
+    with io.open(os.path.join(HERE, "sources.local.json"), encoding="utf-8") as _fh:
+        _LOCAL_SOURCES = _json.load(_fh)
+except Exception:                                     # noqa: BLE001
+    _LOCAL_SOURCES = {}
+
 TODAY = datetime.date.today().isoformat()
 
 # Some pre-existing repository files are not writable from the sandboxed process.
@@ -75,8 +84,11 @@ def assets():
         src = os.path.join(HERE, src_name)
         if os.path.exists(src):
             made.append(copy(src, dest))
-    # resume PDFs
-    resume_dir = r"C:\Users\Admin\Desktop\新石器\最新简历"
+    # resume PDFs (source directory comes from the gitignored sources.local.json,
+    # so no private path is committed)
+    resume_dir = _LOCAL_SOURCES.get("resume", "")
+    if not resume_dir:
+        print("  ! no resume source configured; skipping CV PDFs")
     for fn in ("Lidong-Yu-Resume-EN.pdf", "Lidong-Yu-Resume-CN.pdf",
                "Lidong-Yu-Resume-Detailed-EN.pdf", "Lidong-Yu-Resume-Detailed-CN.pdf"):
         src = os.path.join(resume_dir, fn)
@@ -274,9 +286,11 @@ def main():
 
     print("[2/6] design subsites")
     import design
-    d_made, d_skipped = design.build()
+    d_made, d_skipped, d_imgs, d_scrub = design.build()
     for m in d_made:
-        print("      %-22s %4d files %7.2f MB" % (m["entry"]["slug"], m["files"], m["mb"]))
+        print("      %-22s %4d files %7.2f MB  webp=%d  scrubbed=%d"
+              % (m["entry"]["slug"], m["files"], m["mb"], m["converted"], m["scrubbed"]))
+    print("      images re-encoded: %d | company-name replacements: %d" % (d_imgs, d_scrub))
     for s in d_skipped:
         print("      SKIPPED %-18s %s" % (s[0], s[1]))
 

@@ -1,0 +1,184 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Convex Relaxation for Robust Vanishing Point Estimation in Manhattan World</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2025</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Convex Relaxation for Robust Vanishing Point Estimation in Manhattan World</h1>
+    <div class="au2" style="color:var(--mut)">Bangyan Liao · Zhenjun Zhao · Haoang Li · Yi Zhou · Yingping Zeng · Hao Li · Peidong Liu</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2025/papers/Liao_Convex_Relaxation_for_Robust_Vanishing_Point_Estimation_in_Manhattan_World_CVPR_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Convex%20Relaxation%20for%20Robust%20Vanishing%20Point%20Estimation%20in%20Manhattan%20World">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2025-convex-relaxation-for-robust-vanishing-point-estimation -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b"><b>第一次</b>把<b>凸松弛（convex relaxation）</b>引入曼哈顿世界的消失点（vanishing point, VP）估计：用一个 <b>truncated multi-selection error</b> 把"线-VP 关联 + 三个 VP 定位 + 外点剔除"<b>联合</b>写成 QCQP，再松弛成凸 <b>SDP</b>；并提出迭代求解器 <b>GlobustVP</b> 逐个 VP 求解，<b>同时拿到</b>全局最优 + 抗外点 + 快（York Urban 38 线、100%/100%、0.23 像素、~50ms）。代码开源 wu-cvgl/GlobustVP。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">曼哈顿世界=场景只有 3 个互相正交的主方向。VP 估计要<b>同时</b>做两件耦合的事：把每条线关联到某个 VP（line-VP association）+ 定位每个 VP。原文：“The challenge lies in the coupling relationship between line association and vanishing point estimation, which leads to numerous local minima.” 现有三类各有硬伤：<b>局部法</b>（EM/Hough/RANSAC）需好初值或穷举采样、无全局保证；<b>全局法</b>（Branch-and-Bound）有保证但"exponential time cost in the worst case"、慢；<b>学习法</b>无最优性保证、跨数据集泛化差。结论原文：“a globally optimal, outlier-robust, and sufficiently fast vanishing point estimation algorithm remains missing.”</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b">① <b>VP 几何</b>（式1-3）：平行 3D 线交于 VP，约束 vᵀl=0（v=消失点、l=图像线，齐次）；归一化后 dᵀn=0（d=3D 线方向≡VP，n=投影平面法向≡图像线），曼哈顿先验 ⇒ D=[d₁;d₂;d₃] 正交。② <b>Truncated multi-selection error（核心创新）</b>：距离矩阵 ([DN; c·1ₘᵀ])²∈R⁴ˣᵐ——(DN)² 是各 VP 到各线的点线距离，第 4 行常数 c²=外点阈值；置换矩阵 Q∈R⁴ˣᵐ 每列是该线的标签（VP1/VP2/VP3/Outlier）。<b>Primal Problem</b>：min_{D,Q} ⟨([DN;c1ₘᵀ])², Q⟩ s.t. Qᵀ1₄=1ₘ（每线恰一个标签）、(Q)²=Q（0/1 二值）、D 正交。"Truncated"=外点误差被截断成常数 c²（不引偏置）；"Multi-selection"=既分内/外点、又指明属哪个 VP。③ <b>凸松弛 QCQP→SDP</b>（式4-7）：一般 QCQP min xᵀCx s.t. xᵀAᵢx=bᵢ，令 X=xxᵀ（秩1 PSD）⇒ min trace(CX) s.t. trace(AᵢX)=bᵢ, X⪰0, rank(X)=1；<b>丢掉非凸的 rank=1</b> 即得凸 SDP。强对偶常成立 ⇒ "solving the relaxed problem is equivalent to solving the original one"，多项式时间拿全局最优。④ <b>GlobustVP 迭代解</b>：Full SDP 规模随线数三次方增长太贵 ⇒ 每次只解一个 <b>Single Block SDP</b> 找一个 VP+其内点（其余当外点），剔除内点后重复 3 次；最后 <b>Manhattan Post-Refinement</b>：min Σᵢ Σ_{j∈lᵢ}(dᵢᵀnⱼ)² s.t. D 正交，把三 VP 拉回互相正交。大规模时借 SDRSAC 策略每次随机采样固定 6 条线。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">真实数据 York Urban (YUD) <b>角精度 AA@10°=96.1%</b>，three thresholds 全部第一，显著超学习法与传统法。合成数据：外点比例 >20% 时 RANSAC/J-/T-Linkage 崩，Quasi-VP 在 40% 崩，GlobustVP 始终稳；效率上比 BnB 快很多、精度远超 RANSAC（RANSAC 最快但精度低）。超参：最大内点阈值 c=0.03、每次采样 6 条线为最佳 trade-off。<b>诚实点</b>：SU3 数据集上 GlobustVP（80.2/86.8/92.4）competitive 但<b>输给在 SU3 上训练过的</b> NeurVPS（93.2/95.2/97.8）、PARSAC——因为它无训练、靠几何，跨域反而更稳。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 把"全局最优 + 抗外点 + 快"这三个此前无法兼得的属性<b>同时</b>拿到；② truncated multi-selection error 优雅地用一个 ⟨距离², Q⟩ 把关联/定位/外点剔除一锅端；③ 迭代 Single Block SDP 避开 Full SDP 的三次方爆炸；④ 无需训练 → 天然跨数据集泛化（对比学习法过拟合训练域）；⑤ 提供 tight relaxation（zero duality gap）证明（SM）。</div>
+    <div class="note-h">疑问 / 边界（原文标注）</div>
+    <div class="note-b">① <b>全局最优是"mild conditions"下</b>：Single Block 的 tight relaxation 证明只在 “noise-free and outlier-free conditions” 下给（Remark 4.3.1.2），且依赖 distinguishability assumption（内点到对应 VP 距离 &lt; 阈值 &lt; 到其他 VP 距离）；Full SDP tightness 证明在 SM。② <b>实现是 MATLAB+MOSEK、笔记本 CPU</b>，~50ms；更大规模/GPU 加速原文未讨论。③ SU3 输给学习法（已如实报告）。④ precision/recall 完整曲线、YUD 逐图 F1 都在 SM，正文只给 AA 表。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文，PyMuPDF 提取）。原文英文原句引用 + 中文指路 + 追问 why。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句拆解</div>
+    <div class="note-b"><b>原文：</b>“Determining the vanishing points (VPs) in a Manhattan world ... consists of jointly inferring the line-VP association and locating each VP.” → <b>任务定义</b>：VP 估计 = <b>联合</b>做两件事——(i) 把每条图像线关联到某个 VP（line-VP association）、(ii) 定位每个 VP。关键词 jointly：两件事互相耦合（要定位 VP 得先知道哪些线属于它，反之亦然）。</div>
+    <div class="note-b"><b>原文：</b>“Existing methods are, however, either sub-optimal solvers or pursuing global optimality at a significant cost of computing time.” → <b>二元困境</b>：要么次优（局部法快但无保证），要么全局但慢（BnB）。本文要打破这个 trade-off。</div>
+    <div class="note-b"><b>原文：</b>“we employ a 'soft' association scheme, realized via a truncated multi-selection error ... reformulated into a quadratically constrained quadratic programming (QCQP) problem, which is then relaxed into a convex semidefinite programming (SDP) problem.” → <b>方法主线（三级火箭）</b>：soft 关联（truncated multi-selection error）→ 重写成 QCQP → 凸松弛成 SDP。</div>
+    <div class="note-b"><b>原文：</b>“a globally optimal outlier-robust iterative solver (called GlobustVP), which independently searches for one VP and its associated lines in each iteration, treating other lines as outliers.” → <b>求解器 GlobustVP</b>：逐个 VP 求解，每轮只找一个 VP + 它的内点，其余线全当外点。</div>
+    <div class="note-b"><b>逐句抓 Abstract：</b>soft 关联误差（外点截断 + 多选标签）→ QCQP → 凸 SDP（多项式时间全局最优）→ 逐 VP 迭代解（避开 Full SDP 的规模爆炸）→ <b>全局最优 + 抗外点 + 快</b>三者首次兼得。代码开源 github.com/wu-cvgl/GlobustVP。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文，理解 GlobustVP 必备）</div>
+    <div class="note-b"><b>① 消失点 / 曼哈顿世界：</b>3D 空间中一组平行线投影到像平面会汇聚于一点=VP（“two parallel lines ... intersect at a point in the image projection space”）。<b>曼哈顿世界</b>（Coughlan-Yuille / Straub [36]）：人造环境主要由 <b>3 组互相正交</b>的平行线构成（墙、地、天花板的棱），故只有 3 个互相正交的主方向/VP。VP 估计应用广：SLAM、相机标定、结构理解。</div>
+    <div class="note-b"><b>② 点线对偶 + vᵀl=0 的来历：</b>射影几何里点 p 在线 l 上 ⟺ pᵀl=0（齐次坐标）。VP v 是它那组平行线的公共交点，所以 v 落在每条该组线 l 上 ⟺ <b>vᵀl=0</b>（式1）。归一化坐标下 v=Kd、l=K⁻ᵀn（K=内参），代入得 <b>dᵀn=0</b>（式2-3）：d=3D 线方向（≡VP）、n=该图像线对应的<b>投影平面法向</b>。dᵀn 就是"方向 d 与平面法向 n 的偏离"=点线距离的代数量。</div>
+    <div class="note-b"><b>③ QCQP / SDP / 凸松弛（本文数学核心）：</b><b>QCQP</b>=目标与约束都是二次型的优化，一般非凸、NP-hard。<b>提升技巧（lifting）</b>：二次项 xᵀCx=trace(Cxxᵀ)，令新变量 <b>X=xxᵀ</b>（对称、半正定 X⪰0、且 <b>rank(X)=1</b>）→ 目标线性化成 trace(CX)、约束线性化成 trace(AᵢX)=bᵢ。此时唯一的非凸约束是 rank(X)=1。<b>丢掉 rank=1</b> → 得到凸 <b>SDP</b>（式7），可用内点法（MOSEK）<b>多项式时间求全局最优</b>。若松弛"tight"（zero duality gap），SDP 解=原 QCQP 解。这是把 NP-hard 组合问题变可解的标准武器。</div>
+    <div class="note-b"><b>④ 五类对比范式（§2 Related Work）：</b><b>EM</b>=交替更新关联与 VP（陷局部最优、依赖初值）；<b>Hough voting</b>=高斯球分 bin 累积投票找主方向（受量化影响、出伪 VP）；<b>RANSAC/J-/T-Linkage</b>=随机采样假设 VP 看内点共识（随机、无全局保证、不满足正交约束）；<b>BnB</b>=在 SO(3) 旋转搜索空间分支定界，有全局保证但<b>最坏指数时间</b>（Quasi-VP=BnB+RANSAC 混合，只到 quasi-global）；<b>学习法</b>（Zhai/NeurVPS/CONSAC/Lin/PARSAC）=端到端但泛化受限训练域。本文=<b>凸松弛，第一次用在 VP</b>。</div>
+    <div class="note-b"><b>⑤ SDRSAC 采样（Le 2019，本文 [18]）：</b>SDP 求解时间随问题规模<b>三次方</b>增长 → m 条线全上太贵。SDRSAC 的思路=每次只<b>随机采样固定条数</b>的线喂给 SDP，把单次问题规模钉死 → 大规模下省时。本文沿用，实验定为每次采 6 条线。</div>
+
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环（Intro 已自包含）</div>
+    <div class="note-b"><b>problem：</b>原文 “The challenge lies in the coupling relationship between line association and vanishing point estimation, which leads to numerous local minima. This characteristic makes an algorithm with a global optimality guarantee particularly valuable.” 关联与定位耦合 → 大量局部最优 → 全局最优保证特别可贵。但现有三路都有硬伤：局部法无保证、全局法（BnB）指数慢、学习法不泛化。结论原文：“a globally optimal, outlier-robust, and sufficiently fast vanishing point estimation algorithm remains missing.”</div>
+    <div class="note-b"><b>solution（Intro 即给出 method 骨架）：</b>“we propose a novel truncated multi-selection error formulation that enables joint optimization of three vanishing points and their corresponding line association labels (e.g., VP1, VP2, VP3, Outlier).” → 写进 Primal Problem → 重写成 Full QCQP → 松弛成 Full SDP；再用 GlobustVP “solves one Single Block SDP Problem in each iteration to identify a vanishing point and its corresponding inlier line set, which is then excluded”；最后 Manhattan Post-Refinement 保正交。</div>
+    <div class="note-b"><b>why（为什么这样能同时拿三性）：</b>凸 SDP ⇒ 全局最优（多项式时间，不像 BnB 指数）；truncated 误差把外点误差钉成常数 ⇒ 抗外点且不引偏；迭代 Single Block + 6 线采样 ⇒ 避开 Full SDP 的三次方规模 ⇒ 快。<b>★ 即 Intro 已闭环，§3-4 只是数学化。</b></div>
+    <div class="note-b"><b>四点贡献（原文）：</b>① soft 关联（truncated multi-selection error）联合估 VP 位置 + 线关联；② 首次把凸松弛把 QCQP 重写成凸 SDP；③ 迭代器 GlobustVP 每个 VP 子问题独立解（对应 Full SDP 的一个子块），mild conditions 下全局最优；④ 合成+真实数据全面验证。</div>
+
+    <div class="note-h">③ §3.2 几何（vᵀl=0 → dᵀn=0 → 曼哈顿正交）</div>
+    <div class="note-b"><b>式1-3：</b>vᵀl=0（VP 在其线上，齐次）；归一化坐标 dᵀn=0，v=Kd、l=K⁻ᵀn。<b>why 用归一化坐标</b>：把内参 K 消掉，后续推导只跟 d（3D 方向）和 n（平面法向）打交道，更干净。<b>曼哈顿先验</b>：三个 d 互相正交、组成 3×3 正交阵 → 给优化注入强约束、提稳定性（原文 “Leveraging this Manhattan world prior constraint can enhance the stability”）。</div>
+
+    <div class="note-h">④ §3.3 凸松弛模板（X=xxᵀ 的 lifting + 丢 rank 变凸）</div>
+    <div class="note-b"><b>逐步（式4-7）：</b>① 原 QCQP：min xᵀCx s.t. xᵀAᵢx=bᵢ。② trace 技巧：xᵀCx=trace(Cxxᵀ)。③ 令 X=xxᵀ → min trace(CX) s.t. trace(AᵢX)=bᵢ, X⪰0, <b>rank(X)=1</b>（式6，与原问题完全等价）。④ <b>丢掉 rank(X)=1</b>（唯一非凸约束）→ 凸 SDP（式7）。<b>why 这步是魔法</b>：rank=1 把解锁死在"秩一矩阵=某向量外积"上（非凸流形）；丢掉后可行域变成凸的 PSD 锥与线性约束的交 → 凸优化 → <b>局部最优即全局最优</b>、内点法多项式时间。原文：“researchers have found that strong duality properties still hold for many problems ... solving the relaxed problem is equivalent to solving the original one.”</div>
+
+    <div class="note-h">⑤ §4.1 Truncated Multi-selection Error（全文最妙的建模，逐步拆）</div>
+    <div class="note-b"><b>第一步 距离矩阵：</b>VP 阵 D=[d₁ᵀ;d₂ᵀ;d₃ᵀ]∈R³ˣ³、线阵 N=[n₁,…,nₘ]∈R³ˣᵐ。<b>DN∈R³ˣᵐ</b> 的第 (i,j) 元 = dᵢᵀnⱼ = VPᵢ 到线 j 的<b>点线距离</b>（带符号）。逐元平方 (DN)²=各 VP 到各线的距离²。再在底部<b>堆一行常数 c·1ₘᵀ</b> → 得 <b>([DN; c1ₘᵀ])²∈R⁴ˣᵐ</b>：第 j 列 = [d₁ᵀnⱼ, d₂ᵀnⱼ, d₃ᵀnⱼ, c]²，前 3 个是到三 VP 的距离²、第 4 个是<b>外点的固定"距离" c²</b>。</div>
+    <div class="note-b"><b>第二步 置换/选择矩阵 Q∈R⁴ˣᵐ：</b>每列是 one-hot 标签——线 j 属于 {VP1, VP2, VP3, Outlier} 中哪一类。<b>Primal Problem</b>：min_{D,Q} ⟨([DN;c1ₘᵀ])², Q⟩ s.t. Qᵀ1₄=1ₘ（每列恰一个 1）、(Q)²=Q（0/1 二值）、D 三行单位且两两正交（6 个二次约束）。<b>⟨dist², Q⟩</b> 内积 = 对每条线，按它的标签从那 4 个候选里"选出"一个误差再求和。最小化 → 每条线自动选最小者：若到某 VP 距离 &lt; c 就归该 VP（取该距离²），<b>若到三个 VP 都 &gt; c 就归 Outlier（误差恰好 c²）</b>。</div>
+    <div class="note-b"><b>三点 Remark（原文）：</b>(i) <b>"Truncated"</b>=外点距离全超阈值时误差<b>截断成常数 c²</b>（“set its error to zero, and add a penalty term of c²”），不随外点具体位置变 → <b>不引偏</b>（不把外点往任何 VP 拉）；(ii) <b>"Multi-selection"</b>=不仅分内/外点，还指明属哪个 VP；(iii) 当所有外点到所有真 VP 距离都 &gt; c²，Primal 的全局最优 = <b>最大内点集 + 最优 VP</b>。<b>Fig.2 worked example</b>（c=0.03）：line1→VP2、line2→VP1、line3/4=outlier、line5→VP2、line6→VP3。</div>
+
+    <div class="note-h">⑤′ 具体化：truncated multi-selection error 的一个数值例子</div>
+    <div class="note-b"><b>设 c=0.03。</b>某条线 j 到三个 VP 的点线距离 dᵢᵀnⱼ 分别是 (0.005, 0.21, 0.33)：平方后 (2.5e-5, 0.044, 0.109)，加上外点项 c²=9e-4 → 该列候选误差 = [2.5e-5, 0.044, 0.109, 9e-4]。min-选择会挑<b>最小的 2.5e-5（VP1）</b> → 线 j 标 VP1、Q 列=[1,0,0,0]。<br>换一条外点线 k，到三 VP 距离 (0.12, 0.15, 0.20)：平方 (0.0144, 0.0225, 0.04)，外点项仍 9e-4 → 候选 [0.0144,0.0225,0.04, 9e-4]，<b>最小是第 4 项 9e-4（Outlier）</b> → 线 k 标 Outlier、误差封顶 c²。<b>关键</b>：外点 k 不论实际偏多远，误差都只记 c²，不会把任何 VP 往 k 拉——这就是 truncated 的"无偏"。</div>
+
+    <div class="note-h">⑥ §4.2 Full QCQP → Full SDP（lifting ω + 丢 rank(W)=1）</div>
+    <div class="note-b"><b>为什么要 lift 成 ω？</b>目标 ⟨dist²,Q⟩ 同时是 D（藏在 dist² 里）和 Q 的函数——是<b>双线性/高次耦合</b>，不是标准二次型。引入 <b>D=[d₁;d₂;d₃;1]∈R¹⁰</b> 和 <b>ω=[D; vec(Q)⊗D]∈R^{10(1+4m)}</b>（Kronecker 积把每个标签位 [Q]ᵢ,ⱼ 与 D 绑成 ωᵢ,ⱼ=[Q]ᵢ,ⱼD），就能把目标写成<b>单个二次型 ωᵀCω</b>（C 是块对角辅助阵，式10-11：{Cᵢ,ⱼ}=nⱼnⱼᵀ 编码距离、[C₄,ⱼ]=c² 编码外点惩罚）。这样才能套 §3.3 的 QCQP→SDP 模板。</div>
+    <div class="note-b"><b>Full SDP（式12）：</b>提升 W（≈ωωᵀ），约束把 Q 的"每列一个 1"和"二值"翻译成 W 的块等式、把 D 正交翻译成 trace 约束，<b>丢掉唯一非凸的 rank(W)=1</b> → 凸 SDP。原文：“The SDP problem can be globally solved using any off-the-shelf solver in polynomial time. Furthermore, we provide a proof of tight relaxation (i.e., zero duality gap) in SM ... solving Full SDP Problem is equivalent to solving Primal Problem.”——<b>tight 证明在 SM</b>（正文未给完整证明）。</div>
+
+    <div class="note-h">⑦ §4.3 GlobustVP（Single Block SDP + Alg.1 + Post-Refinement）</div>
+    <div class="note-b"><b>为什么不直接解 Full SDP？</b>原文 “the optimization time for SDP methods grows cubically with the problem size”——Full SDP 规模是 10(1+4m)，随线数 m <b>三次方爆炸</b>，大场景算不动。</div>
+    <div class="note-b"><b>Single Block SDP（式13-14）：</b>每轮只求<b>一个</b> VP——构造二切片张量 C：C∗,∗,1=diag([0, n₁n₁ᵀ,…,nₘnₘᵀ])（该 VP 到各线距离），C∗,∗,2=diag([0, c²I₃,…])（外点常数项）。解出 W、round 恢复一个 VP dᵢ、收集其内点 lᵢ 并<b>从线集中移除</b>，把其余线全当外点。这样把"同时找 3 个 VP"降成"顺序找 1 个"，规模骤降。</div>
+    <div class="note-b"><b>Alg.1 流程：</b>for i=1:3 → 构 Cᵢ → 解 Single Block SDP 得 Wᵢ → round 出 dᵢ → 收内点 lᵢ、从 n 移除 → 循环；3 轮后收集剩余线为 outlier，再 <b>Manhattan Post-Refinement</b>（min Σᵢ Σ_{j∈lᵢ}(dᵢᵀnⱼ)² s.t. D 三行单位+两两正交）联合精修三 VP。</div>
+    <div class="note-b"><b>两点 Remark：</b>(i) <b>distinguishability assumption</b>——只要"内点到对应 VP 距离 &lt; 阈值 &lt; 到其他 VP 距离"，Single Block SDP 就能<b>稳定找到内点最多的 VP</b>；(ii) Single Block <b>本身不依赖曼哈顿假设</b>也能给最优内点集，<b>正交先验只在 Post-Refinement 注入</b>，精修后保持 Full SDP 的最优性。<b>大规模加速</b>：借 SDRSAC 每次随机采 6 条线（“not the main contribution”但实用，Fig.5）。</div>
+
+    <div class="note-h">Q&amp;A · 几个 why 追问</div>
+    <div class="note-b"><b>1 为什么凸 SDP 能保证全局最优、BnB 不能快？</b>SDP 凸 → 可行域是凸集、无虚假局部最优 → 内点法<b>多项式时间</b>必达全局最优；BnB 在 SO(3) 旋转空间分支定界，靠上下界剪枝，最坏要遍历指数个分支（“exponential time cost in the worst case”）。本文用凸性把"全局最优"和"快"统一了。</div>
+    <div class="note-b"><b>2 truncated 为什么"不引偏"？</b>外点误差被钉成常数 c²，<b>与外点的具体几何位置无关</b> → 优化时外点不会把任何 VP 往自己方向拽（普通最小二乘里一个远外点能严重拉偏估计）→ 抗外点的本质。</div>
+    <div class="note-b"><b>3 rounding 怎么从 W 恢复 VP？</b>tight 时 W 近似秩 1（≈ωωᵀ）→ 取其主特征向量 reshape 回 d、再单位化。原文 Alg.1 只写 “Round Wi and recover one vanishing point”，<b>rounding 细节在 SM</b>（正文未展开，属诚实边界）。</div>
+    <div class="note-b"><b>4 每轮只采 6 条线会漏掉 VP 吗？</b>不会——多轮随机采样 + 内点共识能覆盖；Fig.4 显示 F1 在采样数=6 后稳定、runtime 在 6 最低，故 6 是 trade-off 最优。</div>
+    <div class="note-b"><b>5 为何无训练反而跨域更稳？</b>纯几何 + 凸优化，<b>没有学到的权重</b> → 没有训练域偏置；学习法（NeurVPS 等）在 SU3 训练 → SU3 上高分，但换到 YUD（真实城市图）就掉。</div>
+
+    <div class="note-h">📚 评测指标（读懂下面表格，原文 §5.1.1 定义）</div>
+    <div class="note-b"><b>precision</b>=Nc/(Nc+Nw)（正确判为内点 / 所有判为内点；Nw=错判内点数）；<b>recall</b>=Nc/(Nc+Nm)（正确判为内点 / 所有真内点；Nm=漏判内点数）；<b>F1</b>=2·P·R/(P+R)（合成实验主指标）。<b>consistency error（一致性误差，真实图主指标）</b>=图像线端点到"虚拟线 v"的距离，v 由估计 VP 与该线中点确定——衡量"线真的指向估计的 VP 吗"，越小越好（Fig.1 报 0.23 px）。<b>AA@θ（角精度，跨数据集主指标）</b>=估计主方向与真值方向夹角 &lt; θ 的比例，θ∈{3°,5°,10°}，越高越好。</div>
+
+    <div class="note-h">⑧ §5 实验 — 关键数值表（角精度 AA，越高越好）</div>
+    <div class="note-b"><b>设置：</b>真实集 <b>YUD</b>（102 张标定真实城市图，2-3 个 VP，人工标注线-VP 关联）；合成集 <b>SU3</b>（23K 合成线框图，80% 训练/10% 验证/10% 测试——<b>学习法的主场</b>）。指标 AA@{3°,5°,10°}=估计方向与真值夹角小于阈值的比例。粗体=本文，含全部 9 个 baseline：</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:11.5px;margin:2px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c">方法</td><td style="border-bottom:1px solid #2a2f5c">类型</td><td style="border-bottom:1px solid #2a2f5c">YUD@3°</td><td style="border-bottom:1px solid #2a2f5c">@5°</td><td style="border-bottom:1px solid #2a2f5c">@10°</td><td style="border-bottom:1px solid #2a2f5c">SU3@3°</td><td style="border-bottom:1px solid #2a2f5c">@5°</td><td style="border-bottom:1px solid #2a2f5c">@10°</td></tr>
+<tr><td style="padding:2px 6px">J-Linkage</td><td>传统</td><td>57.7</td><td>69.3</td><td>80.5</td><td>70.2</td><td>77.6</td><td>83.8</td></tr>
+<tr><td style="padding:2px 6px">Contrario-VP</td><td>传统</td><td>58.3</td><td>71.1</td><td>80.7</td><td>66.8</td><td>74.0</td><td>81.6</td></tr>
+<tr><td style="padding:2px 6px">Quasi-VP</td><td>传统</td><td>57.8</td><td>72.5</td><td>84.3</td><td>72.2</td><td>78.8</td><td>81.8</td></tr>
+<tr><td style="padding:2px 6px">Zhai et al.</td><td>学习</td><td>48.9</td><td>63.1</td><td>76.5</td><td>65.4</td><td>75.4</td><td>82.2</td></tr>
+<tr><td style="padding:2px 6px">NeurVPS</td><td>学习/SU3</td><td>52.2</td><td>64.2</td><td>78.1</td><td><b>93.2</b></td><td><b>95.2</b></td><td><b>97.8</b></td></tr>
+<tr><td style="padding:2px 6px">CONSAC</td><td>学习</td><td>61.9</td><td>73.5</td><td>83.4</td><td>79.2</td><td>85.8</td><td>90.6</td></tr>
+<tr><td style="padding:2px 6px">Lin et al.</td><td>学习</td><td>63.3</td><td>75.6</td><td>85.7</td><td>84.2</td><td>90.4</td><td>95.0</td></tr>
+<tr><td style="padding:2px 6px">PARSAC</td><td>学习/SU3</td><td>64.7</td><td>77.2</td><td>85.6</td><td>86.2</td><td>90.6</td><td>95.4</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 6px"><b>GlobustVP</b></td><td><b>几何/无训练</b></td><td><b>67.6</b></td><td><b>87.3</b></td><td><b>96.1</b></td><td>80.2</td><td>86.8</td><td>92.4</td></tr>
+</table></div>
+    <div class="note-b"><b>读表（核心论点）：</b>① <b>YUD（真实、无人占训练优势）GlobustVP 三档全部第一</b>，AA@10° <b>96.1%</b> 比次优 Lin et al.(85.7) 高 <b>10.4 个点</b>——超所有传统法和学习法；@5° 87.3 比次优 77.2 高 10 点，优势巨大。② <b>SU3（学习法训练域）GlobustVP 超所有传统法</b>（80.2/86.8/92.4 vs Quasi-VP 72.2/78.8/81.8），但<b>输给在 SU3 上训练过的 NeurVPS（93.2/95.2/97.8）和 PARSAC</b>。③ 论文据此立论：<b>学习法的高分依赖同分布训练数据，GlobustVP 无训练故跨域稳健</b>（原文 “learning-based methods ... achieve better results due to their training on similar data. This difference in generalization capability highlights the robustness of GlobustVP”）。</div>
+
+    <div class="note-h">⑨ §5 合成实验 — 超参 + 抗外点 + 效率（消融式分析）</div>
+    <div class="note-b"><b>(i) 阈值 c（Fig.3，固定 120 线/σ=1/30% 外点）：</b>c 从 0.0003→1，<b>F1 随 c 增大而降</b>（c 太大 → 更多外点被误判内点）；<b>runtime 在 c=0.03 最低</b>（太小 SDP 难收敛、太大解空间乱）→ 定 <b>c=0.03</b>。</div>
+    <div class="note-b"><b>(ii) 采样线数（Fig.4，120 线/σ=3/20% 外点）：</b>采样数 3→10，<b>runtime 在 6 最低</b>、<b>F1 在 6 后稳定</b> → 定<b>每次采 6 条线</b>（trade-off 最优）。</div>
+    <div class="note-b"><b>(iii) 抗外点（Fig.6，60 线/σ=3，外点 0%→70%）：</b><b>RANSAC/J-Linkage/T-Linkage 在外点 &gt;20% 急剧崩</b>；<b>Quasi-VP 在 40% 开始崩</b>；BnB 总体能扛但偶发不收敛拉低精度；<b>GlobustVP 全程稳健</b>（F1 始终高），抗外点最强。</div>
+    <div class="note-b"><b>(iv) 效率 vs 线数（Fig.5，σ=3/20% 外点，60→135 线）：</b>RANSAC 最快但 F1 最低；<b>GlobustVP runtime 远低于 BnB、F1 远高于 RANSAC</b> → 在"精度-效率"平面上占最佳折中。Fig.7 单图：GlobustVP 在某 YUD 图 100%/100% precision/recall、0.41 px 一致性误差，全面优于 RANSAC/J-/T-Linkage/BnB/Quasi-VP。</div>
+    <div class="note-b"><b>⚠️ 诚实边界：</b>precision/recall 完整曲线、各 baseline 完整对比、YUD 逐图 F1 与一致性误差、Full/Single SDP 的 tight relaxation 完整证明、rounding 细节——<b>均在 SM</b>，正文只给 AA 表 + 4 张图。实现为 <b>MATLAB + MOSEK，笔记本 i5 CPU</b>（无 GPU），代表性 runtime ~50ms（Fig.1）。</div>
+
+    <div class="note-h">📌 全文一页总结（问题→方法→实验→takeaway）</div>
+    <div class="note-b"><b>问题(§1)：</b>曼哈顿世界 VP 估计需联合做"线-VP 关联 + VP 定位"，两者耦合致大量局部最优；现有法在"全局最优 / 抗外点 / 快"三者间只能取其二（局部法无保证、BnB 指数慢、学习法不泛化）。</div>
+    <div class="note-b"><b>方法(§4)：</b>提出 <b>truncated multi-selection error</b>——距离矩阵 ([DN;c1ₘᵀ])²（前 3 行=到三 VP 距离²、第 4 行=外点常数 c²）配 4×m one-hot 标签阵 Q，Primal=min⟨距离²,Q⟩（每线自动选最近 VP 或归外点、外点误差截断成 c² 不引偏）；lift 成 ω=[D;vec(Q)⊗D] 写成 Full QCQP，<b>凸松弛（丢 rank=1）成 Full SDP</b>（tight 证明在 SM）；迭代器 <b>GlobustVP</b> 每轮解 Single Block SDP 找一个 VP+内点并剔除，3 轮后 <b>Manhattan Post-Refinement</b> 注入正交先验，大规模用 SDRSAC 采 6 线避三次方爆炸。</div>
+    <div class="note-b"><b>实验(§5)：</b><b>YUD AA@10°=96.1% 全场第一</b>（比次优高 10.4 点）；抗外点远超采样类（RANSAC 等 20% 即崩，本文全程稳）、效率远超 BnB；SU3 上无训练仍超所有传统法，仅输给在 SU3 训练的学习法——印证<b>无训练 = 跨域稳健</b>。</div>
+    <div class="note-b"><b>Takeaway：</b>① <b>凸松弛首次进 VP 估计</b>，用一个可证 tight 的 SDP <b>同时拿下全局最优 + 抗外点 + 快</b>，破解此前的三选二困境；② truncated multi-selection error 用一个 ⟨距离²,Q⟩ 把"关联 + 定位 + 外点剔除"一锅端，外点截断保无偏；③ Single Block 迭代 + 6 线采样避开 Full SDP 三次方规模；④ 无需训练 → 天然跨域稳健；⑤ 边界=全局最优是 mild conditions（distinguishability）下、tight 证明与 rounding 细节在 SM、实现为 CPU/MATLAB、SU3 上输给同域训练的学习法（已如实报告）。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-convex-relaxation-for-robust-vanishing-point-estimation/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Representative results of our method (GlobustVP) on the York Urban Database [10] for estimating three vanishing points (VPs) in the Manhattan world. Different line-VP associations are shown in respective colors. Below each image, we report the widely-used evaluation metrics, precision ↑, recall ↑, consistency error ↓(defined in Sec. 5.1.1), and runtime ↓. GlobustVP achieves high precisio</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-convex-relaxation-for-robust-vanishing-point-estimation/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. An example of the distance matrix ([DN; c1⊤ m])2 and the associated permutation matrix Q. In this example, c = 0.03, line 1 matches VP2, line 2 matches VP1, line 3 and 4 are identified as outliers, line 5 matches VP2, and line 6 matches VP3.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-convex-relaxation-for-robust-vanishing-point-estimation/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Effect of different values of the maximum inlier thresh- old c. Best viewed in high resolution.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-convex-relaxation-for-robust-vanishing-point-estimation/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Accuracy and efficiency comparisons with respect to the number of sampled lines on the synthetic dataset. Best viewed in high resolution.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-convex-relaxation-for-robust-vanishing-point-estimation/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Accuracy and efficiency comparisons of RANSAC [42] and BnB [6] on the synthetic dataset with respect to the number of image lines. Complete comparisons of all baseline methods are provided in Supplementary Material Sec. 3. Best viewed in color and high resolution.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-convex-relaxation-for-robust-vanishing-point-estimation/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Accuracy comparison on the synthetic dataset with respect to the outlier ratios: boxplot of F1-score. Results for precision and recall are provided in Supplementary Material Sec. 3. Best viewed in color and high resolution.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-convex-relaxation-for-robust-vanishing-point-estimation/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Representative comparisons on YUD [10] using the manually extracted image lines. Different line-VP associations are shown in respective colors. The numbers below each image represent the respective precision ↑, recall ↑, F1-score ↑, and consistency error ↓of line-VP association. Best viewed in color and high resolution.</figcaption></figure>
+    </div>
+  </div></body></html>

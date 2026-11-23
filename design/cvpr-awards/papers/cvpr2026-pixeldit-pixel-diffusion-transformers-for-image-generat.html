@@ -1,0 +1,193 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>PixelDiT: Pixel Diffusion Transformers for Image Generation</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>PixelDiT: Pixel Diffusion Transformers for Image Generation</h1>
+    <div class="au2" style="color:var(--mut)">Yongsheng Yu ⋅ Wei Xiong ⋅ Weili Nie ⋅ Yichen Sheng ⋅ Shiqiu Liu ⋅ Jiebo Luo</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2511.20645">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2511.20645">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=PixelDiT%3A%20Pixel%20Diffusion%20Transformers%20for%20Image%20Generation">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Latent-space modeling has been the standard for Diffusion Transformers (DiTs). However, it relies on a two-stage pipeline where the pretrained autoencoder introduces lossy reconstruction, leading to error accumulation while hindering joint optimization. To address these issues, we propose PixelDiT, a single-stage, end-to-end model that eliminates the need for the autoencoder and learns the diffusion process directly in the pixel space. PixelDiT adopts a fully transformer-based architecture shaped by a dual-level design: a patch-level DiT that captures global semantics and a pixel-level DiT that refines texture details, enabling efficient training of a pixel-space diffusion model while preserving fine details. PixelDiT achieves 1.61 FID on ImageNet 256 and 2.21 FID on ImageNet 512, surpassing existing pixel generative models by a large margin. We further extend PixelDiT to text-to-image generation and pretrain it at the $1024^{2}$ resolution in pixel space. It achieves 0.74 on GenEval and 83.5 on DPG-bench, approaching the best latent diffusion models.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">NVIDIA×Rochester：把扩散直接搬回<b>像素空间</b>、彻底扔掉 VAE 的<b>单阶段端到端</b> Diffusion Transformer。核心是 <b>dual-level</b> 结构——一条 patch-level DiT 管全局语义、一条 pixel-level DiT（PiT）管纹理细节；靠 <b>pixel-wise AdaLN</b>（每个像素一套调制参数）+ <b>pixel token compaction</b>（注意力前把 p² 像素压成 1 token、注意力后还原）让"逐像素建模"既可行又省算力。ImageNet256 <b>gFID 1.61</b>、ImageNet512 <b>1.81</b>，并扩到 1024² 文生图（GenEval 0.74 / DPG 83.5，1.3B），逼近最强 latent diffusion。原文定位：“a single-stage, end-to-end model that eliminates the need for the autoencoder and learns the diffusion process directly in the pixel space”。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">主流 LDM 是<b>两阶段</b>（先训 VAE 压成 latent、再训 DiT）。两大结构性硬伤：① VAE 重建目标与下游生成目标<b>只部分对齐</b>，latent 有分布漂移（纹理被抹平 / 色偏），DiT 还得去补偿；② VAE 是<b>有损压缩</b>，高频细节被砍掉，封顶了采样保真度——Fig 1b 里 FLUX/SD3 的 VAE 连墙上的场景文字都重建糊了，导致编辑失败。回到像素空间能绕开这些，但<b>贵</b>：激进 patchify（省算力）会削弱逐像素建模；逼近逐像素粒度（保细节）又让全局注意力吃超长序列、O(N²) 爆炸。原文把核心难点提炼成 <b>“pixel modeling”</b>：“capturing dense, per-pixel interactions and high-frequency details”——缺一个高效的逐像素建模机制。</div>
+    <div class="note-h">核心方法（dual-level 三件套）</div>
+    <div class="note-b">① <b>Dual-level 架构</b>：patch-level 用大 patch（p=16）走短序列长程注意力抓全局布局/内容（N 层 augmented DiT，RMSNorm+2D RoPE），输出 semantic token s_N；pixel-level 用 M 层 PiT block、<b>极小隐藏维 D_pix=16 ≪ D</b> 做逐像素细化。② <b>Pixel-wise AdaLN</b>（式7）：把每个 patch 的语义条件 s_cond 经线性 Φ: ℝ^D→ℝ^(p²·6D_pix) 展开成 <b>p² 套</b> AdaLN 参数 (β1,γ1,α1,β2,γ2,α2)，<b>每个像素一套</b>（对比 Fig3B patch-wise 全 p² 共享一套、Fig3A 全局一套）。③ <b>Pixel Token Compaction</b>：全局注意力前用学得的 𝒞: ℝ^(p²×D_pix)→ℝ^D 把 p² 像素压成 1 个 patch token、注意力后用 ℰ 还原——序列从 H×W 降到 L=(H/p)(W/p)，<b>p²-fold 缩短、注意力代价 p⁴-fold 下降</b>（p=16→256× 缩短）；靠残差+学得 expansion 保高频，不像 VAE 那样永久有损。训练目标 = Rectified Flow 速度匹配 ℒ_diff=𝔼‖f_θ(x_t,t,y)−v_t‖² + λ_repa·ℒ_repa（向冻结 DINOv2 特征对齐，λ=0.5）。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">• <b>ImageNet 256</b>（XL,797M,320ep）：gFID <b>1.61</b>、IS 292.7、recall 0.64，碾压像素类 PixelFlow-XL(1.98)/PixNerd-XL(1.93)/EPG-XXL(1.81)/JiT-G(1.82)；仅 80ep 已 2.36（收敛快）。<br>• <b>ImageNet 512</b>：gFID <b>1.81</b>、recall 0.67（像素类最高），甚至超 latent 的 REPA(2.08)。<br>• <b>文生图 1024²</b>（1.3B）：GenEval 0.74 / DPG 83.5，逼近 FLUX-dev(12B, 0.67/84.0)；512² 为 0.78/83.7。<br>• <b>算力</b>：311 GFLOPs 拿到 1.61 FID（Table15），vs PixelFlow-XL 5818、远低于多数像素模型、接近 latent(238–292)。<br>• <b>编辑</b>：背景 MSE 0.001522 vs FLUX 0.009105（<b>6× 更低</b>）、SSIM 0.8628 最高。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 实证"单阶段像素扩散能追平 latent"，把无 VAE 路线做到 SOTA；② 消融极干净（Table5：Vanilla 9.84→+RoPE/RMSNorm 8.53→+compaction 3.50→+pixel-wise AdaLN 2.36/1.61），逐项证明每个组件必要；③ Appendix G 诚实列<b>失败尝试</b>（DCT 因式分解 AdaLN、Haar 小波、cross-attn 条件、prefix token、ED bottleneck 全没赢过简单设计），对后人很有价值。</div>
+    <div class="note-h">疑问 / 待核</div>
+    <div class="note-b">① <b>本页摘要写 ImageNet512=2.21，但 PDF v2 正文/Table2=1.81</b>——Table18 显示 2.21 是"320+40ep finetune"的中间值、1.81 是"320+530ep"的最终值，属版本/checkpoint 差异（本页摘要疑取了旧数）。② 用 velocity prediction 但论文自承"易 loss spike"（尤其深网/长训），x-prediction 能缓解却没更好——像素扩散的训练稳定性仍是 open challenge（Limitations 明写）。③ D_pix=16 为何够？论文扫了 4–128，16 足矣、更大不成比例涨显存（原文给了结论、未给完整机理）。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文 85.8K 字符 / 25 页提取）。原文英文原句 + 中文指路，追问 why、给数值表、外部概念标“外部非本文”、原文未写处标“原文未写/需查”。</div>
+<!-- QA_LOG -->
+    <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]}};</script>
+    <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>立靶：</b>原文 <i>"Latent-space modeling has been the standard for Diffusion Transformers (DiTs). However, it relies on a two-stage pipeline where the pretrained autoencoder introduces lossy reconstruction, leading to error accumulation while hindering joint optimization."</i> —— latent 扩散是 DiT 的标准做法，但它是<b>两阶段</b>（先训 VAE、再训扩散）；预训练 autoencoder 的<b>有损重建</b>→误差累积 + 妨碍联合优化。这是全文要拔掉的钉子。</div>
+    <div class="note-b"><b>解法：</b>原文 <i>"we propose PixelDiT, a single-stage, end-to-end model that eliminates the need for the autoencoder and learns the diffusion process directly in the pixel space."</i> —— <b>单阶段、端到端、无 autoencoder</b>，直接在像素空间学扩散。</div>
+    <div class="note-b"><b>架构关键词：</b>原文 <i>"a dual-level design: a patch-level DiT that captures global semantics and a pixel-level DiT that refines texture details, enabling efficient training of a pixel-space diffusion model while preserving fine details."</i> —— <b>dual-level</b>：patch 级抓全局语义、pixel 级修纹理细节，兼顾"高效"与"保细节"（全文 selling point）。</div>
+    <div class="note-b"><b>硬指标：</b>原文 <i>"achieves 1.61 FID on ImageNet 256 and 1.81 FID on ImageNet 512, surpassing existing pixel generative models … pretrain it at the 1024² resolution … achieves 0.74 on GenEval and 83.5 on DPG-bench, approaching the best latent diffusion models."</i> —— 256→<b>1.61</b>、512→<b>1.81</b>、1024² 文生图 GenEval 0.74 / DPG 83.5。<b>注意</b>：本页顶部摘要写 512=2.21（旧版数），PDF v2 已更新为 1.81，差异见下文 Table 18 解释。<b>一句话抓 Abstract：</b>把扩散搬回像素空间、扔掉 VAE，用 dual-level + 高效逐像素建模做到追平 latent diffusion。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原创——理解 PixelDiT 必备）</div>
+    <div class="note-b"><b>① DiT / AdaLN-Zero（Peebles &amp; Xie 2023）：</b>Diffusion Transformer 把图像切 patch 当 token、纯 Transformer 做扩散 backbone；条件（timestep/class）经小 MLP 算出 LayerNorm 的 scale \(\gamma\)/shift \(\beta\)/gate \(\alpha\) 注入，即 AdaLN；AdaLN-Zero 让 gate 初始化 0→残差初为恒等、稳训练。本文沿用并把 LayerNorm 换 <b>RMSNorm</b>、加 <b>2D RoPE</b>。</div>
+    <div class="note-b"><b>② Latent Diffusion / VAE（Rombach 2022）：</b>先训 VAE 把 image 压成低分辨率 latent、扩散只在 latent 跑、生成完 decode 回像素——省算力但<b>受 VAE 重建上限封顶</b>。本文要取代的正是这个范式。</div>
+    <div class="note-b"><b>③ Rectified Flow / flow matching（Liu 2023）：</b>直线插值 \(x_t=(1-t)x_0+t\,x_1\)（\(x_0\) 噪声/\(x_1\) 数据），网络回归速度 \(v=x_1-x_0\)；推理沿 ODE 少步积分。本文训练用速度匹配 loss（式8）。</div>
+    <div class="note-b"><b>④ REPA（Yu 2025）：</b>Representation Alignment——训扩散时加辅助 loss，把中间层特征<b>对齐到冻结 DINOv2 语义特征</b>，大幅加速收敛/稳训练。本文 \(\lambda_{repa}=0.5\)；消融显示<b>去掉 REPA 直接发散</b>。</div>
+    <div class="note-b"><b>⑤ MM-DiT（SD3 / Esser 2024）+ 评测：</b>多模态 DiT block，图像流与文本流各自 QKV、在 joint self-attention 融合；本文文生图版接在 patch 通路、文本编码器用冻结 <b>Gemma-2</b>。评测：gFID/sFID 越低越好、IS/Precision/Recall 越高越好；<b>GenEval</b> 看对象/计数/颜色/位置组合正确率、<b>DPG-Bench</b> 看密集 prompt 语义对齐。</div>
+
+    <div class="note-h">② §1 Introduction — problem → 现有不足 → solution → why 闭环</div>
+    <div class="note-b"><b>problem（两层结构性硬伤）：</b>原文 <i>"First, LDMs couple diffusion to a separately pretrained autoencoder whose reconstruction objective is only partially aligned with the downstream generative objective. Second, the autoencoder introduces a lossy reconstruction that can remove high-frequency details and cap sample fidelity"</i>——即<b>目标错配</b> + <b>有损封顶</b>。Fig 1b 展示 FLUX/SD3 的 VAE 连墙上场景文字都重建糊了，导致编辑失败。</div>
+    <div class="note-b"><b>现有像素方法的两难（why 它们不行）：</b>原文 <i>"One line of work adopts aggressive patchification to keep attention affordable, but this significantly weakens per-pixel token modeling"</i>（激进 patchify 省算力但削弱逐像素建模）；另一派 <i>"pushes toward near-pixel granularity … but the global attention must process very long token sequences with quadratic complexity"</i>（逼近逐像素则注意力 \(O(N^2)\) 爆炸）。结论：<i>"the obstacle … is the lack of an efficient pixel modeling mechanism that can model both global semantics and per-pixel updates."</i></div>
+    <div class="note-b"><b>solution（Intro 即给出，不推迟到 Method）：</b><i>"PixelDiT decouples image semantics from per-pixel learning with a dual-level architecture"</i>——patch 级走短序列长程注意力抓全局、pixel 级做逐像素细化；两把钥匙 (i) <b>pixel-wise AdaLN</b>（用语义 token 调制每个像素 token），(ii) <b>pixel token compaction</b>（全注意力前压缩、之后还原）。</div>
+    <div class="note-b"><b>why it works：</b>把语义推理放到低分辨率 patch grid（<i>"most semantic reasoning to occur on the low-resolution grid"</i>）→ 减轻 pixel 通路负担、加速收敛；pixel-wise AdaLN 让每像素更新与全局上下文对齐；token compaction 让全局注意力序列可控。<b>四点贡献</b>原文自列：single-stage 无 AE / efficient pixel modeling 是 key / pixel-wise AdaLN+compaction / 类条件与文生图都强。</div>
+
+    <div class="note-h">Q&amp;A · "pixel modeling"到底难在哪？</div>
+    <div class="note-b"><b>定义：</b>原文 <i>"By pixel modeling, we refer to the mechanism of capturing dense, per-pixel interactions and high-frequency details, which is distinct from the semantic structural generation typically handled by coarse patch tokens."</i> 即"逐像素的密集交互 + 高频细节建模"，区别于粗 patch token 负责的语义结构。<b>难点本质：</b>它对纹理保真至关重要但<b>算力昂贵</b>——直接对 \(H\times W\) 个像素 token 做全局注意力是 \(O(N^2)\) 显存、\(O(N^2 D)\) FLOPs，256² 下就到 82,247 GFLOPs（Table 6，直接 OOM）。所以全文的工程核心就是"既要逐像素、又要算得起"。</div>
+
+    <div class="note-h">③ §3.1 Dual-level 架构 · patch-level 公式（eq1–5）</div>
+    <div class="note-b"><b>patch 通路（输入→维度）：</b>输入 \(x\in\mathbb{R}^{B\times C\times H\times W}\)→非重叠 \(p\times p\) patch→\(x_{patch}\in\mathbb{R}^{B\times L\times(p^2 C)}\)，\(L=\frac{H}{p}\frac{W}{p}\)；线性投到隐藏维 \(D\)（式1–2） \[ s_0=W_{patch}\,x_{patch},\qquad c=\mathrm{SiLU}(W_t t+W_y y+b)\in\mathbb{R}^{B\times1\times D} \] 全局条件 \(c\) 来自 timestep \(t\) + class \(y\)。</div>
+    <div class="note-b"><b>augmented DiT block（式3–5）：</b> \[ \tilde s_i=\mathrm{RMSNorm}(s_i) \] \[ s_i=s_i+\alpha_1(c)\odot\mathrm{Attn}\big(\gamma_1(c)\odot\tilde s_i+\beta_1(c);\ \mathrm{RoPE}\big) \] \[ s_{i+1}=s_i+\alpha_2(c)\odot\mathrm{MLP}\big(\gamma_2(c)\odot\mathrm{RMSNorm}(s_i)+\beta_2(c)\big) \] AdaLN 参数 \((\alpha,\gamma,\beta)\) 由 \(c\) 算出后<b>广播到全部 \(L\) 个 patch token</b>（即 patch 级 token-independent，与后面 pixel-wise 形成对比）。\(N\) 层后得语义 token \(s_N\in\mathbb{R}^{B\times L\times D}\)，定义 pixel 通路条件 <b>\(s_{cond}:=s_N+t\)</b>。</div>
+    <div class="note-b"><b>设计取舍：</b>patch 通路只处理 patch token 抓全局，故可用<b>大 patch \(p\)</b> 缩短序列、加速推理而不丢细节；pixel 通路用<b>极小隐藏维 \(D_{pix}\ll D\)（如 \(D_{pix}=16\)）</b>，保证逐像素计算高效。默认配置 \(N=26,\ M=4\)（Fig 10 消融最优）。</div>
+
+    <div class="note-h">④ §3.2 Pixel-wise AdaLN · 每像素一套调制（eq6–7）</div>
+    <div class="note-b"><b>pixel 嵌入（式6）：</b>每像素一个 token \[ X\in\mathbb{R}^{B\times C\times H\times W}\ \xrightarrow{\text{reshape+linear}}\ \mathbb{R}^{B\times H\times W\times D_{pix}} \] 再 reshape 成 \((B\cdot L)\times p^2\times D_{pix}\)（每个 patch 内 \(p^2\) 个像素 token）。</div>
+    <div class="note-b"><b>关键式7（pixel-wise AdaLN）：</b>用线性投影 \(\Phi:\mathbb{R}^{D}\to\mathbb{R}^{p^2\cdot 6D_{pix}}\) 把每个 patch 的语义条件 \(s_{cond}\) 展成 \(p^2\) 套 AdaLN 参数 \[ \Theta=\Phi(s_{cond})\in\mathbb{R}^{(B\cdot L)\times p^2\times 6D_{pix}} \] 再把末维切 6 组得 \((\beta_1,\gamma_1,\alpha_1,\beta_2,\gamma_2,\alpha_2)\)——<b>每个像素独立调制</b>。对比 Fig 3B patch-wise（\(p^2\) 像素共享一套、抓不到逐像素变化）、Fig 3A naive（全局一套）。这是 PixelDiT"逐像素对齐全局上下文"的核心机制。</div>
+
+    <div class="note-h">Q&amp;A · 为什么 patch 通路用"全局广播"AdaLN，pixel 通路却要"逐像素"AdaLN？</div>
+    <div class="note-b"><b>对比：</b>patch 通路的 AdaLN 参数由全局条件 \(c\) 算出后<b>广播到全部 \(L\) 个 patch token</b>（token-independent），因为 patch 级处理的是"全局语义结构"，同一套调制足矣。pixel 通路若也共享一套（Fig 3B patch-wise）就<b>抓不到同一 patch 内 \(p^2\) 个像素之间的细微差异</b>——而细微差异正是纹理高频所在。所以 pixel 级必须 Fig 3C 的 pixel-wise：用 \(\Phi\) 把 \(s_{cond}\) 展成 \(p^2\) 套参数、每像素独立（式7）。<b>一句话：</b>语义可粗（共享调制），纹理必细（逐像素调制），这正是 dual-level 在"调制粒度"上的体现。</div>
+
+    <div class="note-h">⑤ §3.2 Pixel Token Compaction · 让全局注意力算得起</div>
+    <div class="note-b"><b>做法：</b>注意力前用学得线性 \(\mathcal{C}:\mathbb{R}^{p^2\times D_{pix}}\to\mathbb{R}^{D}\) 把 1 个 patch 内 \(p^2\) 像素压成 1 个 patch token，注意力后用 \(\mathcal{E}:\mathbb{R}^{D}\to\mathbb{R}^{p^2\times D_{pix}}\) 还原。序列从 \(H\times W\) 降到 \(L\)，<b>\(p^2\)-fold 缩短</b>（\(p=16\to256\times\)），注意力总代价 <b>\(p^4\)-fold 下降</b>。原文：\(O(N^2)\) 显存与 \(O(N^2 D)\) FLOPs，256² 下达 82,247 GFLOPs（Table 6），compaction 后才可训。</div>
+
+    <div class="note-h">Q&amp;A · token compaction 跟 VAE 压缩有何本质不同？</div>
+    <div class="note-b"><b>关键区别：</b>原文 <i>"Unlike the lossy bottleneck in VAEs, this mechanism only compresses the representation momentarily for the attention operation … high-frequency information is preserved through residual connections and learned expansion layers."</i> VAE 是<b>永久有损</b>瓶颈（高频被砍掉再也回不来）；而 compaction 只在<b>注意力这一步</b>临时压缩，靠<b>残差连接 + 学得 expansion</b> 把高频带回，是<b>可逆/无永久损失</b>的。这正是 PixelDiT 能"既省算力又保细节"、避开 VAE 伪影的根因。</div>
+
+    <div class="note-h">⑥ §3.3 文生图 + §3.4 训练目标（Rectified Flow + REPA）</div>
+    <div class="note-b"><b>文生图（§3.3）：</b>patch 通路换 <b>MM-DiT</b> block 融合冻结 Gemma-2 文本特征 \(y\in\mathbb{R}^{B\times L_{txt}\times D_{txt}}\)、<b>pixel 通路不变</b>（文本只经 semantic token 间接进 pixel 流，不直接路由 text token 进像素流）。</div>
+    <div class="note-b"><b>训练目标（式8）：</b>Rectified Flow 速度匹配 + REPA 对齐 \[ \mathcal{L}_{diff}=\mathbb{E}_{t,x,\epsilon}\big\lVert f_\theta(x_t,t,y)-v_t\big\rVert^2,\qquad \mathcal{L}=\mathcal{L}_{diff}+\lambda_{repa}\,\mathcal{L}_{repa} \] \(\lambda_{repa}=0.5\)，向冻结 DINOv2 特征对齐。采样器默认 <b>FlowDPMSolver</b>（ImageNet 100 步、文生图 25 步，Fig 8 证其在 fidelity/diversity 间权衡最优）。配置：XL = \(N{=}26/M{=}4/D_{pix}{=}16\)/797M；T2I = 1.3B，512² 预训→1024² finetune。</div>
+
+    <div class="note-h">⑦ §4 实验 · SOTA 对比（真实数值，gFID↓/IS↑/Recall↑）</div>
+    <div class="note-b"><b>ImageNet 256（Table 1，XL 797M）：</b>PixelDiT-XL 320ep <b>gFID 1.61</b> / sFID 4.68 / IS 292.7 / recall 0.64；80ep 已 2.36（收敛快）。<b>碾压像素类</b>：PixelFlow-XL 1.98、PixNerd-XL 1.93、EPG-XXL/16 1.81、JiT-G(2B) 1.82、Simple Diffusion 2.44、FractalMAR-H 6.15。vs latent 类 DDT-XL 1.26 / RAE-XL 1.13（仍有差距但已很近）/ REPA 1.42。</div>
+    <div class="note-b"><b>ImageNet 512 + 文生图：</b>512 正文 <b>gFID 1.81</b>（像素类最高，超 latent REPA 2.08）。1024² PixelDiT-T2I(1.3B) <b>GenEval 0.74 / DPG 83.5</b>，超 SDXL/Hunyuan-DiT/DALL·E3、逼近 FLUX-dev(12B)；512² 0.78/83.7 胜 PixNerd/PixelFlow。<b>算力（Table 15）：</b>311 GFLOPs 拿 1.61 FID，远省于 PixelFlow-XL 等几百~几千 GFLOPs 的像素模型，接近 latent 的 240–290。</div>
+
+    <div class="note-h">⑧ §4.5 消融全表 — 每项"验证了什么"</div>
+    <div class="note-b"><b>组件消融（Table 5，256，每加一件涨多少）：</b><b>Vanilla DiT/16</b> 9.84 → <b>+RoPE,RMSNorm</b> 8.53 → <b>+Dual-level（无 compaction）</b> = <b>OOM</b>（全局注意力随像素数二次爆显存）→ <b>+Pixel Token Compaction</b> 3.50（同 80ep，质量大跳）→ <b>+Pixel-wise AdaLN</b> 2.36（80ep）/ <b>1.61</b>（320ep）。<b>验证：</b>compaction 让方案可行、pixel-wise AdaLN 进一步提质，二者是从 9.84 到 1.61 的两大台阶。</div>
+    <div class="note-b"><b>compaction 算力（Table 6）：</b><b>No Pixel Token Compaction = 82,247 GFLOPs → OOM</b>（vs 完整 ~311 GFLOPs，差约 264×）；<b>No Pixel-Pathway Attention</b>（只留 AdaLN+MLP）虽更省但"consistently inferior"（80→160ep 一直更差）。<b>验证：</b>compact 后的全局注意力对"局部更新对齐全局"是必要的，不能砍。</div>
+    <div class="note-b"><b>REPA 必要性（Table 11）：</b>w/ REPA 160ep 1.97 / IS 299.4；<b>w/o REPA 6.58 / IS 165.9</b>（去掉直接发散）。<b>PTC rate（Fig 11）：</b>1×（\(p^2\to\)1 token）反而略优于 2×/4×（推测更长冗余序列更难优化）。<b>depth（Fig 10）：</b>\(N{=}26,M{=}4\) 优于 \(N{=}22,M{=}8\) 等。<b>采样器（Fig 8）：</b>FlowDPMSolver 综合最佳。</div>
+
+    <div class="note-h">Q&amp;A · 本页摘要 512=2.21、PDF 正文=1.81，到底哪个对？</div>
+    <div class="note-b"><b>解谜（Table 18 / v2 更新）：</b>ImageNet-512 是从 320ep 的 256 ckpt finetune 而来——<b>短 finetune（"320+40ep"）= 2.21</b>，<b>充分 finetune（"320+530ep"）= 1.81</b>。即 2.21 是中间 checkpoint 值、1.81 是终值；PDF v2 摘要已统一为 1.81，而本页顶部摘要疑取了旧版数字。<b>诚实结论：</b>两个数都"真实存在"，只是对应不同训练时长，最终代表数应取 1.81。</div>
+
+    <div class="note-h">⑨ 诚实加分项 · 失败尝试与 Limitations（Appendix G）</div>
+    <div class="note-b"><b>失败尝试（对后人有价值）：</b>作者诚实列出没赢过简单设计的尝试——<b>x-prediction</b>（直接预测干净图 \(\hat x\)，\(\hat v=(\hat x-x_t)/\max(\sigma(t),\epsilon),\ \epsilon=0.05\)）"can effectively mitigate loss spikes" 但 <i>"did not outperform direct velocity prediction"</i> 且要额外调参；以及 Encoder–Decoder bottleneck 等架构变体也未胜出。<b>Limitations：</b>原文承认 <i>"training pixel-space diffusion models with velocity prediction is prone to loss spikes, particularly for deeper architectures and during long training runs"</i>——稳定性仍是 open challenge；复杂建筑/人手等细节仍吃力。</div>
+
+    <div class="note-h">⑩ §4 图像编辑 · 无 VAE 的核心红利（Table 14）</div>
+    <div class="note-b"><b>为什么无 VAE 对编辑特别重要：</b>latent 扩散做 train-free 编辑（如 FlowEdit）要先把图 encode 进 latent、改完再 decode；VAE 的<b>有损往返</b>会把 bounding box 外的背景也改坏（Fig 1b：墙上场景文字被 FLUX/SD3 的 VAE 重建糊掉，编辑随之失败）。PixelDiT 在像素空间直接去噪，<b>没有 encode/decode 往返</b>，背景天然保持。</div>
+    <div class="note-b"><b>定量（FlowEdit 281 个样本，用 SAM3 取编辑框、只算框外背景区）：</b>背景 <b>MSE：PixelDiT 0.001522 vs FLUX 0.009105（6.0× 更低）</b>、vs SD3 也更优；背景 <b>SSIM：PixelDiT 0.8628 &gt; FLUX 0.8254</b>（最高）。原文：<i>"with 6.0× lower MSE"</i>。<b>验证：</b>"像素空间无 VAE"不是口号，而是带来可量化的编辑/背景保持优势——这是 PixelDiT 区别于 latent 路线的实际落地价值。</div>
+
+    <div class="note-h">Q&amp;A · pixel 通路隐藏维 \(D_{pix}=16\) 为何这么小还够用？</div>
+    <div class="note-b"><b>机理：</b>原文 <i>"the pixel-level pathway operates with a reduced hidden dimension \(D_{pix}\ll D\) (e.g., \(D_{pix}=16\)), ensuring that dense per-pixel computations remain highly efficient."</i> 因为<b>语义重活已被 patch 通路（隐藏维 \(D\)）干完</b>，pixel 通路只负责"在已有语义骨架上修高频纹理细节"，所需表达能力小，故 \(D_{pix}\) 可极小——这正是 dual-level 解耦的红利：把"贵但低维"的逐像素计算和"高维但短序列"的语义计算分开，各取所需。[推测] 具体 \(D_{pix}\) 维度扫描见 Appendix，本页未逐一列出其曲线，但默认 16 是作者给出的高效配置。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>problem：</b>主流 latent diffusion 两阶段 VAE 有损、目标错配、封顶保真且编辑掉细节；纯像素扩散又因 \(O(N^2)\) 注意力太贵、缺高效"逐像素建模"机制。</div>
+    <div class="note-b"><b>method：</b>单阶段无 VAE 的 <b>dual-level Transformer</b>：patch-level DiT 抓全局（大 patch、短序列、RMSNorm+RoPE+AdaLN+REPA，式1–5）；pixel-level PiT 做细节，靠 <b>pixel-wise AdaLN</b>（每像素一套调制，式6–7）+ <b>pixel token compaction</b>（压→注意力→还原，\(p^2\)-fold 缩序列、\(p^4\)-fold 降算力，且非永久有损）。Rectified Flow 速度匹配 + REPA（式8）训练。</div>
+    <div class="note-b"><b>experiment：</b>ImageNet256 <b>1.61</b> / 512 <b>1.81</b>（均超像素类、512 超 latent REPA），1024² 文生图 0.74/83.5 逼近 FLUX；311 GFLOPs 高性价比；编辑背景 MSE 0.001522 vs FLUX 0.009105（6.0× 更优）。消融证 compaction（否则 82,247 GFLOPs/OOM）、pixel-wise AdaLN（2.36→优于 patch-wise）、REPA（否则发散 6.58）三者缺一不可。</div>
+    <div class="note-b"><b>takeaway（≥3 条）：</b>① <b>"高效逐像素建模是实用像素扩散的钥匙"</b>——把逐像素做高效（dual-level + AdaLN + compaction），单阶段像素扩散能在类条件与文生图上追平 latent；② <b>无 VAE 天然规避重建伪影</b>，对图像编辑/背景保持优势显著（6× 更低 MSE）；③ <b>临时压缩+残差还原 ≠ VAE 永久有损</b>，这是兼顾省算力与保细节的关键洞见。<br><b>适用边界 / 诚实标注：</b>1.3B 文生图对复杂建筑/人手仍吃力；<b>velocity prediction 易 loss spike</b>，训练稳定性是 open challenge（Limitations 承认）；\(D_{pix}=16\) 为何够论文给了扫描结论但未给完整机理；512 的 2.21 vs 1.81 属 checkpoint 差异（见 Q&amp;A）。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1 | Visual results of PixelDiT on text-to-image generation and training-free image editing. Please zoom in for the details. Additional examples are provided in the Appendix.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2 | Overview of PixelDiT: a dual-level, fully transformer-based diffusion architecture that operates directly in pixel space. The left figure shows the overall framework of PixelDiT, while the right figure illustrates the detailed structure of the PiT blocks.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3 | AdaLN modulation strategies. (A) A naive AdaLN broadcasts a global conditioning vector to all pix- els. (B) Patch-wise AdaLN expands semantic tokens to the 𝑝2 pixels within each patch. (C) Pixel-wise AdaLN applies an MLP to each semantic token to produce per- pixel scale, shift, and gating parameters, enabling fully context-aligned updates at every pixel.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4 | Qualitative results on ImageNet 256 × 256 using PixelDiT-XL. We use a classifier-free guidance scale 𝛼cfg = 4.0.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5 | Convergence analysis of PixelDiT on ImageNet 256×256. (a) gFID vs. training iterations for B, L, and XL models with varying patch sizes. (b) Comparison of B/L/XL models at a fixed patch size 𝑝=16.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6 | Qualitative results on ImageNet 512×512 using PixelDiT. We use a classifier-free guidance scale 𝛼cfg = 4.0.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7 | T2I architecture of PixelDiT with MM-DiT blocks on the patch-level pathway. The pixel-level pathway performs dense per-pixel modeling conditioned on semantic tokens.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8 | Comparison of FlowDPMSolver, Euler, and Heun samplers on ImageNet 256×256 with 100 inference steps and no classifier-free guidance. FlowDPMSolver achieves the best combined trade-off between fidelity in gFID and sFID and diversity in IS, precision, and recall, which motivates its use as our default sampler.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9 | Effect of the number of FlowDPMSolver infer- ence steps on gFID for PixelDiT-XL at different training stages on ImageNet 256×256. Increasing the number of steps is most beneficial once the model is moderately or fully trained (400K and 1.6M iterations), with diminishing returns beyond 50 steps; we adopt 100 steps as the default for ImageNet experiments.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig10.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 11 presents the ablation results. Across training, all three settings converge to strong gFID values around 2.0, while the model with the most aggressive compression</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig11.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 10 | Ablation of depth allocation between patch- level (𝑁) and pixel-level (𝑀) pathways on ImageNet 256×256. Our chosen configuration (𝑁=26, 𝑀=4), high- lighted in brown, offers the best trade-off between early convergence and final image quality.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig12.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 11 | Ablation of Pixel Token Compaction rates on ImageNet 256×256. The curves compare three post- compaction sequence lengths, denoted as “Seq Len 𝐿 (1×)”, “Seq Len 2𝐿(2×)”, and “Seq Len 4𝐿(4×)”, where 𝐿is the number of patch tokens after compaction. “Seq Len 𝐿(1×)” corresponds to our default configuration in which each 𝑝2 pixel block is compacted into a single token.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig13.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 12 | Additional Text-to-Image Generation Results. The caption below each image corresponds to the text prompt used to generate it.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig14.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 13 | Additional Text-to-Image Generation Results. The caption below each image corresponds to the text prompt used to generate it.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig15.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 14 | Additional Text-to-Image Generation Results. The caption below each image corresponds to the text prompt used to generate it.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig16.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 15 | Additional Text-to-Image Generation Results. The caption below each image corresponds to the text prompt used to generate it.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig17.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 16 | Uncurated ImageNet 256×256 PixelDiT-XL samples. Class 291. CFG scale = 4.0.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig18.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 17 | Uncurated ImageNet 256×256 PixelDiT-XL samples. Class 259. CFG scale = 4.0.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig19.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 18 | Uncurated ImageNet 256×256 PixelDiT-XL samples. Class 24. CFG scale = 4.0.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig20.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 19 | Uncurated ImageNet 256×256 PixelDiT-XL samples. Class 970. CFG scale = 4.0.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig21.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 20 | Uncurated ImageNet 256×256 PixelDiT-XL samples. Class 39. CFG scale = 4.0.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig22.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 21 | Uncurated ImageNet 256×256 PixelDiT-XL samples. Class 263. CFG scale = 4.0.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig23.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 22 | Uncurated ImageNet 256×256 PixelDiT-XL samples. Class 373. CFG scale = 4.0.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-pixeldit-pixel-diffusion-transformers-for-image-generat/fig24.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 23 | Uncurated ImageNet 256×256 PixelDiT-XL samples. Class 386. CFG scale = 4.0.</figcaption></figure>
+    </div>
+  </div></body></html>

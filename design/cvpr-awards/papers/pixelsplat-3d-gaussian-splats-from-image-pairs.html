@@ -1,0 +1,221 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>pixelSplat: 3D Gaussian Splats from Image Pairs for Scalable Generalizable 3D Reconstruction</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:24px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0;font-size:13.5px}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.back{color:var(--mut);font-size:14px}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.en{color:#cfd6ff;font-style:italic;margin:10px 0 2px}
+.cn{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+figure{margin:14px 0;text-align:center}figure img{max-width:100%;border-radius:10px;border:1px solid var(--line)}
+figure figcaption{color:var(--mut);font-size:12.5px;margin-top:6px}
+.code{background:#0e1230;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:12px;color:#bfe3ff;white-space:pre-wrap;margin:8px 0;font-family:ui-monospace,Menlo,Consolas,monospace}
+.q{color:var(--accent);font-weight:700;margin:16px 0 4px;border-left:3px solid var(--accent);padding-left:9px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag">arXiv 2312.12337 · CVPR 2024</span> &nbsp; <span class="badge b-candidate">📄 可泛化 3D 重建 · 前馈 3DGS</span></div>
+    <h1>pixelSplat: 3D Gaussian Splats from Image Pairs for Scalable Generalizable 3D Reconstruction</h1>
+    <div class="au2">David Charatan ⋅ Sizhe Lester Li ⋅ Andrea Tagliasacchi ⋅ Vincent Sitzmann</div>
+    <div class="kv">MIT · Simon Fraser University · University of Toronto</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2312.12337">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2312.12337">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=pixelSplat">Scholar</a></div>
+    <div class="tldr"><b>一句话：</b>把"每场景优化的 3DGS"变成"<b>一次前向预测的 3DGS</b>"——用一个前馈网络从<b>两张图</b>直接预测 3D 高斯辐射场，免去逐场景优化、泛化到新场景；核心是<b>预测深度上的稠密概率分布并用重参数化技巧让"采样高斯中心"可微</b>，绕开稀疏表示的局部最小值。实时渲染、比 light field transformer 快约 <b>2.5 个数量级</b>，RealEstate10k / ACID 上 SOTA。</div>
+
+    <div class="box"><h2>摘要 Abstract（原文）</h2><div class="abstract">We introduce pixelSplat, a feed-forward model that learns to reconstruct 3D radiance fields parameterized by 3D Gaussian primitives from pairs of images. Our model features real-time and memory-efficient rendering for scalable training as well as fast 3D reconstruction at inference time. To overcome local minima inherent to sparse and locally supported representations, we predict a dense probability distribution over 3D and sample Gaussian means from that probability distribution. We make this sampling operation differentiable via a reparameterization trick, allowing us to back-propagate gradients through the Gaussian splatting representation. We benchmark our method on wide-baseline novel view synthesis on the real-world RealEstate10k and ACID datasets, where we outperform state-of-the-art light field transformers and accelerate rendering by 2.5 orders of magnitude while reconstructing an interpretable and editable 3D radiance field.</div></div>
+
+    <div class="box notes"><h2>📝 精读笔记（要点）</h2>
+<!-- NOTES:pixelsplat-3d-gaussian-splats-from-image-pairs -->
+    <div class="note-h">为什么读它（与 World Engine 的关联）</div>
+    <div class="note-b">在精读 World Engine 时讨论到"3DGS 是<b>每场景过拟合</b>、不泛化"——pixelSplat 正是"<b>不过拟合 / 可泛化</b>"路线的代表作：训练一个网络在很多场景上学，推理时<b>一次前向</b>从稀疏图像预测高斯，无需逐场景优化。与 vanilla 3DGS 互为对照。</div>
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">3DGS 从"优化问题"变成"<b>回归问题</b>"：网络吃一对图像 → 直接吐出一组 3D 高斯（辐射场），实时可渲、可泛化、可编辑。</div>
+    <div class="note-h">要解决的问题</div>
+    <div class="note-b">Generalizable novel view synthesis from sparse (两张) image observations——稀疏视角下的可泛化新视角合成，且要<b>前馈、实时</b>。</div>
+    <div class="note-h">核心机制（摘要级，细节待逐节精读）</div>
+    <div class="note-b">稀疏且局部支撑的表示容易陷入<b>局部最小值</b>（高斯中心放不对）。pixelSplat 的解法：<b>预测 3D 上的稠密概率分布</b>，再从该分布<b>采样</b>高斯中心；通过<b>重参数化技巧（reparameterization trick）</b>让这个采样可微，从而能把梯度反传穿过 splatting 表示。</div>
+    <div class="note-h">结果</div>
+    <div class="note-b">实时 + 显存高效；渲染加速约 <b>2.5 个数量级</b>；在真实数据集 <b>RealEstate10k / ACID</b> 的 wide-baseline 新视角合成上超过 SOTA 的 light field transformer；重建出可解释、可编辑的 3D 辐射场。</div>
+    <div class="note-b notes-todo" style="color:var(--mut);font-style:italic">逐节精读：abstract + Introduction 闭环 + method(极线/概率深度/§4.2 重参数化) + 实验消融 + §4.1/§4.2 代码级 + 数据集 + GMM 背景，均已覆盖；可选再补 cross-view 特征细节 / 2-3 view 扩展。</div>
+<!-- /NOTES -->
+    </div>
+
+    <div class="box" id="qa"><h2>📖 逐段精读 · 中英对照 &amp; 问答记录</h2>
+    <div class="kv">从 Abstract 开始逐节精读，随讨论持续累积。最后更新 2026-07-01（+ ⑥ 官方代码级：网络结构图 / mono=bin cls / 采样与极线修正 / overlap 边界）。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 段落中译</div>
+    <div class="en">We introduce pixelSplat, a feed-forward model that learns to reconstruct 3D radiance fields parameterized by 3D Gaussian primitives from pairs of images. Our model features real-time and memory-efficient rendering for scalable training as well as fast 3D reconstruction at inference time.</div>
+    <div class="cn">我们提出 pixelSplat，一个<b>前馈模型</b>，学习从<b>图像对</b>重建以 3D 高斯基元参数化的 3D 辐射场。该模型具备<b>实时、显存高效</b>的渲染（利于可扩展训练），以及推理时的<b>快速 3D 重建</b>。</div>
+    <div class="en">To overcome local minima inherent to sparse and locally supported representations, we predict a dense probability distribution over 3D and sample Gaussian means from that probability distribution. We make this sampling operation differentiable via a reparameterization trick, allowing us to back-propagate gradients through the Gaussian splatting representation.</div>
+    <div class="cn">为克服<b>稀疏、局部支撑</b>表示固有的<b>局部最小值</b>问题，我们在 3D 上预测一个<b>稠密概率分布</b>，并从该分布<b>采样高斯中心</b>。我们用<b>重参数化技巧</b>让这一采样操作<b>可微</b>，从而能让梯度反向传播穿过高斯 splatting 表示。</div>
+    <div class="en">We benchmark our method on wide-baseline novel view synthesis on the real-world RealEstate10k and ACID datasets, where we outperform state-of-the-art light field transformers and accelerate rendering by 2.5 orders of magnitude while reconstructing an interpretable and editable 3D radiance field.</div>
+    <div class="cn">我们在真实数据集 <b>RealEstate10k</b> 和 <b>ACID</b> 上对<b>宽基线新视角合成</b>做基准测试，超过了 SOTA 的 light field transformer，渲染加速约 <b>2.5 个数量级</b>，同时重建出可解释、可编辑的 3D 辐射场。</div>
+    <div class="note-b" style="margin-top:8px"><b>一句话抓 Abstract：</b>前馈网络从两张图直接预测 3D 高斯（免逐场景优化）；用"概率深度 + 重参数化可微采样"解决高斯中心放置的局部最小值；实时、快 2.5 个数量级、RealEstate10k/ACID SOTA。</div>
+    <div class="note-h">①½ Introduction 闭环：解决什么 / 怎么解 / 怎么验证</div>
+    <div class="q">解决什么问题</div>
+    <div class="en">We investigate the problem of generalizable novel view synthesis from sparse image observations.</div>
+    <div class="cn"><b>可泛化的稀疏视图新视角合成</b>。困境"既要又要"：可微渲染/NeRF 质量好但慢且费显存；light-field transformer 快些但仍非实时、且<b>黑盒不可编辑</b>；3DGS 实时+可编辑但只能<b>单场景优化</b>(要几十张图)。目标=把 3DGS 的好处带进"<b>前馈、仅两张图、跨场景泛化</b>"。卡在两个硬骨头：<b>①尺度歧义</b>(SfM 位姿只到任意尺度 s_i)；<b>②局部最小值</b>(直接回归高斯位置会陷；单场景那套不可微剪枝在"需反传"的泛化设定里用不了)。</div>
+    <div class="q">怎么解决</div>
+    <div class="cn">两难点对应两设计：<br>• <b>尺度歧义 → §4.1 多视图极线 transformer</b>：跨视图找对应 + 关联三角化出的深度(含尺度)，把 per-scene 尺度推断出来。<br>• <b>局部最小值 → §4.2 概率分布参数化 + 重参数化</b>：位置用 encoder 预测的稠密概率分布隐式表示、采样得高斯中心；重参数化(α=ϕ_z)让采样可微。原文精辟一句：<i>When receiving a gradient that would increase the opacity of a Gaussian at a 3D location, our model increases the probability that the Gaussian will be sampled at that location again.</i></div>
+    <div class="q">怎么验证</div>
+    <div class="cn">真实数据 <b>RealEstate10k + ACID</b> 宽基线新视角合成，对比 SOTA light field transformer，<b>三维度全赢</b>：质量↑、训练+渲染成本↓、产出<b>显式可编辑 3D</b>；首次证明 3DGS 可端到端可微、<b>单次前向从一对图预测</b>。<br><b>诚实标注</b>：渲染加速口径三处不一——abstract 说 2.5 数量级、related work 说 3 数量级、Table 1 实测比次快 baseline 省约 650×(≈2.8 数量级)。</div>
+    <div class="q">② pixelSplat 是怎么做的（method 逐节）</div>
+    <div class="note-b"><b>整体流程：</b>两张参考图 I, Ĩ → 各自编码出特征 → <b>epipolar encoder</b>(跨视图对齐, 解尺度歧义) → 逐像素<b>概率式</b>预测高斯(解局部最小值) → 所有像素的高斯并集 = 3D 辐射场 → splatting 渲染新视角；端到端用渲染 loss 训练。它要克服两个难点，对应两个核心设计。</div>
+
+    <div class="note-h">难点1 · 尺度歧义 → §4.1 Epipolar Encoder</div>
+    <div class="note-b">SfM 重建的相机位姿带一个<b>每个场景任意的尺度 s_i</b>，模型预测的 3D 位置必须和它一致。解法是<b>两视图极线注意力</b>：</div>
+    <div class="code">对 I 里每个像素 u: 其相机射线在 Ĩ 上投影成"极线 ℓ"
+沿 ℓ 采样 {ũ_l}; 用 u 与 ũ_l 三角化算出"I 坐标系下的深度 d̃"
+   —— 该深度由两相机位姿算出, 天然编码了场景尺度 s_i
+极线 cross-attention: query=u 特征; key/value=极线采样点(特征 ⊕ 深度的位置编码)
+   → 注意力找到正确对应点, 把"对应深度的位置编码"加权吸进 u 特征
+   → 每个像素特征都编码了"与 s_i 一致的深度"
+再接 per-image self-attention: 把深度传播到"在 Ĩ 里没有极线对应"的像素</div>
+    <div class="note-b">一句话：极线注意力 = 跨两图做"对应点匹配 + 记住对应深度"，恢复出尺度自洽的深度（消融证明这步对 3D 结构化新视角合成"绝对关键"，约 +1dB PSNR）。</div>
+
+    <div class="note-h">难点2 · 直接回归位置陷局部最小值 → §4.2 概率式预测高斯</div>
+    <div class="note-b">逐像素对齐高斯：每像素 u 拿特征 F[u] 预测一个高斯 (μ位置, Σ协方差, α不透明度, S球谐颜色)。最关键是 μ 怎么参数化：<br>❌ <b>Baseline</b>(陷局部最小值)：直接回归深度 d → μ=o+d·d_u（且反传时用不了 3DGS 的"生成/剪枝"启发式，不可微）。<br>✅ <b>pixelSplat</b>：不回归"一个深度"，而是预测"深度上的离散概率分布" p_ϕ(z) 再采样。</div>
+    <div class="code">Algorithm 1 · 逐像素高斯的概率式预测(原文):
+输入: 深度桶 b∈R^Z, 像素特征 F[u], 相机原点 o, 射线方向 d_u
+1: (ϕ, δ, Σ, S) = f(F[u])      # 预测 深度概率ϕ / 桶内偏移δ / 协方差Σ / 球谐S
+2: z ~ p_ϕ(z)                   # 从离散概率分布采样一个"深度桶"索引 z
+3: μ = o + (b_z + δ_z)·d_u      # 用"桶深度 b_z + 偏移 δ_z"反投影出高斯中心
+4: α = ϕ_z                      # 不透明度 = 被采中那个桶的概率
+5: return (μ, Σ, α, S)</div>
+    <div class="note-b"><b>为什么避开局部最小值：</b>直接挪一个点容易卡住；改成"在很多深度桶上铺概率再采样"，<b>梯度能流到所有桶</b>，模型能"发现"正确深度而不被困。<b>不透明度=概率</b> → 低置信高斯自动半透明（可微的"软剪枝"）。采样离散本不可微 → 用<b>重参数化技巧</b>让梯度穿过采样（摘要的 reparameterization trick）。</div>
+
+    <div class="note-h">训练 &amp; 与 World Engine 的对照</div>
+    <div class="note-b"><b>训练：</b>两图各自逐像素预测高斯 → 两图高斯并集 = 场景辐射场 → 从<b>新视角</b> splatting 渲染 → 和真值图比（光度 loss）。端到端在 RealEstate10k / ACID 上训。<br><b>对照：</b>World Engine 的 3DGS 是<b>每场景优化</b>的数字孪生；pixelSplat 是<b>一个网络前馈预测</b>高斯、跨场景泛化——核心创新即上面两招（极线编码恢复尺度 + 概率深度&amp;重参数化避开局部最小值）。</div>
+    <div class="note-h">难点2 续 · §4.2 重参数化技巧：怎么让「采样一个深度桶」可微（本页核心补全）</div>
+    <div class="q">③-1 先问：到底什么东西不可微？我们要算的是哪个梯度？</div>
+    <div class="en">To train our model, we need to backpropagate gradients into the probabilities of the depth buckets ϕ. This means we need to compute the derivatives ∇ϕµ of the mean µ with respect to probabilities ϕ. Unfortunately, the sampling operation z∼pϕ(z) is not differentiable.</div>
+    <div class="cn">要训练「预测深度概率的网络 f」，必须把梯度传回<b>深度桶概率 ϕ</b>。按常规得算「高斯中心 μ 对 ϕ 的导数 ∇ϕμ」——但 μ 是<b>先采样桶 z∼p_ϕ(z) 再反投影</b>得到的，而<b>采样这一步对 ϕ 不可微</b>（z 是离散抽样结果），链路在这里断了。</div>
+
+    <div class="q">③-2 pixelSplat 的解法：不修 μ 那条路，另开一条「α 旁路」</div>
+    <div class="en">Inspired by variational autoencoders, we overcome this challenge via a reparameterization trick. Accordingly, we set the opacity α of a Gaussian to be equal to the probability of the bucket that it was sampled from ... We then set α = ϕz ... This means that in each backward pass, we assign the gradients of the loss L with respect to the opacities α to the gradients of the depth probability buckets ϕ, i.e., ∇ϕL = ∇αL.</div>
+    <div class="cn">关键不是"把 μ 对 ϕ 变可微"（μ 那条路依旧是断的），而是<b>另开一条可微旁路</b>：把<b>被采中那个桶的概率 ϕ_z 直接当作这个高斯的不透明度 α</b>（令 α := ϕ_z）。α 是 alpha 混合权重，渲染对它<b>天然可微</b>，于是渲染 loss 的梯度顺着 α 流回 ϕ_z——因为 α=ϕ_z 是恒等映射，所以 ∇ϕ_z·L = ∇α·L。预测 ϕ 的网络 f 就这样被训练起来。</div>
+    <div class="code">梯度怎么流（核心一图）:
+预测 ϕ = (ϕ_1 .. ϕ_Z)   ← softmax 出的 Z 个深度桶概率
+  |
+  +-- 采样 z~p_ϕ(z) → 取桶深 b_z(+偏移 δ_z) → μ = o+(b_z+δ_z)·d_u → 渲染
+  |      ✗ 断点: 离散采样不可微, μ 对 ϕ 没有梯度
+  |
+  +-- 令 α := ϕ_z  ────────────────────────────► 渲染(alpha 混合)
+         ✓ 可微: ∇ϕ_z·L = ∇α·L   ← 梯度只从这条旁路回到 ϕ
+
+对照原文 Eq.(7):  μ = o + (b_z + δ_z)·d_u,   z ~ p_ϕ(z),   (ϕ, δ) = f(F[u])
+near/far 之间按 disparity 把深度切成 Z 个桶 b∈R^Z;  δ∈[0,1]^Z 是桶内偏移</div>
+
+    <div class="q">③-3 为什么这样就能学对深度？（原文给的直觉）</div>
+    <div class="en">... consider the case where sampling produces a correct depth. In this case, gradient descent increases the opacity of the Gaussian, leading it to be sampled more often. This eventually concentrates all probability mass in the correct bucket ... Now, consider the case of an incorrectly sampled depth ... gradient descent decreases the opacity of the Gaussian, lowering the probability of further incorrect depth predictions.</div>
+    <div class="cn">• 采到<b>对的</b>深度 → 渲染像真值 → 梯度<b>抬高</b> α=ϕ_z → 这个桶概率变大 → 以后更常被采 → 概率质量逐渐<b>集中到正确桶</b>，最终形成不透明实体面。<br>• 采到<b>错的</b>深度 → 渲染不像 → 梯度<b>压低</b> α=ϕ_z → 这个桶概率变小 → 减少后续错误预测。<br>一句话：用「这次采到的桶好不好」反过来调「以后采到它的概率」。</div>
+
+    <div class="q">③-4 追问：这严格算「重参数化」吗？粗选桶 vs 细调偏移（精读者辨析）</div>
+    <div class="note-b" style="border-left:3px solid var(--mut);padding-left:10px"><b>【以下为精读者分析，非原文原话，供参考】</b><br>• <b>和标准 VAE 重参数化的差别</b>：VAE 是对<b>连续</b>高斯 z=μ+σ·ε（把随机性挪到与参数无关的噪声 ε 上）使其可微；这里是<b>离散</b>桶采样，pixelSplat 并没有把离散采样改写成可微变换，也没用 Gumbel-Softmax，而是把"选桶的概率"搬到一个连续可微量 α 上、靠渲染 loss 训练它——精神上更接近 <b>REINFORCE / score-function</b>（用样本好坏调采样概率）。原文措辞也是"<i>inspired by</i> ... reparameterization trick"（受其启发）。<br>• <b>两级精度分工（很漂亮）</b>：「选哪个桶 z」是<b>离散、粗</b>定位 → 靠 α=ϕ_z 旁路训练；「桶内偏移 δ_z」是<b>连续、细</b>定位 → μ 对 δ_z 常规可微（∂μ/∂δ_z = d_u）。两套手段合起来：既能靠概率分布<b>跳出局部最小值</b>，又保留连续<b>亚桶分辨率</b>。<br>• <b>α=ϕ_z 顺带是「可微软剪枝」</b>：低概率桶 → 低 α → 近乎透明 ≈ 被删掉，替代了 3D-GS 里不可微的 spawn/prune 启发式（原文指出 back-propagate through the representation 时用不了那些启发式）。<br>• <b>实证</b>：相比直接回归 μ 的 baseline，这套"概率深度 + 可微采样"带来 PSNR 提升——原文 §4.2 说 ≈<b>1 dB</b>、§5.3 / Table 2 实测 ≈<b>1.5 dB</b>（26.09→24.62，详见下方 ④）。</div>
+    <div class="note-h">④ 实验 &amp; 消融（§5）— 用数字证明两大设计</div>
+    <div class="q">④-1 主结果（Table 1）</div>
+    <div class="en">Our method outperforms the baselines on all metrics, with especially significant improvements in perceptual distance (LPIPS). ... our method's cost to infer a single scene (encoding) and then render 100 images (decoding) ... is about 650 times less.</div>
+    <div class="cn">在 RealEstate10k / ACID 上<b>全指标</b>超过 baseline（Du et al. / GPNR / pixelNeRF），<b>感知距离 LPIPS 提升尤其明显</b>；对只被单个参考视图观测到的区域也能正确推 3D 结构。<b>成本</b>：编码 1 个场景 + 渲染 100 张图，比次快的 baseline <b>省约 650×</b>，训练时每条 ray 显存也低得多——这正是"前馈预测"相对"逐场景优化 / light field transformer"的核心优势。</div>
+
+    <div class="q">④-2 消融（Table 2）：拆掉每个设计各掉多少</div>
+    <div class="code">消融 (RealEstate10k, Table 2)        PSNR↑   SSIM↑   LPIPS↓
+Ours (完整)                          26.09   0.863   0.136
+− 去极线编码 No Epipolar Encoder     19.89   0.639   0.295   尺度歧义崩→重影ghosting, −6.2dB
+− 去深度编码 No Depth Encoding       24.97   0.830   0.158   极线层只喂图像特征、不喂深度, −1.1dB
+− 去概率采样 No Prob. Sampling       24.62   0.828   0.171   改直接回归μ→掉局部最小值/斑点, −1.5dB
++ 加深度正则 Plus Depth Reg.         25.94   0.862   0.137   几乎不影响画质(点云更干净)</div>
+    <div class="cn">三个问题、三条结论：<br>• <b>Q1a 极线编码 = 尺度歧义的解药</b>：去掉后 26.09→<b>19.89(−6.2dB)</b>，出现重影/运动模糊（深度预测错）。掉得最狠——跨视图极线对齐是 3D 结构化新视角合成的<b>命门</b>。<br>• <b>Q1b 极线编码不只"找对应"，还要"用深度"</b>：只喂图像特征、不喂三角化深度的位置编码 → 24.97(<b>−1.1dB</b>)，说明它靠三角化出的<b>场景尺度深度</b>解位姿尺度歧义。<br>• <b>Q2 概率采样(即 ③ 的重参数化) = 避开局部最小值</b>：改成直接回归深度/μ → 24.62(<b>−1.5dB</b>)，掉进局部最小值、出现斑点(speckling)。这就是 ③ 讲的"概率深度 + α=ϕ_z 可微采样"的实证价值。</div>
+    <div class="note-b"><b>诚实标注一个原文数字差异：</b>关于概率采样的收益，原文 <b>§4.2</b> 说"≈<b>1 dB</b> PSNR boost"，而 <b>§5.3</b> 消融正文与 Table 2 给的是"≈<b>1.5 dB</b>"（26.09→24.62 = 1.47dB）。以 Table 2 精确值为准 → <b>约 1.5 dB</b>。<br><b>Limitations（§C）：</b>模型是两图各自出高斯再取并集、<b>并不真正融合多视图</b>；反光面常呈半透明、离分布视角下高斯呈"广告牌(billboard)"状——与原始 3D-GS 同类失败模式。<b>Conclusion 亮点：</b>作者把"稠密概率分布 + 重参数化反传"视为通用框架，展望结合 diffusion 做生成、或去掉相机位姿以支持大规模训练。</div>
+    <div class="note-h">📚 背景：3D-GS 拟合 ≈ GMM 拟合（为什么会陷局部最小值）【外部知识】</div>
+    <div class="note-b">原文 §3 点出：<i>The fitting of a 3D-GS model is closely related to the fitting of a Gaussian mixture model ... famously non-convex and generally solved with EM ... However, the EM algorithm still suffers from local minima and is not applicable to inverse graphics.</i><br>• <b>GMM</b>：数据由 K 个高斯混合生成 p(x)=Σ π_k N(μ_k,Σ_k)，用 <b>EM</b> 解(E 步算责任度、M 步更新参数)，<b>非凸、陷局部最小值、对初始化敏感</b>。<br>• <b>类比 3D-GS</b>：一堆 3D 高斯拟合场景 ≈ 拟合 GMM，同样非凸易陷局部最小值；更糟的是 inverse graphics <b>只有图像、没有 GT 3D 密度</b>，连 EM 都用不了。<br>• <b>所以</b> pixelSplat 才用"深度上的离散概率分布 + 重参数化"避开——它走的是 GMM/分类分布那一支思路，<b>与 MoE 无关</b>(MoE 是稀疏扩容，形似神异)。</div>
+
+    <div class="note-h">⑤ §4.1 / §4.2 代码级实现（基于论文公式的伪代码，非官方逐行）</div>
+    <div class="q">§4.1 极线编码（解尺度歧义）</div>
+    <div class="code">F   = image_encoder(I)      # ResNet-50 + ViT-B/8 → 特征图 [H,W,C]
+F_t = image_encoder(I_t)
+for u in pixels(I):
+    ell    = epipolar_line(u, cam_I, cam_It)      # u 的射线投到 I_t 上成极线
+    u_ts   = sample_on_line(ell, L)               # 极线采样点 {ũ_l}
+    d_ts   = triangulate(u, u_ts, cam_I, cam_It)  # ★I 坐标系深度: 由两位姿算出→含尺度 s_i
+    s      = concat(F_t[u_ts], gamma(d_ts))       # Eq2: 特征 ⊕ 深度位置编码
+    q, k, v = Wq @ F[u], Wk @ s, Wv @ s
+    F[u]  += Attention(q, k, v)                   # Eq3: 极线 cross-attn + skip
+F = F + SelfAttention(F)                          # Eq4: 把深度传播到无极线对应的像素
+# 关键: 深度是"几何三角化"得到(不是网络猜)→天然带尺度, 这才真正解了尺度歧义</div>
+    <div class="q">§4.2 概率式高斯预测（Algorithm 1，含重参数化）</div>
+    <div class="code"># b: 深度桶 [Z] (near/far 间按 disparity 离散, Eq6)
+def predict_gaussian(F_u, o, d_u, b):
+    phi, delta, Sigma, S = f(F_u)     # phi=深度概率(softmax,[Z]); delta=桶内偏移([0,1]^Z)
+    z     = categorical_sample(phi)   # z ~ p_phi(z)  ← 离散采样, 对 phi 不可微
+    mu    = o + (b[z] + delta[z]) * d_u   # 反投影出高斯中心 (Eq7)
+    alpha = phi[z]                    # ★重参数化核心: 不透明度 = 被采桶的概率
+    return Gaussian(mu, Sigma, alpha, S)
+# 反向: mu 那条断(z 离散); 但 alpha=phi[z] 让梯度经 alpha 回流到 phi  (∇phi = ∇alpha)
+# 训练: 两图各像素预测 → union → splatting 渲染新视角 → 光度 loss → 端到端反传</div>
+    <div class="note-b">要点：§4.1 靠<b>几何三角化的深度</b>解尺度(不是猜)；§4.2 靠 <b>α=ϕ_z 旁路</b>让离散深度采样可微(选桶=粗定位、δ=桶内细定位)。官方代码：github.com/dcharatan/pixelsplat。</div>
+
+    <div class="note-h">数据集：RealEstate10k / ACID — 开放场景，非 object-level</div>
+    <div class="en">RealEstate10k, a dataset of home walkthrough videos downloaded from YouTube, as well as ACID, a dataset of aerial landscape videos. Both datasets include camera poses computed by SfM software.</div>
+    <div class="note-b">• <b>RealEstate10k</b>(Zhou 2018)：YouTube <b>房产漫游视频</b>，室内外，<b>场景级 / unbounded</b>。<br>• <b>ACID</b>(Liu 2021, Infinite Nature)：<b>航拍海岸 / 自然风景视频</b>，同样<b>场景级</b>。<br>• <b>都是开放场景(scene-level)，不是 object-level</b>(不像 ShapeNet/DTU/CO3D 以单物体为中心、尺度已归一)。正因是 SfM 真实开放场景、每场景尺度 s_i 任意，才必须有 §4.1 极线编码解尺度。评测 256×256、取两帧作 reference 重建中间帧。</div>
+    <div class="note-h">⑥ 官方代码级：整个网络结构图 + 关键真相（读 github.com/dcharatan/pixelsplat）</div>
+    <div class="code">输入 context: 2 张图 I,Ĩ [b,2,3,H,W] + extrinsics + intrinsics + near/far
+  │
+  ▼ 【Backbone】ResNet-50 + ViT-B/8 (均 DINO 预训练), 逐像素输出相加 → ReLU+Linear → [b,2,C,H,W]
+  │
+  ▼ 【Epipolar Transformer】(可选) ★解尺度歧义
+  │   ├ downscaler(Conv2d)
+  │   ├ EpipolarSampler: 每像素射线→投影到"另一张图"→极线[near,far]两端间均匀采 s 点→grid_sample
+  │   │      (无 overlap 采样点用 overlaps_image mask 置零)
+  │   ├ 深度编码: get_depth(两射线三角化)→PositionalEncoding→加进 kv
+  │   ├ Transformer×N: q=每像素特征; kv=极线采样特征+深度编码
+  │   │      每层 = cross-attn(q→极线kv) + FFN=per-image Self-Attn(in-paint 无对应像素)
+  │   └ upscaler(ConvTranspose2d)+refinement  → 尺度自洽特征 [b,2,C,H,W]
+  │
+  ▼ 【high_resolution_skip】原图 Conv2d(3→C,7×7)+ReLU 加回 (补高频)
+  │  features [b,2,H·W,C]
+  ├────────────────────────────┐
+  ▼                             ▼
+【DepthPredictorMonocular】bin cls   【to_gaussians】Linear
+  Linear→pdf=softmax(Z桶)+offset       → offset_xy(亚像素) + raw(scale3,rot4,sh)
+  → 采 gaussians_per_pixel 个桶
+  → depth=disparity_to_depth((idx+offset)/s)
+  → opacity = pdf_i
+  └──────────────┬───────────────┘
+                 ▼ 【GaussianAdapter】组装每个高斯
+  μ = ray_origin + ray_dir·depth
+  scale = sigmoid→[min,max] ×depth×焦距系数;  rot = 四元数归一化
+  Σ = c2w·(R S Sᵀ Rᵀ)·c2wᵀ;  S = SH(rotate_sh, sh_mask偏DC);  α = map_pdf_to_opacity(pdf)
+  │
+  ▼ 【Gaussians】数量 = 2(views)×H×W×num_surfaces×gaussians_per_pixel  (固定, 不增删)
+  │  ——以上 Encoder;  下面 Decoder 独立——
+  ▼ 【3D-GS Splatting】从 target 视角光栅化 → 渲染图 → Loss = MSE+LPIPS → 端到端反传</div>
+    <div class="q">⑥-1 mono depth 还是 bin cls 吗？（是）</div>
+    <div class="note-b"><b>是，始终是深度桶分类(bin cls)</b>：DepthPredictorMonocular 用 Linear 出 <b>pdf=softmax(Z 个深度桶)</b> + <b>offset=sigmoid(桶内偏移)</b>，采样桶 index → depth=disparity_to_depth((index+offset)/s)(视差空间均匀分桶)，<b>opacity=pdf_i</b>(=α=ϕ_z)。<br><b>"Monocular" 的真意</b>：这个 depth head <b>只吃单像素特征、不显式建 cost volume</b>——跨视图匹配已由 epipolar cross-attention 融进特征。等于<b>用 attention 替代传统 MVS/stereo 的 plane-sweep cost volume</b>，再接一个轻量单目 bin-cls 深度头。</div>
+    <div class="q">⑥-2 采样在"另一张 context 图"上；极线=near/far 投影两端；深度是均匀采样(修正)</div>
+    <div class="note-b">• <b>采样在另一张 reference/context 图上</b>(不是 target 渲染视角)：射线从当前图每像素发出，投影到其他 context view 采样。<br>• <b>极线表征</b>：不解基础矩阵，而是把射线在 near/far 深度处的点投影到另一图 → 极线 = xy_min(near)到 xy_max(far)的<b>斜线段(未 rectify)</b>。<br>• <b>修正前面伪代码</b>：官方主流程是"沿射线在视差空间<b>均匀采深度</b>→投影得极线点"(depth→point)，不是"先采极线点再三角化反解深度"；真三角化 get_depth(两射线求交)仅用于给采样点算深度做位置编码。</div>
+    <div class="q">⑥-3 是时序(视频)训练集，为什么不用 stereo matching 数据集</div>
+    <div class="note-b"><b>是视频序列</b>(RealEstate10k/ACID)，view_sampler_bounded 从同一视频取间隔 gap 帧的两帧作 context、<b>target 夹中间</b>作渲染监督。<b>不用 stereo 数据集</b>：① 用<b>渲染 loss 自监督</b>，需 context 之外的<b>第三视角</b>当监督目标——视频有连续多帧，stereo 只有左右两图无中间视角；② <b>不需要 GT 深度</b>(光度自监督)，stereo 的核心价值(GT 视差)用不上；③ 视频调 frame gap = <b>任意基线</b>，规模大场景多样(泛化)；④ 视频 SfM 位姿 <b>up-to-scale</b> 正是 §4.1 要解的卖点，stereo 位姿已标定反而用不上。</div>
+    <div class="q">⑥-4 overlap 依赖与三层兜底</div>
+    <div class="note-b">pixelSplat 需两图<b>足够 overlap</b>(共视视角间插值，近 stereo 设定)。小/无 overlap 的兜底：① <b>数据层面</b> view_sampler 只喂同视频有共视的两帧(不喂无关图)；② <b>self-attention in-paint</b> 把有对应区域深度传到无对应像素；③ <b>depth 头是 monocular 的</b>，无对应时退化为单目预测。退化代价 ≈ No-Epipolar 消融 <b>26.09→19.89(−6.2dB)</b>(掉但不崩)。<b>无 overlap 超出设定边界</b>(尺度歧义无解)，该用单图 3D / diffusion 生成。</div>
+<!-- /QA_LOG -->
+    </div>
+  </div>
+</body></html>

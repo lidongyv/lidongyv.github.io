@@ -1,0 +1,166 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>QuadSync: Quadrifocal Tensor Synchronization via Tucker Decomposition</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\(','\)']],displayMath:[['\[','\]']]}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>QuadSync: Quadrifocal Tensor Synchronization via Tucker Decomposition</h1>
+    <div class="au2" style="color:var(--mut)">Daniel Miao ⋅ Gilad Lerman ⋅ Joe Kileel</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2602.22639">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2602.22639">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=QuadSync%3A%20Quadrifocal%20Tensor%20Synchronization%20via%20Tucker%20Decomposition">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">In structure from motion, quadrifocal tensors capture more information than their pairwise counterparts (essential matrices), yet they have often been thought of as impractical and only of theoretical interest. In this work, we challenge such beliefs by providing a new framework to recover $n$ cameras from the corresponding collection of quadrifocal tensors. We form the block quadrifocal tensor and show that it admits a Tucker decomposition whose factor matrices are the stacked camera matrices, and which thus has a multilinear rank of (4,4,4,4) independent of $n$. We develop the first synchronization algorithm for quadrifocal tensors, using Tucker decomposition, alternating direction method of multipliers, and iteratively reweighted least squares. We further establish relationships between the block quadrifocal, trifocal, and bifocal tensors, and introduce an algorithm that jointly synchronizes these three entities. Numerical experiments demonstrate the effectiveness of our methods on modern datasets, indicating the potential and importance of using higher-order information in synchronization.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-quadsync-quadrifocal-tensor-synchronization-via-tucker- -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">明尼苏达大学（Lerman）+ UT Austin（Kileel）的<b>纯理论几何</b>论文：第一次给 SfM 里的 <b>四视图张量（quadrifocal tensor）</b>做<b>全局同步（synchronization）</b>。核心定理——把所有 4 视图张量堆成一个 <b>block quadrifocal tensor Q^n∈ℝ^(3n×3n×3n×3n)</b>，它存在精确 <b>Tucker 分解 Q^n=G_Q×₁C×₂C×₃C×₄C</b>，其中 <b>C∈ℝ^(3n×4) 就是堆叠的相机矩阵</b>、G_Q 是常数稀疏核（元素仅 −1/0/1），从而 <b>multilinear rank 恒为 (4,4,4,4)、与相机数 n 无关</b>。据此提出 QuadSync（Tucker+ADMM+IRLS）和 Joint Opt（四/三/二视图联合同步），<b>推翻"四视图张量只有理论价值"的成见</b>。原文怼前人：“Currently the quadrifocal … tensors are useful only from a theoretical stand-point”——本文就是来打脸的。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">SfM 流水线：特征匹配→相对位姿→<b>同步（从相对测量恢复全局相机位姿）</b>→重建。绝大多数同步用<b>成对测量</b>（基础/本质矩阵 F/E），少数用三视图（trifocal）。<b>高阶测量约束更强、信息更冗余</b>（利于鲁棒平均），但①更难理解、②缺专门的估计/同步工作。四视图张量的独特优势（§2.1）：编码 4 视交互（含三视+两视信息）、估计更灵活（线对应不必同一世界线、6 点即可估）、<b>四视平权</b>（trifocal 有个特殊视角）、需 4 视足够多 inlier→隐式保证 viewing graph 干净。</div>
+    <div class="note-h">核心方法（关键定理 + 算法）</div>
+    <div class="note-b">① <b>四视图张量定义（式1）</b>：(Q_ijkl)_pqrs = det([P_i^p; P_j^q; P_k^r; P_l^s])，从 4 个相机矩阵的行拼成 4×4 行列式算出（仅定义到非零尺度）。② <b>Theorem 3.1（主定理）</b>：合适 blockwise 尺度下 Q^n=⟦G_Q; C,C,C,C⟧，<b>mlrank=(4,4,4,4)</b>（相机不全共心时）。③ <b>Remark 1（杀手锏）</b>：相机<b>共线（collinear）时 Q^n 仍是 (4,4,4,4) 不掉秩</b>，而 F^n 掉到 rank 4、T^n 掉到 (5,4,4)——共线在<b>自动驾驶/机器人直线运动里极常见</b>，传统成对法直接失败、需造虚拟相机。④ <b>Theorem 3.4</b>：低 mlrank 足以唯一确定未知尺度（λ_ijkl=α_iβ_jγ_kδ_l 秩一形式）→相机位姿可定。⑤ <b>Proposition 3.3</b>：block 结构里 2 个重复索引=trifocal 元素、2+2 重复=fundamental 元素→Q^n "包住"低阶信息。⑥ <b>算法 QuadSync</b>：min_{Λ,C} Σ‖Λ_ijkl(Q̃^n)_ijkl − ⟦G_Q;C,C,C,C⟧_ijkl‖_F（范数不平方→抗 outlier），引入辅助 B 分离因子 C1=C2=C3=C4=B，用 <b>ADMM + IRLS</b> 交替闭式求解（C 式6、Λ 式7、B 式8、对偶 Γ 式9），HOSVD 取最大 4 个奇异向量初始化。⑦ <b>Joint Opt</b>：Q^n/T^n/E^n 共享因子矩阵（C 相机、P 线投影），加权联合同步三者。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">• 在 <b>ETH3D（11 数据集）+ EPFL（6）</b> 上，QuadSync/Joint Opt 位置误差<b>在 7/11、4/6 上达到或接近最佳</b>，对比 SOTA 的 Cycle-Sync/BATA/LUD/NRFM/MPLS/TrifocalSync。<br>• <b>稠密图上碾压</b>：EntryP10 mean loc err <b>0.0007 vs Cycle-Sync 0.0897</b>、FountainP11 0.0002 vs 0.0095、HerzP8 0.0010 vs 0.0375。<br>• <b>强依赖稠密度</b>：四视图块占比 &gt;70% 普遍超 SOTA、&lt;30% 表现差（facade QuadSync 单跑 3.03 崩、Joint Opt 救回 0.0248）。<br>• <b>共线实验</b>（合成）：5% 噪声下 mean loc err 仅 0.24–0.64，传统分离 R/t 的法直接失败。<br>• <b>分布式</b>：30 相机 full 1666s → 分 3 簇并行对齐 ~150–250s。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>把高维张量代数（Tucker/HOSVD/multilinear rank）干净地映射到相机几何</b>——核 G_Q 是常数 {−1,0,1}、因子就是相机矩阵 C，理论极优雅；② <b>(4,4,4,4) 与 n 无关 + 共线不掉秩</b>是相对 F/T 的硬优势（自驾直线运动场景的现实价值，论文自己点名 self-driving）；③ HOSVD 初始化即够（非凸却不需复杂初始化，相对 NRFM 等是优势）；④ Joint Opt 把四/三/二视图统一进一个 ADMM 框架，比单独 QuadSync 更鲁棒。</div>
+    <div class="note-h">疑问 / 待核</div>
+    <div class="note-b">① <b>强依赖稠密 4-uniform viewing hypergraph</b>：稀疏图（如 CastleP30 相机朝外看院子）四视图图断裂→QuadSync 不能直接跑，得手工分簇；旋转误差不少数据集明显劣于 LUD/MPLS（如 CastleP19 rot err 30° vs LUD 0.76°）——<b>位置强、旋转弱</b>是明显短板。② <b>计算/存储 O(n⁴)</b>，比两/三视图贵得多，大场景必须分布式。③ <b>四视图张量估计本身缺成熟工具</b>（作者也承认 “lack of practical work”），当前靠 trifocal+4-cycle 启发式拼出来，引入额外误差；arXiv id 2602.22639=2026 年 2 月预印。④ Joint Opt 只约束 C_i 间、P_i 间相等，<b>没用上 P 应是 C 的 2×2 minor 这个更强关系</b>（作者列为 future work）。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文 79.5K 字符 / 30 页提取，含正文+附录全部定理证明/算法伪代码/数值表）。理论论文：重在讲清张量代数↔相机几何的映射。原文英文原句 + 中文指路，外部概念标“外部非本文”、原文未写处标“原文未写/需查”。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>立论（原文）：</b>“In structure from motion, quadrifocal tensors capture more information than their pairwise counterparts (essential matrices), yet they have often been thought of as impractical and only of theoretical interest.”——四焦张量比成对的本质矩阵信息更多，但长期被当作“只有理论意义、不实用”。本文要挑战这一成见。</div>
+    <div class="note-b"><b>核心构造（逐句指路）：</b>① “We form the block quadrifocal tensor and show that it admits a Tucker decomposition whose factor matrices are the stacked camera matrices, and which thus has a multilinear rank of (4, 4, 4, 4) independent of n.”——构造 block quadrifocal tensor，证明它有 Tucker 分解，因子矩阵<b>就是堆叠的相机矩阵</b>，多线性秩 \((4,4,4,4)\) <b>与相机数 \(n\) 无关</b>；② “the first synchronization algorithm for quadrifocal tensors, using Tucker decomposition, alternating direction method of multipliers, and iteratively reweighted least squares.”（首个四焦张量同步算法 = Tucker + ADMM + IRLS）。</div>
+    <div class="note-b"><b>延伸：</b>“We further establish relationships between the block quadrifocal, trifocal, and bifocal tensors, and introduce an algorithm that jointly synchronizes these three entities.”——建立四焦/三焦/二焦张量间关系，给一个<b>三者联合同步</b>算法。</div>
+    <div class="note-b"><b>结论性主张：</b>“Numerical experiments demonstrate the effectiveness of our methods on modern datasets, indicating the potential and importance of using higher-order information in synchronization.”。<b>一句话抓 Abstract：</b>把“不实用”的四焦张量做成可同步的 block tensor——它的 Tucker 因子直接是相机位姿、秩 \((4,4,4,4)\) 恒定，用 ADMM-IRLS 求解，首次证明高阶测量能切实改进 SfM 同步（尤其位置精度与抗共线）。</div>
+
+    <div class="note-h">📚 背景①（外部知识）：SfM / synchronization / 极线几何张量</div>
+    <div class="note-b"><b>SfM（运动恢复结构）</b>=从多视 2D 图重建 3D，pipeline = 特征检测匹配 → 相对位姿估计 → <b>synchronization（同步：把各局部相对位姿统一到全局坐标系）</b> → 重建。<b>增量 vs 全局：</b>增量法（Bundler/COLMAP）逐个注册相机 + bundle adjustment，受注册顺序影响、误差累积、相机多时慢；<b>全局法</b>（GLOMAP/Theia）同时处理所有相机。<b>几何张量阶梯：</b>2 视图=基础矩阵 \(F_{ij}\)（\(x_i^\top F_{ij} x_j=0\)）/本质矩阵 \(E\)（标定后）；3 视图=三焦张量 \(T_{ijk}\)；4 视图=<b>四焦张量 \(Q_{ijkl}\in\mathbb{R}^{3\times3\times3\times3}\)</b>。相机模型 \(P_i=K_iR_i[I\,|-t_i]\)（\(3\times4\)）。</div>
+
+    <div class="note-h">📚 背景②：Tucker 分解 / multilinear rank / HOSVD / ADMM / IRLS</div>
+    <div class="note-b"><b>mode-i flattening（展开）</b>=把 N 阶张量沿第 \(i\) 模重排成矩阵 \(X_{(i)}\)；<b>multilinear rank</b> \(\operatorname{mlrank}(X)=(R_1,...,R_N)\)，\(R_i=\operatorname{rank}(X_{(i)})\)。<b>Tucker 分解：</b>\(X=G\times_1 U_1\times_2\cdots\times_N U_N\)，\(G\) 为 core tensor、\(U_i\) 为 factor matrices。<b>HOSVD</b>=取 \(X_{(i)}\) 的前 \(R_i\) 个左奇异向量作 \(U_i\)，可投影到低多线性秩集合并满足 quasi-optimal 界 \(\|X-X'\|_F\le\sqrt{N}\|X-X^*\|_F\)。<b>ADMM</b>=增广拉格朗日 + 交替方向求解约束优化；<b>IRLS（迭代重加权最小二乘）</b>=把 \(L_1\)/鲁棒范数当成不断更新权重的加权最小二乘来解，抗 outlier。</div>
+
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环</div>
+    <div class="note-b"><b>problem：</b>同步多基于成对测量，少有人把<b>高阶测量</b>纳入 SfM，尽管高阶约束更强、信息冗余可改善重建。障碍：高阶测量更难理解、缺专门计算工作。本文直接引 [1] 名言 “Currently the quadrifocal and mixed trifocal tensors are useful only from a theoretical stand-point.” 作为靶子。</div>
+    <div class="note-b"><b>solution（Intro 自包含）：</b>三贡献——(1) “new and strong theory: a system of algebraic constraints for a set of quadrifocal tensors … expressed as a low rank condition on a block tensor that we introduce.”；(2) “the first global synchronization algorithm for quadrifocal tensors, and a joint synchronization scheme that combines this with pairwise and triplewise measurements.”；(3) 数值实验证明高阶测量在同步里的有效与实用。</div>
+    <div class="note-b"><b>why（动机闭环）：</b>已有工作 [26–28] 探索三焦张量/高阶 cycle 的好处；[29] 研究含 radial camera 的特殊四焦最小问题，[30,31] 用四焦关系做轨迹估计但<b>不直接operate on 四焦张量</b>。作者强调 “no prior works have focused on the global synchronization of a collection of quadrifocal tensors.”——本文填这个空白。</div>
+
+    <div class="note-h">③ §2 背景定理：Fⁿ（Thm 2.1）+ Tⁿ（Thm 2.2）+ 四焦定义（式1）</div>
+    <div class="note-b"><b>n-view 基础矩阵 \(F^n\)（[4]）：</b>把 \(\binom{n}{2}\) 个 \(F_{ij}\) 拼成 \(3n\times3n\) 块矩阵，合适尺度下 \(F^n=A+A^\top\)，\(\operatorname{rank}(A)=3\)（非全共线）故 \(\operatorname{rank}(F^n)=6\)。<b>Thm 2.1（[5] 完整刻画）：</b>\(F^n\) consistent 当且仅当 ① \(\operatorname{rank}(F^n)=6\) 且恰好 3 正 3 负特征值；② 每个行块 \(\operatorname{rank}(F^n_{i,:})=3\)。<b>block trifocal \(T^n\)（Thm 2.2，[27]）：</b>\(T^n=G_T\times_1 P\times_2 C\times_3 C\)，\(G_T\in\mathbb{R}^{6\times4\times4}\)、\(P\in\mathbb{R}^{3n\times6}\)、\(C\in\mathbb{R}^{3n\times4}\)，非全共线时 \(\operatorname{mlrank}(T^n)=(6,4,4)\)。<b>四焦张量（式1）：</b>由相机矩阵直接算 \((Q_{ijkl})_{pqrs}=\det\big[P_i^p;P_j^q;P_k^r;P_l^s\big]\)，只定义到非零尺度；也可由 6 个点对应或线对应估计。</div>
+
+    <div class="note-h">④ §2.1 为什么选四焦张量（4 个动机）</div>
+    <div class="note-b">原文给出四点：① <b>信息最丰富</b>——四焦张量编码四视图交互，且<b>内含</b>三焦与成对信息，[27] 已证三焦冗余信息能更好平均 translation，四焦理应更进一步；② <b>估计更灵活</b>——线对应里图像线<b>不必</b>对应同一世界线，且可从 6 点对应估计，对 homogeneous 场景更友好；③ <b>所有视图平权</b>——不像三焦张量有一个被特殊对待的视图，可能更稳定；④ <b>隐式清洗 viewing graph</b>——估一个四焦张量需要四视图间足够多 inlier 特征，这隐式 enforce viewing graph 一致性，让同步从“更干净的图”出发（尤其 dense graph）。</div>
+
+    <div class="note-h">⑤ §3 Block Quadrifocal Tensor Qⁿ + Theorem 3.1（核心定理）</div>
+    <div class="note-b"><b>构造：</b>给 \(n\) 个相机，沿四个 mode 堆叠四焦张量得 \(Q^n\in\mathbb{R}^{3n\times3n\times3n\times3n}\)，第 \(ijkl\) 块就是 \(Q_{ijkl}\)（式1）。<b>Theorem 3.1：</b>存在一组 blockwise 非零尺度使 \[Q^n=G_Q\times_1 C\times_2 C\times_3 C\times_4 C,\] 其中 \(C\in\mathbb{R}^{3n\times4}\) 是<b>堆叠相机矩阵</b>、\(G_Q\in\mathbb{R}^{4\times4\times4\times4}\) 是元素全在 \(\{-1,0,1\}\) 的<b>常数稀疏 core tensor</b>；当产生 \(Q^n\) 的相机不全共享同一相机心时，\(\operatorname{mlrank}(Q^n)=(4,4,4,4)\)。<b>意义：</b>因子矩阵直接是相机位姿、秩与 \(n\) 无关——这是整套同步算法的地基。</div>
+
+    <div class="note-h">⑥ §3.1 抗共线优势（Remark 1）+ 投影重建（Cor 3.1.1）</div>
+    <div class="note-b"><b>Remark 1（关键优势）：</b>“Both \(F^n\) and \(T^n\) experience a rank drop as soon as the corresponding cameras are collinear. In that case, \(\operatorname{rank}(F^n)=4\) and \(\operatorname{mlrank}(T^n)=(5,4,4)\).” —— \(F^n\) 与 \(T^n\) 一旦相机<b>共线就掉秩</b>（要靠构造 virtual camera 等额外手段补救），而 \(Q^n\) 的 \((4,4,4,4)\) <b>不掉秩</b>。<b>Cor 3.1.1（投影重建）：</b>给定合适 blockwise 尺度的 \(Q^n\)，对任一 flattening 取<b>最大 4 个奇异向量</b>即可恢复 \(n\) 个相机矩阵（到全局射影变换 ambiguity，即 \(4\times4\) 可逆变换）。</div>
+
+    <div class="note-h">⑦ §3.1 codim 视角（Remark 2）+ P-Rank（Thm 3.2）+ 内含两/三视几何（Prop 3.3）</div>
+    <div class="note-b"><b>Remark 2（为何高阶约束更强）：</b>用低秩张量集合的 codimension 衡量约束强度：\(\operatorname{codim}(Q)=\Omega(n^4)>\operatorname{codim}(T)=\Omega(n^3)>\operatorname{codim}(E)=\Omega(n^2)\)——有效四焦张量被限制在张量空间里<b>更小的子集</b>，故约束最强。<b>Thm 3.2（投影秩）：</b>\(\text{P-Rank}(Q^n)=(2,2,2,2,2,2)\)（6 个数，对应与 \(n-2\) 个通用向量收缩得到的 6 种矩阵投影的秩）；注意它<b>不由</b>低多线性秩蕴含，依赖 core tensor 结构，优化时固定 core + 保因子对称即可 enforce。<b>Prop 3.3（内含低阶几何）：</b>① 超对角块 \(Q_{iiii}=0\)；② 三个索引相同 → 视图 \(i\) 的相机心在视图 \(j\)；③ 两个索引相同 → 三焦张量 \(T_{ijk}\) 的元素；④ 两两相同 → 基础矩阵 \(F_{ij}\) 的元素。</div>
+
+    <div class="note-h">⑧ §3.1 尺度充分性（Theorem 3.4）</div>
+    <div class="note-b">四焦张量只定义到未知非零尺度，好性质都依赖“选对尺度”，故需证“低秩约束足以定尺度”。<b>Theorem 3.4：</b>对 \(n\ge5\) 个 generic 相机的 \(Q^n\)，设 block scaling \(\Lambda\in\mathbb{R}^{n\times n\times n\times n}\)（\(\lambda_{ijkl}\ne0\) 当且仅当 \(i,j,k,l\) 不全相等），若 \(\Lambda\odot_b Q^n\) 的多线性秩为 \((4,4,4,4)\)，则存在 \(\alpha,\beta,\gamma,\delta\in\mathbb{R}^n\) 使 \(\lambda_{ijkl}=\alpha_i\beta_j\gamma_k\delta_l\)（在非超对角处）。即<b>低多线性秩约束足以把未知尺度逼成一个 rank-1 外积结构</b>，从而唯一确定相机位姿——这正是算法可行的理论支撑。</div>
+
+    <div class="note-h">⑨ §4 QuadSync 优化问题（ADMM-IRLS 框架）</div>
+    <div class="note-b">输入是估计出的四焦/三焦张量与基础矩阵（缺失块填 0），观测集 \(\Omega=\{(i,j,k,l)\mid Q_{ijkl}\ne0\text{ 或 }i{=}j{=}k{=}l\}\)，估计块张量 \(\tilde Q^n=P_\Omega(\Lambda\odot_b Q^n)\)。由式1 的行列式性质有 \(Q^n_{\pi(ijkl)}=\operatorname{sgn}(\pi)Q^n_{ijkl}\)，故可把尺度 \(\Lambda\) 限制在对称张量集 \(S_4(\mathbb{R}^n)\)。<b>主问题：</b>\[\min_{\Lambda,C}\sum_{(i,j,k,l)\in\Omega}\big\|\Lambda_{ijkl}(\tilde Q^n)_{ijkl}-\llbracket G_Q;C,C,C,C\rrbracket_{ijkl}\big\|_F\quad \text{s.t. }\Lambda\in S_4(\mathbb{R}^n),\ \|\Lambda\|_F^2=1.\] 约束 \(\|\Lambda\|_F^2=1\) 防平凡解；范数<b>不平方</b>以降低对 outlier 敏感（即鲁棒 \(L_1\) 型）。难点：对 \(C\) 是四次、尺度带来非凸。引入辅助变量 \(B\in\mathbb{R}^{3n\times4}\)、令 \(C_1=C_2=C_3=C_4=B\) 把四个因子解耦（式3）。</div>
+
+    <div class="note-h">⑩ §4.1 IRLS 外循环 + ADMM 内循环</div>
+    <div class="note-b"><b>IRLS 外循环：</b>把 \(L_1\) 主损失转成加权最小二乘，权重 \(w_{ijkl}=1/m^t_{ijkl}\)（观测内，否则 0），\(m^t_{ijkl}=\max(\delta,\sqrt{\|\Lambda^{(t-1)}_{ijkl}\tilde Q^n_{ijkl}-G_Q\times_1(C_1)_i\cdots\times_4(C_4)_l\|_F})\)（用上轮变量算残差，\(\delta\) 上界权重）。<b>ADMM 内循环：</b>固定权重后交替解 \(\Lambda,C_i,B,\Gamma_i\)。① 解 \(C_i\)：固定其余时是凸的，按行求闭式 \(x_j=(\tfrac\rho2(B-\Gamma_i)_j+\dots K^\top)(\tfrac\rho2 I_{4\times4}+K\operatorname{diag}(\cdot)K^\top)^{-1}\)（式6，\(K=(G_Q)_{(i)}C_{\sim i}^\top\)，\(C_{\sim i}\) 为 Kronecker 积）；② 解 \(\Lambda\)：逐块闭式 \(\Lambda_{ijkl}=\operatorname{trace}(\cdot)/\|(\tilde Q^n_{ijkl})_{(1)}\|_F^2\)，再 symmetrize + normalize 到 \(S_4(\mathbb{R}^n),\|\Lambda\|_F^2=1\)；③ \(B=\tfrac14\sum_i(C_i+\Gamma_i)\)；④ 对偶上升 \(\Gamma_i^{(k+1)}=\Gamma_i^{(k)}+(C_i-B)\)。<b>Remark 3：</b>解 \(C_i\) 慢（\(K\) 为 \(4\times27n^3\)），但可逐行并行、且因低秩与 \(n\) 无关可随机采样 \(m=O(1)\) 列加速而几乎不损精度。</div>
+
+    <div class="note-h">⑪ §4.2 联合优化 Joint Opt（Thm 4.1 / 4.2）</div>
+    <div class="note-b">仅 calibrated 情形：观察到 block quadrifocal \(Q^n\) 与 block trifocal \(T^n\) <b>共享相同因子矩阵</b>（\(3n\times4\) 堆叠相机 \(C\)）。<b>Theorem 4.1（新分解）：</b>block essential \(E^n\in S_2(\mathbb{R}^{3n})\) 满足 \(E^n=P\,G_E\,P^\top\)（\(P\) 为 \(3n\times6\) 线投影矩阵、\(G_E\) 为给定的 \(\pm1/0\) core），与 \(T^n\) 在第一模共享因子 \(P\)。<b>Theorem 4.2：</b>\(\text{P-Rank}(T^n)=(4,3,3)\)（隐式 enforce）。于是把三者写成 \(T^n=\llbracket G_T;P,C,C\rrbracket\)、\(Q^n=\llbracket G_Q;C,C,C,C\rrbracket\)、\(E^n=\llbracket G_E;P,P\rrbracket\)，用归一化的三项加权和（各除块数 \(n_Q,n_T,n_E\)）<b>同时同步</b>，同样 ADMM-IRLS 求解，交替顺序为 \(C_1..C_6,P_1..P_3,\Lambda_Q,\Lambda_T,\Lambda_E\) → \(B,D\) → \(\Gamma_i,\tau_i\)。</div>
+
+    <div class="note-h">⑫ §5.1–5.3 一致性 heuristic + 四焦估计 + 初始化</div>
+    <div class="note-b"><b>高阶 cycle heuristic（式11）：</b>对四元组 \((i,j,k,l)\) 用四个三焦张量 \(T_{ijk},T_{jkl},T_{kli},T_{lij}\) 各自的相机（不同射影帧），沿环用射影变换 \(H\) 串起来；无噪时回到起点应一致，有噪则定义 \(d(i,j,k,l)=g(d(P_i^1,P_i^4 H_{43}),d(P_j^1,P_j^4 H_{43}))\)（\(d\) 取旋转角或位置相对差，\(g\) 取平均）衡量腐败度。<b>四焦估计：</b>先用 STE（Subspace Constrained Tyler M-estimator）拒 outlier（假设 ≥40% inlier）、≤30 inlier 点线性估三焦 + bundle adjustment；再枚举四元环、<b>丢弃旋转 heuristic &gt;3° 或平移 &gt;0.2</b> 的环，好环取平均相机位姿后用式1 估四焦张量，每块归一化到 Frobenius 范数 1。<b>初始化（Remark 5）：</b>QuadSync 取 \(\rho=0.01\)、IRLS 4 次、每次 1 个 ADMM loop；相机初值直接 HOSVD 取前 4 奇异向量 \(\tilde C\) 设 \(C_1{=}\cdots{=}B{=}\tilde C\)；联合优化 \(\rho=10^{-5}\)、IRLS 2 次。原文称 “an initialization with HOSVD appears to be sufficient” 是相对两视方法依赖复杂初始化的优势。</div>
+
+    <div class="note-h">⑬ §5.4 实验设定（ETH3D / EPFL + baselines）</div>
+    <div class="note-b"><b>密度要求：</b>方法偏好 dense 图——按观测四元组算每个顶点密度，删 &lt;0.05 的顶点（不够则降到 0.02、0.01）；ETH3D 有一个数据集不够 dense 被弃。<b>ETH3D：</b>11 个 stereo 多视基准（人工/自然、室内/外），SIFT 关键点 + [50] 估三焦 + RANSAC 估本质矩阵（比较用）。<b>EPFL：</b>6 个高分辨率多视数据集，GlueStick 检测匹配 + GC-RANSAC 估基础矩阵。<b>对比方法：</b>TrifocalSync [27]、NRFM [4]、MPLS [13]、LUD [16]、BATA [18]、以及 SOTA 的 Cycle-Sync [19]（BATA/Cycle-Sync 是位置同步，用 MPLS 做旋转）。仅在 calibrated 设定下比较。</div>
+
+    <div class="note-h">⑭ §5.4.3 结果 + 抗共线展示</div>
+    <div class="note-b"><b>主结果（Fig 1/2 mean location error，正文以图为主、数值表在附录）：</b>“QuadSync and Joint Opt. perform the best or very close to the best in <b>7/11</b> of the datasets in ETH3D, and <b>4/6</b> of the EPFL datasets.”。<b>关键规律：</b>方法吃 dense 图——表现差的数据集多是“估计四焦块 / 总块数 <b>&lt;30%</b>”；而该比例 <b>&gt;70%</b> 的数据集上，QuadSync/Joint 往往<b>优于 SOTA</b>。原文：“Having clean estimations and a high completion rate are important for the success of the algorithm.”。<b>抗共线（Remark 6）：</b>在 ETH3D SLAM 的 plant scene 1 近共线视图子序列上成功重建相机位姿（Fig 3）——“this configuration can’t be reconstructed with the pairwise measurements of fundamental matrices.”，印证 Remark 1 的 \(Q^n\) 不掉秩优势。</div>
+
+    <div class="note-h">⑮ §6 结论 + 局限</div>
+    <div class="note-b"><b>结论：</b>首次研究通过四焦张量做 SfM 同步——引入 block quadrifocal tensor，证明其显式 Tucker 分解（因子=相机位姿）、低多线性秩 \((4,4,4,4)\)、低投影秩 \((2,2,2,2,2,2)\)、且低多线性秩足以定尺度从而恢复相机；还建立 n-view 本质矩阵与 block trifocal 的新性质；给出 QuadSync 与 Joint Opt 两算法，实验证明能提升同步精度（尤其位置）。<b>局限 [原文明述]：</b>① 算法<b>依赖块估计质量</b>（四焦张量估计本身缺成熟工具、引入额外噪声，Remark 4）；② <b>需 dense 子集</b>、比两/三视方法<b>更耗算力</b>，呼吁发展<b>分布式</b>高阶同步；③ 正文主结果以图呈现、细粒度数值表在附录；④ 联合优化只做了 calibrated 情形。</div>
+
+    <div class="note-h">📚 背景③：射影 vs 标定重建 / viewing graph / 为何“到射影变换 ambiguity”</div>
+    <div class="note-b"><b>projective vs calibrated（标定）：</b>未知内参 \(K\) 时只能重建到一个全局射影变换（\(4\times4\) 可逆矩阵 \(H\)，因为 \(P_iX=(P_iH)(H^{-1}X)\) 投影不变）——这正是 Cor 3.1.1 说“retrieve cameras up to a global projective frame ambiguity”的含义；知道 \(K\)（calibrated）后才能进一步定到相似变换并分出 \(R,t\)，所以 Joint Opt 与 baseline 比较都限制在 calibrated。<b>viewing graph（视图图）：</b>顶点=相机、边=有共视/可估测量的视图对；高阶则是 4-uniform hypergraph（超边连 4 个视图）。本文“密度要求”就是保证这个超图不至于太稀疏而把图打断（删密度 &lt;0.05 的顶点）。<b>bundle adjustment（BA）：</b>对相机与 3D 点联合做非线性最小二乘精修重投影误差——增量法每加一个相机就 BA 一次故慢、且误差累积，这也是 QuadSync 走<b>全局</b>路线的动机。</div>
+
+    <div class="note-h">⑯ 追问：四焦相比三焦到底强在哪？为何“秩与 n 无关”很关键？</div>
+    <div class="note-b"><b>Q1：四焦 vs 三焦，本质差异？</b>三焦张量 \(T^n\) 的 Tucker 第一模因子是<b>线投影矩阵 \(P\)（\(3n\times6\)）</b>、秩 \((6,4,4)\)，且“有一个视图被特殊对待”（不对称）；四焦张量 \(Q^n\) 四个模<b>全是相机矩阵 \(C\)（\(3n\times4\)）、全平权</b>、秩 \((4,4,4,4)\)。更小的秩 + 更高的 codim \(\Omega(n^4)\) 意味着约束更强、可行解子集更小，理论上同步更稳。<b>Q2：“mlrank 与 \(n\) 无关”为何关键？</b>因为无论多少相机，恢复相机只需在任一 flattening 取<b>固定 4 个</b>主奇异向量（Cor 3.1.1），且 ADMM 解 \(C_i\) 时可随机采样 \(m=O(1)\) 列加速（Remark 3）——复杂度不随 \(n\) 爆炸，使大规模可行。<b>Q3：[推测] 为什么作者反复强调“依赖块估计质量”？</b>因为 Theorem 系列都假设“合适尺度 + 干净四焦张量”，而四焦张量估计本身（STE 拒 outlier、≤30 点线性估 + BA、环 heuristic 过滤）引入额外噪声链路；一旦块估计差或 completion rate 低（&lt;30%），低秩结构被破坏，算法就退化——这解释了“dense + clean 才赢 SOTA”的实验现象（属本笔记顺原文逻辑的推断）。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>SfM 同步多用成对测量；四焦张量信息更多却被当“只理论无用”，且无人做过四焦张量的全局同步。<b>method：</b>① 构造 <b>block quadrifocal tensor</b> \(Q^n\in\mathbb{R}^{(3n)^4}\)，证明 Tucker 分解 \(Q^n=\llbracket G_Q;C,C,C,C\rrbracket\)（\(C\)=堆叠相机、\(G_Q\) 为 \(\{-1,0,1\}\) 稀疏 core）、\(\operatorname{mlrank}=(4,4,4,4)\) 与 \(n\) 无关（Thm 3.1）；② 证 P-Rank \((2,2,2,2,2,2)\)、低秩约束足以定尺度（rank-1 外积，Thm 3.4）、\(Q^n\) 内含三焦/基础矩阵（Prop 3.3）；③ <b>QuadSync = HOSVD 初始化 + ADMM + IRLS</b> 解鲁棒低秩拟合，并给三焦/本质矩阵共享因子的 <b>Joint Opt</b>（Thm 4.1：\(E^n=PG_EP^\top\)）。<b>experiment：</b>ETH3D 7/11、EPFL 4/6 达到或接近最优，dense（块比 &gt;70%）时超 SOTA Cycle-Sync，且能重建 \(F\) 做不到的近共线配置。</div>
+    <div class="note-b"><b>3 个 takeaway：</b>(1) <b>“高阶 = 更强约束”有定量证据</b>：codim \(\Omega(n^4)>\Omega(n^3)>\Omega(n^2)\)，四焦张量把有效解限制在更小子集，故同步更稳；(2) <b>抗共线是杀手锏</b>：\(F^n\)（rank 6→4）与 \(T^n\)（\((6,4,4)\to(5,4,4)\)）共线掉秩需 virtual camera 补救，而 \(Q^n\) 的 \((4,4,4,4)\) 不掉秩，plant scene 近共线序列可直接重建；(3) <b>把“理论玩具”工程化的范式</b>：block tensor + Tucker（因子即相机）+ HOSVD 初始化 + ADMM-IRLS 鲁棒求解，证明四焦张量实用可行。<b>遗留：</b>四焦张量估计工具不成熟（误差源多）、需 dense 图且算力重、正文数值表在附录、Joint Opt 仅 calibrated——分布式高阶同步是明确的未来方向。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-quadsync-quadrifocal-tensor-synchronization-via-tucker-/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Mean location error for ETH3D datasets</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-quadsync-quadrifocal-tensor-synchronization-via-tucker-/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Mean location error for EPFL datasets</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-quadsync-quadrifocal-tensor-synchronization-via-tucker-/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. QuadSync retrieved camera poses on near-collinear views from plant scene 1 dataset from ETH3D SLAM.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-quadsync-quadrifocal-tensor-synchronization-via-tucker-/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Randomized updates in QuadSync tested on ETH3D ‘relief’ dataset.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-quadsync-quadrifocal-tensor-synchronization-via-tucker-/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Ground truth location of 10 cameras. ×</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-quadsync-quadrifocal-tensor-synchronization-via-tucker-/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Retrieved poses (colored, where each cluster has a distinct color) vs. ground truth poses (black) for CastleP30 with handpicked clusters.</figcaption></figure>
+    </div>
+  </div></body></html>

@@ -1,0 +1,205 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>U^2Flow: Uncertainty-Aware Unsupervised Optical Flow Estimation</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>U^2Flow: Uncertainty-Aware Unsupervised Optical Flow Estimation</h1>
+    <div class="au2" style="color:var(--mut)">Xunpei Sun ⋅ Wenwei Lin ⋅ Yi Chang ⋅ Gang Chen</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2026/papers/Sun_U2Flow_Uncertainty-Aware_Unsupervised_Optical_Flow_Estimation_CVPR_2026_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=U%5E2Flow%3A%20Uncertainty-Aware%20Unsupervised%20Optical%20Flow%20Estimation">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Existing unsupervised optical flow methods typically lack reliable uncertainty estimation, limiting their robustness and interpretability. We propose U$^{2}$Flow, the first recurrent unsupervised framework that jointly estimates optical flow and per-pixel uncertainty. The core innovation is a decoupled learning strategy that derives uncertainty supervision from augmentation consistency via a Laplace-based maximum likelihood objective, enabling stable training without ground truth. The predicted uncertainty is further integrated into the network to guide adaptive flow refinement and dynamically modulate the regional smoothness loss. Furthermore, we introduce an uncertainty-guided bidirectional flow fusion mechanism that enhances robustness in challenging regions. Extensive experiments on KITTI and Sintel demonstrate that U$^{2}$Flow achieves state-of-the-art performance among unsupervised methods while producing highly reliable uncertainty maps, validating the effectiveness of our joint estimation paradigm.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-u-2flow-uncertainty-aware-unsupervised-optical-flow-est -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b"><b>首个“无监督 + 联合估计光流与逐像素不确定性”的 recurrent 框架</b>(RAFT 底座)。核心：没有 GT，就<b>从“数据增广下的预测不一致性”里反推不确定性监督</b>——用 Laplace MLE 学方差，且<b>把不确定性损失与光流损失解耦</b>(stop-gradient 防梯度泄漏)才训得稳。学到的 uncertainty 不是副产品，而是反哺网络：① guide 自适应 flow refinement；② 动态调制 regional smoothness；③ 引导<b>双向流融合</b>(置信区补不置信区)。KITTI/Sintel 无监督 SOTA，且 uncertainty map 质量超监督的 PDC-Net+。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">监督光流(RAFT 系)强但 GT 贵→转无监督(靠 photometric + smoothness)；但无监督在<b>遮挡/无纹理/大位移</b>处易错，误差会污染下游(点追踪、重建、深度、分割)。所以模型不仅要答“运动是什么”，还要答“<b>我对它多有把握</b>”。可惜无监督下 uncertainty 研究稀少，两大拦路虎：① <b>无直接监督</b>(没有 GT variance 当“正确答案”教模型自评)；② <b>难有效利用</b>(就算估出来，怎么用它反过来提升光流、而非仅当副产品)。</div>
+    <div class="note-h">核心方法（RAFT + 不确定性头 + 三处利用）</div>
+    <div class="note-b">底座 RAFT(4D correlation + recurrent 更新 K=12 次)，按 SMURF 把 BN 换 IN。新增 <b>uncertainty head</b>。① <b>不确定性监督</b>(无 GT)：对同一对图做强增广(色彩抖动/噪声/旋转/缩放…)，比较增广前后两次预测的 ℓ1 差 D̂ 当“自监督目标”——预测越不一致的像素越不可信。② <b>refinement</b>：用 uncertainty 算可靠性权重 s 去缩放 flow 特征再算残差。③ <b>smoothness</b>：用 uncertainty 阈值挑高置信像素做 homography RANSAC(替代旧的遮挡 mask)。④ <b>双向融合</b>：前向不确定但后向确定处，用后向流纠正前向流。</div>
+    <div class="note-h">关键公式</div>
+    <div class="note-b">不确定性头预测 <b>log-variance α=log(σ²)</b>(式2，保正 + 数值稳)；可靠性权重 <b>s=ϕ(−α)</b>(式3, sigmoid)；缩放特征 <b>f̃=f⊙s\*</b>(式4，\*=stop-grad)；残差 <b>ΔF=C'_flow(concat(f, f̃, α\*))</b>(式5)。<b>不确定性 MLE(Laplace)</b>：<b>ℓ̃_unc=√2·exp(−½α)·D̂ + ½α</b>(式9)，D̂=增广前后流的 ℓ1 不一致。<b>关键解耦</b>：把 D̂ 从 MLE 里 <b>detach</b>，防梯度漏进光流分支。双向融合掩码 <b>M_fused=(1−M_f)⊙M_b</b>(式13，前向不确定 M_f=0 且后向确定 M_b=1 处才纠正)。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>光流(Tab.1)</b>：KITTI-2015 test Fl-all <b>6.13%</b>(+FF 进一步 <b>6.00%</b>)，远超次优无监督 UPFlow 9.38%，且<b>反超</b>多帧 SMURF(6.83)/M2Flow(7.37) 与语义 UnSAMFlow(7.83)；Sintel Final test 4.16/4.10。<b>不确定性质量(Tab.2)</b>：AUSE Sintel <b>0.11</b>/KITTI <b>0.12</b>、CC 0.66/0.64，全面优于 FB-Check、Smoothness、甚至<b>监督</b>的 PDC-Net+(用稠密合成 GT 训)。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 把“增广一致性”变成无 GT 的不确定性监督来源；② <b>解耦</b>是成败关键(消融里不解耦直接联合训反而全面掉点)；③ uncertainty 三处反哺(refine/smoothness/fusion)闭环；④ <b>uncertainty mask 优于 occlusion mask</b>——遮挡≠估计差、非遮挡也可能很不可靠(Tab.5 用遮挡 mask 融合反而比不融合更差)；⑤ 跨域泛化也靠 uncertainty 提升(Tab.6)。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① homography smoothness ℓ_hg <b>仅用于 KITTI</b>(平面刚性运动)，Sintel 非刚性时高不确定常对应动态物体、平面假设崩→用了反而有害(消融 Tab.3 row6 用 ⃝ 标注)，<b>跨场景普适性受限</b>；② 不确定性监督依赖<b>预设增广集</b>，作者自承可能覆盖不了真实退化(如强非高斯运动模糊/大气扰动)，拟用生成模型扩增广空间；③ 各 λ 超参(λ_sm=55 等)与 θ(Sintel45/KITTI35)<b>数据集相关</b>，需调。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文大意：</b>无监督光流普遍<i>“lack reliable uncertainty estimation, limiting their robustness and interpretability”</i>。本文提 <b>U²Flow</b>：<i>“the first recurrent unsupervised framework that jointly estimates optical flow and per-pixel uncertainty”</i>。核心创新=<b>解耦学习</b>策略，<i>“derives uncertainty supervision from augmentation consistency via a Laplace-based maximum likelihood objective, enabling stable training without ground truth”</i>。预测的不确定性<i>“further integrated into the network to guide adaptive flow refinement and dynamically modulate the regional smoothness loss”</i>；再加 <i>“uncertainty-guided bidirectional flow fusion mechanism that enhances robustness in challenging regions”</i>。KITTI/Sintel 上无监督 SOTA。代码：github.com/sunzunyi/U2FLOW。</div>
+    <div class="note-b"><b>逐句指路：</b><br>1) <i>“lack reliable uncertainty estimation”</i> → 靶子=无监督光流不给“置信度”。<br>2) <i>“first recurrent unsupervised framework that jointly estimates optical flow and per-pixel uncertainty”</i> → 定位=首个联合估计。<br>3) <i>“derives uncertainty supervision from augmentation consistency via a Laplace-based maximum likelihood objective”</i> → 监督怎么来=增广一致性 + Laplace MLE。<br>4) <i>“decoupled … enabling stable training without ground truth”</i> → 解耦=无 GT 稳定训练的关键。<br>5) refinement + smoothness modulation + bidirectional fusion → 不确定性的三处利用闭环。</div>
+
+    <div class="note-h">📚 背景知识①（外部，非本文原文）：光流 / RAFT / EPE·Fl</div>
+    <div class="note-b"><b>光流（optical flow）</b>=两帧间每像素的 2D 位移场 \(F_{1\to2}\in\mathbb{R}^{H\times W\times2}\)。<b>RAFT</b>（Teed &amp; Deng 2020）=主流 recurrent 架构：抽特征 \(f_1,f_2\in\mathbb{R}^{H'\times W'\times D}\)→建<b>全对 4D correlation volume</b> \(C\in\mathbb{R}^{H'\times W'\times H'\times W'}\)→GRU recurrent 迭代 \(k=1,...,K\) 次逐步 refine 光流。本文沿用。指标：<b>EPE</b>（average endpoint error）=预测位移与真值的平均欧氏距离；<b>Fl</b>=错误像素百分比（误差超阈值）；noc=非遮挡、occ=遮挡。</div>
+
+    <div class="note-h">📚 背景知识②：无监督光流怎么训（无 GT）</div>
+    <div class="note-b">靠 <b>photometric loss</b>（用预测流把一帧 warp 到另一帧、比对像素一致性，常用 ℓ1 + SSIM + census）+ <b>edge-aware smoothness</b>（边缘感知平滑）。遮挡处 photometric 失效→用 <b>forward-backward consistency check</b>（前向流 + 反查后向流应抵消，否则判遮挡）生成二值遮挡 mask 排除（本文式6）。代表作：ARFlow/SelFlow（知识蒸馏 + 强增广）、SemARFlow/UnSAMFlow（注入语义提运动边界）、SMURF/M2Flow（多帧时序）。本文要把这套“二值遮挡 mask”升级成更细的“逐像素不确定性 mask”。</div>
+
+    <div class="note-h">📚 背景知识③：不确定性建模（Laplace MLE）/ AUSE / Spearman CC</div>
+    <div class="note-b">把预测当一个分布、最大化观测似然=最小化负对数似然（NLL）。若残差用 ℓ1，对应 <b>Laplace 分布</b>；预测 <b>log-variance \(\alpha=\log\sigma^2\)</b> 保正且数值稳。评测：<b>AUSE</b>（Area Under the Sparsification Error）=按预测不确定性 vs 按真值误差逐步移除像素，两条误差曲线差的面积，<b>越小</b>说明不确定性越能当真误差的代理；<b>Spearman CC</b>=不确定性与真误差的秩相关，<b>越高</b>越好。两者都需要 GT 光流误差当参照（仅用于评测、不用于训练）。</div>
+
+    <div class="note-h">② §1 Introduction — problem（两大核心挑战）</div>
+    <div class="note-b"><b>problem：</b>监督光流（RAFT 系）强但 GT 贵<i>“costly and often impractical”</i>→转无监督；但无监督在<i>“occlusions, textureless regions, and large motion displacements”</i>处易错，且误差污染下游——<i>“In point tracking and multi-view reconstruction, even small local optical flow errors can accumulate and lead to failure”</i>，还会在 depth recovery / motion segmentation 产生 artifact。一句点题：<i>“it is not enough for a model to predict what the motion is; it must also quantify how confident it is in that prediction.”</i> 两大拦路虎：<b>(1) Absence of Direct Supervision</b>——<i>“self-supervised models lack any explicit ‘correct answer’ for uncertainty”</i>；<b>(2) Effective Integration</b>——<i>“it is unclear how to leverage it effectively during training to improve flow accuracy, rather than treating it as a mere byproduct.”</i></div>
+
+    <div class="note-h">②b §1 — solution（增广不一致 + 反馈架构）</div>
+    <div class="note-b"><b>solution（两条主线）：</b>① 针对无监督——<i>“we derive a supervisory signal from the model’s own predictive inconsistencies under data augmentation”</i>：扰动后<i>“When the model yields inconsistent predictions … it exposes its own regions of low confidence”</i>，据此用 Laplace MLE 学不确定性、<b>且与主光流损失解耦</b>。② 针对“怎么用”——设计 uncertainty-aware recurrent 架构，<i>“The predicted uncertainty is fed back into the recurrent update block to guide adaptive refinement”</i>，并用它<i>“modulate the self-supervision objectives … intelligently down-weight unreliable signals”</i>。</div>
+
+    <div class="note-h">②c §1 — why 增广一致性能当监督 + 三大贡献</div>
+    <div class="note-b"><b>why（最关键的两个判断）：</b>① <b>为什么增广不一致=不确定性</b>：对图做扰动后，模型在“真懂”的区域预测应稳定、在“没把握”区域（遮挡/无纹理）预测会乱跳→不一致 \(\hat D\) 天然标出低置信区，是无 GT 下唯一可得的可靠自监督信号。② <b>为什么必须解耦</b>：若像监督法那样把 uncertainty 与 flow 绑进一个 MLE，低置信区会被 MLE 自动 down-weight→反过来削弱光流在难区的学习（消融证实 UE-only 全面恶化）。<b>三大贡献：</b>(i) 首个 recurrent 无监督联合估计光流 + 不确定性框架（含 uncertainty head + uncertainty-aware refinement）；(ii) 基于增广一致性的 decoupled 学习 + uncertainty-guided regional smoothness；(iii) uncertainty-guided 双向流融合，<i>“outperforming traditional occlusion-based strategies”</i>。</div>
+
+    <div class="note-h">③ §2 Related Work — 无监督光流 + 不确定性估计</div>
+    <div class="note-b"><b>无监督光流：</b>基础=photometric consistency + spatial smoothness，但 photometric 在 <i>“occlusions, motion blur, illumination changes, or textureless regions”</i> 失效。早期用二值 occlusion mask 排除；ARFlow/SelFlow 靠知识蒸馏 + 强增广；SemARFlow/UnSAMFlow 注入语义；多帧法（SMURF/M2Flow）用时序补充。痛点：<i>“most models focus solely on point estimation and ignore prediction uncertainty”</i>。<b>不确定性估计：</b>早期当后处理（从图像梯度/局部能量启发式估），后来 ProbFlow（变分推断联合估）、PDC-Net+（<b>监督</b>下学稠密对应 + 不确定性）、ProbDiffFlow（多假设输出）。关键缺口：<i>“most existing optical flow uncertainty methods depend on full supervision … incompatible with the self-supervised paradigm”</i>，且<i>“uncertainty is rarely leveraged to improve the flow estimation process itself”</i>。</div>
+
+    <div class="note-h">④ §3.1 Network Overview（RAFT 底座 + 维度）</div>
+    <div class="note-b"><b>目标：</b>给两帧 \(I_1,I_2\in\mathbb{R}^{H\times W\times3}\)，估稠密光流 \(F_{1\to2}\in\mathbb{R}^{H\times W\times2}\) 及其不确定性 map \(\sigma^2_{1\to2}\in\mathbb{R}^{H\times W}\)。<b>架构：</b>继承 RAFT——抽特征→4D correlation volume \(C\in\mathbb{R}^{H'\times W'\times H'\times W'}\)→recurrent update block 迭代 \(K\) 次 refine \(F^{(k)}_{1\to2}\)。随 SMURF 把 <b>BatchNorm 全换 InstanceNorm</b>（<i>“to enhance training stability and convergence under small-batch, unsupervised settings”</i>）。新增 <b>uncertainty head</b> 在每次迭代估 \(\sigma^{2(k)}_{1\to2}\)，并把它喂回 refinement——形成<i>“jointly learns optical flow and uncertainty within a unified optimization framework”</i>。</div>
+
+    <div class="note-h">④b §3.2 Uncertainty Head + Flow Refinement 式(1)-(5)</div>
+    <div class="note-b">从隐状态 \(h^{(k)}\) 解 flow 特征与不确定性：
+    \[ f^{(k)}=C_{flow}(h^{(k)}),\quad \alpha^{(k)}=C_{unc}(h^{(k)}) \tag{1} \]
+    保正 + 数值稳，预测 <b>log-variance</b>：
+    \[ \alpha^{(k)}=\log\!\big(\sigma^{2(k)}_{1\to2}\big),\quad \text{推理时 } \sigma^{2(k)}_{1\to2}=\exp(\alpha^{(k)}) \tag{2} \]
+    可靠性权重（sigmoid，越不确定越小）\(s^{(k)}=\phi(-\alpha^{(k)})\)（式3）；缩放特征 \(\tilde f^{(k)}=f^{(k)}\odot s^{(k)*}\)（式4，<b>*=stop-gradient</b>，不让梯度回传 uncertainty 分支）；残差
+    \[ \Delta F^{(k)}_{1\to2}=C'_{flow}\big(\mathrm{concat}(f^{(k)},\tilde f^{(k)},\alpha^{(k)*})\big) \tag{5} \]
+    <i>“effectively suppressing the influence of unreliable regions during refinement.”</i></div>
+
+    <div class="note-h">④c §3.3 Photometric + Homography Smoothness 式(6)(7)</div>
+    <div class="note-b"><b>Photometric（式6）：</b>用 \(F^{(k)}\) warp 帧、比对，损失=ℓ1 + SSIM + census；遮挡 mask 由 forward-backward consistency 算（\(\|F_{i\to j}+F_{j\to i}\|^2>\delta\) 判遮挡）。<b>Regional smoothness（式7）：</b>对每个物体区域用 RANSAC 估 homography 生成 refine 流 \(F^H\)，\(\ell_{hg}=\frac{1}{H'W'}\sum_p\|F_{i\to j}(p)-F^{H}_{i\to j}(p)\|_1\)。<b>关键区别</b>：旧法用遮挡 mask 挑可靠点，本文改用 <b>uncertainty &lt; τ_hg 的 reliability mask</b>（Fig.3 显示它比 FB mask 更准圈出高误差区——<i>“some high-error regions remain unmasked, while certain low-error regions are incorrectly masked”</i>）。因 homography 平面假设强，<i>“this uncertainty-enhanced component is applied exclusively to the KITTI dataset, which contains predominantly planar rigid motions.”</i></div>
+
+    <div class="note-h">④d §3.3 增广一致性 + Laplace MLE 式(8)(9)(10) + 解耦</div>
+    <div class="note-b"><b>不确定性监督（核心）：</b>初次前向得 \(F_{1\to2}\)→对图像+流做强增广得 \((\hat I_1,\hat I_2)\) 与变换后伪 GT 流 \(\hat F_{1\to2}\)→网络在增广对上重估 \(\hat F'_{1\to2}\)→<b>\(\hat D^{(k)}(p)=\|\hat F_{1\to2}(p)-\hat F'^{(k)}_{1\to2}(p)\|_1\)</b> 当自监督目标（捕捉<i>“predictive inconsistency under perturbation”</i>）。增广含 <i>“color jitter, contrast adjustment, Gaussian noise, random erasing”</i> + <i>“translation, random rotation, rescaling”</i>。NLL（式8）假设 <b>Laplace likelihood</b>（与 ℓ1 残差对齐）得数值稳的 MLE：
+    \[ \tilde\ell^{(k)}_{unc}(p)=\sqrt{2}\,\exp\!\Big(-\tfrac12\alpha^{(k)}(p)\Big)\hat D^{(k)}(p)+\tfrac12\alpha^{(k)}(p) \tag{9} \]
+    直觉：\(\hat D\) 大处逼 \(\alpha\)（方差）变大，\(\tfrac12\alpha\) 项又惩罚方差无脑膨胀。<b>解耦关键</b>：<i>“we detach \(\hat D^{(k)}\) from the MLE objective to prevent gradient leakage into the main flow estimation branch”</i>；另留带梯度的增广正则 \(\ell^{(k)}_{ar}\)（式10）继续训光流。</div>
+
+    <div class="note-h">④e §3.3 总损失 式(11)</div>
+    <div class="note-b">总目标按迭代指数衰减 \(\zeta\) 加权（早期迭代权重小）：
+    \[ \ell_{Total}=\lambda_{hg}\ell_{hg}+\sum_{k=1}^{K}\zeta^{K-k}\big(\ell^{(k)}_{ph}+\lambda_{sm}\ell^{(k)}_{sm}+\lambda_{ar}\ell^{(k)}_{ar}+\lambda_{sem}\ell^{(k)}_{sem}+\lambda_{unc}\ell^{(k)}_{unc}\big) \tag{11} \]
+    含 photometric / 边缘 smoothness / 增广正则 ar / 语义增广 sem / 不确定性 unc；<i>“The homography smoothness term \(\ell_{hg}\) is applied only to the final iteration output.”</i></div>
+
+    <div class="note-h">④f §3.4 Uncertainty-Guided 双向流融合 式(12)(13)</div>
+    <div class="note-b">随 SMURF 用轻量 conv 学“后向流 \(F_{t\to t-1}\)→前向流 \(F_{t\to t+1}\)”映射，但<b>只在高置信区训</b>：
+    \[ M_f=\mathbb{1}(\sigma^2_{t\to t+1}<\theta),\quad M_b=\mathbb{1}(\sigma^2_{t\to t-1}<\theta) \tag{12} \]
+    \[ F^{fused}_{t\to t+1}=F_{t\to t+1}\odot(1-M_{fused})+\bar F_{t\to t+1}\odot M_{fused},\quad M_{fused}=(1-M_f)\odot M_b \tag{13} \]
+    即<b>精确在“前向不确定（\(M_f=0\)）但后向确定（\(M_b=1\)）”处</b>用后向纠正。区别 SMURF 只管遮挡：<i>“true occlusion does not always equate to poor flow estimation, and conversely, non-occluded regions can still yield highly unreliable flow predictions.”</i> 且这是 U²Flow 输出上的轻量 refinement，<i>“achieving multi-frame benefits without the extensive retraining … required by methods like SMURF.”</i></div>
+
+    <div class="note-h">⑤ §4.1 实验设置</div>
+    <div class="note-b">KITTI + Sintel。<b>训练：</b>Adam（β1=0.9, β2=0.999），batch 4；先 100k raw（lr 2×10⁻⁴），再 finetune（OneCycleLR，max lr 2.5×10⁻⁴，KITTI 100k / Sintel 50k）；增广在 50k 后引入、同时关 \(\ell_{sm}\)，\(\ell_{hg}\) 与 \(\ell_{sem}\) 在 finetune 过半后开。<b>超参：</b>\(K=12\)，\([\lambda_{hg},\lambda_{sm},\lambda_{ar},\lambda_{sem},\lambda_{unc},\tau_{hg}]=[0.1,55,0.02,0.05,0.005,2]\)，\(\theta=45\)（Sintel）/ \(35\)（KITTI）；输入 resize KITTI 256×832、Sintel 448×1024。指标 EPE + Fl。</div>
+
+    <div class="note-h">⑤b §4.2 光流 benchmark（Tab.1 真数字，越低越好）</div>
+    <div class="note-b"><table style="width:100%;border-collapse:collapse;font-size:12.5px;color:#e3e7ff">
+    <tr style="color:#ffd35c;border-bottom:1px solid #2a2f5c"><td>方法(无监督)</td><td>Sintel-C test</td><td>Sintel-F test</td><td>K15 Fl-all</td><td>K15 Fl-noc</td></tr>
+    <tr><td>UPFlow</td><td>4.68</td><td>5.32</td><td>9.38</td><td>—</td></tr>
+    <tr><td>SMURF (MF 多帧)</td><td>3.15</td><td>4.18</td><td>6.83</td><td>5.26</td></tr>
+    <tr><td>UnSAMFlow (语义)</td><td>3.93</td><td>5.20</td><td>7.83</td><td>5.67</td></tr>
+    <tr><td>M2Flow (MF 多帧)</td><td>3.38</td><td>5.01</td><td>7.37</td><td>5.73</td></tr>
+    <tr><td>U2Flow</td><td>2.83</td><td>4.16</td><td>6.13</td><td>4.56</td></tr>
+    <tr style="color:#7ee0c0"><td><b>U2Flow (+FF)</b></td><td><b>2.83</b></td><td><b>4.10</b></td><td><b>6.00</b></td><td><b>4.52</b></td></tr>
+    </table></div>
+    <div class="note-b"><b>读表：</b>两帧 U²Flow 即 K15 Fl-all <b>6.13</b>，<i>“significantly outperforming the previous state-of-the-art unsupervised two-frame method UPFlow (9.38%)”</i>，且<b>反超</b>多帧 SMURF(6.83)/M2Flow(7.37) 与语义 SemARFlow(8.38)/UnSAMFlow(7.83)；KITTI-2012 EPE≈1.4（comparable）。<b>+FF</b> 进一步到 Fl-all <b>6.00</b>、Sintel Final 4.10。</div>
+
+    <div class="note-h">⑤c §4.3 不确定性质量（Tab.2 + 稀疏化曲线 Fig.4）</div>
+    <div class="note-b"><table style="width:100%;border-collapse:collapse;font-size:13px;color:#e3e7ff">
+    <tr style="color:#ffd35c;border-bottom:1px solid #2a2f5c"><td>方法</td><td>Sintel AUSE↓</td><td>Sintel CC↑</td><td>KITTI AUSE↓</td><td>KITTI CC↑</td></tr>
+    <tr><td>FB Check</td><td>0.19</td><td>0.57</td><td>0.21</td><td>0.53</td></tr>
+    <tr><td>PDC-Net+（监督）</td><td>0.18</td><td>0.45</td><td>0.16</td><td>0.50</td></tr>
+    <tr><td>Smoothness</td><td>0.26</td><td>0.43</td><td>0.23</td><td>0.45</td></tr>
+    <tr style="color:#7ee0c0"><td><b>U2Flow</b></td><td><b>0.11</b></td><td><b>0.66</b></td><td><b>0.12</b></td><td><b>0.64</b></td></tr>
+    </table></div>
+    <div class="note-b"><b>读表：</b>U²Flow 不确定性与真误差相关性最强，<i>“outperforming heuristic methods as well as the model-based PDC-Net+, despite the latter being trained on dense synthetic ground-truth data”</i>——<b>无监督却赢过用稠密合成 GT 训的监督法</b>。Fig.4 稀疏化曲线：U²Flow 曲线最贴 oracle；虽 PDC-Net+ 在 KITTI 初段因 real-data finetune 略优，但 U²Flow 在更宽移除区间内更接近 oracle、最终误差更低。</div>
+
+    <div class="note-h">⑤d §4.5 消融：主组件（Tab.3）+ refinement（Tab.4）</div>
+    <div class="note-b"><b>主组件（Tab.3，列=Sintel-F EPE / Sintel-C EPE / K15 EPE / K15 Fl-all；○=ℓhg 仅 KITTI）：</b></div>
+    <div class="note-b"><table style="width:100%;border-collapse:collapse;font-size:12px;color:#e3e7ff">
+    <tr style="color:#ffd35c;border-bottom:1px solid #2a2f5c"><td>UE</td><td>Dec</td><td>FR</td><td>ℓhg</td><td>FF</td><td>S-F</td><td>S-C</td><td>K15 EPE</td><td>K15 Fl-all</td></tr>
+    <tr><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2.46</td><td>1.56</td><td>1.98</td><td>6.82</td></tr>
+    <tr><td>✓</td><td>-</td><td>-</td><td>-</td><td>-</td><td>2.57</td><td>1.65</td><td>2.18</td><td>7.72</td></tr>
+    <tr><td>✓</td><td>✓</td><td>-</td><td>-</td><td>-</td><td>2.41</td><td>1.44</td><td>1.98</td><td>6.87</td></tr>
+    <tr><td>✓</td><td>✓</td><td>✓</td><td>-</td><td>-</td><td>2.32</td><td>1.42</td><td>1.95</td><td>6.85</td></tr>
+    <tr><td>✓</td><td>✓</td><td>✓</td><td>○</td><td>-</td><td>2.32</td><td>1.42</td><td>1.83</td><td>6.59</td></tr>
+    <tr style="color:#7ee0c0"><td>✓</td><td>✓</td><td>✓</td><td>○</td><td>✓</td><td><b>2.29</b></td><td><b>1.36</b></td><td><b>1.74</b></td><td><b>6.30</b></td></tr>
+    </table></div>
+    <div class="note-b"><b>读表（最关键）：</b>仅加 UE 不解耦<b>反而恶化</b>（K15 Fl-all 6.82→<b>7.72</b>，<i>“the uncertainty learning objective can interfere with the primary task”</i>）；加 <b>Dec 解耦</b>立刻修复到 6.87 并稳步改善——<b>解耦是转折点</b>。<b>refinement（Tab.4）：</b>w/o Refinement K15 Fl-all 6.69；Refinement <b>w/o</b> Uncertainty 6.81（更差，仅特征拼接）；Refinement <b>w/</b> Uncertainty 6.59→证明动态缩放靠的就是 uncertainty。</div>
+
+    <div class="note-h">⑤e §4.5 消融：双向融合（Tab.5）+ §4.6 跨域泛化（Tab.6）</div>
+    <div class="note-b"><b>融合 mask（Tab.5，K15 Fl-all / Fl-occ）：</b>w/o Fusion 6.59 / Fl-occ 16.01；<b>用遮挡 mask 反恶化</b>到 8.17 / <b>27.73</b>（<i>“guiding fusion with a conventional occlusion mask yields results even worse than the baseline … valid forward flows are often indiscriminately discarded”</i>）；用 <b>uncertainty mask（Ours）</b>降到 6.30 / <b>14.17</b>。<b>跨域泛化（Tab.6，无 finetune 直接跨测）：</b>+Fusion 让 KITTI→Sintel Final 5.80→<b>5.49</b>、Sintel→KITTI Fl-all 17.05→<b>16.58</b>——<i>“the reliability signal captured by our uncertainty estimation is fundamental and transferable.”</i></div>
+
+    <div class="note-h">⑥ 疑问 / 局限（[推测] 已标注）</div>
+    <div class="note-b">① <b>homography \(\ell_{hg}\) 仅用于 KITTI</b>：Sintel 非刚性运动时高不确定常对应动态物体、平面假设崩→用了反而有害（Tab.3 用 ○ 标注），<b>跨场景普适性受限</b>。② 作者自承局限：<i>“Our uncertainty supervision relies on the model’s predictive variance under a predefined set of augmentations, which may not fully capture all real-world sources of error, such as severe non-Gaussian motion blur or atmospheric distortions”</i>——拟用生成模型扩增广空间。③ [推测] 各 λ 超参与阈值 \(\theta\)（Sintel 45 / KITTI 35）、\(\tau_{hg}\) 数据集相关，迁移到新域可能需重调。④ [推测] +FF 的多帧增益建立在“后向流可靠”假设上，若前后向同时不确定（如长时遮挡）则无从纠正。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>无监督光流无 GT、难估不确定性，且遮挡/无纹理/大位移处易错、错误污染下游（点追踪/重建/深度/分割）。<br><b>method：</b>RAFT 底座 + uncertainty head；从“增广前后预测不一致 \(\hat D\)”用 <b>Laplace MLE</b>（式9）学不确定性、并 <b>detach \(\hat D\) 解耦</b>防梯度漏进光流；uncertainty 三处反哺——缩放特征做 refinement（式4/5）、阈值挑高置信点做 homography smoothness（式7，仅 KITTI）、双向流融合（式12/13，前向不确定+后向确定处纠正）。<br><b>experiment：</b>KITTI15 Fl-all <b>6.00</b>（无监督 SOTA，超多帧/语义法），不确定性 AUSE <b>0.11/0.12</b> 超监督 PDC-Net+；遮挡 mask 融合 Fl-occ 反恶化到 27.73、uncertainty mask 才降到 14.17。<br><b>takeaways：</b>① <b>增广一致性</b>是无 GT 不确定性的可靠监督源（模型自己的“预测抖动”即低置信信号）；② <b>不确定性损失必须与光流损失解耦</b>（detach）才稳——不解耦直接联合训会全面掉点（6.82→7.72）；③ <b>逐像素不确定性 &gt; 二值遮挡 mask</b>——“真遮挡≠估计差、非遮挡也可能很不可靠”，故 uncertainty mask 更适合指导 smoothness/fusion 且可跨域迁移。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-u-2flow-uncertainty-aware-unsupervised-optical-flow-est/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Comparison between previous optical flow estimation methods and our approach. (Left) Previous methods estimate only optical flow. (Right) Our proposed U2Flow framework jointly es- timates optical flow and its uncertainty, and further leverages the predicted uncertainty to refine the flow estimation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-u-2flow-uncertainty-aware-unsupervised-optical-flow-est/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Overview of U2Flow architecture. (a) The overall recurrent structure follows RAFT [47]. (b) The uncertainty-aware refinement module and the uncertainty estimation head respectively predict optical flow and per-pixel uncertainty in the recurrent update block.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-u-2flow-uncertainty-aware-unsupervised-optical-flow-est/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Comparison of different masks for indicating flow er- rors. The masks are visualized as translucent green overlays on the optical flow error maps, where correct estimations are shown in blue, incorrect ones in red, and black pixels denote regions with- out ground truth. As shown in (c), some high-error regions remain unmasked, while certain low-error regions are incorrectly masked. In co</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-u-2flow-uncertainty-aware-unsupervised-optical-flow-est/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Sparsification curves for uncertainty evaluation. Lower AUSE (shown in parentheses) is better.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-u-2flow-uncertainty-aware-unsupervised-optical-flow-est/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Qualitative results on the KITTI test set (sample frames #5 and #9) and the Sintel (final pass) test set (samples: ambush 3, frame 23; cave 3, frame 16), compared with SMURF [41]. Additional examples can be found on the official benchmark website.</figcaption></figure>
+    </div>
+  </div><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body></html>

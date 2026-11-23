@@ -1,0 +1,182 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Linear Fundamental Matrix Estimation from 7 or 5 Points</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\(','\)']],displayMath:[['\[','\]']]}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Linear Fundamental Matrix Estimation from 7 or 5 Points</h1>
+    <div class="au2" style="color:var(--mut)">Taci Ata Kucukpinar ⋅ Juan Mogollon ⋅ Joshua Fraser ⋅ Timothy Duff ⋅ Kannappan Palaniappan</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2026/papers/Kucukpinar_Linear_Fundamental_Matrix_Estimation_from_7_or_5_Points_CVPR_2026_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Linear%20Fundamental%20Matrix%20Estimation%20from%207%20or%205%20Points">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">We revisit the problem of estimating the fundamental matrix of a pair of perspective cameras, a cornerstone of geometric computer vision.As is well-known, linear solvers require at least 8 point correspondences, whereas nonlinear minimal solvers require just 7 in the uncalibrated case or 5 in the calibrated case.In this paper, we consider a special case of the 7-point problem where 5 of the points are configured to lie on two lines, which has previously been shown to have a unique solution.As a theoretical contribution, we offer an analysis of how this uniqueness manifests in the standard 7-point algorithm. On a practical level, we provide the first practical linear solver for the minimal problem associated to this special configuration.Additionally, we evaluate a heuristic 5-point fundamental matrix solver based on the construction of virtual midpoints.When combined with early non-minimal fitting, the runtime and accuracy of our solver is competitive with the state-of-the-art (SoTA) on multiple benchmarks.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-linear-fundamental-matrix-estimation-from-7-or-5-points -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">两视图几何的经典常识：算基础矩阵 F，<b>线性解法要 ≥8 点</b>，<b>非线性最小解法要 7 点(uncalibrated)/5 点(calibrated)</b>。本文盯住 7 点问题的一个特例——<b>其中 5 个点落在两条线上(称 V-Umlaut 配置)</b>，已知它有唯一解。贡献：① 给出该配置<b>第一个既线性又最小</b>的实用 F 求解器(Solver 3.1，比 [29] 完全初等、快且稳、适配 RANSAC)；② 彻底讲清标准 7 点算法在此配置下的<b>两个伪解(spurious solution)</b>从何而来，证明"唯一性"是真几何现象而非参数化假象；③ 把它当一个<b>启发式 5 点解器</b>(用 virtual midpoint 造出 2 个虚拟对应)，配合 early non-minimal fitting(ENM)，速度/精度在 PhotoTourism、Aachen 上<b>追平 SOTA 5 点解器</b>。代码开源 v-umlaut。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">两视图几何是 3D 重建(incremental/global/learned SfM)的基石、研究了上百年。动机有二：① <b>理论</b>——最近 [29] 在给 n-view 最小问题分类时发现，7 点 F 估计在某些特殊配置下<b>居然只有唯一解</b>(通常 7 点算法给 3 个解)，本文取其中最一般的 V-Umlaut 配置深挖；② <b>实用</b>——最小解器嵌在 RANSAC 里做 outlier-robust 估计，[47] 在三视图里用了 “virtual correspondence”(直接取两对应的 2D 中点当虚拟点，affine 近似下中点投影还是中点)。本文把 (p6,q6)、(p7,q7) 设成这种虚拟对应 → 得到一个<b>线性 5 点 F 解器</b>。</div>
+    <div class="note-h">核心方法（关键公式）</div>
+    <div class="note-b"><b>F 基础</b>：3×3、rank(F)=2(式1)、对应点满足 qᵀFp=0(式2)、scale 意义下 F∈P⁸。<b>V-Umlaut 约束</b>(式3)：p_(5+i)∈span(p1,p_(1+i))、q_(5+i)∈span(q1,q_(1+i))，i∈{1,2}——5 点在两条线上。<b>① 投影归一化(§3.2)</b>：构造 per-view 单应 H1,H2 把每视图前 4 点映到标准帧(z1~e1,z2=e2,z3=e3,z4=e1+e2+e3)，F=H2ᵀ·F_coords·H1(式6)，其中 F_coords 对角为 0、规范 f32=1(式5)。<b>② 伪解分析(§3.3)</b>：标准 7 点 det(F_coords)=0(式11)+w_iᵀF_coords z_i=0(i=4..7，式12)给 3 个解；其中两个退化(f12=f21=0 或 f13=f31=0)对应 affine F、反投影会逼出"CP,CQ,X1,X2 共面"——与非退化假设矛盾→真解须 f12·f13≠0。<b>③ 非线性化线性(§3.4)</b>：用式13 把 f21 线性表为 f12、式16 把 f31 表为 f13，行列式约束化简成 f12·f13·(c1(s)f31+c2(s))=0(式18)→c1f31+c2=0(式19)。式12+式19=<b>5 个线性方程解 5 个未知</b>→唯一解；Cramer 法则得 F_coords=Φ(s,x,y)(式21，Φ:R¹⁰⇢R⁵ 有理映射)。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>合成(10000 trials，§4)</b>：5pE 返回最多 10 解、7pF 最多 3 解、<b>5pF-V-Umlaut 返回唯一解</b>；本解器对噪声更敏感但 “degrades gracefully”，误差差异主要来自<b>虚拟/dependent 点的噪声</b>(暗示可用深度学习匹配 dependent 点改进)。<b>真实(PhotoTourism 13 场景 + Aachen，LO-RANSAC，Table1 @1000 iters)</b>：5pF-V-Umlaut <b>裸跑最快</b>(PhotoTourism 3.52ms vs 5pE 24.68ms)但精度低(mAA@10 49.79 vs 79.58)；<b>+ENM 后追平 SOTA</b>(MED 1.25°/mAA 79.62，runtime 44.12ms，远低于 5pE+ENM 的 116.17ms)。结论：V-Umlaut+ENM 用更少运行时达到 top 精度。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 在被研究上百年的两视图几何里<b>挖出新结果</b>——把 [29] 的"意外唯一性"从抽象分类落成<b>可跑、初等、稳定</b>的求解器；② “best of both worlds”：<b>既线性(无需解三次方程)又最小</b>；③ 显式刻画并<b>主动绕开</b>标准 7 点算法的两个伪解(对应两个 identical 的 ruled quadric)，是漂亮的几何洞察；④ 5 点启发式 + virtual midpoint + ENM 让纯理论结果具备工程竞争力。</div>
+    <div class="note-h">疑问 / 待深挖</div>
+    <div class="note-b">① 误差主要来自 virtual/dependent 点匹配——原文建议"deep learning-based matching of dependent points"，但<b>本文未实现</b>；② V-Umlaut 裸解精度明显逊于 5pE，<b>强依赖 ENM 才追平</b>，其独立价值更多在"快"而非"准"；③ Φ 的显式有理公式与式18 推导都丢到 supplementary(SM Sec.9)，<b>正文未给完整公式</b>；④ 论文受美陆军工程兵 ERDC 资助、强调 WAMI(航拍广域运动影像)场景，地面/驾驶等其他相机运动下表现<b>原文未单独评测</b>。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文提取，43K 字符）。结构：Abstract 逐句 → 背景 → Intro 闭环 → Method 公式 → 实验数值表 + 全文总结。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文起手：</b>“We revisit the problem of estimating the fundamental matrix of a pair of perspective cameras, a cornerstone of geometric computer vision.”——重访两视图几何里最经典的问题：估计一对透视相机的基础矩阵 \(F\)。</div>
+    <div class="note-b"><b>常识基线（逐句指路）：</b>“linear solvers require at least 8 point correspondences, whereas nonlinear minimal solvers require just 7 in the uncalibrated case or 5 in the calibrated case.”——线性解法要 \(\ge 8\) 对点；非线性最小解法在 uncalibrated（不知内参，解 \(F\)）下要 7 点、在 calibrated（已知内参，解 \(E\)）下要 5 点。</div>
+    <div class="note-b"><b>本文切口：</b>“a special case of the 7-point problem where 5 of the points are configured to lie on two lines, which has previously been shown to have a unique solution.”——盯住 7 点问题的一个特例：其中 5 个点落在两条线上（作者命名 V-Umlaut 配置），此前 [29] 已证它<b>有唯一解</b>。</div>
+    <div class="note-b"><b>两层贡献：</b>① 理论——“a completely elementary analysis of how this uniqueness manifests in the standard 7-point algorithm.”（用<b>完全初等</b>的方法讲清这个唯一性如何在标准 7 点算法里体现）；② 实用——“the first linear solver for the minimal problem associated to this special configuration.”（该配置<b>第一个</b>既线性又最小的实用解器）。再加一个 “heuristic 5-point fundamental matrix solver based on the construction of virtual midpoints.”（基于虚拟中点的启发式 5 点解器）。</div>
+    <div class="note-b"><b>结论性卖点：</b>“When combined with early non-minimal fitting, the runtime and accuracy of our solver is competitive with the state-of-the-art (SOTA) on multiple benchmarks.”——配合 early non-minimal fitting（ENM）后，速度/精度在多个 benchmark 上追平 SOTA。代码 “Code is available at https://github.com/CIVA-Lab/v-umlaut.”。<b>一句话抓 Abstract：</b>把"7 点中 5 点共两线 ⇒ 唯一解"这个特例做成<b>线性最小 \(F\) 解器</b>，再借虚拟中点变成 5 点解器，配 ENM 追平 SOTA。</div>
+
+    <div class="note-h">📚 背景①（外部知识，非本文原创）：基础矩阵 \(F\) / 本质矩阵 \(E\) / 对极几何</div>
+    <div class="note-b">两台透视相机看同一 3D 点 \(X\)，成像点 \(p,q\) 满足<b>对极约束</b> \(q^\top F p = 0\)；\(F\) 是 \(3\times3\)、\(\operatorname{rank}(F)=2\)、scale 自由度的矩阵（\(F\) 看作射影空间 \(\mathbb{P}^8\) 的一个元素），编码两视图相对几何（uncalibrated，不知内参 \(K\)）。若已知 \(K\)，把像点归一化后得<b>本质矩阵 \(E\)</b>，约束更强、自由度更少 → 最小点数从 7 降到 5。给定 \(F/E\) 即可（按 Hartley-Zisserman 标准流程）恢复相机位姿 \((R,t)\) 与 3D 点。原文 “p ∼ λp for any nonzero real scalar λ, since both vectors represent the same point in the real projective plane \(\mathbb{P}^2\)”。</div>
+
+    <div class="note-h">📚 背景②：8/7/5 点算法 &amp; "linear vs minimal" 到底差在哪</div>
+    <div class="note-b">对极约束 \(q^\top F p=0\) 对每对点给 1 个<b>线性</b>方程，\(F\) 有 8 个自由度 → <b>8 点算法</b>纯线性（恰定/超定）。但 \(F\) 还有 \(\det(F)=0\)（即 \(\operatorname{rank}(F)=2\)）这条<b>非线性</b>约束；只用 7 点时必须联立这个三次约束 → <b>7 点算法解三次方程、最多给 3 个解</b>（非线性 minimal）。"minimal solver" = 用恰好最少点、被反复嵌进 RANSAC（所以越快越好、解越少越省心）。本文亮点正是：在 V-Umlaut 特例下做到<b>既 minimal（5/7 点）又 linear（不解三次）且唯一解</b>——原文称 “this solver exists in the best of both worlds, as it is both linear and minimal.”。</div>
+
+    <div class="note-h">📚 背景③：RANSAC / LO-RANSAC / ENM / mAA / MED</div>
+    <div class="note-b">真实匹配含大量错配（outlier），<b>RANSAC</b> = 反复随机取最小点集算模型、数 inlier、留最好者；<b>LO-RANSAC</b> 额外加局部优化（本文用 PoseLib 的 LO-RANSAC 实现）。<b>ENM（Early Non-Minimal Refitting，来自 [47]）</b>= 每个 RANSAC 迭代里先跑最小解器，再 “(1) a set of n ≥ 5 inliers is determined, and then (2) a second-stage estimate is computed using an n-point essential matrix solver.”，inlier 阈值 1 像素。本文还提一个 <b>Fast ENM</b>：只保留与初始 V-Umlaut 估计最接近的二阶段位姿，省 scoring 开销。指标：<b>mAA@10°</b>（mean Average Accuracy，位姿误差在 10° 阈值内的平均准确度，越高越好）、<b>MED</b>（median pose error \(=\max(\theta_R,\theta_t)\)，越低越好）。</div>
+
+    <div class="note-h">📚 背景④：单应归一化 / 重心坐标 / virtual correspondence / ruled quadric</div>
+    <div class="note-b"><b>单应 \(H\)</b>= 射影变换；本文用它把每视图前 4 点映到标准帧来化简 \(F\) 的形式。<b>重心坐标</b>= 用线段两端点的凸组合系数表示线上点（如 \(p_6=\tilde s_{11}p_1+(1-\tilde s_{11})p_2\)）。<b>virtual correspondence（来自 [47]）</b>= 没有第 6/7 个真匹配，就取两个真匹配的 <b>2D 中点</b>当虚拟点，原文给出理由 “midpoints project exactly to midpoints” under “affine approximations to the camera geometry”。<b>ruled quadric（直纹二次曲面）</b>= 射影重建临界配置理论里，7 点算法的 3 个解各对应 “{X1,…,X7, C_P, C_Q} lies on a unique ruled quadric”。</div>
+
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环</div>
+    <div class="note-b"><b>problem：</b>两视图几何虽被研究上百年，作者自嘲 “it is perhaps rather surprising that any new results in two-view geometry are left to be discovered at all!”。但 [29]（PLMP，在给 n-view minimal problems 做分类时）意外发现 7 点 \(F\) 估计在特殊配置下<b>唯一解</b>；它在 [29, Table 1] 是倒数第三项，最后两项是 V-Umlaut 的退化、也满足该唯一性。本文取最一般的 V-Umlaut（两线两点、5 实点；见 Fig 1/2）深挖。</div>
+    <div class="note-b"><b>solution（Intro 已自包含）：</b>实用动机来自 [47] 的三视图工作——它解 calibrated three-view from four point-triplets 的流程是 “(1) estimating a fifth virtual point correspondence …, (2) estimating two-view geometry with the standard 5-point minimal solver, and then (3) registering the third view with a minimal P3P solver.”，且发现 “a naive strategy can be surprisingly effective: simply match the 2D midpoints of two given correspondences.”。本文就把 V-Umlaut 的 dependent 对应 \((p_6,q_6),(p_7,q_7)\) 设成这种虚拟中点 → 得到<b>启发式 5 点线性 \(F\) 解器</b>。</div>
+    <div class="note-b"><b>三条贡献（原文）：</b>1) “the first practical solver for the V-Umlaut fundamental matrix problem … both linear and minimal … completely elementary … fast, stable … suitable for RANSAC.”；2) “a detailed analysis of the spurious solutions … confirms that the unexpected uniqueness result of [29] is not merely an artifact of their chosen camera parametrization, but a meaningful geometric result.”；3) 经验证明 “the linear 5-point heuristic … outperforms the 7-point algorithm in RANSAC … combined with the early non-minimal fitting …, our V-Umlaut solver matches the performance of the standard, SOTA 5-point solver [32].”。</div>
+    <div class="note-b"><b>why 唯一性成立（关键假设）：</b>非退化假设第 4 条最关键——\(\{C_P,C_Q,X_1,X_2\}\) 与 \(\{C_P,C_Q,X_1,X_3\}\) <b>都不共面</b>，原文 “the last of these assumptions certainly holds for general camera motions. This is the key assumption that we will use to establish the unexpected uniqueness”。正是它排除了两个伪解。</div>
+
+    <div class="note-h">③ §2 Related Work — 与 [29]/[47]/[5] 的精确关系</div>
+    <div class="note-b">① 历史：uncalibrated 三次 7 点算法 “originates in the 1800s [46]”，calibrated 5 点用 Nistér [32]/Stewénius [45] 的 Gröbner 方法。② 与 [29]：本文 §3.4 “derivation of the linear solver from nonlinear constraints … is naturally aligned with this theme”（把非线性约束化简成线性，呼应 [29] 减小求解难度的主旨）。③ 与 [47]：直接复用其虚拟点选择策略 + 公开代码/数据来评测。④ 与已有 5 点 uncalibrated 解器 [5] 的区别：“this work employs a planar approximation of the scene … the previous solver needs to solve a cubic equation, whereas our method is linear.”。⑤ §3.3 的伪解分析关联 critical configurations 文献 [7,8,21]，但 “ours is an instance of unexpected uniqueness in the minimal case” 而非超定下的非唯一。</div>
+
+    <div class="note-h">④ §3.1 问题形式化 + 4 条非退化假设</div>
+    <div class="note-b"><b>给定：</b>7 对 \((p_i,q_i)\in\mathbb{P}^2\times\mathbb{P}^2\)，其中第 6/7 对是 dependent，满足共线约束（式3）：\(p_{5+i}\in\operatorname{span}(p_1,p_{1+i})\)、\(q_{5+i}\in\operatorname{span}(q_1,q_{1+i})\)，\(i\in\{1,2\}\)。用重心坐标（式4）：\(p_6=\tilde s_{11}p_1+(1-\tilde s_{11})p_2\)、\(p_7=\tilde s_{12}p_1+(1-\tilde s_{12})p_3\)（\(q\) 同理）。<b>目标：</b>求 \(F\in\mathbb{P}^8\)，\(\operatorname{rank}F=2\)，\(q_i^\top F p_i=0\ (i=1..7)\)，并据此重建相机对 \((P,Q)\) 与 \(X_1..X_7\)（其中 \(X_6\in\operatorname{span}(X_1,X_2)\)、\(X_7\in\operatorname{span}(X_1,X_3)\)）。<b>4 条非退化假设：</b>(1) \(X_1,X_2,X_3\) 不共线，任意 3 点（来自 \(\{p_1..p_4\}\) 或 \(\{q_1..q_4\}\)）不共线；(2) \(\tilde s_{ij}\notin\{0,1\}\)（dependent 2D 点不与其它点重合）；(3) 不落入 [20,§11.9] 的传统退化（无相对平移、点共面）；(4) \(\{C_P,C_Q,X_1,X_2\}\) 与 \(\{C_P,C_Q,X_1,X_3\}\) 均不共面。</div>
+
+    <div class="note-h">⑤ §3.2 Per-view 投影归一化（构造 \(H_1,H_2\)）</div>
+    <div class="note-b">目标坐标化形式 \(F_{\text{coords}}\)（式5）对角为 0、规范 \(f_{32}=1\)：\[F_{\text{coords}}=\begin{pmatrix}0&f_{12}&f_{13}\\ f_{21}&0&f_{23}\\ f_{31}&1&0\end{pmatrix},\qquad F=H_2^\top F_{\text{coords}} H_1.\] 用前 4 点构造 \(A=[\,p_1\ p_2\ p_3\,]\)、\(D=\operatorname{diag}(\Delta_{423},\Delta_{143},\Delta_{124})\)（三个 \(3\times3\) 行列式），令 \(H_1=D^{-1}A^{-1}\)。归一化后 \(z_i:=H_1 p_i\) 满足 \(z_1\sim e_1,z_2=e_2,z_3=e_3,z_4=e_1+e_2+e_3\)；同理 \(w_i:=H_2 q_i\)。原文关键：前 3 对 “zi ∼ wi ∼ ei, i = 1, 2, 3, automatically imply the form of \(F_{\text{coords}}\)”，而第 4 对 \(z_4\sim w_4\sim e_1+e_2+e_3\) “forces the entries of \(F_{\text{coords}}\) to sum to zero.”。新重心坐标由式10 从 \(z_6,z_7,w_6,w_7\) 算出，如 \(s_{11}=\tfrac{1}{1+z_{62}/z_{61}}\)。</div>
+
+    <div class="note-h">⑥ §3.3 伪解分析（全文精髓，逐公式）</div>
+    <div class="note-b">标准 7 点的方程组 \(\det(F_{\text{coords}})=0\)（式11）与 \(w_i^\top F_{\text{coords}} z_i=0,\ i=4,5,6,7\)（式12）有 <b>3 个解</b>，但对 V-Umlaut 其中 2 个退化。看 \(i=6\)：\[w_6^\top F_{\text{coords}} z_6 = w_{62}z_{61}f_{21}+w_{61}z_{62}f_{12}=0.\] 若假设 \(f_{12}=0\)，由 \(s_{ij}\notin\{0,1\}\) 推出 \(f_{21}=0\)，于是 \(F_{\text{coords}}\) 退化成 affine \(F\)（式15，只剩 \(a,b,c\) 三项），其左右极点 \(e=(b,-a,0)^\top,\ e'=(1,-c,0)^\top\) 都落在 \(e_1e_2\) 上 → 反投影逼出 “the four points \(C_P,C_Q,X_1,X_2\) are coplanar”，<b>与假设(4)矛盾</b>。同理 \(i=7\) 下 \(f_{13}=0\Rightarrow f_{31}=0\) 逼出 \(C_P,C_Q,X_1,X_3\) 共面矛盾。<b>故任何非退化解必满足 \(f_{12}f_{13}\neq0\)</b>，两个退化解被主动绕开（Fig 3 画了三对相机心，两对是伪解）。</div>
+
+    <div class="note-h">⑦ §3.4 从非线性到线性（式18 → 式19 → \(\Phi\)）</div>
+    <div class="note-b">用式13 把 \(f_{21}\) 线性表为 \(f_{12}\)、式16 把 \(f_{31}\) 线性表为 \(f_{13}\)，代入行列式约束（式11）化简得 \[f_{12}f_{13}\big(c_1(s)f_{31}+c_2(s)\big)=0,\] 其中 \(c_1,c_2\) 是输入参数 \(s\) 的 “simple rational functions”（完整推导在 SM Sec.9）。由 \(f_{12}f_{13}\neq0\) → <b>\(c_1(s)f_{31}+c_2(s)=0\)（式19，线性！）</b>。式12（\(i=4,5,6,7\)）+ 式19 合计 <b>5 个线性方程、5 个未知</b>（\(F_{\text{coords}}\) 的 5 个非零项）→ generic 下唯一解。系数在 10 参数有理函数域 \(\mathbb{F}=\mathbb{Q}(s_{11},s_{12},s_{21},s_{22},x_1,x_2,x_3,y_1,y_2,y_3)\) 上，Cramer 法则给显式有理映射 \(F_{\text{coords}}=\Phi(s,x,y)\)（式21，\(\Phi:\mathbb{R}^{10}\dashrightarrow\mathbb{R}^5\)）。其中 \(x,y\) 是第 5 对归一化点 \(z_5=(x_1,x_2,x_3)^\top,\ w_5=(y_1,y_2,y_3)^\top\)。</div>
+
+    <div class="note-h">⑧ §3.5 Solver 3.1 四步 + Example 1 数值佐证</div>
+    <div class="note-b"><b>Solver 3.1（4 步）：</b>1) 用单应归一化对应使式7/8 成立；2) 由式9/20 提参 \((s,x,y)\)；3) 求值 \(\Phi(s,x,y)=F_{\text{coords}}\)；4) 反归一化 \(F=H_2^\top F_{\text{coords}} H_1\)。<b>Example 1：</b>给定一组 \(X_1..X_7\) 与相机 \((P,Q)\)，Solver 3.1 恢复 GT 的 \(F^1_{\text{coords}}\approx\begin{psmall}0,-1.418,.236;\,2.291,0,-1.909;\,-.2,1,0\end{psmall}\)；传统 7 点算法另返两伪解 \(F^2,F^3\)，对应相机心 \(C_{Q2}\approx(.468,.884,0,0)^\top\in\operatorname{span}(X_1,X_2,C_P)\)、\(C_{Q3}\approx(.611,0,.792,0)^\top\in\operatorname{span}(X_1,X_3,C_P)\)，恰好落进 §3.3 排除的两个共面退化。<b>Remark 1：</b>“the two ruled quadrics for the spurious cases i = 2, 3 are identical.”（两伪解的直纹二次曲面完全相同）。</div>
+
+    <div class="note-h">⑨ §4 合成实验（两场景 / 两噪声模型 / 解的个数）</div>
+    <div class="note-b"><b>两场景：</b>Standard（\(K_{\text{VGA}}\)：\(f=800\)，主点 \((320,240)\)，FoV \(43.6°\times33.4°\)；scene box \(x_B=y_B=2,z_B=4\)，相机柱 \(r=8\)）与 <b>WAMI</b>（航拍广域，\(K_{\text{WAMI}}\)：\(f=17000\)，主点 \((3300,2200)\)，FoV \(22.0°\times14.7°\)；box \(x_B=y_B=1000,z_B=100\)，相机柱 \(z\in[1500,2000],r=1500\)）。<b>两噪声模型：</b>(a) 高斯像素噪声加在 5 个独立对应（dependent 点不直接加噪但经 \(H_1,H_2\) 间接受影响）；(b) 1D 噪声只沿两条线加在第二视图的 \(q_6,q_7\)。位姿误差用 \(\theta_R=\arccos\frac{\operatorname{tr}(R^\top R_{GT})-1}{2},\ \theta_t=\arccos(t^\top t_{GT})\)（式22），选最接近 GT 的解，10000 trials/点。<b>解的个数（关键）：</b>“5pE returns up to 10 candidate essential matrix solutions, 7pF up to 3, whereas 5pF-V-Umlaut returns a unique solution.”。结论：本解器 “more sensitive, yet still degrades gracefully”，且 Fig4(b) 表明误差差异主要来自 dependent 点噪声 → “can be improved through more careful deep learning-based matching of dependent points [28]”。</div>
+
+    <div class="note-h">⑩ §5 真实数据实验 — setup</div>
+    <div class="note-b">把 V-Umlaut 当<b>通用 5 点解器</b>：给 5 个独立对应，取线段 2D 中点造出虚拟 \((p_6,q_6),(p_7,q_7)\)。在 PoseLib LO-RANSAC 框架里对比 5pE、4pE(M)[47]、7pF，并各自加 ENM / Fast ENM 变体。数据：PhotoTourism（13 场景）+ Aachen Day-Night v1.1，每场景 5000 对（用 SuperPoint[12]/SuperGlue[42] 匹配、\(\ge10\) 匹配且 \(\ge10\%\) co-visibility），1 像素 epipolar 阈值，RANSAC 迭代取 \(\{10,20,50,100,200,500,1000,2000,5000,10000\}\)。</div>
+
+    <div class="note-h">⑪ Table 1 完整数值（RANSAC 固定 1000 iters；MED°↓ / mAA@10°↑ / Runtime ms↓ / Med. Inliers）</div>
+    <div class="note-b kv">
+    <b>[PhotoTourism 13 Scenes]</b><br>
+    5pE ｜ 1.26 ｜ 79.58 ｜ 24.68 ｜ 0.70<br>
+    4pE(M) ｜ 1.31 ｜ 78.95 ｜ 23.66 ｜ 0.70<br>
+    7pF ｜ 5.53 ｜ 46.44 ｜ 8.07 ｜ 0.55<br>
+    5pF-V-Umlaut ｜ 4.26 ｜ 49.79 ｜ <b>3.52</b>（最快裸解）｜ 0.49<br>
+    5pE + ENM ｜ 1.26 ｜ 79.65 ｜ 116.17 ｜ 0.70<br>
+    4pE(M) + ENM ｜ 1.26 ｜ 79.58 ｜ 108.11 ｜ 0.70<br>
+    7pF + ENM ｜ 1.26 ｜ 79.58 ｜ 61.44 ｜ 0.70<br>
+    5pF-V-Umlaut + ENM ｜ <b>1.25 ｜ 79.62 ｜ 44.12</b> ｜ 0.70<br>
+    5pF-V-Umlaut + Fast ENM ｜ 1.26 ｜ 79.44 ｜ 36.37 ｜ 0.70<br>
+    <b>[Aachen Day-Night v1.1]</b><br>
+    5pE ｜ 2.71 ｜ 64.24 ｜ 23.47 ｜ 0.58<br>
+    4pE(M) ｜ 2.93 ｜ 62.20 ｜ 21.66 ｜ 0.57<br>
+    7pF ｜ 22.37 ｜ 24.69 ｜ 7.99 ｜ 0.24<br>
+    5pF-V-Umlaut ｜ 23.05 ｜ 24.43 ｜ <b>3.16</b> ｜ 0.22<br>
+    5pE + ENM ｜ 2.71 ｜ 64.16 ｜ 98.99 ｜ 0.58<br>
+    4pE(M) + ENM ｜ 2.71 ｜ 64.21 ｜ 86.89 ｜ 0.58<br>
+    7pF + ENM ｜ 2.93 ｜ 61.41 ｜ 55.21 ｜ 0.56<br>
+    5pF-V-Umlaut + ENM ｜ <b>2.69 ｜ 64.07 ｜ 36.93</b> ｜ 0.58<br>
+    5pF-V-Umlaut + Fast ENM ｜ 2.73 ｜ 64.05 ｜ 31.28 ｜ 0.58
+    </div>
+
+    <div class="note-h">⑫ 读表 why + 结论</div>
+    <div class="note-b"><b>裸解：</b>5pF-V-Umlaut <b>最快</b>（PhotoTourism 3.52ms ≈ 5pE 24.68ms 的 1/7；Aachen 3.16ms vs 23.47ms）但精度差（mAA 仅 49.79 / 24.43）。<b>+ENM：</b>一举追平甚至略超 SOTA——PhotoTourism MED 1.25°（全表最低）/ mAA 79.62，Runtime 仅 44.12ms，<b>远低于</b> 5pE+ENM 的 116.17ms、4pE(M)+ENM 108.11ms；Aachen 同样 MED 2.69（最低）/ mAA 64.07 / 36.93ms。<b>Fast ENM：</b>更省时（36.37 / 31.28ms）但精度略降（mAA 79.44 / 64.05），“less consistent, but balances accuracy and runtime better.”。<b>原文坦承的局限：</b>“V-Umlaut + ENM does not offer any improvement in accuracy over the somewhat faster non-ENM methods with 1000 samples”——@1000 iters 时它相对非 ENM 的 5pE 精度只是<b>持平</b>，独立价值在<b>运行时</b>而非更准；并猜测把 ENM 里 Nistér 解器换成 V-Umlaut 初始化的迭代过程或可再提升。</div>
+
+    <div class="note-h">⑬ §6 Conclusion + 适用边界 / 资助背景</div>
+    <div class="note-b">结论原文：“our work provides a complete understanding of an unexpected solution uniqueness phenomenon in the seven-point F-matrix estimation problem … We describe and implement a very simple, stable, and very fast solution, which shows promise as a minimal solver and is competitive with the state-of-the-art on real data.”。<b>适用边界 [推测/原文未单独评测]：</b>论文受美陆军工程兵 ERDC-ITL 资助、合成实验专设 WAMI（航拍广域运动影像）场景，对地面/驾驶等相机运动下的表现未单列；裸解精度逊于 5pE，强依赖 ENM 补精度；\(\Phi\) 的显式有理公式与式18 完整推导丢在 SM Sec.9，正文未给。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>\(F\) 估计常识是线性 8 点 / 最小 7 点(\(F\))、5 点(\(E\))；[29] 发现 7 点在"5 点共两线"(V-Umlaut) 时唯一解，但缺实用解器。<b>method：</b>① 投影归一化把 \(F\) 化成对角 0、\(f_{32}=1\) 的 \(F_{\text{coords}}\)（式5/6）；② 证明标准 7 点的两个退化解会逼出相机心与点共面、与"general motion 不共面"假设矛盾 → 真解必 \(f_{12}f_{13}\neq0\)（§3.3）；③ 把非线性行列式约束线性化为 \(c_1 f_{31}+c_2=0\)（式19），得 5 线性方程唯一解、Cramer 给有理映射 \(\Phi\)（式21）；④ 用虚拟中点把它当 5 点解器，配 ENM。</div>
+    <div class="note-b"><b>experiment：</b>合成上唯一解、优雅退化；真实 PhotoTourism/Aachen 上裸解最快（3.5/3.2ms），+ENM 追平 SOTA（MED 1.25°/2.69°、mAA 79.62/64.07）且运行时仅同类 ENM 方法的约 1/3。<b>3 个 takeaway：</b>(1) 在被研究上百年的两视图几何里仍能挖出"线性 ∧ 最小 ∧ 唯一"的新 \(F\) 解器，主卖点是<b>极快 + RANSAC 友好</b>；(2) 用初等几何（共面矛盾）显式刻画并主动绕开标准 7 点算法的两个伪解，把 [29] 的"意外唯一性"坐实为<b>真几何结果</b>而非参数化假象；(3) 工程上"靠 V-Umlaut 的快保运行时、靠 ENM 补精度"是该方案的正确用法，误差瓶颈在 dependent/虚拟点匹配，未来可用深度学习匹配改进。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-linear-fundamental-matrix-estimation-from-7-or-5-points/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. A sample V-Umlaut feature configuration, two lines and two points, composed of five real (tangerine colored) and two virtual (cyan colored) point correspondences across two camera views of Jesse Hall (Univ. of Missouri). Note that in this example, the real point features correspond to com- mon scene features like flag poles, building corners and railing, while the virtual midpoints on th</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-linear-fundamental-matrix-estimation-from-7-or-5-points/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. 3D V-Umlaut configuration including known de- pendent correspondences. Q: Can we reconstruct the 3D V- Umlaut configuration X1, . . . , X7 and two projections P, Q from seven 2D matches? A: Yes—see Solver 3.1.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-linear-fundamental-matrix-estimation-from-7-or-5-points/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Illustration of Example 1.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-linear-fundamental-matrix-estimation-from-7-or-5-points/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Synthetic scene pose recovery performance experiments with 5 (or 7) randomly selected 3D points per simulation, two different camera intrinsics and scene geometries (Standard and Wide Area Motion Imagery), and 10,000 trials per data point without RANSAC. Two types of noise models were tested: (a) 2D pixel noise added to the 5 independent corresponding points in both views, and the 2 depe</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-linear-fundamental-matrix-estimation-from-7-or-5-points/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Runtime versus pose accuracy results on (a) all 13 scenes from PhotoTourism [27] and (b) Aachen Day-Night v1.1 [49] using correspondences provided by [47]. Top row shows all methods, bottom row zooms in on top perform- ers. All methods use the PoseLib LO-RANSAC [30] implementation, with number of RANSAC iterations in the set {10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000} and a 1-pi</figcaption></figure>
+    </div>
+  </div></body></html>

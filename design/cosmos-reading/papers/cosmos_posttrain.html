@@ -1,0 +1,78 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Ch6 · 后训练（§6 相机 / 机器人 / 自动驾驶）</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--blue:#60a5fa}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 18% -10%,rgba(167,139,250,.18),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.7;min-height:100vh}
+.wrap{max-width:940px;margin:0 auto;padding:26px 18px 90px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.hero{padding:22px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(126,224,255,.08));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--accent);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(21px,3vw,30px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 35%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13.5px}
+h2.sec{font-size:18px;font-weight:800;margin:28px 0 6px;display:flex;align-items:center;gap:8px}
+h2.sec .bar{width:4px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--accent2),var(--accent))}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:8px}
+.callout{background:rgba(126,224,255,.07);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:13px 17px;margin:12px 0;font-size:13.5px;color:var(--text2)}.callout b{color:var(--text)}
+.quote{background:rgba(0,0,0,.25);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:8px 12px;margin:9px 0;font-size:12.5px;color:var(--text2);font-style:italic}.quote b{color:var(--amber);font-style:normal}
+.fig{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:11px;padding:10px;margin:12px 0}
+.fig img{width:100%;border-radius:7px;background:#fff;display:block}
+.fig figcaption{font-size:11px;color:var(--text3);margin-top:7px;line-height:1.5}.fig figcaption b{color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0}
+th{background:rgba(167,139,250,.2);text-align:left;padding:8px 11px;font-weight:700;border-bottom:2px solid var(--accent2)}
+td{padding:7px 11px;border-bottom:1px solid var(--line);color:var(--text2);vertical-align:top}td b{color:var(--text)}
+.mono{font-family:monospace;color:var(--accent)}.hl{color:var(--accent);font-weight:700}
+.av{background:linear-gradient(135deg,rgba(74,222,128,.12),rgba(126,224,255,.06));border:1px solid rgba(74,222,128,.35);border-radius:12px;padding:14px 16px;margin:12px 0}
+.av h3{color:var(--green);font-size:15px;font-weight:800;margin-bottom:6px}
+.tag{font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:4px;background:rgba(96,165,250,.16);color:var(--blue);border:1px solid rgba(96,165,250,.4)}
+.note2{margin-top:20px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+</style></head><body><div class=wrap>
+<a href="../index.html" class=backlink>← 教学文档主页</a>
+<a href="cosmos_wfm.html" class=backlink>Ch5 WFM 预训练</a>
+<a href="cosmos.html" class=backlink>Ch0 综述</a>
+
+<header class=hero><div class=kick>Ch 6 · 后训练（§6）</div>
+<h1>从"通才"到"专才"：相机 / 机器人 / 自动驾驶</h1>
+<p class=sub>预训练 WFM 是"世界通才"（Ch5）。后训练＝用<b>小数据微调</b>到具体 Physical AI 场景。Cosmos 给了三个范例：相机可控 3D 世界、机器人操作、<b>多视图自动驾驶</b>。基于论文 §6 原文 + 原图。</p></header>
+
+<div class=callout><b>核心范式（呼应 Ch0）：</b>预训练通才 → <b>小数据后训练</b>专才。原文强调"因为有预训练底座，后训练数据可以小得多"——这正是 foundation model 对自驾/机器人省数据的价值。</div>
+
+<h2 class=sec><span class=bar></span>6.0 · 三个后训练范例总览 <span class="tag">§6 / Table 21</span></h2>
+<table>
+<tr><th>场景</th><th>模型</th><th>条件 Condition</th></tr>
+<tr><td>6.1 相机控制</td><td>Video2World-Sample-CameraCond</td><td>Text + Image + <b>Cameras</b>(位姿)</td></tr>
+<tr><td>6.2 机器人操作</td><td>Video2World-Sample-Instruction / ActionCond</td><td>Text + Video / <b>Action</b></td></tr>
+<tr><td>6.3 自动驾驶</td><td>Video2World-Sample-MultiView</td><td><b>多视图</b>(多相机) + Text/轨迹</td></tr>
+</table>
+
+<!-- 6.1 -->
+<h2 class=sec><span class=bar></span>6.1 · 相机控制 → 可导航 3D 世界 <span class="tag">§6.1</span></h2>
+<div class=quote><b>原文：</b>"Through <b>camera pose conditioning</b>, we integrate camera control into Cosmos-Predict1-7B-Video2World, making it an effective <b>3D world simulator</b> ... generating 3D worlds from a single reference input image ... produce temporally coherent and 3D-consistent video simulations from the specified <b>camera trajectories</b>."</div>
+<p>把<b>相机位姿</b>作为条件微调进 WFM → 给<b>一张图 + 一条相机轨迹</b>，生成沿该轨迹漫游的、几何一致的 3D 世界视频（视角变化和场景 3D 结构对齐）。等于把世界模型变成一个"可自由移动摄像机的 3D 模拟器"。</p>
+<figure class=fig><img src="../imgs/fig24.webp" alt="camera control joystick"><figcaption><b>Figure 22（原文）</b>：Cosmos-Predict1-7B-Video2World-Sample-CameraCond results with joystick control. For each input frame, we apply 4 different camera trajectories: moving forward, backward, rotating left, rotating right ...</figcaption></figure>
+
+<!-- 6.2 -->
+<h2 class=sec><span class=bar></span>6.2 · 机器人操作 → 规划器 / 模拟器 <span class="tag">§6.2</span></h2>
+<div class=quote><b>原文：</b>"fine-tune ... for two tasks: (1) <b>instruction-based video prediction</b> ... input is the current video frame ... and a text instruction ... output is a predicted video of the robot following the instruction. (2) <b>action-based next-frame prediction</b> ... input is the current video frame ... and an <b>action vector</b> ... output is the predicted next frame ... run autoregressively."</div>
+<p>两种玩法：</p>
+<ul style="font-size:13px;color:var(--text2);margin-left:18px">
+<li><b>指令 → 视频</b>：当前帧 + 文本指令 → 预测机器人执行该指令的视频（高层规划/想象）。</li>
+<li><b>动作 → 下一帧</b>：当前帧 + 动作向量 → 预测下一帧；给一串动作就<b>自回归</b>滚动出整段执行视频（可当"神经模拟器"，在里面试动作）。</li>
+</ul>
+<figure class=fig><img src="../imgs/fig28.webp" alt="action-based robot prediction"><figcaption><b>Figure 26（原文）</b>：Action-based next-frame prediction samples on the Bridge dataset ... the predicted video frames closely match the GT video frames.</figcaption></figure>
+
+<!-- 6.3 AV -->
+<h2 class=sec><span class=bar></span>6.3 · 自动驾驶 → 多视图世界模型 <span class="tag">§6.3</span></h2>
+<div class=av><h3>🚗 这一节对自驾最相关</h3>
+<div class=quote style="margin-top:6px"><b>原文：</b>"A world model for in-the-wild driving scenes ... a powerful <b>simulation engine for training autonomous driving agents</b>. As most autonomous vehicles are equipped with <b>multiple cameras</b> ... an ideal world model ... should also be a <b>multi-view</b> one, preferably matching the precise setup of the sensors in the target vehicle."</div>
+<p style="font-size:13px;color:var(--text2);margin-top:8px">把预训练 WFM 微调成<b>多视图</b>驾驶世界模型（匹配车上多相机布局）→ 作为<b>训练自驾 agent 的仿真引擎</b>：可文本/轨迹条件生成多路环视驾驶视频，造长尾/安全场景数据、做闭环。这正是"世界模型当数据引擎 + 闭环仿真"在自驾的落地。</p></div>
+<figure class=fig><img src="../imgs/fig30.webp" alt="multiview driving generation"><figcaption><b>Figure 28（原文）</b>：Text-conditioned samples generated by Cosmos-Predict1-7B-Text2World-Sample-MultiView, extended to 8 seconds by Video2World-Sample-MultiView. The post-trained world model effectively preserves its generalization ability ...</figcaption></figure>
+<figure class=fig><img src="../imgs/fig31.webp" alt="trajectory conditioned multiview"><figcaption><b>Figure 29（原文）</b>：Trajectory-conditioned generated samples from ...-MultiView-TrajectoryCond. Given the trajectory inputs on the left-most column, we generate multiview videos that follow the given trajectory.</figcaption></figure>
+
+<h2 class=sec><span class=bar></span>贯穿全书的一句话</h2>
+<div class=callout>Cosmos 的完整故事：<b>数据清洗(§3) → Tokenizer 压缩(§4) → 预训练扩散/自回归 WFM(§5) → 小数据后训练到相机/机器人/自驾(§6)</b>。对自驾，它既能<b>造数据</b>（多视图长尾场景）又能<b>做闭环仿真</b>训 agent——这就是"世界模型是自驾数据引擎"的具体兑现。</div>
+<p style="font-size:12.5px;color:var(--text3)">← 回 <a href="../index.html" style="color:var(--accent2)">主页</a> 看全书导航；或从 <a href="diffusion_basics.html" style="color:var(--accent2)">Ch1 扩散基础</a> / <a href="cosmos_tokenizer.html" style="color:var(--accent2)">Ch4 Tokenizer</a> 复习。</p>
+
+<div class=note2><b>诚实边界：</b>本章场景/条件/模型名引自论文 §6 原文（标注小节 + Table 21）；原图 fig22/26/28/29（按 figs.json 校准）配逐字英文 caption。各任务的具体数据集/微调超参见论文对应小节与官方 <code>cosmos-predict1</code>；本页聚焦"做什么、怎么条件化、对自驾的意义"。</div>
+</div></body></html>

@@ -1,0 +1,188 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Spatially-Varying Autofocus</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">ICCV 2025</span> &nbsp; <span class="badge b-honorable">🥈 Best Paper 提名</span></div>
+    <h1>Spatially-Varying Autofocus</h1>
+    <div class="au2" style="color:var(--mut)">Yingsi Qin · Aswin C. Sankaranarayanan · Matthew O&amp;#x27;Toole</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/ICCV2025/papers/Qin_Spatially-Varying_Autofocus_ICCV_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Spatially-Varying%20Autofocus">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:iccv2025-spatially-varying-autofocus -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">一篇<b>计算摄影/光学硬件</b>论文（非深度学习）：造一个能让<b>每个像素各自对焦到不同深度</b>的"计算镜头"，打破"镜头只能把一个平面对焦"的铁律。靠 (i) <b>Split-Lohmann 计算镜头</b>（Lohmann/Alvarez 可调焦镜 + 相位型 SLM，逐像素控焦）+ (ii) <b>空间可变自动对焦算法</b>（把经典 CDAF 对比度 / PDAF 相位检测推广到逐区域），<b>纯光学</b>直接在传感器上拍出<b>全清晰(all-in-focus)</b>图——无需任何后期处理、保住全分辨率、大光圈，最少<b>两张图</b>即可。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">镜头只能把<b>单一平面</b>对焦，离焦平面越远越糊。缩小光圈能增大景深(DoF)但<b>掉光通量 + 增衍射模糊</b>。传统镜头能移动焦平面、却<b>改不了焦面形状</b>（始终是平面）。本文核心追问（原文）："in place of a single focal plane, is it possible to optically program a focal surface that can adapt to any scene geometry?"——能否<b>光学地编程出一张贴合任意场景几何的"焦面"</b>。现有全清晰方案各有短板（见下表），没有一个同时做到"高光学清晰度 + 少图 + 纯光学 + 还能出深度"。</div>
+    <div class="note-h">核心方法（硬件 + 算法 + 关键公式）</div>
+    <div class="note-b"><b>硬件：</b>Lohmann/Alvarez 镜=两块立方相位板 h1(x)=αx³、h2(x)=−αx³，错位 Δ 叠加得 <b>式1</b> h1(x+Δ)+h2(x−Δ)=α(6Δx²+2Δ³)，去掉常数项后相位∝x²=一个<b>焦距 ∝ 1/Δ 的透镜</b>。Split-Lohmann[28] 用 4f relay 把两板共置、在 Fourier 面放<b>相位 ramp（斜率控焦距）</b>去掉机械平移；再把 SLM 与传感器光学共置→<b>每个传感器像素对应 SLM 上一点</b>→显示空间可变 phase ramp 即逐像素控焦。本文把这套<b>从 VR 显示反转为相机</b>（OLED 换成传感器+加成像镜）。<b>算法：</b>① CDAF——对比度对深度<b>单峰</b>，在 0~W 屈光度区间取 W/4、W/2、3W/4 三张图找每个 superpixel 的对比度峰、每轮折半（<b>对数级</b>张数 vs 线性搜索），用 SLIC 超像素分块避免块内深度跳变；② PDAF——双像素(DP)传感器出 stereo，视差给<b>有符号</b>离焦量，改用 Liu[20] 共轭梯度光流解视差→<b>单张</b>定焦；深度边界处用 <b>SegmentAnything 分层</b>各自算 masked 光流再相加。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">原型：Canon R10 双像素传感器(6000×4000) + Holoeye GAEA-2 相位 SLM(4160×2464) + 激光刻蚀立方相位板 + Samyang 85mm relay + NIKKOR 40mm 成像镜。所需张数：<b>相位 3 步=4 张图</b>、对比度 3 步=10 张，对比 focal stack 20 张、focal sweep 1 张。质量(PSNR/SSIM，GT=69 面 focal stack)：<b>相位法最佳</b>，对比度法与 focal stack 相当；MTF（空间分辨率）相位/对比度法与 focal stack 持平，focal sweep 一致更差。还能做 freeform DoF：免 Scheimpflug 的移轴、选择性对焦、光学"消除"细网格。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>开辟新解空间</b>：把"全清晰成像"从"算法后处理"挪到<b>纯光学</b>，大光圈+全分辨率，没有反卷积/去模糊的伪影；② <b>把经典 AF 升级到 spatially-varying</b>——CDAF/PDAF 本是逐点找焦，本文逐区域并行找焦把整幅 FOV 同时拉清晰；③ <b>把系统解读成"图像对比度的光学优化器"</b>，视角很妙；④ 极少图（2 张起）即匹配 focal stack 质量，适合动态场景（上一帧定下一帧焦）。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① <b>光效率很低</b>（作者自承 limitation）：偏振相位调制 + 分束器→最多 <b>1/8</b> 入射光到传感器（过偏振片 1 次 + 50/50 分束器 2 次）；极端焦设置下光通量为静止态 76%、有效光圈变小（静止态 f/6.8）；② 依赖<b>专用 DP 传感器</b>（PDAF）与<b>定制立方相位板/SLM</b>，体积大、离消费级远；③ 像差校正、色差、深度不连续伪影仍待 end-to-end 优化（讨论里列为 future work，<b>原文未实现</b>）；④ 量化只在 Adventure/Rainbow 两个场景给 PSNR/SSIM 曲线，具体数值散在图里、正文未列表（<b>需查图 11/附录</b>）。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">从 Abstract 起逐段精读（批量精读初稿，供后续 review/深化）。基于 CVF 官方 PDF 全文。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精读</div>
+    <div class="note-b"><b>原文逐句引用 + 中文指路：</b><br>1) <b>"A lens brings a single plane into focus on a planar sensor; hence, parts of the scene that are outside this planar focus plane are resolved under defocus."</b> → 痛点起点：普通镜头只能让<b>单一焦平面</b>在平面传感器上清晰，平面外景物 defocus 模糊。<br>2) <b>"Can we break this precept by enabling a 'lens' that can change its depth of field arbitrarily?"</b> → 核心追问：能否造一个<b>任意改变景深(DoF)</b>的"镜头"？<br>3) <b>"Our design uses an optical arrangement of a Lohmann lens and a phase-only spatial light modulator to allow each pixel to focus at a different depth."</b> → 硬件方案 = Lohmann lens + 纯相位 SLM，让<b>每个像素聚焦于不同深度</b>。</div>
+    <div class="note-b"><b>4)</b> 算法：<b>"We extend classical autofocusing techniques to the spatially-varying scenario where the depth map is iteratively estimated using contrast and disparity cues, enabling the camera to progressively shape its depth-of-field to the scene's depth."</b> → 把经典自动对焦扩成<b>空间可变</b>版，用<b>对比度(contrast) + 视差(disparity)</b>线索迭代估深度图，渐进把景深"塑形"贴合场景几何。<br><b>5)</b> 两大优势：<b>"the ability to bring an entire scene in focus simultaneously, and the ability to maintain the highest possible spatial resolution."</b> → 整场景同时清晰 + 保持最高空间分辨率；且关键 <b>"By obtaining an all-in-focus image optically"</b>——<b>光学一次成像</b>得到 all-in-focus，无需后处理。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>用 Split-Lohmann 计算镜头(Lohmann lens + 相位 SLM)让每像素聚焦不同深度，配空间可变 CDAF/PDAF 迭代估深度并塑形景深——<b>光学直接拍出 all-in-focus</b>，无需算法后处理且保大光圈/高分辨率。这是 all-in-focus 成像解空间里的一个全新类别。</div>
+
+    <div class="note-h">📚 背景知识 A — 焦平面 / 景深 / 光圈-衍射 trade-off（外部）</div>
+    <div class="note-b"><b>焦平面与 defocus：</b>镜头的聚焦能力只对场景中<b>单一平面</b>有效，主体须置于该焦平面(固定深度)才清晰；偏离焦平面的点变模糊，且 "the amount of defocus increases progressively as the points move further away from the plane"。<br><b>光圈 trade-off：</b>缩小光圈(aperture)能减少 defocus、增大景深，但代价是 "reduced light throughput"(进光量减少) 且 "smaller apertures increase diffractive blur, making content within the depth of field less sharp"(小光圈反而引入<b>衍射模糊</b>，景深内也不够锐)。传统镜头只能移动焦平面(对焦环)、不能改变其"形状"——本文要把单一焦平面变成<b>可适配任意场景几何的焦曲面(focal surface)</b>。</div>
+
+    <div class="note-h">📚 背景知识 B — Lohmann/Alvarez lens &amp; cubic phase plate（外部，理解式1必备）</div>
+    <div class="note-b"><b>Lohmann/Alvarez lens：</b>一种 focus-tunable lens，由两片可横向平移的 cubic phase plate(三次相位板)组成。设两板光学轮廓 \( h_1(x)=\alpha x^3 \)、\( h_2(x)=-\alpha x^3 \)(α 是曲率相关参数)，横向偏移 ∆ 叠加后相位调制为 <b>式1</b>：\[ h_1(x+\Delta) + h_2(x-\Delta) = \alpha\left(6\Delta x^2 + 2\Delta^3\right) \] 忽略与 x 无关的常数项 \( 2\alpha\Delta^3 \)，剩 <b>x 的二次相位</b> \( 6\alpha\Delta x^2 \)=一个透镜，其<b>焦距反比于平移量 ∆</b>。即改变 ∆ 就得到不同焦距的镜头(Fig.2)。这是"机械可调焦"的经典原理。</div>
+
+    <div class="note-h">📚 背景知识 C — CDAF vs PDAF / DP sensor / diopter（外部，理解§4必备）</div>
+    <div class="note-b"><b>diopter(屈光度)：</b>深度的倒数，对焦工作范围用 diopter 度量(线性扫描 diopter 比线性扫描深度更均匀)。<b>CDAF(对比度检测自动对焦)：</b>"adjusting the focus settings of the lens until the camera detects the highest contrast"——调焦到局部对比度最大即合焦，数码相机主流方案，可用 hill-climbing 加速。<b>PDAF(相位检测自动对焦)：</b>依赖 <b>DP(dual-pixel)传感器</b>——每个微透镜下有 2 个子像素，分别接收来自光圈不同半边的光，等效<b>小基线立体对</b>。"When a scene point is in focus, the two images captured by the corresponding sub-pixels match. Otherwise, disparity is introduced"——合焦时两子像素图重合、离焦则有<b>带符号视差</b>，视差符号+大小决定该点该往哪调焦。本文把这两招都扩成<b>逐区域并行</b>的空间可变版。</div>
+
+    <div class="note-h">📚 背景知识 D — All-in-Focus 技术全景（Tab.1 七类对比 + 本文定位）</div>
+    <div class="note-b"><b>原文 Tab.1 横向对比（光学锐度 / 所需图像数 / AIF 生成方式 / 是否输出深度）：</b></div>
+    <div class="note-b">
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px;color:#d7dcff">
+    <tr style="color:var(--gold)"><td>方法</td><td>光学锐度</td><td>所需图像数</td><td>AIF 生成</td><td>输出深度</td></tr>
+    <tr><td>小光圈 small aperture</td><td>low</td><td>one</td><td>optical</td><td>no</td></tr>
+    <tr><td>cubic phase plate[9]</td><td>low</td><td>one</td><td>deconvolution</td><td>no</td></tr>
+    <tr><td>focal sweep[16,22]</td><td>low</td><td>one</td><td>deconvolution</td><td>no</td></tr>
+    <tr><td>focal stack[23,35]</td><td>high</td><td>many</td><td>contrast metric</td><td>yes</td></tr>
+    <tr><td>coded aperture</td><td>low</td><td>one</td><td>depth-dep. deconv.</td><td>yes</td></tr>
+    <tr><td>light field cameras</td><td>low</td><td>one</td><td>contrast metric</td><td>yes</td></tr>
+    <tr><td>dual-pixel deblurring</td><td>low</td><td>one</td><td>hard inverse problem</td><td>yes</td></tr>
+    <tr style="color:#7ee0c0"><td>spatially-varying autofocus(ours)</td><td>high</td><td>two</td><td>optical</td><td>yes</td></tr>
+    </table></div>
+    <div class="note-b"><b>读表（本文独特性）：</b>大多数方法要么用<b>小光圈</b>(增衍射模糊)、要么<b>故意制造 depth-invariant blur 再 deconvolution</b>(锐度 low)；focal stack 锐度 high 但要<b>很多张图</b>且不耐动态。<b>本文是唯一同时做到"光学锐度 high + 仅需两张图 + 全光学生成(no post-processing) + 输出深度"</b>的方案。原文 "our method requires at least one image to approximate the scene geometry, and a second image to form the all-in-focus image"，且 "well suited for dynamic settings, where each frame determines the focus for the next frame"(适合动态：每帧给下一帧定焦)。</div>
+
+    <div class="note-h">② §1 Introduction — problem（单焦平面 vs 任意焦曲面）</div>
+    <div class="note-b"><b>problem：</b>原文 "Core to any imaging system is the lens ... The focusing ability of a lens, however, only applies to a single plane in the scene."。缩光圈增景深的老路 "comes at the cost of reduced light throughput" 且 "smaller apertures increase diffractive blur"。根因 "These restrictions on focus are attributed to the traditional design of a lens, which offers the ability to move the focal plane ... but maintains its shape."——传统镜头只能<b>平移</b>焦平面、不能<b>改变其形状</b>。<br><b>核心提问：</b>原文 "in place of a single focal plane, is it possible to optically program a focal surface that can adapt to any scene geometry?"——能否<b>光学编程一个适配任意场景几何的焦曲面</b>？</div>
+
+    <div class="note-h">② §1 Introduction — solution（Split-Lohmann 计算镜头）</div>
+    <div class="note-b"><b>solution：</b>原文 "This paper advances the design and implementation of a computational lens capable of spatially-varying focus—one that allows a scene in its entirety to be simultaneously in focus on an image sensor even when the scene is highly non-planar."。技术根基是改造 Lohmann lens：原文 "Prior work by Qin et al. [28], in the context of near-eye virtual reality (VR) displays, has shown that a rearrangement of the Lohmann lens, along with the use of a phase-only spatial light modulator (SLM), can control the perceived depth of pixels on a display. Our work extends this concept to the imaging scenario."——把 Qin et al.[28] 在 VR 显示里的 Split-Lohmann(控制显示像素感知深度)<b>反向用到成像</b>，给相机前所未有的对焦控制力。</div>
+
+    <div class="note-h">② §1 Introduction — why + 两大贡献</div>
+    <div class="note-b"><b>贡献一 · 光学 AIF 成像：</b>原文 "the ability to acquire an optical AIF image given knowledge of the scene depth ... unlike prior work in all-in-focus imaging, our imaging process does not require computational post-processing."——给定场景深度即可<b>光学</b>把所有点同时清晰成像，<b>无需后处理</b>(这是与所有前作的根本区别)。<br><b>贡献二 · 空间可变自动对焦：</b>原文 "we extend traditional ideas in contrast- and phase-based autofocus to their spatially-varying counterparts. We show that our system can progressively bring the entire scene into focus using as few as two images."——把 CDAF/PDAF 扩成空间可变，<b>最少两张图</b>渐进合焦，"matching the quality and depth resolution of the focus stacking without requiring a large image set"(媲美 focal stacking 质量却不用大量图)。<br><b>诚实限制(Intro 即给)：</b>"Our current optical prototype is light inefficient ... at most one-eighth of the incident light reaches the sensor, due to light passing through a polarizer once and through a 50/50 beamsplitter twice."(光效率低，最多 1/8 光到传感器)。</div>
+
+    <div class="note-h">③ §3 Split-Lohmann 计算镜头（去机械化 + 局部选择性，式1）</div>
+    <div class="note-b"><b>第一步 去机械平移：</b>原文 "it achieves a programmable focus-tunable lens by collocating the two cubic phase plates of the Lohmann lens using a 4f relay and placing a phase ramp at the Fourier plane whose slope controls the effective focal length."——用 <b>4f relay</b> 把两片 cubic plate <b>光学共置</b>，在 <b>Fourier 平面</b>放一个 <b>phase ramp(相位斜坡)</b>，其<b>斜率</b>等效式1里的平移量 ∆、从而控制有效焦距。这样把"机械平移调焦"变成"改 SLM 相位图案调焦"，无运动部件。</div>
+    <div class="note-b"><b>第二步 空间选择性：</b>原文 "We can optically collocate an image sensor with the SLM. Since each pixel on the sensor is resolved on the SLM, displaying a spatially-varying phase ramp allows local focus control."——把图像传感器与 SLM <b>光学共置</b>，传感器每个像素都对应 SLM 上一点，于是显示<b>空间可变的 phase ramp</b> 即可<b>逐像素/逐区域独立控焦</b>——这正是 spatially-varying focus 的硬件来源。</div>
+
+    <div class="note-h">③ §3 关键反转：从 VR 显示到相机成像</div>
+    <div class="note-b"><b>反转思路：</b>Split-Lohmann 原本是 VR 显示器(Qin et al.[28])——OLED display 发光、经该光学系统让观看者感知到不同深度的像素。本文 "propose inverting the function of this optical system, by replacing the OLED display with a camera sensor and adding a camera lens. The result is a Split-Lohmann computational lens that now offers a camera the ability to spatially-vary its focus."——把<b>OLED 显示屏换成相机传感器</b>并加成像镜头，整个光路<b>反向</b>运行，就从"显示不同深度"变成"对不同深度对焦"。这是把显示器件的物理对偶性巧妙迁移到成像的核心 insight。</div>
+
+    <div class="note-h">④ §4.1 空间可变 CDAF（对比度 unimodal + 二分搜索）</div>
+    <div class="note-b"><b>核心 insight：</b>原文 "contrast of a patch as a function of depth is often smooth and, more importantly, unimodal."——某 patch 的对比度作为深度的函数<b>平滑且单峰</b>，故可用类二分的搜索高效定位峰值。<br><b>二分搜索流程：</b>设对焦总工作范围 0~W diopters，取焦距在 \( \tfrac{W}{4},\tfrac{W}{2},\tfrac{3W}{4} \) 的三张图，估每个 local patch 的对比度，取三者中对比度最大的位置，把范围<b>对半缩小</b>居中于该峰值。"if the maximum value occurs at W/4, then the true maxima must be between the 0 and W/2 diopters."。每轮范围减半、迭代 → 图像数<b>对数级</b>(vs 线性搜索)。关键：所有 patch <b>并行独立</b>搜索(靠空间可变对焦)。<br><b>脚注诚实点：</b>理论上每轮两图够(中心焦距可复用上轮)，但本文的 patching 策略使复用复杂化，故仍重拍中心焦距(每轮三图)。</div>
+
+    <div class="note-h">④ §4.1 CDAF 的 Patching 策略（SLIC superpixel）</div>
+    <div class="note-b"><b>为何要精心分块：</b>原文 "we would like each patch to have minimal depth variations and especially avoid depth discontinuities, so that a single focus setting suffices for all pixels in the patch."——每个 patch 内深度变化要小、避免深度不连续，否则单一焦距无法让整块清晰。<br><b>怎么做：</b>用 <b>SLIC</b>(k-means 聚类的 superpixel 分割)分块，因为 "depth edges invariably align with texture edges"(深度边总与纹理边对齐)，按 superpixel 分块能天然避开大深度跨度。原文 "We update the superpixels after each autofocus iteration to benefit from the improved sharpness"——每轮迭代后<b>用更清晰的图重算 superpixel</b>，从而更精细地分深度边界；若更新后的 superpixel 含先前不同深度的像素，则取该 superpixel 内<b>最常见(对比度最大)的深度</b>。</div>
+
+    <div class="note-h">④ §4.2 空间可变 PDAF（DP 视差 + 光流求解）</div>
+    <div class="note-b"><b>原理：</b>DP 传感器每微透镜下 2 光电二极管，分接光圈不同部分→ stereo pair。原文 "The disparity observed across the two images determines the (signed) distance of the scene point from the focal plane ... When a scene point is sharply focused on the sensor, there is no disparity."——视差大小+符号给出该点离焦平面的<b>带符号距离</b>，合焦时零视差。<br><b>求解：</b>原文 "we adapt the conjugate gradient-based optical flow solver by Liu [20]. From the magnitude and direction of optical flow, we can calculate the focus correction needed to bring each region into focus, thereby enabling a single-shot approach."——用 Liu[20] 的共轭梯度光流求解器解 signed disparity，由光流大小+方向算每区域的 focus correction，实现<b>单张图</b>对焦全视野。</div>
+
+    <div class="note-h">④ §4.2 PDAF 深度边界难题（SegmentAnything 分层光流）</div>
+    <div class="note-b"><b>难题：</b>原文 "since disparity in a stereo configuration is always horizontal ... much of our disparity estimation is driven by pixels with strong vertical gradients."。在深度边界处(常有强纹理梯度)，"all we can observe is the relative shifts between the patches on either side of the boundary, and we cannot—just with local context—identify the exact shifts for each."——只能看到边界两侧的相对位移，无法仅靠局部上下文定出各自的绝对位移。<br><b>解法：</b>原文 "we segment the total DP image using SegmentAnything [14] into masked labeled regions (layers), independently compute the masked optical flow for each layer, and sum all layers into a result flow map."——用 <b>SegmentAnything</b> 把 DP 图分成语义层(layers)，<b>逐层</b>独立算 masked 光流，再求和成最终 flow map 驱动下一轮对焦。</div>
+
+    <div class="note-h">④ §4 CDAF vs PDAF 权衡（何时用哪个）</div>
+    <div class="note-b"><b>PDAF 优点（原文）：</b>"Unlike CDAF, which requires a search procedure to identify the sharpest focus setting, PDAF requires a single image to identify the spatially-varying focus map; this allows it to adapt to scene dynamics and is less likely to get stuck in local minima."——单图、适应动态、不易陷局部最小。即使工作范围大、大 disparity 区 defocus 严重导致视差估计劣化，"as long as the sign of the disparity is accurate, the technique converges within a few steps"(只要视差符号对，几步收敛)。代价：需 DP 专用传感器。<br><b>CDAF 优点：</b>可在<b>大多数成像系统</b>上实现(不需特殊传感器)；合焦后只需<b>低成本地随时间精修焦曲面</b>适应动态(远比重拍整个 focal stack 便宜)，但需多次拍摄搜索。</div>
+
+    <div class="note-h">⑤ §5 原型硬件（Prototype 配置）</div>
+    <div class="note-b"><b>关键器件（原文逐一）：</b>DP 图像用 <b>Canon R10</b> 相机传感器(分辨率 <b>6000×4000</b>、pixel pitch <b>3.72 µm</b>，是 dual-pixel 传感器，供 PDAF)，用 gphoto2 命令程控取 raw、LibRaw 库提 DP views；相位调制用 <b>Holoeye GAEA-2 Phase-Only SLM</b>(pixel pitch δ_SLM=<b>3.74 µm</b>、分辨率 <b>4160×2464</b>)；<b>cubic phase plate 用 subtractive laser etching(减材激光刻蚀)定制</b>；relay lens 为三片 <b>Samyang 85 mm f/1.4 AS</b>；objective lens 为 <b>AF-S DX Micro NIKKOR 40mm f/2.8G</b>；beamsplitter Thorlabs CCM1-BS013。<b>PSF</b>(Fig.6)：对针孔点光源在 0.89D~16.02D 多个距离成像，SLM 空间频率 v 从 -0.200 到 0.200，dot 为 10×10 像素(37.2µm×37.2µm)。</div>
+
+    <div class="note-h">⑤ §5 Freeform 景深摄影（超越 AIF 的创意应用）</div>
+    <div class="note-b"><b>空间可变对焦解锁的创作能力：</b>① <b>tilt-shift 摄影</b>——原文 "we can perform tilt-shift photography without requiring a Scheimpflug adapter to tilt the plane of focus"(无需 Scheimpflug 适配器即可倾斜焦平面，Fig.7)；② <b>选择性对焦</b>——"selectively focus on isolated regions at different depths, while the rest of the scene remains defocused"(只让指定区域清晰、其余 defocus)；③ <b>细结构抹除</b>(Fig.8)——"suppress the presence of thin structures from a photo by optically defocusing only those particular pixels"(对细线网格等只光学 defocus 那些像素，使其几乎不可见，靠"选一个远离其真实深度的焦距")。这些过去只能后处理实现，现可<b>光学一次完成</b>。</div>
+
+    <div class="note-h">⑤ §5 AIF 定量评测 &amp; 空间分辨率(MTF)</div>
+    <div class="note-b"><b>评测协议：</b>6 个场景(Adventure, Planes, Flowers, Bunny, Ship, Rainbow)。<b>GT 构造</b>：原文 "we capture a dense focal stack with 69 depth planes, with each focus setting having 2 repeated captures averaged to reduce noise" → 合成 computational AIF 作 ground truth。指标 PSNR/SSIM(Fig.11，Adventure+Rainbow 平均，<b>作为拍摄张数的函数</b>)。<b>对比张数</b>：contrast-based 3 steps(10 photos)、phase-based 3 steps(<b>4 photos</b>)、focal sweep(1 photo)、focus stacking computational/optical(20 photos)；Planes 另加 small aperture(f/36, 55mm Nikon Z5 长曝光)。<br><b>结论：</b>"we observe phase-based autofocusing having the best performance, followed by both contrast-based autofocus and capturing a focal stack."——<b>phase-based 最优</b>，contrast-based 与 focal stack 次之。<b>MTF</b>(Fig.12，三深度 USAF 靶标)：phase/contrast/optical focal stack 都与 computational focal stack <b>comparable</b>，而 <b>focal sweep 一致更差</b>。即本文方法以远少的图像数达到 focal stack 级锐度。</div>
+
+    <div class="note-h">⑥ §6 Discussion（光圈 / 光效率 / 像差修正）</div>
+    <div class="note-b"><b>光圈与光通量：</b>原文 "our prototype imaging system has a rest state f number of f/6.8 (i.e., the slope of the phase ramp is 0)."；加 phase ramp 时 cubic plate 光学平移 → 有效光圈变小、改变 bokeh 形状并减面积。"At the most extreme focus settings, we calculate that light throughput is 76% when compared to the system in the rest state."——最极端对焦时光通量降至静止态的 76%。原文指出 f-number 取决于 cubic phase plate 的直径与曲率，"we can increase the light throughput by using a cubic phase plate with a large diameter"。<br><b>像差修正方向：</b>可借端到端光学设计(Sitzmann et al.[32]、Sun et al.[34])联合优化镜头与 SLM 图案，或用 Yang et al.[43] 的<b>可微 ray-wave 模型</b>优化 hybrid refractive-diffractive phase plate，以修正 chromatic focal shift、深度不连续处伪影、f-number 等。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>problem：</b>传统镜头只能让单一焦平面清晰、且只能平移不能改变焦面形状；缩光圈增景深又带来进光减少+衍射模糊。能否光学编程一个适配任意场景几何的焦曲面，让整个非平面场景同时清晰？<br><b>method：</b>① 硬件——把 Qin et al.[28] 的 <b>Split-Lohmann</b> 显示镜头反转用于成像(OLED 换相机传感器+加镜头)，靠 Lohmann lens(式1，焦距∝1/∆) + 4f relay + Fourier 面 phase ramp + 纯相位 SLM，实现<b>逐像素独立控焦</b>；② 算法——把 <b>CDAF</b>(对比度单峰→二分搜索 W/4,W/2,3W/4，SLIC superpixel 分块)与 <b>PDAF</b>(DP 视差→Liu 光流求解，SegmentAnything 分层解深度边界)扩成空间可变版，迭代估深度图并塑形焦曲面，最少两张图。</div>
+    <div class="note-b"><b>experiment：</b>原型用 Canon R10 DP 传感器(6000×4000)+Holoeye GAEA-2 SLM(4160×2464)+定制 cubic phase plate；6 场景 AIF，GT 取 69 面 dense focal stack；phase-based(4 photos) 最优、contrast-based 与 focal stack 次之，MTF 与 computational focal stack comparable 而 focal sweep 最差；还能做 tilt-shift、选择性对焦、细结构光学抹除。<br><b>takeaway：</b>① <b>"光学直接拍 all-in-focus"</b>——首个无需后处理、保大光圈/高分辨率、仅需两张图、还输出深度的 AIF 方案(Tab.1 独此一类)；② 把<b>显示器件(Split-Lohmann)反转成成像器件</b>是优雅的物理对偶迁移；③ 经典 CDAF/PDAF 在空间可变硬件上"逐区域并行"即可解 spatially-varying autofocus，系统可视为"<b>光学的图像对比度优化器</b>"；④ 应用前景：长距监视、机器视觉、显微。</div>
+
+    <div class="note-h">🧐 疑问 / 局限（含 [推测]）</div>
+    <div class="note-b">① <b>光效率低</b>是硬伤——偏振相位调制 + beamsplitter 致最多仅 1/8 入射光到传感器(过偏振器一次 + 过 50/50 beamsplitter 两次)，弱光/高速场景受限，原文已诚实承认；② 极端对焦时光通量降到 76% 且有效光圈/bokeh 随对焦改变，[推测] 这会让不同深度区域的景深/虚化不一致，可能影响美学一致性；③ 定量评测仅 Adventure+Rainbow 两场景的 PSNR/SSIM 平均(Fig.11)，其余场景为定性，[推测] 样本偏少；④ [推测] 依赖 SegmentAnything/SLIC 的分割质量——分割错误会直接污染深度边界处的对焦；⑤ PDAF 需 DP 专用传感器、CDAF 需多次拍摄，二者各有硬件/速度门槛；⑥ [推测] 系统含 SLM/relay/beamsplitter，体积与标定复杂度远高于普通镜头，离便携/量产尚远，原文也把端到端镜头设计/像差修正列为未来工作。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Spatially-varying autofocus to produce an optical all-in-focus image. Left: A conventional photo with a regular lens, where objects at a single focal plane appear sharp. Right: An all-in-focus photo captured through spatially-varying autofocusing. To achieve this, we combine (i) a programmable lens with spatially-varying control over focus, and (ii) a spatially-varying autofocus algorith</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Split-Lohmann computational lens expands upon the Lohmann lens in two key steps. (a) First, it achieves a pro- grammable focus-tunable lens by collocating the two cubic phase plates of the Lohmann lens using a 4f relay and placing a phase ramp at the Fourier plane whose slope controls the effective focal length. (b) We can optically collocate an image sensor with the SLM. Since each pixe</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Contrast-based autofocusing pipeline. (a) The objective is to identify a per-superpixel focus (or depth) setting that max- imizes contrast. At step K, we capture three measurements and identify the focus setting that maximizes contrast. We then reﬁne the search around the next best candidate focus. (b) Example focus searches from the ﬁrst two iterations. (c) Focus (or depth) maps and cor</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Phase-based autofocusing pipeline. (a) Example 1st and 4th captures from phase-based autofocus. (b) The algorithm starts by capturing an initial DP image, and segments the result into semantically meaningful layers. For each layer, we use optical ﬂow to compute a smooth ﬂow map, that indicates how to adjust the focus settings. After updating focus, we capture another DP image and repeat </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Our prototype camera (see supplemental pdf for details).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Point-spread functions of our prototype camera. Left: Images of a point placed at different distances from the cam- era, created by puncturing black paper with a needle and back- illuminating it with full-spectrum white light. The dot is 10-by-10 pixels, or 37.2 µm-by-37.2 µm on the sensor. We label the dis- tance of each dot in diopters. Right: Focused images of the dot, captured with a</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Example freeform depth-of-ﬁeld captures of Arc de Tri- omphe displayed on a vertically tilted OLED. We show the capa- bility of capturing an optical AIF image (top right), Scheimpﬂug- focusing to scale the defocus horizontally (bottom left), and se- lective focusing where a user speciﬁes select regions to be in focus while all other regions are defocused (bottom right).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. A thin structure removal example using freeform depth- of-ﬁeld. The character stands in front of a thin wire mesh, far away from the lions print background. Left: A conventional capture shows the character in focus but with a visible wire mesh over the background. Right: Our proposed prototype optically removes the wire mesh by focusing on the background. The large defocus blur of the wi</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. Qualitative comparison for the Planes scene. Each recovered depth map is shown in the top-left corner. All insets are blurrier for small aperture (f/36) when compared to our results due to diffraction (orange inset) and extreme depth range (green and blue insets).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig10.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 10. Qualitative comparison for the Flowers scene. We include a focal sweep photo (does not output depth) for additional comparison.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig11.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 11. Quantitative analysis of all-in-focus imaging methods, evaluated as a function of number of photos. These plots represent the average performance over the Adventure and Rainbow scenes.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-spatially-varying-autofocus/fig12.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 12. MTF of our prototype. (a) We arranged printed USAF targets at three different depths and illuminated them with full-spectrum white light, and computed AIF images for differ- ent methods. (b) Each MTF is computed and averaged from both horizontal and vertical line pairs across the three depths. We ob- serve that our methods, including phase-based, contrast-based, and focus stack optical,</figcaption></figure>
+    </div>
+  </div><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"]],displayMath:[["\\[","\\]"]]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body></html>

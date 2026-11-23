@@ -1,0 +1,172 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>R^2-Seg: Training-Free OOD Medical Tumor Segmentation via Anatomical Reasoning and Statistical Rejection</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>R^2-Seg: Training-Free OOD Medical Tumor Segmentation via Anatomical Reasoning and Statistical Rejection</h1>
+    <div class="au2" style="color:var(--mut)">Shuaike Shen ⋅ Ke Liu ⋅ Jiaqing Xie ⋅ Shangde Gao ⋅ Chunhua Shen ⋅ Ge Liu ⋅ Mireia Crispin-Ortuzar ⋅ Shangqi Gao</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2511.12691">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2511.12691">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=R%5E2-Seg%3A%20Training-Free%20OOD%20Medical%20Tumor%20Segmentation%20via%20Anatomical%20Reasoning%20and%20Statistical%20Rejection">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Foundation models for medical image segmentation struggle under out-of-distribution (OOD) shifts, often producing fragmented false positives on OOD tumors. We introduce **R$^2$-Seg**, a **training-free** framework for robust OOD tumor segmentation that operates via a two-stage **Reason-and-Reject** process. First, the **Reason** step employs an LLM-guided anatomical reasoning planner to localize organ anchors and generate multi-scale ROIs. Second, the **Reject** step applies two-sample statistical testing to candidates generated by a frozen foundation model (BiomedParse) within these ROIs. This statistical rejection filter retains only candidates significantly different from normal tissue, effectively suppressing false positives. Our framework requires no parameter updates, making it compatible with zero-update test-time augmentation and avoiding catastrophic forgetting. On multi-center and multi-modal tumor segmentation benchmarks, **R$^2$-Seg** substantially improves Dice, specificity, and sensitivity over strong baselines and the original foundation models.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-r-2-seg-training-free-ood-medical-tumor-segmentation-vi -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">CMU×剑桥×浙大×ETH×UIUC：一个<b>完全不训练（training-free）</b>的框架，专治医学分割基础模型（BiomedParse）在<b>分布外（OOD）肿瘤</b>上"满屏假阳性"的毛病。两步 <b>Reason-and-Reject</b>：① <b>Reason</b>=用 LLM 做解剖学推理规划器，把"膀胱肿瘤"翻译成"先定位锚点器官→生成多尺度 ROI"，让冻结模型只在 ROI 内预测；② <b>Reject</b>=对候选区做 <b>MMD 两样本统计检验</b> + BH-FDR 控制，只保留"与正常组织有显著统计差异"的候选→压假阳。<b>零参数更新</b>→天然规避灾难性遗忘。原文一句话定位：“a training-free framework … via a two-stage Reason-and-Reject process”。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">肿瘤<b>长尾</b>（mm 到 cm、形状/强度各异）、跨扫描仪/协议/人群<b>高度异质</b>→对基础分割模型造成强 OOD 漂移，产生大量<b>碎片化假阳性</b>→过诊断、患者焦虑、经济负担。常规解法都不行：<b>微调</b>——肿瘤数据稀缺、标注贵，小数据微调会<b>灾难性遗忘</b>、削弱泛化；<b>TTA</b>（熵最小化/test-time training）——需访问模型架构、仍出小假阳。核心问题：<b>能否在不改架构/参数的前提下让基础模型适应 OOD 肿瘤分割？</b>洞察（§3.1）：in-dist 时视觉 embedding 可分、决策边界好用；OOD 时 embedding <b>难分、边界偏移</b>→大量背景被当肿瘤。对策=① ROI 推理提升可分性 + ② 统计筛选校准边界。</div>
+    <div class="note-h">核心方法（Reason-and-Reject + 关键公式）</div>
+    <div class="note-b">建在冻结的 <b>BiomedParse</b>（文本可提示分割基础模型）上。① <b>Reason / LLM 规划（§3.2.1）</b>：规划器 Φ(c)→(A 锚点器官, I_ROI 几何规则[padding δ/scale jitter Γ/方形], r 推理链)；先分割正常锚点器官得 union mask M_∪ 和 bbox B_0，再生成多尺度 ROI <b>B_γ=Square(Dilate(B_0, ⌈δ/s⌉·γ))（式1）</b>；另有 LLM normalizer Π 把自由词映射到 BiomedParse 固定词表。② <b>Tumor 分割（§3.2.2）</b>：每个 ROI 内多视图 TTA（原图+左右翻+上下翻）max 融合 <b>P̄=max_g Inv(g)∘f_θ(g(I|B_γ);c_tumor)（式2）</b>，阈值化→连通域 {C_k}。③ <b>Reject / 统计检验（§3.2.3）</b>：对每个候选 C_k，用<b>无偏 MMD²（最大均值差异，高斯核，式4）</b>检验其像素特征分布 vs 正常器官 M_∪（H0: P_X=P_Y），<b>置换检验</b>得 p 值，再用 <b>Benjamini-Hochberg 控制 FDR</b>（i*=max{i: p_(i)≤αi/|K|}）只留显著异常候选。④ <b>三级假阳门控（§3.2.4）</b>：L1 存在性门（p_max/正比 ρ/KS 检验）→L2 候选门（面积/均值概率/与器官重叠）→L3 病例分 S_k=P̄_k·√|C_k|，S*&lt;τ_case 则输出全零 mask。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">• <b>暴露 BiomedParse 的 OOD 失效模式</b>：在 prostate/cervix/uterus/bladder 上它把<b>整个器官</b>当肿瘤→Sens 100% 但 <b>Spec 0%</b>（bladder Dice 0.069/Spec 0.000）。<br>• <b>R²-Seg 用特异性换平衡</b>（CA 类均准确率全面领先）：Pancreas Dice <b>0.212→0.739</b>/Spec 0.078→0.935/CA 0.584→<b>0.896</b>；Liver Dice 0.359→<b>0.625</b>/CA 0.647→0.853；Prostate Dice 0.047→0.465/CA 0.552→<b>0.890</b>；Kidney Dice 0.138→0.567/CA→0.873。<br>• <b>无遗忘</b>（Fig5/7）：FT/LoRA 在 in-dist 器官分割（AMOS/M&amp;Ms，尤其肝）显著掉点，R²-Seg 冻结故不掉。<br>• <b>消融（Table3）</b>：去统计检验或去门控，特异性都崩（bladder Spec 0.536→去门控 0.089）。<br>• <b>成本</b>：LoRA 微调 ~20h A100；R²-Seg 零训练、~4s/图（RTX4090）。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>把"统计假设检验"引入分割后处理</b>——不靠模型自身（不可靠的）置信度，而是<b>原理性地检验"候选 vs 正常组织是否显著不同"</b>（MMD 两样本+置换+FDR），可证 FDR&lt;α；② <b>LLM 当解剖学规划器</b>（plan-before-segment）把开放肿瘤概念约束到已知解剖实体的 ROI 内，提升 embedding 可分性；③ <b>纯 test-time、冻结 backbone</b>→可部署、不遗忘、不需架构访问，对"基础模型+不可改"的现实约束很务实。</div>
+    <div class="note-h">疑问 / 待核</div>
+    <div class="note-b">① <b>用特异性换灵敏度，代价不小</b>：R²-Seg 的 Sensitivity 普遍很低（colon 0.110 / lung 0.071 / pancreas 0.131），临床上<b>漏检（假阴）会延误诊断</b>——论文 Limitations 明确承认 FP-FN 权衡未解、可能漏早期生物标志。② <b>OOD 上 Dice 常不如 LoRA</b>（bladder 0.297 vs 0.578、breast 0.395 vs 0.611、uterus 0.401 vs 0.514），它赢在 CA/特异性与"不遗忘"，单看 Dice 不总占优。③ <b>强依赖 LLM 规划质量与 BiomedParse 能分对锚点器官</b>——锚点失败时退化到全图 bbox（论文有 fallback 但效果待考）。④ 超参不少（τ_bin/τ_case 等），虽称只用无标注 dev split 定一次、但跨中心稳健性仍需更多验证。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文 65.8K 字符 / 18 页提取，含正文+附录算法/超参/全表）。原文英文原句 + 中文指路，追问 why、给数值表、外部概念标“外部非本文”、原文未写处标“原文未写/需查”。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>一句话立意：</b>医学分割<b>基础模型</b>（foundation model）一旦遇到分布外（OOD）肿瘤就"满屏碎片化假阳性"，本文用一个<b>完全不训练</b>的两阶段 <b>Reason-and-Reject</b> 框架（R²-Seg）把它治好。<br><b>逐句拆解（verbatim 引用）：</b><br>1) <i>"Foundation models for medical image segmentation struggle under out-of-distribution (OOD) shifts, often producing fragmented false positives on OOD tumors."</i> —— 病灶：OOD 漂移 → 碎片化假阳。<br>2) <i>"the Reason step employs an LLM-guided anatomical reasoning planner to localize organ anchors and generate multi-scale ROIs."</i> —— 第一步 Reason：LLM 解剖推理规划器，定位<b>锚点器官</b>、生成<b>多尺度 ROI</b>。<br>3) <i>"the Reject step applies two-sample statistical testing to candidates generated by a frozen foundation model (BiomedParse) within these ROIs … retains only candidates significantly different from normal tissue."</i> —— 第二步 Reject：对冻结 BiomedParse 在 ROI 内产生的候选做<b>两样本统计检验</b>，只留"与正常组织显著不同"的。<br>4) <i>"requires no parameter updates, making it compatible with zero-update test-time augmentation and avoiding catastrophic forgetting."</i> —— 卖点：零参数更新 → 不遗忘。</div>
+
+    <div class="note-h">📚 背景知识①（外部，非本文原创）：可提示分割基础模型</div>
+    <div class="note-b">SAM [20] → MedSAM [24] → <b>BiomedParse [44]</b>（text-driven，跨 9 种模态联合做 segmentation/detection/recognition）。本文把 BiomedParse 当作<b>冻结底座</b>。它的命门（原文 §2.1）：<i>"BiomedParse tends to over-predict foreground regions in out-of-distribution (OOD) scenarios, leading to a significant increase in false positives."</i> —— OOD 时倾向"过度预测前景"。R²-Seg 不改它一个参数，只在外面套 Reason + Reject。</div>
+
+    <div class="note-h">📚 背景知识②（外部）：TTA / 灾难性遗忘 / LoRA</div>
+    <div class="note-b"><b>Test-Time Adaptation（TTA）</b>=用无标注测试数据适应域漂移（如 TENT 熵最小化 [35]、test-time training [32]、EATA [27]、CoTTA [36]）。但这些都<b>更新参数</b>，在医学小数据上会<b>灾难性遗忘</b>（catastrophic forgetting，学新分布忘旧能力），且"<i>require access to the model architectures, which may not always be available</i>"。<b>LoRA</b> [16]=低秩适配，只更新少量参数（本文当作"常用上界对照" BiomedParse-LoRA）。R²-Seg 的差异化：<i>"keeps the model backbone frozen"</i>——纯 test-time、零更新。</div>
+
+    <div class="note-h">📚 背景知识③（外部，本文 Reject 核心）：MMD + 置换检验 + BH-FDR</div>
+    <div class="note-b"><b>MMD（最大均值差异，Gretton 2012 [14]）：</b>核方法度量两分布差异，\(\text{MMD}^2=0 \iff P_X=P_Y\)，用高斯核 \(k_\sigma(u,v)=\exp(-\lVert u-v\rVert_2^2/2\sigma^2)\)。<b>置换检验（permutation test）：</b>把两组样本合并、随机打乱 \(B\) 次，看观测统计量是否显著大于打乱后的 → 经验 p 值。<b>Benjamini–Hochberg（BH）[4]：</b>多重检验下把<b>错误发现率 FDR</b> 控制在 \(\alpha\) 以内的标准方法（排序 p 值、找最大阈下标）。这套组合让"拒绝假阳"有<b>可证保证</b>，不靠模型自身（不可靠的）置信度。</div>
+
+    <div class="note-h">📚 背景知识④（外部）：LLM 规划 + 评测指标</div>
+    <div class="note-b"><b>LLM 规划：</b>CoT [39] / self-consistency [37] / least-to-most [46] / ReAct [42]（推理+工具）/ Tree-of-Thoughts [43] / Plan-and-Solve [34]——让 LLM 把复杂目标拆成结构化行动计划。本文把"bladder tumor"拆成 <b>AnatomyPlan</b>：(i) 锚点器官 \(A\)、(ii) ROI 指令 \(I_{ROI}\)、(iii) 推理链 \(r\)。<b>指标：</b>Dice/F1（重叠，空对空记 1）↑、Sensitivity（灵敏度=召回）↑、Specificity（特异性，正常切片别误判）↑、Accuracy↑、<b>CA</b>（class-average accuracy，正负类准确率均值，抗类别不平衡）↑。切片级判阳=mask 内任一像素判肿瘤。</div>
+
+    <div class="note-h">② §1 Introduction — problem → solution → why（闭环）</div>
+    <div class="note-b"><b>problem：</b>癌症是全球第二大死因，肿瘤<b>长尾</b>（mm→cm、形状/强度各异），且 <i>"tumors of the same type can exhibit substantial spatial heterogeneity across different scanners, imaging protocols, and patient populations"</i> → 强 OOD 漂移 → 高假阳率 → <i>"harmful overdiagnosis, heightened patient anxiety, and additional financial burden"</i>。常规解法都不行：微调需稀缺标注且遗忘；TTA 需访问架构且"<i>often result in numerous small false positives</i>"。</div>
+    <div class="note-b"><b>核心问句（原文）：</b><i>"Can a foundation model be adapted to OOD tumor segmentation without modifying its architecture or parameters?"</i> <b>solution：</b>R²-Seg 用 Reason-and-Reject 肯定回答——<i>"integrating external knowledge and statistical rejection without any parameter updates"</i>。<b>四条贡献：</b>① training-free 的 Reason-and-Reject 框架；② Reason 阶段 LLM 规划器做解剖推理生成层级 ROI；③ Reject 阶段用 principled 两样本检验过滤假阳（零更新）；④ 多中心/多模态 OOD 上避免遗忘且超越基础模型与强基线。</div>
+
+    <div class="note-h">Q&amp;A · §3.1 为什么 OOD 会"满屏假阳"？</div>
+    <div class="note-b"><b>机理（原文）：</b><i>"If vision embeddings are separable, these models can effectively distinguish between foreground and background … However … vision embeddings of OOD samples become hardly separable, and the decision boundary tends to be biased. Many background details would be recognized as tumors."</i> —— in-dist 时视觉 embedding 可分、决策边界好用；OOD 时 embedding <b>难分、边界偏移</b> → 大量背景被当肿瘤。<b>两条对策（直接对应方法两阶段）：</b>(1) <i>"enhancing the separability of vision embeddings by reasoning to plan regions of interest (ROIs)"</i>——用推理缩小搜索空间提升可分性；(2) <i>"calibrating the decision boundary through statistical screening of normal and abnormal regions"</i>——用统计筛选校准边界。</div>
+
+    <div class="note-h">③ §3.2.1 Reason / LLM 规划与 ROI 构造（式1）</div>
+    <div class="note-b">规划器 \(\Phi\) 把癌种文本 \(c\) 映射为 \(\Phi(c)\to(A, I_{ROI}, r)\)，\(I_{ROI}\) 编码几何规则（padding \(\delta\)、scale jitter 集 \(\Gamma\)、方形约束）。给定冻结分割器 \(f_\theta\) 与阈值 \(\tau_a\)（默认 0.5），对每个锚点器官 \(a\)：概率图 \(P_a=f_\theta(I;c_a,\tau_a)\)、二值 \(M_a=\mathbb{1}\{P_a\ge\tau_a\}\)；并集 \(M_\cup=\bigcup_{a}M_a\)，\(B_0=\text{BBox}(M_\cup)\)。多尺度 ROI 为
+    \[ B_\gamma=\text{Square}\big(\text{Dilate}(B_0,\ \lceil \delta/s\rceil\cdot\gamma)\big),\quad \gamma\in\Gamma \tag{1} \]
+    其中 \(s\) 是 in-plane 像素间距（px/mm），\(\text{Dilate}\) 按给定 margin 扩张、\(\text{Square}\) 强制方形裁剪。每个 \(B_\gamma\) 给出裁剪输入 \(I|B_\gamma\)。另有 LLM normalizer \(\Pi\) 把自由词映射到 BiomedParse 固定词表（稳定文本条件，prompts 落在已知解剖实体分布内）。<b>为什么先分正常器官？</b>因为"膀胱肿瘤"这种 OOD 概念模型分不准，但"膀胱"这种正常解剖结构是 in-dist、分得准——于是用<b>分得准的锚点</b>圈出 ROI，再让模型只在 ROI 内找肿瘤，等于把开放问题<b>收敛</b>到一个解剖先验已知的小窗口里。padding \(\delta\) 默认取腹/盆腔"锚点器官-病灶距离"的高分位，scale jitter \(\Gamma\) 给多个尺度做候选（Fig 2 的 inner/middle/outer box），兼顾"框太小漏肿瘤"与"框太大引背景噪声"。</div>
+
+    <div class="note-h">③ §3.2.2 Tumor 分割与候选提取（式2-3）</div>
+    <div class="note-b">每个 ROI 内做<b>多视图 TTA</b> 并 max 融合回原分辨率：
+    \[ \bar P=\max_{g\in G}\ \text{Inv}(g)\circ f_\theta\big(g(I|B_\gamma);\,c_{tumor},\tau_{tumor}\big) \tag{2} \]
+    \(G=\{g_{id},g_{lr},g_{tb}\}\)（恒等、左右翻、上下翻），\(\text{Inv}(g)\) 把预测还原回原坐标系。阈值化得 \(M_{tumor}=\mathbb{1}\{\bar P\ge\tau_{tumor}\}\)，连通域分解得候选集
+    \[ \{C_k\}_{k\in K}=\text{Conn}(M_{tumor}) \tag{3} \]
+    设计意图：<b>多视图 max 保 recall</b>（先尽量召回真肿瘤），精度交给后面的统计 reject 来收。</div>
+
+    <div class="note-h">③ §3.2.3 统计两样本检验 + FDR 控制（式4，全文核心）</div>
+    <div class="note-b">先在 \(\tau_{bin}=0.4\) 阈值下取连通域、去掉过小成分（area \(\ge 50\) px）。对每个候选 \(C_k\)，用特征 \(\phi(\cdot)\)（如归一化强度）得 \(X=\{\phi(I|C_k)\}_{i=1}^m\)、\(Y=\{\phi(I|M_\cup)\}_{j=1}^n\)（\(m=|C_k|, n=|M_\cup|\)），检验 \(H_0:P_X=P_Y\) vs \(H_1:P_X\neq P_Y\)。无偏 MMD²：
+    \[ \widehat{\text{MMD}}^2=\tfrac{1}{m(m-1)}\!\sum_{i\neq i'}\!k_\sigma(x_i,x_{i'})+\tfrac{1}{n(n-1)}\!\sum_{j\neq j'}\!k_\sigma(y_j,y_{j'})-\tfrac{2}{mn}\!\sum_{i,j}\!k_\sigma(x_i,y_j) \tag{4} \]
+    置换 \(B\) 次得 p 值 \(p_k=\frac{\#\{b:\widehat{\text{MMD}}^2_{perm,b}\ge\widehat{\text{MMD}}^2_{obs}\}+1}{B+1}\)；再用 <b>BH-FDR</b>：排序 \(p_{(1)}\le\cdots\le p_{(|K|)}\)，取 \(i^*=\max\{i:p_{(i)}\le\alpha i/|K|\}\)，保留 \(\{C_{(1)},\dots,C_{(i^*)}\}\) 为显著异常。\(\sigma\) 用 median heuristic，每类下采样至多 4k 点。</div>
+
+    <div class="note-h">③ §3.2.4 三级假阳门控（治"空 mask"场景）</div>
+    <div class="note-b">文本提示分割器几乎从不输出空 mask → 在无肿瘤图上假阳爆炸。三级门控（原文）：<b>L1 存在性门</b>：算全局 \(p_{max}=\max_x P(x)\)、ROI 内正像素比 \(\rho\)、前/背景概率 KS 检验 \(p_{KS}\)——若 \(p_{max}&lt;\tau_{max}\) 或 \(\rho&lt;\tau_\rho\) 或 \(p_{KS}&gt;\tau_{KS}\) 判该图为阴。<b>L2 候选门</b>：\(|C_k|\ge A_{min}\)、均值概率 \(\bar P_k\ge\tau_{mean}\)、与器官重叠 \(|C_k\cap M_\cup|/|C_k|\ge\tau_\cap\)。<b>L3 病例分</b>：\(S_k=\bar P_k\sqrt{|C_k|}\)，\(S^*=\max_k S_k\)，若 \(S^*&lt;\tau_{case}\) 则输出<b>全零 mask</b>——空 mask 主导测试集时的保守校准。</div>
+
+    <div class="note-h">③ §3.2.5 复杂度与理论保证</div>
+    <div class="note-b">原文：<i>"Permutation-based p-values ensure that, under H0, the expected false discovery rate is less than α by the BH theorem."</i> 复杂度 \(O(|K|\cdot B\cdot(m+n)^2)\)，可用 fast MMD 近似（随机傅里叶特征/Nyström）降本而不改保证。超参分三组（原文 §4.3）：scoring（max-TTA，scale \([0.8,1.0,1.2]\)，\(\tau_{bin}\in[0.30,0.55]\) 默认 0.4）、statistical（\(\alpha\in\{0.05,0.01\}\)）、geometric（\(\tau_{max}=0.45,\ \tau_{area}=80\)px 等）。</div>
+
+    <div class="note-h">④ §4 实验设置（数据集 / 基线 / 指标）</div>
+    <div class="note-b"><b>数据（Table 1）：</b>10 个器官肿瘤数据集，CT+MR。<b>OOD 类（MR）</b>：膀胱(496 test slices)、子宫(660)、前列腺(656)、乳腺(1690)、宫颈(234)；<b>in-dist 类（CT）</b>：肝(1158)、肺(1740)、胰(856)、结肠(472)、肾(1054)。另用 AMOS22 CT(29664)/MR(8150)、M&amp;Ms(1792) 测<b>遗忘</b>。患者级 8:2 划分、无重叠；测试切片<b>肿瘤:非肿瘤=1:1</b> 平衡。<b>基线</b>：BiomedParse（零样本下界）、BiomedParse-FT（微调上界）、BiomedParse-LoRA（常用法）。</div>
+
+    <div class="note-h">④ 主结果 1：BiomedParse 的 OOD 失效 + OOD 五类（Table 2，真数字）</div>
+    <div class="note-b"><b>BiomedParse 在 OOD 上整器官当肿瘤</b>：原文 <i>"achieves 100% sensitivity but zero specificity, revealing the limited separability of its visual embeddings"</i>。如 bladder/uterus/prostate/cervix 的 BiomedParse 全是 Sens 1.000 / Spec 0.000（prostate Dice 仅 0.047）。<b>R²-Seg vs BiomedParse vs LoRA（Dice / Sens / Spec / Acc / CA）：</b><br>• Bladder：0.069/1.000/0.000/0.976/0.546 → LoRA 0.578/0.960/0.456/0.996/0.677 → <b>R²-Seg 0.297/0.335/0.536/0.992/0.762</b><br>• Uterus：0.190/1.000/0.000/0.977/0.632 → <b>R²-Seg 0.401/0.424/0.600/0.989/0.806</b><br>• Prostate：0.047/1.000/0.000/0.910/0.552 → <b>R²-Seg 0.465/0.645/0.587/0.971/0.890</b><br>• Breast：0.144/0.998/0.030/0.952/0.582 → <b>R²-Seg 0.395/0.412/0.728/0.984/0.762</b><br>• Cervix：0.154/1.000/0.000/0.985/0.598 → <b>R²-Seg 0.355/0.299/0.632/0.993/0.777</b>。<br>R²-Seg 用<b>特异性/CA 大涨</b>换"假装全阳"的灵敏度，决策边界更校准。</div>
+
+    <div class="note-h">④ 主结果 2：in-dist 十器官全表（Appendix，真数字）+ 无遗忘</div>
+    <div class="note-b"><b>in-dist CT（BiomedParse → R²-Seg，Dice/Sens/Spec/Acc/CA）：</b><br>• Pancreas：0.212/1.000/0.078/0.998/0.584 → <b>0.739/0.131/0.935/0.999/0.896</b>（Dice +0.527、CA +0.312，最亮）<br>• Liver：0.359/0.998/0.136/0.994/0.647 → <b>0.625/0.342/0.866/0.996/0.853</b><br>• Kidney：0.138/1.000/0.067/0.990/0.553 → <b>0.567/0.371/0.778/0.997/0.873</b><br>• Colon：0.351/1.000/0.042/0.994/0.674 → <b>0.479/0.110/0.919/0.997/0.758</b><br>• Lung：0.158/0.977/0.072/0.995/0.562 → <b>0.446/0.071/0.884/0.997/0.752</b>。<br><b>无遗忘（Fig 5/7）：</b>原文 <i>"the finetuned models present catastrophic forgetting on both CT and MR abdominal organ segmentation, especially on liver"</i>；R²-Seg 冻结 backbone 故在 AMOS/M&amp;Ms 正常器官分割上<b>不掉点</b>。</div>
+
+    <div class="note-h">④ 消融（Table 3，真数字）：统计检验 + 门控缺一不可</div>
+    <div class="note-b">以 bladder 为例（Stat.Test / FP.Gating 开关，Dice/Spec）：<b>只 FP-Gating</b>（去统计检验）0.099/0.089；<b>只 Stat-Test</b>（去门控）0.257/0.419；<b>两者全开</b> 0.297/0.536。prostate 同样：去门控 Spec 0.033、去统计检验 Spec 0.299、全开 0.587。原文：<i>"removing the two-sample statistical test substantially increases false activations"</i>；<i>"Disabling the false-positive gating mechanism leads to a significant increase in background activations and a marked drop in specificity across all tumor types."</i> <b>成本</b>：LoRA 微调 ~20h A100；R²-Seg 零训练、test-time 即用，省去整条标注+训练流水线。两个模块的分工也很清楚：统计检验负责"区分真假阳"（低对比器官内部最易误判处），门控负责"整图该不该有肿瘤"（空 mask 场景）——前者管空间精度、后者管存在性，叠加才能既高特异又不过度抑制。</div>
+
+    <div class="note-h">🌟 亮点（为何能进 Finalist）</div>
+    <div class="note-b">① <b>把"统计假设检验"引入分割后处理</b>——不靠模型自身置信度，而是 principled 地检验"候选 vs 正常组织是否显著不同"（MMD+置换+BH-FDR），可证 \(\text{FDR}&lt;\alpha\)；② <b>LLM 当解剖学规划器</b>（plan-before-segment）把开放肿瘤概念约束到已知解剖实体的 ROI，提升 embedding 可分性；③ <b>纯 test-time、冻结 backbone</b> → 可部署、不遗忘、不需架构访问，对"基础模型且不可改"的现实约束极务实；④ 多中心多模态 10 数据集系统验证 + 完整消融。</div>
+
+    <div class="note-h">❓ 疑问 / Limitations（诚实）</div>
+    <div class="note-b">① <b>用特异性换灵敏度，代价不小</b>：R²-Seg 的 Sensitivity 普遍很低（lung 0.071 / colon 0.110 / pancreas 0.131），临床上<b>漏检（假阴）会延误诊断</b>——原文 Limitations 明确承认 <i>"it risks rejecting true positives and missing early radiological biomarkers. Achieving simultaneous improvement in both sensitivity and specificity remains an open and critical challenge."</i> ② <b>OOD 上 Dice 常不如 LoRA</b>（bladder 0.297 vs 0.578、breast 0.395 vs 0.611、uterus 0.401 vs 0.514），它赢在 CA/特异性与"不遗忘"，单看 Dice 不总占优。③ 强依赖 <b>LLM 规划质量 + BiomedParse 能分对锚点器官</b>，锚点失败时退化。④ 超参不少（\(\tau_{bin}/\tau_{case}/\tau_{max}\) 等），跨中心稳健性仍需更多验证。[推测] 论文称只用无标注 dev split 定一次。</div>
+
+    <div class="note-h">Q&amp;A · 为什么用统计检验，而不是直接看模型置信度？</div>
+    <div class="note-b"><b>问：</b>既然要"拒绝假阳"，为何不直接卡 BiomedParse 输出的概率阈值？<b>答：</b>因为 OOD 下模型置信度本身<b>不可靠</b>——§3.1 已说 OOD 时 embedding 难分、边界偏移，于是"把整个膀胱当肿瘤"时模型反而<b>高置信</b>（Sens 1.000/Spec 0.000 就是高置信地全错）。统计检验换了个<b>独立于模型的判据</b>：候选区像素特征分布 \(P_X\) 与正常器官分布 \(P_Y\) 是否<b>真的不同</b>。原文把这点讲死：<i>"This provides a principled rejection mechanism that no longer relies on model-dependent confidence scores but instead tests whether candidate regions are statistically significantly different from normal organs."</i> 这也是"Reason 缩小空间、Reject 校准边界"两阶段缺一不可的根因——消融里去掉任一项特异性都崩。</div>
+    <div class="note-h">Q&amp;A · §2 与已有 TTA / 微调路线的本质区别</div>
+    <div class="note-b"><b>vs 微调 / LoRA：</b>它们改参数 → 在 OOD 上提 Dice，但在 in-dist 正常器官上<b>灾难性遗忘</b>（Fig 5/7，尤其肝）；R²-Seg 冻结 → 不掉点。<b>vs 经典 TTA（TENT/CoTTA/test-time training）：</b>它们更新归一化层、需访问架构、仍出小假阳；R²-Seg <i>"keeps the model backbone frozen and integrates reasoning-guided ROI cropping, multi-view test-time fusion, and two-sample statistical filtering, explicitly designed to suppress false positives, particularly in empty-mask scenarios."</i> <b>vs 朴素 LLM-agent 分割：</b>本文不让 LLM 去"画"肿瘤（它不会），而是让 LLM 只做<b>解剖规划</b>（锚点器官+ROI 几何），把"画"交给冻结的 BiomedParse，把"筛"交给统计检验——职责分离很干净。这套"plan-before-segment + statistical-reject"组合正是它区别于一切纯参数适配方法的地方。</div>
+
+    <div class="note-h">📌 全文一页总结（problem→method→experiment→takeaway）</div>
+    <div class="note-b"><b>problem：</b>医学分割基础模型在 OOD 肿瘤上满屏假阳性 → 过诊断；微调遗忘+数据贵、TTA 需改参且仍出假阳。<br><b>method：</b>training-free 的 Reason-and-Reject——LLM 解剖学规划器把肿瘤概念约束到锚点器官的多尺度 ROI（式1）+ ROI 内多视图 TTA（式2-3），再用 MMD 两样本检验（式4）+ BH-FDR + 三级门控 reject 掉"与正常组织无显著差异"的候选，全程冻结 backbone。<br><b>experiment：</b>10 数据集 CT/MR，揭示 BiomedParse OOD 时 Spec=0（整器官当肿瘤）；R²-Seg 大幅提升特异性/CA（pancreas Dice 0.212→0.739、CA 0.584→0.896），且 in-dist 不遗忘；消融证明统计检验+门控缺一不可。<br><b>takeaway（原文）：</b><i>"substantial gains in OOD robustness can be achieved without any fine-tuning"</i>——用<b>解剖推理（缩搜索空间）+ 原理性统计 reject（不靠模型置信度）</b>就能在不动参数下大幅压假阳、且不遗忘。<b>边界</b>：FP-FN 权衡未解，偏保守、灵敏度低，可能漏早期病灶。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-r-2-seg-training-free-ood-medical-tumor-segmentation-vi/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Illustration of visual embedding distributions. Left: In- Distribution, Right: Out-of-Distribution.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-r-2-seg-training-free-ood-medical-tumor-segmentation-vi/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Overview of R2-Seg pipeline. Top row: LLM-based segmentation planning and ROI construction; middle row: BioMedParse- based tumor segmentation and candidate extraction; bottom row: Statistical two-sample test and false discovery rate control.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-r-2-seg-training-free-ood-medical-tumor-segmentation-vi/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Visualization of segmentation results for both in-distribution and out-of-distribution tumor types.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-r-2-seg-training-free-ood-medical-tumor-segmentation-vi/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Evaluation of over-segmentation on slices without tu- mors. Here, p-value is annotated by an asterisk, i.e., ns: 0.05 &lt; p ≤1, *: 0.01 &lt; p ≤0.05, **: 0.001 &lt; p ≤0.01, ***: 0.0001 &lt; p ≤0.001, and ****: p ≤0.0001.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-r-2-seg-training-free-ood-medical-tumor-segmentation-vi/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Evaluation of knowledge forgetting on in-distribution CT slices. Statistical tests show that the segmentation performance of fine-tuned models drops significantly across all organs.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-r-2-seg-training-free-ood-medical-tumor-segmentation-vi/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. More qualitative results predicted by our R2-Seg. Our model is capable of recognizing tumors of varying sizes, across different scanning planes and organs, under diverse fields of view.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-r-2-seg-training-free-ood-medical-tumor-segmentation-vi/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Evaluation of knowledge forgetting on in-distribution MR slices. Statistical tests show that, even finetuned by LoRA, Biomed- Parse still presents significant performance drops across all organs.</figcaption></figure>
+    </div>
+  </div></body></html>

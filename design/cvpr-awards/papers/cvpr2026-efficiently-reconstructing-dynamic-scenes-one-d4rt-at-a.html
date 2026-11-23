@@ -1,0 +1,235 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Efficiently Reconstructing Dynamic Scenes One D4RT at a Time</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-best_paper">🏆 Best Paper</span></div>
+    <h1>Efficiently Reconstructing Dynamic Scenes One D4RT at a Time</h1>
+    <div class="au2" style="color:var(--mut)">Chuhan Zhang ⋅ Guillaume Le Moing ⋅ Skanda Koppula ⋅ Ignacio Rocco ⋅ Liliane Momeni ⋅ Junyu Xie ⋅ Shuyang Sun ⋅ Rahul Sukthankar ⋅ Joëlle K. Barral ⋅ Raia Hadsell ⋅ Zoubin Ghahramani ⋅ Andrew Zisserman ⋅ Junlin Zhang ⋅ Mehdi S. M. Sajjadi</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2512.08924">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2512.08924">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Efficiently%20Reconstructing%20Dynamic%20Scenes%20One%20D4RT%20at%20a%20Time">Scholar</a></div>
+    <div class="tldr"><b>一句话：</b>统一前馈 Transformer + query-based 解码器，从单段视频联合推断深度/时空对应/相机参数，4D 重建 SOTA 且比此前快 18–300×。</div>
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Understanding and reconstructing the complex geometry and motion of dynamic 4D scenes from video remains a formidable challenge in computer vision. This paper introduces D4RT, a simple yet powerful feedforward network designed to efficiently solve this task. D4RT utilizes a unified transformer architecture to jointly infer depth, spatio-temporal correspondence, and full camera parameters from a single video. Its core innovation is a novel mechanism that sidesteps the heavy computation of dense, per-frame decoding and the complexity of managing multiple, task-specific decoders. Our unified decoding interface allows the model to independently and efficiently probe the 3D position of any point in space and time. The result is a lightweight and highly scalable method that enables remarkably efficient training and inference. We demonstrate that our approach sets a new state-of-the-art, outperforming previous methods across a wide spectrum of 4D reconstruction tasks.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">把"重建整个动态场景"重新表述成"按需回答关于任意一个点的提问"——先把视频编码成固定的全局表示 F，再用轻量解码器对查询独立预测任意点的 3D 位置。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">传统 3D 重建追求"一次性求出所有几何"，对动态世界不适用；现有 4D 方法把任务拆成专用组件：MegaSaM 拼多个现成模型 + 昂贵 test-time 优化；VGGT（去年 Best Paper）用多个 task-specific 解码器且无法建立动态对应；SpatialTrackerV2 有动态但靠迭代 refinement。痛点 = dense per-frame 解码重 + 多解码器复杂 + 缺动态对应。</div>
+    <div class="note-h">核心机制：一个 query 打天下</div>
+    <div class="note-b">编码器 E 把视频 V 编成全局场景表示 F=E(V)（算一次固定）。解码器 D 对查询 q=(u,v,t_src,t_tgt,t_cam) cross-attend F，独立输出该点 3D 位置 P=D(q,F)。三个时间索引可不相等 → 空间/时间彻底解耦。三性质：①空间时间解耦；②查询相互独立（训练只需少量 query 监督、推理随点数线性扩展可并行）；③统一接口覆盖全部 4D 任务。</div>
+    <div class="note-h">统一解码接口（论文 Table 1）</div>
+    <div class="note-b">点跟踪 = 固定 (u,v,t_src) 遍历 t_tgt=t_cam；点云 = 遍历所有像素固定 t_cam（直接出统一坐标系，免噪声外参变换）；深度 = t_src=t_tgt=t_cam 取 Z；外参 = 粗网格查两帧 → Umeyama SVD 解刚体变换；内参 = 粗网格 + 针孔模型 f_x=p_z(u-0.5)/p_x。</div>
+    <div class="note-h">架构关键</div>
+    <div class="note-b">编码器 = ViT + 交错 local frame-wise / global self-attention（同 VGGT）。解码器 = 小型 cross-attention transformer，query token = Fourier(u,v) + 离散 timestep embedding(t_src,t_tgt,t_cam) + <b>9×9 局部 RGB patch embedding（性能命门，消融见下）</b>。查询之间<b>不做 self-attention</b>（一旦互相 attend 会 OOD、性能暴跌）→ 独立解码 = 既稳又可大规模并行。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">3D 跟踪 (TAPVid-3D) 全面 SOTA；效率比 SOTA 快 <b>18–300×</b>（1 分钟视频单 TPU ~5 秒，旧 SOTA ~10 分钟）；深度/点云 (Sintel/ScanNet/KITTI/Bonn) top-tier；相机位姿 (ScanNet/Re10K/Sintel) 领先（Pose AUC ScanNet 83.5 vs π³ 78.7）。</div>
+    <div class="note-h">消融</div>
+    <div class="note-b">局部 RGB patch：去掉后 Sintel 深度 AbsRel 0.302→0.366、ATE 0.091→0.173（提升巨大，比 DPT 的 skip-connection 方案简单得多）；Backbone ViT-B→ViT-g 单调提升（AbsRel 0.319→0.191）；辅助损失：2D position/normal 主要助深度，confidence 对相机位姿关键。</div>
+    <div class="note-h">为什么拿 Best Paper</div>
+    <div class="note-b">①范式优雅（一个 query 接口统一原本割裂的四类任务）；②效率突破 18–300× 推向实时/机器人/AR；③承上启下——正好补齐 VGGT 两短板（多解码器→单接口、无动态对应→原生动态跟踪）。CVPR Best Paper 连续两年颁给几何重建（VGGT→D4RT）。</div>
+    <div class="note-h">疑问 / 讨论</div>
+    <div class="note-b">①query 独立解码如何保证点间全局一致性？②9×9 局部 patch 在大位移/快速运动下是否仍可靠？③Umeyama 求位姿是否会被动态前景点污染（是否只用静态点筛选）？</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 一起读 &amp; 问答记录</h2>
+    <div class="kv">从 Abstract 开始逐段精读，随讨论持续累积「讲解 + 问答」。最后更新 2026-06-11。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 讲解</div>
+    <div class="note-b"><b>原文大意：</b>从视频重建动态场景的复杂几何与运动，仍是 CV 的硬骨头。本文提出 D4RT，一个简单却强大的前馈模型，用统一 Transformer 从单段视频联合推断深度、时空对应、完整相机参数；核心创新是一个新颖的查询机制，绕开 dense per-frame 解码的重计算与多个专用解码器的复杂性；解码接口能独立、灵活地探测任意空间-时间点的 3D 位置；结果轻量、高度可扩展、训练推理高效，在一系列 4D 重建任务上全面 SOTA。</div>
+    <div class="note-b"><b>逐句拆解：</b><br>1) <b>动态场景 + 4D</b>：不只重建静态 3D 几何，还要刻画"运动"——3D 空间 + 时间 = 4D；难在物体在动、相机也在动。<br>2) <b>前馈 (feedforward)</b>：一次前向推理直接出结果，不做迭代优化（对照传统 Bundle Adjustment / 全局对齐那种反复迭代的）。<br>3) <b>统一 Transformer 联合推断三类量</b>：深度图、时空对应（同一物理点在不同帧的对应）、完整相机参数（内参+外参），一个模型一起出。<br>4) <b>核心创新 = 查询机制</b>：传统是"逐帧 dense 解码"（每帧每像素都算）+ 每任务配专用 decoder；D4RT 改成"按需查询"——想知道哪个点就问哪个点。<br>5) <b>独立灵活探测任意时空点</b>：像查数据库，输入一个查询返回那个点的 3D 位置，查询之间互不依赖。<br>6) <b>轻量 + 可扩展 + 高效</b>：查询独立 → 可大规模并行 → 训练推理快、能扩到很多点。<br>7) <b>4D 全面 SOTA</b>：深度、点云、3D 点跟踪等都刷新最佳。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>D4RT = 前馈 + 统一 Transformer + "按需查询任意时空点 3D 位置"的解码接口，用一个接口替掉"逐帧 dense 解码 + 多专用解码器"，从而又快又强。</div>
+
+    <div class="note-h">② Section 1 Introduction（引言）— 讲解</div>
+    <div class="note-b"><b>开篇立论（反传统）：</b>原文 “Traditional 3D reconstruction asks: ‘What is the geometry of everything, everywhere, all at once?’ We argue this exhaustive, rigid approach is fundamentally ill-equipped for a dynamic world.” —— 传统 3D 重建追求"一次性求出所有地方所有几何"（everything everywhere all at once，致敬同名电影），作者直接判定这种"穷举式、刚性"的范式对动态世界根本不适用。这是全文 motivation 的根。</div>
+    <div class="note-b"><b>点名批判三个 SOTA：</b>① <b>MegaSaM</b> —— “a complex mosaic of off-the-shelf models” 拼接 mono-depth/metric-depth/motion-seg，再靠昂贵 test-time optimization 融合（慢+复杂）；② <b>VGGT</b>（去年 Best Paper）—— “separate, specialized decoders for distinct modalities” 每模态一个专用解码器，且 “neither… capable of establishing correspondences for dynamic portions”（建不了动态对应）；③ <b>SpatialTrackerV2</b> —— 有动态但 “lacks a unified, single-stage formulation, instead relying on costly iterative refinement”（不统一+靠迭代）。三家共性痛点 = 不统一 / 不动态 / 慢。</div>
+    <div class="note-b"><b>范式转变（核心主张）：</b>原文 “shifting the paradigm from fragmented, frame-level decoding to efficient, on-demand querying.” —— 从"碎片化逐帧 dense 解码"转向"按需查询"：先编码视频成 latent scene representation，再独立解码任意数量时空 point query，一个接口统一所有 4D 任务。</div>
+    <div class="note-b"><b>四点贡献：</b>① 提出 D4RT（高效前馈查询 point-level 4D 信息）；② 统一接口解锁 4D 对应/点云/深度/相机参数（静态+动态）；③ 实验证明 4D 重建 SOTA 且 speed+accuracy 双赢；④ 灵活 decoder 衍生出高效 dense all-pixel tracking 算法 → holistic 重建。结构 = 方法→统一性→实验→衍生能力。</div>
+    <div class="note-b"><b>★ Intro 已自包含闭环（problem→core solution→why，不必等 §2）：</b>第 4 段原文 “our model first encodes the input video, generating a latent scene representation which is then used to independently decode any number of spatio-temporal point queries. This simple, novel design unifies all 4D reconstruction tasks into a single interface and unlocks efficient training and inference.” 逐句即 §2 解法：encode→latent = <b>F=E(V)</b>；independently decode spatio-temporal point queries = <b>P=D(q,F)</b> 且 query 独立；unifies into a single interface = <b>Table 1</b>（改 query 不改 decoder）；unlocks efficient = query 独立可并行 + F 只算一次。<b>即 Intro 已把"怎么解决三痛点"讲完，§2 只是把这段话数学化/参数化。</b></div>
+
+    <div class="note-h">Q&amp;A · 它要解决的主要问题是什么？</div>
+    <div class="note-b"><b>核心：</b>用一个统一前馈接口、高效地重建动态 4D 场景（title 的 Efficiently + Dynamic）。打三个现有痛点：① 重计算 —— Abstract “sidesteps the heavy computation of dense, per-frame decoding”；② 多解码器复杂 —— “the complexity of managing multiple, task-specific decoders”（VGGT 那种每模态一个）；③ 建不了动态对应 —— §1 “neither of these methods is capable of establishing correspondences for dynamic portions of the scene”（SpatialTrackerV2 能动态但靠 costly iterative refinement）。<b>区分：</b>任务层面（重建动态场景几何+运动）是领域通题；D4RT 真正的靶子是现有方法的范式缺陷 ①②③。</div>
+
+    <div class="note-h">③ §2 Method · formulation 怎么实现 &amp; 如何对应 method</div>
+    <div class="note-b"><b>A. 三个量（formulation）：</b>① encoder <b>F=E(V)∈R^(N×C)</b>，视频 V∈R^(T×H×W×3) 编码成全局场景表示，<b>算一次、第二阶段固定</b>；② query <b>q=(u,v,t_src,t_tgt,t_cam)</b>；③ decoder <b>P=D(q,F)∈R³</b>，每个 query 独立出一个 3D 点。架构灵感来自 Scene Representation Transformer (SRT)。</div>
+    <div class="note-b"><b>五元组语义（精髓=三个时间索引解耦）：</b>(u,v)∈[0,1]² 源帧归一化坐标；t_src 点在哪帧被指定；<b>t_tgt 预测它在哪个时刻的 3D 位置（t_tgt≠t_src 即点动了 = 动态对应）</b>；t_cam 在哪个相机坐标系表达。原文三性质 “the indices need not coincide, allowing a full disentanglement of space and time; each query is decoded independently...; this interface unlocks a suite of downstream applications in a unified, consistent manner”。</div>
+    <div class="note-b"><b>B. 如何对应 method（Table 1，改 query 取值即换任务，而非换 decoder）：</b>Point Track=固定 (u,v,t_src) 变 t_tgt=t_cam=1…T（动态轨迹）；Point Cloud=遍历所有像素、t_src=1…T、t_cam 固定（直接出统一坐标系点云，免噪声外参变换）；Depth=t_src=t_tgt=t_cam 取 Z；Extrinsics=粗 (h,w) 网格查两帧→同批 3D 点在两参考系→Umeyama SVD 解刚体变换；Intrinsics=粗网格→pinhole f_x=p_z(u-0.5)/p_x、f_y=p_z(v-0.5)/p_y 取 median。<b>这就是"统一"的实现——不为每任务设计 decoder，只改 query。</b></div>
+    <div class="note-b"><b>C. 架构落地（§2.2）：</b>F=E(V) → encoder=ViT+交错 local frame-wise/global self-attention（同 VGGT 的 Alternating Attention）；P=D(q,F) → 小型 cross-attention decoder，query token = Fourier(u,v) + 离散 timestep embedding(t_src,t_tgt,t_cam) + <b>9×9 局部 RGB patch embedding</b>（原文 “dramatically improves performance”，§4.4 命门）；每个 query 独立 cross-attend F、<b>query 间不做 self-attention</b>（原文 “major performance drops when enabling self-attention between queries” → OOD）。输出 feature 经一个 learned projection 映射到 P∈R³。</div>
+
+    <div class="note-h">Q&amp;A · “unified 4D understanding”的需求指什么？</div>
+    <div class="note-b"><b>一句话：</b>用一套统一表示 + 一个统一接口，把理解动态场景所需的全部几何量（深度、时空对应/点跟踪、相机内外参，静态+动态）一起产出，而非每个量各建模型/解码器；“需求”= 这种统一性本身。</div>
+    <div class="note-b"><b>逐词：</b>4D=3D 空间+时间（含运动）；understanding=从视频恢复深度/点云/对应/相机；unified=一个表示/接口/模型涵盖全部。原文锚点：line 13 “unified… vs dividing into discrete, task-specific components”、line 21 “unifies all 4D reconstruction tasks into a single interface”、line 47 “unified, consistent manner”。</div>
+    <div class="note-b"><b>三层统一：</b>① 表示——一个 Global Scene Representation F；② 接口——所有任务=查询 P=D(q,F)、只改 query；③ 任务——depth/cloud/track/camera = 同接口不同 query 配置（Table 1）。</div>
+    <div class="note-b"><b>why 必须 unified：</b>4D 各量几何上相互耦合（有逐点 3D+对应 → Umeyama 反推相机；深度=取 Z），割裂建模 = 重复计算 + 结果互相不一致；统一表示让一切从 F 派生、天然一致。<b>程度对比：</b>VGGT 统一了 backbone 但仍是多 task-specific decoder（部分统一）；D4RT 连 decoder 都收成一个 query 接口（完全统一）——正是 §1 批评 VGGT “separate, specialized decoders” 的延伸。</div>
+
+    <div class="note-h">④ §2 Method 主要方法实现（系统版）</div>
+    <div class="note-b"><b>整体 pipeline：</b>Video V → Encoder ℰ(ViT-g 40 层, AA) → <b>F</b>（算一次、固定）→ 每个 query q=(u,v,t_src,t_tgt,t_cam) → Decoder D(8 层 cross-attn) → P∈R³ → 按 Table 1 组装成 depth/cloud/track/camera。参数量：encoder <b>1B</b> + decoder <b>144M</b>。</div>
+    <div class="note-b"><b>1. Encoder（§2.2）：</b>ViT-g 40 层，spatio-temporal patch <b>2×16×16</b>（2 帧×16×16），interleaved local frame-wise + global self-attention（VGGT 式 AA）；输入 resize 方形 + aspect ratio 单独 token；F 第二阶段固定不重算。</div>
+    <div class="note-b"><b>2. Decoder（§2.2）：</b>8 层 cross-attention，query token = Fourier(u,v) + 离散 timestep emb(t_src,t_tgt,t_cam) + <b>9×9 RGB patch emb</b>；每 query 独立 cross-attend F（不 self-attn，否则 OOD）；输出 feature→learned projection→P∈R³，外加辅助 linear heads（2D 坐标/法向/可见性/运动/置信度）。</div>
+    <div class="note-b"><b>3. Algorithm 1 · dense all-pixel tracking（§2.2/2.3，最实用的工程点）：</b>目标=track 视频所有像素做 holistic 重建；naive 需 <b>O(T²HW)</b> queries（大量冗余）；优化用 occupancy grid G∈{0,1}^(T×H×W)：只从未访问像素发起新 track，每条 full-video track 把可见经过的时空像素标 visited，循环至全部访问。<b>自适应加速 5–15×</b>（取决运动复杂度），可行前提=decoder 既 sparse 又 lightweight。</div>
+    <div class="note-b"><b>4. 损失（§2.3）：</b>主损失=L1 on normalized 3D P —— 先按 mean-depth 归一化，再过 <b>sign(x)·log(1+|x|)</b> 变换<b>抑制远点主导 loss</b>；辅助：2D 坐标 L1 + 表面法向 cosine + 可见性 BCE + 运动向量 L1；confidence penalty <b>−log(c)</b>（c 加权 3D 误差）；所有损失只在有 GT 处算。</div>
+    <div class="note-b"><b>5. 训练配置（§4）：</b>48 帧 clip @256×256，每步 2048 random queries（<b>30% oversample 在 depth 不连续/运动边界</b>，Sobel 预算；t_tgt=t_cam 以 0.4 概率强制以提升 downstream）；500k steps，AdamW，local batch 1×<b>64 TPU，约 2 天</b>。</div>
+    <div class="note-b"><b>Table 2 能力对比（line 134）：</b>D4RT 是唯一<b>六项全 ✓</b>（3D Recon / Dynamic Correspondence / Flexible Ref. Frames / Sparse Decoding / Global Context / Single Decoder）；VGGT 缺动态对应+灵活参考帧+稀疏解码+单解码器；STv2 缺 Flexible Ref + Single Decoder。</div>
+
+    <div class="note-h">Q&amp;A · Method 实现细节 6 问</div>
+    <div class="note-b"><b>1 ViT-g / F shape：</b>input=video V∈R^(T×H×W×3)（resize 方形 256²+aspect-ratio token）；结构=ViT-g 40 层、spatio-temporal patch 2×16×16、AA(local frame-wise+global self-attn)、1B 参数；output <b>F∈R^(N×C)</b>，N=(T/2)(H/16)(W/16)，训练 48 帧 256² → N≈24×16×16=<b>6144 token</b>（按 patch+配置推算）；<b>C=ViT-g 隐维，原文未给具体值</b>（ViT-g 通常 1408–1536）。</div>
+    <div class="note-b"><b>2 query 5 参数：</b>(u,v)∈[0,1]² 源帧归一化坐标；t_src 点在哪帧定义；t_tgt 预测它在哪个时刻的 3D 位置（≠t_src 即追踪运动）；t_cam 在哪个相机系表达。分组 (u,v,t_src)=source、(t_tgt,t_cam)=target。</div>
+    <div class="note-b"><b>3 反复查询会慢吗：</b>不慢。decoder 轻(144M)+F 算一次复用+query 独立“trivial parallelism”批量并行+Algorithm 1 砍冗余；Table 3 实测单 A100：60FPS 出 550 track、1FPS 出 40180 track，比 STv2/DELTA 快 18–300×。真正慢的是 dense 逐帧解码(VGGT)/iterative refinement(STv2)。</div>
+    <div class="note-b"><b>4 9×9 patch &amp; cross-att 类型：</b>9×9=query 点周围 9×9 RGB 局部块 embed 进 query token（§4.4 命门，去掉 AbsRel 0.302→0.366），<b>embed 方式原文没细说</b>(Fig7 标 FC)；cross-att——<b>原文只说 “cross-attention”、未提 deformable</b>，按描述是 vanilla cross-att（query 作 Q、全部 F token 作 K/V）。</div>
+    <div class="note-b"><b>5 dense tracking 作用：</b>不只 img 重建。高效算所有像素(静+动)的 dense 时空轨迹 → complete/holistic 4D 重建，消除遮挡不连续+稀疏 artifact（Fig4：D4RT 唯一重建含所有像素+动态的完整 4D）。它撑起动态对应/跟踪，不止静态点云。</div>
+    <div class="note-b"><b>6 loss 是做深度吗：</b>不是。主损失监督<b>完整 3D 点 P=(x,y,z)</b>（normalized L1），深度只是取 Z 的派生；点云/跟踪/相机都从 P 来。辅助=2D 坐标 L1+法向 cosine+可见性 BCE+运动向量 L1+置信度 −log(c)。统一监督 P 而非各任务各设 loss = unified 的体现。</div>
+
+    <div class="note-h">⚠ 修正 &amp; 深入（读完附录 + 查代码后）</div>
+    <div class="note-b"><b>代码：</b>D4RT 官方<b>不开源</b>（Kauldron 框架 + internal data；无 DeepMind 官方 repo）；pypi/codeberg 上 lucidrains `d4rt` 是<b>第三方玩具复现</b>（dim=512/patch=32/depth=6），<b>非论文实际参数</b>，不可作依据。实际参数只能读论文/附录。</div>
+    <div class="note-b"><b>★ 修正：encoder 是 VideoMAE 预训练的 ViT-g</b>（Appendix D Table 11：随机初始化 AbsRel 0.738 → VideoMAE 初始化 0.302，差距巨大）。之前只说 ViT-g、漏了初始化来源。损失权重（附录）：λ_3D=1.0/λ_2D=0.1/λ_vis=0.1/λ_disp=0.1/λ_conf=0.2/λ_normal=0.5；AdamW wd0.03、warmup2500→peak1e-4→cosine1e-6、grad clip10。</div>
+    <div class="note-b"><b>① patch overlap / AA / 时序融合：</b>2×16×16 论文未明说 overlap，按 ViT/VideoMAE 惯例是 <b>non-overlapping</b>(stride=patch)；AA=每层交替「帧内 local self-attn」+「跨帧 global self-attn」，<b>跨帧 global SA 就是时序融合处</b>（建立 dense correspondence + flow of time）。</div>
+    <div class="note-b"><b>② 单/多 video：</b><b>单 video</b>（Abstract “from a single video”）；长视频靠 Appendix B 分 overlapping chunk + Umeyama Sim(3)（top 85% conf 点）对齐拼接（类 VGGT-Long、省 loop closure），不是多个独立视频。</div>
+    <div class="note-b"><b>③ decoder 耗时 / Table 3：</b>单次绝对 ms 论文没给；Table 3 = <b>3D tracking 吞吐</b>——目标 FPS 下能出多少条 full-video track（每 track=T 个独立 query，单 A100）；dense all-pixel 朴素 O(T²HW)≈几百万 query，被 Algorithm 1 occupancy grid 砍 5–15×；是"相同 FPS 预算下 track 产量"对比，非"重建相同 pixel 数"。</div>
+    <div class="note-b"><b>④ patch 作用 / 指标：</b>9×9 RGB patch 两作用（Table7/§4.4/App C）：(i) 帮 query 与 F 建<b>更可靠对应</b>；(ii) 补 encoder 16× 下采样丢失的 <b>low-level 细节</b>→锐利边界、subpixel（Config4 用原分辨率 patch）。AbsRel=深度相对误差 |pred−gt|/gt（↓）；ATE=相机轨迹绝对平移误差(Sim3 对齐后,↓)。Table7：去 patch AbsRel0.302→0.366、ATE0.091→0.173。</div>
+    <div class="note-b"><b>⑤ 3D GT / 泛化：</b>GT 来自<b>合成渲染</b>(Kubric/VirtualKitti/MVS-Synth/Dynamic Replica/PointOdyssey，精确)+<b>真实标注</b>(ScanNet/ScanNet++ RGB-D、Waymo LiDAR、Co3D/BlendedMVS SfM)；query 从 GT 轨迹采样、30% 在深度/运动边界。<b>无专门泛化章节</b>，靠评测集(Sintel/KITTI/Bonn/TAPVid-3D)≠训练集 + in-the-wild(Fig5) + 强数据增强 + VideoMAE 初始化 间接体现。</div>
+
+    <div class="note-h">⑤ §2 开头·逐段一起读（Method 总纲）</div>
+    <div class="note-b"><b>架构渊源：</b>原文 “based on a simple encoder-decoder architecture inspired by the Scene Representation Transformer (SRT)”。SRT(Sajjadi 2022，D4RT 一作 Mehdi 旧作)=把场景编码成 set-latent 表示 + 用 query 渲染新视角；D4RT 把它搬到 4D——F=set-latent 场景表示，query 从"渲染光线"换成"问任意点的 3D 位置"。</div>
+    <div class="note-b"><b>非对称两阶段：</b>“powerful encoder”(重，理解场景出 F) + “lightweight decoder”(轻，查询)——效率的根。</div>
+    <div class="note-b"><b>encoder 三重职责（原文这句信息量大）：</b>“capture information about the full environment”(整体几何) + “identifying dense correspondence across all video frames”(跨帧 dense 对应) + “understanding the flow of time and its effect on the scene”(时间流动及其对场景的影响)。即 <b>F 必须同时编码 几何+跨帧对应+时间动态</b>三者。</div>
+    <div class="note-b"><b>接口语义：</b>“given a 2D point in a source frame, the decoder predicts the 3D position… at a given target timestep… expressed relative to a given camera reference” = q(u,v,t_src,t_tgt,t_cam)→P 的自然语言版。</div>
+    <div class="note-b"><b>三性质（原文逐条）：</b>① “indices need not coincide”→空间/时间彻底解耦；② “each query is decoded independently”→高效训练推理 + 灵活(sparse/dense)；③ “unlocks a suite of downstream applications in a unified, consistent manner”→统一接口覆盖所有 4D 任务(Table 1)。</div>
+
+    <div class="note-h">📚 背景：SRT 范式（外部知识，非 D4RT 原文）</div>
+    <div class="note-b"><b>SRT</b>(Scene Representation Transformer, Sajjadi CVPR2022)做 feed-forward 新视角合成：几张图→encoder→一组 latent token（set-latent 场景表示，geometry-free 不显式建 3D）；渲染时一条光线(相机位姿+像素方向)作 query→light field decoder cross-attn latent→<b>直接出 RGB</b>（不做 NeRF 式 ray-marching 积分），每条光线独立。对照 NeRF：NeRF per-scene 优化+显式 3D+积分渲染；SRT 一个模型泛化多场景+隐式 latent+query 直出。[39] RUST=SRT 的 unposed 版(不需输入相机位姿)。</div>
+    <div class="note-b"><b>SRT→D4RT 对应：</b>几张图→视频 V；set-latent→F；光线 query→(u,v,t_src,t_tgt,t_cam)；出 RGB→出 3D 位置 P；每光线独立→每点 query 独立。继承范式 = encode-once latent + query-based decoding + feed-forward（这就是耗时低的根）。D4RT 改造：输出颜色→3D 位置、query 加 3 个时间索引处理动态+多参考系、加 9×9 patch 补细节。</div>
+
+    <div class="note-h">⑥ §2.1 D4RT Framework·逐段（上：F/q/P + 三任务）</div>
+    <div class="note-b"><b>三公式：</b>V∈R^(T×H×W×3)（T 帧 RGB）→ <b>F=ℰ(V)∈R^(N×C)</b>（N token×C 维，“remains fixed throughout the second stage” 算一次固定）；decoder D “cross-attends from any number of queries into F”（任意数量 query）。<b>q=(u,v,t_src,t_tgt,t_cam)</b>：(u,v,t_src)=source params、(t_tgt,t_cam)=target params；(u,v)∈[0,1]² 源帧归一化坐标、t∈[1,T]；“processed fully independently” → <b>P=D(q,F)∈R³</b>。</div>
+    <div class="note-b"><b>From query to 4D（改 query 配置=换任务）：</b>① <b>Point Track</b>=固定 (u,v,t_src)、令 t_tgt=t_cam={1…T} → 该点全视频 3D 轨迹；② <b>Point Cloud</b>=全像素 3D 位置直接在 shared reference frame t_cam 预测，原文 “alleviates the need for coordinate transformations… using explicit, potentially noisy camera estimates”（<b>免显式相机变换、绕开噪声外参</b>——巧）；③ <b>Depth</b>=t_src=t_tgt=t_cam，取 P 的 Z 分量。</div>
+
+    <div class="note-h">⑥′ §2.1 具体化：输入/输出/怎么算（48 帧 256² 例子）</div>
+    <div class="note-b"><b>Encoder（V→F，只算一次）：</b>输入视频 (48,256,256,3) → 按 2×16×16 切<b>不重叠</b>块 = (48/2)(256/16)(256/16)=24×16×16=<b>6144 块</b> → 各过 ViT-g 出 C 维 → F shape <b>(6144, C)</b>。即整段视频被压成 6144 个"理解单元"。</div>
+    <div class="note-b"><b>Decoder（1 个 query → 1 个 3D 点）：</b>query=5 个数 q=(u,v,t_src,t_tgt,t_cam)，例 (0.5,0.5,0,10,10)=「第 0 帧中心点，在第 10 帧时刻、用第 10 帧相机系看，3D 位置在哪」。构造 query token = Fourier(u,v) + timestep_emb(t_src)+emb(t_tgt)+emb(t_cam) + 9×9 RGB patch，<b>相加</b>→C 维。算法=query 作 Q、F 的 6144 token 作 K/V，cross-attn 加权汇总，过 8 层 → Linear → <b>P=(x,y,z)</b>。输出就一个 3D 坐标。</div>
+    <div class="note-b"><b>要整图/整条轨迹 = 发很多独立 query（可并行）：</b>深度图=对某帧每像素发 (u,v,t,t,t) 取 z；轨迹=固定 (u,v,t_src) 发 (·,·,t_src,k,k) k=0..T；点云=所有像素发 (u,v,t_src,t_src,t_cam 固定)（t_tgt=t_src 点在自己时刻、t_cam 统一系）。query 互相独立 → 打包大 batch 并行 → "问几百万点"仍快。</div>
+
+    <div class="note-h">⑥″ 细节：Fourier / cross-attn / 9×9 patch embed（通用机制，非 D4RT 独有）</div>
+    <div class="note-b"><b>为什么要 Fourier（最关键）：</b>神经网络有 <b>spectral bias</b>——直接喂低维坐标 (u,v)（就 2 个数）会过度平滑、分不清非常接近的坐标：(0.50,0.50) 和 (0.51,0.50) 几乎一样 → 输出几乎一样 → 模糊。Fourier features γ(p)=[sin(2⁰πp),cos(2⁰πp),…,sin(2^(L-1)πp),cos(2^(L-1)πp)] 把坐标用<b>多个频率的正余弦升维</b>，含高频项 → 相邻坐标在特征空间里被拉开 → 网络能精确响应坐标的细微变化 → 精确逐点 3D 位置。与 9×9 patch 互补：<b>Fourier 编"精确位置"、patch 补"该位置外观细节"</b>。</div>
+    <div class="note-b"><b>实验依据（外部，注意归属）：</b>「去掉 PE→NeRF 全糊」直接消融在 <b>NeRF 原论文(Mildenhall 2020)</b>：no positional encoding 渲染丢高频、模糊（Fig/Table 消融）。<b>Tancik 2020</b> 是把它<b>理论化+推广</b>：用 NTK 证明标准 MLP 的核快速衰减→只学低频(spectral bias)，Fourier mapping 让 NTK 变可调带宽的 stationary 核；经典实验=2D 图像记忆(坐标→RGB：no Fourier 糊、有则清晰)+1D/3D/CT；关键超参=频率尺度 σ（太小欠拟合糊、太大过拟合噪点，U 形最优）。</div>
+    <div class="note-b"><b>cross-attn 怎么算：</b>query token 作 Q(1 个 C 维)，F 的 6144 token 作 K/V；score_i=Q·K_i/√d → softmax 得权重 w_i(和为 1) → 输出=Σ w_i·V_i。即 query 去 F 里找"跟我这点相关的视频区域"（本帧周围 + 其他帧对应处）加权聚合 → 推 3D 位置。多头 + 8 层(每层 cross-attn+FFN)。</div>
+    <div class="note-b"><b>为何频率用 2^k 指数递增（非均匀线性）：</b>① <b>效率</b>——L 个频率即可覆盖到 2^(L-1)（对数级维度覆盖指数级频谱）；均匀线性要 2^(L-1) 个频率才覆盖同范围。② <b>多尺度匹配</b>——自然信号频谱多尺度、能量≈1/f 对数分布，倍频程(octave)在对数频率轴均匀采样正好匹配（同图像金字塔/小波）。③ <b>coarse-to-fine</b>——低频编大致位置、高频编精细差异，每频率管一个尺度；均匀线性相邻频率(如 100 vs 101)高度冗余浪费维度。本质同 Transformer sinusoidal PE 的几何级数波长。</div>
+    <div class="note-b"><b>9×9 patch 怎么 embed：</b>取源帧 (u,v) 周围 9×9 RGB = 9×9×3=243 个值 →（原文没细说，Fig7 标 FC）大概率 flatten + Linear 投到 C 维。作用=补 encoder 16× 下采样丢失的 low-level 细节。</div>
+
+    <div class="note-h">⑦ §2.1 逐段（下：相机外参/内参靠几何反推，不靠网络头）</div>
+    <div class="note-b"><b>核心哲学：</b>网络只学"点的 3D 位置 P"，相机参数<b>全从 P 几何反推</b>——不设专门的位姿/内参头。这是 unified 的极致（也回答了之前 loss 只监督 P 的疑问）。</div>
+    <div class="note-b"><b>外参（相对位姿，Umeyama SVD）：</b>求帧 i↔j 相对位姿：在 (h,w) 网格采一批源点，发两组 query <b>仅差 t_cam</b>：q_{i,k}=(u_k,v_k,i,i,<b>i</b>)（这批点在帧 i 坐标系）vs q_{j,k}=(u_k,v_k,i,i,<b>j</b>)（<b>同一批点</b>在帧 j 坐标系）。两组=同一批 3D 点的不同坐标系表达，只差一个刚体变换(R,t)=相对位姿 → Umeyama 算法解 3×3 SVD 求出。</div>
+    <div class="note-b"><b>内参（焦距，pinhole 反求）：</b>解码 3D 点 P=(p_x,p_y,p_z)，假设 principal point=(0.5,0.5)，针孔模型反求 <b>f_x=p_z(u−0.5)/p_x、f_y=p_z(v−0.5)/p_y</b>（推导：归一化下 u−0.5 = f_x·p_x/p_z）；(h,w) 网格多点估计取 <b>median</b> 鲁棒；畸变(鱼眼)加非线性 refinement。</div>
+    <div class="note-b"><b>Table 1 收尾：</b>5 任务 = query (u,v,t_src,t_tgt,t_cam) 的不同 Cartesian product；外参/内参只查<b>粗 (h,w) 网格</b>(快)。§2.1 完——一个网络只出 P，五类输出全是"配 query + 必要时几何后处理"。</div>
+
+    <div class="note-h">⑧ §2.2 Model Architecture·逐句过</div>
+    <div class="note-b"><b>Encoder：</b>“based on the Vision Transformer with interleaved local frame-wise, and global self-attention layers [46]”（AA，引 VGGT）。“resize the input video to a fixed square resolution before tokenizing”——resize 方形以支持任意长宽比；<b>原始 aspect ratio embed 成单独 token</b>，与主 video token 一起进 transformer（补回 resize 丢失的长宽比信息）。</div>
+    <div class="note-b"><b>Pointwise decoder：</b>“a small cross-attention transformer”。query token = Fourier(u,v) <b>加</b> learned discrete timestep emb(t_src,t_tgt,t_cam) <b>加</b> 9×9 RGB patch emb（“dramatically improves performance”，§4.4）。</div>
+    <div class="note-b"><b>query 独立解码（deliberate design，三大优势）：</b>“decoded independently through cross-attention into F, ensuring that queries do not interact” → learned projection → P。① 训练高效（少量 query 即可提供监督）；② 推理可跨帧自由选点、彼此无需相关 → 避免 OOD（“major performance drops when enabling self-attention between queries”）；③ trivial parallelism → 高效推理（Fig3/Table3 best trade-off）。</div>
+    <div class="note-b"><b>Algorithm 1 · Dense Tracking of All Pixels（逐行）：</b>① F←ℰ(V)；② 占用栅格 G←{false}^(T×H×W)；③ tracks 𝒯←∅；④ while 还有 G=false：从未访问点采 batch B → 对每个 (u,v,t_src) 构造 track queries Q={(u,v,t_src,k,k)}_{k=1..T} → P={D(q_k,F)} → Visible(P) 把可见经过的像素标 visited → 𝒯∪P；⑤ 返回 𝒯。<b>靠"一条 track 覆盖多像素 + 占用栅格去重"砍 5–15× 冗余。</b></div>
+
+    <div class="note-h">⑨ §2.3 Training &amp; Inference·逐句过（含附录 A）</div>
+    <div class="note-b"><b>损失总式（附录 A）：</b>L=(1/N)Σ(<b>c·λ_3D·L_3D − λ_conf·log c</b> + λ_2D·L_2D + λ_vis·L_vis + λ_disp·L_disp + λ_conf·L_conf + λ_normal·L_normal)，权重 λ_3D=1.0 / λ_2D=0.1 / λ_vis=0.1 / λ_disp=0.1 / λ_conf=0.2 / λ_normal=0.5；<b>只在有 GT 处算</b>。</div>
+    <div class="note-b"><b>主损失 L_3D（λ=1.0 最大）：</b>normalized 3D P 的 L1。归一化两步：① 各按 mean depth 归一化(尺度无关)；② 过 <b>sign(x)·log(1+|x|)</b> 变换<b>抑制远点主导 loss</b>(远点坐标绝对值大、否则盖过近处细节)。</div>
+    <div class="note-b"><b>confidence 机制（learned aleatoric uncertainty，引 [24] Kendall&amp;Gal）：</b>c·λ_3D·L_3D − λ_conf·log c——c=网络预测置信度(≈1/方差)。c 大→3D 误差权重大但 −log c 小；c 小→给难点(动态/遮挡/远)降权但 −log c 惩罚不让乱降。<b>模型自适应对难点降权</b>。Table8 消融：去 confidence → ATE 暴涨 +0.126（对相机位姿最关键）。</div>
+    <div class="note-b"><b>辅助损失：</b>L_2D=2D 投影坐标 L1；L_normal=表面法向 cosine(λ=0.5 辅助里最大)；L_vis=可见性 BCE；L_disp=运动向量 L1。Table8 消融：2D position/normal 主要助深度，confidence 助相机位姿。</div>
+    <div class="note-b"><b>优化器(附录)：</b>AdamW、weight decay 0.03、warmup 2500 步→peak 1e-4→cosine 退火至 1e-6、grad clip L2 norm 10。</div>
+    <div class="note-b"><b>数据增强：</b>temporally consistent color jitter(整段同参数)、color drop 0.2、gaussian blur 0.4、random crop scale 0.3–1.0、random aspect ratio(log 域均匀采)、zoom 0.05、temporal random stride。<b>temporally consistent</b>=同段视频用同一组增强参数，否则破坏时序一致性。</div>
+    <div class="note-b"><b>training query 采样：</b>从 GT 轨迹采；<b>30% 落在深度不连续/运动边界</b>(Sobel 预算，聚焦难区)；t_src/t_tgt/t_cam 均匀随机，但 <b>t_tgt=t_cam 以 0.4 概率强制</b>(提升 downstream——点云/深度都需 t_tgt=t_cam)。</div>
+
+    <div class="note-h">⑩ §4 Experiments·关键数字（每个验证一个设计）</div>
+    <div class="note-b"><b>总览：</b>D4RT 在 4D 跟踪/点云/深度/相机位姿<b>全面 SOTA</b> 且 <b>18–300× 快</b>；评测集(Sintel/ScanNet/KITTI/Bonn/TAPVid-3D)与训练集不同 = zero-shot 迁移。</div>
+    <div class="note-b"><b>§4.2 4D 跟踪(Table4，核心·验证动态对应)：</b>TAPVid-3D(DriveTrack/ADT/PStudio)。camera-coord 3D tracking：D4RT DriveTrack AJ <b>0.257</b>(w/o intrin)/<b>0.304</b>(w/ intrin)，全面超 CoTracker3+VGGT、STv2、DELTA；world-coord L1 <b>0.020/0.017</b>(远好于 STv2 0.117)。<b>这正是 VGGT 做不了的动态对应能力。</b></div>
+    <div class="note-b"><b>§4.3 重建(Table5)：</b>Point Cloud L1 Sintel <b>0.768</b>(vs π³ 1.139 / VGGT 1.582)、ScanNet <b>0.028</b> best；Video Depth AbsRel Sintel(S) <b>0.171</b> best，ScanNet/KITTI/Bonn top-tier。</div>
+    <div class="note-b"><b>§4.3 相机位姿(Table6·验证"几何反推相机"有效)：</b>Sintel ATE <b>0.065</b> best、ScanNet ATE <b>0.014</b> best、Re10K Pose AUC <b>83.5</b>(vs π³ 78.7 / STv2 75.7 / VGGT 70.2)大幅领先。</div>
+    <div class="note-b"><b>效率(Table3)：</b>单 A100，60FPS 出 550 track / 1FPS 出 40180 track，18–300× 快于 STv2/DELTA。</div>
+    <div class="note-b"><b>§4.4 消融(默认 ViT-L+6 层 decoder/300k/bs16/Sintel)：</b>① <b>9×9 patch</b>(Table7)：去掉 AbsRel 0.302→0.366、ATE 0.091→0.173；② <b>aux losses</b>(Table8)：去 confidence ATE +0.126(相机命门)、去 2D position depth +0.071；③ <b>backbone scale</b>(Table9)：ViT-B 0.319→ViT-g 0.191 单调降；④ <b>VideoMAE 初始化</b>(Table11)：随机 0.738→VideoMAE 0.302(差距巨大)。</div>
+
+    <div class="note-h">⑪ §4.4 消融全表 highlight（逐个设计的实证，默认 ViT-L）</div>
+    <div class="note-b"><b>① Local 9×9 RGB patch（Table7）：</b>w/o→w/：Video Depth AbsRel(S) 0.366→<b>0.302</b>、AbsRel(SS) 0.306→0.257；Camera ATE 0.173→<b>0.091</b>、RPE-T 0.031→0.028、RPE-R 0.262→0.245。<b>深度+位姿全面大涨</b>，且比 DPT skip-connection 方案简单。</div>
+    <div class="note-b"><b>② 辅助损失逐个去掉（Table8，“+”=变差）：</b>去 <b>2D position</b>→depth <b>+0.071</b>(最伤深度)；去 <b>normal</b>→depth +0.043；去 <b>displacement</b>→全面小幅(+0.011)；去 <b>visibility</b>→depth 略好但 ATE +0.012；去 <b>confidence</b>→<b>ATE +0.126 / RPE-T +0.061 / RPE-R +0.115（相机暴崩）</b>。结论：2D pos/normal 管深度、confidence 管相机位姿。</div>
+    <div class="note-b"><b>③ Backbone scale（Table9）：</b>AbsRel(S) ViT-B 0.319→ViT-L 0.256→ViT-H 0.226→ViT-g <b>0.191</b>；ATE 0.145→0.073→0.070→0.078。<b>单调提升=可扩展</b>(深度尤其明显)。</div>
+    <div class="note-b"><b>④ VideoMAE 初始化（Table11）：</b>随机 0.738/0.520/0.334 → VideoMAE <b>0.302/0.257/0.091</b>。<b>预训练初始化是地基</b>(随机几乎学不动)。</div>
+    <div class="note-b"><b>⑤ Patch size（Fig10）：</b>9–12 最优(太小细节不够、太大引入无关上下文)。<b>⑥ High-res/subpixel（Table10/AppC）：</b>query (u,v) 连续→可任意分辨率解码；Config4 用<b>原分辨率 RGB patch</b>→PDBE 最低(发丝级 subpixel)，且不增计算/显存。</div>
+
+    <div class="note-h">📌 全文一页总结（问题→方法→实验→takeaway）</div>
+    <div class="note-b"><b>问题(§1)：</b>动态 4D 重建需统一理解(几何+对应+相机、静+动)，但现有法<b>割裂</b>(VGGT 多 decoder)/<b>不动态</b>(建不了动态对应)/<b>慢</b>(MegaSaM 优化、STv2 迭代)。</div>
+    <div class="note-b"><b>方法(§2)：</b>借 SRT“编码场景成 latent+query 解码”范式→重 encoder(ViT-g+AA, VideoMAE 初始化)出固定 <b>F</b>、轻 decoder cross-attn 出 <b>P=D(q,F)</b>；query 五元组 (u,v,t_src,t_tgt,t_cam) 三时间索引<b>解耦空间/时间</b>；<b>改 query 配置即换任务</b>(Table1)，相机外参 Umeyama / 内参 pinhole <b>几何反推</b>(网络只学 P)；query <b>独立</b>→高效+并行+不 OOD；Algorithm 1 占用栅格做 dense all-pixel tracking；损失只督 normalized P + <b>confidence</b> 自适应降权。</div>
+    <div class="note-b"><b>实验(§4)：</b>4D 跟踪/点云/深度/位姿<b>全面 SOTA</b>(Pose AUC 83.5、跟踪 AJ 近翻倍)，<b>18–300× 快</b>；消融证每个设计(9×9 patch/confidence/backbone scale/VideoMAE)都起作用。</div>
+    <div class="note-b"><b>Takeaway：</b>① 把“重建”重述成“按需查询任意时空点”=优雅的范式统一；② 重 encoder 一次 + 轻独立 query 可并行=效率根；③ 网络只学 3D 点、相机靠几何反推=统一<b>不牺牲精度反更一致</b>；④ CVPR Best Paper 连续两年给几何重建(VGGT→D4RT)，D4RT 正补齐 VGGT 的“多解码器+无动态对应”两短板。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. D4RT is a unified, efficient, feedforward method for Dynamic 4D Reconstruction and Tracking, unlocking a variety of outputs including point cloud ( ), point tracks ( ), camera parameters ( ) through a single interface.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. D4RT model overview – A global self-attention encoder first transforms the input video into the latent Global Scene Represen- tation F, which is passed to a lightweight decoder. The decoder can be independently queried for the 3D position P of any given 2D point (u, v) from the source timestep tsrc at target timestep ttgt in camera coordinate tcam, unlocking full decoding at any point in</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Pose accuracy vs. speed – We compare pose accuracy vs. throughput against recent state-of-the-art methods. Pose accu- racy is 1 – error, averaged over ATE/RTE/RPE on Sintel and Scan- Net. Throughput is measured in FPS on an A100 GPU. D4RT achieves 200+ FPS pose estimation, 9× faster than VGGT, and 100× faster than MegaSaM, while delivering superior accuracy.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Reconstruction results across methods – Pure reconstruction methods (MegaSaM and π3) are only able to accumulate point clouds of all pixels; exhibiting clear failure cases in dynamic scenes. For example, the swan is repeated in MegaSaM’s reconstruction, and π3 is failing entirely to reconstruct the flower. SpatialTrackerV2, a state-of-the-art tracking method, successfully captures dynami</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Visualizations on in-the-wild videos – D4RT demonstrates accurate reconstructions on static (top row) and dynamic scenes (bottom row). In the presence of motion, D4RT additionally produces robust 3D point trajectories.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Preservation of low-level details – We ablate the effect of including local patch information into the model’s queries, vi- sualizing the resulting depth maps on an example from the Sintel dataset. We find that the local RGB patches help preserve fine- grained details and produce sharper object boundaries.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Full D4RT model overview – We provide a holistic overview of the model together with its inputs and outputs. FC corresponds to a fully connected layer, and PE for positional encoding. See Sec. 2 of the main paper for reference.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Long sequence results on KITTI sequences – We align and stitch predictions from overlapped chunks by Umeyama algorithm, without the loop detection and global optimization proposed in [6]. Our model obtains consistently better results than VGG-T, and signifi- cantly better results than π3 on sequence “00&quot; (top row).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. Visualizing sub-pixel detail recovery – We propose a visual comparison of the different high-res configurations. Config 4⃝ achieves the highest fidelity, it preserves sharp edges and recovers fine details—such as the hair in the bottom row—without increasing the computational cost or memory requirements of the overall model.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig10.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 10. Ablation study on RGB patch size – The plot shows the average error for depth and pose estimation on Sintel. A patch size between 9 and 12 yields the best performance for both tasks.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig11.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 11. Additional visualizations of D4RT – D4RT produces accurate reconstructions for both static environments (top three rows) and dynamic sequences (bottom three rows).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig12.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 12. Additional reconstruction results across methods – Pure reconstruction methods (MegaSaM and π3) are visualized as accumulated point clouds. For SpatialTrackerV2, we visualize sparse tracks on a representative frame. In contrast, D4RT reconstructs a complete 4D scene representation, tracking all pixels across the entire video.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-efficiently-reconstructing-dynamic-scenes-one-d4rt-at-a/fig13.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 13. Qualitative depth comparison across methods – D4RT is able to perform dense depth estimation with finer details than current state-of-the-art methods, preserving geometric accuracy even in scenarios with large motion blur.</figcaption></figure>
+    </div>
+  </div></body></html>

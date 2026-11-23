@@ -1,0 +1,302 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>GenCeption 精读 · 视频生成模型是通用视觉学习器</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--panel:#161c34;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--red:#fb7185;--blue:#60a5fa}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 18% -10%,rgba(167,139,250,.18),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.65;min-height:100vh}
+.wrap{max-width:1120px;margin:0 auto;padding:26px 18px 80px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.hero{padding:20px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(126,224,255,.08));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--accent);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(20px,3vw,30px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 35%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13px;max-width:900px}
+.hero .meta{margin-top:10px;font-size:12px;color:var(--text3)}.hero .meta b{color:var(--text2)}
+.legend{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0;font-size:12px;color:var(--text2)}
+.lg{display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:999px;padding:4px 11px}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+h2.sec{font-size:17px;font-weight:800;margin:26px 0 4px;display:flex;align-items:center;gap:8px}
+h2.sec .bar{width:4px;height:17px;border-radius:3px;background:linear-gradient(180deg,var(--accent2),var(--accent))}
+h3.sub3{font-size:14px;margin:14px 0 4px;color:var(--text)}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:12px}
+.q{background:rgba(126,224,255,.06);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:9px 13px;margin:9px 0;font-size:13px;color:var(--text);font-weight:700}
+.a{font-size:13px;color:var(--text2);margin:0 0 6px 2px}
+.a b{color:var(--text)}
+.quote{background:rgba(0,0,0,.25);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:12.5px;color:var(--text2);font-style:italic}
+.quote b{color:var(--amber);font-style:normal}
+.box{background:rgba(17,23,45,.92);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0}
+.box b{color:var(--text)}
+pre{background:#0a0e1c;border:1px solid var(--line);border-radius:9px;padding:11px 13px;overflow-x:auto;font-size:12px;line-height:1.5;margin:8px 0}
+code{font-family:SFMono-Regular,Consolas,monospace;color:var(--accent)}
+pre code{color:#cdd6f4}
+.cmt{color:#6b7394}
+table{width:100%;border-collapse:collapse;font-size:12.5px;background:rgba(0,0,0,.18);border-radius:10px;overflow:hidden;margin:10px 0}
+th{background:rgba(167,139,250,.2);text-align:left;padding:8px 11px;font-weight:700;border-bottom:2px solid var(--accent2);white-space:nowrap}
+td{padding:7px 11px;border-bottom:1px solid var(--line);color:var(--text2);vertical-align:top}
+td b{color:var(--text)}
+.win{color:var(--green);font-weight:700}
+.out{font-family:SFMono-Regular,Consolas,monospace;color:var(--green);font-size:12px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);border-radius:6px;padding:1px 7px;display:inline-block}
+.tag{font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:4px}
+.tag-code{background:rgba(74,222,128,.16);color:var(--green);border:1px solid rgba(74,222,128,.4)}
+.tag-paper{background:rgba(96,165,250,.16);color:var(--blue);border:1px solid rgba(96,165,250,.4)}
+.tag-warn{background:rgba(251,113,133,.16);color:var(--red);border:1px solid rgba(251,113,133,.4)}
+.figw{margin:14px 0;background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:11px;padding:10px}
+.figw img{width:100%;border-radius:7px;background:#fff;display:block}
+.figw figcaption{font-size:11.5px;color:var(--text3);margin-top:7px;line-height:1.55}.figw figcaption b{color:var(--accent)}
+.figs{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.fg{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:11px;padding:10px;margin:0}
+.fg img{width:100%;border-radius:7px;background:#fff;display:block}
+.fg figcaption{font-size:11px;color:var(--text3);margin-top:7px;line-height:1.5}.fg figcaption b{color:var(--accent)}
+.contrib{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin:8px 0}
+.cc{background:rgba(126,224,255,.05);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:10px 13px;font-size:12.5px;color:var(--text2)}.cc b{color:var(--text)}
+.note2{margin-top:20px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+.hl{color:var(--accent);font-weight:700}.hlp{color:var(--accent2);font-weight:700}
+</style></head><body><div class=wrap>
+<a href="../index.html" class=backlink>← 教学文档主页</a>
+<a href="world_value_models.html" class=backlink>World Value Models (WVM) →</a>
+<a href="../../world-model/wm_methods.html" class=backlink>World Model 方法全景</a>
+
+<header class=hero><div class=kick>Video Generation × General-Purpose Perception · 论文精读</div>
+<h1>GenCeption：视频生成模型是通用视觉学习器</h1>
+<p class=sub>核心一句：类比 NLP 里 <b>next-token prediction</b> 把上千个语言任务收敛成一个通才大模型，本文主张 <b>大规模 text-to-video 生成</b> 就是计算机视觉那个"缺失的通用预训练目标"——它天然提供 <b>时空先验 + 视觉语言对齐 + 可扩展性</b>。把一个预训练视频扩散模型（WAN 2.1）<b>单步前馈化</b>、用文本指令驱动，就得到一个统一架构做深度/法向/相机位姿/指代分割/3D 关键点的通才感知模型 <b>GenCeption</b>，多任务匹配甚至超过各自的专用 SOTA，且数据效率高出 <b>7–500×</b>。</p>
+<div class=meta>论文：<i>Video Generation Models are General-Purpose Vision Learners</i>（arXiv <b>2607.09024</b>, cs.CV, <b>ECCV 2026</b>, 2026-07-10）｜ 作者：Letian Wang, Chuhan Zhang, Rishabh Kabra, Jasper Uijlings, Steven Waslander, <b>Andrew Zisserman</b>, Joao Carreira, <b>Kaiming He</b>, Misha Andriluka, E. G. Bazavan, Andrei Zanfir, <b>Cristian Sminchisescu</b>（<b>Google DeepMind</b> / Toronto / UCL / Oxford / MIT / Lund）｜ 项目页 genception.github.io</div></header>
+
+<div class=legend>
+<span class=lg><span class="dot" style="background:var(--blue)"></span>📄 论文原文（英文原句引用）</span>
+<span class=lg><span class="dot" style="background:var(--accent2)"></span>📚 背景（外部知识 / 非本文原文）</span>
+<span class=lg><span class="dot" style="background:var(--amber)"></span>🔍 逐句指路 / 追问 why</span>
+<span class=lg><span class="dot" style="background:var(--red)"></span>⚠️ 推断 / 需核</span>
+</div>
+
+<div class=box><b>一句话总览：</b>GenCeption = 拿预训练 <span class=hl>text-to-video 扩散模型（WAN 2.1）</span> 当"视觉 GPT 的预训练底座" + <span class=hl>单步前馈化</span>（喂干净 latent、conditioning timestep 固定 t=0、把 Rectified-Flow 的 velocity 输出取负）+ <span class=hl>统一任务表示</span>（dense 任务全压进 3 通道 RGB 空间；相机位姿用 "Rothko" raymap；sparse 任务用 learnable tokens）+ <span class=hl>统一 L2 loss</span>（任务差异不靠改 loss、只靠改数据表示与配比，像 LLM）。结果：一个模型多任务打平/超过 DepthAnything3 / SAM3 / D4RT / VGGT-Ω 等专用 SOTA，数据效率高 7–500×，并涌现 sim-to-real / OOD 泛化。</div>
+
+<!-- ============ §1 ABSTRACT ============ -->
+<h2 class=sec><span class=bar></span>1 · Abstract 逐句精读</h2>
+<div class=secsub>原文引用（英文原句）+ 逐句指路，不脑补转译。</div>
+
+<div class=quote><b>原文：</b>"Driven by next-token prediction, NLP shifted from task-specific models into powerful generalist foundation models. What, then, is the equivalent catalyst needed to achieve a general-purpose model in computer vision?"</div>
+<p class=a><b>🔍 指路：</b>开门见山用 NLP 类比抛问题——语言靠 <b>next-token prediction</b> 从"一任务一模型"走到"一个通才大模型"，那 <b>计算机视觉的等价催化剂</b> 是什么？全文就是回答这一问。</p>
+
+<div class=quote><b>原文：</b>"we contend that large-scale text-to-video generation serves as a strong pre-training paradigm for computer vision, providing the necessary spatiotemporal priors, vision-language alignment, and scalability required for general visual intelligence."</div>
+<p class=a><b>🔍 指路：</b>核心论点——<span class=hlp>大规模 text-to-video 生成 = CV 的强预训练范式</span>。理由三件套：(1) <b>时空先验</b>（生成逼真视频必须懂 3D 几何、物体恒存、物理）；(2) <b>视觉语言对齐</b>（模型本就以文本为条件）；(3) <b>可扩展性</b>（视频生成已被大规模数据+算力 scale 过）。这正好对应通用视觉智能所需。</p>
+
+<div class=quote><b>原文：</b>"We introduce GenCeption, which leverages a pre-trained video generative diffusion backbone to define a feed-forward perception model, capable of performing various vision tasks steered by text instructions."</div>
+<p class=a><b>🔍 指路：</b>方法命名 + 一句话定义——拿预训练视频生成扩散 backbone，定义一个 <b>前馈（feed-forward）感知模型</b>，用 <b>文本指令</b> 驱动做各种视觉任务。关键词 <b>feed-forward</b>：把扩散那套"多步迭代采样"改成一次前向（§3.2 详解）。</p>
+
+<div class=quote><b>原文：</b>"GenCeption achieves state-of-the-art performance across a diverse suite of tasks, including depth, surface normal, and camera pose estimation, expression-referring segmentation, and 3D keypoint prediction, often matching or surpassing specialized models (e.g. DepthAnything3, SAM3, D4RT, VGGT-Ω, Sapiens, David, Genmo, and Lotus-2)."</div>
+<p class=a><b>🔍 指路：</b>结果——覆盖 <b>深度 / 表面法向 / 相机位姿 / 指代分割 / 3D 关键点</b> 一大票任务，匹配甚至超过各自的专用模型。注意点名的对手 <b>D4RT（CVPR2026 Best Paper）、VGGT-Ω</b> 都是重量级几何模型。</p>
+
+<div class=quote><b>原文：</b>"Furthermore, the video generative pretrained backbone outperforms alternative pretraining paradigms (e.g., V-JEPA, and Video MAE)... GenCeption exhibits preliminary data and model scaling properties along with exceptional data efficiency, where it achieves comparable performance with leading models like D4RT and VGGT-Ω with 7× to 500× less training data."</div>
+<p class=a><b>🔍 指路：</b>三个补充卖点：(1) 同等条件下 <b>视频生成预训练 &gt; V-JEPA / VideoMAE</b>（后面消融证明是"生成目标本身"起作用，不只是数据/规模）；(2) 初步 <b>scaling</b>（越大越好）；(3) <span class=hl>数据效率 7–500×</span>（用极少训练数据追平顶尖模型）。</p>
+
+<div class=quote><b>原文：</b>"a model trained exclusively on synthetic human videos generalizes to real-world footage and out-of-distribution object categories (e.g., animals and robots). These findings suggest that video generation is not merely a synthesis tool, but a foundational path toward generalist vision intelligence for the physical world."</div>
+<p class=a><b>🔍 指路：</b>涌现行为 + 立意拔高——只用 <b>合成人类视频</b> 训练，却能泛化到 <b>真实画面 + OOD 类别（动物、机器人）</b>。结论上升到：视频生成不只是"合成工具"，而是通往物理世界通用视觉智能的 <b>基础路径</b>。</p>
+
+<!-- ============ §2 INTRO 闭环 ============ -->
+<h2 class=sec><span class=bar></span>2 · Introduction：problem → 三大要求 → 范式转变</h2>
+<div class=secsub>读完 Intro 就把"痛点→为什么是 video generation→怎么落地"三点挖透。</div>
+
+<div class=box><b>痛点：CV 还停在"专用模型"时代</b>
+<div class=quote style="margin-top:8px"><b>原文：</b>"computer vision is still lingering in its 'specialized model' stage. While recent years have yielded powerful foundation models such as Segment Anything ... Depth Anything ... these remain fundamentally task-specific models that need customized architectures for each task ... we have yet to realize a unified vision foundation model."</div>
+<p class=a style="margin-top:6px">SAM、Depth Anything 再强，也还是 <b>一任务一套定制架构</b>；CV 还没有一个像 LLM 那样"从通用预训练到万能涌现"的 <b>统一视觉基础模型</b>。作者把"找通用视觉模型"重述为"<b>找一个通用预训练目标</b>——视觉版 next-token prediction"。</p></div>
+
+<div class=box><b>这个预训练目标必须满足的三大要求（原文 §1）</b>
+<div class=contrib>
+<div class=cc><b>① Spatio-Temporal Evolution</b><br>"The world is a 4D continuum. The pre-training objective should force the model to internalize the 4D temporal causality and physics of a world in motion." —— 逼模型内化 4D 时序因果与物理。</div>
+<div class=cc><b>② Vision-Language Alignment</b><br>"visual features should be natively aligned with linguistic semantics" —— 视觉特征与语言语义原生对齐，才能继承指令跟随 + 常识。</div>
+<div class=cc><b>③ Scaled up</b><br>"scaled in both data and compute, ultimately enabling the emergence of vision intelligence." —— 数据/算力可 scale，最终涌现视觉智能。</div>
+</div>
+<p class=a><b>🔍 为什么是 text-to-video generation：</b>作者论证它 <b>唯一同时满足三条</b>（对比对比学习、MAE）：生成高保真视频→逼出时空先验(①)；原生以文本为条件→自带视觉语言对齐(②)；标注成本低+商业价值高已被大规模 scale(③)。</p></div>
+
+<div class=box><b>怎么落地：范式转变（Figure 1 右）</b>
+<p class=a>从"专用"到"统一"的四象限演进：<b>Specialized</b>（每任务独立 backbone+head+loss）→ <b>Specialized-Head</b>（统一 backbone、各任务 head/loss）→ <b>Specialized-Loss</b>（统一 backbone+head、各任务 loss）→ <span class=hlp>Unified（Ours）：统一 backbone + 统一 head + 统一 loss</span>，任务只由 <b>text prompt</b> 指定。</p>
+<div class=quote style="margin-top:6px"><b>原文：</b>"task specifications are shifted from architectural modifications to data format designs, which enables scaling up with an ever-growing spectrum of visual tasks."</div>
+<p class=a style="margin-top:6px"><b>🔍 关键思想（贯穿全文）：</b>加一个新视觉任务，<b>不再改架构/改 recipe，只改数据格式</b>——就像 LLM 把各种任务都转成"文本进文本出"。这才让"无限扩任务谱系"成为可能。</p></div>
+
+<!-- ============ §3 背景块 ============ -->
+<h2 class=sec><span class=bar></span>3 · 📚 背景块（外部知识，非本文原文，读懂 method 必需）</h2>
+<div class=secsub>下列是理解 GenCeption 的前置，均为外部知识/前作，显式标注来源。</div>
+
+<div class=box><b>① 视频扩散 / DiT / Rectified Flow</b>（本站"扩散基础"页有详解）<br>text-to-video 扩散模型三件套：<b>VAE 编解码器</b>（视频↔latent）+ <b>text encoder</b> + <b>DiT</b>（latent 上的 Transformer 扩散器）。训练时从噪声出发多步去噪成视频。<b>Rectified Flow</b> 变体让模型预测 <b>velocity</b> <code>v = ε − x0</code>（噪声与干净数据之差），推理时沿这个速度场积分。GenCeption 正是利用这个 v 的定义做"单步前馈"（§4）。</div>
+
+<div class=box><b>② 把扩散模型"改用"作感知（repurposing diffusion，本文所属路线）</b><br>前作把预训练<b>图像</b>扩散改成感知器：<b>Marigold</b>（SD → 单目深度）、<b>GenPercept</b>（系统研究 feature injection / decoding / 目标）、<b>Diception</b>（文本指令驱动多任务）。视频侧：DepthCrafter/NormalCrafter/Geo4D/DiffusionRenderer/ReferEverything 等，但多聚焦<b>单一 dense 任务</b>。GenCeption 的差异：<span class=hl>统一 dense+sparse、单步前馈、跨广谱任务定量 SOTA</span>。</div>
+
+<div class=box><b>③ 其它视觉预训练范式（本文要比下去的对手）</b><br><b>MAE / VideoMAE</b>：遮挡重建（masked modeling），纯视觉、无语言对齐。<b>DINO</b>：特征级自蒸馏。<b>V-JEPA</b>：latent 空间特征预测（LeCun 线）。<b>CLIP / SigLIP</b>：图文对比学习，有语言对齐但视频级 scaling 受限。GenCeption 的消融正是拿 WAN 对打 V-JEPA / VideoMAE V2。</div>
+
+<div class=box><b>④ raymap（相机位姿的像素化表示）</b><br>把相机外参（旋转+平移，传统写成矩阵）表示成<b>每像素一条光线</b>的 map（ray origin + ray direction），与视频生成的"像素/RGB"格式天然对齐。GenCeption 用它把 6 通道相机信息塞进 3 通道 RGB（"Rothko" raymap，§4.3）。</div>
+
+<div class=box><b>⑤ concurrent works（同期工作，作者主动区分）</b><br>[69] 提出"视频生成模型学到强视觉先验"的假说但走 <b>training-free 多步生成 + 定性</b>；<b>Vision Banana</b> [18]（"Image generators are generalist vision learners"）在 <b>2D 图像</b>空间。GenCeption 的定位：<span class=hl>原生 video 域（抓时序一致）+ 高效 feed-forward + 更广任务的严格定量评测</span>。它也是作者前作 human-centric 模型 THFM 的通用化升级。</div>
+
+<!-- ============ §4 METHOD ============ -->
+<h2 class=sec><span class=bar></span>4 · Method：把视频扩散模型改造成前馈感知器</h2>
+
+<figure class=figw><img src="../imgs/genception/fig01.webp" alt="GenCeption methodology and paradigm shift">
+<figcaption><b>Figure 1 |</b> Methodology (Left): GenCeption treats a video generative diffusion model as a pre-training base to capture rich spatio-temporal world priors and native vision-language alignment at scale. During multi-task post-training, the model is adapted to feed-forward model fine-tuned on predominantly synthetic data to handle diverse perception tasks. GenCeption shows strong performance with intriguing Emerging Behaviors, enabling seamless sim-to-real transfer and generalization to out-of-distribution object categories. Paradigm Shift (Right): a paradigm shift from specialized task-specific computer vision models, to fully unified generalist vision models.</figcaption></figure>
+
+<h3 class=sub3>3.1 三大方法论原则</h3>
+<div class=contrib>
+<div class=cc><b>① 生成预训练即表征学习</b><br>用预训练 text-to-video 扩散模型作 universal backbone。核心守则：<b>最大程度遵守原预训练 regime、最小改动</b>，以完整保留其时空/几何/物理/语言对齐先验。</div>
+<div class=cc><b>② 统一架构下 task-agnostic 后训练</b><br>把各视觉任务当成统一 <b>seq-to-seq</b> 映射，不做任务专属 encoder/decoder/loss。把各目标模态格式化进 <b>共享表征空间</b>（dense→RGB）。</div>
+<div class=cc><b>③ 前馈重构</b><br>感知要"准且快"，所以把多步生成 backbone 变成 <b>单步前馈</b> 感知模型。</div>
+</div>
+
+<h3 class=sub3>3.2 从扩散预训练到感知微调（单步前馈的关键技巧）</h3>
+<p class=a><b>预备：</b>原 DiT 在 Rectified Flow 下预测 velocity <code>v = ε − x0</code>（x0=干净视频 latent，ε=噪声），去噪步 index 作额外输入调制。</p>
+<div class=quote><b>原文：</b>"instead of taking noisy video latents as inputs, we directly feed the clean latent of the input video as the inputs to DiT, and conduct only a single forward-pass... the conditioning timestep is fixed to t = 0... Since the DiT is trained under the Rectified Flow objective to predict the velocity v = ε − x0, we thus negate the raw output of the DiT... The negated output −v = x0 − ε aligns with the latent of the target video more closely, which empirically accelerates model convergence and improves performance."</div>
+<p class=a><b>🔍 指路（三个动作，全为"最小改动榨取特征"）：</b></p>
+<pre><code><span class=cmt># 单步前馈感知的三步改造（相对原扩散推理）</span>
+1) 输入: 喂 <span style="color:#7ee0ff">干净</span> input-video latent（不是噪声）→ 只跑 <span style="color:#7ee0ff">一次</span> forward（丢弃 50 步迭代采样）
+2) 条件时间步: 固定 <span style="color:#7ee0ff">t = 0</span>（Rectified Flow 生成过程的终点 = 无噪声）
+3) 输出取负: DiT 出的是 v = ε − x0 → 取负 <span style="color:#7ee0ff">−v = x0 − ε</span> 更贴目标 latent，收敛更快、性能更好
+</code></pre>
+<p class=a><b>本质：把 DiT 当强 feature extractor。</b><span class=quote style="display:inline;padding:2px 6px">"we harvest features directly from the final layer rather than intermediate ones; this ensures they natively align with the subsequent decoder, without any architectural modifications to the base model."</span> —— 取 <b>最后一层</b> 特征（不是中间层），天然对齐原 VAE decoder，backbone 零架构改动。</p>
+
+<figure class=figw><img src="../imgs/genception/fig04.webp" alt="GenCeption architecture overview">
+<figcaption><b>Figure 4 |</b> Architecture overview of GenCeption, adapted from text-to-video diffusion models. Given an input video and a text prompt specifying the desired output, our unified model (trained majorly on synthetic data) performs a wide range of dense and sparse perception tasks with a single forward-pass. Dense vision tasks are unified in the RGB ambient space where supervision is applied in latent space efficiently; sparse vision tasks are realized by adding learnable tokens as additional inputs to the diffusion transformer (DiT). （❄ 冻结：VAE Encoder/Decoder、Text Encoder；🔥 可训：DiT、learnable tokens、MLP head）</figcaption></figure>
+
+<h3 class=sub3>3.3 统一任务表示：dense 压进 RGB，sparse 用 learnable token</h3>
+<p class=a><b>Dense 任务 → 统一 3 通道 RGB [0,1] 空间</b>（backbone+decoder 全共享权重，任务只由 text prompt 切换）：</p>
+<table>
+<tr><th>模态</th><th>怎么塞进 3 通道 RGB</th></tr>
+<tr><td>深度 / 分割（单维）</td><td>复制到 3 通道</td></tr>
+<tr><td>表面法向 / DensePose（三维）</td><td>3 通道各表一维</td></tr>
+<tr><td><b>相机位姿（6 通道）</b></td><td>用像素级 <b>"Rothko" raymap</b>：ray origin 放中心区、ray direction 放周边，拼进 3 通道（Figure 5）</td></tr>
+</table>
+<div class=quote><b>原文：</b>"Analogous to reformatting non-text data into text strings for LLMs, we advocate for projecting fundamentally visual tasks directly into the continuous pixel space—the native domain where pre-trained visual priors are best leveraged."</div>
+<p class=a><b>🔍 指路：</b>把视觉任务投进 <b>连续像素空间</b>（视觉先验最强的原生域），就像 LLM 把万物转成文本串。<b>Rothko raymap</b> = 把相机 6 通道光线数据压成一张三通道色块图（形似 Rothko 抽象画：中心 origin、四周 direction），既保单-decoder 框架、又充分借用预训练视觉先验。</p>
+<p class=a><b>Sparse 任务（2D/3D 关键点等结构化坐标）→ learnable tokens：</b></p>
+<div class=quote><b>原文：</b>"We append T learnable tokens—one for each video frame—to the video latents. After passing through the model, an MLP decodes each token to predict a K-dimensional target per frame... we apply its native 3D RoPE to the additional tokens... Empirically, this additional-query approach outperforms methods that rely on adding extra attention layers."</div>
+<p class=a><b>🔍 指路：</b>给 video latent 追加 <b>T 个可学习 token</b>（每帧一个）→ 过模型 → MLP 解出每帧 K 维目标。为守"最小改动"：沿用 DiT 原生 <b>3D RoPE</b>；空间位置未知故设为 learnable；时间位置用 <b>position interpolation</b> 把 T 帧缩到 latent 长度 T′ 的范围内。这种"加 query"方式优于"加额外 attention 层"。</p>
+
+<h3 class=sub3>3.4 可扩展合成数据（human-centric）</h3>
+<p class=a>多数真实数据集只含部分模态标注 → 用<b>合成数据</b>解稀缺：<b>800 个 RenderPeople 资产 × 200 个 CMU mocap 动作</b> + 3D 场景/HDRI 背景 + 变焦距/相机位姿轨迹 → 共 <b>7,500 段视频</b>。Blender 分 render pass 出 normal/depth/segmentation GT；从 rigged 资产恢复关节位置作 2D/3D keypoint GT。离线预计算并 cache 成 video latents + text embeddings。</p>
+
+<h3 class=sub3>3.5 训练 recipe：一个 L2 loss 打天下，任务差异全甩给数据</h3>
+<div class=quote><b>原文：</b>"we adopt a fully unified loss design: our model is trained solely using a standard L2 loss, mirroring how LLMs unify diverse language tasks under a single objective... we shift the responsibility of task-specific customization from the loss formulation to the data representation designs."</div>
+<p class=a><b>🔍 指路：</b>不给每个任务配专属 loss（那样要手调 loss 权重、扩任务就爆炸），而是 <b>只用一个标准 L2</b>（dense 在 latent 空间、sparse 在输出空间）。任务专属的处理 <b>下沉到数据表示</b>。以单目深度的 scale 歧义为例（通常要 scale-invariant loss）——这里在<b>数据层</b>解决：</p>
+<pre><code><span class=cmt># 深度：数据层消除 scale 歧义（无需 scale-invariant loss）</span>
+1) 用场景 <span style="color:#7ee0ff">median depth</span> 归一化每段视频的深度图  <span class=cmt># 消 scale 歧义</span>
+2) 非线性映射进 [0,1] RGB:  d' = clip( α · log(d + 1), 0, 1 )
+   <span class=cmt># α 动态调节"近景细节 ↔ 远景结构"的关注</span>
+</code></pre>
+<p class=a>于是<b>任务间平衡只靠调数据混合比</b>（data mixture ratio），完全类比 LLM 的做法。作者称之为 <b>data-centric harmonization</b>，认为能自然 scale 到更广的视觉任务谱系。</p>
+
+<!-- ============ §5 EXPERIMENTS ============ -->
+<h2 class=sec><span class=bar></span>5 · 实验：多任务匹配/超越专用 SOTA + 数据效率 7–500×</h2>
+
+<figure class=figw><img src="../imgs/genception/fig02.webp" alt="SOTA generalist capability and data efficiency">
+<figcaption><b>Figure 2 |</b> SOTA Generalist Capability (Left): GenCeption 在一大批视觉任务上普遍有竞争力，匹配或超过各任务专用的 SOTA（DepthAnything3, SAM3, D4RT, VGGT-Ω, Sapiens, David, Genmo, Lotus-2）。specialist=每任务单独训，generalist=一个模型联合训多任务。Data Efficiency (Right, 深度验证)：视频生成预训练 backbone (i) 同 fine-tune 数据下超过 V-JEPA / VideoMAE V2；(ii) 有初步 scaling（数据/模型越大越好）；(iii) 数据效率极高，用 7×–500× 更少训练数据即可追平 D4RT / VGGT-Ω。</figcaption></figure>
+
+<h3 class=sub3>5.1 实现要点</h3>
+<p class=a>backbone = 开源开权重 <b>WAN 2.1</b>；<b>480×832、81 帧 @24fps</b>；VAE 时间 4× / 空间 8× 下采样。<b>batch 64 on 256 v6e TPU</b>，Adam lr 5e-5，<b>15000 步</b>，warmup 250。训练稳定性靠 <b>gradient clipping + gradient dropping</b>（梯度范数超高阈值就丢整个 batch）。深度补 TartanAir / Virtual KITTI / MVS Synth（+相机轨迹）；指代分割用真实数据 MeViS / Ref-COCO / YouTube-VOS（其余任务<b>纯合成</b>）。</p>
+
+<h3 class=sub3>5.2 推理成本（单步前馈的收益）</h3>
+<div class=quote><b>原文：</b>"Our feedforward model eliminates the standard WAN's slow 50-step diffusion."</div>
+<table>
+<tr><th>模型</th><th>单 v6e TPU (81帧 480×832)</th><th>吞吐</th><th>其中 DiT</th><th>VRAM</th></tr>
+<tr><td>GenCeption 1.3B</td><td>5.92 s</td><td>13.6 FPS</td><td>0.96 s</td><td>15.3 GB</td></tr>
+<tr><td>GenCeption 14B</td><td>10.03 s</td><td>8.0 FPS</td><td>5.11 s</td><td>42.8 GB</td></tr>
+</table>
+<p class=a>共享 10GB text encoder + 0.25GB VAE（可 offload 到系统内存换 VRAM）。相比原扩散的 50 步迭代，单步前馈是数量级加速。</p>
+
+<h3 class=sub3>5.3 对比 SOTA 专用模型（Table 1 摘录）</h3>
+<div class=secsub>除指代分割用真实数据外，GenCeption <b>纯合成数据</b>训练，且未用任何评测集的训练集。数值越低越好的标 ↓。</div>
+<table>
+<tr><th>任务 / benchmark</th><th>代表专用模型</th><th>GenCeption</th></tr>
+<tr><td>Normal · Sintel (mAE↓)</td><td>NormalCrafter 30.7 · Lotus-2 30.3</td><td class=win>Specialist-L 29.7 · Generalist-L 29.3</td></tr>
+<tr><td>Camera Pose · Sintel (ATE↓)</td><td>DepthAnything3 0.201 · D4RT 0.148 · VGGT-Ω 0.145</td><td class=win>Specialist-L 0.130</td></tr>
+<tr><td>Depth · 见 5.4 数据效率表</td><td>—</td><td class=win>Avg AbsRel 0.093</td></tr>
+<tr><td>vs 统一生成基线 Diception (SD3 2B)</td><td>Normal 37.9 · CamPose ATE 0.500</td><td class=win>29.3 · 0.130（全面更优）</td></tr>
+</table>
+<div class=quote><b>原文：</b>"despite its unified and simple architecture, our approach surpasses or delivers highly competitive performance against heavily tailored, task-specific state-of-the-art methods... it also delivers stronger 3D keypoint prediction performance compared to specialized models including Genmo and TRAM."</div>
+
+<h3 class=sub3>5.4 预训练范式对比 + 数据效率（Table 2，深度验证）— 全文最硬的实证</h3>
+<div class=secsub>所有行都在同一 fine-tune 数据上训（"Ours-X"表示换预训练 backbone）。Avg 为 Sintel/KITTI/ETH3D 平均。</div>
+<table>
+<tr><th>预训练 backbone</th><th>规模</th><th>训练帧数</th><th>Avg AbsRel↓</th><th>Avg δ1↑</th></tr>
+<tr><td>Ours-V-JEPA-H</td><td>0.6B</td><td>0.9M</td><td>0.281</td><td>52.2</td></tr>
+<tr><td>Ours-VideoMAE V2-H</td><td>0.6B</td><td>0.9M</td><td>0.175</td><td>62.0</td></tr>
+<tr><td>Ours-VideoMAE V2-G</td><td>1B</td><td>0.9M</td><td>0.154</td><td>66.9</td></tr>
+<tr><td><b>Ours-WAN 2.1-S</b>（视频生成预训练）</td><td>1.3B</td><td>0.9M</td><td class=win>0.122</td><td class=win>85.8</td></tr>
+<tr><td><b>Ours-WAN 2.1-L</b></td><td>14B</td><td><b>0.9M</b></td><td class=win>0.093</td><td class=win>90.7</td></tr>
+<tr><td>DepthAnything V3-G</td><td>1.15B</td><td>~200M</td><td>0.096</td><td>89.1</td></tr>
+<tr><td>D4RT</td><td>1B</td><td>~86M</td><td>0.082</td><td>91.7</td></tr>
+<tr><td>VGGT-Ω</td><td>1B</td><td>~600M</td><td>0.067</td><td>95.2</td></tr>
+</table>
+<p class=a><b>🔍 两个结论：</b>(1) <b>同 fine-tune 数据下，WAN(视频生成预训练) 完胜 VideoMAE V2 / V-JEPA</b>（0.9M 帧：WAN-S 0.122/85.8 vs VideoMAE-G 0.154/66.9 vs V-JEPA 0.281/52.2）——是"<b>生成式扩散目标本身</b>"在起作用，不只是数据/规模；(2) <b>数据效率</b>：WAN-L 仅用 <b>0.9M 帧</b> 就达 Avg 0.093/90.7，追平 DepthAnything3 的 <b>~200M 帧</b>（约 222× more）、逼近 D4RT 的 ~86M 帧——这就是 abstract 说的 <b>7–500× less data</b>。</p>
+
+<!-- ============ §6 ABLATION + EMERGENT ============ -->
+<h2 class=sec><span class=bar></span>6 · 消融 + 涌现行为（最关键的 insight 在这）</h2>
+
+<h3 class=sub3>6.1 联合(generalist) vs 单任务(specialist)：sparse 任务是软肋</h3>
+<div class=quote><b>原文：</b>"joint training severely degrades 3D human keypoint estimation and compromises other dense tasks. We presume this stems from two architectural factors. First, the explicit token-based coordinate regression diverges from the continuous pixel-space pre-training... Second, the additional learnable tokens, trained from scratch, disrupt the native attention mechanics of pre-trained DiT layers... This phenomenon suggests... one should strive for minimal architectural modifications to the pre-trained backbone."</div>
+<p class=a><b>🔍 指路：</b>foreground 分割在联合训练下一致受益；但 <b>3D 关键点（sparse）严重退化</b>。根因两点：① token 式坐标回归 <b>偏离</b>了 backbone 的"连续像素空间"预训练；② 从头训的 learnable token <b>扰乱</b>了预训练 DiT 的原生 attention、损坏其优化好的特征。<span class=hl>核心 insight（呼应 §3.1 原则①）：后训练要尽量少改 backbone 架构</span>——凡是偏离预训练形态的改动（如加 token）都要付代价。</p>
+
+<h3 class=sub3>6.2 预训练的重要性：是"生成目标"本身，不只是数据/规模</h3>
+<div class=quote><b>原文：</b>"our diffusion-based pretraining (WAN 2.1) significantly outperforms other pretraining approaches... suggestive empirical evidence that the generative diffusion objective itself—rather than just the dataset or model scale—is essential for extracting superior spatiotemporal priors... training the randomly initialized DiT from scratch yields a nearly flat learning curve. Performance improves as more pre-trained layers are used."</div>
+<p class=a><b>🔍 指路：</b>两条证据钉死"预训练是关键"：① 同数据下 WAN 完胜 V-JEPA/VideoMAE（§5.4）；② <b>从头训随机 DiT → 学习曲线几乎是平的</b>；<b>迁移越多预训练层、性能越好</b>（Figure 9）。所以性能来自"视频生成预训练"，不是架构或 fine-tune 数据本身。</p>
+
+<h3 class=sub3>6.3 涌现行为（emergent behaviors）</h3>
+<figure class=figw><img src="../imgs/genception/fig09.webp" alt="Generalization capabilities">
+<figcaption><b>Figure 10 |</b> Generalization capabilities. Left: 只在"每段视频单个物体"的合成数据上训练，却能 zero-shot 泛化到<b>多物体</b>真实视频。Right: 只在<b>人类</b>单类视频上训练，却能泛化到动物、拟人角色等多种<b>关节物体</b>类别（法向/深度/分割/3D 关键点）。</figcaption></figure>
+<div class=contrib>
+<div class=cc><b>合成 → 真实</b><br>纯合成视频训练，却在真实视频上刷新 SOTA；输出细节（猫的胡须、头发软分割）甚至<b>超过</b> Blender 训练数据本身的质量。</div>
+<div class=cc><b>单实例 → 多实例</b><br>每段合成视频只有一个物体，却 zero-shot 泛化到多物体真实场景。</div>
+<div class=cc><b>人类 → OOD 类别</b><br>只训人类，却泛化到动物、拟人角色等 out-of-distribution 关节物体。</div>
+</div>
+<p class=a><b>🔍 指路：</b>作者把这些归因于"大规模 text-to-video 生成学到的丰富表征"，并据此论证生成式视频 backbone 内部存在一个通用 <b>"world model"</b>。</p>
+
+<!-- ============ §7 QA ============ -->
+<h2 class=sec><span class=bar></span>7 · 逐机制追问 Q&A</h2>
+<!-- QA_LOG -->
+<div class=q>Q1：凭什么说 video generation 比 contrastive learning / MAE 更适合当 CV 的"通用预训练"？</div>
+<p class=a>作者的论证是"唯一同时满足三要求"：① <b>时空先验</b>——要生成高保真、时间一致的视频，模型被逼着内化 3D 几何、物体恒存、物理交互（MAE/对比学习没有这种"预测未来"的压力）；② <b>视觉语言对齐</b>——text-to-video 本就以文本为条件，天生带对齐（MAE/DINO 是纯视觉、无语言）；③ <b>可 scale</b>——视频生成因标注成本低、商业价值高已被大规模 scale（视频表征学习器普遍还小几个数量级）。消融进一步证明：同数据下 WAN 完胜 V-JEPA/VideoMAE，说明是<b>生成目标本身</b>在贡献。</p>
+
+<div class=q>Q2："单步前馈 + 固定 t=0 + 把输出取负"到底在干嘛？为什么取负能更好？</div>
+<p class=a>原扩散要跑 50 步迭代采样，太慢且是"生成"不是"预测"。GenCeption 把它当<b>特征提取器</b>：直接喂<b>干净</b> input latent、只跑一次、conditioning 时间步固定 <code>t=0</code>（= Rectified Flow 生成过程的终点、无噪声）。因为 DiT 学的是 velocity <code>v = ε − x0</code>，直接拿 v 当输出方向是反的；<b>取负</b> <code>−v = x0 − ε</code> 才指向"干净目标"方向，和目标 video latent 对齐更好 → 实测收敛更快、性能更高。再从<b>最后一层</b>取特征，天然对齐原 VAE decoder，backbone 零改动。</p>
+
+<div class=q>Q3：为什么执着于"把所有 dense 任务都压进 3 通道 RGB"，连相机位姿都要变成 raymap？</div>
+<p class=a>这是全文的方法论支点——<b>任务差异不进架构、只进数据表示</b>。只要所有任务的输入输出都长得像"视频/RGB"，就能共享同一个 backbone + decoder + loss，加新任务不改代码、只加数据。相机位姿本是矩阵、和"像素"格格不入，于是用 <b>"Rothko" raymap</b> 把 6 通道光线（origin+direction）拼进 3 通道色块图，让它也变成"视频"。类比：LLM 把翻译、摘要、问答全转成"文本进文本出"，视觉这里就是"像素进像素出"。</p>
+
+<div class=q>Q4：一个 L2 loss 打所有任务，不会因为任务尺度/性质不同而冲突吗？</div>
+<p class=a>作者把"任务专属定制"从 loss 下沉到<b>数据表示</b>。经典例子是单目深度的 scale 歧义（通常要 scale-invariant loss）——这里改成数据层：用场景 <b>median depth 归一化</b> + 非线性映射 <code>d' = clip(α·log(d+1), 0, 1)</code> 直接消歧义并落进 [0,1]。于是 loss 永远是标准 L2，<b>任务间平衡只靠调数据混合比</b>，跟 LLM 一模一样。好处是扩任务时没有"手调 N 个 loss 权重"的工程爆炸。</p>
+
+<div class=q>Q5：既然这么统一，为什么 3D 关键点这种 sparse 任务在联合训练时会掉得很惨？</div>
+<p class=a>正因为它<b>破坏了"统一"</b>：sparse 任务要加从头训的 learnable token 做显式坐标回归，这①偏离了 backbone"连续像素空间"的预训练形态，②新 token 扰乱了预训练 DiT 已优化好的 native attention。所以它成了体系里的"异类"，拖累整体。作者由此给出核心 insight：<b>后训练要最小化对预训练 backbone 的架构改动</b>；要支持高度异构任务，可能得从预训练范式层面重新设计。</p>
+
+<div class=q>Q6："数据效率 7–500×"会不会是评测集泄漏或过拟合合成分布？</div>
+<p class=a>两点降低这个疑虑：① <b>没用任何评测集的训练集</b>，且除指代分割外<b>纯合成</b>训练——真实评测集对它是"域外"，反而更难；② Table 2 是<b>控制变量</b>对比（同一 fine-tune 数据、只换预训练 backbone），WAN-L 用 0.9M 帧达 Avg AbsRel 0.093、追平 DepthAnything3 的 ~200M 帧。加上 emergent（合成→真实、人类→动物）说明它学的是<b>可迁移的通用视觉先验</b>而非死记评测分布。当然作者也诚实标注是"preliminary"scaling，规模仍有限。</p>
+
+<div class=q>Q7（站内关联）：GenCeption 跟本站的 Cosmos、WVM 是什么关系？</div>
+<p class=a>三者都在"<b>把视频世界模型的先验拿去干别的</b>"这条主线上，但落点不同：<b>Cosmos</b> 造世界基础模型本身（tokenizer + 生成/预测未来）；<b>WVM</b> 把 world model 先验 repurpose 成机器人<b>价值</b>模型（判断任务进度）；<b>GenCeption</b> 把视频生成模型 repurpose 成通用<b>感知</b>模型（深度/法向/分割/位姿）。可以说 Cosmos 论证"世界模型能生成/模拟"，WVM 和 GenCeption 分别论证"这套先验还能评估价值 / 做感知"——都是"video generative prior 是通用底座"的不同侧写。</p>
+<!-- /QA_LOG -->
+
+<!-- ============ §8 SUMMARY ============ -->
+<h2 class=sec><span class=bar></span>8 · 全文一页总结</h2>
+<div class=box>
+<p class=a><b>Problem：</b>CV 还没有 LLM 那样"通用预训练→万能涌现"的统一基础模型；缺的是一个"视觉版 next-token prediction"的通用预训练目标。</p>
+<p class=a><b>Method：</b>主张 <b>大规模 text-to-video 生成</b>就是这个目标（满足时空先验/视觉语言对齐/可扩展三要求）。GenCeption 拿预训练视频扩散 backbone（WAN 2.1），① <b>单步前馈化</b>（喂干净 latent、t=0、negate velocity、取末层特征、backbone 零改动）；② <b>统一任务表示</b>（dense 压 RGB、相机用 Rothko raymap、sparse 用 learnable token）；③ <b>统一 L2 loss</b>，任务差异全甩给数据表示与配比；④ 主要用<b>合成人类视频</b>训练。</p>
+<p class=a><b>Experiment：</b>depth/normal/camera pose/referring seg/3D keypoint 多任务匹配或超过 DepthAnything3 / SAM3 / D4RT / VGGT-Ω / Genmo 等专用 SOTA；同 fine-tune 数据下视频生成预训练完胜 V-JEPA/VideoMAE V2；<b>数据效率 7–500×</b>；单步前馈相比 50 步扩散数量级提速。</p>
+<p class=a><b>Takeaway：</b>视频生成不只是合成工具，其内部存在可迁移的通用"world model"，是通往物理世界通用视觉智能的基础路径。范式从"任务专属工程"转向"可扩展生成式预训练 + 数据格式设计"。</p>
+</div>
+<h3 class=sub3>消融 highlight（去掉/改动某设计的代价）</h3>
+<table>
+<tr><th>改动</th><th>现象</th><th>说明</th></tr>
+<tr><td>generalist 联合训 vs specialist</td><td>3D keypoint 严重退化、部分 dense 受损</td><td>sparse 的 learnable token 偏离连续像素预训练、扰乱 attention → <b>最小改动 backbone</b></td></tr>
+<tr><td>WAN 预训练 → V-JEPA / VideoMAE V2</td><td>depth Avg AbsRel 0.093→0.28/0.15（同数据）</td><td>是<b>生成式扩散目标本身</b>在贡献，非数据/规模</td></tr>
+<tr><td>预训练层 → 从头训随机 DiT</td><td>学习曲线几乎<b>平的</b></td><td>预训练对下游收敛/性能必不可少（Fig 9）</td></tr>
+<tr><td>训练数据 0.9M 帧 vs 专用模型 ~200M</td><td>仍追平 DepthAnything3</td><td>数据效率极高（7–500×）</td></tr>
+</table>
+
+<!-- ============ 🖼 FIGURES ============ -->
+<h2 class=sec><span class=bar></span>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+<div class=secsub>方法图 Figure 1、架构图 Figure 4、结果图 Figure 2、泛化图 Figure 10 已内联在上文对应章节；此处补充能力/定性/消融图。</div>
+<div class=figs>
+<figure class=fg><img src="../imgs/genception/fig03.webp" alt="Figure 3 capabilities"><figcaption><b>Figure 3</b>：Capabilities Illustrations. GenCeption is a versatile video perception model with SOTA performance on a multitude of output modalities including surface normal, depth, foreground segmentation, expression-referring open-world segmentation, dense human pose, 2D/3D keypoints, and camera pose. Trained on human-centric synthetic videos, yet generalizes to real videos for people and other categories such as animals and anthropomorphic characters.</figcaption></figure>
+<figure class=fg><img src="../imgs/genception/fig06.webp" alt="Figure 7 referring segmentation"><figcaption><b>Figure 7</b>：Qualitative results on referring expression segmentation. The model accurately recognizes objects, colors, spatial relationships, and motion; and generalizes to unseen objects, leveraging knowledge acquired during text-to-video pretraining.</figcaption></figure>
+<figure class=fg><img src="../imgs/genception/fig07.webp" alt="Figure 8 3D pose"><figcaption><b>Figure 8</b>：3D Pose Estimation on challenging skiing (top) and snowboarding (bottom) video (every 10-th frame shown). GenCeption takes a full video frame as input and does not require pre-processing such as person detection or 2D keypoint estimation.</figcaption></figure>
+<figure class=fg><img src="../imgs/genception/fig08.webp" alt="Figure 9 transfer layers"><figcaption><b>Figure 9</b>：Effect of transferring increasing number of layers from the pre-trained text-to-video model. (更多迁移层 → 更好性能；从头训随机 DiT 学习曲线近乎平。)</figcaption></figure>
+</div>
+
+<div class=note2><b>关于本页：</b>所有技术细节以<b>论文原文</b>（arXiv 2607.09024）为准，英文原句直接引用、逐句指路，不脑补转译；论文原图为本地 PDF 截图 + 逐字英文 caption。数值取自论文 Table 1 / Table 2 与正文；表格经 PDF 抽取，个别对齐以原文为准。本文为 ECCV 2026 预印本，部分 scaling 结论作者自述为 preliminary。</div>
+</div></body></html>

@@ -1,0 +1,221 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>World Engine: Towards the Era of Post-Training for Autonomous Driving</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0;font-size:13.5px}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.back{color:var(--mut);font-size:14px}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.en{color:#cfd6ff;font-style:italic;margin:10px 0 2px}
+.cn{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+figure{margin:14px 0;text-align:center}
+figure img{max-width:100%;border-radius:10px;border:1px solid var(--line)}
+figure figcaption{color:var(--mut);font-size:12.5px;margin-top:6px}
+.code{background:#0e1230;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:12px;color:#bfe3ff;white-space:pre-wrap;margin:8px 0;font-family:ui-monospace,Menlo,Consolas,monospace}
+.q{color:var(--accent);font-weight:700;margin:16px 0 4px;border-left:3px solid var(--accent);padding-left:9px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag">arXiv 2606.19836 · 2026-06</span> &nbsp; <span class="badge b-candidate">📄 World Model · Autonomous Driving</span></div>
+    <h1>World Engine: Towards the Era of Post-Training for Autonomous Driving</h1>
+    <div class="au2">Tianyu Li ⋅ Li Chen ⋅ Caojun Wang ⋅ Haochen Liu ⋅ Kashyap Chitta ⋅ Zhenjie Yang ⋅ Yuhang Lu ⋅ Naisheng Ye ⋅ Yihang Qiu ⋅ Yufei Wang ⋅ Luoxi Zou ⋅ Jiaxin Peng ⋅ Jin Pan ⋅ Zhaoyu Su ⋅ Andrei Bursuc ⋅ Shengbo Eben Li ⋅ Andreas Geiger ⋅ <b>Peng Su†</b> ⋅ <b>Hongyang Li†</b></div>
+    <div class="kv">The University of Hong Kong · Huawei · Shanghai Innovation Institute · Archon Robotics · KE:SAI · NVIDIA Research · NTU · valeo.ai · Tsinghua University · University of Tübingen &nbsp;|&nbsp; † Corresponding authors</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2606.19836">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2606.19836">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=World+Engine+Post-Training+Autonomous+Driving">Scholar</a></div>
+    <div class="tldr"><b>一句话：</b>把 LLM 的「预训练→后训练」范式引入自动驾驶——用 World Engine 从真实日志<b>重建+外推</b>出高保真的「长尾安全攸关」危险场景，再在其中用<b>强化学习后训练</b>把驾驶策略对齐安全约束；nuPlan 基准与量产系统上都验证有效，且比单纯堆预训练数据收益更大。代码全开源。</div>
+
+    <div class="box"><h2>摘要 Abstract（原文）</h2><div class="abstract">Autonomous vehicles must operate safely in the real world, where errors can have severe consequences. Although modern end-to-end driving policies excel in routine scenarios, their reliability is limited by the scarcity of safety-critical "long-tail" events in real driving datasets. These rare interactions define the practical safety boundary of the learned policy, yet they are difficult to collect at scale in the real world. Here we show that this fundamental limitation can be addressed by post-training pre-trained driving models on synthesized high-stakes interactions. We introduce World Engine, a generative framework that reconstructs high-fidelity interactive environments from real-world logs and systematically extrapolates them into realistic safety-critical variations. This paradigm enables reinforcement-based post-training to align policies with safety constraints, circumventing the physical risks inherent in real-world exploration. On a public benchmark built on nuPlan, World Engine substantially reduces failures in rare safety-critical scenarios and yields significantly larger gains than scaling pre-training data alone. Furthermore, when deployed on a production-scale autonomous driving system, the resulting policy reduces simulated collisions and demonstrates measurable improvements in on-road testing, showing that post-training on synthesized, safety-critical interactions offers a scalable and effective pathway to safer autonomous driving. The full codebase suite, including training, is released to the public.</div></div>
+
+    <div class="box notes"><h2>📝 精读笔记（要点）</h2>
+<!-- NOTES:worldengine-post-training-for-autonomous-driving -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">自动驾驶的安全边界由"长尾"罕见事件决定，而这些事件最危险也最采不到 →「最安全攸关的行为必须从最稀缺的数据中学习」的结构性悖论。World Engine 用生成式世界模型从真实日志<b>重建并外推</b>出这些危险场景，把<b>强化学习后训练</b>搬进可控的合成环境，规避真实探索的物理风险。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">现代端到端驾驶在常规场景已接近人类水平，但"平均表现"掩盖了关键脆弱性：行人突然横穿、激进加塞、复杂对抗交互等会导致事故的场景在真实数据里统计稀疏；且出于伦理/法律/社会约束，社会无法大规模采集安全攸关数据 → 最有价值的学习信号系统性缺失。单纯扩大数据采集收益递减。</div>
+    <div class="note-h">核心方法</div>
+    <div class="note-b">World Engine = 生成式框架：① 从真实路采日志<b>重建</b>高保真交互环境；② 系统性<b>外推</b>成逼真的安全攸关变体；③ 在其中做<b>基于强化学习的后训练</b>，让预训练驾驶策略对齐安全约束。本质是把 LLM 的 pre-train→post-train 范式迁移到自动驾驶。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">在基于 <b>nuPlan</b> 的公开基准上大幅降低罕见安全攸关场景的失败，收益<b>显著大于</b>单纯扩大预训练数据；部署到<b>量产规模</b>自动驾驶系统后，降低仿真碰撞，并在<b>路测</b>中展现可量化改进。完整代码（含训练）开源。</div>
+    <div class="note-h">为什么值得读</div>
+    <div class="note-b">① 把"后训练"这一 LLM 时代的核心范式正式引入自动驾驶；② 用世界模型当"危险场景工厂"破解长尾数据悖论；③ 作者阵容强（HKU Hongyang Li / 华为 / Geiger 组），且公开全栈代码。</div>
+    <div class="note-b notes-todo" style="color:var(--mut);font-style:italic">逐节精读进行中：下面 QA 区会随「一节一节读」持续累积讲解 + 中英对照 + 问答 + 图。</div>
+<!-- /NOTES -->
+    </div>
+
+    <div class="box" id="qa"><h2>📖 逐段精读 · 中英对照 &amp; 问答记录</h2>
+    <div class="kv">从 Abstract 开始逐节精读，随讨论持续累积。最后更新 2026-06-23。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 中英逐句对照</div>
+    <div class="en">① Autonomous vehicles must operate safely in the real world, where errors can have severe consequences.</div>
+    <div class="cn">自动驾驶车辆必须在现实世界中安全运行，而在现实世界里，错误可能造成严重后果。</div>
+    <div class="en">② Although modern end-to-end driving policies excel in routine scenarios, their reliability is limited by the scarcity of safety-critical "long-tail" events in real driving datasets.</div>
+    <div class="cn">尽管现代<b>端到端驾驶策略</b>在常规场景中表现出色，但其可靠性受限于真实驾驶数据集中<b>安全攸关的"长尾"事件</b>的稀缺。</div>
+    <div class="en">③ These rare interactions define the practical safety boundary of the learned policy, yet they are difficult to collect at scale in the real world.</div>
+    <div class="cn">这些罕见的交互定义了所学策略的<b>实际安全边界</b>，然而它们在现实世界中难以大规模采集。</div>
+    <div class="en">④ Here we show that this fundamental limitation can be addressed by post-training pre-trained driving models on synthesized high-stakes interactions.</div>
+    <div class="cn">本文表明：这一根本性局限可以通过在<b>合成的高风险交互</b>上对<b>预训练驾驶模型</b>进行<b>后训练（post-training）</b>来解决。</div>
+    <div class="en">⑤ We introduce World Engine, a generative framework that reconstructs high-fidelity interactive environments from real-world logs and systematically extrapolates them into realistic safety-critical variations.</div>
+    <div class="cn">我们提出 <b>World Engine</b>——一个<b>生成式框架</b>，从真实路采日志中<b>重建高保真的交互环境</b>，并系统性地将其<b>外推为逼真的、安全攸关的变体场景</b>。</div>
+    <div class="en">⑥ This paradigm enables reinforcement-based post-training to align policies with safety constraints, circumventing the physical risks inherent in real-world exploration.</div>
+    <div class="cn">这一范式使<b>基于强化学习的后训练</b>得以让策略<b>对齐安全约束</b>，同时<b>规避</b>真实世界探索所固有的<b>物理风险</b>。</div>
+    <div class="en">⑦ On a public benchmark built on nuPlan, World Engine substantially reduces failures in rare safety-critical scenarios and yields significantly larger gains than scaling pre-training data alone.</div>
+    <div class="cn">在基于 <b>nuPlan</b> 构建的公开基准上，World Engine 大幅减少了罕见安全攸关场景中的失败，且其收益<b>显著大于单纯扩大预训练数据</b>。</div>
+    <div class="en">⑧ Furthermore, when deployed on a production-scale autonomous driving system, the resulting policy reduces simulated collisions and demonstrates measurable improvements in on-road testing, showing that post-training on synthesized, safety-critical interactions offers a scalable and effective pathway to safer autonomous driving.</div>
+    <div class="cn">此外，当部署到<b>量产规模的自动驾驶系统</b>上时，所得策略<b>降低了仿真碰撞</b>，并在<b>路测</b>中展现出可量化的改进——这表明，在合成的安全攸关交互上做后训练，为更安全的自动驾驶提供了一条<b>可扩展且有效的路径</b>。</div>
+    <div class="en">⑨ The full codebase suite, including training, is released to the public.</div>
+    <div class="cn">完整的代码套件（含训练部分）已公开发布。</div>
+    <div class="note-b" style="margin-top:8px"><b>一句话抓 Abstract：</b>长尾安全场景采不到 → 用 World Engine 从真实日志重建+外推危险场景 → 在里面用强化学习后训练驾驶策略对齐安全 → nuPlan 基准和量产系统上都验证有效，且比堆预训练数据更划算。</div>
+
+    <div class="note-h">② §1 Introduction · 故事与逻辑链</div>
+    <div class="note-b"><b>立靶（P1–P4）：</b>AI 从数字认知走向物理 AI，自动驾驶的核心挑战不再是"会不会开"，而是"安全攸关条件下的可靠性"。可靠性的边界由<b>罕见长尾事件</b>（行人横穿/激进加塞/对抗交互）决定，而它们在真实数据里统计稀疏；更要命的是受伦理/法律/社会约束<b>不敢也不能大规模采集</b> → 结构性悖论：<b>最安全攸关的行为必须从最稀缺的数据中学习</b>。单纯堆数据收益递减。</div>
+    <div class="note-b"><b>借 LLM（P5）：</b>LLM 的应对是从被动预训练转向<b>后训练</b>——用合成推理链 + 强化学习把"稀疏高价值区加密变稠"（DeepSeek-R1 / AlphaProof）。同理：自然驾驶数据覆盖不到的罕见安全场景，必须靠<b>合成</b>主动引导学习。</div>
+    <div class="note-b"><b>提出 WE（P6–P8）：</b>从真实日志发现失败场景 → 重建成高保真交互世界 → RL 后训练对齐安全，全程不让真实世界冒险。双线验证：nuPlan 学术基准 + 8 万小时量产系统 / 200km 路测。</div>
+
+    <div class="note-h">③ §2 Overview · 四阶段闭环流水线</div>
+    <div class="note-b"><b>1 预训练+长尾发现：</b>模仿学习训基座，用它当"诊断探针"——把日志喂进去做非反应式 rollout，<b>撞了/冲出道路的场景</b>就是长尾（用模型自己的失败精准定位，后训练收益最大）。<br><b>2 仿真引擎：</b>3DGS 把场景重建成可交互数字孪生。<br><b>3 行为世界模型：</b>DiT 给周围车造多样/对抗轨迹变体（一个场景膨胀成上百个）。<br><b>4 RL 后训练：</b>在闭环 rollout 上用强化学习精修策略。</div>
+
+    <div class="note-h">④ §3 方法与深读 Q&amp;A（逐题全记录）</div>
+    <div class="note-b" style="color:var(--mut)">以下逐题记录与 agent 的精读问答（含从零讲解），随讨论持续追加。</div>
+
+    <div class="q">Q1 · 这篇论文要解决的主要问题是什么？</div>
+    <div class="note-b"><b>核心：</b>自动驾驶里"<b>最安全攸关的行为，偏偏只能从最稀缺的数据中学习</b>"这个结构性悖论（原文 line 64–65）——即如何让策略在罕见长尾安全场景下可靠。<br>① 安全边界由长尾决定不由常见场景决定（端到端日常已接近人类，但行人横穿/激进加塞/对抗交互才定边界）；② 这些数据采不到、且受伦理/法律/社会约束不敢采，最有价值的学习信号系统性缺失；③ 单纯堆数据收益递减，模型被迫在训练分布外外推→脆弱失败。<br><b>破题方向：</b>借 LLM 的"预训练→后训练"，用 World Engine 从真实日志<b>重建+外推</b>合成长尾危险场景，再用<b>强化学习后训练</b>对齐安全，把稀疏高价值区"加密变稠"，且不让真实世界冒险。</div>
+
+    <div class="q">Q2 · 怎么实现，为什么能解决？</div>
+    <div class="note-b"><b>怎么实现（§2 四阶段闭环）：</b><br>① <b>预训练+长尾发现</b>：模仿学习训基座，用它当"诊断探针"——把日志喂进去做非反应式 rollout，<b>撞了/冲出道路</b>的场景标为长尾（用模型自己的失败定位，后训练收益最大）。<br>② <b>仿真引擎</b>：3DGS 把事故场景重建成照片级可交互数字孪生（场景图分静/动，可自由视角实时渲染）。<br>③ <b>行为世界模型</b>：DiT 给周围车造多样/对抗轨迹变体，一个场景膨胀成上百个。<br>④ <b>RL 后训练</b>：在闭环 rollout 上用行为正则化 RL 精修策略。</div>
+    <div class="note-b"><b>为什么能解决长尾悖论：</b>① <b>把"采数据"换成"造数据"</b>——从已有安全日志重建+外推，危险只发生在仿真里，正面绕开"不敢/不能大规模采集"的死结；② <b>真实接地</b>——每个场景源自真实 log，物理可信，不学仿真幻觉；③ <b>闭环 + 海量变体</b>——agent 学的是"自己动作的后果"（误差累积、他车反应），这是静态数据教不了的；④ <b>KL + 真实数据混合</b>——补短板不砸长处。比堆预训练数据强，因为它用模型自己的失败精准定位长尾、定向合成，算力花在刀刃上（外推≈加 ~10× 预训练数据）。</div>
+
+    <div class="q">Q3 · ②仿真引擎用什么模型？③会跟②交互吗、只出轨迹还是图片？④RL 是不是只是轨迹级 loss？</div>
+    <div class="note-b"><b>②用什么模型：</b>纯<b>重建</b>模型——<b>3DGS（3D Gaussian Splatting）+ 场景图</b>，不是生成图像的模型。输入图像+LiDAR+3D 框，拟合一堆 3D 高斯，光栅化 alpha 合成出图（含深度/法向/NCC/flatten 等正则）。</div>
+    <div class="note-b"><b>③会跟②交互吗、只出轨迹还是图片：</b>③行为世界模型<b>只产出轨迹/向量</b>（DiT 在 token 层生成所有车的未来轨迹），<b>不产图片</b>；图片由②渲染。二者经<b>仿真平台</b>耦合：③给出 agent 轨迹（位置/朝向）→ 重定位②里的动态高斯 → ②渲出新图像 → 自车 planner 读图像（观测 o 就是图像）。所以"③定轨迹、②渲成图"，自车与环境交互在<b>图像层</b>。</div>
+    <div class="note-b"><b>④RL 是不是只是轨迹级 loss（诚实回应）：</b>对一大半——动作是轨迹候选上的 categorical，优化"回报加权的 push/pull + KL anchor"，且全文<b>没给具体 RL 算法</b>（无 PPO/critic/advantage）。但有三点不止于此：(a) <b>没有 GT 可 pull</b>，信号是闭环 rollout 的后果；(b) <b>闭环多步信用分配 + 乘性安全门</b>（撞了把整条 rollout 奖励压没），非单步 loss；(c) KL+真实混合是正则。<b>结论：</b>价值不在 RL 本身，而在"造出采不到的闭环反事实经验"+"可验证、乘性门控的 reward 设计"，RL 是故意做薄的。</div>
+    <div class="q">Q4 · 3DGS 从零：原理 / 为什么 per-scene 过拟合(跟 NeRF 一样吗) / 三种输入怎么用 / 动静分离 / 刚体搬运 / 伪代码</div>
+    <div class="note-b"><b>原理：</b>用一堆带颜色的半透明 3D 高斯椭球表示场景，渲染叫 splatting——把每个椭球投到像面、按深度 alpha 合成，整个过程可微，于是能"渲染→和真照片比→反传调每个椭球"。</div>
+    <div class="code">每个 3D 高斯 i:  μ中心 / q朝向(四元数) / s三轴尺度 / α不透明度 / SH颜色
+形状: Σ_i = R(q_i)·diag(s_i)^2·R(q_i)^T
+渲染(相机E,K): ①投影 μ'=K·E·μ ②按深度排序 ③alpha合成:
+   color(p) = Σ_i c_i·α_i·Π_{j<i}(1-α_j)   (近处不透明的盖住后面)</div>
+    <div class="note-b"><b>per-scene 过拟合，跟 NeRF 一样吗：</b>是的，两者都是"对单场景过拟合"。但选 3DGS 不选 NeRF 因为：① NeRF 隐式 MLP+光线步进<b>慢</b>，3DGS 显式椭球+光栅化<b>实时</b>（RL 要上千 rollout）；② 3DGS 显式→<b>能单独搬一个物体</b>，NeRF 隐式难编辑。而"过拟合单场景"正是<b>数字孪生</b>的目的（不要泛化）。想"不过拟合"得换前馈式（pixelSplat 等），代价是画质降。</div>
+    <div class="note-b"><b>三种输入怎么用（不是都当 GT）：</b>3DGS 没有 encoder，是直接拟合椭球参数。图像=主要当<b>光度 GT</b>（L1+SSIM）；LiDAR=<b>初始化高斯位置 + 深度 GT + 曝光对齐</b>；3D 框=<b>结构脚手架</b>（分静/动、定物体坐标系与每帧位姿，不进 loss）。</div>
+    <div class="note-b"><b>动静分离 + 刚体搬运：</b>场景图把高斯分成<b>静态节点</b>(背景，固定)和<b>每个动态物体一组</b>(存物体坐标系)。搬运 = 对该物体每个高斯做刚体变换：</div>
+    <div class="code">μ_world = R_t·μ_obj + T_t      # 位置: 旋转+平移
+q_world = R_t ⊗ q_obj          # 朝向: 旋转叠加
+s, α, SH 不变                   # 整组刚性移动</div>
+    <div class="note-b"><b>伪代码（重建训练 + rollout 渲染）：</b></div>
+    <div class="code"># 重建训练(离线, per-scene)
+static = init_gauss(LiDAR背景点);  dyn[o]=init_gauss(框内点→物体系)
+for it in iters:
+  t,cam = sample()
+  G = static + [rigid_T(dyn[o], Box[o,t]) for o in objs if valid]
+  I_hat = rasterize(G, E[cam,t], K[cam])
+  L = L1+SSIM + 逆深度(LiDAR) + NCC + 法向 + flatten + oob ; update
+# rollout 渲染(在线, ③/编辑驱动)
+def render(ego_pose, agent_poses):
+  G = static + [rigid_T(dyn[o], pose) for o,pose in agent_poses]
+  return rasterize(G, ego_pose∘extr[cam], K[cam])   # 策略看到的图</div>
+
+    <div class="q">Q5 · 3DGS 追问：不过拟合方案 / 要离线重建每个动态物体吗 / LiDAR 怎么 init(聚类?)3D 框怎么用 / "搬过去"是什么、归属怎么定、光照遮挡能改吗</div>
+    <div class="note-b"><b>不过拟合方案：</b>前馈/可泛化重建（pixelSplat、MVSplat、GS-LRM 等）——训一个网络在很多场景上学，推理一次前向预测高斯，泛化但画质通常较低；这篇要高保真数字孪生且离线重建可接受，故选 per-scene 优化。</div>
+    <div class="note-b"><b>要离线重建每个动态物体吗：</b>要。用每帧 3D 框抠出该物体的点、用框位姿统一到"物体标准系"（物体在动反而多角度→更完整），拟合一组高斯。搬运=刚体变换这组高斯。也可换成塞预制 CG 资产（这篇没用）。</div>
+    <div class="note-b"><b>LiDAR 怎么 init、聚类吗、3D 框怎么用：</b><b>不是聚类</b>，是"<b>点→高斯种子</b>"（每个 LiDAR 点初始化一个高斯，颜色从投影取像素），再 densify(克隆/分裂)+prune(删低透明度)。3D 框做<b>分割器</b>：给点打"静态/属某物体"标签 + 提供每帧位姿把动态点搬回物体系。开放场景最终高斯数通常<b>百万~千万级</b>（"十几万"约为单帧雷达点/早期种子量级）。</div>
+    <div class="note-b"><b>"搬过去"是什么、归属怎么定、光照遮挡能改吗：</b>搬过去=对该物体那组高斯整体刚体变换(见 Q4 公式)。<b>归属在重建时用 3D 框一次性打标签</b>并存下（场景图）。<b>遮挡✅能正确处理</b>（每帧按深度排序 alpha 合成，挪到前面自动挡住后面）；<b>光照/阴影❌改不了</b>（颜色 SH 在原位置原光照下烤死，挪进树荫照样亮、影子留在背景）——这是重建式仿真的硬伤，故通常挑光照变化不剧烈的片段或加重打光模块。</div>
+    <div class="q">Q6 · LQR / bicycle 模型 / IDM 怎么实现，行为世界模型跟本车是同一个模型吗</div>
+    <div class="note-b"><b>bicycle（纠正：是运动学差分模型，轨迹↔控制）：</b>把四轮车近似成自行车（前轮转向+后轮驱动），编码"车不能横着走"。关键用法是<b>轨迹→控制</b>：对轨迹求导反解出控制量。</div>
+    <div class="code">模型: ẋ=v·cosθ, ẏ=v·sinθ, θ̇=(v/L)·tanδ, v̇=a
+轨迹→控制(差分): v=√(ẋ²+ẏ²); θ=atan2(ẏ,ẋ); a=v̇
+   曲率κ=(ẋÿ−ẏẍ)/(ẋ²+ẏ²)^1.5;  δ=atan(L·κ)   (并给可行性约束|δ|≤δmax)</div>
+    <div class="note-b"><b>IDM（智能驾驶员模型）：</b>一维纵向跟车规则，只对前车反应、贴车道中心、确定性。</div>
+    <div class="code">a = a_max·[ 1 − (v/v0)^δ − (s*/s)² ]
+s* = s0 + max(0, v·T + v·Δv/(2√(a_max·b)))
+(v0期望速度, s前车间距, Δv速度差, T车头时距)</div>
+    <div class="note-b"><b>行为世界模型 ≠ 本车模型（两个完全不同的模型）：</b>本车策略 π_φ 输入<b>图像→BEV</b>、输出<b>一条自车轨迹</b>、是被 RL 训练的"选手"；行为世界模型输入<b>矢量化场景(agent+地图 token)</b>、输出<b>所有他车轨迹</b>、是 <b>DiT</b>、当"环境(陪练)" T_θ、不被 RL 训练。POMDP 里显式分开：π_φ 是策略，T_θ 是环境转移。</div>
+
+    <div class="q">Q7 · 他车怎么处理 / 并行 rollout 是什么</div>
+    <div class="note-b"><b>他车三模式（可混用）：</b>① log replay（重放原轨迹，非反应式，可能"鬼畜碰撞"）；② IDM（规则反应式）；③ 行为世界模型 DiT（学习式、多样+反应+可控）。决定轨迹后→LQR 修可行→把该车 3DGS 高斯刚体搬到该位姿→渲染。Table 1 证明带行为模型的反应式闭环最好。</div>
+    <div class="note-b"><b>并行 rollout：</b>一次 rollout = 闭环跑批(策略看图→选轨迹→LQR执行→他车反应→渲下一帧→…记 obs/action/reward)。并行 rollout = 同时跑成百上千个实例（多 Sim worker × 多场景 × 行为模型随机变体）。前提是 3DGS 实时渲染 → 高吞吐造经验喂 RL（这也是不用 NeRF 的原因）。</div>
+
+    <div class="q">Q8 · LQR 从零：线性系统 / 二次代价 / u=−Kx 与 Riccati 分别怎么解释、怎么用</div>
+    <div class="note-b"><b>大白话：</b>你偏离规划线 0.5 米、车头歪 5°，方向盘该打多少才能"快回线又不甩人"——LQR 就是算这个"刚刚好"的控制器。</div>
+    <div class="note-b"><b>① 线性系统 x_{t+1}=A·x_t+B·u_t：</b>"下一刻偏差 = 偏差自己怎么变(A) + 我的操作扳多少(B)"。x=偏差状态(横向偏/航向偏/速度偏)，u=控制(方向盘/油门)，A=偏差自然演变、B=动作影响，二者由 bicycle 在参考轨迹附近线性化得到。</div>
+    <div class="note-b"><b>② 二次代价 J=Σ(xᵀQx+uᵀRu)：</b>给"纠偏好不好"打分(越低越好)。单变量时 xᵀQx=q·e²(偏差平方×权重)、uᵀRu=r·δ²(控制平方×权重)。<b>调 Q/R 这两个旋钮</b>：Q 大 R 小=激进贴线，Q 小 R 大=温柔平顺。</div>
+    <div class="note-b"><b>③ u=−K·x、K 由 Riccati 给出：</b>最优动作就是"偏多少、反方向按比例纠多少"。K=把"偏差"换算成"动作"的增益，由 (A,B,Q,R) 经 Riccati 自动算出(库函数，不用手算)。</div>
+    <div class="code">准备(一次): 线性化得A,B → 设Q,R → 解Riccati → K
+开车(每步): 量偏差x → u=−K·x → 执行 → 再量    (反馈循环)
+总控制 = 前馈(bicycle差分出的名义δ,a) + 反馈(−K·误差)</div>
+    <div class="q">Q9 · diffusion 从零（通用，图像生成起源）+ DiT 在 train/infer 怎么跑 + 15 连问</div>
+    <div class="note-b"><b>起源：</b>DDPM(2020) 本是生成图像——真图反复加噪变雪花，训网络(当时 U-Net)学去噪；生成时从纯噪声反复去噪"显影"出新图。后来：Latent Diffusion(隐空间扩散=Stable Diffusion)、DiT(去噪器换成 Transformer)。三件套不变：①加噪规则 ②预测噪声的网络 ③从噪声迭代去噪采样。</div>
+    <div class="note-b"><b>为什么"凭空造"+怎么加 condition：</b>生成起点是纯随机噪声(无信息)，去噪成样本=无中生有。加条件=让去噪网络也吃条件 c：f(x_t,t,c)，方式有"直接喂 c / classifier guidance / classifier-free guidance"。本文 c=地图+历史/目标(用保持那些 token 干净来当条件)。</div>
+    <div class="note-b"><b>怎么加噪声/加在哪/怎么算纯噪声/噪声等级：</b></div>
+    <div class="code">x_t = α_t·x_0 + σ_t·ε   (ε~高斯; α随t 1→0 信号变少, σ随t 0→1 噪声变多)
+"噪声等级"=t(或加了多少噪声); t=0干净, t=T纯噪声; 必须告诉网络t
+"纯噪声"由调度保证: 到T时α≈0,σ≈1 → x_T≈标准高斯(不是去判断)
+加在哪: 数据空间(原始轨迹) 或 隐空间(VAE latent,如SD); 本文加在归一化后的轨迹token</div>
+    <div class="note-b"><b>预测噪声 vs 预测原图、为什么只预测噪声：</b>两者数学等价(知 ε 可反解 x_0=(x_t−σ_t ε)/α_t)。选预测 ε 是因为 ε 目标尺度恒定(~单位方差)、跨 t 好优化；预测 x_0(加重建 loss)也行但高噪声时难、易模糊。本质上预测 ε 就是一种重建监督，只差线性变换。</div>
+    <div class="note-b"><b>infer 怎么用、X_t 怎么来：</b>训练时 X_t=真 X_0 人为加噪(知道 ε 当监督)；推理时 X_t 来自反向链——X_T 采纯噪声，for t=T..1 用网络预测噪声→去掉一点→X_{t-1}，最终 X_0 才是可用轨迹(中间 X_t 是去噪到一半的噪轨迹)。</div>
+    <div class="note-b"><b>逐 token 还是 SA 联合 / 怎么联合生成 / 有无 teacher forcing / 像不像 MAE：</b>非自回归——<b>每个扩散步内一次 self-attention 联合处理全部 N×T 个 token(+地图)</b>，"步"是去噪迭代(几十~上千)，不是逐 token 生成。训练用<b>随机的每-token 噪声等级掩码</b>(含"历史低噪声/未来高噪声"模式)，是 masked 训练、<b>不是 AR teacher forcing</b>。<b>条件生成确实类 MAE</b>(可见 token 推被遮 token)，差别是扩散迭代+随机+软掩码(噪声等级而非有/无)。</div>
+    <div class="note-b"><b>guidance 怎么作用：</b>去噪每步后对 token 做 push/pull 修正——碰撞沿中心连线推开、二阶差分平滑加速度、偏离超阈值拉回最近车道中心线(附录公式12–14)，把硬物理约束注入生成，无需重训(只在采样时作用)。</div>
+    <div class="note-b"><b>goal point 怎么 encode：</b>目标点就是 agent token 的属性(位置)；条件生成时把"目标 token"设低噪声(当已知固定)，DiT 去噪其余 token 时就会朝该目标自洽地生成；Intent Attack 即把邻车目标 token 强设到 ego 目标附近。</div>
+    <div class="note-b"><b>push-pull 是 loss 吗、token 怎么 decode 成轨迹、decoder 怎么训：</b>push/pull 是<b>采样时(inference)对 token 的修正项</b>，不是训练 loss(训练 loss 是去噪 MSE)。token 本身就是<b>轨迹属性向量(x,y,朝向,速度,尺寸)</b>，去噪完直接读出即轨迹——<b>不需要单独的 decoder</b>(向量化表示自带语义，归一化的逆变换即还原)。</div>
+    <div class="note-b"><b>怎么评价"自洽"：</b>① 物理可行性(LQR 修轨 + 碰撞/可行驶检查，通过才入库)；② 与历史/地图一致(条件生成保证)；③ guidance 强制不穿模/不压线。论文用这些硬检查筛掉不合理生成。</div>
+
+    <div class="q">Q10 · 整个 diffusion 实现总览（它原来做图片生成）</div>
+    <div class="note-b">训练: 真数据 x_0 →随机 t 加噪得 x_t →网络 ε_θ(x_t,t,c) 预测噪声 →MSE(预测,真实) 反传。采样: x_T 采高斯 →循环去噪 →x_0。图像用 U-Net/Latent；本文把"数据"换成<b>多车轨迹 token</b>、去噪器换成 <b>DiT</b>、并用解耦噪声做条件 + guidance 注入物理。</div>
+
+    <div class="q">Q11 · 现在还有什么 SOTA 生成方法？flow matching 怎么做？diffusion vs flow matching 是不是像 NeRF vs 3DGS？</div>
+    <div class="note-b"><b>谱系：</b>GAN / VAE / 自回归 / normalizing flow / <b>diffusion</b> / <b>flow matching(rectified flow)</b> / consistency models。图像视频现以 diffusion 和 flow matching 为主(SD3、Flux 用 flow matching)，语言仍自回归。</div>
+    <div class="note-b"><b>flow matching：</b>学一个<b>速度场 v(x,t)</b>，从噪声沿(尽量直的)路径连续搬运到数据；采样=对速度场<b>解 ODE</b>(积分)。路径越直步数越少→更快；训练就是回归速度，简单稳定。与 diffusion 深层同源(diffusion 的概率流 ODE 是近亲)。</div>
+    <div class="note-b"><b>"≈ NeRF vs 3DGS" 只对一半：</b>对的是"新方法同目标、采样更快"；不对的是——NeRF→3DGS 换的是<b>表示</b>(隐式 MLP→显式高斯)，diffusion→flow matching 换的是<b>传输的数学形式</b>(随机 SDE→确定性 ODE/更直路径)；且 diffusion/flow-matching 本质同源、远比 NeRF/3DGS 紧密，是"统一精炼"而非"取代"。</div>
+
+    <div class="q">Q12 · 为什么不直接用 CoT 造场景？（agent 的诚实纠正）</div>
+    <div class="note-b"><b>先认错(范畴错误)：</b>轨迹就是序列(点链/浮点也是 language)，AR/CoT 式生成器<b>完全能造场景</b>(MotionLM 等)，所以"CoT 造不出场景"是错的；而且 CoT 是生成范式、与"闭环评测"正交，早先拿"CoT vs 闭环"对比是混了两件事。</div>
+    <div class="note-b"><b>纠正后的真相：</b>流水线有两块——(a) 场景/轨迹<b>生成器</b>(diffusion，可换成 AR/LM/CoT 式；diffusion 胜在联合非自回归+灵活条件+guidance，是工程选择不是"能不能")；(b) 闭环<b>仿真器+RL</b>(rollout 出后果、当 reward 与经验来源)。"用不用 CoT"只关乎 (a)；真正不可替代、且区别于"查答案式 CoT 任务"的是 (b)——撞没撞只能闭环跑出来。</div>
+
+    <div class="note-h">⑤ §4 Experiment · 关键结果</div>
+    <div class="note-b"><b>nuPlan（Table 1，rare 闭环 SR / PDMS*）：</b>基座 73.66% / 60.98；<b>完整 WE 最佳 88.89% / 70.12</b>(相对基座 +15.23pp SR、+9.14 PDMS*)。消融：常见 log 后训练反而拖低 rare 闭环(SR 73.66→69.63)；合成 replay SR 高但 EP 崩到 32.49(龟速急停，二值成功率会骗人)；行为世界模型把 SR 从 77.96→88.89(关键增量)。<b>数据效率：</b>WE(50k 基座)超过 2× 数据预训练；外推≈加 ~10×(图标 14×)预训练数据。<b>量产(华为 ADS)：</b>加塞碰撞 −45.5%、路口 −24.1%、行人/骑行 −15.8%、常见动态碰撞 −13.2%；上海 200km 路测<b>零接管</b>(基座 1 次)。</div>
+
+    <div class="q">Q13 · §3.4 RL 后训练从零：POMDP 怎么实现</div>
+    <div class="note-b"><b>MDP：</b>状态 s / 动作 a / 转移 P(s'|s,a) / 奖励 r / 折扣 γ；循环"在 s 选 a 拿 r 进 s'"，目标最大化累计折扣奖励。<b>POMDP = 部分可观测</b>：agent 看不到真状态 s，只看到观测 o（图像），得据此行动（一帧图揭示不全世界）。</div>
+    <div class="code">World Engine 的 POMDP 实例(§3.4):
+  观测 o = 相机图像(3DGS 渲染)
+  状态 s = ego/他车/地图
+  动作 a = 从轨迹词表打分选一条
+  转移 T_θ(s'|s,a) = 行为世界模型 + 仿真引擎   ← "环境"
+  奖励 r(s,a) = shaped reward(公式19: 安全门×软目标)
+  策略 π_φ(a|o) = 被训练的自车策略
+实现 = 闭环rollout: 看图→选轨迹→环境推进+渲新图→算奖励→再来
+整套 WE(3DGS+DiT+平台)就是"环境", 被优化的只有 π_φ
+    </div>
+
+    <div class="q">Q14 · 没 GT 怎么训？怎么算 KL？（预训练 IL 有 GT，后训练 RL 没 GT）</div>
+    <div class="note-b"><b>没 GT 怎么训 —— 用"奖励"顶替"GT"：</b>IL(预训练)有人类真值轨迹当 GT、最小化距离(要标签)；RL(后训练)没 GT，改用<b>奖励</b>打分：试动作→rollout→看后果(撞没撞/在不在道/有没有进度)，高回报轨迹↑概率、低回报↓。靠"试错+奖励"学，不要标签。这正是为什么必须有闭环——合成危险场景里没人类 GT 可模仿，唯一信号是 rollout 后果。</div>
+    <div class="note-b"><b>怎么算 KL —— KL 是"两个模型输出之间"的距离，不需要 GT：</b></div>
+    <div class="code">KL(π_φ ‖ π_ref | o) = Σ_a π_φ(a|o)·log( π_φ(a|o) / π_ref(a|o) )
+  a 遍历轨迹词表候选; π_φ(当前)、π_ref(冻结的预训练) 都是"候选上的概率分布"
+  → 同一观测 o, 让两个策略各跑一遍拿分布, 套公式即可; 完全不需要 GT
+洞察: KL 比的是"两个模型", 不是"模型 vs GT"; 且 π_ref 封存了 IL/GT 学到的本事</div>
+
+    <div class="q">Q15 · 多步信用分配是什么</div>
+    <div class="note-b">一串决策(如 4 秒 20 步)在终点撞车，<b>到底哪一步的锅？</b>把终点结果分摊回沿途每一步 = 信用分配。RL 用<b>折扣累计回报</b> R(τ)=Σ γ^t·r_t：每个动作的价值=它之后所有奖励的折扣和 → 早期动作若导致 3 秒后撞车、其累积回报就低 → 被惩罚。<b>对比单步 IL</b>(每帧各自跟 GT 比、没有"3 秒前那下害的"概念)：闭环 RL 因 rollout 复合 + 奖励算整段，能把"坏决策→几步后才出事"的因果链起来——这正是它区别于"逐帧 push/pull"之处。</div>
+
+    <div class="q">Q16 · KL 的作用</div>
+    <div class="note-b"><b>−λ·KL(π_φ‖π_ref) 把后训练策略拴在预训练策略附近，三个作用：</b>① <b>防灾难性遗忘</b>：只在罕见危险场景猛优化会忘了日常怎么开，KL 锚在擅长日常的预训练策略附近(Table1 常见 PDMS 仍最高即证据)；② <b>防 reward hacking/退化解</b>：光追安全奖励可能学出"永远急停"，KL 限制别离合理先验太远；③ <b>稳定训练(信任域)</b>：防策略一步跳太远搞崩(类 TRPO/PPO 的 KL 约束精神)。这就是"behaviour-regularized RL"的 regularized。<b>串起来：</b>没 GT→用奖励学；奖励靠多步信用分配回传；只追奖励会忘本→KL 拴住封存了 GT 知识的 π_ref；再加真实数据混合+hard mining → "罕见变强、日常不退化"。</div>
+<!-- /QA_LOG -->
+    </div>
+  </div>
+</body></html>

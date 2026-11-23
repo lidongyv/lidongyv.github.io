@@ -1,0 +1,159 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>FedAdamom: Adaptive Momentum for Improved Generalization in Federated Optimization</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>FedAdamom: Adaptive Momentum for Improved Generalization in Federated Optimization</h1>
+    <div class="au2" style="color:var(--mut)">Wenjie Hou ⋅ Tianxiang Chen ⋅ Feng Wang ⋅ Tiantong Wu ⋅ Zhiming Zheng ⋅ Shaoting Tang ⋅ Wei Yang Bryan Lim</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2026/papers/Hou_FedAdamom_Adaptive_Momentum_for_Improved_Generalization_in_Federated_Optimization_CVPR_2026_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=FedAdamom%3A%20Adaptive%20Momentum%20for%20Improved%20Generalization%20in%20Federated%20Optimization">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Federated learning (FL) has emerged as a widely adopted training paradigm for privacy-preserving machine learning. Despite the past success of SGD-based methods, they still suffer from severe data heterogeneity and the lack of adaptivity in practical applications. While several adaptive federated optimization methods (such as FedAdam) have been proposed and demonstrated to achieve faster convergence, they fail to show significant improvements in generalization performance under highly heterogeneous data distributions, and their optimization and generalization mechanisms remain insufficiently understood. To fill this gap, we introduce diffusion theory into the adaptive federated optimization framework and analyze the distinct effects of adaptive learning rate and global momentum from the perspectives of saddle-point escaping and flat-minima selection. Theoretical results show that although FedAdam outperforms FedAvg/FedAvgM in escaping saddle points, the latter escapes sharp minima more efficiently. The root cause lies in that adaptive learning rates, while enhancing saddle-point escape, weaken the preference for flat minima. Motivated by these insights, we propose FedAdamom, a new adaptive federated optimization algorithm that adapts the momentum hyperparameter rather than the learning rate. FedAdamom maintains strong saddle-point escaping capability while enhancing flat-minima selection. We further establish its convergence guarantees under non-convex objectives. Extensive experiments demonstrate that FedAdamom significantly outperforms existing adaptive federated optimization methods in terms of convergence speed, generalization performance, and preference for flat minima.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-fedadamom-adaptive-momentum-for-improved-generalization -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">FedAdam 收敛快但<b>泛化常不如 FedAvg</b>——本文用<b>扩散理论(diffusion theory)</b>证明根因：adaptive learning rate 让"逃离 sharp minima 的时间"对 Hessian 的依赖从 <b>O(H⁻¹)</b> 弱化成 <b>O(H⁻¹ᐟ²)</b>，即"<b>不那么偏好平坦极小值</b>"→泛化变差。对策 <b>FedAdamom</b>：把 adaptive 更新从"<b>学习率</b>"挪到"<b>动量参数 β₁</b>"(逐参数自适应)，既保住 Adam 快速逃鞍点(Hessian-independent)，又恢复 O(H⁻¹) 的平坦极小值偏好。CIFAR/TinyImageNet/LEAF 上收敛更快、泛化更好、<b>零额外通信</b>。北航×NTU。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b"><b>FL 的两大病(原文)：</b>"<i>i) the high heterogeneity of client data in FL settings; and ii) the lack of adaptivity such as learning rate adjustments or momentum terms</i>"。FedAdam 加自适应学习率+动量→收敛快,但 "<i>its generalization performance does not always show significant improvement</i>"；已知 Adam 在 CNN 上"<i>tends to converge to sharper local minima</i>"、而 sharp minima ↔ 泛化差。<b>关键观察(Fig.1)：</b>异质性越高(Dirichlet α↓)模型越收敛到 sharper minima→"<i>highlights the importance of optimizing global sharpness</i>"；且 FL 中 local 与 global loss landscape 因异质性<b>不一致</b>(local 平坦不保 global 泛化)。<b>分析结论：</b>FedAvg 比 FedAdam <b>更快逃离 sharp global minima</b>→泛化更好;FedAdam 逃鞍点快但选平坦极小值差。<b>根因(原文)：</b>"<i>adaptive learning rate, while enhancing saddle-point escape, weaken the preference for flat minima</i>"。</div>
+    <div class="note-h">核心理论（逃逸时间标度）</div>
+    <div class="note-b">用扩散理论把"SGD 逃离极小值"建成 <b>Kramers Escape Problem</b>(Langevin 方程式2 + Fokker-Planck 式3，3 个假设:临界点二次近似/准平衡/低温)，算从 sharp 极小 a 经鞍点 b 到 flat 极小 d 的<b>平均逃逸时间 τ</b>(H_ae=逃逸方向的 Hessian 特征值)：<br>• <b>Thm1 FedAvg：</b>log(τ)=O(2B∆f/(ηη_l·H_ae)) → <b>O(H_ae⁻¹)</b>(式5)<br>• <b>Thm2 FedAvgM：</b>log(τ)=O(2(1−β)B∆f/(ηη_l·H_ae)) → 仍 <b>O(H_ae⁻¹)</b>(式7)，即"<i>momentum has no impact on escaping from the minimum</i>"<br>• <b>Thm3 FedAdam：</b>log(τ)=O(2√B·∆f/(ηη_l·√H_ae)) → <b>O(H_ae⁻¹ᐟ²)</b>(式10)<br><b>读法：</b>H_ae 越大(逃逸方向越陡/越 sharp)，FedAvg 的 log(τ) 比 FedAdam 下降得<b>更快</b>→FedAvg 更易逃出 sharp minima;FedAdam 因 adaptive LR 用了二阶梯度信息,使 momentum drift+diffusion 近 Hessian-independent→逃鞍点快但"<i>less efficient at selecting flat minima</i>"、且与 local 更新(O(H⁻¹))<b>不一致</b>。</div>
+    <div class="note-h">核心方法（含关键公式）</div>
+    <div class="note-b"><b>FedAdamom(Algorithm 1)：</b>把自适应更新从学习率搬到<b>动量参数</b>。server 端：∆_t=(1/s)Σ∆x^i_t → v_t=β₂v_{t−1}+(1−β₂)∆_t² → v̄_t=(1/d)Σv_{t,i}(v_t 各元素均值) → <b>β₁,t=(1−v_t/v̄_t).Clip(0,1−ε)</b>(式核心,逐参数 vector) → m_t=β₁,t·m_{t−1}+(1−β₁,t)·∆_t → x_{t+1}=x_t+η·m_t。local 仍标准 SGD。<br><b>为什么 work(Thm4)：</b>FedAdamom 的 momentum drift 仍 isotropic+近 Hessian-independent→逃鞍点快;同时 log(τ_FedAdamom)=O(2B∆f/(ηη_l·H_ae))=<b>O(H_ae⁻¹)</b>(式11)——与 FedAvg/local 更新一致→恢复平坦极小值偏好→泛化好。<b>Thm5 收敛：</b>非凸+部分参与下 (1/T)Σ E‖∇f‖²≤O(LΘ₀/√(sKT)+…)，匹配现有 FL 最优率，且<b>无需 bounded gradient 假设</b>(FedAdam[40] 需要)。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>收敛+泛化双优(Table 1, 100 clients/5% 参与, acc@1000R)：</b>CIFAR-10 <b>88.93%</b>(FedAdam 87.31/FedAvg 87.20/FADAS 88.14)、CIFAR-100 <b>57.58%</b>(FedAdam 53.67)、TinyImageNet <b>47.38%</b>(FedAdam 41.75)，且达标轮数普遍最少(CIFAR-100 到 45% 仅 276 轮 vs FedAdam 390)。<b>loss landscape(Fig.2)：</b>FedAdamom 收敛到明显更平坦极小值、loss 更低。<b>逃逸时间(Fig.3, Styblinski-Tang)：</b>实测 FedAdamom 与 FedAvgM 满足 −log(Γ)=O(k⁻¹)、FedAdam 是 O(k⁻¹ᐟ²)(Pearson 0.998+)，<b>实证理论</b>。<b>真实数据(Table 3, LEAF)：</b>FEMNIST 82.85/CelebA 89.95/Shakespeare(LSTM 次词预测)48.02 多数最佳。β₂ 在 0.01–0.3 稳健、0.05 最优(Table 2)。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>把扩散理论引入 FL</b>,用统一的 mean-escape-time 框架同时解释 FedAvg/FedAvgM/FedAdam 的鞍点逃逸 vs 平坦极小值选择,定量给出 O(H⁻¹) vs O(H⁻¹ᐟ²)；② <b>"调动量而非学习率"的极简切口</b>——一行 β₁,t=(1−v_t/v̄_t) 同时拿下"快逃鞍点"与"偏好平坦极小";③ <b>零额外通信/计算</b>(只传模型参数,不像 FedCAda 需 3× 通信);④ 有非凸收敛上界且免 bounded-gradient 假设;⑤ 理论预测被 escape-rate 实验 Pearson 0.998 验证。</div>
+    <div class="note-h">疑问 / 待核</div>
+    <div class="note-b">① 理论依赖<b>临界点二次近似 + 准平衡 + 低温</b>三假设(式4 及 Assump.2/3),真实深网 loss 高度非二次,这些假设的现实偏差对结论影响多大原文未量化(标准做法但仍是近似)。② β₁,t=(1−v_t/v̄_t).Clip 的设计偏直觉,为何"用 v_t 相对均值的偏离量当动量"是<b>最优</b>形式、是否有更优映射原文未消融。③ large-scale(500 clients/2%)整体性能明显低于 moderate,极低参与率下的鲁棒性边界原文仅附录略述。④ 大多数指标领先但非<b>全</b>胜(如 FEMNIST 250R 时 FADAS 56 轮更快)；与 FedSAM 等显式 sharpness-aware 方法的正面对比缺失(原文未写)。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">本地 CVF PDF 全文精读(PyMuPDF 提取，约 5 万字符，正文+全部定理+表格)。原文英文原句直引 + 中文指路，扩散理论/FL 概念开背景块。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文大意：</b>联邦学习（FL）是隐私保护训练的主流范式，但 SGD 类方法（FedAvg）受数据异质性与缺乏自适应之苦。已有自适应联邦优化（如 FedAdam）<b>收敛更快但泛化没明显提升</b>、机理也不清。本文把<b>扩散理论（diffusion theory）</b>引入自适应联邦优化框架，从"<b>逃离鞍点</b>"与"<b>选择平坦极小</b>"两个视角分析自适应学习率与全局动量的不同作用。结论：FedAdam 逃鞍点强于 FedAvg/FedAvgM，但后者逃<b>尖锐极小</b>更高效；根因是<b>自适应学习率虽助逃鞍点，却削弱了对平坦极小的偏好</b>。据此提出 <b>FedAdamom</b>——自适应的是<b>动量超参</b>而非学习率，既保住逃鞍点能力又增强平坦极小选择，并给出非凸收敛保证。</div>
+    <div class="note-b"><b>逐句拆解（verbatim 引用）：</b><br>1) <i>"they fail to show significant improvements in generalization performance under highly heterogeneous data distributions, and their optimization and generalization mechanisms remain insufficiently understood."</i> —— 双痛点：高异质下不泛化 + 机理不明。<br>2) <i>"although FedAdam outperforms FedAvg/FedAvgM in escaping saddle points, the latter escapes sharp minima more efficiently."</i> —— 核心发现：逃鞍点 FedAdam 赢、逃尖锐极小 FedAvg 赢。<br>3) <i>"The root cause lies in the fact that adaptive learning rate, while enhancing saddle-point escape, weaken the preference for flat minima."</i> —— 根因定位在<b>自适应学习率</b>。<br>4) <i>"we propose FedAdamom, a new adaptive federated optimization algorithm that adapts the momentum hyperparameter rather than the learning rate."</i> —— 解法一句话：改自适应"动量"而非"学习率"。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>用扩散理论证明"自适应学习率让逃逸近似 Hessian 无关 → 逃鞍点快但选不出平坦极小（泛化差）"，于是把自适应从学习率挪到<b>动量</b>，既保 \(O(H_{ae}^{-1/2})\) 的快逃鞍点、又恢复 \(O(H_{ae}^{-1})\) 的平坦极小偏好。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文，读懂前置）</div>
+    <div class="note-b"><b>① FL / FedAvg：</b>多客户端在中心服务器协调下协作训练，<b>数据不出本地</b>（隐私）；FedAvg＝各客户端本地 SGD 后上传权重、服务器平均。<b>② 数据异质性（Dirichlet α）：</b>用 Dirichlet 分布切分各客户端数据，\(\alpha\) 越小越异质（non-i.i.d.），是 FL 最大难点。<b>③ 鞍点 vs 尖锐/平坦极小：</b>鞍点＝梯度近零但非极小（训练卡住）；尖锐极小＝Hessian 特征值大、泛化差；平坦极小＝Hessian 特征值小、<b>泛化好</b>（广泛共识）。<b>④ 平坦↔泛化：</b>原文引 [50] <i>"using Adam optimizer tends to converge to sharper local minima, which are widely believed to be closely associated with poorer generalization"</i>。<b>⑤ 扩散理论：</b>把 SGD 在临界点附近的逃逸看成<b>噪声主导的扩散</b>，用 Langevin 方程 + Fokker-Planck 方程刻画参数概率密度演化，逃离极小建模为 <b>Kramers Escape Problem</b>；逃逸时间 \(\tau\) 越短＝越易逃。<b>⑥ Hessian 特征值＝尖锐度：</b>沿逃逸方向（某特征向量）的 Hessian 特征值 \(H_{ae}\) 越大，极小越尖。<b>⑦ FedAdam：</b>服务器端用 Adam（一阶动量 \(m_t\) + 二阶 \(v_t\) 自适应学习率）做全局更新。</div>
+
+    <div class="note-h">② §1 Introduction — problem → 现有不足 → solution → why 闭环</div>
+    <div class="note-b"><b>problem：</b>FedAvg＝服务器端 SGD，面对重尾梯度噪声 + 高数据异质 + 缺自适应表现差；FedAdam 加自适应学习率+动量收敛更快，<b>但泛化常无明显提升</b>。原文：Adam 类倾向收敛到<b>更尖的极小</b> → 泛化差。</div>
+    <div class="note-b"><b>现有不足（机理空白）：</b>扩散理论已证 SGD 因"Hessian 相关的梯度噪声协方差"倾向收敛<b>平坦极小</b>（Xie et al. <i>"SGD tends to converge to flatter minima with better generalization ability"</i>），但 FL 里 <i>"the local and global loss landscapes are often inconsistent due to data heterogeneity"</i>——本地偏好平坦不保证全局泛化好。FedAdam 为何快却泛化差，<b>缺理论解释</b>。</div>
+    <div class="note-b"><b>solution + why（核心论证链）：</b>把扩散理论引入 FL，分别分析"自适应全局学习率"与"动量"在<b>全局逃鞍点</b>与<b>平坦极小选择</b>中的作用，得：<i>"momentum facilitates efficient escape from saddle points but has a limited effect on escaping sharp minima"</i>；<i>"adaptive learning rate schemes accelerate the escape from the saddle point while weakening the algorithm's preference for flatter minima."</i> —— 既然是<b>自适应学习率</b>削弱了平坦偏好，那就把自适应挪到<b>动量</b>。<b>★ Intro 已闭环</b>：FedAdam 快但泛化差→扩散理论归因到自适应学习率→把自适应改到动量，§4 证 FedAdam 的 \(O(H_{ae}^{-1/2})\)、§5 证 FedAdamom 回到 \(O(H_{ae}^{-1})\)。</div>
+
+    <div class="note-h">Q&amp;A · 它要解决的核心问题是什么？</div>
+    <div class="note-b"><b>核心：</b>解释<b>为什么 FedAdam 收敛快却泛化差</b>，并据此设计一个<b>同时</b>具备"快逃鞍点（快收敛）"与"强平坦极小选择（好泛化）"的自适应联邦优化器，且<b>不增加通信/本地计算</b>。<b>区分：</b>"做更好的联邦优化器"是领域通题；本文真正靶子是<b>自适应学习率与泛化的内在矛盾</b>——它让逃逸近似 Hessian 无关 → 逃鞍点快但分不清尖/平极小。<b>解法定位：</b>不是再调学习率/加正则，而是从扩散理论的逃逸时间标度（\(O(H_{ae}^{-1})\) vs \(O(H_{ae}^{-1/2})\)）找到病根，把自适应换到<b>动量超参</b>，保快逃鞍点（动量漂移各向同性、Hessian 无关）同时恢复平坦偏好。</div>
+
+    <div class="note-h">📖 §2 Related Work — 两条线与本文站位（verbatim 引用）</div>
+    <div class="note-b"><b>① 联邦学习（攻异质性）：</b>FedAvg 之后大量工作改进异质性下的稳定与泛化：<i>"FedProx introduces a proximal term to restrict local model drift under data heterogeneity."</i>；<i>"Karimireddy et al. propose SCAFFOLD, which employs variance reduction via control variates to mitigate client drift."</i>；FedDyn 动态对齐局部/全局目标；<i>"MOON leverages model-level contrastive learning to align local and global models."</i>；Mime 把控制变量与服务器端优化器状态结合；FedDisco/FedAWA 调聚合权重；<i>"FedSAM applies SAM as a client-side optimizer to reduce the difference between global and local losses."</i> 本文不同——不加 proximal/控制变量/对比学习，而是从<b>优化器动力学</b>入手，且 <i>"our proposed algorithm aims to learn a global model that generalizes better without increasing communication cost or local computational complexity."</i> <b>② 自适应优化（攻收敛速度）：</b>中心式有 Adagrad/Adam/AMSGrad/Adan/MIAdam；联邦式 <i>"Reddi et al. first propose adaptive FL methods, which deploy adaptive optimizers on the global server to handle long-tailed stochastic gradient noise and accelerate convergence."</i>（即 FedAdam/FedYogi/FedAdagrad）；后续 FedAMS（梯度压缩）、FAFED（动量方差缩减）、FADAS（异步+延迟自适应）、FedCAda（客户端自适应修正）。短板：<i>"most of these methods require additional communication costs or extra client computation, which are problematic in realistic FL scenarios."</i> <b>本文站位：</b>既不牺牲通信也不加本地计算，仅把<b>服务器端自适应从学习率移到动量</b>，用扩散理论解释并修复 FedAdam 的泛化短板。</div>
+
+    <div class="note-h">③ §3 Preliminaries — FedOpt + 扩散理论（式1-4）</div>
+    <div class="note-b"><b>FL 目标（式1）：</b>\(\min_x \frac{1}{n}\sum_{i=1}^n F_i(x)\)，异质设定 \(D_i\neq D_j\)。三阶段：服务器选子集广播全局模型 → 客户端本地训 K 步上传 \(\Delta x^i_t\) → 服务器用 GLOBALOPT 更新。FedAvg 即 \(x_{t+1}=x_t+\eta\Delta_t\)（服务器端一步 SGD）。<b>扩散理论（式2-3）：</b>临界点附近梯度趋零，逃逸是噪声主导扩散，由 Langevin 方程 \[dx=-\nabla f(x)\,dt+[\eta C(x)]^{1/2}\,dW_t\] 刻画（\(C(x)\)＝梯度噪声协方差），概率密度演化由 Fokker-Planck 方程 \(\frac{\partial P}{\partial t}=\nabla\!\cdot[P\nabla f]+\nabla\!\cdot\nabla D(x)P\)（\(D=\eta C/2\)）给出。<b>三假设（式4）：</b>① 临界点附近二次近似 \(f(x)\approx f(c)+\frac12(x-c)^\top H(c)(x-c)\)；② 极小附近准平衡；③ 低温（梯度噪声小）。据此把"SGD 逃离极小"建模为 <b>Kramers Escape Problem</b>。</div>
+
+    <div class="note-h">④ §4.1-4.2 FedAvg / FedAvgM 扩散动力学（定理1-2）</div>
+    <div class="note-b"><b>FedAvg（§4.1）：</b>服务器端等价 SGD，位移服从 \(x\sim\mathcal{N}(c,\Sigma(t))\)，沿第 \(i\) 特征方向方差 \(\theta_i^2(T)=\frac{|H_i|\eta^2\eta_l^2 T}{B}+O(\cdot)\)。<b>定理1（逃逸时间）：</b>\[\log(\tau_{\text{FedAvg}})=O\!\left(\frac{2B\Delta f}{\eta\eta_l H_{ae}}\right)\] \(B\)＝batch、\(\Delta f=f(b)-f(a)\)、下标 \(e\)＝逃逸方向。<b>FedAvgM（§4.2，式6）：</b>\(m_t=\beta m_{t-1}+\Delta_t,\ x_{t+1}=x_t+\eta m_t\)；<b>定理2：</b>\(\log(\tau_{\text{FedAvgM}})=O\!\left(\frac{2(1-\beta)B\Delta f}{\eta\eta_l H_{ae}}\right)\)。<b>关键结论：</b>二者皆 \(\log(\tau)=O(H_{ae}^{-1})\) → 原文 <i>"momentum has no impact on escaping from the minimum"</i>——动量只把逃逸时间缩 \((1-\beta)\) 倍，<b>不改变对 Hessian（尖锐度）的依赖标度</b>，即不损平坦极小选择。</div>
+
+    <div class="note-h">⑤ §4.3 FedAdam 扩散动力学（式8 + 定理3，为何快却泛化差）</div>
+    <div class="note-b"><b>更新（式8）：</b>\[m_t=\beta_1 m_{t-1}+(1-\beta_1)\Delta_t,\quad v_t=\beta_2 v_{t-1}+(1-\beta_2)\Delta_t^2,\quad x_{t+1}=x_t+\eta\frac{m_t}{\sqrt{v_t}+\epsilon}\] 鞍点附近 MSD 含动量漂移 + 扩散两项，<b>因自适应学习率用了二阶信息，两项近似 Hessian 无关、各向同性</b> → 原文 <i>"FedAdam escapes saddle points faster because both effects are approximately Hessian-independent and isotropic"</i>（这正是它收敛快的原因）。<b>定理3：</b>\[\log(\tau_{\text{FedAdam}})=O\!\left(\frac{2\sqrt{B}\,\Delta f}{\eta\eta_l \sqrt{H_{ae}}}\right)=O(H_{ae}^{-1/2})\] <b>致命点：</b>本地 SGD 是 \(O(H_{ae}^{-1})\)，而 FedAdam 全局是 \(O(H_{ae}^{-1/2})\) → <i>"the global update of FedAdam is less dependent on the Hessian and is inconsistent with the local update"</i>。\(H_{ae}\) 越大（极小越尖），FedAvg 的 \(\log\tau\) 降得比 FedAdam 多 → <b>FedAdam 更难分辨/逃离尖锐极小、选不出平坦极小 → 泛化差</b>。</div>
+
+    <div class="note-h">⑥ §5 FedAdamom 算法（自适应动量 + Algorithm 1）</div>
+    <div class="note-b"><b>核心 idea：</b>既然病根是"自适应学习率让逃逸 Hessian 无关 → 全局/本地不一致"，那就<b>把自适应施加到动量参数</b>而非学习率。<b>自适应动量（Lines 15-16）：</b>\[\beta_{1,t}=\left(1-\frac{v_t}{\bar v_t}\right)\cdot\text{Clip}(0,\,1-\epsilon),\quad \bar v_t=\frac1d\sum_{i=1}^d v_{t,i}\] \(\bar v_t\)＝\(v_t\) 全元素均值；\(\beta_{1,t}\) 从标量<b>泛化成向量</b>（<b>逐参数自适应</b>）。<b>动量与全局更新（Lines 17-18）：</b>\(m_t=\beta_{1,t}m_{t-1}+(1-\beta_{1,t})\Delta_t,\ x_{t+1}=x_t+\eta m_t\)。<b>Algorithm 1 流程：</b>客户端本地 K 步 SGD（\(x^i_{t,k+1}=x^i_{t,k}-\eta_l g^i_{t,k}\)）→ 传 \(\Delta x^i_t\) → 服务器聚合 \(\Delta_t=\frac1s\sum_{i\in S_t}\Delta x^i_t\) → 更新 \(v_t\) → 算逐参数 \(\beta_{1,t}\) → 更新 \(m_t,x_{t+1}\)。<b>注意：</b>更新公式里<b>没有 \(\sqrt{v_t}\) 除法</b>（不再自适应学习率），\(v_t\) 只用来算 \(\beta_{1,t}\)——这是与 FedAdam 的本质区别。</div>
+
+    <div class="note-h">⑦ §5.1 FedAdamom 动力学（定理4：回到 O(H⁻¹)）</div>
+    <div class="note-b"><b>鞍点附近 MSD：</b>\(\langle\Delta x_i^2\rangle=\frac{\sum_i|H_i|\eta^2\eta_l^2}{nB}+\frac{|H_i|\eta^2\eta_l^2 T}{B}+O(\cdot)\)，动量漂移项<b>各向同性、近似 Hessian 无关</b> → 仍能高效逃鞍点。<b>定理4（逃逸时间）：</b>\[\log(\tau_{\text{FedAdamom}})=O\!\left(\frac{2B\Delta f}{\eta\eta_l H_{ae}}\right)=O(H_{ae}^{-1})\] <b>关键：</b>与 FedAvg/本地 SGD <b>同标度 \(O(H_{ae}^{-1})\)</b> → 全局与本地逃尖锐极小<b>一致</b> → 倾向收敛平坦极小 → 泛化更好。<b>一句话总结两全：</b>动量漂移给了 FedAdam 式的快逃鞍点（Hessian 无关），而<b>不引入</b>自适应学习率对 Hessian 依赖的"抹平"，故保住平坦极小选择。</div>
+
+    <div class="note-h">⑧ §5.2 收敛分析（定理5，非凸 + 部分参与）</div>
+    <div class="note-b"><b>三假设：</b>本地损失 L-smooth；随机梯度无偏且方差有界 \(\mathbb{E}\lVert g^i_t-\nabla F_i\rVert^2\leq\sigma_l^2\)；客户端间梯度异质有界 \(\mathbb{E}\lVert\nabla F_i-\nabla f\rVert^2\leq\sigma_g^2\)。<b>定理5：</b>取 \(\eta_l=O(\frac{1}{LK\sqrt{T}})\)、\(\eta=O(\sqrt{sK})\)，则 \[\frac1T\sum_{t=0}^{T-1}\mathbb{E}\lVert\nabla f(x_t)\rVert^2\leq O\!\left(\frac{L\Theta_0}{\sqrt{sKT}}+\frac{\beta_{1,\max}}{1-\beta_{1,\max}}\Big(\frac{\sigma_l^2}{KT}+\frac{\sigma_g^2}{T}+\Psi\Big)\right)\] 匹配现有 FL 最优收敛率 \(O(1/\sqrt{sKT})\)。<b>亮点：</b>原文 <i>"our convergence proof is free from the bounded gradient assumption"</i>——不需 [40] 用的有界梯度假设，理论更干净。</div>
+
+    <div class="note-h">Q&amp;A · Method 细节追问</div>
+    <div class="note-b"><b>1) 为什么"自适应学习率"会削弱平坦极小选择？</b>因 \(m_t/\sqrt{v_t}\) 用二阶信息归一化，使逃逸的漂移/扩散近似 <b>Hessian 无关</b>（各向同性）→ 逃逸时间标度从 \(O(H_{ae}^{-1})\) 退化到 \(O(H_{ae}^{-1/2})\)，对"尖 vs 平"的区分变钝 → 选不出平坦极小。<b>2) 为什么动量自适应就没这问题？</b>动量只缩放逃逸时间的常数（\((1-\beta)\) 因子），<b>不改 Hessian 依赖标度</b>（定理2/4 都是 \(O(H_{ae}^{-1})\)）；而其漂移项又各向同性 → 兼得快逃鞍点。<b>3) \(\beta_{1,t}=(1-v_t/\bar v_t)\) 的直觉？</b>某参数的 \(v_t\)（二阶矩）若高于均值 \(\bar v_t\)（梯度方差大/不稳），则 \(\beta_{1,t}\) 变小 → 少用历史动量、更信当前；反之方差小则多用动量。Clip 到 \([0,1-\epsilon]\) 保稳定。<b>4) 为何逐参数（向量化 \(\beta_{1,t}\)）？</b>不同参数维度尖锐度不同，逐参数自适应动量能针对性调节。<b>5) 通信开销？</b>只传模型参数（与 FedAvg 同），不像 FedCAda 要 3× 通信。</div>
+
+    <div class="note-h">⑨ §6 实验设置 + baselines</div>
+    <div class="note-b"><b>数据集：</b>CIFAR-10/100、TinyImageNet（Dirichlet α 切分，α 小＝更异质）；LEAF 真实非 i.i.d.（FEMNIST 特征偏斜、CelebA、Shakespeare 下一词预测）。<b>模型：</b>ResNet-18（CIFAR/TinyImageNet）、类 LeNet-5 的 CNN、LSTM（Shakespeare）。<b>baselines（8 个）：</b>FedAvg、FedAvgM、FedAdam、FedYogi、FedAdagrad、FAFED、FedCAda、FADAS。<b>两规模：</b>(i) 中等＝100 客户端、5% 参与；(ii) 大规模＝500 客户端、2% 参与（每户数据为中等设定的 1/5 以保总量一致）。<b>注意 baseline 缺陷：</b>FedCAda 需 <b>3× 通信</b>（传模型+梯度信息）且对高异质敏感；FAFED 为全参与设计、部分参与下退化明显。</div>
+
+    <div class="note-h">⑩ §6.2/6.4 主结果（真实数值）</div>
+    <div class="note-b"><b>中等规模（Table 1，100 客户端 5%；Rounds↓ 达标轮数 / Acc@500R,1000R）：</b><br>┃ 数据集 ┃ 方法 ┃ Acc@1000R ┃<br>┃ CIFAR-10 ┃ FedAdam ┃ 87.31 ┃<br>┃ CIFAR-10 ┃ <b>FedAdamom</b> ┃ <b>88.93</b> ┃<br>┃ CIFAR-100 ┃ FedAdam ┃ 53.67 ┃<br>┃ CIFAR-100 ┃ <b>FedAdamom</b> ┃ <b>57.58</b> ┃<br>┃ Tiny-IN ┃ FedAdam ┃ 41.75 ┃<br>┃ Tiny-IN ┃ <b>FedAdamom</b> ┃ <b>47.38</b> ┃<br>→ CIFAR-100/TinyImageNet 提升尤大（+3.9 / +5.6 pt vs FedAdam）；达标轮数也少（CIFAR-100 达 45% 仅 276 轮 vs FedAdam 390）。<b>LEAF 真实数据（Table 3，Acc）：</b>FEMNIST <b>82.85</b>（500R）、CelebA <b>89.95</b>、Shakespeare <b>48.02</b>，多数最佳，证对特征偏斜/数据不均衡鲁棒。原文：改进源于 <i>"adaptive momentum parameters, which strengthen the selection of flat minima while preserving efficient saddle point escaping ability."</i></div>
+
+    <div class="note-h">⑪ §6.3 分析实验（β2 敏感 / loss landscape / escape time）</div>
+    <div class="note-b"><b>β2 敏感性（Table 2，CIFAR-10 1000 轮）：</b>β2∈{0.01,0.05,0.1,0.2,0.3}，Dir(0.3) 准确率 88.75/88.93/88.73/88.42/88.13、i.i.d. 91.73/91.83/91.47/91.41/91.32 —— <b>很稳定</b>，\(\beta_2=0.05\) 峰值。<b>Loss landscape（Fig.2）：</b>用 [24] 可视化，FedAdamom 收敛到比 FedAdam <b>显著更平坦</b>的全局极小（net vs solid），证"学到平坦极小"。<b>逃逸时间实证（Fig.3，Styblinski-Tang 函数，100 次重复，\(\Gamma=(100-2)/\sum t_i\)）：</b>FedAdamom 与 FedAvgM 满足 \(-\log(\Gamma)=O(k^{-1})\)，而 FedAdam 满足 \(O(k^{-1/2})\)（Pearson≈0.998）——<b>定量验证定理3/4 的 Hessian 依赖标度差异</b>，即 FedAdam 逃尖锐极小确实更不依赖 Hessian。</div>
+
+    <div class="note-h">⚠ 诚实边界 / 疑问待核</div>
+    <div class="note-b">① <b>理论依赖强假设：</b>二次近似（临界点附近）、准平衡、低温——都是扩散理论标准假设，但真实深网损失面未必满足，逃逸时间标度是<b>渐近/局部</b>结论。② <b>"most cases" 而非全胜：</b>原文用 <i>"in most cases"</i>；Table 1 个别格（如 CIFAR-10 收敛轮数）FedCAda/FADAS 早期更快，FedAdamom 主要赢在<b>最终准确率 + 高异质鲁棒</b>。③ <b>大规模整体掉点：</b>原文承认 500 客户端 2% 参与时整体性能低于中等规模（每户样本更少、更异质），FedAdamom 只是"仍较鲁棒"。④ [推测] \(\beta_{1,t}=(1-v_t/\bar v_t)\) 的设计偏经验启发，论文未给"为何这个具体形式最优"的理论必然性。⑤ 论文<b>无独立 Limitation 节</b>，未系统讨论自适应动量在极端重尾噪声或对抗异质下的失败模式。</div>
+
+    <div class="note-h">📌 全文一页总结（problem→method→experiment→takeaway）</div>
+    <div class="note-b"><b>problem：</b>FedAdam 等自适应联邦优化<b>收敛快但泛化差</b>，且机理不明；FL 里本地/全局损失面因数据异质<b>不一致</b>，本地偏好平坦不保证全局泛化。</div>
+    <div class="note-b"><b>method：</b>引入扩散理论（Langevin + Fokker-Planck + Kramers）分析逃逸时间——证 FedAvg/FedAvgM 是 \(O(H_{ae}^{-1})\)（动量不改标度），FedAdam 因自适应学习率近似 Hessian 无关变 \(O(H_{ae}^{-1/2})\)（快逃鞍点但选不出平坦极小、与本地不一致）；据此提 <b>FedAdamom</b>：把自适应施加到<b>动量超参</b> \(\beta_{1,t}=(1-v_t/\bar v_t)\cdot\text{Clip}\)（逐参数向量化），更新 \(x_{t+1}=x_t+\eta m_t\)（无 \(\sqrt{v_t}\) 除法），定理4 证回到 \(O(H_{ae}^{-1})\)，定理5 给非凸部分参与收敛率且免有界梯度假设。</div>
+    <div class="note-b"><b>experiment：</b>CIFAR-10/100/TinyImageNet + LEAF（FEMNIST/CelebA/Shakespeare）上准确率与收敛速度多数最佳（CIFAR-100 +3.9pt、TinyImageNet +5.6pt vs FedAdam）；loss landscape 更平坦；escape-time 实证 \(O(k^{-1})\) vs FedAdam \(O(k^{-1/2})\)（Pearson≈0.998）；β2 鲁棒；不增通信/本地计算。</div>
+    <div class="note-b"><b>takeaway：</b>① <b>用扩散理论的逃逸时间标度</b> \(O(H_{ae}^{-1})\) vs \(O(H_{ae}^{-1/2})\) 精准刻画"快收敛 vs 好泛化"的张力，是本文最硬的理论贡献；② <b>病根在自适应学习率</b>（抹平 Hessian 依赖）而非动量——这是反直觉且最可迁移的 insight；③ <b>把自适应从学习率挪到动量</b>即可两全（快逃鞍点 + 强平坦选择），且零额外通信；④ 理论标度被 escape-time 实验直接验证（Pearson≈0.998），理论-实验闭环漂亮。<b>适用边界：</b>依赖二次/准平衡/低温假设；"most cases"非全胜；大规模低参与整体掉点；自适应动量形式偏经验。</div>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-fedadamom-adaptive-momentum-for-improved-generalization/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Comparison of FedAvg(net) and FedAdam(solid) loss landscapes with varying degrees of data heterogeneity (α) on the CIFAR-10 datasets. The effectiveness of FedAdam and FedAvg in converging to global flat minima is highly influenced by data heterogeneity, with higher heterogeneity (α ↓) leading to conver- gence toward sharper minima. This highlights the importance of optimizing global shar</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-fedadamom-adaptive-momentum-for-improved-generalization/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Loss landscapes of models trained with FedAdamom (net) vs. FedAdam and FedAvgM (solid) on CIFAR10. FedAdamom achieves flatter minima and lower loss values w.r.t. FedAdam and FedAvgM .</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-fedadamom-adaptive-momentum-for-improved-generalization/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Flat Minima Selection: The log-scale mean escape time −log(Γ) with the 95% confidence interval is displayed. We empirically verify that FedAdamom and FedAvgM satisfy −log(Γ) = O(k−1) but FedAdam dose not. Instead, wo observe that −log(Γ) = O(k−1</figcaption></figure>
+    </div>
+  </div></body></html>

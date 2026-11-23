@@ -1,0 +1,192 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>DIFIX3D+: Improving 3D Reconstructions with Single-Step Diffusion Models</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2025</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>DIFIX3D+: Improving 3D Reconstructions with Single-Step Diffusion Models</h1>
+    <div class="au2" style="color:var(--mut)">Jay Zhangjie Wu · Yuxuan Zhang · Haithem Turki · Xuanchi Ren · Jun Gao · Mike Zheng Shou · Sanja Fidler · Zan Gojcic · Huan Ling</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2025/papers/Wu_DIFIX3D_Improving_3D_Reconstructions_with_Single-Step_Diffusion_Models_CVPR_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=DIFIX3D%2B%3A%20Improving%203D%20Reconstructions%20with%20Single-Step%20Diffusion%20Models">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2025-difix3d-improving-3d-reconstructions-with-single-step-d -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">用一个 <b>单步扩散模型 DIFIX</b>（基于 SD-Turbo 微调）去"修"NeRF/3DGS 在极端新视角下的伪影：既在<b>重建阶段</b>把渲染出的 pseudo-view 清洗干净再 distill 回 3D（DIFIX3D 渐进更新），又在<b>推理阶段</b>当实时神经增强器（DIFIX3D+，A100 上仅 +76ms）。同一个模型通吃 NeRF 与 3DGS，<b>FID 平均提升 ~2×、PSNR &gt;1dB</b>，且保持 3D 一致性。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">NeRF/3DGS 在训练视角附近很好，但<b>远离输入相机的欠约束区/极端新视角</b>持续出现伪影（spurious geometry、缺失区域）。根因（原文）：① <b>per-scene 优化</b>需要精挑的 view-consistent 数据，易陷 <b>shape-radiance ambiguity</b>（训练图能被一个"几何错误但能重现训练图"的 3D 表示完美还原）；② 无数据先验 ⇒ 欠约束区只能靠表示自身的 smoothness、无法 hallucinate 合理几何/外观。2D 扩散模型有互联网级先验、泛化好，但"how to lift 2D priors to 3D remains unclear"——已有法<b>每个训练步都 query 扩散模型</b>，偏 object-centric、对大场景 scale 差、慢。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b">① <b>DIFIX = 单步扩散 artifact fixer</b>（§4.1）：基于 SD-Turbo（单步、可实时）做 image-to-image，<b>冻结 VAE encoder + LoRA 微调 decoder</b>（仿 Pix2pix-Turbo）。<b>关键 insight</b>：NeRF/3DGS 伪影图的分布 ≈ 扩散训练时某噪声级 τ 的 xτ 分布 ⇒ <b>直接把退化渲染图当输入、只在 τ=200 做单步"去噪"</b>（非 1000，Fig.4 验证 τ=200 最佳：太高改变内容、太低修不掉）。② <b>Reference mixing layer</b>：把最近训练视角当 clean 参考，concat 到 view 维 z∈R^{V×C×H×W}，把 view 轴并进空间轴做 self-attention（rearrange b c v (hw)→b c (vhw)→attn→还原）捕跨视一致，<b>复用原 2D self-attention 权重</b>。③ <b>损失</b>：L=L_Recon(L2)+L_LPIPS+0.5·L_Gram；Gram loss（式4-5）=VGG-16 特征自相关 Gˡ(I)=ϕˡ(I)ᵀϕˡ(I) 的 L2 → 更锐细节。④ <b>DIFIX3D 渐进 3D 更新</b>（§4.2，仿 Instruct-NeRF2NeRF）：每 1.5k 迭代把 GT 位姿向目标轻微扰动→渲染→DIFIX 修→加入训练集，逐步"长大"参考与目标间的 3D 线索重叠，使条件信号始终够强、少 hallucinate。⑤ <b>DIFIX3D+ 实时后处理</b>：渲染末端再过一遍 DIFIX 去残余伪影，单步仅 76ms（比多步扩散快 &gt;10×）。⑥ <b>配对数据 curation</b>（Table 1）：sparse reconstruction / cycle reconstruction（驾驶近直线轨迹，横移 1-6m 训第二个 NeRF 造退化）/ model underfitting（只训 25%-75% epoch 造显著伪影）/ cross reference（多相机互渲）。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">In-the-wild（Nerfbusters+DL3DV）：两个变体相对各自 NeRF/3DGS backbone <b>LPIPS 降 ~0.1、FID 降近 3×、PSNR 升 ~1dB</b>。Nerfbusters 上 Nerfacto 17.29/0.62/0.40/134.65（PSNR/SSIM/LPIPS/FID）→ DIFIX3D+ 18.32/0.66/0.279/<b>49.44</b>；3DGS 17.66/0.68/0.33/113.84 → DIFIX3D+ 18.51/0.69/0.264/<b>41.77</b>。驾驶 RDS（自建）：Nerfacto 19.95/.49/.53/91.38 → +DIFIX3D+ 21.75/.58/.402/<b>73.08</b>，全面超 NeRFLiX。消融关键：噪声级 1000→200 单这一项就把 LPIPS 0.381→0.319、FID 108.86→61.80；再加 Gram、Reference 进一步到 0.2996/47.87。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 一个单步模型<b>身兼两职</b>——训练期 distill 清洗 + 推理期实时增强；② "伪影分布≈扩散噪声分布@τ=200"的洞察，把"修伪影"变成"轻量单步去噪"；③ 渐进 3D 更新让<b>极端新视角也能保持长程一致</b>（比直接 query 扩散快 &gt;10×）；④ NeRF/3DGS 同一模型通吃；⑤ 微调只需单张消费级显卡几小时。</div>
+    <div class="note-h">疑问 / 边界（原文标注 / 推断）</div>
+    <div class="note-b">① <b>"实时 76ms"是指推理后处理那一步</b>（A100）；DIFIX3D 渐进更新本身是训练期流程、非实时。② 生成模型天然多视不一致：目标轨迹太远时条件变弱仍会 hallucinate，post-render 是"兜底"而非根治（原文 Fig.8 显示直接用 DIFIX 会 flickering，必须 distill 回 3D）。③ <b>RDS 驾驶数据集自建非公开</b> → 该结果外部不可复现。④ PSNR 增益温和（~1dB，DL3DV 仅 17.16→17.82），<b>真正大赢在感知指标 FID/LPIPS</b>（PSNR 对色偏敏感、说明保真未退）。⑤ 增量更新是必需：一次性灌入全部 pseudo-view 会使 LPIPS/FID 退化（Table 4 自证）。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文，PyMuPDF 提取）。原文英文原句引用 + 中文指路 + 追问 why。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句拆解</div>
+    <div class="note-b"><b>原文：</b>“achieving photorealistic rendering from extreme novel viewpoints remains challenging, as artifacts persist across representations.” → <b>痛点</b>：极端新视角伪影，且 NeRF/3DGS <b>跨表示</b>都有。</div>
+    <div class="note-b"><b>原文：</b>“DIFIX, a single-step image diffusion model trained to enhance and remove artifacts in rendered novel views caused by underconstrained regions of the 3D representation.” → <b>主角 DIFIX</b>：单步扩散，专修"欠约束区"造成的伪影。</div>
+    <div class="note-b"><b>原文：</b>“First, it is used during the reconstruction phase to clean up pseudo-training views ... distilled back into 3D ... More importantly, DIFIX also acts as a neural enhancer during inference.” → <b>同一模型身兼两职</b>：① 重建期清洗 pseudo-view 再 distill 回 3D；② 推理期当实时神经增强器。原文进一步点明推理期增强修的是什么：“effectively removing residual artifacts arising from imperfect 3D supervision and the limited capacity of current reconstruction models.” → 即"不完美 3D 监督"+"重建模型容量有限"两类<b>残余</b>伪影。</div>
+    <div class="note-b"><b>原文：</b>“a single model compatible with both NeRF and 3DGS ... achieves an average 2× improvement in FID score over baselines while maintaining 3D consistency.” → 通用（NeRF+3DGS 通吃）+ FID 2× + 保 3D 一致。<b>逐句抓 Abstract</b>：单步扩散修伪影 → 训练 distill + 推理增强 → NeRF/3DGS 通吃 → FID 2×、PSNR &gt;1dB、保一致。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文，理解 DIFIX3D+ 必备）</div>
+    <div class="note-b"><b>① NeRF / 3DGS 体渲染（式1-2）：</b>NeRF 用坐标 MLP 编码场景，沿光线积分颜色 C(p)=Σαᵢcᵢ∏(1−αⱼ)（式1，αᵢ=1−exp(−σᵢδᵢ)）；3DGS 用高斯粒子（位置µ/旋转 r/尺度 s/不透明度 η/颜色 c），同一体渲染式但 αᵢ=ηᵢexp(−½(p−µᵢ)ᵀΣ⁻¹(p−µᵢ))（式2，Σ=RSSᵀRᵀ）。<b>共性</b>：都是 <b>per-scene 优化</b>、无跨场景数据先验。</div>
+    <div class="note-b"><b>② shape-radiance ambiguity（NeRF++ [86] 提出，本文病根之一）：</b>训练图能被一个"几何并不正确、但靠 view-dependent 颜色硬记训练图"的 3D 表示<b>完美重现</b> → 训练视角看着好、一换新视角就崩。原文：“training images can be perfectly regenerated from a 3D representation that does not necessarily respect the underlying geometry.” 无数据先验时这是 per-scene 优化的根本缺陷——欠约束区只能靠表示自身的 smoothness，无法 hallucinate 合理几何/外观。</div>
+    <div class="note-b"><b>③ 扩散模型 + 去噪分数匹配（式3）：</b>对数据加噪 <b>xτ=ατx+στϵ</b>（ϵ~N(0,I)），训练 denoiser Fθ 最小化 ‖y−Fθ(xτ;c,τ)‖²（式3，y 通常=噪声 ϵ），τ~U(0,1000)，<b>τ=1000≈纯高斯噪声</b>。<b>SD-Turbo</b>（[49]，adversarial diffusion distillation）=对抗蒸馏出的<b>单步</b>扩散（一步出图，原本擅长 inpaint/outpaint）。<b>Pix2pix-Turbo</b>（[40]）=用 SD-Turbo 做单步 image-to-image（<b>冻 VAE encoder + LoRA 微调 decoder</b>）。DIFIX 即此范式 + reference mixing + 低噪声 τ=200。</div>
+    <div class="note-b"><b>④ 两条"2D 先验 lift 到 3D"路线（§2 Related Work）：</b><b>(A) 每步 query 扩散</b>（DreamFusion[41]/Zero-1-to-3[25]/ReconFusion[72]/SparseFusion[89]）——把扩散当 scorer 在<b>每个优化步</b>打分指导 3D，慢、偏 object-centric、对大场景 scale 差；<b>(B) distill pseudo-view</b>（Deceptive-NeRF[27]/3DGS-Enhancer[28]）——只渲一批伪观测、用扩散清洗后增广训练集，<b>不必每步 query</b>、省。<b>本文属 (B)</b>，但加两点：① <b>渐进 3D 更新</b>保长程一致；② <b>同模型在训练期+推理期都用</b>。</div>
+
+    <div class="note-h">②″ §2 Related Work — 确定性方法为何在"模糊区"失败 &amp; 本文与 distill 路线的两点分野</div>
+    <div class="note-b"><b>① 训练期"修输入不一致" ≠ 根治：</b>原文 “Most 3D reconstruction methods assume perfect input data, yet real-world captures often include slight inconsistencies that lead to artifacts and blurriness when distilled into a 3D representation.” 一类工作优化相机位姿/光照/瞬态遮挡补偿，但 “While these methods compensate for input data inconsistencies during training, they do not entirely eliminate them.” → 这正是本文<b>在 render time 也加 fixer</b> 的动机。<b>② 确定性 feed-forward 为何糊：</b>NeRFLiX[88] 等聚合邻近参考视的<b>确定性</b>方法，原文 “While these deterministic methods perform well near reference views, they often produce blurry results in ambiguous regions where the distribution of possible renderings is inherently multimodal.” —— 欠观测区"可能的渲染"本是<b>多峰分布</b>，确定性回归只能取均值 → 糊；<b>生成式</b>（扩散）才能采到清晰的某一峰，这是本文用扩散而非回归的根本理由。</div>
+    <div class="note-b"><b>本文 vs Deceptive-NeRF[27]/3DGS-Enhancer[28]（同属 distill pseudo-view 路线）：</b>原文 “we diverge in two key aspects: (i) we introduce a progressive 3D update pipeline that effectively corrects artifacts even in extreme novel views while preserving long-range consistency and (ii) we use our model both during optimization and at render-time, leading to improved visual quality.” → 两点分野 = <b>渐进 3D 更新（保极端视角长程一致）</b> + <b>训练期与渲染期同模型双用</b>。对照 GANeRF[46] = per-scene GAN（每场景重训），泛化不如互联网级扩散先验。</div>
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环（Intro 已自包含）</div>
+    <div class="note-b"><b>problem：</b>NeRF/3DGS 训练视角附近好，但欠观测/极端视角持续伪影（spurious geometry、missing regions）；根因=per-scene 优化 + shape-radiance ambiguity + 无先验难 hallucinate。2D 扩散有互联网级先验、泛化好，但 “the best way to lift these 2D priors to 3D remains unclear”——已有"每步 query"法慢且 scale 差。</div>
+    <div class="note-b"><b>solution（Intro 即给 method）：</b>“build upon recent advances in single-step diffusion ... with minimal fine-tuning, be adapted to 'fix' artifacts present in NeRF/3DGS renderings”；训练期用 DIFIX 造 pseudo-view distill 回 3D 改善欠约束区；因单步够快，推理期再对改进后重建的输出过一遍 DIFIX 做实时后处理（DIFIX3D+）。</div>
+    <div class="note-b"><b>why（为什么能又快又好，四连环）：</b>① 单步 ⇒ 76ms 可实时（比多步快 &gt;10×）；② "伪影≈τ=200 噪声" ⇒ 轻量修不乱改内容；③ 渐进更新 ⇒ 条件信号随 3D 线索重叠增长而变强、极端视角也一致；④ distill 回 3D ⇒ 多视一致（直接逐帧 DIFIX 会 flicker）。<b>★ Intro 已闭环</b>。</div>
+    <div class="note-b"><b>四点贡献（原文）：</b>(i) 极小代价把 2D 扩散适配成"修 3D 渲染伪影"，单消费级显卡几小时、同模型通吃 NeRF/3DGS；(ii) 渐进 distill 回 3D 保多视一致，比"每步 query"快 &gt;10×；(iii) 单步扩散使近实时后处理成为可能；(iv) PSNR +&gt;1dB、FID +&gt;2×。</div>
+
+    <div class="note-h">③ §4.1 DIFIX 架构（SD-Turbo + 冻 VAE + LoRA + reference mixing）</div>
+    <div class="note-b"><b>整体（Fig.3）：</b>输入=退化渲染图 Ĩ（可能含伪影）+ 一组 clean 参考视 I_ref（取<b>最近训练视</b>），输出精修 Î。基座=SD-Turbo（单步、可实时），<b>冻 VAE encoder + LoRA 微调 decoder</b>（仿 Pix2pix-Turbo）。<b>why 这样微调</b>：保留预训练的互联网级视觉知识（encoder 冻），只在输出端轻量适配（LoRA）→ 防过拟合 + 省算力。注：DIFIX 也会输出和参考视相同的图，实际丢弃（Fig.3 画透明）。</div>
+    <div class="note-b"><b>Reference mixing layer（把 2D self-attn 改成跨视）：</b>concat 新视 Ĩ 与参考视 I_ref 到新增的 view 维，frame-wise 编码 z=E((Ĩ,I_ref))∈R^{V×C×H×W}。然后（einops）<b>rearrange(z, b c v (hw) → b c (vhw)) → self-attn → rearrange 回</b>——即把 view 轴<b>并进空间轴</b>，让 self-attention 一次看到所有视角的所有空间位置 → 捕跨视依赖。<b>关键巧处</b>：这样能<b>原样继承 2D self-attention 的权重</b>（“inherit all module weights from the original 2D self-attention”）。<b>why 有用</b>：参考视是 clean 的，注意它 → 把正确的物体/颜色/纹理"抄"进退化区，尤其当新视严重退化时。</div>
+
+    <div class="note-h">③′ Reference mixing 维度走一遍（为何能"白嫖"原 2D self-attention 权重）</div>
+    <div class="note-b"><b>输入张量：</b>把目标新视 Ĩ 和参考视沿新增 view 维拼起来，frame-wise 过 VAE encoder → <b>z∈R^{V×C×H×W}</b>（C=latent 通道数、V=参考视+目标视总数、H/W=latent 空间尺寸）。<b>einops 三步（原文逐字）：</b>“z′ ← rearrange(z, b c v (hw) → b c (vhw)); z′ ← lϕⁱ(z′, z′); z′ ← rearrange(z′, b c (vhw) → b c v (hw))”，其中 lϕⁱ 是作用在 vhw 维上的 self-attention。即把 <b>view 轴 v 并进空间轴 (hw)</b> 得到长度 v·h·w 的序列，对它做<b>普通 self-attention</b>，再拆回 v 与 (hw)。<b>why 能继承权重：</b>attention 仍是在"一个一维序列"上做（只是序列里混进了别视角的 token），算子签名与原 2D self-attention 完全一致 → “This design allows us to inherit all module weights from the original 2D self-attention.” <b>效果：</b>退化新视的 token 能直接 attend 到 clean 参考视的 token，把正确物体/颜色/纹理"抄"过来——原文 “effective for capturing key information (e.g., objects, color, texture) from reference views, especially when the quality of the original novel view is severely degraded.”</div>
+    <div class="note-h">④ §4.1 噪声级洞察（全文最核心 insight：伪影 ≈ τ=200 的 xτ）</div>
+    <div class="note-b"><b>insight 原文：</b>“the distribution of images degraded by neural rendering artifacts Ĩ <b>resembles the distribution of images xτ</b> originally used to train the diffusion model at a specific noise level τ.” —— NeRF/3DGS 伪影图（模糊/floaters/缺失）<b>统计上像</b>扩散训练时某噪声级 τ 的半噪声图 xτ。所以：直接把退化渲染图<b>当作 x_{τ=200}</b> 喂进去、做<b>单步去噪</b>，就能修掉伪影（而非从纯噪声 τ=1000 生成）。</div>
+    <div class="note-b"><b>Fig.4 实证（预训练 SD-Turbo 单步去噪扫 τ，越高/越低都差）：</b></div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:12px;margin:2px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c">τ</td><td style="border-bottom:1px solid #2a2f5c">1000</td><td style="border-bottom:1px solid #2a2f5c">800</td><td style="border-bottom:1px solid #2a2f5c">600</td><td style="border-bottom:1px solid #2a2f5c">400</td><td style="border-bottom:1px solid #2a2f5c">200</td><td style="border-bottom:1px solid #2a2f5c">10</td></tr>
+<tr><td style="padding:2px 6px">PSNR↑</td><td>12.18</td><td>13.63</td><td>15.64</td><td>17.05</td><td style="color:#ffd35c"><b>17.73</b></td><td>17.72</td></tr>
+<tr><td style="padding:2px 6px">SSIM↑</td><td>0.4521</td><td>0.5263</td><td>0.6129</td><td>0.6618</td><td style="color:#ffd35c"><b>0.6814</b></td><td>0.6752</td></tr>
+</table></div>
+    <div class="note-b"><b>读表 + why：</b><b>τ=600</b> 能去伪影但 “alters the image context”（噪声当太多 → 模型自由 hallucinate → 改了内容、与 GT 矛盾，PSNR 仅 15.64）；<b>τ=10</b> “makes only minor adjustments, leaving most artifacts intact”（几乎没去伪影，PSNR 17.72 高是因为没动原图，但 SSIM 0.6752 略低、伪影还在）；<b>τ=200 兼顾</b>（去伪影 + 保内容，PSNR/SSIM 均最高）。故 DIFIX <b>固定 τ=200</b>。</div>
+    <div class="note-b"><b>损失：</b>L=L_Recon(L2 to GT)+L_LPIPS+<b>0.5·L_Gram</b>。<b>Gram loss（式4-5）</b>=Σˡ βˡ‖Gˡ(Î)−Gˡ(I)‖²，Gˡ(I)=ϕˡ(I)ᵀϕˡ(I)（VGG-16 第 l 层特征的<b>自相关矩阵</b>）。<b>why Gram</b>：Gram 矩阵编码"纹理统计"（特征通道间相关），匹配它 → 鼓励<b>锐利细节/纹理</b>，弥补 L2/LPIPS 偏糊的倾向。</div>
+
+    <div class="note-h">⑤ §4.1.1 配对数据 curation（4 策略造"伪影↔clean"对，Table 1）</div>
+    <div class="note-b"><b>为什么需要多策略：</b>训练 DIFIX 需大量 (含伪影图, clean GT) 配对。最直接的 <b>sparse reconstruction</b>（每 n 帧训一个 3D，其余帧当 novel）只在 <b>DL3DV</b>（轨迹偏离大）好用；多数 NVS 数据集 held-out 视角仍看同一区域 → 退化不显著。故补三招：</div>
+    <div class="note-b"><b>① Sparse Reconstruction</b>：每 n 帧训 3D、剩余 GT 配渲染 novel（DL3DV）。<b>② Cycle Reconstruction</b>（驾驶近直线轨迹）：先在原轨迹训 NeRF → 渲染<b>横移 1-6m</b> 的轨迹 → 用这些图训第二个 NeRF → 再用它渲<b>原轨迹</b>（有 GT）的退化图。<b>③ Model Underfitting</b>：只训 <b>25%-75%</b> epoch 造比 hold-out 更显著的伪影，配对应 GT。<b>④ Cross Reference</b>（多相机）：只用一个相机训、渲其余 held-out 相机（选 ISP 相近的保视觉一致）。<b>配置（Table 1）</b>：DL3DV 用 ①③；驾驶 RDS 用 ②③④。</div>
+
+    <div class="note-h">⑥ §4.2 DIFIX3D 渐进更新 + DIFIX3D+ 实时后处理</div>
+    <div class="note-b"><b>为什么不能只逐帧 DIFIX？</b>原文：生成模型天然 “inconsistencies across different poses/frames”——逐帧独立修 → 每帧修法不同 → <b>跨帧 flickering</b>（Fig.8 第一列直接 DIFIX）。解法=把 DIFIX 输出 <b>distill 回 3D 表示</b>，让 3D 表示充当"多视一致性的强制器"。</div>
+    <div class="note-b"><b>DIFIX3D 渐进更新（仿 Instruct-NeRF2NeRF [14]）：</b>“当目标轨迹离输入太远，conditioning 变弱、模型被迫 hallucinate 更多”。故<b>渐进</b>：先用参考视优化 3D → 每 <b>1.5k iter</b> 把 GT 位姿<b>轻微</b>向目标扰动 → 渲染 novel → DIFIX 精修（此时步子小、conditioning 强、少 hallucinate）→ 加入训练集 → 再 1.5k iter。逐步"长大"参考↔目标的 3D 线索<b>重叠</b> ⇒ conditioning 始终够强 ⇒ 一致且无伪影。</div>
+    <div class="note-b"><b>DIFIX3D+ 实时后处理：</b>即便 distill 后，因生成轻微多视不一致 + 重建表示容量有限，仍有残余模糊 → 渲染<b>末端再过一遍 DIFIX</b> 去残余伪影。单步仅 <b>76ms（A100）</b>，比多步扩散快 &gt;10×，且保持一致。</div>
+
+    <div class="note-h">⑥′ 具体化：渐进更新 + 三步流水线走一遍（Fig.2）</div>
+    <div class="note-b"><b>给定</b>蓝相机=训练视、红相机=目标视（远）、橙相机=沿渐进轨迹的中间 novel 视。<b>Step 1</b>：用预训练 3D 渲染一个橙视（位姿=训练视向目标插值一小步）→ 喂 DIFIX（+最近训练视当参考）→ 去伪影得 clean 橙视。<b>Step 2</b>：把这张 clean 橙视 distill 回 3D（加入训练集再训 1.5k iter）→ 3D 表示在该方向"长"出可靠几何。<b>重复 Step 1-2</b>：橙相机一步步逼近红相机，每步条件都强（因为只比上一步远一点点）→ 参考↔目标 3D 线索重叠持续扩大。<b>Step 3</b>：最终在红目标视渲染后，再过一遍 DIFIX 做 76ms 后处理去残余模糊。<b>关键</b>：若跳过中间橙视、直接在远红视 query DIFIX，条件太弱 → 大面积 hallucinate → 不一致（这正是 Table 4(b) 一次性 distill 退化的原因）。</div>
+
+    <div class="note-h">Q&amp;A · 几个 why 追问</div>
+    <div class="note-b"><b>0 为什么"distill 回 3D"就能强制多视一致？</b>3D 表示（NeRF MLP / 3DGS 高斯集）是<b>单一的、几何自洽的</b>场景——从它渲染任意视角都来自同一套底层几何/颜色，<b>天然多视一致</b>。把 DIFIX 的（各帧略不一致的）输出当监督去优化这<b>一个</b> 3D 表示，相当于让 3D 表示对多帧做"一致性平均/调和" → 再从它渲染就不 flicker 了。逐帧独立 DIFIX 没有这个共享几何，故会闪。</div>
+    <div class="note-b"><b>1 为什么用单步而非多步扩散？</b>多步去噪慢，无法实时后处理；SD-Turbo 已用对抗蒸馏把扩散压成单步 → 一步出图 76ms。这是"推理期也能用同一模型当增强器"的前提。</div>
+    <div class="note-b"><b>2 同一个 DIFIX 为何能通吃 NeRF 和 3DGS？</b>训练数据<b>1:1 混合</b>两种伪影；且 NeRF/3DGS 伪影本质都是欠约束区的 floaters/blur/missing，统计上都落在 τ=200 噪声分布附近 → 同一去噪映射可修。</div>
+    <div class="note-b"><b>3 为什么 PSNR 只 +1dB 而 FID 2-3×？</b>PSNR 是逐像素、对<b>色偏</b>敏感；DIFIX 的提升主要在<b>感知</b>（锐度、合理纹理、去 floaters）→ 体现在 LPIPS/FID。PSNR <b>升而非降</b> 恰好排除"瞎编内容"（若 hallucinate 错内容 PSNR 会掉）→ 证明保真未退、是真改善。</div>
+    <div class="note-b"><b>4 reference view 怎么选、为何只取最近训练视？</b>取<b>最近训练视</b>——它最 clean、与目标视空间重叠最多 → 给跨视 attention 提供最可靠的"正确答案"参照。</div>
+
+    <div class="note-h">⑦ §5 实验 — 关键数值表（In-the-wild，PSNR↑/SSIM↑/LPIPS↓/FID↓）</div>
+    <div class="note-b"><b>设置：</b>在 DL3DV 80% 场景（112/140）造 8 万对 noisy-clean（NeRF:3DGS=1:1）训 DIFIX；在 DL3DV 28 held-out + Nerfbusters 12 capture 上评测，参考/目标视按相机位置分两簇保证大偏离。<b>Table 2（粗体=最佳）</b>：</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:11.5px;margin:2px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c">方法</td><td style="border-bottom:1px solid #2a2f5c" colspan="4">Nerfbusters</td><td style="border-bottom:1px solid #2a2f5c" colspan="4">DL3DV</td></tr>
+<tr style="color:#9aa3c7"><td style="padding:2px 6px"></td><td>PSNR</td><td>SSIM</td><td>LPIPS</td><td>FID</td><td>PSNR</td><td>SSIM</td><td>LPIPS</td><td>FID</td></tr>
+<tr><td style="padding:2px 6px">NeRFLiX</td><td>17.91</td><td>0.656</td><td>0.346</td><td>113.6</td><td>17.56</td><td>0.610</td><td>0.359</td><td>80.7</td></tr>
+<tr><td style="padding:2px 6px">Nerfacto</td><td>17.29</td><td>0.621</td><td>0.402</td><td>134.7</td><td>17.16</td><td>0.581</td><td>0.430</td><td>112.3</td></tr>
+<tr><td style="padding:2px 6px">DIFIX3D (Nerfacto)</td><td>18.08</td><td>0.653</td><td>0.328</td><td>63.8</td><td>17.80</td><td>0.596</td><td>0.327</td><td>50.8</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 6px"><b>DIFIX3D+ (Nerfacto)</b></td><td><b>18.32</b></td><td><b>0.662</b></td><td><b>0.279</b></td><td><b>49.4</b></td><td><b>17.82</b></td><td>0.613</td><td><b>0.283</b></td><td><b>41.8</b></td></tr>
+<tr><td style="padding:2px 6px">3DGS</td><td>17.66</td><td>0.678</td><td>0.327</td><td>113.8</td><td>17.18</td><td>0.588</td><td>0.384</td><td>107.2</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 6px"><b>DIFIX3D+ (3DGS)</b></td><td><b>18.51</b></td><td><b>0.686</b></td><td><b>0.264</b></td><td><b>41.8</b></td><td><b>17.99</b></td><td>0.602</td><td><b>0.293</b></td><td><b>40.9</b></td></tr>
+</table></div>
+    <div class="note-b"><b>读表：</b><b>FID 是头条</b>——Nerfacto 134.7→49.4、3DGS 113.8→41.8（<b>近 3×</b>）；LPIPS 各降 ~0.1；PSNR 升 ~1dB。且全面超 Nerfbusters/GANeRF/NeRFLiX 等所有 NVS 增强 baseline。<b>DIFIX3D → DIFIX3D+</b> 的差（如 Nerfacto FID 63.8→49.4、LPIPS 0.328→0.279）= 推理期后处理那一步的净增益。</div>
+    <div class="note-b"><b>驾驶 RDS（自建，Table 3，Nerfacto backbone）：</b>Nerfacto 19.95/0.493/0.530/91.38 → +NeRFLiX 20.44/0.567/0.469/<b>116.3（FID 反升=变差）</b> → +DIFIX3D 21.52/0.570/0.427/77.83 → <b>+DIFIX3D+ 21.75/0.583/0.402/73.08</b>，全面超 NeRFLiX。<b>⚠️ RDS 数据集自建非公开 → 该结果外部不可复现</b>（诚实边界）。</div>
+
+    <div class="note-h">⑧ §5.3 消融（两张关键表，证明每个设计都不可省）</div>
+    <div class="note-b"><b>Table 5 · DIFIX 组件（Nerfbusters，LPIPS↓/FID↓）：</b>pix2pix-Turbo(τ=1000) 0.381/108.9 → DIFIX(τ=200) <b>0.319/61.8</b> → +Gram 0.306/55.5 → +Reference 0.2996/47.9。<b>单是把噪声 1000→200 就贡献最大跳变</b>（FID 108.9→61.8）——原文：高噪声 “causes the model to generate more hallucinated pixels that contradict the ground truth, resulting in poorer generalization”。Gram/Reference 再锦上添花。</div>
+    <div class="note-b"><b>Table 4 · 流水线（Nerfacto baseline 起，逐步加 a/b/c/d）：</b></div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:11.5px;margin:2px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c">配置</td><td style="border-bottom:1px solid #2a2f5c">PSNR</td><td style="border-bottom:1px solid #2a2f5c">SSIM</td><td style="border-bottom:1px solid #2a2f5c">LPIPS</td><td style="border-bottom:1px solid #2a2f5c">FID</td></tr>
+<tr><td style="padding:2px 6px">Nerfacto</td><td>17.29</td><td>0.621</td><td>0.402</td><td>134.65</td></tr>
+<tr><td style="padding:2px 6px">+(a) 仅逐帧 DIFIX（无 3D 更新）</td><td>17.40</td><td>0.628</td><td>0.2996</td><td>49.87</td></tr>
+<tr><td style="padding:2px 6px">+(a)+(b) 一次性 distill（非增量）</td><td>17.97</td><td>0.656</td><td>0.3424</td><td>75.94</td></tr>
+<tr><td style="padding:2px 6px">+(a)+(b)+(c) 增量 distill = DIFIX3D</td><td>18.08</td><td>0.653</td><td>0.328</td><td>63.77</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 6px"><b>+(a)+(b)+(c)+(d) = DIFIX3D+</b></td><td><b>18.32</b></td><td><b>0.662</b></td><td><b>0.279</b></td><td><b>49.44</b></td></tr>
+</table></div>
+    <div class="note-b"><b>读表（关键洞察）：</b>(a) 仅逐帧 DIFIX 的 LPIPS/FID 看着已很好（0.2996/49.87）但<b>跨帧 flicker、欠观测区差</b>（单帧指标掩盖了不一致）；(b) <b>一次性</b>灌全部 pseudo-view 反而<b>退化</b>（LPIPS 0.2996→0.3424、FID 49.87→75.94）——因为远/弱条件视角被 hallucinate 污染；(c) 改<b>增量</b> distill 才稳（DIFIX3D）；(d) 再加推理后处理（DIFIX3D+）所有感知指标再升。<b>结论：增量更新 + 后处理缺一不可</b>。</div>
+
+    <div class="note-h">📌 全文一页总结（问题→方法→实验→takeaway）</div>
+    <div class="note-b"><b>问题(§1)：</b>NeRF/3DGS per-scene 优化无数据先验 + shape-radiance ambiguity，极端/欠约束新视角伪影严重；2D 扩散先验强但 lift 到 3D 慢（每步 query）且多视不一致。</div>
+    <div class="note-b"><b>方法(§4)：</b><b>DIFIX</b>=SD-Turbo 微调的单步 image-to-image artifact fixer（冻 VAE enc + LoRA dec + reference mixing 跨视 attention + <b>τ=200 低噪声</b> + Gram 损失），核心洞察"伪影分布≈τ=200 噪声分布"故修伪影=单步去噪；<b>DIFIX3D</b> 用它造 pseudo-view <b>渐进 distill 回 3D</b>（每 1.5k iter 向目标小步扰动位姿，保 conditioning 强、多视一致）；<b>DIFIX3D+</b> 再在推理末端做 76ms 实时增强；4 种数据 curation 策略造伪影配对。</div>
+    <div class="note-b"><b>实验(§5)：</b>NeRF/3DGS 通吃，Nerfbusters/DL3DV 上 <b>FID 近 3×、LPIPS −0.1、PSNR +1dB</b>，超 Nerfbusters/GANeRF/NeRFLiX；驾驶 RDS 同样全面超 NeRFLiX；消融证明<b>低噪声 τ=200、增量更新、推理后处理</b>三者缺一不可。</div>
+    <div class="note-b"><b>Takeaway：</b>① 把"修 3D 渲染伪影"重述成"在恰当噪声级（τ=200）做单步扩散去噪 + distill 回 3D 保一致"，是高效、可实时、跨表示 lift 2D 先验到 3D 的实用范式；② 单步是"训练 distill + 推理增强同模型双用"的前提；③ 渐进/增量更新是保长程一致的关键（一次性灌入反而退化）；④ 边界=生成天然多视不一致需 distill 兜底（直接逐帧会 flicker）、RDS 非公开不可复现、增益主要在感知指标（PSNR 仅温和 +1dB 但恰证未瞎编）。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-difix3d-improving-3d-reconstructions-with-single-step-d/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. We demonstrate DIFIX3D+ on both in-the-wild scenes (top) and driving scenes (bottom). Recent Novel-View Synthesis methods struggle in sparse-input settings or when rendering views far from the input camera poses. DIFIX distills the priors of 2D generative models to enhance reconstruction quality and can further act as a neural-renderer at inference time to mitigate the remaining inconsis</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-difix3d-improving-3d-reconstructions-with-single-step-d/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. DIFIX architecture. DIFIX takes a noisy rendered image and a reference views as input (left), and outputs an enhanced version of the input image with reduced artifacts (right). DIFIX also generates identical reference views, which we discard in practice and hence depict transparent. The model architecture consists of a U-Net structure with a cross-view reference mixing layer (Sec. 4.1) t</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-difix3d-improving-3d-reconstructions-with-single-step-d/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Noise level. To validate our hypothesis that the distribution of images with NeRF/3DGS artifacts is similar to the distribution of noisy images used to train SD-Turbo [49], we perform single-step “denoising” at varying noise levels. At higher noise levels (e.g., τ = 600), the model effectively removes artifacts but also alters the image context. At lower noise levels (e.g., τ = 10), the </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-difix3d-improving-3d-reconstructions-with-single-step-d/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. In-the-wild artifact removal. We show comparisons on held-out scenes from the DL3DV dataset [23] (top, above the dashed line) and the Nerfbusters [70] dataset (bottom). DIFIX3D+ corrects significantly more artifacts that other methods.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-difix3d-improving-3d-reconstructions-with-single-step-d/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Qualitative results on the RDS dataset. DIFIX for RDS was trained on 40 scenes and 100,000 paired data samples.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-difix3d-improving-3d-reconstructions-with-single-step-d/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Qualitative ablation of real-time post-render processing: DIFIX3D+ uses an additional neural enhancer step that effectively removes residual artifacts, resulting in higher PSNR and lower LPIPS scores. The images displayed in green or red boxes correspond to zoomed-in views of the bounding boxes drawn in the main images.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-difix3d-improving-3d-reconstructions-with-single-step-d/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Qualitative ablation results of DIFIX3D+: The columns, la- beled by method name, correspond to the rows in Tab. 4.</figcaption></figure>
+    </div>
+  </div></body></html>

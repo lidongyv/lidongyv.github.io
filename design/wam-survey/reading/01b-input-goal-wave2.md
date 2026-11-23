@@ -12,7 +12,7 @@
 - 标题：GR-2: A Generative Video-Language-Action Model with Web-Scale Knowledge for Robot Manipulation
 - 版本：v1，2024-10-08；Tech Report（CC BY 4.0）；机构：ByteDance Research；作者按字母序
 - 主页：https://gr2-manipulation.github.io
-- 来源级别：**A**。arxiv.org/html/2410.06158v1 获取成功，§1–§5 正文完整；web_fetch 输出仅截断于 References 列表末尾（对输入/目标表征无影响）。本地备份：`auto_docs/reading/txt/2410.06158.txt`（49,540 字符）、`auto_docs/reading/pdfs/2410.06158.pdf`（16.2MB，未做文本抽取）。
+- 来源级别：**A**。arxiv.org/html/2410.06158v1 获取成功，§1–§5 正文完整；web_fetch 输出仅截断于 References 列表末尾（对输入/目标表征无影响）。本地备份：`auto_docs/reading/txt/2410.06158.txt`（49,540 字符）、`auto_docs/reading/https://arxiv.org/abs/2410.06158`（16.2MB，未做文本抽取）。
 
 ### 【输入表征】
 - 形式化（§2 Methods，Eq. (1)）：
@@ -65,7 +65,7 @@ GR-2 是 ByteDance 的生成式 VLA 技术报告：GPT 式 transformer，把「�
 - 标题：Video Prediction Policy: A Generalist Robot Policy with Predictive Visual Representations
 - 版本：v2，2025-05-04（v1 2024-12-19）；ICML 2025 Spotlight Paper；作者：Yucheng Hu, Yanjiang Guo（equal contribution）等（Tsinghua IIIS / Shanghai AI Lab / RobotEra / UC Berkeley）
 - 主页：https://video-prediction-policy.github.io
-- 来源级别：**A**。arxiv.org/html/2412.14803v2 获取成功；首次 web_fetch 输出截断于 §5.1 中部（Table 2 附近），后经本地 HTML→txt 全量抽取补齐（HTML 273,032 字节；txt 66,599 字符 / 911 行）。本地备份：`auto_docs/reading/txt/2412.14803.txt`、`auto_docs/reading/pdfs/2412.14803.pdf`（18.3MB）。
+- 来源级别：**A**。arxiv.org/html/2412.14803v2 获取成功；首次 web_fetch 输出截断于 §5.1 中部（Table 2 附近），后经本地 HTML→txt 全量抽取补齐（HTML 273,032 字节；txt 66,599 字符 / 911 行）。本地备份：`auto_docs/reading/txt/2412.14803.txt`、`auto_docs/reading/https://arxiv.org/abs/2412.14803`（18.3MB）。
 
 ### 【输入表征】
 - 核心概念「predictive visual representations」（§1 Introduction）：
@@ -115,7 +115,7 @@ VPP 把预训练视频扩散模型（SVD 1.5B，改为文本条件、16×256×25
 ### 元信息
 - 标题：Unified Video Action Model
 - 版本：v3，2025-04-24（v1 2025-02-28）；CC BY 4.0；作者：Shuang Li, Yihuai Gao, Dorsa Sadigh, Shuran Song；主页 https://unified-video-action-model.github.io
-- 来源级别：**A**。arxiv.org/html/2503.00200v3 本地化成功（HTML 253,576 字节；txt 80,554 字符 / 471 行，§I–§X 与 References 完整）。本地备份：`auto_docs/reading/html/2503.00200.html`、`txt/2503.00200.txt`、`pdfs/2503.00200.pdf`（4.1MB）。
+- 来源级别：**A**。arxiv.org/html/2503.00200v3 本地化成功（HTML 253,576 字节；txt 80,554 字符 / 471 行，§I–§X 与 References 完整）。本地备份：`auto_docs/reading/html/2503.00200.html`、`txt/2503.00200.txt`、`https://arxiv.org/abs/2503.00200`（4.1MB）。
 
 ### 【输入表征】
 - 统一 video-action token 序列（§III Problem Statement + §III-A）：输入为历史观测 {𝐎t−h+1,…,𝐎t} 与动作 chunk {𝐀t−h,…,𝐀t−1}；每帧经 VAE 编码为 N 个 d 维视觉 token，动作 chunk（每帧对应 L 个高频动作）重复 M 次后经 FC 转为 N 个 d 维动作 token：
@@ -161,7 +161,7 @@ UVA = 联合 video-action latent + 解耦扩散头 + masked 多目标训练：�
 ### 元信息
 - 标题：Genie Envisioner: A Unified World Foundation Platform for Robotic Manipulation
 - 版本：v3，2025-11-04（v1 2025-08-07）；CC BY 4.0；作者：Yue Liao, Pengfei Zhou, Siyuan Huang, Donglin Yang 等（AgiBot Genie 团队）；主页 https://genie-envisioner.github.io
-- 来源级别：**A**。arxiv.org/html/2508.05635v3 本地化成功（HTML 244,344 字节；txt 101,688 字符 / 336 行，§1–§9+References 完整）。txt 两处数字重复（"2,9672,967 hours"、"200200ms"）系 LaTeXML MathML 重复渲染，已核对 HTML 原 markup：实为 2,967 hours、200 ms。本地备份：`auto_docs/reading/html/2508.05635.html`、`txt/2508.05635.txt`、`pdfs/2508.05635.pdf`（26.2MB）。
+- 来源级别：**A**。arxiv.org/html/2508.05635v3 本地化成功（HTML 244,344 字节；txt 101,688 字符 / 336 行，§1–§9+References 完整）。txt 两处数字重复（"2,9672,967 hours"、"200200ms"）系 LaTeXML MathML 重复渲染，已核对 HTML 原 markup：实为 2,967 hours、200 ms。本地备份：`auto_docs/reading/html/2508.05635.html`、`txt/2508.05635.txt`、`https://arxiv.org/abs/2508.05635`（26.2MB）。
 
 ### 【输入表征】
 - GE-Base 三条件输入（§2.1）："At each step t, the world foundation model 𝒲 generates the next chunk 𝐱1:N(t) conditioned on three components: the initial visual observation 𝐱0, the language instruction q, and a sparse memory 𝐱̂0:t−1, constructed by sparsely sampling long-term historical frames from previous steps."
@@ -201,7 +201,7 @@ GE 是「世界模型→动作」层级平台：GE-Base（LTX-Video/COSMOS2 2B �
 ### 元信息
 - 标题：Causal World Modeling for Robot Control（模型名 LingBot-VA）
 - 版本：v2，2026-03-22（v1 2026-01-29）；作者：Lin Li, Qihang Zhang, Yiming Luo 等（Ant Group / Robbyant）；项目页 https://technology.robbyant.com/lingbot-va ；代码 https://github.com/robbyant/lingbot-va
-- 来源级别：**A**。arxiv.org/html/2601.21998v2 本地化成功（HTML 830,681 字节；txt 105,183 字符 / 3,347 行，§1–§6+References+附录完整）。本地备份：`auto_docs/reading/html/2601.21998.html`、`txt/2601.21998.txt`、`pdfs/2601.21998.pdf`（7.8MB）。
+- 来源级别：**A**。arxiv.org/html/2601.21998v2 本地化成功（HTML 830,681 字节；txt 105,183 字符 / 3,347 行，§1–§6+References+附录完整）。本地备份：`auto_docs/reading/html/2601.21998.html`、`txt/2601.21998.txt`、`https://arxiv.org/abs/2601.21998`（7.8MB）。
 
 ### 【输入表征】
 - 视觉输入（§3.2 Video-Action State Encoding）："We leverage a causal video VAE [79] to compress visual observations into compact latent tokens zt=E(ot∣o<t)∈ℝN×C"；动作输入："we project action vectors to token embeddings at∈ℝD via a lightweight MLP ϕ(⋅)"。
@@ -247,7 +247,7 @@ LingBot-VA 是「因果自回归视频-动作世界模型」：causal VAE 把观
 ### 元信息
 - 标题：Keep the Future, Drop the Rollout: RIFT for World Action Models
 - 版本：v3，2026-09-25（v1 2026-08-12；Comments: "Added real-world experiments and updated the project URL"）；CC BY-NC-ND 4.0；作者：Chushan Zhang, Jinguang Tong, Xuesong Li, Yikai Wang, Hongdong Li
-- 来源级别：**A**。arxiv.org/html/2608.11521v3 本地化成功（HTML 428,482 字节；txt 70,326 字符 / 1,463 行，§1–§6+References+附录完整）。本地备份：`auto_docs/reading/html/2608.11521.html`、`txt/2608.11521.txt`、`pdfs/2608.11521.pdf`（15.0MB）。
+- 来源级别：**A**。arxiv.org/html/2608.11521v3 本地化成功（HTML 428,482 字节；txt 70,326 字符 / 1,463 行，§1–§6+References+附录完整）。本地备份：`auto_docs/reading/html/2608.11521.html`、`txt/2608.11521.txt`、`https://arxiv.org/abs/2608.11521`（15.0MB）。
 
 ### 【输入表征】
 - 输入三要素（§4.2）：first-frame tokens f0(o)（观测 o）+ 语言指令 l（经原条件路径）+ learned anticipation tokens E∈ℝm×d 占据未来时空位置：
@@ -291,7 +291,7 @@ Rift 先做因果干预（对 4 个 WAM 的 future K/V cache 做 masking/重排/
 ### 元信息
 - 标题：WAM-TTT: Steering World-Action Models by Watching Human Play at Test Time
 - 版本：v3，2026-10-23（v1 2026-07-08）；作者：Yusen Feng, Bingchen Han, Jiangran Lyu, Kai Liu 等（北大/北京通用人工智能等）；主页：abs 页未列（获取范围：abs+HTML）
-- 来源级别：**A**。arxiv.org/html/2607.06988v3 本地化成功（HTML 451,940 字节；txt 99,058 字符 / 845 行，§1–§5+References+附录完整）。本地备份：`auto_docs/reading/html/2607.06988.html`、`txt/2607.06988.txt`、`pdfs/2607.06988.pdf`（11.4MB）。
+- 来源级别：**A**。arxiv.org/html/2607.06988v3 本地化成功（HTML 451,940 字节；txt 99,058 字符 / 845 行，§1–§5+References+附录完整）。本地备份：`auto_docs/reading/html/2607.06988.html`、`txt/2607.06988.txt`、`https://arxiv.org/abs/2607.06988`（11.4MB）。
 
 ### 【输入表征】
 - 基础 WAM 输入（§1）："Once deployed, their behavior is largely determined by the pretrained weights and a limited conditioning interface, such as language instructions, goal images, or short observation histories"——WAM-TTT 在此基础上**新增第四种输入通道**：人类视频→fast-weight 记忆。
@@ -334,7 +334,7 @@ WAM-TTT 给冻结 WAM（LDA）的 video expert 添加 TTT fast-weight 残差层�
 ### 元信息
 - 标题：HOST: Robots Acquire Manipulation Skills in Seconds from a Single Human Video
 - 版本：v4，2026-08-20（v1 2026-07-22）；作者：Guangyan Chen, Meiling Wang, Te Cui 等；主页：abs 页未列（获取范围：abs+HTML）
-- 来源级别：**A**。arxiv.org/html/2607.20033v4 本地化成功（HTML 543,797 字节；txt 145,158 字符 / 655 行，§1–§4+References+附录完整）。本地备份：`auto_docs/reading/html/2607.20033.html`、`txt/2607.20033.txt`、`pdfs/2607.20033.pdf`（23.1MB）。
+- 来源级别：**A**。arxiv.org/html/2607.20033v4 本地化成功（HTML 543,797 字节；txt 145,158 字符 / 655 行，§1–§4+References+附录完整）。本地备份：`auto_docs/reading/html/2607.20033.html`、`txt/2607.20033.txt`、`https://arxiv.org/abs/2607.20033`（23.1MB）。
 
 ### 【输入表征】
 - 策略输入（§4.1）：πθ(at∣τd,ℓ,ot-K:tr,str)——视频演示 τd + 语言指令 ℓ + 近期机器人观测 + 本体感状态。
@@ -376,7 +376,7 @@ HOST 是「单视频一次技能获取」框架：输入（视频演示+指令+�
 ### 元信息
 - 标题：Pelican-Unify 1.0: A Unified Embodied Intelligence Model (UEI) for Understanding, Reasoning, Imagination and Action
 - 版本：v2，2026-05-21（v1 2026-05-14）；作者：Yi Zhang, Yinda Chen, Che Liu 等（Pelican 团队）；主页：abs 页未列（获取范围：abs+HTML）
-- 来源级别：**A**。arxiv.org/html/2605.15153v2 本地化成功（HTML 306,561 字节；txt 59,542 字符 / 616 行，§1–§6+References 完整）。本地备份：`auto_docs/reading/html/2605.15153.html`、`txt/2605.15153.txt`、`pdfs/2605.15153.pdf`（40.9MB）。
+- 来源级别：**A**。arxiv.org/html/2605.15153v2 本地化成功（HTML 306,561 字节；txt 59,542 字符 / 616 行，§1–§6+References 完整）。本地备份：`auto_docs/reading/html/2605.15153.html`、`txt/2605.15153.txt`、`https://arxiv.org/abs/2605.15153`（40.9MB）。
 
 ### 【输入表征】
 - 多模态上下文（§2.2，Eq. (2)）："ct=(a<t,l,o≤t,s≤t)，which bundles the action history, language instruction, environment observations, and robot proprioceptive state."
@@ -418,7 +418,7 @@ Pelican-Unify 1.0 是「理解-推理-想象-动作」单环训练的统一模�
 ### 元信息
 - 标题：WALL-WM: Carving World Action Modeling at the Event Joints
 - 版本：v2，2026-09-06（v1 2026-06-01）；CC BY-NC-ND 4.0；作者：Shalfun Li, Victor Yao, Charles Yang 等（WALL 团队）；主页：abs 页未列（获取范围：abs+HTML）
-- 来源级别：**A**。arxiv.org/html/2606.01955v2 本地化成功（HTML 601,655 字节；txt 177,473 字符 / 1,019 行，§1–§8+References+附录完整）。本地备份：`auto_docs/reading/html/2606.01955.html`、`txt/2606.01955.txt`、`pdfs/2606.01955.pdf`（43.6MB）。
+- 来源级别：**A**。arxiv.org/html/2606.01955v2 本地化成功（HTML 601,655 字节；txt 177,473 字符 / 1,019 行，§1–§8+References+附录完整）。本地备份：`auto_docs/reading/html/2606.01955.html`、`txt/2606.01955.txt`、`https://arxiv.org/abs/2606.01955`（43.6MB）。
 
 ### 【输入表征】
 - 模型映射（§3.1）：pθ(𝐕e,𝐚e∣𝐕0,𝐬,ce)——当前多视角观测 𝐕0（每相机一 keyframe）+ 本体感状态 𝐬 + per-event caption ce → 事件对齐的未来多视角视频 𝐕e 与末端轨迹 𝐚e（长度随事件变化）。

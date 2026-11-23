@@ -1,0 +1,189 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Adversarial Style Optimization: Enhancing VLM Jailbreaks by GRPO-based Stylistic Triggers Optimization</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Adversarial Style Optimization: Enhancing VLM Jailbreaks by GRPO-based Stylistic Triggers Optimization</h1>
+    <div class="au2" style="color:var(--mut)">Bingjun Luo ⋅ Jialin Guo ⋅ Yue Yao ⋅ Xinpeng Ding</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2026/papers/Luo_Adversarial_Style_Optimization_Enhancing_VLM_Jailbreaks_by_GRPO-based_Stylistic_Triggers_CVPR_2026_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Adversarial%20Style%20Optimization%3A%20Enhancing%20VLM%20Jailbreaks%20by%20GRPO-based%20Stylistic%20Triggers%20Optimization">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Multimodal Large Language Models (MLLMs) have achieved impressive performance, but their safety alignment remains vulnerable to jailbreak attacks. Existing content-based jailbreaks are often inconsistent and show low attack success rates (ASR) against commercial closed-source MLLMs, failing to exploit non-content-based vulnerabilities. Unlike previous research, we empirically find that MLLMs exhibit a Stylistic Inconsistency between their comprehension ability and safety ability. That is, from the perspective of comprehension, MLLMs can robustly understand content regardless of visual style (e.g., &quot;pencil sketch&quot;). However, from the perspective of safety ability, their defense mechanisms can be easily bypassed by these specific stylistic triggers, leading to harmful responses. Based on this finding, we propose Adversarial Style Optimization (ASO), a plug-and-play enhancement module to amplify existing visual jailbreaks. ASO fine-tunes an image-editing model to superimpose an optimized stylistic modification onto a given adversarial image. We apply a Group Relative Policy Optimization (GRPO) agent, guided by a Structurally-Tiered Reward Function. This function uniquely combines a logit-based signal for detecting explicit refusals with a high-fidelity semantic evaluation from a powerful judge model, mapping outcomes to distinct, non-overlapping reward tiers to select the most potent stylistic parameters. Extensive experiments show that ASO significantly enhances the ASR of SOTA attacks. The GRPO agent automatically discovers optimal, non-intuitive parameters, demonstrating that stylistic biases are a scalable and modular vector for red-teaming MLLMs.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-adversarial-style-optimization-enhancing-vlm-jailbreaks -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">MLLM 安全对齐有个被忽视的 non-content 漏洞——<b>Stylistic Inconsistency（风格不一致）</b>：模型对内容的<b>理解</b>不受视觉风格影响（套上 “pencil sketch” 照样看懂），但它的<b>安全防御</b>却能被特定风格触发器轻易绕过。<b>ASO</b>（Adversarial Style Optimization）是即插即用模块，用 <b>GRPO</b> 微调一个图像编辑模型（FLUX-Kontext），给已有对抗图<b>叠加一层 RL 优化过的“风格”</b>，显著抬高越狱攻击成功率 ASR。论文落点：VLM 安全是 <b>how（怎么呈现 / 风格）</b> 的函数，不只是 <b>what（画了什么 / 内容）</b>。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">现有 <b>content-based</b> 越狱（往图里塞 typographic 文字 / 对抗物体，如 FigStep、HADES、QR-Attack、IDEATOR、HIMRD）对快速演进的商业 MLLM <b>不稳定、ASR 低</b>，且只攻击“图里画了什么”(what)，留下一个巨大的互补攻击面没被探索：<b>“图怎么呈现”(how)</b>——视觉风格、光照、构图等 non-content 属性。前作 SI-Attack 已证明 non-content 漏洞（shuffle inconsistency）真实存在，但<b>没人做过通用、即插即用的框架去“放大”风格漏洞</b>——本文填这个空。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b">两阶段 <b>Probe-then-Enhance</b>：<br><b>① Style Sensitivity Probing（§4.2）</b>：构造风格池 S = S<sub>med</sub> ∪ S<sub>geo</sub> ∪ S<sub>atm</sub> ∪ S<sub>dom</sub>（媒介纹理 / 几何抽象 / 主题氛围 / 领域插画 4 类攻击假设），用<b>未微调</b>生成器 G(·;Θ₀) 把整个 base 数据集套各风格，按判官 J 算 ASR(S<sub>i</sub>)=(1/N)Σ y<sub>i,j</sub>（式4），选 ASR 最高的 <b>S*</b>（式5，如 pencil sketch / vintage photo）。<br><b>② GRPO-based Style Enhancement（§4.3）</b>：把“在 S* 参数空间里搜最优触发器”建成 <b>MDP</b>（agent=图像编辑器 G(·;Θ)，state=base 攻击对，action=生成 hybrid 图，reward=分层奖励），用 <b>DB-GRPO</b> 解。<br><b>关键公式</b>：总目标式1 G*=argmax<sub>G</sub> (1/N)Σ J(M(G(I<sub>base</sub>),P<sub>harm</sub>),P<sub>harm</sub>)；<b>Structurally-Tiered Reward 式6</b>（硬阈值 C<sub>thresh</sub>=−10 分隔 reject/accept 两域）：reject 时 r=C+log(P<sub>M</sub>(accept)/P<sub>M</sub>(rejected))（恒 &lt;C，给“让模型对拒绝没信心”的稠密梯度），accept 时 r=max(log(P<sub>J</sub>(yes)/P<sub>J</sub>(no)),C)（恒 ≥C，鼓励让判官更确信有害）；PPO clipped surrogate 式8 + group-relative advantage 式9 A<sub>i</sub>=(r<sub>i</sub>−mean{r})/std{r}。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">两 benchmark（MM-SafetyBench / VLBreakBench）× 4 个安全对齐 VLM（Qwen3-VL、LLaVA-OV-1.5、GPT-4.1-mini、Gemini-2.5-Flash）。<b>+Ours 几乎全面抬升 ASR 与 HS</b>：QR Attack on Gemini-2.5 ASR <b>55.04%→62.79%</b> / HS 0.26→1.05；SI Attack on Gemini 55.81%→62.02%；连已很强的 HIMRD on Qwen 87.38%→89.52%。细粒度 13 类（Table3）：弱攻击的“硬”类别（Fraud）ASR <b>接近翻倍</b>；饱和类别（EconomicHarm 95.1%→97.5%）ASR 增益小但 HS 持续涨（9.6→10.1，更“确信有害”）。消融（Table4）：+Probing 仅小幅（SI on Qwen 39.31%→40.62%），<b>++Enhance 大幅</b>（SI on LLaVA 39.96%→44.25%）——增益主要来自 RL 优化而非单纯选风格。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>第一个</b>系统识别并验证 stylistic sensitivity 是可利用的 non-content 漏洞面；② 即插即用、可叠在任意 SOTA content-based 攻击之上；③ <b>Structurally-Tiered Reward</b> 用硬阈值把 reject/accept 切成两个互不重叠、各自连续的奖励域，解决二元奖励太稀疏的问题；④ <b>DB-GRPO</b> 动态课程（Unsolved Pool + Curate&amp;Evict）把优化目标对齐到红队真实诉求（发现率最大化 + 省算力），而非标准 RL 的“数据集泛化”。</div>
+    <div class="note-h">疑问</div>
+    <div class="note-b">① <b>风格为何能绕过安全对齐的深层机制</b>，原文只给实证、未给 mechanistic 解释（是安全微调数据缺风格分布？还是 representation 层面 style 把 harmful 特征“挪出”了安全分类器决策边界？§5 列了“Mechanism Analysis”一问但正文未充分展开 → <b>原文未写 / 需查</b>）。② 风格池大小 <b>N<sub>S</sub></b> 正文没给具体数字，称在 Appendix（<b>需查原文附录</b>）。③ flow model 的 <b>π<sub>Θ</sub>(a|s) log-prob 怎么算</b>：靠 ODE-to-SDE 引入随机性后才有概率，但具体估计细节正文略（引 Flow-GRPO[7]/DanceGRPO[17]，<b>需查原文</b>）。④ Alg.1 第16行 Θ←Θ−α·G<sub>batch</sub>（reward 直接当系数乘 ∇log π）与式8 PPO 上升目标在符号上略显不一致，疑为简化伪码。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读：① Abstract 逐句 → ② Intro problem→solution→why 闭环 → ③ Method 核心机制+关键公式 → ④ 实验/消融关键数值 + 全文一页总结。原文优先、引英文原句、外部概念单开背景块。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文（verbatim）：</b>“Unlike previous research, we empirically find that MLLMs exhibit a <b>Stylistic Inconsistency</b> between their comprehension ability and safety ability: MLLMs can robustly understand content regardless of visual style, yet their defense mechanisms can be easily bypassed by specific stylistic triggers.”</div>
+    <div class="note-b"><b>在说什么：</b>这是全文的"题眼"。作者声称发现了一种<b>能力错位</b>——同一个视觉风格（如 “pencil sketch” 铅笔素描）作用到模型上，<b>理解通道</b>（comprehension）几乎无感（照样看懂画的是什么），但<b>安全通道</b>（safety）却被显著削弱（防御被绕过）。<b>为什么这么提：</b>把"漏洞"从"图里画了什么（content）"挪到"图怎么被呈现（style）"，等于宣告一个全新的、与现有 content-based 攻击<b>正交</b>的攻击面。</div>
+    <div class="note-b"><b>原文（方法句）：</b>“ASO fine-tunes an image-editing model to <b>superimpose an optimized stylistic modification onto a given adversarial image</b>, using a Group Relative Policy Optimization (GRPO) agent guided by a <b>Structurally-Tiered Reward Function</b> that combines a logit-based signal for detecting explicit refusals with a high-fidelity semantic evaluation from a powerful judge model.”</div>
+    <div class="note-b"><b>逐词指路：</b>① “superimpose … onto a given adversarial image”——ASO <b>不从零造攻击</b>，而是在别人已有的攻击图上<b>再叠一层风格</b>，所以定位是 enhancement / plug-and-play（插件），不是独立攻击。② “GRPO agent”——用强化学习去搜风格参数（不是手调滤镜）。③ reward 融合两路信号：便宜的 <b>logit-based</b> 拒绝信号 + 昂贵的 <b>judge model 语义评估</b>。④ 结论句 “stylistic biases are a scalable vector for red-teaming MLLMs”——风格偏置是一个<b>可扩展</b>的红队向量。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>VLM 安全是 <b>how（怎么呈现/风格）</b> 的函数，不只是 <b>what（画了什么/内容）</b>；ASO = 用 GRPO + 分层奖励，把"选定风格内的最优触发器"自动搜出来，叠加到任意 SOTA content 攻击上抬高 ASR。</div>
+
+    <div class="note-h">② 📚 背景知识（外部，非本文原文 — 读懂 ASO 必备）</div>
+    <div class="note-b"><b>① GRPO（Group Relative Policy Optimization，DeepSeek 提出）：</b>PPO 的简化变体。PPO 需要额外训一个 critic/value 网络估 baseline 才能算 advantage；GRPO <b>去掉 critic</b>，对同一状态采<b>一组</b>（group）输出，用<b>组内 reward 的均值/标准差</b>归一化当 advantage（即本文式9 \( A_i=\dfrac{r_i-\mathrm{mean}(\{r_k\})}{\mathrm{std}(\{r_k\})} \)），再走 PPO 的 clipped surrogate。好处：省一个网络、奖励尺度自适应、信号更稳。本文把它从"文本生成"搬到"<b>图像编辑生成</b>"。</div>
+    <div class="note-b"><b>② flow-matching 模型 &amp; ODE-to-SDE：</b>FLUX-Kontext 属 <b>flow matching</b>——学一个 velocity field，从噪声沿<b>确定性 ODE</b>（ordinary differential equation）积分到数据。麻烦在于：确定性采样<b>没有随机性</b>，而 online policy gradient（RL 探索）必须"同一输入能采出不同样本"才能定义概率、比较好坏。本文沿用 Flow-GRPO[7]/DanceGRPO[17] 的 <b>ODE-to-SDE 转换</b>：把确定性 ODE 改写成等价的<b>随机微分方程 SDE</b>，注入噪声 → 才能探索、才能定义策略概率 \( \pi_\Theta(a\mid s) \)。</div>
+    <div class="note-b"><b>③ FLUX-Kontext（本文的生成器 G）：</b>图像编辑模型，输入 = 一张图 + 文本编辑指令（如 “In the style of pencil sketch”），输出 = 按指令风格化后的图。ASO 微调它的参数 Θ，让它学会生成"最能越狱"的风格化版本。</div>
+    <div class="note-b"><b>④ HarmBench（判官 J）：</b>标准化自动红队评测框架。给定（有害意图, 模型回复）判定是否"真有害"（输出 Yes/No）。本文用它当 oracle，并用其对数概率差定义 <b>Harmfulness Score</b>：\( HS=\log P_{\mathcal{J}}(\text{yes}\mid R,P_{harm})-\log P_{\mathcal{J}}(\text{no}\mid R,P_{harm}) \)，比二元 ASR 更细粒度（能区分"刚好越过线"和"非常有害"）。</div>
+
+    <div class="note-h">③ §1 Introduction — problem → 现有不足 → solution → why（闭环）</div>
+    <div class="note-b"><b>problem（攻击面缺口）：</b>原文 “this focus on <b>what is depicted</b> in an image leaves a complementary and vast attack surface less explored: the non-content-based modifications related to <b>how an image is presented</b>. This includes perceptual attributes like visual style, lighting, and composition.” —— 现有研究只盯 what（typographic 文字 / 对抗物体），把 how（风格/光照/构图）这条<b>互补且巨大</b>的攻击面留白。</div>
+    <div class="note-b"><b>现有方法不足：</b>§2 点名三类 content-based 基线 —— typographic 的 <b>FigStep</b>、对抗物体的 <b>HADES</b>、以及 <b>QR-Attack / IDEATOR / HIMRD</b>；原文定位它们为 “the base attacks (\(D_{base}\)) that our framework is designed to enhance”。唯一的 non-content 先例是 <b>SI-Attack</b>（“Shuffle Inconsistency”，打乱词/patch 绕过安全），原文承认 “The success of SI-Attack proves that non-content-based vulnerabilities are a real and significant threat”，但紧接着指出空白：“<b>no existing work has proposed a general-purpose, ‘plug-and-play’ framework designed to amplify these stylistic vulnerabilities</b>”。</div>
+    <div class="note-b"><b>solution（为什么不是固定滤镜）：</b>原文 “ASO is <b>not a fixed filter</b> but a general-purpose framework designed to ‘plug in’ to any SOTA attack. It leverages reinforcement learning to automatically fine-tune the parameters <b>within a given style</b>, discovering the most effective, optimized trigger for that specific target.” —— 关键在"在选定风格<b>内</b>搜参数"（如铅笔素描的 stroke density / line weight），不是换风格。</div>
+    <div class="note-b"><b>why it works（机理直觉）：</b>原文给的因果链是先实证 “simply applying a basic, off-the-shelf style filter (e.g., pencil sketch) … can provide a clear, measurable boost to the ASR”（裸滤镜就涨 ASR → §4.2 Probing 的依据），再外推 “an attack could be made significantly more potent <b>if the style’s parameters were adversarially optimized</b>”（参数对抗优化更猛 → §4.3 Enhance 的动机）。<b>选 GRPO 的理由：</b>“To navigate the high-dimensional parameter space of a visual style and overcome the <b>sparse, noisy reward signals</b> inherent in this task, we employ GRPO.”——参数空间大 + 奖励稀疏噪声大。</div>
+
+    <div class="note-h">Q&amp;A · 它要解决的主要问题是什么？</div>
+    <div class="note-b"><b>核心：</b>用一个<b>即插即用</b>框架，把任意已有 content-based 越狱图<b>增强</b>到更高 ASR，且利用此前没人系统利用的 non-content 风格漏洞。<b>三个具体靶子：</b>① content 攻击对快速演进的商业 MLLM “often inconsistent and show unsatisfying performance”（不稳、低 ASR）；② 它们 “failing to exploit non-content-based vulnerabilities”（漏掉风格这条线）；③ 即使发现风格敏感，也缺一个"放大器"框架。<b>区分层次：</b>任务层的"越狱 MLLM"是领域通题；ASO 真正的贡献靶子是"<b>把风格敏感性系统化 + 自动优化成强触发器</b>"。</div>
+
+    <div class="note-h">④ §3 Problem Formulation — 目标函数 &amp; 维度</div>
+    <div class="note-b"><b>给定：</b>content-based 攻击集 \( D_{base}=\{(I_{base,j},P_{harm,j})\}_{j=1}^{N} \)（图+有害意图文本对）、目标 VLM \( \mathcal{M} \)、二元判官 oracle \( \mathcal{J} \)（回复 \(R=\mathcal{M}(I,P)\) 成功越狱记 \(y=1\)、拒绝记 \(y=0\)）。<b>学：</b>一个增强生成器 \( \mathcal{G} \)，把每张 \(I_{base,j}\) 变成 hybrid 图 \( I_{hybrid,j}=\mathcal{G}(I_{base,j}) \)。<b>目标（式1）：</b></div>
+    <div class="note-b">\[ \mathcal{G}^* = \arg\max_{\mathcal{G}}\ \frac{1}{N}\sum_{j=1}^{N} \mathcal{J}\big(\mathcal{M}(\mathcal{G}(I_{base,j}),P_{harm,j}),\ P_{harm,j}\big) \]</div>
+    <div class="note-b"><b>关键定位（容易读漏）：</b>\( \mathcal{G} \) 是"<b>图 → 图</b>"的增强器，<b>不碰文本 prompt</b> \(P_{harm}\)（文本仍是基线攻击给的）。所以 ASO 改变的只有"视觉呈现风格"这一个自由度，这正是它能叠在任何 base 攻击上的原因。</div>
+
+    <div class="note-h">⑤ §4.2 Style Sensitivity Probing — 选最脆弱方向（式2–5）</div>
+    <div class="note-b"><b>风格池构造（4 个攻击假设，互不相交）：</b>原文 “This pool is not arbitrary but is structured around four distinct attack hypotheses.” 即 \( \mathcal{S}=\mathcal{S}_{med}\cup\mathcal{S}_{geo}\cup\mathcal{S}_{atm}\cup\mathcal{S}_{dom} \)：<b>\(\mathcal{S}_{med}\)</b> Medium &amp; Texture（铅笔素描/油画/水彩，模拟非摄影媒介）；<b>\(\mathcal{S}_{geo}\)</b> Geometric &amp; Abstract（立体主义/像素画/low poly，几何解构）；<b>\(\mathcal{S}_{atm}\)</b> Thematic &amp; Atmospheric（film noir/赛博朋克/哥特恐怖，营造氛围）；<b>\(\mathcal{S}_{dom}\)</b> Domain-Specific Illustration（动漫/漫画/童书插画）。</div>
+    <div class="note-b"><b>探测过程（式2–4）：</b>用<b>未微调</b>的生成器 \( \mathcal{G}(\cdot;\Theta_0) \)（pretrained 初始权重）把整个 \(D_{base}\) 套每个风格 \(S_i\)（式2 \(D_{hybrid,i}=\{(\mathcal{G}(I_{base,j},P_{style,i};\Theta_0),P_{harm,j})\}\)）→ 判官给二元成功 \( y_{i,j}=\mathcal{J}(R_{i,j},P_{harm,j})\in\{0,1\} \)（式3）→ 该风格 ASR \( ASR(S_i)=\frac{1}{N}\sum_{j=1}^N y_{i,j} \)（式4）。</div>
+    <div class="note-b"><b>选 \(S^*\)（式5）：</b>\( S^*=\arg\max_{S_i\in\mathcal{S}} ASR(S_i) \)。原文强调它 “is not the final attack, but rather serves as the crucial input directive (edit instruction)” —— \(S^*\)（如 pencil sketch / vintage photo）只是后续 RL 的<b>固定编辑指令</b>，缩小搜索空间到"这一种风格内部"。<b>why probe：</b>“rather than relying on random selection or anecdotal evidence”（科学选方向，而非拍脑袋）。<b>注意（诚实）：</b>风格池大小 \(N_S\) 正文未给具体数字，原文写 “provided in Appendix”（<b>需查附录</b>）。</div>
+
+    <div class="note-h">Q&amp;A · 为什么要先 Probing 再 RL，不直接一步 RL？</div>
+    <div class="note-b"><b>原因：</b>RL 在"<b>所有风格 × 风格内所有参数</b>"的联合空间里搜，维度爆炸且奖励稀疏，几乎学不动。Probing 先用便宜的"裸滤镜枚举"锁定一个已被证明脆弱的方向 \(S^*\)，把 RL 的任务收窄成"<b>在 \(S^*\) 内部精调参数</b>"——这是经典的 coarse-to-fine：先粗选方向、再细搜参数。消融（Table4）也印证：只 Probing 已能小幅涨 ASR（证明风格敏感真实存在），但大头增益来自后续 RL（见 ⑨ 实验）。</div>
+
+    <div class="note-h">⑥ §4.3.1 Enhancement as a Markov Decision Process</div>
+    <div class="note-b"><b>把"搜最优触发器"建成 MDP：</b><b>Agent</b> = 图像编辑器 \( \mathcal{G}(\cdot;\Theta) \)，策略 \( \pi_\Theta \) 由可训练参数 Θ 决定；<b>State \(s_t\)</b> = 从 \(D_{base}\) 采样的 base 攻击对 \((I_{base,j},P_{harm,j})\)；<b>Action \(a_t\)</b> = 生成 hybrid 图 \( a_t=I_{hybrid,j}=\mathcal{G}(I_{base,j},P_{style,*};\Theta) \)（注意风格指令 \(P_{style,*}\) <b>固定</b>为 \(S^*\)）；<b>Reward \(r_t\)</b> = Structurally-Tiered Reward；<b>Objective：</b>\( \Theta^*=\arg\max_\Theta \mathbb{E}_{(I_{base},P_{harm})\sim D_{base}}[r_t] \)。</div>
+
+    <div class="note-h">⑦ §4.3.2 Structurally-Tiered Reward（式6–7，本文最关键设计）</div>
+    <div class="note-b"><b>为什么需要它：</b>原文 “A simple, binary reward from the judge model \( \mathcal{J} \) (i.e., \(y\in\{0,1\}\)) is <b>far too sparse</b> to effectively navigate the vast parameter space Θ.” 而且 “a simple acceptance is not synonymous with success”——模型可能"接受了但给的是无害/敷衍内容"。所以要造一个<b>稠密 + 有层级</b>的奖励：用硬阈值 \( C_{thresh}=-10 \) 把世界切成"拒绝域"与"接受域"两块互不重叠、各自连续。</div>
+    <div class="note-b"><b>Level 1 · Bypass Reward（被拒时）：</b></div>
+    <div class="note-b">\[ r_t = C_{thresh} + \log\frac{P_{\mathcal{M}}(\text{accept}\mid I_h,P_h)}{P_{\mathcal{M}}(\text{rejected}\mid I_h,P_h)} \]</div>
+    <div class="note-b">被拒时 \(P(\text{accept})\lt P(\text{rejected})\) → log 项为负 → \(r_t\) 恒 \(\lt C_{thresh}\)。原文：“This provides a dense gradient that incentivizes the agent to <b>not only avoid rejection, but to generate images that make \(\mathcal{M}\) less confident in its rejection</b>.”——哪怕这次失败，也给"让模型对拒绝越来越没把握"的稠密梯度。</div>
+    <div class="note-b"><b>Level 2 · Success Reward（被接受时）：</b></div>
+    <div class="note-b">\[ r_t = \max\left(\log\frac{P_{\mathcal{J}}(\text{yes}\mid R,P_h)}{P_{\mathcal{J}}(\text{no}\mid R,P_h)},\ C_{thresh}\right) \]</div>
+    <div class="note-b">恒 \(\ge C_{thresh}\)，鼓励让判官更确信"有害"（增大 \(P_{\mathcal{J}}(\text{yes})\)）。<b>为何要 \(\max(\cdot,C_{thresh})\) 截断：</b>原文 “prevents a ‘successful bypass’ that \(\mathcal{J}\) deems very harmless from being punished more severely than an explicit rejection”——防止"绕过了但内容无害"被罚得比"直接被拒"还狠，从而<b>保证接受域整体优于拒绝域</b>（维护层级完整性 hierarchical integrity）。</div>
+
+    <div class="note-h">Q&amp;A · 为什么不能直接用二元 ASR（0/1）当 reward？</div>
+    <div class="note-b"><b>梯度消失：</b>二元成功在高维风格参数空间里几乎处处导数为 0（原文 “far too sparse”），策略梯度拿不到方向信息，等于在平原上瞎走。<b>分层稠密奖励的两点巧思：</b>① 即使在"失败区"也用 \( \log\frac{P(\text{accept})}{P(\text{rejected})} \) 给连续梯度（朝"动摇拒绝"的方向爬）；② 在"成功区"再用判官 log 概率差细分"多有害"。两段在 \(C_{thresh}=-10\) 处<b>无缝衔接且接受恒优于拒绝</b>——把一个稀疏二分类问题改造成了处处可导、且全局序正确的连续优化问题。</div>
+
+    <div class="note-h">⑧ §4.3.3 Policy Optimization via DB-GRPO（Alg.1 逐行）</div>
+    <div class="note-b"><b>两个挑战：</b>① <b>目标错位（最关键）：</b>原文 “Standard generative RL methods like DanceGRPO aim to optimize the model policy \( \pi_\Theta \) to <b>converge and generalize across an entire dataset</b>. In contrast, our red-teaming goal is … to <b>maximize the discovery rate of successful attack images while minimizing computational cost</b>.”——标准生成 RL 追求"全数据集泛化"，会在已解决/死磕不下的样本上反复浪费算力；红队真正要的是"多发现新攻击 + 省算力"。② <b>技术：</b>FLUX 是 flow matching，确定性 ODE 采样与 online RL 的随机探索不兼容。</div>
+    <div class="note-b"><b>解法：</b>技术上 <b>ODE-to-SDE</b> 注入随机性（见背景②）；目标上引入<b>动态课程</b>——维护未解决池 \(D_{unsolved}\) 与成功集 \(D_{success}\)，<b>每轮只从 \(D_{unsolved}\) 采 batch</b>。优势直接用分层奖励 \( A_j=r_j \)（原文 “bypass the complexity of a learned value function and define the Advantage \(A_j\) … as its corresponding tiered reward \(r_j\)”），策略走 PPO clipped surrogate：</div>
+    <div class="note-b">\[ \mathcal{L}(\Theta) = \hat{\mathbb{E}}_{j\in B}\big[\min(\rho_j A_j,\ \mathrm{clip}(\rho_j, 1-\epsilon, 1+\epsilon)A_j)\big],\quad \rho_j=\frac{\pi_\Theta(a_j\mid s_j)}{\pi_{\Theta_{old}}(a_j\mid s_j)} \]</div>
+    <div class="note-b"><b>Curate &amp; Evict（动态课程的核心，Alg.1 第17–24 行）：</b>每次更新后，成功样本（\(r_j\gt C_{thresh}\)）的图存进 \(D_{success}\)，并把该 base 样本<b>移出</b> \(D_{unsolved}\)；连续尝试超过 \(K_{max}\) 次仍失败的也移出。原文：“This dynamic curriculum ensures that the agent constantly <b>focuses its representational power on discovering new, unsolved attacks</b>, perfectly aligning the optimization process with our red-teaming objective.” <b>诚实标注 [推测]：</b>Alg.1 第16 行写 \( \Theta\leftarrow\Theta-\alpha\cdot G_{batch} \) 且第11 行 \(G_j=\nabla_\Theta\log\pi_\Theta(a_j\mid s_j)\cdot r_j\)（reward 直接当系数乘梯度，且是"减号"下降），与式8 的 PPO 上升目标在符号/形式上不完全一致——疑为<b>简化伪码</b>，正式实现应以式8 为准。</div>
+
+    <div class="note-h">Q&amp;A · DB-GRPO 与标准 DanceGRPO 的本质区别？</div>
+    <div class="note-b"><b>一句话：</b>把优化<b>目标</b>从"数据集泛化"改成"<b>发现率最大化 + 省算力</b>"，手段是动态课程（只啃没攻破的样本，攻破即移出、死磕到 \(K_{max}\) 也移出）。标准 RL 会把算力均摊到全体样本（包括已解决的和不可解的）；DB-GRPO 把算力<b>始终聚焦在"尚未攻破"的前沿</b>，与红队"尽快多挖洞"的真实诉求对齐。技术上的 ODE-to-SDE 只是让 flow model 能跑 online RL 的前置条件，不是区别本身。</div>
+
+    <div class="note-h">⑨ §5 实验设置 + 主结果（Table 1 / Table 2 真实数值）</div>
+    <div class="note-b"><b>设置：</b>目标 VLM = Qwen3-VL、LLaVA-OV-1.5（开源）+ GPT-4.1-mini、Gemini-2.5-Flash（商业）；benchmark = MM-SafetyBench + VLBreakBench；base 攻击 = FigStep / QR / SI / IDEATOR / HIMRD；判官 = HarmBench；指标 ASR（主）+ HS。三问：“(1) Efficacy and Generality … (2) Component Necessity … (3) Mechanism Analysis”。</div>
+    <div class="note-b"><b>MM-SafetyBench 主结果（Table 1，格式 ASR% / HS；+Ours 为本文增强）：</b>
+<table style="width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0;color:#d7dcff">
+<tr style="color:#ffd35c"><td style="border:1px solid #2a2f5c;padding:4px">攻击</td><td style="border:1px solid #2a2f5c;padding:4px">Qwen3-VL</td><td style="border:1px solid #2a2f5c;padding:4px">LLaVA-OV-1.5</td><td style="border:1px solid #2a2f5c;padding:4px">GPT-4.1-mini</td><td style="border:1px solid #2a2f5c;padding:4px">Gemini-2.5-Flash</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:4px">QR Attack</td><td style="border:1px solid #2a2f5c;padding:4px">38.99 / −3.57</td><td style="border:1px solid #2a2f5c;padding:4px">37.80 / −2.76</td><td style="border:1px solid #2a2f5c;padding:4px">54.26 / −0.62</td><td style="border:1px solid #2a2f5c;padding:4px">55.04 / 0.26</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">+ Ours</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">42.98 / −2.91</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">44.35 / −1.66</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">57.36 / 0.07</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">62.79 / 1.05</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:4px">SI Attack</td><td style="border:1px solid #2a2f5c;padding:4px">39.31 / −3.55</td><td style="border:1px solid #2a2f5c;padding:4px">37.82 / −2.74</td><td style="border:1px solid #2a2f5c;padding:4px">53.49 / −0.60</td><td style="border:1px solid #2a2f5c;padding:4px">55.81 / 0.21</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">+ Ours</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">42.58 / −3.04</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">44.25 / −1.66</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">57.36 / −0.23</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">62.02 / 0.83</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:4px">HIMRD</td><td style="border:1px solid #2a2f5c;padding:4px">87.38 / 8.70</td><td style="border:1px solid #2a2f5c;padding:4px">52.92 / 0.95</td><td style="border:1px solid #2a2f5c;padding:4px">72.80 / 4.22</td><td style="border:1px solid #2a2f5c;padding:4px">75.97 / 5.05</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">+ Ours</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">89.52 / 8.93</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">55.42 / 1.20</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">71.77 / 3.64</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">76.74 / 5.22</td></tr>
+</table>
+<b>读表：</b>Gemini-2.5-Flash 上 QR Attack ASR <b>55.04→62.79%</b>（+7.75）、HS 0.26→1.05；最强基线 HIMRD on Qwen 87.38→89.52%。<b>唯一反例：</b>GPT-4.1-mini 上 HIMRD ASR 微降 72.80→71.77%，但原文强调 “this increase in ASR is <b>almost universally</b> accompanied by a corresponding increase in HS”。</div>
+    <div class="note-b"><b>VLBreakBench 主结果（Table 2，IDEATOR / SI Attack 上的增强）：</b>IDEATOR on Qwen 48.28→<b>53.27%</b>（HS 0.18→0.84）、on LLaVA 47.06→52.28%；SI Attack on Gemini 58.99→<b>65.47%</b>（HS 2.08→2.69）、on Qwen 49.72→53.16%、GPT-4.1-mini 75.54→77.70%。<b>跨 benchmark 一致抬升</b>，佐证 plug-and-play 的通用性。</div>
+
+    <div class="note-h">⑩ §5.2–5.3 细粒度 13 类（Table 3）+ 消融（Table 4）</div>
+    <div class="note-b"><b>细粒度 13 类（Table 3，MM-SafetyBench 各类别）：</b>两个极端都受益——① <b>弱攻击的"硬"类别</b>（base ASR 很低处）增益最显著：Fraud(FR) 在 QR 上 <b>5.2%→9.7%</b>（近翻倍）、SI 上 4.6%→7.1%；SE(SexualExplicit) QR 28.4%→35.8%；LO QR 34.6%→43.1%。原文 “turning weak vulnerability signals into viable attacks”。② <b>已饱和类别</b>（base ASR 已 &gt;95%）ASR 增益小但 <b>HS 持续涨</b>：HIMRD 的 EconomicHarm(EH) ASR 95.1%→97.5%、HS 9.6→10.1；FA(Fraud-adjacent) 90.4%→94.6%。原文 “makes the successful jailbreak response <b>more confident and semantically harmful</b>”。</div>
+    <div class="note-b"><b>消融（Table 4，拆两阶段贡献，ASR%）：</b>
+<table style="width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0;color:#d7dcff">
+<tr style="color:#ffd35c"><td style="border:1px solid #2a2f5c;padding:4px">配置</td><td style="border:1px solid #2a2f5c;padding:4px">QR / Qwen</td><td style="border:1px solid #2a2f5c;padding:4px">QR / LLaVA</td><td style="border:1px solid #2a2f5c;padding:4px">SI / Qwen</td><td style="border:1px solid #2a2f5c;padding:4px">SI / LLaVA</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:4px">Original</td><td style="border:1px solid #2a2f5c;padding:4px">38.99</td><td style="border:1px solid #2a2f5c;padding:4px">37.80</td><td style="border:1px solid #2a2f5c;padding:4px">39.31</td><td style="border:1px solid #2a2f5c;padding:4px">37.82</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:4px">+ Probing</td><td style="border:1px solid #2a2f5c;padding:4px">40.48</td><td style="border:1px solid #2a2f5c;padding:4px">40.12</td><td style="border:1px solid #2a2f5c;padding:4px">40.62</td><td style="border:1px solid #2a2f5c;padding:4px">39.96</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">++ Enhance（完整）</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">42.98</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">44.35</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">42.58</td><td style="border:1px solid #2a2f5c;padding:4px;color:#7ee0c0">44.25</td></tr>
+</table>
+<b>验证了什么：</b>+Probing（只用未优化的最佳风格 \(S^*\)）一致小幅提升（SI on Qwen 39.31→40.62），证明 <b>stylistic sensitivity 真实存在</b>；但原文 “the vast majority of the performance gain is attributable to our RL-based enhancement stage”——++Enhance 再跳一大截（SI on LLaVA 39.96→<b>44.25</b>）。结论：选对风格只是"入场券"（~1–2 点），<b>RL 优化才解锁全部威力</b>（再 ~4–5 点）。</div>
+
+    <div class="note-h">📌 全文一页总结（问题 → 方法 → 实验 → takeaway）</div>
+    <div class="note-b"><b>问题（§1）：</b>content-based 越狱只攻 what、对商业 MLLM 不稳；how（视觉风格）这条 non-content 攻击面没人做过通用"放大器"框架。</div>
+    <div class="note-b"><b>方法（§3–4）：</b>ASO = <b>Probe</b>（4 类风格池枚举、式5 选最脆弱 \(S^*\)）+ <b>Enhance</b>（把"在 \(S^*\) 内搜最优触发器"建成 MDP，用 DB-GRPO 解）。三处关键设计：① <b>Structurally-Tiered Reward</b>（硬阈值 \(C_{thresh}=-10\) 把 reject/accept 切成两连续域、接受恒优于拒绝）解决二元奖励太稀疏；② <b>ODE-to-SDE</b> 让 flow model 可做 online RL；③ <b>Curate &amp; Evict 动态课程</b>把目标对齐到红队"发现率最大化 + 省算力"。</div>
+    <div class="note-b"><b>实验（§5）：</b>2 benchmark × 4 VLM，ASR/HS 几乎全面提升（Gemini 上 QR 55→63%、SI on Gemini VLBreakBench 59→65%）；细粒度上弱类别 Fraud 近翻倍、饱和类别靠 HS 体现更深危害；消融证增益主体来自 RL（~4–5 点）而非选风格（~1–2 点）。</div>
+    <div class="note-b"><b>Takeaway（≥3 条 + 适用边界）：</b><br>① <b>新攻击面：</b>VLM 安全是 how（风格）的函数，不只是 what（内容）——comprehension 抗风格但 safety 不抗，这个"能力错位"可被系统利用。<br>② <b>稀疏奖励工程：</b>把稀疏二元判官信号改造成"分层 + 截断"的连续奖励，是让 RL 在生成式红队里学得动的通用配方，可迁移到其它生成式越狱。<br>③ <b>红队目标对齐：</b>标准生成 RL 的"数据集泛化"目标与红队"多挖洞省算力"诉求不一致，动态课程（只啃未攻破样本）是更对的优化目标。<br><b>适用边界 / 诚实：</b>(a) <b>Mechanism Analysis（§5 第3问）正文未充分展开</b>——"风格为何能绕过安全对齐的深层机理"只给实证、未给 representation 层面的机制解释 [需查/原文未写]；(b) 风格池大小 \(N_S\)、flow model 的 \( \pi_\Theta(a\mid s) \) log-prob 具体估计细节均在 Appendix [需查附录]；(c) 个别场景（GPT-4.1-mini 上 HIMRD）ASR 反降，说明增强并非绝对单调；(d) 全文是<b>攻击/红队</b>视角，防御侧仅在结论点出"需要超越 content-centric 的防御"，未给具体防御方案。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-adversarial-style-optimization-enhancing-vlm-jailbreaks/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Illustration of the Stylistic Sensitivity vulnerability in MLLMs. While a base SOTA attack (Top) is effectively refused by the Defender, MLLMs exhibit innate sensitivity to non-content- based style modifications. Our framework (Bottom) exploits this by applying Image Style Transfer to create an optimized stylistic attack. This new input bypasses the safety mechanism, demon- strating that</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-adversarial-style-optimization-enhancing-vlm-jailbreaks/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Main framework of the proposed ASO method. The method consists of two stages: (1) Style Sensitivity Probing, and (2) GRPO- based Style Enhancement.</figcaption></figure>
+    </div>
+  </div></body></html>

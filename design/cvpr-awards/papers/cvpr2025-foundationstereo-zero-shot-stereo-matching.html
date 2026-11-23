@@ -1,0 +1,189 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>FoundationStereo: Zero-Shot Stereo Matching</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2025</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>FoundationStereo: Zero-Shot Stereo Matching</h1>
+    <div class="au2" style="color:var(--mut)">Bowen Wen · Matthew Trepte · Joseph Aribido · Jan Kautz · Orazio Gallo · Stan Birchfield</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2025/papers/Wen_FoundationStereo_Zero-Shot_Stereo_Matching_CVPR_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=FoundationStereo%3A%20Zero-Shot%20Stereo%20Matching">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2025-foundationstereo-zero-shot-stereo-matching -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">做一个<b>不用 per-domain 微调就能强 zero-shot 泛化</b>的立体匹配（双目深度）基础模型：靠 ① <b>1M 张高保真合成数据 FSD</b>（Omniverse 域随机 + 自动自清洗）、② <b>Side-Tuning Adapter (STA)</b> 把单目深度基础模型 <b>DepthAnythingV2</b> 的互联网级先验"嫁接"进立体网络补 sim-to-real、③ <b>Attentive Hybrid Cost Filtering (AHCF)</b>（APC 解耦 3D 卷积 + Disparity Transformer 沿视差做自注意力）。结果：zero-shot 直接<b>反超别人在目标域微调</b>的成绩，ETH3D/Middlebury 微调后榜单第一。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">立体匹配在 benchmark 上已近饱和，但<b>靠的是"在目标域微调"</b>；别的 CV 任务在 scaling law 下都有 foundation model 级 zero-shot 泛化，立体却没有。原文设问：“what prevents stereo matching algorithms from achieving a similar level of generalization?” 三类现有法各有结构性短板：cost volume+3D CNN（显存爆、上不了高分辨率）；iterative refinement（GRU 慢、缺长程上下文）；transformer unary 特征（缺 cost volume / 迭代精修结构 → 精度低）。加上常用训练集 Scene Flow 只有 40K 对（太小）⇒ 没有能"开箱即用"的立体模型。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b">① <b>STA（§3.1）</b>：用 CNN（EdgeNeXt-S）把<b>冻结的 DepthAnythingV2（ViT）</b>适配到立体——design (c)：在其最终输出头前用 4×4 stride-4 卷积下采特征，与同级 CNN 特征 concat 成 1/4 尺度 hybrid 特征（简单却显著最优）；<b>ViT 必须冻结</b>（解冻会破坏单目先验）。用其 latent 特征（非带尺度歧义的原始深度）当几何先验。② <b>AHCF（§3.2）</b>：先建 hybrid cost volume（group-wise correlation G=8 + concatenation，式1）；<b>APC（Axial-Planar Conv）</b>把 3×3×3 的 3D 卷积<b>解耦成 空间(Ks×Ks×1) + 视差(1×1×Kd) 两步</b>（类 3D 可分离卷积，但只分空间/视差不分通道）→ 在不爆显存下扩大感受野（5×5×5 在 80GB GPU 都装不下）；<b>DT（Disparity Transformer）</b>把 cost volume reshape 成"每条=一个视差序列"，4 层 transformer + FlashAttention <b>沿整个视差维做自注意力</b>做全局长程推理。③ <b>初始视差</b>用 soft-argmin（式2）；再 RAFT 式 <b>GRU 迭代精修</b>（式3-10，三级 coarse-to-fine + attention 选择），损失=初始 smooth-L1 + 指数加权的精修 L1（式11，γ=0.9）。④ <b>FSD 数据（§3.5）</b>：1M 对，Omniverse 路径追踪 + 域随机（baseline/焦距/视角/光照/物体），<b>迭代自清洗</b>：训一版→在 FSD 上评→BP-2&gt;60% 的样本判为 ambiguous 重新生成（交替 2 轮）。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">Zero-shot（Table 2，越低越好）：<b>仅用 Scene Flow 训</b>就在 Middlebury/ETH3D/KITTI-12/15 全面超对手；放开训练集（排除目标域）后 Middlebury BP-2=<b>1.1</b>、ETH3D BP-1=<b>0.5</b>、KITTI-12 D1=2.3、KITTI-15 D1=2.8，对比次优 NMRF 7.5/3.8/4.2/5.1 是数量级领先。In-domain Scene Flow（Table 3）EPE <b>0.34</b>（正文写从 0.41 降到 0.33）。ETH3D 榜单（Table 4）：微调版 BP-0.5=1.26/EPE=0.09 <b>提交时第一</b>（误差砍一半多）；<b>zero-shot 版（完全没用 ETH3D）BP-0.5=2.31/EPE=0.13，已与别人 in-domain 训练的领先法相当甚至更好</b>。Middlebury 榜单微调版也第一。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 把"单目深度基础模型的先验"通过 STA 引入立体（design (c) + 冻 ViT），是 sim-to-real 的关键；② APC 用"空间/视差解耦卷积"换大感受野不爆显存；③ DT 专门<b>沿视差维</b>做注意力（比对整个 4D volume 做注意力更有效——4D 空间太大不可控）；④ 1M 合成 + 自清洗数据飞轮；⑤ zero-shot 反超 in-domain 微调，真正"开箱即用"。</div>
+    <div class="note-h">疑问 / 边界（原文标注）</div>
+    <div class="note-b">① <b>慢</b>：未做效率优化，375×1242 在 A100 上要 <b>0.7s</b>（Limitation 自认，未来靠蒸馏/剪枝）。② <b>透明物体</b>少：FSD 全透明物体收集有限，鲁棒性还能补。③ <b>"zero-shot"借了 DepthAnythingV2 在真实数据上的训练</b>——它本身是在真实单目图上训的基础模型，所以严格说是"立体不见目标域、但骨架先验见过海量真实图"（诚实 nuance，非纯合成自举）。④ <b>Table 3 的 EPE 0.34 与正文 0.33 略不一致</b>（如实标注，未取舍）。⑤ 模型大、未刻意限制规模、显存重。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文，PyMuPDF 提取）。原文英文原句引用 + 中文指路 + 追问 why。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句拆解</div>
+    <div class="note-b"><b>原文：</b>“Tremendous progress has been made in deep stereo matching to excel on benchmark datasets through per-domain fine-tuning. However, achieving strong zero-shot generalization — a hallmark of foundation models in other computer vision tasks — remains challenging for stereo matching.” → <b>立意</b>：立体匹配在榜单上很强，但<b>靠的是目标域微调</b>；别的 CV 任务已有 foundation-model 式 zero-shot，立体却没有。</div>
+    <div class="note-b"><b>原文：</b>“a large-scale (1M stereo pairs) synthetic training dataset featuring large diversity and high photorealism, followed by an automatic self-curation pipeline to remove ambiguous samples.” → <b>数据</b>：1M 高保真合成 + 自动自清洗。</div>
+    <div class="note-b"><b>原文：</b>“a side-tuning feature backbone that adapts rich monocular priors from vision foundation models to mitigate the sim-to-real gap, and long-range context reasoning for effective cost volume filtering.” → <b>两个架构创新</b>：STA（嫁接单目深度基础模型先验补 sim-to-real）+ 长程上下文 cost filtering（AHCF）。</div>
+    <div class="note-b"><b>逐句抓 Abstract：</b>1M 合成数据（域随机+自清洗）+ 单目基础模型先验嫁接（STA）+ 长程 cost volume 推理（AHCF=APC+DT）→ 强 zero-shot，无需 per-domain 微调即"开箱即用"。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文，理解 FoundationStereo 必备）</div>
+    <div class="note-b"><b>① 立体匹配 / 视差 / cost volume：</b>双目左右图找同名点，水平位移=视差 d，<b>深度=baseline×focal/d</b>（视差越大越近）。主流先建 <b>cost volume</b>（对每像素、每候选视差 d 算左图与"右图右移 d"的特征相似度 → D×H×W 代价体），再 "filter"（3D CNN 聚合上下文）后取最优视差。<b>三类架构（§2）</b>：(i) cost volume + 3D CNN（精度高但<b>显存爆</b>、上不了高分辨率）；(ii) RAFT-Stereo 式<b>迭代精修</b>（GRU 绕开昂贵 4D 滤波，但慢、<b>缺长程上下文</b>）；(iii) transformer 做 unary 特征（<b>缺 cost volume / 迭代结构</b> → 精度低）。本文融三者之长。</div>
+    <div class="note-b"><b>② 单目深度基础模型 DepthAnythingV2（[78]）：</b>在互联网级真实图上训的 ViT 单目深度模型，泛化强但<b>有尺度歧义</b>（只给相对深度）。本文<b>不用它的深度数值</b>，而用它的 <b>latent 特征</b>当语义/几何先验（绕开尺度歧义）。DINOv2（[46]）是自监督 ViT，本文实验里立体任务上不如 DAv2（任务相关性低、分辨率不够做像素级对应）。</div>
+    <div class="note-b"><b>③ side-tuning / 域随机 / sim-to-real：</b><b>side-tuning</b>（[82]）=冻结大模型、加一个小 side 网络做任务适配（additive，不破坏预训练知识）。<b>域随机</b>（domain randomization, [58]）=合成时大量随机化光照/材质/视角/baseline/焦距，迫使模型学<b>域不变</b>特征以迁移到真实。<b>sim-to-real gap</b>=合成训练→真实测试的分布差，是纯合成训练的核心障碍。</div>
+    <div class="note-b"><b>④ soft-argmin / group-wise correlation / FlashAttention：</b><b>soft-argmin</b>（[30]，式2）=对视差维 softmax 后加权求期望得<b>连续</b>视差（可微、亚像素，对照 argmax 不可微且离散）；<b>group-wise correlation</b>（[24]）=把特征分 G 组分别算相关，得更丰富的相似度度量；<b>FlashAttention</b>（[18]）=IO 感知的精确注意力，省显存、快，使沿整条视差序列做自注意力可行。</div>
+
+    <div class="note-h">②″ §2 Related Work — 前人 zero-shot 为何不行 + 数据困境 + 视觉基础模型浪潮</div>
+    <div class="note-b"><b>三类立体方法的短板（原文）：</b>cost-volume + 3D CNN 与迭代精修法 “struggle to gather non-local information to effectively scale to larger datasets”；transformer 类 unary 特征法则 “lacking the specialized structure afforded by cost volumes and iterative refinement to achieve high accuracy.” 跨域泛化的前人 “have not achieved results that are competitive with those obtained by fine-tuning on the target domain, either due to insufficient structure in the network architecture, impoverished training data, or both. These networks are generally experimented on Scene Flow, a rather small dataset with only 40K annotated training image pairs.” → 病根 = <b>架构结构不足 + 数据太小</b>。并发工作 StereoAnywhere[3] “achieves remarkable zero-shot generalization with monocular prior enhanced correlation volumes”（同样借单目先验，思路相近）。</div>
+    <div class="note-b"><b>数据困境（为何被迫用合成）：</b>KITTI 的 LiDAR GT 稀疏——“the sparse ground-truth disparity obtained by LiDAR sensors hinders learning accurate and dense stereo matching”；真实数据普遍 “challenges of scarce data size, imperfect ground-truth disparity and lack of collection scalability in real-world have driven the widespread adoption of synthetic data for training.” → 这正是本文造 1M 合成 FSD 的理由。<b>视觉基础模型浪潮：</b>CLIP / DINO / SAM / DUSt3R / MASt3R / FoundationPose 已展示 “under the scaling law, how foundation models in vision are evolving to support robust applications across diverse scenarios without tedious per-domain fine-tuning” —— 立体匹配是这股浪潮里"尚未补齐"的一块，本文来补。</div>
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环（Intro 已自包含）</div>
+    <div class="note-b"><b>problem（原文核心设问）：</b>“Given the zero-shot generalization ability shown on other problems within computer vision via the scaling law, <b>what prevents stereo matching algorithms from achieving a similar level of generalization?</b>” 答：三类架构各缺一块（cost+3DCNN 显存 / 迭代精修缺长程 / transformer 缺结构）+ 常用 Scene Flow 仅 <b>40K</b> 对（太小）→ 没有能"开箱即用"的立体模型。</div>
+    <div class="note-b"><b>solution（Intro 即给 method）：</b>① “train on a large-scale (1M image pairs) ... synthetic dataset” + 自清洗；② “a side-tuning feature backbone that adapts ... DepthAnythingV2 ... to the stereo setup” 补 sim-to-real；③ “Attentive Hybrid Cost Volume (AHCF)” = APC（解耦 3D 卷积扩感受野）+ DT（沿视差自注意力做全局推理）。</div>
+    <div class="note-b"><b>why（为什么能 zero-shot）：</b>大而多样的合成数据给<b>覆盖</b>；单目基础模型先验给<b>真实世界语义/几何</b>（补合成→真实）；APC/DT 给<b>更强的 cost volume 表示</b> → 更好的初始视差 + 更强的迭代精修特征。三者合力 → 跨域稳健。<b>★ Intro 已闭环</b>。</div>
+    <div class="note-b"><b>四点贡献（原文）：</b>① zero-shot 模型，结果可比甚至超别人 in-domain 微调、in-the-wild 大幅领先；② 1M 高保真合成数据 FSD + 自清洗；③ STA 把 ViT 单目深度模型适配进立体；④ AHCF（APC 沙漏 + DT 沿视差全自注意力）。</div>
+
+    <div class="note-h">③ §3.1 STA — 把单目深度基础模型先验嫁接进立体（design (c) + 冻 ViT）</div>
+    <div class="note-b"><b>动机：</b>纯合成训练有 sim-to-real gap；借 DepthAnythingV2（真实图训）的先验补。用 CNN 把 ViT 适配到立体，“synergizing the strengths of both CNN and ViT”。</div>
+    <div class="note-b"><b>三个设计（Fig.3 left，消融见下）：</b>(a) 直接用冻结 DAv2 的 DPT head 金字塔特征、不加 CNN（差，6.48）；(b) 仿 ViT-Adapter 在 CNN↔ViT 间互换特征（2.22）；<b>(c)</b> 在 DAv2 最终输出头前用 <b>4×4 stride-4 卷积</b>下采特征，与同级 CNN 特征 <b>concat 成 1/4 尺度 hybrid 特征</b>（<b>1.97 最优</b>）。原文 hypothesize：(c) 用的"输出头前的 latest feature"保留了<b>高分辨率、细粒度的语义/几何先验</b>，最适合后续 cost volume 构建/滤波。</div>
+    <div class="note-b"><b>关键约束：</b>① CNN 用 <b>EdgeNeXt-S</b>（省显存，更大 CNN 无额外收益）；② 喂 DAv2 前把图 resize 到 <b>14 的倍数</b>（对齐其 patch size）；③ STA 权重<b>左右图共享</b>；④ <b>ViT 必须冻结</b>（解冻 3.94 vs 冻结 1.97 → 解冻破坏单目先验）；⑤ context 分支用残差块+下采生成 {1/4,1/8,1/16} 上下文特征喂 ConvGRU。<b>用 latent 特征而非 raw 深度</b>——避开尺度歧义。</div>
+
+    <div class="note-h">④ §3.2 AHCF — Hybrid Cost Volume + APC + DT（全文架构核心）</div>
+    <div class="note-b"><b>Hybrid Cost Volume（式1）：</b>V_C=[V_gwc, V_cat]。<b>V_gwc</b>=8 组 group-wise correlation（L2 归一化特征点积，稳训练，每组给一种相似度度量）；<b>V_cat</b>=把左、"右移 d"的特征 concat（<b>保留含单目先验的 unary 特征</b>）。<b>省显存技巧</b>：concat 前用 1×1 卷积把维度降到 <b>14</b>。两者互补：correlation 给"匹配强度"、concat 给"原始特征含先验"。</div>
+    <div class="note-b"><b>APC（Axial-Planar Convolution，扩感受野不爆显存）：</b>沙漏网络（3 下采+3 上采+残差）滤 cost volume。痛点：3×3×3 3D 卷积对大视差不够，但<b>放大核会爆显存</b>——“even ... 5×5×5 we observe unmanageable memory usage on an 80GB GPU”。APC 把 3×3×3 <b>解耦成 空间(Ks×Ks×1) + 视差(1×1×Kd) 两步</b>（各跟 BN+ReLU）。<b>与标准 separable conv 的区别（关键 why）</b>：原文 “only separate the spatial and disparity dimensions <b>without subdividing the channel into groups which sacrifices representation power</b>”——只分空间/视差、<b>不分通道</b>（分通道会掉表达力）。视差维"specially treated"因为它编码的是<b>特征比较的概率分布</b>（哪个视差对）。消融：视差核增到 <b>~17 收益饱和</b>。</div>
+    <div class="note-b"><b>DT（Disparity Transformer，沿视差维全局推理）：</b>前人只把 transformer 用在 unary 特征提取、忽略了 cost filtering。DT 补这块：对 V_C 先 <b>4×4×4 stride-4 下采</b> → reshape 成"每条=一个视差序列"的 token batch → 加位置编码 → <b>4 层 transformer encoder（FlashAttention，h=4 头）沿整个视差维做自注意力</b> → trilinear 上采回并与沙漏输出<b>相加</b>。<b>why 沿视差而非全 4D</b>：4D cost volume 空间极大、不可控；沿视差注意力已给足上下文做好初始视差 + 后续 GRU 查表（消融：disparity 1.97 vs full 2.25）。</div>
+    <div class="note-b"><b>初始视差（式2）：</b>对滤波后 volume V′_C 做 <b>soft-argmin</b>：d₀=Σ_d d·Softmax(V′_C)(d)，在 1/4 尺度。可微 + 亚像素。</div>
+
+    <div class="note-h">④′ 具体化：cost volume 维度走一遍（理解为何显存敏感）</div>
+    <div class="note-b"><b>设输入</b> H×W、max disparity D=416。STA 在 <b>1/4 尺度</b>出 unary 特征 → cost volume 维度 ≈ C × (D/4=104) × (H/4) × (W/4)。即便 1/4 下采，这仍是个 <b>4D 张量</b>（多了个 104 长的视差轴），随分辨率/视差线性叠乘 → <b>显存极敏感</b>。这就是为什么 ① concat 分支要把维度降到 14 省显存；② 3D 卷积放大核（5×5×5）会爆 80GB GPU、必须用 APC 解耦；③ DT 先 4×4×4 stride-4 下采再做注意力。<b>初始视差</b> soft-argmin 沿那条长度 104 的视差轴 softmax 加权 → 连续视差 d₀（再 GRU 精修 + convex 上采回 H×W）。</div>
+
+    <div class="note-h">④″ DT 的张量公式 + §4.1 训练/推理配置（可复现要点）</div>
+    <div class="note-b"><b>DT 自注意力（原文公式）：</b>“Q0 = PE(R(Conv4×4×4(VC))) ∈ R^((H/16 × W/16)×C×(D/16))”；“MultiHead(Q,K,V) = [head1,…,headh]WO, where headi = FlashAttention(Qi,Ki,Vi)”；“Q1 = Norm(MultiHead(Q0,Q0,Q0)+Q0); Q2 = Norm(FFN(Q1)+Q1)”，h=4 头、4 层 encoder；输出 trilinear 上采回原尺寸并与沙漏输出<b>相加</b>。即先用 4×4×4 stride-4 把 4D cost volume 压一遍，reshape 成"每条 token 序列长度=视差"，沿视差维做标准 self-attention。</div>
+    <div class="note-b"><b>§4.1 实现细节（可复现）：</b>混合训练集 = <b>FSD + Scene Flow + Sintel + CREStereo + FallingThings + InStereo2K + Virtual KITTI 2</b>；AdamW、<b>200K steps、total batch 128、32× A100</b>，LR 1e-4 在训练 80% 处衰减 ×0.1；随机裁剪 <b>320×736</b>，训练用 <b>22</b> 次 GRU 迭代；zero-shot 推理用 <b>32</b> 次精修迭代、max disparity <b>416</b>。消融为省算力用 FSD 的 <b>100K</b> 子集、在 Middlebury training set 上评 BP-2。</div>
+    <div class="note-h">⑤ §3.3-3.4 迭代精修 + 损失（RAFT 式 GRU）</div>
+    <div class="note-b"><b>迭代精修（式3-10）：</b>RAFT 式 GRU。每步用<b>最新视差 dk</b> 从"滤波后 hybrid volume V′_C + 相关 volume V_corr"查特征 FV（式4）→ 三级 GRU coarse-to-fine（初始隐状态 h₀=tanh(f_c)，f_c=context 特征含 STA 单目先验）→ attention-based 频率选择（[66]）→ convex upsampling 到全分辨率。原文：迭代"helps to avoid local optimum and accelerate convergence"。</div>
+    <div class="note-b"><b>损失（式11）：</b>L=|d₀−d|_smooth + Σ_{k=1}^{K} γ^(K−k)|dk−d|₁，γ=0.9，<b>指数递增权重</b>（越靠后的迭代权重越大，聚焦最终精度）。训练 22 iter、推理 32 iter，max disparity 416。</div>
+
+    <div class="note-h">⑥ §3.5 FSD 数据集 + 迭代自清洗（数据飞轮）</div>
+    <div class="note-b"><b>FSD（1M 对，NVIDIA Omniverse 路径追踪）：</b>覆盖 reflections / low-texture / 严重遮挡等立体难点；<b>域随机</b>=随机 stereo baseline、焦距、视角、光照、物体配置（原文强调它<b>变 baseline+内参</b>，多数合成集是 constant）。下表对比常用合成集（节选）：</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:11.5px;margin:2px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c">数据集</td><td style="border-bottom:1px solid #2a2f5c">Stereo 对</td><td style="border-bottom:1px solid #2a2f5c">模拟器</td><td style="border-bottom:1px solid #2a2f5c">相机参数</td></tr>
+<tr><td style="padding:2px 6px">Scene Flow</td><td>40K</td><td>Blender</td><td>Constant</td></tr>
+<tr><td style="padding:2px 6px">CREStereo</td><td>200K</td><td>Blender</td><td>Constant</td></tr>
+<tr><td style="padding:2px 6px">TartanAir</td><td>306K</td><td>Unreal</td><td>Constant</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 6px"><b>FSD (本文)</b></td><td><b>1000K</b></td><td><b>Omniverse</b></td><td><b>变 baseline+内参</b></td></tr>
+</table></div>
+    <div class="note-b"><b>迭代自清洗（关键的数据飞轮）：</b>域随机难免造出 ambiguous 样本（严重纹理重复、缺上下文的反射、错误光照下的纯色）"confuses the learning"。流程：训 v1 FoundationStereo on FSD → 在 FSD 上自评 → <b>BP-2 &gt; 60% 的样本判 ambiguous → 重新生成替换</b> → 训练与清洗<b>交替 2 轮</b>，同步提升数据质量与模型鲁棒。</div>
+
+    <div class="note-h">Q&amp;A · 几个 why 追问</div>
+    <div class="note-b"><b>1 为什么 zero-shot 能反超别人 in-domain 微调？</b>三力合一：① <b>大规模多样合成</b>（1M，远超 Scene Flow 40K）给覆盖；② <b>单目基础模型真实先验</b>（DAv2 在海量真实图训）补 sim-to-real；③ <b>更强 cost volume 推理</b>（APC 大感受野 + DT 全局）。对手 in-domain 微调虽见过目标域，但训练集小、无基础模型先验、架构受限 → 反被超。</div>
+    <div class="note-b"><b>2 APC 为什么省显存（具体化）？</b>标准 5×5×5 = 125 权重/通道对，80GB GPU 都装不下；APC 拆成 (Ks×Ks×1)+(1×1×Kd)，如 (3,3,1)+(1,1,17) ≈ 9+17=26，却能把视差感受野撑到 17。<b>为何不像标准 separable conv 那样也分通道？</b>分通道会牺牲表达力；只分空间/视差既省显存又保表达——这是本文对 separable conv 的针对性改造。</div>
+    <div class="note-b"><b>3 为什么 DT 沿视差维而非整个 4D volume 做注意力？</b>4D（C×D×H×W）token 数极大、注意力不可控/算不动；而视差维恰是 cost volume 的"语义维"（编码哪个视差对），沿它做全自注意力已能给初始视差和 GRU 查表足够全局上下文。消融实证：disparity 1.97 优于 full 2.25。</div>
+    <div class="note-b"><b>4 "zero-shot" 名副其实吗？（诚实 nuance）</b>立体网络确实<b>没见目标域</b>（Middlebury/ETH3D/KITTI 都没参与训练）；但骨架 <b>DepthAnythingV2 在海量真实单目图上预训练过</b> → 严格说是"<b>立体匹配不见目标域、但骨架先验见过真实世界图像</b>"，并非纯合成自举。这是它强 zero-shot 的真正来源之一，需如实标注。</div>
+    <div class="note-b"><b>5 为什么 cost volume 要 hybrid（correlation + concat）而非单一？</b><b>group-wise correlation</b> 给的是"压缩后的匹配强度"（一个标量×G 组），擅长表达"像不像"但丢了原始外观；<b>concatenation</b> 保留左右原始 unary 特征（含 STA 注入的<b>单目先验</b>），让后续滤波能用上语义/几何线索。二者拼接 = 既有匹配度量、又保留先验信息 → 滤波/初始视差更准。这也是为什么 concat 分支虽费显存仍保留（只降到 14 维折中）。</div>
+    <div class="note-b"><b>6 soft-argmin 为什么比 argmax 好？</b>argmax 取概率最大的离散视差 → 不可微（没法端到端训）、且只能到整数视差（无亚像素）。soft-argmin=Σ d·softmax(cost) 是对视差的<b>期望</b> → 可微、能输出<b>连续/亚像素</b>视差，对高精度立体至关重要。</div>
+
+    <div class="note-h">⑦ §4 实验 — Zero-shot 泛化（Table 2，越低越好）</div>
+    <div class="note-b"><b>设置：</b>上半=所有方法仅用 Scene Flow 训；下半=可用任意非目标域数据。指标 BP-X=误差&gt;X 像素的比例，D1=误差&gt;3px 且&gt;5% GT 的比例。</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:11.5px;margin:2px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c">方法</td><td style="border-bottom:1px solid #2a2f5c">Middlebury BP-2</td><td style="border-bottom:1px solid #2a2f5c">ETH3D BP-1</td><td style="border-bottom:1px solid #2a2f5c">KITTI-12 D1</td><td style="border-bottom:1px solid #2a2f5c">KITTI-15 D1</td></tr>
+<tr><td style="padding:2px 6px">RAFT-Stereo (SF)</td><td>12.6</td><td>3.3</td><td>4.7</td><td>5.5</td></tr>
+<tr><td style="padding:2px 6px">IGEV (SF)</td><td>8.8</td><td>4.0</td><td>5.2</td><td>5.7</td></tr>
+<tr><td style="padding:2px 6px">NMRF (SF)</td><td>7.5</td><td>3.8</td><td>4.2</td><td>5.1</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 6px"><b>Ours (仅 Scene Flow)</b></td><td><b>5.5</b></td><td><b>1.8</b></td><td><b>3.2</b></td><td><b>4.9</b></td></tr>
+<tr><td style="padding:2px 6px">Selective-IGEV* (全数据)</td><td>7.5</td><td>3.4</td><td>3.2</td><td>4.5</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 6px"><b>Ours (全数据)</b></td><td><b>1.1</b></td><td><b>0.5</b></td><td><b>2.3</b></td><td><b>2.8</b></td></tr>
+</table></div>
+    <div class="note-b"><b>读表：</b><b>仅用 Scene Flow 就已全面领先</b>所有对手；放开数据后 Middlebury BP-2 从次优 7.5 砍到 <b>1.1</b>、ETH3D BP-1 从 3.0 砍到 <b>0.5</b>——把"换域就崩"的老问题直接打穿（数量级领先）。</div>
+    <div class="note-b"><b>In-domain Scene Flow（Table 3）：</b>EPE <b>0.34</b>（正文写"从 0.41 降到 0.33"，<b>表 0.34 与正文 0.33 略不一致</b>，如实标注），优于 Selective-IGEV 0.44 / MoCha 0.41 等。</div>
+    <div class="note-b"><b>ETH3D 榜单（Table 4）：</b><b>微调版</b> BP-0.5=1.26 / EPE=0.09，<b>提交时榜单第一</b>（误差砍一半多，vs 次优 Selective-IGEV 3.06/0.12）；<b>zero-shot 版（完全没用 ETH3D）</b> BP-0.5=2.31 / EPE=0.13，<b>已与别人 in-domain 训练的领先法相当甚至更好</b>。Middlebury 榜单微调版也第一。</div>
+
+    <div class="note-h">⑧ §4.5 消融全表（zero-shot Middlebury BP-2，越低越好，绿=采用）</div>
+    <div class="note-b"><b>Table 5 · STA（骨架 + design + 冻结）：</b>骨架——DINOv2-L <b>2.46</b> &gt; DAv2-S 2.22 &gt; DAv2-B 2.11 &gt; <b>DAv2-L 1.97</b>（DAv2 任务相关性更高、分辨率够做像素级对应）；design——(a) 6.48 / (b) 2.22 / <b>(c) 1.97</b>；冻结——解冻 ViT 3.94 vs <b>冻结 1.97</b>（解冻毁单目先验）。</div>
+    <div class="note-b"><b>Table 6 · AHCF（DT + APC 细节）：</b>位置编码 RoPE 2.19 vs <b>Cosine 1.97</b>（cost volume 视差长度固定，RoPE 的相对位置优势用不上）；DT 尺度 1/32→2.06 vs <b>1/16→1.97</b>；<b>沿视差 1.97 vs 全 volume 2.25</b>；DT 放置 pre/post-hourglass 2.06/2.20 vs <b>parallel 1.97</b>；APC 视差核 (1,1,5)→2.10 / (1,1,9)→2.06 / (1,1,13)→2.01 / <b>(1,1,17)→1.97</b> / (1,1,21)→1.98（<b>17 饱和</b>）；空间核 (7,7,1) 1.99 不如 (3,3,1)。</div>
+    <div class="note-b"><b>Table 7 · 模块逐加 + FSD（zero-shot Middlebury BP-2，越低越好）：</b>左表——<b>无本文模块（普通 3D CNN 沙漏）2.34 → STA+APC+DT 全开 1.97</b>，逐步加入各模块 BP-2 单调下降（提取到的两个中间值约 2.16、2.05）；右表——训练<b>是否纳入 FSD</b>：不用 FSD <b>2.48</b> → 用 FSD <b>2.21</b>（FSD 是数据侧的关键增益）。原文定性结论：“STA leverages rich monocular priors which greatly enhances generalization to real images for ambiguous regions. DT and APC effectively aggregate cost volume features along spatial and disparity dimensions.” <b>⚠️ 诚实标注：</b>Table 7-left 各行 checkmark 在 PDF 文本提取中列对齐错乱（曾误读出一个 1.15 的异常值，与"全开=1.97 才是最佳"自相矛盾，已弃用），故此处只锚定可靠的两端点 2.34→1.97 与 FSD 表 2.48→2.21，不强行把中间值绑定到具体组件。</div>
+
+    <div class="note-h">⑨ §5 局限（原文自陈 + 诚实边界）</div>
+    <div class="note-b"><b>① 慢：</b>未做效率优化，375×1242 在 A100 上要 <b>0.7s/帧</b>（Limitation 自认，未来靠蒸馏/剪枝）。<b>② 透明物体少：</b>FSD 全透明物体收集有限，鲁棒性还能补。<b>③ "zero-shot" 借了 DAv2 的真实数据预训练</b>（见 Q&A 4，诚实 nuance）。<b>④ Table 3 EPE 0.34 与正文 0.33 略不一致</b>（如实标注）。<b>⑤ 模型大、未刻意限制规模、显存重</b>（原文 “we do not deliberately limit model size while pursuing better performance”）。</div>
+
+    <div class="note-h">📌 全文一页总结（问题→方法→实验→takeaway）</div>
+    <div class="note-b"><b>问题(§1)：</b>立体匹配靠 per-domain 微调才强、无 foundation 级 zero-shot；三类架构各缺一块（cost+3DCNN 显存 / 迭代精修缺长程 / transformer 缺结构）+ 训练数据太小（Scene Flow 40K）。</div>
+    <div class="note-b"><b>方法(§3)：</b>FoundationStereo = <b>1M 高保真合成数据 FSD</b>（Omniverse 路径追踪 + 域随机变 baseline/内参 + <b>BP-2&gt;60% 迭代自清洗</b>）+ <b>STA</b>（CNN 把<b>冻结 DepthAnythingV2</b> 适配进立体，design (c) 下采+concat，用 latent 特征避尺度歧义）+ <b>AHCF</b>（hybrid cost volume = group-wise correlation + concat；<b>APC</b> 把 3D 卷积解耦成空间×视差扩感受野不爆显存；<b>DT</b> 沿视差维全自注意力做全局推理）+ soft-argmin 初始化 + RAFT 式三级 GRU 迭代精修（指数加权损失）。</div>
+    <div class="note-b"><b>实验(§4)：</b>zero-shot 在 Middlebury/ETH3D/KITTI <b>数量级领先</b>（Middlebury BP-2 7.5→1.1、ETH3D BP-1 3.0→0.5），<b>甚至超别人 in-domain 微调</b>；ETH3D/Middlebury 微调版榜单第一，zero-shot 版已与 in-domain 训练法相当；消融显示 <b>STA 单目先验是关键设计</b>（Fig.3 定性印证其在反射/暗部歧义区的作用）、沿视差注意力优于全 4D（1.97 vs 2.25）、视差核 17 饱和、ViT 必须冻结（解冻 3.94 vs 冻结 1.97）。</div>
+    <div class="note-b"><b>Takeaway：</b>① <b>"大合成数据 + 嫁接单目深度基础模型先验 + 更强 cost volume 推理"</b> 是把 foundation-model 泛化带进立体匹配的可行配方，首次让立体"开箱即用"反超微调；② STA 冻结 ViT + design (c) 是 sim-to-real 的命门（消融端点 2.34→1.97 + Fig.3 共同印证）；③ APC 用"空间/视差解耦（不分通道）"换大感受野不爆显存、DT 专攻视差维全局推理；④ 边界=慢(0.7s/帧)、透明物体少、<b>"zero-shot" 依赖单目骨架的真实数据预训练</b>（诚实 nuance）、Table 3 数值微不一致（如实标注）。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-foundationstereo-zero-shot-stereo-matching/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Zero-shot prediction on in-the-wild images. Our method generalizes to diverse scenarios (indoor / outdoor), objects of challenging properties (textureless / reﬂective / translucent / thin-structured), complex illuminations (shadow / strong exposure), various viewing perspectives and sensing ranges.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-foundationstereo-zero-shot-stereo-matching/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Overview of our proposed FoundationStereo. The Side-Tuning Adapter (STA) adapts the rich monocular priors from a frozen DepthAny- thingV2 [78], while combined with ﬁne-grained high-frequency features from multi-level CNN for unary feature extraction. Attentive Hybrid Cost Filtering (AHCF) combines the strengths of the Axial-Planar Convolution (APC) ﬁltering and a Disparity Transformer (D</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-foundationstereo-zero-shot-stereo-matching/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Left: Design choices for STA module. Right: Effects of the proposed STA and AHCF modules. “W/o STA” only uses CNN to extract features. “W/o AHCF” uses conventional 3D CNN-based hourglass network for cost volume ﬁltering. Results are obtained via zero-shot inference without ﬁne- tuning on target dataset. STA leverages rich monocular prior to reliably predict the lamp region with inconsist</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-foundationstereo-zero-shot-stereo-matching/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Left: Samples from our FoundationStereo dataset (FSD), which consists of synthetic stereo images with structured indoor / outdoor scenes (top), as well as more randomized scenes with challenging ﬂying objects and higher geometry and texture diversity (bottom). Right: The iterative self-curation process removes ambiguous samples inevitably produced from the domain randomized synthetic dat</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-foundationstereo-zero-shot-stereo-matching/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Qualitative comparison of zero-shot inference on in-the-wild images. For each comparison method we select the best performing checkpoint from their public release, which has been trained on a mixture of public datasets. These images exhibit challenging reﬂection, translucency, repetitive textures, complex illuminations and thin-structures, revealing the importance of our network architec</figcaption></figure>
+    </div>
+  </div></body></html>

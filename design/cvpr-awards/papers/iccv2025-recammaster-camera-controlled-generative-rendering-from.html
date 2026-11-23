@@ -1,0 +1,204 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>ReCamMaster: Camera-Controlled Generative Rendering from A Single Video</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">ICCV 2025</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>ReCamMaster: Camera-Controlled Generative Rendering from A Single Video</h1>
+    <div class="au2" style="color:var(--mut)">Jianhong Bai · Menghan Xia · Xiao Fu · Xintao Wang · Lianrui Mu · Jinwen Cao · Zuozhu Liu · Haoji Hu · Xiang Bai · Pengfei Wan · Di Zhang</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/ICCV2025/papers/Bai_ReCamMaster_Camera-Controlled_Generative_Rendering_from_A_Single_Video_ICCV_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=ReCamMaster%3A%20Camera-Controlled%20Generative%20Rendering%20from%20A%20Single%20Video">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:iccv2025-recammaster-camera-controlled-generative-rendering-from -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">给一段<b>源视频</b>，用<b>新相机轨迹</b>把同一动态场景"重新拍一遍"（保持多帧外观 + 动态同步）。核心创新不是新网络，而是一个<b>简单到被忽视</b>的视频条件注入法——<b>frame-dimension conditioning</b>：把源视频 token 与目标视频 token 沿<b>帧维拼接</b>（token 数翻倍、<b>不加任何新 attention 层</b>，让 base T2V 已有的 3D 时空注意力自己去关联源/目标），借此释放预训练 text-to-video 大模型的生成力。配套用 <b>UE5 造了 136K 段多机位同步视频</b>数据集 + 精调训练策略，效果大幅超 SOTA，还顺带做防抖/超分/外扩。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">运镜（dolly-in/crane）是电影语言，但业余者受限于硬件与技巧→想在<b>后期</b>改相机轨迹。已有相机控制多针对 T2V/I2V，<b>改一段已有视频的相机轨迹</b>少有人做，且难：原文 "extra constraints of maintaining multiple-frame appearance and dynamic synchronization"（既要外观一致、又要动态同步）。前作短板：GCD[45] 在 Kubric 合成域上行、真实视频泛化差（域窄+条件机制弱）；ReCapture[65] 要<b>逐视频优化</b>（spatial/temporal LoRA），不实用；4D 重建系受限于<b>单视频 4D 重建</b>本身的难度与点追踪精度。</div>
+    <div class="note-h">核心方法（三件套 + 关键公式）</div>
+    <div class="note-b">① <b>Frame-dim 视频条件（最核心）</b>：x_i=[x_s,x_t]_frame-dim∈R^{b×2f×s×d}（式8），源/目标 token 沿帧维并起来、token 翻倍，<b>不引入额外跨视频 attention</b>，靠 base 模型的 3D 时空 self-attn 在<b>每个 block</b>里做源-目标时空交互（对比 baseline 的 channel-concat[5,45] 和 view-attention[3]）。② <b>相机条件</b>：只喂<b>目标相机外参</b> cam_t∈R^{f×(3×4)}（不喂源相机——推理时 SfM 估不准；也不喂内参——真实视频内参难得），经可学编码器 E_c（FC：12→d）加到时空注意力前的特征：F_i=F_o+E_c(cam_t)（式9），插进每个 block。③ <b>训练策略</b>：只微调 <b>camera encoder + 3D-attn 层</b>（冻其余保 T2V 先验）；给条件视频 latent 加<b>适度噪声（200-500 步）</b>缩小合成↔真实域差；20% 概率做 T2V、20% 做 I2V 统一训练（drop 源 latent）。底座=Rectified Flow 的 latent video diffusion（3D-VAE+DiT，式1-4）。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">vs SOTA（Tab.1，1000 WebVid 视频×10 轨迹）：FID <b>57.10</b>（GCD 72.83/Traj-Attn 69.21/DaS 63.25）、FVD <b>122.74</b>（最低）、RotErr <b>1.22</b>、TransErr <b>4.85</b>、匹配像素 Mat.Pix <b>906K</b>（baseline 仅 ~520-639K）、FVD-V <b>90.38</b>（DaS 154）——<b>全维度领先</b>。条件机制消融（Tab.3）：frame-dim 的 Mat.Pix 906K vs channel-dim 521K / view-dim 574K、FVD-V 90 vs 148/177，量级碾压。VBench（Tab.2）主体/背景一致性均第一。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>把"被低估的简单技巧"做扎实</b>：in-context 式 frame 拼接在 image-to-image 早被用[43]，本文首次系统验证它在<b>视频可控生成</b>里碾压 channel/view 方案，并给出"可在所有 block 做时空交互"的解释；② <b>合成数据闭环</b>：真实多机位同步视频几乎拿不到→UE5 自造 122K 轨迹 + 模拟真实拍摄特性，靠"加噪+局部微调"跨域到真实视频；③ <b>工程取舍清醒</b>：只喂目标外参、不喂源相机/内参，正因推理端拿不到准值——以可用性为先；④ 一个模型统一 T2V/I2V/V2V，还衍生防抖/超分/外扩。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① Tab.1/Tab.3 表头的箭头方向 PDF 抽取<b>错乱</b>（FID/FVD/RotErr 应为↓、CLIP/Mat.Pix 应为↑）——我按"谁赢谁是最优"反推方向，已在下表标注正确朝向；② 训练只 <b>10K step</b>、底座是<b>未公开的内部 T2V 基模</b>，复现强依赖该基模能力（<b>原文未公开基模细节</b>）；③ 数据全 UE5 合成、人物/场景由资产组合而来，真实视频里复杂光照/材质的泛化仅靠"加噪 200-500 步"缓解，边界未充分量化；④ super-resolution 仅增强<b>中心区域</b>（原文脚注自承"not entirely equivalent to SR"），是 zoom-in 的副产物而非真 SR。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">从 Abstract 起逐段精读（批量精读初稿，供后续 review/深化）。基于 CVF 官方 PDF 全文。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精读</div>
+    <div class="note-b"><b>原文逐句引用 + 中文指路：</b><br>1) <b>"Camera control has been actively studied in text or image conditioned video generation tasks. However, altering camera trajectories of a given video remains under-explored, despite its importance in the field of video creation."</b> → 任务定位：T2V/I2V 的相机控制已被大量研究，但<b>改写"给定视频"的相机轨迹</b>（video-to-video re-rendering）仍是空白。<br>2) <b>"It is non-trivial due to the extra constraints of maintaining multiple-frame appearance and dynamic synchronization."</b> → 难点 = 既要保持<b>多帧外观一致</b>、又要保持<b>动态同步</b>（动作时序对齐）。<br>3) <b>"we present ReCamMaster, a camera-controlled generative video re-rendering framework that reproduces the dynamic scene of an input video at novel camera trajectories."</b> → 一句话方法：在新相机轨迹下"复拍"输入视频的动态场景。</div>
+    <div class="note-b"><b>4)</b> 核心创新：<b>"The core innovation lies in harnessing the generative capabilities of pre-trained text-to-video models through a simple yet powerful video conditioning mechanism—its capability is often overlooked in current research."</b> → 用一个<b>简单却强大、被业界忽视</b>的视频条件机制，激活预训练 T2V 模型的生成力。<br><b>5)</b> 数据：<b>"To overcome the scarcity of qualified training data, we construct a comprehensive multi-camera synchronized video dataset using Unreal Engine 5, which is carefully curated to follow real-world filming characteristics."</b> → 用 UE5 造<b>多机位同步</b>数据集，模拟真实拍摄特性以泛化到 in-the-wild 视频。<br><b>6)</b> 收尾：训练策略增强鲁棒性；大幅超 SOTA；并在<b>视频稳定、超分、外扩(outpainting)</b>找到应用。代码+数据集开源（github.com/KwaiVGI/ReCamMaster）。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>给单个视频换相机轨迹"复拍"——靠 UE5 多机位同步数据集 + 一个被低估的 frame-dimension 视频条件机制激活预训练 T2V，保持外观+动态同步，全面超 SOTA 且能做稳定/超分/外扩。</div>
+
+    <div class="note-h">📚 背景知识 A — 潜空间视频扩散 / 3D-VAE / DiT / Rectified Flow（外部）</div>
+    <div class="note-b"><b>latent video diffusion / DiT：</b>本文 base 是内部预训练 T2V foundation model——原文 "a latent video diffusion model, consisting of a 3D Variational Auto-Encoder (VAE) and a Transformer-based diffusion model (DiT)"。3D-VAE 把视频压进 latent（同时压空间+时间），DiT 在 latent 上做扩散；每个 transformer block = <b>spatial attention + 3D(spatial-temporal) attention + cross-attention</b> 的序列。</div>
+    <div class="note-b"><b>Rectified Flow（噪声调度/去噪框架）：</b>原文 "adopts Rectified Flow framework for the noise schedule and denoising process. The forward process is defined as straight paths between data distribution and a standard normal distribution"。即在数据分布与标准正态间走<b>直线路径</b>（对比 DDPM 的曲折轨迹，RF 直线更易采样）。训练用 Conditional Flow Matching 回归速度场 v；推理用 Euler 离散从 t=1 迭代到 0。这是理解 §4.1 式1-4 的前置。</div>
+
+    <div class="note-h">📚 背景知识 B — 相机控制生成 &amp; 视频到视频谱系（§2 Related Work）</div>
+    <div class="note-b"><b>相机控制生成（T2V/I2V）：</b>原文谱系——AnimateDiff 用 motion LoRA 学相机运动模式；<b>MotionCtrl</b> "encodes 6DoF camera extrinsics and injects them into the diffusion model"；<b>CameraCtrl</b> "improves the accuracy and generalizability of single-sequence camera control with a dedicatedly designed camera encoder"；<b>CVD</b> 用 cross-video synchronization 做多序列相机控制；<b>AC3D</b> 深挖 DiT 内的相机运动知识。这些都是<b>从零生成</b>，不处理"已有视频"。</div>
+    <div class="note-b"><b>视频到视频(V2V)相机控制（本文主战场）：</b><b>GCD[45]</b> "pioneered camera-controlled video-to-video generation by training ... with paired data created by the Kubric simulator"，但 "generalization capability is limited by ... domain gap"。<b>ReCapture[65]</b> 两阶段（先生成 anchor video 再微调 spatial/temporal LoRA），但 "requirement for per-video optimization constrains practical applications"。<b>DaS / Trajectory-Attention 等</b>走 "explicit 4D reconstruction" 或 3D point tracking 路线，"performance is significantly restricted by the challenge of single video-based 4D reconstruction"。ReCamMaster 不走 per-video 优化、不依赖点跟踪，直接 feed-forward。</div>
+
+    <div class="note-h">📚 背景知识 C — 评测指标速查（读懂下面表格）</div>
+    <div class="note-b"><b>视觉质量：</b><b>FID</b>(Fréchet Image Distance，越低越好)、<b>FVD</b>(Fréchet Video Distance，越低越好)、<b>CLIP-T</b>(每帧与文本 prompt 的 CLIP 相似度均值，越高越好)、<b>CLIP-F</b>(相邻帧 CLIP 相似度=时序一致，越高越好)。<b>相机精度：</b>用 GLOMAP 提取生成视频的相机位姿，算 <b>RotErr</b>(旋转误差)、<b>TransErr</b>(平移误差)，均越低越好。<b>视角同步（source↔target 同时刻跨视角一致）：</b><b>Mat. Pix.</b>(GIM 匹配高置信像素数，越高越好)、<b>FVD-V</b>(SV4D 的 FVD-V 分，越低越好)、<b>CLIP-V</b>(source/target 同时刻帧的 CLIP 相似度，越高越好)。另用 <b>VBench</b> 六项（Aesthetic/Imaging Quality、Temporal Flickering、Motion Smoothness、Subject/Background Consistency，均越高越好）。</div>
+
+    <div class="note-h">② §1 Introduction — problem（业余创作者难拍出专业运镜）</div>
+    <div class="note-b"><b>problem：</b>原文 "Camera movement is a fundamental element in film production ... a dolly-in shot can masterfully emphasize a character ... crane shots excel at showcasing expansive landscapes."。运镜是电影语言核心，但 "achieving professional-level camera movement remains a challenge for amateur videographers, because of hardware limitations (such as stabilization issues in handheld recordings) and technical skill gaps."——业余创作者受硬件 + 技能限制拍不出专业运镜。本文目标：在<b>后期(post-production)</b>改写相机轨迹，让创作者把原素材"重拍"成更精致的运镜。</div>
+    <div class="note-b"><b>前人不足（problem 的技术化）：</b>原文 "GCD pioneered camera-controlled video-to-video generation ... However, its effectiveness on real-world videos is limited due to the narrow domain of training data and its inferior video conditioning mechanism."；ReCapture/4D 重建法 "requirement for per-video optimization" 或受 "single video-based 4D reconstruction" 精度限制。三条路都难 in-the-wild 实用。</div>
+
+    <div class="note-h">② §1 Introduction — solution（激活预训练 T2V + 造数据）</div>
+    <div class="note-b"><b>solution 主线：</b>原文 "The core innovation is to utilize the generative capabilities of pre-trained text-to-video models through an elegant yet powerful video conditioning mechanism. Compared to alternatives, our method shows superior performance in preserving both the visual and dynamic characteristics of the input video."——用优雅的视频条件机制激活预训练 T2V，同时保住视觉与动态特性。原文还点破 "this conditioning mechanism indeed exhibits remarkable potential as a versatile solution for conditional generation tasks, which is overlooked in current research."（这机制是被忽视的通用条件生成方案）。</div>
+    <div class="note-b"><b>数据 solution：</b>原文 "Since no qualified training data are publicly available, we develop a large-scale multi-camera synchronized video dataset using Unreal Engine 5, which contains <b>136K realistic videos shot from 13.6K different dynamic scenes in 40 high-quality 3D environments with 122K different camera trajectories</b>."——造了 136K 视频 / 13.6K 动态场景 / 40 个 3D 环境 / 122K 相机轨迹的同步数据集，并刻意模拟真实拍摄特性以对齐 in-the-wild。</div>
+
+    <div class="note-h">② §1 Introduction — why + 三大贡献</div>
+    <div class="note-b"><b>三大贡献（原文 bullet）：</b>① <b>"a high-quality multi-camera synchronized video dataset featuring diverse camera trajectories"</b>（已公开，推动相机控制生成/4D 重建研究）；② <b>"an in-depth investigation and validation of an effective video conditioning mechanism for text-to-video generation models. It significantly outperforms other alternatives employed in baseline methods."</b>（frame-dim 条件机制的深入验证）；③ <b>"ReCamMaster significantly advances the state-of-the-art in video recapturing"</b> 且跨多场景有应用。<br><b>why 这套能成：</b>用渲染引擎造同步对（保证精确轨迹 + 完美时间同步 + 易扩量）破"无数据"；frame-dim 条件让 source/target token 在 base 模型所有 block 里做时空交互（强相关建模）；只微调少量层 + 加噪 + 统一任务破 domain gap 与鲁棒性。</div>
+
+    <div class="note-h">③ §3 Multi-Cam Video 数据集（UE5 渲染管线）</div>
+    <div class="note-b"><b>为何要造：</b>原文 "the training data should include multiple shots captured in the same scene simultaneously, allowing the model to learn 4D consistent generation. Acquiring such data in real-world scenarios is extremely costly, and publicly available multi-view synchronized datasets are also limited by the diversity of scenes and constrained camera movements."——真实多机位同步数据昂贵、现有数据集场景与运镜都受限。用引擎的三大好处（原文）："1) precise camera trajectories can be obtained, 2) complete synchronization in the time dimension can be achieved, and 3) the data volume can be more easily scaled up."</div>
+    <div class="note-b"><b>构建流程（UE5）：</b>原文 "we first collect multiple 3D environments as 'backgrounds'. Then, we place animated characters within these environments as the 'main subjects' ... We then position multiple cameras facing the subjects and moving along predefined trajectories to simulate the process of simultaneous shooting."——3D 环境(背景)+动画角色(主体)+多相机沿预定义轨迹同步拍。再用一套<b>相机运动规则批量自动生成</b>自然多样的轨迹，并随机组合角色/动作。<b>总量</b>：136K 视觉真实视频 / 13.6K 动态场景 / 40 个高质 3D 环境 / 122K 相机轨迹。Appendix C.1 的消融证明"全量高质数据集" vs "受限场景/轨迹"带来显著优势。</div>
+
+    <div class="note-h">④ §4.1 Base Model — Rectified Flow（式1-4）</div>
+    <div class="note-b"><b>任务形式化：</b>给 source 视频 \( V_s \in \mathbb{R}^{f\times c\times h\times w} \)，合成 target 视频 \( V_t \in \mathbb{R}^{f\times c\times h\times w} \)，共享同一动态场景但呈现指定相机轨迹 \( cam_t := [R, t] \in \mathbb{R}^{f\times 3\times 4} \)；\( V_t \) 须与 \( V_s \) 多帧外观与动态同步。手段：对预训练 T2V 施加<b>双条件</b>（source 视频 + target 相机轨迹）。</div>
+    <div class="note-b"><b>Rectified Flow 四式：</b><b>式1</b> 前向直线路径 \( z_t = (1-t)z_0 + t\epsilon \)，\( \epsilon \sim \mathcal{N}(0,I) \)，t 为时间步；<b>式2</b> 去噪 ODE \( dz_t = v_\theta(z_t, t)\,dt \)，速度场 v 由网络权重 θ 参数化；<b>式3</b> Conditional Flow Matching 训练目标 \( \mathcal{L}_{CFM} = \mathbb{E}_{t,p_t(z,\epsilon),p(\epsilon)} \lVert v_\theta(z_t,t) - u_t(z_0|\epsilon)\rVert_2^2 \)；<b>式4</b> 推理 Euler 离散 \( z_t = z_{t-1} + v_\theta(z_{t-1},t)\cdot \Delta t \)，从 t=1 起迭代采样。</div>
+
+    <div class="note-h">④ §4.2 视频注入机制（一）Channel-dimension（baseline 用，式5）</div>
+    <div class="note-b"><b>核心论点（全文方法的灵魂）：</b>原文 "the video injection mechanism is crucial for overall performance."——视频怎么注入对效果起决定作用。本文对比三种注入。<br><b>Channel-dim（GS-DiT/GCD 等[5,45]）：</b>把 source 与 target 的 latent <b>沿通道维拼接</b>再 patchify。VAE 编码 \( z_s = E(V_s), z_t = E(V_t) \)，\( z_s, z_t \in \mathbb{R}^{b\times f\times c\times h\times w} \)；<b>式5</b> \( x_t = \text{patchify}([z_s, z_t]_{\text{channel-dim}}) \)，\( x_t \in \mathbb{R}^{b\times f\times s\times d} \)（\( s=h\times w \)）。需给输入卷积层加额外通道。</div>
+
+    <div class="note-h">④ §4.2 视频注入机制（二）View-dimension（[3] SyncCamMaster，式6-7）</div>
+    <div class="note-b"><b>View-dim：</b>分别 patchify 两视频 <b>式6</b> \( x_s = \text{patchify}(z_s),\ x_t = \text{patchify}(z_t) \)，\( x_s, x_t \in \mathbb{R}^{b\times f\times s\times d} \)；在每个 transformer block 额外加一层 <b>view-attention</b> 做跨视角同步，<b>式7</b> \( \bar{F}^i_s, \bar{F}^i_t = \text{attn}_{view}(F^i_s, F^i_t) \)，其中 \( F^i_s, F^i_t \) 是 \( V_s, V_t \) 第 i 帧特征。即用一个额外的 plug-and-play 注意力模块做跨视角特征聚合。</div>
+
+    <div class="note-h">④ §4.2 视频注入机制（三）Frame-dimension（ours，式8）+ why 更强</div>
+    <div class="note-b"><b>Frame-dim（本文）：</b>把 source 与 target token <b>沿帧维拼接</b>，<b>式8</b> \( x_s = \text{patchify}(z_s),\ x_t = \text{patchify}(z_t),\ x_i = [x_s, x_t]_{\text{frame-dim}} \)，\( x_i \in \mathbb{R}^{b\times 2f\times s\times d} \)。即<b>输入 token 数翻倍</b>，且原文强调 "we do not introduce additional attention layers for feature aggregation ... since self-attention is performed between all tokens in the 3D (spatial-temporal) attention layers."——<b>不加任何额外注意力层</b>，复用 base 的 3D attention 让 source/target 全 token 互相 self-attn。</div>
+    <div class="note-b"><b>why 更强（原文解释）：</b>"We attribute this superior performance to the inherent flexibility of our frame dimension conditioning method, which enables spatio-temporal interaction between the conditional tokens and target tokens through all blocks of the base model. This approach provides a more robust mechanism for understanding the correlations between video pairs."——条件 token 与目标 token 在<b>所有 block</b> 做时空交互，更充分理解视频对相关性。原文还点出类似 token 拼接在 image-to-image（OminiControl[43]）已验证，但在视频可控生成 "remained largely unexplored"。</div>
+
+    <div class="note-h">④ §4.3 相机位姿条件（式9：只条件 target 相机）</div>
+    <div class="note-b"><b>为何只条件 target 相机：</b>原文 "even with state-of-the-art structure-from-motion (SfM) methods for camera parameter estimation, it is challenging to obtain accurate camera trajectory information for the input video. Therefore, we alternate to only conditioning the model on the target camera \( cam_t \), while relying on the model to interpret the camera trajectory of the input video."——推理时连 SOTA SfM 都难准估输入视频相机，故<b>只喂 target 相机</b>，让模型自己理解输入视频的运镜。</div>
+    <div class="note-b"><b>为何只用 extrinsics 不用 intrinsics：</b>原文 "We chose not to include camera intrinsics as a condition because, while they are easily obtainable in the rendered training set, accurately estimating the intrinsics of real-world video cameras remains challenging ... users are unlikely to have access to the source video's camera intrinsics."——内参实测难、用户拿不到，故只用外参(R,t)。<b>式9</b> \( F_i = F_o + E_c(cam_t) \)，\( F_o \) 是 spatial-attention 层输出、\( F_i \) 是 3D-attention 层输入；\( E_c \) 为可学相机编码器，实现为 input dim <b>12</b>(=3×4 外参展平) → output dim d 的全连接层，<b>插入每个 transformer block</b> 做细粒度相机控制。</div>
+
+    <div class="note-h">④ §4.4 训练策略（三招增鲁棒 + 统一三任务）</div>
+    <div class="note-b"><b>① 只微调少量层保原生能力：</b>原文 "To preserve the base T2V model's native capability, we fine-tune only the camera encoder and 3D-attention layers while keeping other parameters frozen."——只调 camera encoder + 3D-attention，冻结其余，避免破坏预训练 T2V 的生成力。<br><b>② 给条件视频加适度噪声减 domain gap：</b>"To mitigate Unreal Engine's synthetic characteristics, we apply moderate noise (200-500 noise scheduling steps) to the conditional video latent during training"——给 UE5 合成的 conditional latent 加 200-500 步噪声，缩合成↔真实的 gap。</div>
+    <div class="note-b"><b>③ 统一相机控制任务（drop latent）：</b>原文 "we implement T2V camera-controlled generation with a 20% probability and I2V camera-controlled generation with a 20% probability during training. Specifically, we replace the latent representations of all f frames with Gaussian noise for T2V generation, and replace f−1 frames starting from the second frame for I2V generation."——训练时 20% 概率把全部 f 帧 source latent 换噪声(变 T2V)、20% 概率只留首帧换其余 f−1 帧(变 I2V)。副产物：模型<b>同时支持 T2V/I2V/V2V</b> 相机控制生成，且增强了"合成 source 中不可见物体"的能力。</div>
+
+    <div class="note-h">⑤ §5.1 实验设置（训练 / 评测 / baseline）</div>
+    <div class="note-b"><b>实现：</b>原文 "we randomly select 2 cameras from each 10 synchronized cameras, designating one as the source video and the other as the target video."；条件 = {source 视频 \( V_s \), target 相机 \( cam_t \), target prompt \( p_t \)}，重建 target 视频 \( V_t \)。训练 <b>10K steps</b>、分辨率 <b>384×672</b>、lr <b>0.0001</b>、batch size <b>40</b>，camera encoder 与 projector <b>zero-initialized</b>。<br><b>评测集</b>："1000 random videos from WebVid and 10 different camera trajectories, including pan, tilt, vertical translation, zoom in, zoom out, and horizontal arc trajectories."（为公平对比，选了与 baseline 接近的基础轨迹）。<br><b>baseline</b>：GCD[45]、Trajectory-Attention[54]、DaS[15]（后两者用 3D point tracking 提取动态信息作条件）。</div>
+
+    <div class="note-h">⑤ §5.2 主结果 — Tab.1（质量/相机/同步）+ Tab.2（VBench）真实数值</div>
+    <div class="note-b"><b>Tab.1（粗体绿=ReCamMaster 最优；↓=越低越好，↑=越高越好）：</b></div>
+    <div class="note-b">
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px;color:#d7dcff">
+    <tr style="color:var(--gold)"><td>方法</td><td>FID↓</td><td>FVD↓</td><td>CLIP-T↑</td><td>CLIP-F↑</td><td>RotErr↓</td><td>TransErr↓</td><td>Mat.Pix(K)↑</td><td>FVD-V↓</td><td>CLIP-V↑</td></tr>
+    <tr><td>GCD</td><td>72.83</td><td>367.32</td><td>32.86</td><td>95.66</td><td>2.27</td><td>5.51</td><td>639.39</td><td>365.75</td><td>85.92</td></tr>
+    <tr><td>Trajectory-Attention</td><td>69.21</td><td>276.06</td><td>33.43</td><td>96.52</td><td>2.18</td><td>5.32</td><td>619.13</td><td>256.30</td><td>88.65</td></tr>
+    <tr><td>DaS</td><td>63.25</td><td>159.60</td><td>33.05</td><td>98.32</td><td>1.45</td><td>5.59</td><td>633.53</td><td>154.25</td><td>87.33</td></tr>
+    <tr style="color:#7ee0c0"><td>ReCamMaster</td><td>57.10</td><td>122.74</td><td>34.53</td><td>98.74</td><td>1.22</td><td>4.85</td><td>906.03</td><td>90.38</td><td>90.36</td></tr>
+    </table></div>
+    <div class="note-b"><b>读 Tab.1：</b>ReCamMaster <b>九项指标全面第一</b>——FID 57.10(最低)、FVD 122.74(最低)、相机 RotErr 1.22/TransErr 4.85(最低)，尤其<b>同步指标碾压</b>：Mat.Pix 906.03K vs 次优 639K(+42%)、FVD-V 90.38 vs 次优 154.25(降 41%)。<b>Tab.2 VBench</b>：Aesthetic 42.70 / Imaging 53.97 / Motion Smoothness 99.28 / Subject Consistency 92.05 / Background Consistency 93.83 均第一（仅 Temporal Flickering 97.36 略低于 DaS 97.44）。原文结论 "ReCamMaster outperforms baselines across multiple dimensions of metrics."</div>
+
+    <div class="note-h">⑤ §5.3 消融（一）视频条件策略 Tab.3（frame vs channel vs view）</div>
+    <div class="note-b"><b>控制变量</b>：原文 "We only altered the video conditioning method while keeping the camera injection method, training data, and training steps unchanged."（只换注入方式）。真实数值：</div>
+    <div class="note-b">
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px;color:#d7dcff">
+    <tr style="color:var(--gold)"><td>条件方式</td><td>FID↓</td><td>FVD↓</td><td>CLIP-T↑</td><td>CLIP-F↑</td><td>RotErr↓</td><td>TransErr↓</td><td>Mat.Pix(K)↑</td><td>FVD-V↓</td><td>CLIP-V↑</td></tr>
+    <tr><td>Channel dim.</td><td>74.09</td><td>187.94</td><td>33.70</td><td>98.67</td><td>1.28</td><td>4.98</td><td>521.10</td><td>148.51</td><td>84.62</td></tr>
+    <tr><td>View dim.</td><td>80.51</td><td>194.47</td><td>34.66</td><td>98.71</td><td>1.42</td><td>5.77</td><td>573.92</td><td>177.68</td><td>83.40</td></tr>
+    <tr style="color:#7ee0c0"><td>Frame dim.(ours)</td><td>57.10</td><td>122.74</td><td>34.53</td><td>98.74</td><td>1.22</td><td>4.85</td><td>906.03</td><td>90.38</td><td>90.36</td></tr>
+    </table></div>
+    <div class="note-b"><b>读表：</b>frame-dim 在 FID/FVD/相机/同步几乎全面占优，尤其 <b>Mat.Pix 906 vs 521/574</b>、<b>FVD-V 90 vs 148/177</b>、<b>CLIP-V 90.36 vs 84.62/83.40</b>——同步性差距巨大。原文定性观察(Fig.5)："both channel-conditioning and view-conditioning schemes suffer from significant artifacts, content inconsistency, and asynchronous dynamics"，而 frame-dim "preserves the person's identity and maintains synchronization even during rapid and complex movements."</div>
+
+    <div class="note-h">⑤ §5.3 消融（二）训练策略 Tab.4（逐步加 = 增量验证）</div>
+    <div class="note-b"><b>从 vanilla baseline 逐步叠加三招（FID↓/FVD↓/Aesthetic↑/Imaging↑）：</b></div>
+    <div class="note-b">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;color:#d7dcff">
+    <tr style="color:var(--gold)"><td>配置</td><td>FID↓</td><td>FVD↓</td><td>Aesthetic↑</td><td>Imaging↑</td></tr>
+    <tr><td>Baseline(纯重建损失)</td><td>66.67</td><td>171.80</td><td>40.02</td><td>51.93</td></tr>
+    <tr><td>+ Add noise(加噪)</td><td>65.17</td><td>164.04</td><td>40.36</td><td>52.22</td></tr>
+    <tr><td>+ 3D-Attn. tuning</td><td>59.47</td><td>132.58</td><td>43.08</td><td>52.80</td></tr>
+    <tr><td>+ Drop latent</td><td>62.39</td><td>149.52</td><td>41.47</td><td>52.65</td></tr>
+    <tr style="color:#7ee0c0"><td>+ All(全部)</td><td>57.10</td><td>122.74</td><td>42.70</td><td>53.97</td></tr>
+    </table></div>
+    <div class="note-b"><b>读表：</b>原文 "all techniques improve visual quality, with their combination yielding the best performance."。其中 <b>3D-Attn. tuning 单招增益最大</b>（FVD 171.80→132.58）；Drop latent 单看略逊但 "allows our method to support camera-controlled T2V, I2V, and V2V generation simultaneously"——它的价值在<b>解锁多任务统一</b>而非单纯刷分；全部叠加 FID 57.10 / FVD 122.74 最佳。</div>
+
+    <div class="note-h">⑥ §6 应用 &amp; §7 限制</div>
+    <div class="note-b"><b>三大应用（Fig.6）：</b>① <b>视频稳定(stabilization)</b>——把抖动视频调成平滑轨迹（在 DeepStab 数据集验证，"stabilizes the video while preserving the content"）；② <b>视频超分(super-resolution)</b>——输入"zoom-in"轨迹做中心区域局部增强（原文脚注诚实说明 "not entirely equivalent to the super-resolution task, as ReCamMaster only enhances the resolution of patches in the central region"）；③ <b>视频外扩(outpainting)</b>——输入"zoom-out"轨迹生成原视频不可见区域（如脚、地面）。<br><b>限制（原文）：</b>"Concatenating source and target video tokens improves generation quality but increases computational demands."（token 翻倍→算力增加）；"ReCamMaster inherits limitations from the pre-trained T2V models, such as less effective hand generation."（继承 T2V 的手部生成缺陷）。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>problem：</b>改写"已有视频"的相机轨迹(V2V re-rendering)是视频创作刚需却空白——难在同时保多帧外观一致 + 动态同步；前人 GCD(domain gap)、ReCapture(per-video 优化)、4D 重建法(单视频 4D 精度差)都难 in-the-wild 实用。<br><b>method：</b>① UE5 造<b>多机位同步数据集</b>(136K 视频/13.6K 场景/40 环境/122K 轨迹)破"无数据"；② <b>frame-dimension 视频条件</b>——source/target token 沿帧维拼接(式8，\( x_i\in\mathbb{R}^{b\times 2f\times s\times d} \))、不加额外 attention、复用 base 的 3D attention 全 token 交互；③ <b>只条件 target 相机外参</b>(式9，FC 12→d 插入每 block)；④ 训练策略——只微调 camera encoder+3D-attention、给条件 latent 加 200-500 步噪声减 domain gap、20%/20% 概率 drop latent 统一 T2V/I2V/V2V。base 为 latent video diffusion(3D-VAE+DiT+Rectified Flow，式1-4)。</div>
+    <div class="note-b"><b>experiment：</b>Tab.1 九项指标全面 SOTA（FID 57.10、FVD 122.74、RotErr 1.22、Mat.Pix 906K(+42%)、FVD-V 90.38(降 41%)）；Tab.2 VBench 多数第一；Tab.3 frame-dim 同步性碾压 channel/view-dim；Tab.4 三招逐项有效、组合最优。<br><b>takeaway：</b>① <b>"视频怎么注入"比想象中关键</b>——一个简单的 frame-dim token 拼接(无额外模块)就显著超 channel/view-dim，是被忽视的通用条件生成方案；② <b>引擎合成同步数据 + 加噪/少量微调</b> 是低成本破"4D 一致 V2V 无数据 + 合成↔真实 gap"的实用配方；③ 统一 T2V/I2V/V2V 是 drop-latent 训练的免费副产物，并解锁稳定/超分/外扩等下游应用。</div>
+
+    <div class="note-h">🧐 疑问 / 局限（含 [推测]）</div>
+    <div class="note-b">① base 是<b>内部未公开的 T2V foundation model</b>（"an internal pre-trained text-to-video foundation model"），参数量/架构细节正文未给，复现依赖该闭源底座——[推测] 这会影响外部完全复现；② frame-dim 使 token 数翻倍 → 自注意力计算量约 4× [推测]（self-attn 对序列长度二次方），长视频/高分辨率可能吃不消，原文已承认 "increases computational demands"；③ 评测集相机轨迹为公平起见<b>限制成 baseline 接近的基础轨迹</b>（pan/tilt/zoom 等），122K 复杂轨迹(如 zigzag)的定量评测正文未给，仅项目页定性展示；④ [推测] 训练只 10K steps、分辨率 384×672，更大规模/更高分辨率的 scaling 行为正文未探；⑤ 相机精度用 GLOMAP 提取生成视频位姿再算误差，<b>受 GLOMAP 自身精度影响</b>，是间接度量 [推测]；⑥ 继承 T2V 手部生成缺陷(Fig.11)、超分仅中心区域，均为如实报告的边界。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-recammaster-camera-controlled-generative-rendering-from/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Examples synthesized by ReCamMaster. ReCamMaster re-shoots the source video with novel camera trajectories. We visualized the novel camera trajectories alongside the video frames. Video results are on our project page.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-recammaster-camera-controlled-generative-rendering-from/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Illustration of the dataset construction process. We build the multi-camera synchronized training dataset by rendering in Unreal Engine 5. This is achieved using 3D environments, char- acters, animations collected from the internet, and our designed massive camera trajectories.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-recammaster-camera-controlled-generative-rendering-from/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Overview of ReCamMaster. Left: The training pipeline of ReCamMaster. A latent diffusion model is optimized to reconstruct the target video Vt, conditioned on the source video Vs, target camera pose camt, and target prompt pt. Right: Comparison of different video condition techniques. (a) Frame-dimension conditioning used in our paper; (b) Channel-dimension conditioning used in baseline m</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-recammaster-camera-controlled-generative-rendering-from/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Comparison with state-of-the-art methods. It shows that ReCamMaster generates videos that maintain appearance consistency and temporal synchronization with the source video.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-recammaster-camera-controlled-generative-rendering-from/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Ablation on video conditioning techniques. We com- pared the channel-/view- concatenation schemes proposed by pre- vious methods and frame-concatenation in ReCamMaster. We observed that both channel-conditioning and view-conditioning schemes suffer from signiﬁcant artifacts, content inconsistency, and asynchronous dynamics with respect to the original video.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-recammaster-camera-controlled-generative-rendering-from/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Applications of ReCamMaster. From top to bottom: video stabilization, video super-resolution, and video outpainting.</figcaption></figure>
+    </div>
+  </div><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"]],displayMath:[["\\[","\\]"]]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body></html>

@@ -1,0 +1,163 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>FUSER: Feed-Forward Multiview 3D Registration Transformer and SE(3)^N Diffusion Refinement</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>FUSER: Feed-Forward Multiview 3D Registration Transformer and SE(3)^N Diffusion Refinement</h1>
+    <div class="au2" style="color:var(--mut)">Haobo Jiang ⋅ Jin Xie ⋅ Jian Yang ⋅ Liang Yu ⋅ Jianmin Zheng</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2512.09373">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2512.09373">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=FUSER%3A%20Feed-Forward%20Multiview%203D%20Registration%20Transformer%20and%20SE%283%29%5EN%20Diffusion%20Refinement">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Registration of multiview point clouds typically depends on extensive pairwise matching to build a pose graph for global synchronization, which is computationally expensive and ill-posed without holistic geometric constraints. In this paper, we propose FUSER, the first feed-forward multi-view registration transformer that processes all scans jointly in a unified, compact latent space to directly predict global poses without any pairwise estimation. To maintain tractability, FUSER employs a sparse 3D CNN to encode each scan into low-resolution superpoint features preserving absolute translation cues, followed by a Geometric Alternating Attention module for efficient intra- and inter-scan reasoning. Particularly, we transfer 2D attention priors from off-the-shelf foundation models (i.e., $\pi^3$) to enhance 3D feature attention. Building upon FUSER and its estimates, we further introduce FUSER-DF, an SE(3) diffusion refinement framework to correct FUSER&#x27;s estimates through a denoising process over the joint SE(3)$^N$ space. Here, FUSER serves as a surrogate multiview register to model the denoiser, and a prior-conditioned SE(3)$^N$ variational lower bound is derived for denoising supervision. Extensive experiments on 3DMatch and ScanNet confirm the superior registration accuracy and efficiency of our method.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-fuser-feed-forward-multiview-3d-registration-transforme -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">多视角点云配准长期是"<b>两段式</b>"：先做大量<b>两两配准</b>建 pose graph，再做 <b>pose synchronization</b> 求全局位姿——又慢又怕 outlier 误差累积。<b>FUSER</b> 是<b>首个 feed-forward 多视角配准 Transformer</b>：把所有 scan 一次塞进统一 latent 空间、<b>直接回归</b>每个 scan 的全局 SE(3) 位姿、<b>零两两匹配</b>。三招——sparse 3D CNN 保<b>绝对平移线索</b> + intra/cross-scan <b>交替注意力</b> + 把 2D 基础模型(<b>π³</b>)的注意力先验迁到 3D。再加 <b>FUSER-DF</b>(在 SE(3)ᴺ 联合空间做扩散精修、FUSER 自己当 surrogate denoiser)。把 minutes→seconds(3DMatch Full <b>384s→0.31s</b>)、精度还大涨(ScanNet mean TE <b>0.37→0.15m</b>)。NTU/Alibaba/南大。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b"><b>任务：</b>给 N 个无序、部分重叠的 scan,估每个的全局刚体位姿 T_i=(R_i,t_i)∈SE(3) 对齐到统一坐标系。<b>主流两段式(pairwise-then-global)四大硬伤(原文)：</b>(i) <b>缺全局上下文</b>——"<i>Each pairwise alignment is performed independently, ignoring geometric constraints from other scans</i>",低重叠/对称场景歧义;(ii) <b>outlier 敏感</b>——"<i>Inaccurate pairwise estimates contaminate pose synchronization, causing global error propagation</i>";(iii) <b>算力开销大</b>——重复两两配准慢(特征提取+剔 outlier);(iv) <b>强归纳偏置</b>——"<i>numerous hand-crafted designs, e.g. graph sparsification, robust losses, and synchronization schedules</i>" 限制灵活性。即便最先进方法仍困在此范式。</div>
+    <div class="note-h">核心方法（含关键公式）</div>
+    <div class="note-b"><b>FUSER 三件套(Fig.2)：</b><br>① <b>Absolute Geometric Encoding</b>：用 MinkowskiEngine 的 <b>sparse 3D CNN</b>(5 层、kernel 3 stride 2)把每个 scan 编成低分辨率 <b>superpoint</b> 特征(M'_i≪M_i)。关键:<b>放弃</b>平移不变的相对编码(KPConv)——因 FUSER 直接回归绝对位姿(尤其 translation),"position-agnostic encodings become inadequate"。<br>② <b>Geometric Alternating Attention</b>：仿 VGGT 的交替注意力,<b>L=32 层(16 intra-scan + 16 cross-scan)</b> 交替做局部/全局推理。为 <b>permutation equivariance</b> 去掉 VGGT 的 learnable reference token(式3);用 superpoint 坐标的 <b>sinusoidal PE</b>(3D RoPE 实测反而掉点,因 cross-scan 时相对位置跨坐标系会误导)。<b>2D→3D 注意力先验迁移</b>:直接用 <b>π³</b>(VGGT 变体,2D 图像重建预训练)权重<b>初始化</b>交替注意力层,无需改架构→显著涨点(Table 4)。<br>③ <b>Global Pose Regression</b>：self-attn 精修 + global avg pool 得 scan 级描述子 → 两个 MLP 头回归 t̂_i∈ℝ³ 与 9D 旋转 proxy → <b>SVD 正交化</b>成 R̂_i∈SO(3)。<br><b>reference-free 监督</b>(绝对世界系 ill-posed 且破坏置换等变):监督<b>相对</b>位姿 T̂_i←j=T̂_i⁻¹T̂_j——geodesic 旋转 loss L_r + Huber 平移 L_t(式4)+ 点级一致性 L_p(式5),总 L=(1/N(N−1))Σ_{i≠j}(L_r+γ_t·L_t+γ_p·L_p)(式6)。<br><b>FUSER-DF：</b>在 <b>SE(3)ᴺ</b> 联合流形把多视角精修建成 denoising diffusion;三创新(vs SE(3) diffusion[40])=pairwise→<b>multiview</b>、estimation→<b>refinement</b>(从 FUSER 估计起步小步修,非从 identity)、pairwise→<b>multiview surrogate</b>(用 FUSER 当去噪器 f^mv_θ(S^t)=FUSER(S^t) 预测残差位姿,式13)。prior-aware 扩散从最优位姿扩散<b>向 FUSER 先验</b>(式7),并推导 prior-conditioned 变分下界(式9)做监督。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>ScanNet(30 scans, Table 1)：</b>FUSER(#Pair=<b>0</b>) Rot@3°/5°/10°=69.4/86.9/94.7、mean RE/TE <b>6.7°/0.15m</b>;FUSER-DF Rot@3° 提到 <b>72.0</b>、mean TE 0.15m。对比最强 prior MDGD(17.4°/0.37m)——<b>mean RE 17.4°→6.7°、TE 0.37→0.15m</b>。<b>3DMatch(60 scans, 单帧难设, Table 2)：</b>RR 最强 prior PARENet 61.9 → <b>FUSER 90.3 / FUSER-DF 92.0</b>(RE 3.1°,TE 0.14m)。<b>ArkitScenes(200 scans, Table 3)：</b>RR 最强 prior 26.7 → <b>FUSER 92.1 / FUSER-DF 95.0</b>。<b>速度(Table 5)：</b>3DMatch Full 两两法 384–763s → FUSER <b>0.31s</b>/FUSER-DF 2.91s;ArkitScenes 1831–2455s → <b>0.61s</b>/6.50s。显存仅 2.83G/5.09G(200 scans)。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>范式转变</b>：首个把多视角配准做成单次 feed-forward 全局回归、<b>彻底去掉两两匹配 + synchronization</b>(#Pair=0),一举解掉两段式四大硬伤;② <b>跨模态迁移惊喜</b>——2D 重建基础模型 π³ 的注意力先验(view grouping/alignment/sparsity)直接迁到 3D 点云就大涨(Table 4),且无需改架构;③ <b>FUSER 一鱼两吃</b>:既是配准器又当 SE(3)ᴺ 扩散的 surrogate denoiser;④ <b>绝对几何编码 + reference-free 相对监督</b>巧解"既要绝对位姿又要置换等变";⑤ minutes→seconds 量级 + 数据可扩展(Table 4 越多数据越准),指向 3D 配准基础模型。</div>
+    <div class="note-h">疑问 / 待核</div>
+    <div class="note-b">① <b>3D RoPE 反而掉点</b>——原文归因"cross-scan 时相对位置跨坐标系误导",但只给定性解释、未深入(是否换设计可救?原文未写)。② FUSER ~<b>0.6B 参数</b> + 训练吃 4 大数据集 + 8×L20 GPU,是"大模型+大数据"路线,小数据/小算力下能否复现优势原文未探。③ FUSER-DF 相比 FUSER 增益<b>不均衡</b>:严格阈值(Rot@3° 69.4→72.0、ArkitScenes RR 92.1→95.0)有提升,但宽松阈值/部分指标几乎持平甚至略降(如 ScanNet Rot@10° 94.7→94.5),扩散精修的性价比(+10 步去噪、2.91s)边界原文未量化讨论。④ 仅室内 RGB-D(3DMatch/ScanNet/ArkitScenes),室外/LiDAR 大场景泛化未测(原文未写)。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">本地 PDF 全文精读(PyMuPDF 提取，约 6 万字符，正文+附录变分下界推导)。原文英文原句直引 + 中文指路，配准/扩散概念开背景块。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>第 1 句（旧范式痛点）：</b><i>"Registration of multiview point clouds conventionally relies on extensive pairwise matching to build a pose graph for global synchronization, which is computationally expensive and inherently ill-posed without holistic geometric constraints."</i> —— 在说什么：传统多视角点云配准是<b>两段式</b>——先把所有 scan 两两匹配建出"位姿图"（pose graph），再做全局同步（synchronization）恢复绝对位姿；为什么有问题——既<b>贵</b>（两两组合是 \(O(N^2)\)），又<b>本质病态</b>（没有整体几何约束，单对匹配信息不足）。</div>
+    <div class="note-b"><b>第 2 句（核心贡献）：</b><i>"This paper proposes FUSER, the first feed-forward multiview registration transformer that jointly processes all scans in a unified, compact latent space to directly predict global poses without any pairwise estimation."</i> —— FUSER 是<b>第一个前馈（feed-forward）多视角配准 Transformer</b>：把所有 scan 一起塞进一个统一紧凑的隐空间联合处理，<b>直接预测全局位姿、完全不做两两估计</b>。这是范式级改动（two-stage → one-shot）。</div>
+    <div class="note-b"><b>第 3-4 句（两个关键机制）：</b><i>"FUSER encodes each scan into low-resolution superpoint features via a sparse 3D CNN that preserves absolute translation cues, and performs efficient intra- and inter-scan reasoning through a Geometric Alternating Attention module. Particularly, we transfer 2D attention priors from off-the-shelf foundation models to enhance 3D feature interaction and geometric consistency."</i> —— 两招：① <b>sparse 3D CNN</b> 把每个 scan 编成低分辨率 superpoint 特征、且<b>保留绝对平移线索</b>（这点对"直接回归平移"至关重要）；② <b>Geometric Alternating Attention</b>（帧内/跨帧交替）做高效多视角推理；并且把<b>现成 2D 基础模型的注意力先验迁移到 3D</b>。</div>
+    <div class="note-b"><b>第 5-6 句（精修 + 战果）：</b><i>"we further introduce FUSER-DF, an SE(3)N diffusion refinement framework to correct FUSER's estimates via denoising in the joint SE(3)N space ... a prior-conditioned SE(3)N variational lower bound is derived for denoising supervision."</i> —— FUSER-DF 在 \(SE(3)^N\)（N 个位姿的联合流形）上把"精修"建成<b>去噪扩散</b>，并推导出<b>先验条件变分下界</b>做监督。实验在 3DMatch/ScanNet/ArkitScenes 上<b>精度与效率双 SOTA</b>。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>把多视角配准从"两两匹配 + 全局同步"的两段式，改成"一次前馈直接出全局位姿"，再加一个 \(SE(3)^N\) 扩散精修头，又快（分钟→秒）又准。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文，理解本文必备）</div>
+    <div class="note-b"><b>① 点云配准：</b>对齐两个（pairwise）或多个（multiview）点云到同一坐标系。<b>SE(3)</b> = 刚体变换群（旋转 \(SO(3)\) + 平移 \(\mathbb{R}^3\)），位姿 \(T=(R,t)\)。<b>② pose graph / synchronization：</b>把各 scan 当节点、两两相对位姿 \(T_{i\leftarrow j}=T_i^{-1}T_j\) 当边，从一堆带噪相对位姿恢复全局一致的绝对位姿 = transformation synchronization（常用 IRLS / rotation averaging）。<b>③ sparse 3D CNN / MinkowskiEngine / superpoint：</b>点云稀疏体素化后只在占用体素上卷积（省算力）；superpoint = 下采样后的代表点（数量 \(M'\ll M\)）。<b>④ VGGT / π³ / alternating attention：</b>VGGT 是 2D 多视图几何 Transformer，用"帧内 + 跨帧"交替注意力做多图推理；π³ 是其置换等变变体。本文把这套 2D 预训练注意力<b>迁到 3D</b>。<b>⑤ permutation equivariance（置换等变）：</b>打乱 scan 输入顺序，输出位姿应随之同样打乱而不变质——无序多视角输入必须的性质。<b>⑥ RoPE vs 正弦 PE：</b>位置编码两种；RoPE 编相对位置，本文发现 3D 跨 scan 下相对位置跨坐标系会误导，改用绝对正弦 PE。<b>⑦ SE(3) diffusion（扩散配准）：</b>把位姿估计建成"加噪 → 去噪"过程：前向把最优位姿扰向 identity，反向学去噪器逐步恢复；本文改成在 \(SE(3)^N\) 联合空间、扰向 FUSER 先验。<b>⑧ 变分下界（VLB）：</b>扩散训练目标的可优化下界，分解成 residual / prior-matching / denoising-matching 项。<b>⑨ 指标：</b>RR（Registration Recall，把对齐误差落在阈值内的序列比例，↑好，具体阈值见原文 Appendix A）、RE/TE（旋转/平移误差，↓好）；#Pair = 实际执行的两两匹配次数（FUSER 为 0）。<b>⑩ 数据集：</b>3DMatch / ScanNet / ScanNet++ / ArkitScenes 均为室内 RGB-D。</div>
+
+    <div class="note-h">② §1 Introduction — problem → 现有不足 → solution → why 闭环</div>
+    <div class="note-b"><b>problem（要解决什么）：</b>多视角配准远不如 pairwise 受关注，主流都走 <b>pairwise-then-global</b>（两两配准建 pose graph + synchronization），隐含假设"提升 pairwise 精度自然带来多视角一致"。</div>
+    <div class="note-b"><b>现有不足（为什么不够）：</b>原文直指 <i>"optimizing scan pairs in isolation fails to exploit global multi-scan geometric constraints, often producing ambiguous or unstable relative poses whose errors further accumulate during synchronization"</i>——孤立优化 scan 对，既用不上全局约束，误差又会在同步阶段累积；加上冗余两两配准的算力开销。即便近期工作（overlap 预测、triplet 一致性、学习式同步）也 <i>"remain bound to the pairwise-then-global paradigm and thus cannot fully overcome its inherent limitations"</i>。</div>
+    <div class="note-b"><b>solution（Intro 自包含）：</b>FUSER = <i>"the first feed-forward multiview registration transformer that jointly encodes all scans in a compact latent space to directly predict global poses without any pairwise estimation"</i>，好处是 <i>"enables holistic geometric reasoning across scans, avoids error propagation and redundant computation, and removes handcrafted priors"</i>。<b>三个工程难点 + 对策：</b>(a) 直接回归<b>绝对平移</b> → 需绝对几何线索 → sparse 3D CNN 绝对编码（不是相对的 KPConv）；(b) all-scan 注意力代价高 → Geometric Alternating Attention（intra/cross 交替）保 tractable；(c) 从头训难 → 迁移 π³ 的 2D 注意力先验（尽管模态 gap 仍大涨）。<b>why work：</b>联合推理给全局约束、单次前向无冗余两两、纯数据驱动注意力——逐条对消下面四个缺陷。</div>
+
+    <div class="note-h">Q&amp;A · §3.2.1 两段式（pairwise-then-global）到底差在哪四点？</div>
+    <div class="note-b"><b>原文列了四个根本缺陷（FUSER 逐条对消）：</b>(i) <i>"Missing global context"</i>——每对独立对齐、忽略其它 scan 的几何约束，低重叠/对称场景会歧义；(ii) <i>"Outlier sensitivity"</i>——不准的两两估计会污染同步、造成全局误差传播；(iii) <i>"Computational overhead"</i>——重复两两配准（含特征抽取 + outlier 剔除）很慢；(iv) <i>"Strong inductive bias: It necessitates numerous hand-crafted designs, e.g. graph sparsification, robust losses, and synchronization schedules"</i>——大量手工设计限制灵活性、阻碍全局最优。<b>[点评]</b> 把对手的弱点拆成四条、再用"单次前馈联合推理"一一对应，是非常清晰的 motivation 结构——和它致敬的 VGGT/π³ 一脉相承（用一个统一模型替掉拼接式流水线）。</div>
+
+    <div class="note-h">③ §3.1 Background — 问题定义 &amp; 借来的 SE(3) 扩散（公式 1）</div>
+    <div class="note-b"><b>问题定义：</b>给一组部分重叠点云 \(\mathcal{S}=\{S_i\in\mathbb{R}^{M_i\times3}\mid 1\le i\le N\}\)，每个 scan 从不同相机位姿拍摄，目标是估计每个 scan 的刚体全局位姿 \(T_i=(R_i,t_i)\in SE(3)\)（\(R_i\in SO(3),\ t_i\in\mathbb{R}^3\)），把它们对齐到同一全局坐标系。传统把它建成图 \(G=(\mathcal{S},E)\)，边 \((i,j)\) 编码相对位姿 \(T_{i\leftarrow j}=T_i^{-1}T_j\)。</div>
+    <div class="note-b"><b>借来的 pairwise SE(3) 扩散（为 FUSER-DF 铺垫）：</b>已有工作把 pairwise 配准建成 SE(3) 上的扩散——前向把最优变换 \(H_0\) 逐步扰成噪声位姿（式 1）：\[ H_t=\mathrm{Exp}\!\big(\gamma\sqrt{1-\bar\alpha_t}\,\varepsilon\big)\,F(\sqrt{\bar\alpha_t};H_0,H),\quad \bar\alpha_t=\textstyle\prod_{s=0}^{t}(1-\beta_s) \]其中 \(\varepsilon\sim\mathcal{N}(0,I)\)，\(H\) 是 identity，\(\beta_t\) 走 cosine schedule，\(F\) 是"最优位姿 ↔ identity"的插值。反向过程用一个 surrogate 配准模型 \(f_\theta\) 学去噪。<b>本文把这套从"pairwise / 扰向 identity"升级为"multiview / 扰向 FUSER 先验"</b>（见 §3.3）。</div>
+
+    <div class="note-h">④ §3.2.2 Absolute Geometric Encoding（核心机制一：为何要"绝对"）</div>
+    <div class="note-b"><b>关键洞察：</b>主流深度描述子（GeoTransformer/RoITr）偏好<b>平移不变</b>的相对坐标归一化（如 KPConv），以稳住 pairwise 匹配；但 FUSER 要<b>直接回归绝对位姿（尤其平移）</b>，相对编码就不够了——原文 <i>"removing global location cues obscures where each scan lies in the camera frame, making translation regression inherently ambiguous"</i>（抹掉全局位置线索 → 不知道 scan 在相机系里的绝对位置 → 平移回归本质歧义）。</div>
+    <div class="note-b"><b>怎么做：</b>用 MinkowskiEngine 搭<b>绝对坐标感知的 sparse 3D CNN</b>，对每个 scan 做层级体素化 + 稀疏卷积，得到紧凑 superpoint 特征 \(F_i\in\mathbb{R}^{M_i'\times d}\)（\(M_i'\ll M_i\)）。为让后续 all-scan 注意力可承受，用<b>更深的 5 层卷积层级（kernel 3、stride 2）</b>把 superpoint 数压得很低。原文强调：尽管 superpoint 分辨率低，<i>"the resulting compact superpoint features still retain sufficient geometric information for accurate pose regression"</i>——压缩没伤精度，反而换来"all-scan 注意力可行"。</div>
+
+    <div class="note-h">⑤ §3.2.3 Geometric Alternating Attention（核心机制二：置换等变，公式 3）</div>
+    <div class="note-b"><b>结构：</b>原文 <i>"Inspired by VGGT's alternating attention mechanism for cross-image reasoning, we extend this paradigm to 3D matching field. Our transformer contains L = 32 alternating layers, including 16 intra-scan and 16 cross-scan blocks"</i>——32 层交替：16 个<b>帧内（intra-scan）</b>抓局部几何 + 16 个<b>跨帧（cross-scan）</b>抓全局关系，顺序交替。</div>
+    <div class="note-b"><b>两处关键改造（vs VGGT）：</b>① <b>去掉 reference token 保置换等变</b>：VGGT 用可学 reference token 标记参考视图，<i>"this design causes instability under varying scan orders"</i>；FUSER 去掉它，使（式 3）\[ \mathrm{AA}\big(P_\pi(\mathcal{S}'),P_\pi(F)\big)=P_\pi\big(\mathrm{AA}(\mathcal{S}',F)\big) \]即"打乱输入顺序 = 打乱输出"（无序输入必须）。② <b>用正弦 PE 而非 3D RoPE</b>：在 superpoint 绝对坐标上加正弦位置编码；作者坦言也试过相对位置的 3D RoPE，但 <i>"our experiments shows it may bring degraded performance, possibly caused by the relative position information would be misleading during cross-scan attention (as each scan belongs to different coordinate system)"</i>——跨 scan 时各自坐标系不同，相对位置反而误导。<b>[诚实]</b> 这条是"负结果如实写出"，但深层机理只给了一句"possibly"。</div>
+
+    <div class="note-h">Q&amp;A · 为什么把 2D 基础模型的注意力先验迁到 3D 会有效？（Table 4）</div>
+    <div class="note-b"><b>做法：</b>不从头训交替注意力，而是 <i>"we initialize our alternating attention layers with pretrained weights from π3, a VGGT variant trained on large-scale 2D image reconstruction tasks"</i>，并且 <i>"we make no architectural modifications"</i>（除 2D/3D 位置编码与特征编码差异外结构天然兼容）。<b>为何有效：</b>原文归因 <i>"transferable 2D attention priors, such as view grouping, alignment consistency, and attention sparsity, which generalize surprisingly well to unstructured 3D point clouds"</i>——多视图推理的"哪些视图该归到一起、对齐一致性、注意力稀疏"这些先验是<b>跨模态通用</b>的。<b>实证：</b>Table 4 上 FUSER(ScaN) <b>去掉</b> π³ 先验 Rot@3° = 12.9、mean RE = 34.8°；<b>加上</b> = 36.6 / 22.6°——巨大增益。<b>[点评]</b> 这是全文最有"foundation model 时代味道"的发现：2D 几何基础模型的权重可直接当 3D 配准的良好初始化。</div>
+
+    <div class="note-h">⑥ §3.2.4 全局位姿回归 &amp; reference-free 监督（公式 4/5/6）</div>
+    <div class="note-b"><b>回归头：</b>先用若干 self-attention 精修每个 scan 的 superpoint token → global average pooling 得 scan 级描述子 → 两个轻量 MLP 分别回归平移 \(\hat t_i\in\mathbb{R}^3\) 和一个 9D 旋转 proxy → 经 <b>SVD 正交化</b>投到合法旋转 \(\hat R_i\in SO(3)\)。</div>
+    <div class="note-b"><b>为何 reference-free：</b>原文 <i>"Directly supervising global poses in a fixed world frame is inherently ill-posed"</i>——世界坐标系随数据集/序列变、且"选某个 scan 当参考"会破坏置换等变。故改成<b>监督相对位姿</b> \(\hat T_{i\leftarrow j}=\hat T_i^{-1}\hat T_j\)。<b>三项损失：</b>① 测地旋转损失 + Huber 鲁棒平移（式 4）：\[ L_r(i,j)=\arccos\!\Big(\tfrac{\mathrm{Tr}(R_{i\leftarrow j}^{\top}\hat R_{i\leftarrow j})-1}{2}\Big),\quad L_t(i,j)=\ell_\beta\big(\hat t_{i\leftarrow j}-t_{i\leftarrow j}\big) \]② 点级几何一致损失（式 5）：\[ L_p(i,j)=\tfrac{1}{N_j}\textstyle\sum_{l=1}^{N_j}\big\|(\hat R_{i\leftarrow j}p_l+\hat t_{i\leftarrow j})-(R_{i\leftarrow j}p_l+t_{i\leftarrow j})\big\|_1 \]③ 总损失（式 6，对所有有序对求平均）：\[ L=\tfrac{1}{N(N-1)}\textstyle\sum_{i\ne j}\big[L_r(i,j)+\gamma_t L_t(i,j)+\gamma_p L_p(i,j)\big],\quad \gamma_t=\gamma_p=0.1 \]</div>
+
+    <div class="note-h">⑦ §3.3 FUSER-DF — SE(3)ᴺ 扩散精修的三个创新</div>
+    <div class="note-b"><b>动机：</b>FUSER 已给出 \(\hat T_{1:N}\)，FUSER-DF 在其上追求更高精度，把<b>多视角位姿修正</b>建成 \(SE(3)^N\) 联合流形上的去噪扩散。相对已有 pairwise SE(3) 扩散，原文给三创新：(i) <i>"From pairwise to multiview"</i>——在联合空间 \(SE(3)^N\) 上扩散整组位姿、全程保留 cross-scan 依赖；(ii) <i>"From estimation to refinement"</i>——反向链<b>从 FUSER 估计起步、只做小步修正</b>，而非从无信息的 identity 起估；(iii) <i>"Pairwise to multi-view surrogate"</i>——直接拿 FUSER 当 multiview surrogate denoiser（pairwise 模型做不到多视角）。</div>
+
+    <div class="note-h">⑧ §3.3.2 prior-aware 前向扩散（公式 7/8：扰向"先验"而非 identity）</div>
+    <div class="note-b"><b>关键差异：</b>常规 SE(3) 扩散把最优位姿扰向 identity；FUSER-DF <i>"diffuses from the optimal poses toward the prior \(\hat T_{1:N}\) predicted by FUSER"</i>——<b>扰向 FUSER 的先验估计</b>。前向（式 7-8）：\[ T_i^{t}=\mathrm{Exp}\!\big(\gamma\sqrt{1-\bar\alpha_t}\,\varepsilon\big)\,F(\sqrt{\bar\alpha_t};T_i^{0},\hat T_i) \]\[ F(\sqrt{\bar\alpha_t};T_i^{0},\hat T_i)=\mathrm{Exp}\!\big((1-\sqrt{\bar\alpha_t})\cdot\mathrm{Log}(\hat T_i(T_i^{0})^{-1})\big)\,T_i^{0} \]即 \(\sqrt{\bar\alpha_t}\) 作为"最优 \(T_i^0\) ↔ 先验 \(\hat T_i\)"的插值权重，外层 \(\mathrm{Exp}(\gamma\sqrt{1-\bar\alpha_t}\varepsilon)\) 再加随机扰动。原文：这种扰动 <i>"introduces stochastic noise to the interpolated pose, enriching the diversity of diffusion trajectories"</i>，从而增强去噪器的泛化。<b>直觉：</b>因为推理时起点就是"FUSER 先验附近"，所以训练就该围着"最优 ↔ 先验"这段去造噪声轨迹，分布匹配、只需小步修。</div>
+
+    <div class="note-h">⑨ §3.3.3 反向过程 + 变分下界 + FUSER 当 surrogate（公式 9/13）</div>
+    <div class="note-b"><b>反向：</b>学一个 \(SE(3)^N\) 去噪器 \(p_\theta\)，把位姿从 FUSER 先验修向最优。<b>变分下界（式 9，附录 B 推导）</b>分解为三项：<b>Residual term</b>（重建项）+ <b>Prior matching term</b>（先验匹配，是常数、无可优化参数、可略）+ <b>Prior-aware Denoising matching term</b>（核心 loss，最小化"后验 \(q\) 与去噪器 \(p_\theta\)"的 KL 散度）。</div>
+    <div class="note-b"><b>巧点——把去噪还原成"再跑一次 FUSER"：</b>后验/先验的期望（式 11/12）经一个 multiview surrogate \(f_\theta^{mv}\) 参数化，而本文直接令（式 13）：\[ (\hat T_1^{t\to0},\dots,\hat T_N^{t\to0})=f_\theta^{mv}(S^t)\triangleq \mathrm{FUSER}(S^t) \]其中 \(S^t\) 是按噪声位姿 \(T_{1:N}^t\) 变换后的 scans，\(T_i^{t\to0}=T_i^0(T_i^t)^{-1}\) 是"从噪声位姿到最优"的残差变换。于是<b>最小化 KL 等价于让 FUSER 预测残差位姿</b>——可<b>直接复用 §3.2.4 的配准损失</b>训练去噪器，无需另设目标。系数上 \(\lambda_2\)（先验权重）早期主导、随去噪渐衰，反向逐步退回常规 SE(3) 形式。<b>[点评]</b> "用同一个 FUSER 既做估计又做去噪 surrogate"是很省的设计——精修阶段几乎零额外网络。</div>
+
+    <div class="note-h">⑩ §4.2 主结果 — Table 1/2/3（真实数值，#Pair 一栏看点）</div>
+    <div class="note-b"><b>ScanNet（30 scans，Table 1）：</b><br>┃ 方法 ┃ #Pair ┃ Rot@3° ┃ mean RE / TE ┃<br>┃ SGHR ┃ 13920 ┃ 57.2 ┃ 26.4° / 0.70m ┃<br>┃ MDGD（最强 prior, Sparse） ┃ 6004 ┃ 56.1 ┃ 17.4° / 0.37m ┃<br>┃ <b>FUSER</b> ┃ <b>0</b> ┃ 69.4 ┃ <b>6.7° / 0.15m</b> ┃<br>┃ <b>FUSER-DF</b> ┃ <b>0</b> ┃ <b>72.0</b> ┃ 7.1° / 0.15m ┃<br>原文 <i>"FUSER significantly reduces mean translation and rotation errors (0.37m→0.15m, 17.4°→6.7°)"</i>；FUSER-DF 在<b>严阈值</b>下再涨 <i>"Rot@3°: 69.4 →72.0"</i>。注意 <b>#Pair = 0</b>：FUSER 完全不做两两匹配。</div>
+    <div class="note-b"><b>3DMatch（60 scans，单帧难设，Table 2）：</b>RR——Full+PARENet 61.9 / SGHR+PARENet 55.3 → <b>FUSER 90.3 / FUSER-DF 92.0</b>（RE 3.1°、TE 0.14m）。<b>ArkitScenes（200 scans，Table 3）：</b>RR——最强 baseline 仅约 24-27 → <b>FUSER 92.1 / FUSER-DF 95.0</b>（TE 0.12-0.13m）。三个数据集、不同 scan 数都是大幅领先，且 scan 越多（200）优势越夸张。</div>
+
+    <div class="note-h">⑪ §4.3 消融 — Table 4（2D 先验 + 数据规模，各验证什么）</div>
+    <div class="note-b"><b>① 2D 注意力先验（验证"迁移有效性"）：</b>FUSER(ScaN) <b>w/o</b> π³ 先验 Rot@3° = 12.9、mean RE = 34.8°、TE 0.74m；<b>w/</b> = 36.6 / 22.6° / 0.45m。原文 <i>"integrating this prior significantly enhances both rotation and translation precision"</i>——一个初始化就把 Rot@3° 翻了近 3 倍。<b>② 数据可扩展（验证"foundation 潜力"）：</b>训练集逐步加（ScaN → +ArkitS → +ScaNP → +3DM），Rot@3° = 36.6 → 35.8 → 56.9 → <b>69.4</b>，mean TE = 0.45 → 0.26 → 0.20 → <b>0.15</b>，单调变好。原文 <i>"with increasing training data, our model yields consistent accuracy gains, indicating a favorable scaling trend and strong potential for large-scale 3D foundation training"</i>。</div>
+
+    <div class="note-h">⑫ §4.3 速度 / 显存 — Table 5（feed-forward 的核心卖点）</div>
+    <div class="note-b"><b>运行时（每序列）：</b>3DMatch Full 两两法需 384-763s（FCGF 517s、PARENet 384s）→ <b>FUSER 0.31s / FUSER-DF 2.91s</b>；ArkitScenes（200 scans）Full 需 1831-2455s → <b>FUSER 0.61s / FUSER-DF 6.50s</b>。原文 <i>"remove the redundant pairwise optimization, enabling efficient second-scale inference"</i>，即<b>分钟级 → 秒级</b>。<b>显存：</b>得益于紧凑 superpoint + FlashAttention，200 scans 最长序列仅 <b>2.83G（FUSER）/ 5.09G（FUSER-DF）</b>。定性（Fig.5）：FUSER 在 3DMatch-Hotel1 达 RR 100% / 0.18s，而 GeoTrans+SGHR 仅 75.2% / 102.8s。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>① problem：</b>多视角点云配准的传统"两段式（两两匹配 + 全局同步）"有四个根本缺陷——缺全局上下文、怕 outlier 误差传播、重复两两很慢、强手工归纳偏置。</div>
+    <div class="note-b"><b>② method：</b>(a) <b>FUSER</b>——首个前馈多视角配准 Transformer：sparse 3D CNN <b>绝对几何编码</b>（保平移线索）+ 32 层 intra/cross <b>交替注意力</b>（去 reference token 保置换等变 式3、正弦 PE、用 π³ 的 <b>2D 注意力先验初始化</b>）+ 直接回归全局位姿（<b>reference-free 相对位姿监督</b> 式4-6）；(b) <b>FUSER-DF</b>——把精修建成 \(SE(3)^N\) 扩散、<b>扰向 FUSER 先验</b>（式7-8）、<b>用 FUSER 自身当 multiview surrogate denoiser 预测残差位姿</b>（式13）、prior-conditioned VLB（式9）监督。</div>
+    <div class="note-b"><b>③ experiment：</b>在 #Pair = 0 下——3DMatch RR 61.9 → 92.0、ArkitScenes RR ~27 → 95.0、ScanNet mean RE/TE 17.4°/0.37m → 6.7°/0.15m；速度 384-2455s → 0.31-0.61s（分钟→秒）、显存仅 2.83-5.09G；消融证明 2D 先验（12.9 → 36.6 Rot@3°）与数据规模（36.6 → 69.4）均显著贡献。</div>
+    <div class="note-b"><b>④ takeaway（≥3 条 + 适用边界）：</b><br>• <b>Takeaway 1：</b>多视角配准可以<b>彻底抛弃"两两匹配 + 同步"</b>，用"统一紧凑 latent + 一次前馈联合推理"直接出全局位姿，精度反而更高（全局约束 + 无误差传播）。<br>• <b>Takeaway 2：</b><b>2D 几何基础模型（π³/VGGT）的注意力权重可跨模态迁到 3D</b> 作良好初始化（view grouping / alignment / sparsity 通用），且性能随数据规模单调上涨——指向"3D 配准基础模型"。<br>• <b>Takeaway 3：</b>把"位姿精修"建成<b>扰向先验</b>的 \(SE(3)^N\) 扩散、并复用配准模型自身当去噪 surrogate，可在几乎零额外网络下再榨严阈值精度（Rot@3° 69.4 → 72.0）。<br>• <b>适用边界 / 诚实点：</b>① 绝对编码要求 superpoint 保留绝对坐标，<b>3D RoPE 反而掉点</b>的机理论文只给"possibly"，未深究 [推测：跨坐标系相对位置无意义]；② 路线是 <b>0.6B 参 + 4 大数据集 + 8×L20</b> 的"大模型 + 大数据"，小算力可复现性未讨论；③ <b>FUSER-DF 增益不均衡</b>——主要在严阈值（@3°）涨，宽阈值几乎持平；④ 实验全为<b>室内 RGB-D</b>，室外/LiDAR/跨域泛化未验证。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-fuser-feed-forward-multiview-3d-registration-transforme/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Architecture of FUSER. It encodes unordered scans into a compact latent space via Absolute Geometric Encoding, then per- forms 2D attention prior-enhanced Geometric Alternating Atten- tion for multiview reasoning and final pose regression.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-fuser-feed-forward-multiview-3d-registration-transforme/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Pipeline of prior-aware SE(3)N denoising process. It integrates the prior pose estimates ( ˆT1, ..., ˆTN) of FUSER into the denoising process, where FUSER, as the surrogate registra- tion model, estimates the residual poses ( ˆTt→0 1 , ..., ˆTt→0 N ) = FUSER(St) to support progressive denoising over SE(3)N space.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-fuser-feed-forward-multiview-3d-registration-transforme/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. SE(3)N diffusion refinement in FUSER-DF visually re- fines FUSER’s pose estimation, yielding smoother surfaces.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-fuser-feed-forward-multiview-3d-registration-transforme/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Qualitative comparison: FUSER surpasses SOTA GeoTrans [57] and PARENet [74] descriptors with SGHR pose graph [67], achieving much higher accuracy and efficiency.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-fuser-feed-forward-multiview-3d-registration-transforme/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Network architecture of absolute geometric encoder.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-fuser-feed-forward-multiview-3d-registration-transforme/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. In-the-wild evaluation of FUSER on real-world multiview 3D sequences acquired using an iPhone 14 Pro Max.</figcaption></figure>
+    </div>
+  </div></body></html>

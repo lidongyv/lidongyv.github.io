@@ -1,0 +1,195 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Native and Compact Structured Latents for 3D Generation</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-best_student">🎓 Best Student</span></div>
+    <h1>Native and Compact Structured Latents for 3D Generation</h1>
+    <div class="au2" style="color:var(--mut)">Jianfeng XIANG ⋅ Xiaoxue Chen ⋅ Sicheng Xu ⋅ Ruicheng Wang ⋅ Zelong Lv ⋅ Yu Deng ⋅ Hongyuan Zhu ⋅ Yue Dong ⋅ Hao Zhao ⋅ Nicholas Jing Yuan ⋅ Jiaolong Yang</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2512.14692">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2512.14692">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Native%20and%20Compact%20Structured%20Latents%20for%203D%20Generation">Scholar</a></div>
+    <div class="tldr"><b>一句话：</b>清华×微软 4B image-to-3D，field-free 稀疏体素 O-Voxel + SC-VAE(16×) + flow-matching DiT，任意拓扑 + 完整 PBR，最高 1536³。</div>
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Recent advancements in 3D generative modeling have significantly improved the generation realism, yet the field is still hampered by existing representations, which struggle to capture assets with complex topologies and detailed appearance. This paper present an approach for learning a structured latent representation from native 3D data to address this challenge. At its core is a new sparse voxel structure called O-Voxel, an omni-voxel representation that encodes both geometry and appearance. O-Voxel can robustly model arbitrary topology, including open, non-manifold, and fully-enclosed surfaces, while capturing comprehensive surface attributes beyond texture color, such as physically-based rendering parameters. Based on O-Voxel, we design a Sparse Compression VAE which provides a high spatial compression rate and a compact latent space. We train large-scale flow-matching models comprising 4B parameters for 3D generation using diverse public 3D asset datasets. Despite their scale, inference remains highly efficient. Meanwhile, the geometry and material quality of our generated assets far exceed those of existing models. We believe our approach offers a significant advancement in 3D generative modeling.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-native-and-compact-structured-latents-for-3d-generation -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">把 3D 资产直接编码成 field-free 稀疏体素 <b>O-Voxel</b>（同时存几何+材质），用高压缩 <b>SC-VAE（16×）</b> 压成 compact 的 native structured latent，再上 <b>4B flow-matching</b> 做 image-to-3D——任意拓扑 + 完整 PBR、最高 1536³、推理秒级。是 TRELLIS/SLAT 的"原生 3D 输入 + 更省 token"升级版。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">现有 3D 表示三大硬伤：① field-based(SDF/Flexicubes) 建不了 open/non-manifold/enclosed 拓扑；② 多数只管 shape、忽略 appearance/material；③ SLAT[xiang2025structured] 虽联合几何+外观，但靠 multiview 2D 特征输入 + 纯渲染监督，复杂结构/材质捕获不足。</div>
+    <div class="note-h">核心方法（三件套）</div>
+    <div class="note-b">① <b>O-Voxel</b>：omni-voxel，编码 geometry+appearance；Flexible Dual Grid 处理任意拓扑、PBR 材质(含 opacity 半透明)、与 mesh 秒级双向转换(optimization-free + rendering-free)；② <b>SC-VAE</b>：residual autoencoding 做 16× 空间下采样，1024³ 全纹理资产 → ~9.6K latent token；③ <b>4B flow-matching DiT</b>：latent 空间 image-to-3D，512³ ~3s / 1024³ ~17s / 1536³ ~60s(H100)。</div>
+    <div class="note-b notes-todo">（精读进行中，后续补全方法细节/实验/消融/疑问）</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 一起读 &amp; 问答记录</h2>
+    <div class="kv">从 Abstract 开始逐段精读，随讨论持续累积「讲解 + 问答」。最后更新 2026-06-16。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 讲解</div>
+    <div class="note-b"><b>原文大意：</b>3D 生成的真实感最近大涨，但仍被"表示"卡脖子——现有表示难捕获复杂拓扑 + 细节外观。本文从 native 3D 数据学一个 structured latent：核心是新的稀疏体素结构 O-Voxel(omni-voxel，同时编码几何+外观)，能 robust 建模任意拓扑(开/非流形/全封闭)、捕获超越纹理色的完整表面属性(如 PBR 参数)；基于它设计 Sparse Compression VAE 给出高压缩率的 compact latent；在该 latent 上训 4B flow-matching 模型做 3D 生成；推理高效，几何+材质质量远超现有。</div>
+    <div class="note-b"><b>逐句拆解：</b><br>1) <b>卡在"表示"</b>：3D 生成真实感涨了，但 representation 仍是瓶颈(复杂拓扑+细节外观捕不住)。<br>2) <b>native 3D 数据</b>：直接从 3D 资产学 latent，而非 SLAT 那样从 multiview 2D 渲染特征——"native"是相对 SLAT 的关键词。<br>3) <b>O-Voxel = omni-voxel</b>：一个稀疏体素结构同时编码 geometry+appearance(几何+外观一体)。<br>4) <b>任意拓扑</b>：open(开面)/non-manifold(非流形)/fully-enclosed(全封闭内部)——这些正是 field-based(SDF) 的死穴。<br>5) <b>PBR 参数</b>：不止 RGB 纹理，还有 metallic/roughness/opacity 等物理材质 → 可重光照。<br>6) <b>SC-VAE</b>：高空间压缩率 → compact latent(token 少)。<br>7) <b>4B flow-matching</b>：大模型在 latent 空间做生成，公开 3D 数据训。<br>8) <b>高效+高质</b>：推理快，几何/材质远超现有。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>TRELLIS.2 = native 3D 输入 → O-Voxel(几何+PBR、任意拓扑) → SC-VAE 16× 压缩成 compact latent → 4B flow-matching 生成，又快又比现有强。</div>
+
+    <div class="note-h">📚 背景知识（外部，理解 TRELLIS.2 必备）</div>
+    <div class="note-b"><b>① 前作 SLAT / TRELLIS（Xiang 2024，本文一作前作）：</b>SLAT=Structured LATent，把 3D 资产编码成"稀疏体素位置 + 每个 active voxel 的 latent 特征"。其 latent 来源=从 multiview 渲染图提 DINOv2 特征、反投影聚合到 voxel（间接、靠 2D 渲染）。TRELLIS 在 SLAT 上用 rectified flow 生成，可解码成 3D Gaussian / Radiance Field / Mesh。<b>本作(TRELLIS.2)三点升级</b>：SLAT 从 multiview 2D 建(间接)→本作从 <b>native 3D</b> 建(直接)；SLAT token 多(压缩率低)→本作 SC-VAE <b>16× 压缩</b>、token 少(1024³→~9.6K)；SLAT 复杂几何/材质捕获弱→O-Voxel <b>任意拓扑 + 完整 PBR</b>。</div>
+    <div class="note-b"><b>② flow-matching（Lipman 2023）：</b>与 diffusion 同类但更简洁的生成范式。学一个 velocity field v_θ(x,t)，把高斯噪声分布连续"流"到数据分布。训练用<b>直线插值</b> x_t=(1−t)·x_0+t·x_1(x_0 噪声/x_1 数据)，网络回归 velocity (x_1−x_0)；推理从噪声沿 velocity field 用 ODE 积分(少步)到数据。比 diffusion 路径更直、步数更少、训练更稳。本作=4B flow-matching DiT 在 latent 空间做 image-to-3D。</div>
+    <div class="note-b"><b>③ SDF/Flexicubes 为何建不了开放面/非流形/封闭：</b>SDF=每点到表面的有符号距离(内负外正)，表面=零等值面。<b>"符号"要求 well-defined 内外</b>→几何必须 watertight(水密)+manifold(流形)。开放面(纸/布，无体积)没内外→符号未定义；非流形(三面共一边)内外歧义；全封闭内部结构被"内部"符号吞掉、提不出。Flexicubes(Shen 2023)是可微 iso-surface 提取(改进 Dual Marching Cubes)，但底层仍是 grid+等值面思路→<b>继承同样的拓扑限制</b>。O-Voxel 的 <b>"field-free"</b>(无场)就是不用 SDF/符号、直接用 mesh 与体素边的交点(Hermite data)+Dual Contouring 变体→任意拓扑。</div>
+
+    <div class="note-h">Q&amp;A · flow-matching DiT 是什么实现的（§3.3，提前问）</div>
+    <div class="note-b"><b>DiT 通用：</b>Diffusion Transformer(Peebles&amp;Xie 2023)——把 latent 当 token 序列、用纯 Transformer(self-attn+FFN)做 backbone 替代 U-Net，timestep/条件用 AdaLN 注入；flow-matching 下 DiT 输出 velocity field v_θ(把噪声"流"到数据)。</div>
+    <div class="note-b"><b>本作实现(§3.3)：</b>full DiT + flow-matching，extend SLAT/TRELLIS。<b>三阶段三个 sparse DiT</b>：① sparse structure(预测体素 occupancy 布局，哪些 voxel active)→② geometry(active voxel 内 geo latent)→③ material(PBR latent，条件=image+生成的 geo latent，对齐几何)。前两阶段沿用 SLAT，<b>material 阶段是本作新增</b>。token=active voxel 的 latent(稀疏体素结构本身就规整、可 transformer 处理)。</div>
+    <div class="note-b"><b>架构细节(§3.3/§4)：</b>AdaLN-single 调制(PixArt)+RoPE 位置编码(better scalability + 跨分辨率泛化)；受益 SC-VAE 高压缩→<b>丢掉 SLAT 的 conv packing + skip connection → vanilla-style sparse DiT</b>(更简单高效)；image 条件用 <b>DINOv3-L</b> 特征；classifier-free guidance drop 0.1。每个 DiT <b>~1.3B</b>(width 1536 / blocks 30 / heads 12 / MLP 8192)，3 个共 ~4B。渐进训练 512³(32³ latent)→1024³(64³ latent)，conditioning image→1024；32 H100，bs 256，AdamW lr1e-4/wd0.01。</div>
+
+    <div class="note-h">Q&amp;A · DiT/flow/SC-VAE 实现细节 7 问</div>
+    <div class="note-b"><b>1 AdaLN 怎么做：</b>标准 LayerNorm y=γ⊙norm(x)+β 的 γ/β 是固定学习参数；AdaLN 让 γ/β 由条件(timestep t + image c)经一个小 MLP <b>动态算出</b>。原始 DiT 用 AdaLN-zero(额外 gating α 初始化 0→残差初始为恒等、稳训练)；本作用 <b>AdaLN-single</b>(PixArt，全局共享一组 base modulation + 每层小偏移，省大量参数)。</div>
+    <div class="note-b"><b>2 DiT 输出怎么监督(flow-matching loss)：</b>采 x_0~N(0,I)噪声、x_1~data latent、t~U(0,1)；直线插值 x_t=(1−t)x_0+t·x_1；目标速度=dx_t/dt=<b>x_1−x_0</b>；loss=E‖v_θ(x_t,t,c)−(x_1−x_0)‖²(MSE 回归)。即监督 DiT 输出"从噪声指向数据的速度"。</div>
+    <div class="note-b"><b>3 ODE 积分怎么实现(推理)：</b>从 x_0~N(0,I) 解 dx/dt=v_θ(x,t,c) 从 t=0→1；最简 Euler：x←x+Δt·v_θ，分 N 步(如 25-50)，<b>每步调一次 DiT 算速度</b>；可用高阶 solver(Heun/DPM-solver)少步高精度。比 diffusion 步数少。</div>
+    <div class="note-b"><b>4 RoPE：</b>Rotary Position Embedding(Su 2021 RoFormer)——不是加性 PE，而是<b>按位置旋转 Q/K 向量</b>(每对维度旋转角=位置×频率)；旋转内积性质让 q_m·k_n 只依赖<b>相对位置 m−n</b>→天然相对位置、外推/跨分辨率泛化好、不增参数。3D 下对 voxel (x,y,z) 坐标各分一段维度旋转。</div>
+    <div class="note-b"><b>5 SC-VAE 怎么实现(§3.2)：</b>fully <b>sparse-conv U-VAE</b>(非 transformer)。① <b>Sparse Residual Autoencoding</b>(借 DC-AE)：下采样把每 voxel 8 个 children 聚到 channel(stack 8C→avg_groups→2C)、上采样 channel→space(unstack→dup)，non-param shortcut 缓解高压缩优化难；② <b>Early-pruning upsampler</b>(xcube)：上采样前预测 child mask ρ∈{0,1}^8 跳过 inactive，省时省内存；③ <b>ConvNeXt-style residual block</b>(1 conv + wide point-wise MLP 替代 2 conv)。两阶段训练：S1 直接 O-Voxel 重建(dual vertex v 用 MSE、face flag δ/mask ρ 用 BCE、mat 用 L1)+KL；S2 加 <b>rendering loss</b>(渲 mask/depth/normal 用 L1+SSIM+LPIPS，<b>相机放浅 near plane 切过表面→逼模型捕内外结构</b>)。16× 空间下采样。</div>
+    <div class="note-b"><b>6 图像哪来给 DINO：</b>训练=每个 3D 资产在 <b>Blender 渲 16 views</b>(随机 FoV+光照)当 image prompt(3D↔渲染图自动配对，自监督式)；推理=用户给的任意真实图 或 AI 生成图(eval 用 100 张 AI 图保证训练-测试不重叠)。图过 <b>DINOv3-L</b> 提特征做 conditioning。</div>
+    <div class="note-b"><b>7 为什么三个 DiT：</b>三阶段<b>条件链</b>：① sparse structure(预测 occupancy 布局，哪些 voxel active)→② geometry(active voxel 内几何 latent)→③ material(PBR latent，条件=image+生成的 geometry)。必须先定 sparse layout 才能在其上生成 geo/mat(sparse DiT 需知 token 在哪)；shape/material 用两个 decoupled VAE 做 sequential→支持"给定 shape 补 material"的应用。前两阶段沿用 SLAT，material 阶段本作新增。</div>
+
+    <div class="note-h">Q&amp;A · RoPE / Early-pruning / 动态图 / SC-VAE / TRT 深入</div>
+    <div class="note-b"><b>RoPE 工作原理：</b>把 Q/K 向量维度<b>两两配对</b>(每对看成复平面一个点)，位置 m 的 token 第 i 对旋转角 m·θ_i(θ_i=10000^(−2i/d)，不同对不同频率)，旋转矩阵 [[cos,−sin],[sin,cos]]。<b>关键</b>：旋转矩阵性质 R(mθ)ᵀR(nθ)=R((n−m)θ)→内积 q_m·k_n 只依赖<b>相对位置 (n−m)</b>。钟表类比：每 token 是指针、位置把它转 m 刻度，两指针"夹角"(内积)只取决于刻度差=相对位置，绝对转多少不影响。好处=相对位置感知 + 外推/跨分辨率好 + 零参数。3D 对 (x,y,z) 各分一段维度旋转。</div>
+    <div class="note-b"><b>Early-pruning Upsampler 实现：</b>上采样把 coarse voxel→8 children 之前，一个小预测头输出该 coarse voxel 的 child mask ρ∈{0,1}^8(logits→sigmoid→阈值)，<b>只对 active child 做后续 sparse conv、inactive 直接丢</b>；训练用 O-Voxel 真实 occupancy 的 BCE 监督 ρ(式6 λ_ρ 项)。避免在空 child 上浪费算力/显存。</div>
+    <div class="note-b"><b>计算图固定吗：</b><b>不固定</b>——sparse conv + early-pruning 让 active voxel 数<b>数据依赖</b>，每次前向 tensor shape/算子规模都不同→<b>动态计算图</b>，这是稀疏体素网络的固有特性。</div>
+    <div class="note-b"><b>SC-VAE 数据流(1024³ 例)：</b>O-Voxel@1024³(active voxels，每个带 f^shape+f^mat)→encoder 4 次 2× 下采样(1024→512→256→128→64)=<b>16×</b>→latent 在 64³ sparse grid(~9.6K active token)。每次下采样=Sparse Residual Autoencoding(8 children stack 到 channel 8C→avg_groups 降 2C 的 non-param shortcut)+ConvNeXt 式 residual block(1 conv + wide point-wise MLP)。decoder 镜像上采样(64³→1024³)，每步=early-pruning 预测 child→channel→space(unstack)→sparse conv，末端重建 dual vertex v / face flag δ / material。训练 S1=O-Voxel 重建(v→MSE、δ/ρ→BCE、mat→L1)+KL；S2=+rendering loss(相机浅 near plane 切表面捕内外)。</div>
+    <div class="note-b"><b>三个 DiT 串行(非并行) + TRT：</b>⚠️ <b>纠正</b>：三个 DiT 是<b>串行条件链</b>(structure→geometry→material，后者依赖前者输出)，不是并行。TRT 难点<b>不在"三个"</b>(可分别转、串行调用)，而在 <b>sparse conv + 动态 shape + 自定义算子</b>：active voxel 数据依赖→动态 shape(TRT 偏好固定 shape，需 dynamic-shape profile 或分桶)，submanifold sparse conv TRT 不原生支持→需自定义 plugin。本文用 <b>Triton 优化的 submanifold conv</b>(非 TRT)。原文未讨论 TRT 部署，此为工程推断。</div>
+
+    <div class="note-h">Q&amp;A · 用途/价值 &amp; 与 World Model 的关系</div>
+    <div class="note-b"><b>用途(澄清误解)：</b>这是 <b>image-to-3D 生成</b>(一张图→造全新 3D 资产)，<b>不是"重建已有物体"</b>；论文里 reconstruction(Table1)只是评测 VAE 压缩保真(中间环节)。价值=3D 内容创作降本(游戏/影视/AR/电商/3D 打印)，卖点=生成资产自带<b>完整 PBR + 任意拓扑 → 直接进渲染/游戏引擎、美术不用返工材质</b>。跟自驾感知不直接相关，间接可作仿真/合成数据工具。</div>
+    <div class="note-b"><b>与 World Model 关系(诚实)：</b>TRELLIS.2 <b>不是 world model</b>——静态 3D 资产生成，<b>无时间/动态/action/预测</b>(world model 核心是 dynamics rollout)。三层间接关联：① 技术栈共享(flow-matching DiT + AdaLN/RoPE，很多视频/世界模型也用)；② 可作 3D world model/仿真的<b>资产&amp;场景构建工具</b>(先造 3D 物体、再在其上做 dynamics)；③ structured 3D latent 是紧凑空间表示思路，可能启发 <b>spatial/3D-aware world model</b> 的状态表示——但需补时间维度。本质区别：world model 管"世界怎么演化"，本文管"造一个静态 3D 物体"。</div>
+
+    <div class="note-h">② §1 Introduction·逐段</div>
+    <div class="note-b"><b>问题(递进)：</b>3D 生成靠 latent 3D 表示 + 大模型快速进步，但"缺能<b>忠实捕获任意 3D 资产全谱信息、又能被网络处理成 latent</b> 的表示"。现有大模型用 iso-surface field(SDF/Flexicubes)→open/non-manifold/enclosed 限制；多数只管 shape 忽略 appearance/material；SLAT 联合几何+外观但靠 multiview 2D 输入 + 纯渲染监督→复杂结构/材质捕获不足。</div>
+    <div class="note-b"><b>O-Voxel(解法)：</b>“field-free” sparse voxel，omni-voxel 编码几何+外观。几何=Flexible Dual Grid 处理任意拓扑、无损预处理、保 sharp edge/normal 不连续；外观=任意表面属性，实现 PBR(含 opacity 半透明)。</div>
+    <div class="note-b"><b>双向转换：</b>optimization-free + rendering-free——mesh→O-Voxel 单 CPU <b>几秒</b>，O-Voxel→surface+material <b>几十 ms</b>。</div>
+    <div class="note-b"><b>SC-VAE + 生成：</b>sparse VAE 学 native structured latent(vs SLAT 的 multiview 2D)，residual autoencoding <b>16× 下采样</b>，1024³ 全纹理资产→~9.6K token、重建超现有；<b>4B flow-matching</b>，512³~3s/1024³~17s/1536³~60s(H100)，几何+材质超现有，全开源。</div>
+
+    <div class="note-h">Q&amp;A · 输入是 mesh 还是 image？（两段式 pipeline，关键澄清）</div>
+    <div class="note-b"><b>不矛盾——两个阶段、输入不同：</b><br><b>阶段A 表示 + SC-VAE 训练(输入 mesh)</b>：mesh →(秒级)O-Voxel→ SC-VAE encode → latent → decode → O-Voxel → mesh。用大量 3D 数据集(mesh)学一个好的 latent 空间。Intro line19 的 “mesh→O-Voxel 几秒” 就是这步(处理 3D 训练数据)，<b>跟生成无关</b>。<br><b>阶段B 生成(输入 image)</b>：image → DINOv3 特征 → flow-matching DiT → 生成 latent → SC-VAE decode → O-Voxel → mesh。这才是推理实际用法 = image-to-3D。</div>
+    <div class="note-b"><b>类比 Stable Diffusion(同为两段式)：</b>SD=①训 VAE(image↔latent) ②训 diffusion(text→latent→image, VAE decode)。本文=①训 SC-VAE(mesh/O-Voxel↔latent) ②训 DiT(image→latent→3D, VAE decode)。对应关系：<b>mesh 之于 SC-VAE = image 之于 SD-VAE(都是 VAE 的训练数据)；image 之于 DiT = text 之于 SD-diffusion(都是生成条件)</b>。O-Voxel/latent 是连接两阶段的桥梁。</div>
+
+    <div class="note-h">Q&amp;A · joint training？latent space 怎么对齐</div>
+    <div class="note-b"><b>不是 joint training，两段式：</b>先训 SC-VAE 学好 latent 空间(随后冻结)，再 “Built upon the learned latent space”(§3.3 line172)训 flow-matching DiT；§4 也分开训(VAE 16 H100 / 生成 32 H100)。同 SD/SLAT 标准范式——VAE 先收敛、把 latent 空间定下来，DiT 再学生成；<b>joint 训不稳</b>(latent 一直变、生成模型追不上移动靶)。</div>
+    <div class="note-b"><b>DiT↔VAE latent 怎么对齐(其实无需额外步骤)：</b>共享同一个 VAE——DiT 的训练 target 就是 <b>VAE encoder 把训练数据(O-Voxel)编码出的 latent</b>(当 x_1)，DiT 生成的 latent 再用<b>同一个 VAE decoder</b> 解码成 3D。同进同出 → 天然对齐。VAE 的 <b>KL 正则</b>把 latent 拉近标准高斯，正好让 flow-matching 能从高斯噪声流到 latent 分布。</div>
+    <div class="note-b"><b>shape/material 两个 latent 怎么对齐：</b>两个 SC-VAE，material VAE 在上采样时<b>条件于 shape VAE 的 subdivision structures</b>(line168)→空间对齐；生成阶段 material DiT 又条件于 image + 已生成的 geometry latent(line176)→ 原文 “ensures their spatial alignment under arbitrary topology”。</div>
+    <div class="note-b"><b>image 条件怎么进(跨模态对齐)：</b>image 过 DINOv3 提特征，经 cross-attn/AdaLN 注入 DiT；靠训练数据<b>配对</b>(资产的渲染图 ↔ 该资产的 latent)让 DiT 学条件分布 P(3D latent | image)，是"学出来的"对齐，非显式约束。</div>
+
+    <div class="note-h">Q&amp;A · SC-VAE 怎么训练 &amp; compact latent 怎么做到</div>
+    <div class="note-b"><b>训练(§3.2.2 两阶段)：</b>S1 低分辨率快速稳定——直接 O-Voxel 重建(dual vertex v→MSE、face flag δ/pruning mask ρ→BCE、material→L1)+KL(式6)；S2 高分辨率加 <b>rendering loss</b>(渲 mask/depth/normal 用 L1+SSIM+LPIPS；相机浅 near plane 切表面捕内外)(式7)。</div>
+    <div class="note-b"><b>防 overfit / 保泛化(综合手段，论文未专门强调)：</b>① <b>KL 正则</b>→latent 近高斯、规整平滑(防过拟合到不规整分布)；② <b>perceptual rendering loss(LPIPS)</b>→感知级监督而非纯 voxel L2 死记；③ <b>大数据</b>(Trellis-500K + Objaverse-XL/ABO/HSSD)；④ 渐进两阶段。证据=评测在 <b>unseen 测试集</b>(Toys4K + Sketchfab，“unseen during training”)重建仍超 baseline。注：VAE 真正难点其实是 rate-distortion 权衡(压得狠↔重建糊)，不只 overfit。</div>
+    <div class="note-b"><b>compact 怎么做到(16×，1024³→~9.6K token)：</b>核心=<b>Sparse Residual Autoencoding(借 DC-AE [chen2024deep])</b>——高压缩 VAE 难训是因空间大幅压缩成信息瓶颈、梯度难优化；DC-AE 用 non-param residual shortcut 在下/上采样<b>把空间信息"搬"到 channel(8 children→channel)而非丢弃</b>→高压缩仍可训、梯度流畅、信息不丢。叠加：① 16× 空间下采样(4 次 2×，1024³→64³)；② O-Voxel 本身<b>稀疏</b>(只表面附近 active)+early-pruning→token 只计 active voxel(~9.6K)，远少于 dense 1024³；③ rendering loss 保压缩后质量。Table1：~9.6K token 反超用更多 token 的 baseline=既 compact 又高保真。</div>
+
+    <div class="note-h">Q&amp;A · SC-VAE 训练带不带 skip connection</div>
+    <div class="note-b"><b>要区分两种 skip：</b><br><b>① block 内 residual shortcut → 有</b>：Sparse Residual Autoencoding 的 non-param shortcut(space↔channel 重排，line130)+residual block 本身的残差。<br><b>② U-Net encoder→decoder 长 skip → 没有(生成 VAE 的硬约束)</b>：它是 U-shaped VAE following SD/LDM VAE[rombach2022]，decoder <b>只从 latent 解码</b>。</div>
+    <div class="note-b"><b>为什么生成 VAE 不能有 enc→dec skip：</b>生成时 DiT 只产出 latent、<b>没有原始 O-Voxel 输入去跑 encoder</b>，若 decoder 依赖 encoder 的 skip 特征→生成时这些 skip 输入根本不存在、无法解码；且 skip 会让信息<b>绕过 latent bottleneck</b>→latent 不自包含、不 compact，违背"compact latent for generation"。所以 decoder 必须只吃 latent。</div>
+    <div class="note-b"><b>论文依据 &amp; 边界：</b>line124 “U-shaped VAE design [rombach2022]”(SD VAE 即无 enc-dec skip 的 bottleneck AE)；line130 residual shortcut 明确是 “within downsampling and upsampling blocks”(块内、非跨 enc-dec)；line180 “discard … skip connection” 说的是 <b>DiT</b> 丢掉 SLAT 的 skip、不是 VAE。enc-dec skip 有无论文未明写，但生成 VAE 范式 + compact latent 目标 → <b>推断无</b> enc-dec skip。</div>
+
+    <div class="note-h">③ §3.1 O-Voxel·field-free 的几何机制（QEF 求 dual vertex）</div>
+    <div class="note-b"><b>表示定义（式1）：</b>O-Voxel 把一个 3D 资产存成稀疏体素上的特征元组 \( f=\{(f^{shape}_i,\ f^{mat}_i,\ p_i)\}_{i=1}^{L} \)，其中 \(f^{shape}_i\) 编码局部几何、\(f^{mat}_i\) 编码材质、\(p_i\in\{0,1,\dots,N-1\}^3\) 是第 \(i\) 个 active voxel 的整数坐标；不与资产相交的空 voxel 设 inactive——这就是"稀疏"：只在表面附近存东西。</div>
+    <div class="note-b"><b>灵感 = Dual Contouring，但去掉了"场"：</b>原文 “This formulation is inspired by Dual Contouring (DC)… The original DC was designed to process discretized scalar fields such as SDFs. Different from DC, we do not utilize any field representation.” DC 靠检测网格边上 SDF 的<b>符号翻转</b>找交点；O-Voxel <b>直接用 mesh 表面</b>判定边是否相交、并取交点+法向(Hermite data)。<b>不用 SDF 的"符号" = field-free</b> → 不要求 watertight/manifold → 能表示 open / non-manifold / 全封闭内部。</div>
+    <div class="note-b"><b>核心公式 QEF（式2，每个 active voxel 闭式解一个 dual vertex \(v\)）：</b><br>\[ \min_{v\in voxel}\ e(v)=\sum_i d_{\Pi,i}^2+\lambda_{bound}\sum_j d_{L,j}^2+\lambda_{reg}\,d_{\hat q}^2 \]<br>① \(d_{\Pi,i}^2=(n_i\cdot(v-q_i))^2\) 是 DC 原有项——\(v\) 到"由交点 \(q_i\)、法向 \(n_i\) 决定的切平面"的平方距离，<b>让 dual vertex 贴合表面、保 sharp edge</b>；② \(\lambda_{bound}\) 项 \(d_{L,j}^2=\|(v-o_j)-((v-o_j)\cdot d_j)\,d_j\|^2\) 惩罚 \(v\) 到 mesh <b>边界边</b>的距离——<b>专为 open surface 设计</b>(把顶点拉到开放边缘)；③ \(\lambda_{reg}\) 项 \(d_{\hat q}^2=\|v-\bar q\|^2\) 把 \(v\) 拉向交点均值 \(\bar q\)，平滑分布 + 稳定 QEF 防奇异。<b>原始 DC 只有第①项；本文加②③两项是 field-free 处理任意拓扑的关键。</b></div>
+    <div class="note-b"><b>\(f^{shape}_i\) 三件套：</b>dual vertex \(v_i\in\mathbb{R}^3_{[0,1]}\)(局部表面位置) + edge intersection flags \(\delta_i\in\{0,1\}^3\)(X/Y/Z 三条预定义边是否相交，决定 quad 怎么连邻居) + splitting weights \(\gamma_i\)（正实数，控 quad 自适应劈成三角形，沿用 Flexicubes 拓扑规则）。<b>双向转换 optimization-free + rendering-free</b>：mesh→O-Voxel 单 CPU 几秒，O-Voxel→surface 几十 ms，跳过 SDF 求值 / flood-fill / 迭代优化。</div>
+
+    <div class="note-h">③′ §3.1.2 材质（volumetric PBR）+ 采样/重建机制</div>
+    <div class="note-b"><b>材质特征（式3，6 通道）：</b>\( f^{mat}_i=(c_i,m_i,r_i,\alpha_i) \)——\(c_i\in\mathbb{R}^3_{[0,1]}\) base color、\(m_i\in\mathbb{R}_{[0,1]}\) metallic、\(r_i\in\mathbb{R}_{[0,1]}\) roughness、\(\alpha_i\in\mathbb{R}_{[0,1]}\) opacity。标准 PBR metallic-roughness 工作流；<b>关键是带 opacity \(\alpha\)</b> → 能建半透明(玻璃)，原文 “a capability not present in previous methods”。</div>
+    <div class="note-b"><b>Texture→O-Voxel：</b>把 voxel center 投影到每个相交三角形、用 UV+mipmap 采材质，按点到面距离 <b>加权平均</b>(权 \(w=1-d\))。<b>O-Voxel→Texture：</b>对每个 query 点(mesh 顶点 or texel 对应 3D 表面点)用邻近 voxel 属性做 <b>trilinear interpolation</b>，重建 mesh 直接可渲染、无需后处理。这就是"几何+材质一体" omni-voxel 的落地。</div>
+
+    <div class="note-h">③″ §3.3 生成建模公式化（rectified flow / CFM loss）</div>
+    <div class="note-b"><b>训练目标（附录式9，Conditional Flow Matching）：</b>前向用直线插值 \( x(t)=(1-t)x_0+t\,\epsilon \)（\(x_0\)=data latent、\(\epsilon\sim\mathcal{N}(0,I)\)、\(t\in[0,1]\)），网络 \(v_\theta\) 回归速度场：<br>\[ L_{CFM}(\theta)=\mathbb{E}_{t,x_0,\epsilon}\big\|\,v_\theta(x(t),t)-(\epsilon-x_0)\,\big\|_2^2 \]<br>即监督"从 data 指向 noise 的速度 \(\epsilon-x_0\)"(rectified flow 直线路径)；推理时从 \(\epsilon\) 沿 \(v_\theta\) 用 ODE 反向积分到 \(x_0\)。timestep 用 \(\mathrm{logitNorm}(1,1)\) 采样(沿用 TRELLIS)。</div>
+    <div class="note-b"><b>三阶段三个 sparse DiT（串行条件链）：</b>① sparse structure(预测 voxel occupancy 布局)→② geometry(active voxel 内几何 latent)→③ material(PBR latent，条件 = image + 已生成 geometry latent，保证空间对齐)。每个 DiT \(\approx\)1.3B(width 1536 / 30 blocks / 12 heads / MLP 8192)，三个共 \(\approx\)4B；SC-VAE \(\approx\)800M(354M enc + 474M dec)。AdaLN-single 注入 timestep、cross-attn 注入 DINOv3-L 图像特征、RoPE + QK-Norm 稳注意力；得益 16× 高压缩，<b>丢掉 TRELLIS 的 conv packing + skip → vanilla 稀疏 DiT</b>。</div>
+
+    <div class="note-h">④ §4 实验·重建主结果（Table 1 真实数值，MD/CD 以 ×10⁶ 计）</div>
+    <div class="note-b"><b>设定：</b>Toys4K + Sketchfab Featured(90 个近两年专业资产，<b>训练未见</b>)；指标 Mesh Distance MD↓(含内部结构)、Chamfer CD↓(外表面)、Normal PSNR↑/LPIPS↓；并报 #Token、下采样率 \(f_{down}\)、解码耗时(A100)。</div>
+    <div class="note-b"><b>Table 1 关键行（Toys4K ‖ Sketchfab Featured）：</b><br>
+    • TRELLIS：9.6K token，4×，Dec 0.108s，MD <b>85.07</b>，Normal PSNR <b>30.29</b> ‖ MD 49.20，PSNR 24.31<br>
+    • Direct3D-S2 1024：17K token，8×，Dec 13.0s，MD 73.17，PSNR 27.38 ‖ MD 70.13，PSNR 23.82<br>
+    • SparseFlex 1024：<b>225K</b> token，4×，Dec 3.21s，MD 0.3132，PSNR 37.34 ‖ MD 0.7593，PSNR 32.12<br>
+    • <b>Ours 1024：9.6K token，16×，Dec 0.301s，MD 0.0042，F1 0.971，Normal PSNR 43.11，LPIPS 0.005 ‖ MD 0.0170，PSNR 35.26</b><br>
+    • Ours 512：仅 2.2K token，16×，Dec 0.077s，MD 0.0323，PSNR 39.54 ‖ MD 0.1572，PSNR 31.00<br>
+    <b>读法：</b>Ours 1024 与 TRELLIS <b>同样 9.6K token</b>，但 MD 0.0042 vs 85.07(低约 4 个数量级)、Normal PSNR 43.11 vs 30.29(<b>+12.8dB</b>)、解码 0.301s 与 0.108s 同级；比 SparseFlex 少 23× token 还更准。<b>这条直接验证"16× 高压缩 latent 不牺牲反而大幅提升保真"。</b></div>
+    <div class="note-b"><b>材质重建 + 生成主结果（Table 2）：</b>材质(无 baseline，仅报自身)：PBR 属性 38.89 dB / LPIPS 0.033、shaded 图 38.69 dB / 0.026。生成(100 张 AI 图)：Ours <b>CLIP 0.894 / CLIP-N 0.758 / ULIP-2 0.477 / Uni3D 0.436 全项第一</b>(TRELLIS 0.876/0.748/0.470/0.414；Hunyuan3D 2.1 0.869/0.753/0.474/0.427)；<b>用户偏好 overall 66.5% / shape 69.0%</b>，碾压第二名 Hunyuan3D 2.1(13.3%/7.5%)。运行时间(H100)：512³ ~3s、1024³ ~17s、1536³ ~60s。</div>
+
+    <div class="note-h">⑤ §4.4 消融（Table 3，两个设计逐个验证，256³）</div>
+    <div class="note-b"><b>① Sparse Residual Autoencoding（高压缩命门）：</b>替成 average pooling + 最近邻上采样后——<b>16×</b>(f16c32)：MD 1.032→1.747(<b>+69%</b>)、PSNR 27.26→26.73(−0.5dB)；<b>32×</b>(f32c128)：MD 1.405→7.394(<b>+526%</b>)、PSNR 26.65→25.01(−1.6dB)。<b>压得越狠、residual AE 越关键</b>(它把空间信息搬到 channel 而非丢弃，缓解高压缩的梯度难题)。</div>
+    <div class="note-b"><b>② Optimized Residual Block（ConvNeXt 式：1 conv + wide point-wise MLP 替 2 conv）：</b>换回标准 residual block——MD 1.032→1.198(<b>+16%</b>)、PSNR 27.26→26.67(−0.6dB)，而 <b>耗时几乎不变</b>(28.6ms→29.6ms)。证明"宽 MLP 替第二个 conv"在不加成本下提质。<b>结论：两个设计都为"高压缩下仍高保真"服务，互补。</b></div>
+
+    <div class="note-h">📌 全文一页总结（问题→方法→实验→takeaway）</div>
+    <div class="note-b"><b>问题(§1)：</b>3D 生成被"表示"卡脖子——field-based(SDF/Flexicubes)建不了 open/non-manifold/enclosed；多数只管 shape 不管 material；SLAT 联合几何+外观但靠 multiview 2D 输入 + 纯渲染监督、复杂结构/材质捕获弱。</div>
+    <div class="note-b"><b>方法(§3)：</b>① <b>O-Voxel</b>——field-free 稀疏体素，Flexible Dual Grid 用改进 QEF(加 boundary 项保 open surface + reg 项稳)闭式解 dual vertex，存几何 \(f^{shape}=(v,\delta,\gamma)\) + PBR \(f^{mat}=(c,m,r,\alpha)\)，与 mesh 秒级双向转换；② <b>SC-VAE</b>——全稀疏卷积 U-VAE，Sparse Residual Autoencoding(空间↔channel 重排) + early-pruning + ConvNeXt block 实现 <b>16× 压缩</b>(1024³→~9.6K token)，两阶段训(重建 loss → +rendering loss，相机浅 near plane 切表面捕内外)；③ <b>4B flow-matching</b>——三个 vanilla 稀疏 DiT(structure→geometry→material 条件链)，CFM loss \(\|v_\theta-(\epsilon-x_0)\|^2\)。</div>
+    <div class="note-b"><b>实验(§4)：</b>重建 MD / Normal PSNR <b>全面碾压</b>(Ours 1024 与 TRELLIS 同 9.6K token 但 PSNR +12.8dB、MD 低约 4 个量级)；生成 CLIP/ULIP-2/Uni3D 全项第一 + 用户偏好 66.5%；消融证 residual AE(32× 时去掉 MD +526%)与 opt. block(+16%)都关键；推理 1536³ 仅 60s。</div>
+    <div class="note-b"><b>Takeaway：</b>① <b>field-free 是拓扑自由的根</b>——抛弃 SDF 符号、直接用 mesh 交点 + QEF，才敢碰 open / 非流形 / 封闭；② <b>"native 3D 输入 + 16× 高压缩"双赢</b>——比 SLAT 的 multiview 2D 更直接、token 更少还更准，证明 compact latent 不必牺牲保真；③ <b>把 material 当独立生成阶段</b>(条件于 image+geometry)是拿 Best Student 的差异化——一体产出几何 + 完整 PBR、直接进引擎免返工；④ 局限诚实：voxel 分辨率上限会让贴近的双层面/小细节 aliasing、解码偶有小洞需 mesh 后处理补，O-Voxel 暂不含 part-level / 语义结构。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-native-and-compact-structured-latents-for-3d-generation/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Left: A 1536³ asset reconstruction by our method. Despite the high compactness of the latents (see token counts below), it faithfully recovers extremely fine geometric and material details, supports arbitrary topology, and preserves enclosed structures (shown in the second row). Middle: A 1536³ 3D asset generated in about one minute (∼35s for shape and ∼25s for texture; see more runtime </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-native-and-compact-structured-latents-for-3d-generation/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Overview of our approach. We introduce O-Voxel for shape and material representation (Sec. 3.1), based on which we employ Sparse Compression VAEs for compact latent space learn- ing (Sec. 3.2) and large flow models for 3D generation (Sec. 3.3).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-native-and-compact-structured-latents-for-3d-generation/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Illustration of O-Voxel and the instant bidirectional con- vertion between 3D asset and O-Voxel.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-native-and-compact-structured-latents-for-3d-generation/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. The network structure of SC-VAE.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-native-and-compact-structured-latents-for-3d-generation/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. High-quality 3D assets generated by our method, featuring intricate geometric details and physically accurate materials with high visual fidelity, including thin structures, open surfaces, and translucent regions that highlight the model’s expressive capability.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-native-and-compact-structured-latents-for-3d-generation/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Visual comparison showing the normal (main image) and the final render, base color, metallic, and roughness (small images).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-native-and-compact-structured-latents-for-3d-generation/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Fig. 5 presents representative results, illustrating both geo- metric fidelity and material realism. Leveraging the compact latent space compressing O- Voxels, our method generates assets that faithfully preserve fine-scale structures, sharp surface features, and internally complex or non-manifold shapes—ranging from detailed gears, enclosed cockpit and open leaves and flowers. It also reproduces </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-native-and-compact-structured-latents-for-3d-generation/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Visual comparison of PBR texture generation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-native-and-compact-structured-latents-for-3d-generation/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Scaling up resolution for finer detail and compute for higher quality during test time. (Best viewed with zoom)</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-native-and-compact-structured-latents-for-3d-generation/fig10.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. Speed test for FlexGEMM backend and baselines including Spconv [11], Torchsparse [58], fvdb [62], and WarpConvNet [8]</figcaption></figure>
+    </div>
+  </div></body></html>

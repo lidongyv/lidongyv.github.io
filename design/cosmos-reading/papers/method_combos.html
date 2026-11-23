@@ -1,0 +1,222 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>方法结合谱系 · Diffusion×NeRF/3DGS×World Model</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--red:#fb7185;--blue:#60a5fa;--pink:#f0abfc}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 18% -10%,rgba(167,139,250,.18),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.7;min-height:100vh}
+.wrap{max-width:1000px;margin:0 auto;padding:26px 18px 90px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.hero{padding:22px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(126,224,255,.08));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--accent);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(20px,3vw,30px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 35%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13.5px}
+.legend{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0;font-size:11.5px;color:var(--text2)}
+.lg{display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:999px;padding:4px 11px}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+.callout{background:rgba(126,224,255,.07);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:13px 17px;margin:14px 0;font-size:13.5px;color:var(--text2)}.callout b{color:var(--text)}
+h2.sec{font-size:18px;font-weight:800;margin:28px 0 6px;display:flex;align-items:center;gap:8px}
+h2.sec .bar{width:4px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--accent2),var(--accent))}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:10px}
+/* horizontal flow diagram */
+.flowh{display:flex;flex-wrap:wrap;align-items:center;gap:6px;background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0}
+.fnode{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--text);text-align:center;min-width:80px}
+.fnode small{display:block;color:var(--text3);font-size:10px;margin-top:2px}
+.fnode.gen{border-left:3px solid var(--accent2)}.fnode.rep{border-left:3px solid var(--green)}.fnode.out{border-left:3px solid var(--accent)}.fnode.wm{border-left:3px solid var(--amber)}
+.farr{color:var(--accent);font-size:16px;font-weight:700}
+.farr small{display:block;font-size:9px;color:var(--text3);text-align:center}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:8px 0}
+.card{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:13px;padding:13px 15px}
+.card .chd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+.card .nm{font-size:14.5px;font-weight:800;color:var(--accent)}
+.card .og{font-size:10.5px;color:var(--text3)}
+.card .cf{margin-left:auto;font-weight:800;font-size:12px}
+.cf-y{color:var(--green)}.cf-a{color:var(--amber)}.cf-r{color:var(--red)}
+.card .combo{font-size:11px;color:var(--accent2);font-weight:700;margin-bottom:4px}
+.card .mech{font-size:12px;color:var(--text2)}
+.card .eg{font-size:11.5px;color:var(--text3);margin-top:6px;border-top:1px dashed var(--line);padding-top:6px}.card .eg b{color:var(--text2)}
+.hl{color:var(--accent);font-weight:700}
+.note2{margin-top:22px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+</style></head><body><div class=wrap>
+<a href="../index.html" class=backlink>← 教学文档主页</a>
+<a href="diffusion_basics.html" class=backlink>Ch1 扩散/NeRF/3DGS</a>
+<a href="cosmos_wfm.html" class=backlink>Ch5 WFM</a>
+
+<header class=hero><div class=kick>方法结合谱系 · Combinations</div>
+<h1>Diffusion / Flow Matching × NeRF / 3DGS × World Model：怎么相互结合</h1>
+<p class=sub>Ch1 讲了生成(DDPM/DDIM/FM)与 3D 重建(NeRF/3DGS)、Ch5/6 讲了 world model。<b>它们大量互相结合</b>。本页按"结合模式"分 6 类，逐工作详解（结合了什么·核心机制·例子），每类配一张<b>结合机制示意图</b>。</p></header>
+
+<div class=legend>
+<span class=lg><span class="dot" style="background:var(--green)"></span>✅ 机制确证</span>
+<span class=lg><span class="dot" style="background:var(--amber)"></span>~ 合理/记忆边界</span>
+<span class=lg><span class="dot" style="background:var(--red)"></span>⚠️ 2025+新作待核</span>
+<span class=lg><span class="dot" style="background:var(--accent2)"></span>生成</span>
+<span class=lg><span class="dot" style="background:var(--green)"></span>3D重建</span>
+<span class=lg><span class="dot" style="background:var(--amber)"></span>世界模型</span>
+</div>
+
+<div class=callout><b>一句话本质：</b>结合都围绕一个逻辑——<b>生成模型(扩散/FM)"无中生有"的能力，补上 3D 重建(NeRF/3DGS)"看不到的地方"</b>（稀疏视角、新轨迹、遮挡、伪影）；反过来 3D 重建给生成<b>几何一致性</b>约束。自驾里就是"世界模型造数据/新轨迹 + 3DGS 重建 → 闭环仿真"。</div>
+
+<!-- ===== A ===== -->
+<h2 class=sec><span class=bar></span>A · 扩散当"3D 生成器的先验"（SDS）→ text/image-to-3D</h2>
+<div class=secsub>把 2D 扩散模型的梯度当监督，去优化一个 NeRF / 3DGS，无需 3D 数据。</div>
+<div class=flowh>
+<div class="fnode gen">2D 扩散模型<small>冻结, 如 Imagen/SD</small></div>
+<div class=farr>—<small>SDS 梯度</small>→</div>
+<div class="fnode rep">优化 NeRF/3DGS<small>可微渲染的3D表示</small></div>
+<div class=farr>—<small>渲染360°</small>→</div>
+<div class="fnode out">3D 资产</div>
+</div>
+<div class=cards>
+<div class=card><div class=chd><span class=nm>DreamFusion</span><span class=og>Google · 2022</span><span class="cf cf-y">✅</span></div>
+<div class=combo>2D 扩散 × NeRF（开山）</div>
+<div class=mech>提出 <b>SDS（Score Distillation Sampling）</b>：优化 NeRF 参数，使其渲染图在被加噪后、冻结扩散模型预测的噪声与真噪声一致。梯度 ≈ w(t)(ε_θ−ε)·∂render/∂θ，<b>不需要任何 3D 训练数据</b>。</div>
+<div class=eg><b>例：</b>输入"a DSLR photo of a squirrel"→ 优化出可 360° 环视的 3D 松鼠 NeRF。</div></div>
+
+<div class=card><div class=chd><span class=nm>Magic3D</span><span class=og>NVIDIA · 2022</span><span class="cf cf-y">✅</span></div>
+<div class=combo>SDS × NeRF→Mesh（提速提质）</div>
+<div class=mech><b>两阶段</b>：粗阶段用低分辨率 Instant-NGP + SDS 出粗形；细阶段抽成 mesh、用高分辨率 latent 扩散 SDS 精修。比 DreamFusion <b>快约 2×、分辨率更高</b>。</div>
+<div class=eg><b>例：</b>文本 → 高清带纹理 3D mesh，可导入图形管线。</div></div>
+
+<div class=card><div class=chd><span class=nm>DreamGaussian</span><span class=og>2023</span><span class="cf cf-y">✅</span></div>
+<div class=combo>SDS × <b>3D Gaussian Splatting</b>（提速）</div>
+<div class=mech>把被 SDS 优化的表示从 NeRF <b>换成 3D 高斯</b>——因 3DGS 渲染极快，text/image-to-3D 从几小时降到<b>几分钟</b>；再抽 mesh + 纹理精修。</div>
+<div class=eg><b>例：</b>一张商品图 → 2 分钟出可用 3D 高斯模型 + mesh。</div></div>
+
+<div class=card><div class=chd><span class=nm>ProlificDreamer</span><span class=og>2023</span><span class="cf cf-y">✅</span></div>
+<div class=combo>VSD 改进 SDS（提质）</div>
+<div class=mech>SDS 易过饱和/过平滑；提出 <b>VSD（变分 Score Distillation）</b>：把 3D 当成一个<b>分布(粒子)</b>去匹配渲染分布的 score → 细节更丰富、更多样、更真实。</div>
+<div class=eg><b>例：</b>同一文本生成更锐利、细节更多的 3D。</div></div>
+</div>
+
+<!-- ===== B ===== -->
+<h2 class=sec><span class=bar></span>B · 扩散当"新视角生成器 / 重建修补"</h2>
+<div class=secsub>用扩散补稀疏视角、修重建伪影。</div>
+<div class=flowh>
+<div class="fnode rep">单/少视图<small>+相机位姿</small></div>
+<div class=farr>→</div>
+<div class="fnode gen">扩散模型<small>视角条件</small></div>
+<div class=farr>→</div>
+<div class="fnode out">新视角 / 修补后</div>
+<div class=farr>→</div>
+<div class="fnode rep">3D 重建更稳</div>
+</div>
+<div class=cards>
+<div class=card><div class=chd><span class=nm>Zero-1-to-3</span><span class=og>2023</span><span class="cf cf-y">✅</span></div>
+<div class=combo>视角条件扩散 → 新视角</div>
+<div class=mech>把 Stable Diffusion 微调成<b>视角条件</b>：输入"单张图 + 相对相机 (R,T)"→ 生成该视角的新图。于是单图也能做<b>新视角合成 / 提升成 3D</b>。</div>
+<div class=eg><b>例：</b>一张椅子正面图 + "右转 30°" → 生成椅子右侧视角。</div></div>
+
+<div class=card><div class=chd><span class=nm>MVDream</span><span class=og>2023</span><span class="cf cf-y">✅</span></div>
+<div class=combo>多视图扩散 → 修 SDS 的"多脸"</div>
+<div class=mech><b>多视图扩散</b>：用跨视图注意力<b>一次生成多个一致视角</b>（在 3D 渲染数据上训）；当作 SDS 先验，解决 text-to-3D 的 <b>Janus/多脸</b>问题。</div>
+<div class=eg><b>例：</b>"a corgi"生成的 3D 不再出现前后都是脸。</div></div>
+
+<div class=card><div class=chd><span class=nm>ReconFusion</span><span class=og>Google · CVPR2024</span><span class="cf cf-y">✅</span></div>
+<div class=combo>扩散先验 × 少视图 NeRF</div>
+<div class=mech>少视图 NeRF 会崩；在<b>新视角处</b>加一个（PixelNeRF 条件的）<b>扩散先验当正则</b>，约束未观测区域 → <b>3 张图也能重建</b>。</div>
+<div class=eg><b>例：</b>只给 3 张照片，重建出可自由漫游的场景。</div></div>
+
+<div class=card><div class=chd><span class=nm>Difix3D+</span><span class=og>NVIDIA · CVPR2025</span><span class="cf cf-a">~</span></div>
+<div class=combo>单步扩散 × 3DGS/NeRF 修伪影</div>
+<div class=mech><b>单步扩散</b>模型专门"修"3D 重建在新视角下的伪影/空洞，放进<b>循环</b>里逐步清理，并可<b>蒸馏回</b> 3D 表示 → 新视角更干净。</div>
+<div class=eg><b>例：</b>3DGS 大角度新视角的鬼影/毛刺被单步扩散抹掉。</div></div>
+</div>
+
+<!-- ===== C ===== -->
+<h2 class=sec><span class=bar></span>C · 前馈"多视图扩散 → 直接出 3D 高斯"（大重建模型）</h2>
+<div class=secsub>把"生成 + 重建"缝成前馈一步，秒级出 3D。</div>
+<div class=flowh>
+<div class="fnode gen">文本/单图</div>
+<div class=farr>→</div>
+<div class="fnode gen">多视图扩散<small>一致多视角</small></div>
+<div class=farr>→</div>
+<div class="fnode rep">前馈网络<small>UNet/Transformer</small></div>
+<div class=farr>→</div>
+<div class="fnode out">3D 高斯<small>秒级</small></div>
+</div>
+<div class=cards>
+<div class=card><div class=chd><span class=nm>LGM</span><span class=og>2024</span><span class="cf cf-a">~</span></div>
+<div class=combo>多视图扩散 → U-Net → 3D 高斯</div>
+<div class=mech>Large Gaussian Model：多视图扩散出一致视角 → U-Net <b>前馈</b>预测高分辨率 <b>3D 高斯</b>，不再 per-scene 优化，秒级。</div>
+<div class=eg><b>例：</b>一张图 → 5 秒出 3D 高斯模型。</div></div>
+
+<div class=card><div class=chd><span class=nm>GRM</span><span class=og>2024</span><span class="cf cf-a">~</span></div>
+<div class=combo>Transformer → 像素对齐高斯</div>
+<div class=mech>用 Transformer 从稀疏视角<b>前馈</b>出像素对齐的 3D 高斯，高质高效。</div>
+<div class=eg><b>例：</b>4 视角 → 前馈重建 3D。</div></div>
+
+<div class=card><div class=chd><span class=nm>LatentSplat</span><span class=og>2024</span><span class="cf cf-a">~</span></div>
+<div class=combo>latent 空间预测高斯</div>
+<div class=mech>在 <b>latent 空间</b>预测高斯分布再解码，结合生成先验与前馈重建。</div>
+<div class=eg><b>例：</b>两视角外推可泛化的 3D。</div></div>
+</div>
+
+<!-- ===== D ===== -->
+<h2 class=sec><span class=bar></span>D · 世界模型 × 4D 重建（🚗 和自驾主线最相关）</h2>
+<div class=secsub>世界模型造"新轨迹"数据，3DGS 重建做闭环仿真。</div>
+<div class=flowh>
+<div class="fnode wm">驾驶世界模型<small>视频扩散</small></div>
+<div class=farr>—<small>合成新轨迹视频</small>→</div>
+<div class="fnode rep">4D GS/NeRF 重建<small>+生成先验监督</small></div>
+<div class=farr>→</div>
+<div class="fnode out">闭环仿真<small>渲染真实log没有的轨迹</small></div>
+</div>
+<div class=cards>
+<div class=card><div class=chd><span class=nm>DriveDreamer4D</span><span class=og>GigaAI · 2024</span><span class="cf cf-a">~</span></div>
+<div class=combo>世界模型 × <b>4D 3DGS</b></div>
+<div class=mech>用<b>驾驶世界模型</b>合成"<b>新 ego 轨迹</b>"的视频当额外监督 → 训 <b>4D 高斯</b>；于是闭环仿真能渲染真实 log <b>没走过的轨迹</b>（变道/绕行）。</div>
+<div class=eg><b>例：</b>原 log 直行，生成"向左变道"轨迹的多视图视频用于重建+仿真。</div></div>
+
+<div class=card><div class=chd><span class=nm>ReconDreamer</span><span class=og>GigaAI · 2024</span><span class="cf cf-a">~</span></div>
+<div class=combo>世界模型 <b>在线恢复</b> × 重建</div>
+<div class=mech>重建渲染"大幅偏离原轨迹"时会退化；世界模型做 <b>online restoration</b> 迭代修复退化渲染 → 支持<b>大机动</b>视角。</div>
+<div class=eg><b>例：</b>大角度绕行视角下，模糊/破碎画面被世界模型逐步恢复。</div></div>
+
+<div class=card><div class=chd><span class=nm>StreetGaussians / DrivingGaussian / OmniRe</span><span class=og>2024</span><span class="cf cf-a">~</span></div>
+<div class=combo>动态街景 3DGS 重建</div>
+<div class=mech>用 3DGS 重建<b>动态</b>城市场景：<b>静态背景 + 动态车辆分别建模</b>（每物体一组高斯）；常与生成结合造仿真/训练数据。</div>
+<div class=eg><b>例：</b>把一段行车 log 重建成可编辑、可换视角的 3D 街景。</div></div>
+</div>
+
+<!-- ===== E ===== -->
+<h2 class=sec><span class=bar></span>E · 一个系统内"扩散 × 自回归"结合 → 就是 Cosmos</h2>
+<div class=secsub>你正在读的 Cosmos 本身就是两种生成范式的结合。</div>
+<div class=flowh>
+<div class="fnode gen">自回归 WFM<small>离散token</small></div>
+<div class=farr>—<small>快但糊</small>→</div>
+<div class="fnode gen">扩散 decoder<small>条件于离散token</small></div>
+<div class=farr>→</div>
+<div class="fnode out">清晰视频</div>
+</div>
+<div class=cards>
+<div class=card><div class=chd><span class=nm>Cosmos diffusion decoder</span><span class=og>NVIDIA · 2025</span><span class="cf cf-y">✅</span></div>
+<div class=combo>扩散 × 自回归（同系统互补）</div>
+<div class=mech>AR WFM 出离散 token（压得狠→糊）；把一个 <b>Text2Video 扩散模型微调成 decoder</b>，条件于离散 token 生成<b>清晰</b>视频（§5.2.5）。生成质量 = 自回归 + 扩散精修。</div>
+<div class=eg><b>例：</b>AR 生成的模糊驾驶片段经扩散 decoder 变清晰锐利。</div></div>
+</div>
+
+<!-- ===== F ===== -->
+<h2 class=sec><span class=bar></span>F · Flow Matching 替换扩散做生成骨架</h2>
+<div class=secsub>把生成骨架从扩散换成 rectified flow(FM)，更省采样步。</div>
+<div class=flowh>
+<div class="fnode out">噪声 x₀</div>
+<div class=farr>—<small>v(x,t) ODE (少步)</small>→</div>
+<div class="fnode gen">图像/视频 x₁</div>
+</div>
+<div class=cards>
+<div class=card><div class=chd><span class=nm>Stable Diffusion 3</span><span class=og>Stability · 2024</span><span class="cf cf-y">✅</span></div>
+<div class=combo>FM(rectified flow) × MMDiT</div>
+<div class=mech>用 <b>rectified flow(FM)</b> 训练目标 + 多模态 DiT(MMDiT) 做文生图；相比扩散采样更少步、质量强。</div>
+<div class=eg><b>例：</b>文生图，few-step 出高质图。</div></div>
+
+<div class=card><div class=chd><span class=nm>Flux</span><span class=og>Black Forest Labs · 2024</span><span class="cf cf-y">✅</span></div>
+<div class=combo>大规模 FM Transformer</div>
+<div class=mech>大规模 <b>rectified flow transformer</b> 文生图，FM 骨架的代表作之一。</div>
+<div class=eg><b>例：</b>高保真文生图；FM 路线的工业级落地。</div></div>
+</div>
+
+<div class=callout><b>怎么串起来记：</b>①-④(A/B/C) 是"<b>2D 生成先验 → 造/补 3D</b>"（DreamFusion→DreamGaussian→LGM 一路把 text-to-3D 做快做好）；D 是"<b>世界模型 → 4D 重建 → 自驾闭环</b>"（DriveDreamer4D/ReconDreamer）；E 是"<b>同系统里扩散补自回归</b>"(Cosmos)；F 是"<b>换更省步的生成骨架</b>"(FM/SD3/Flux)。趋势：<span class=hl>生成与重建深度融合</span>——生成补重建看不到的，重建给生成几何约束。</div>
+
+<div class=note2><b>诚实边界：</b>机制描述基于各工作公开做法；<b>✅</b>=我确证（DreamFusion/Magic3D/DreamGaussian/ProlificDreamer/Zero-1-to-3/MVDream/ReconFusion/Cosmos/SD3/Flux 等经典/已读），<b>~</b>=合理但细节/年份处于记忆边界（Difix3D+/LGM/GRM/LatentSplat/DriveDreamer4D/ReconDreamer/街景GS 等 2024-2025 新作）。<b>⚠️ 需要精确年份/出处/指标或论文原图时，我可开 web 逐条核准再补</b>。本页为"结合关系"教学示意，非逐篇精读（要哪几个做成 Ch4 那种源码级精读可单独说）。</div>
+</div></body></html>

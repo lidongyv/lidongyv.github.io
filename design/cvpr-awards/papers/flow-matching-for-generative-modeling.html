@@ -1,0 +1,364 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Flow Matching for Generative Modeling</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:24px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0;font-size:13.5px}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.back{color:var(--mut);font-size:14px}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.en{color:#cfd6ff;font-style:italic;margin:10px 0 2px}
+.cn{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+.code{background:#0e1230;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:12px;color:#bfe3ff;white-space:pre-wrap;margin:8px 0;font-family:ui-monospace,Menlo,Consolas,monospace}
+.q{color:var(--accent);font-weight:700;margin:16px 0 4px;border-left:3px solid var(--accent);padding-left:9px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag">arXiv 2210.02747 · ICLR 2023</span> &nbsp; <span class="badge b-candidate">📄 生成模型 · Flow Matching 奠基作</span></div>
+    <h1>Flow Matching for Generative Modeling</h1>
+    <div class="au2">Yaron Lipman ⋅ Ricky T. Q. Chen ⋅ Heli Ben-Hamu ⋅ Maximilian Nickel ⋅ Matt Le</div>
+    <div class="kv">Meta AI (FAIR) · Weizmann Institute of Science</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2210.02747">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2210.02747">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Flow+Matching+for+Generative+Modeling">Scholar</a></div>
+    <div class="tldr"><b>一句话：</b>Flow Matching（FM）= 一种<b>无需仿真</b>的训练方式，通过<b>回归"固定条件概率路径"的向量场</b>来训练连续归一化流（CNF）；它把<b>扩散当成特例统一进来</b>，且能用<b>最优传输(OT)的"直线"路径</b>——比扩散路径更高效、训练/采样更快、泛化更好。生成时只需<b>用现成 ODE 求解器</b>从噪声积分到数据。这是 SD3 / Flux 等 rectified-flow 路线的理论奠基。</div>
+
+    <div class="box"><h2>摘要 Abstract（原文）</h2><div class="abstract">We introduce a new paradigm for generative modeling built on Continuous Normalizing Flows (CNFs), allowing us to train CNFs at unprecedented scale. Specifically, we present the notion of Flow Matching (FM), a simulation-free approach for training CNFs based on regressing vector fields of fixed conditional probability paths. Flow Matching is compatible with a general family of Gaussian probability paths for transforming between noise and data samples—which subsumes existing diffusion paths as specific instances. Interestingly, we find that employing FM with diffusion paths results in a more robust and stable alternative for training diffusion models. Furthermore, Flow Matching opens the door to training CNFs with other, non-diffusion probability paths. An instance of particular interest is using Optimal Transport (OT) displacement interpolation to define the conditional probability paths. These paths are more efficient than diffusion paths, provide faster training and sampling, and result in better generalization. Training CNFs using Flow Matching on ImageNet leads to consistently better performance than alternative diffusion-based methods in terms of both likelihood and sample quality, and allows fast and reliable sample generation using off-the-shelf numerical ODE solvers.</div></div>
+
+    <div class="box notes"><h2>📝 精读笔记（要点）</h2>
+<!-- NOTES:flow-matching-for-generative-modeling -->
+    <div class="note-h">为什么读它（与精读链路的关联）</div>
+    <div class="note-b">精读 World Engine 的 DiT 时讨论到 diffusion vs flow matching——这篇就是 <b>flow matching 的理论奠基作</b>（Lipman 2022）。它把"学速度场、解 ODE 从噪声到数据"讲清楚，并说明为什么它<b>统一并超越扩散</b>（扩散是其特例）。SD3 / Flux 的 rectified flow 都建在它之上。</div>
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">不用模拟整条轨迹去训练 CNF（那太贵），而是<b>直接回归"固定条件概率路径"的目标向量场</b>（simulation-free）；扩散只是"高斯路径"的一个特例，换成<b>最优传输的直线路径</b>就更快更好。</div>
+    <div class="note-h">三个核心贡献</div>
+    <div class="note-b">① <b>Flow Matching</b>：无需仿真地训练 CNF（回归条件概率路径的向量场），解决了 CNF 过去"训练要解 ODE、太贵"的痛点。<br>② <b>统一扩散</b>：FM 兼容一大类高斯概率路径，现有扩散路径是其特例；用 FM 训扩散更稳。<br>③ <b>OT 路径</b>：用最优传输位移插值定义的"直线"路径，比扩散路径更高效、训练采样更快、泛化更好。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">ImageNet 上，FM（尤其 OT 路径）在<b>似然 + 样本质量</b>上持续优于扩散类方法；采样用<b>现成数值 ODE 求解器</b>即可，快且可靠。</div>
+    <div class="note-h">和 diffusion 的关系（一句话）</div>
+    <div class="note-b">diffusion 是 FM 的特例（高斯/扩散路径）；FM 是更一般的框架，能选更直的 OT 路径 → 更少积分步、更快采样。这就是"rectified flow / 直路径"高效的根。</div>
+    <div class="note-b notes-todo" style="color:var(--mut);font-style:italic">逐节精读：abstract + method(FM目标 / CFM Theorem 1-2 / 高斯&OT 路径) + ④ 背景与实现深挖(ODE / CNF vs diffusion / score matching / DDPM / 训练对比 / CFM 推导) + ⑤ 实验(Table1 CIFAR/ImageNet 32/64/128 · 训练/采样效率 · 超分 Table2 · 超参 Table3) + ⑥ 结论 + ⑦ 训练&推理实现(对照 Figure 2/4/10) + ⑧ 可运行代码(PyTorch 逐行对应公式) + ⑨ toy demo(two-moons 本地实跑结果)，全文+实现+代码+实测已覆盖。</div>
+<!-- /NOTES -->
+    </div>
+
+    <div class="box" id="qa"><h2>📖 逐段精读 · 中英对照 &amp; 问答记录</h2>
+    <div class="kv">从 Abstract 开始逐节精读，随讨论持续累积。最后更新 2026-07-02（补 ⑤ 实验 + ⑥ 结论 + ⑦ 训练&推理实现(对照 Figure 2/4/10) + ⑧ 可运行代码(PyTorch, 逐行对应 Eq 9/11/14/15/20/22/23) + ⑨ two-moons toy demo(本地实跑, 含结果图) · 7 张论文原图 + 1 张实测图）。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 段落中译</div>
+    <div class="en">We introduce a new paradigm for generative modeling built on Continuous Normalizing Flows (CNFs), allowing us to train CNFs at unprecedented scale. Specifically, we present the notion of Flow Matching (FM), a simulation-free approach for training CNFs based on regressing vector fields of fixed conditional probability paths.</div>
+    <div class="cn">我们提出一种建立在<b>连续归一化流（CNF）</b>之上的生成建模新范式，使我们能以前所未有的规模训练 CNF。具体地，我们提出 <b>Flow Matching（FM）</b>——一种<b>无需仿真（simulation-free）</b>的 CNF 训练方法，其做法是<b>回归"固定的条件概率路径"的向量场</b>。</div>
+    <div class="en">Flow Matching is compatible with a general family of Gaussian probability paths for transforming between noise and data samples—which subsumes existing diffusion paths as specific instances. Interestingly, we find that employing FM with diffusion paths results in a more robust and stable alternative for training diffusion models.</div>
+    <div class="cn">FM 兼容一大类用于"在噪声与数据之间变换"的<b>高斯概率路径</b>——现有的<b>扩散路径只是其中的特例</b>。有趣的是，我们发现用 FM 配合扩散路径，能得到比原扩散训练<b>更稳健、更稳定</b>的替代方案。</div>
+    <div class="en">Furthermore, Flow Matching opens the door to training CNFs with other, non-diffusion probability paths. An instance of particular interest is using Optimal Transport (OT) displacement interpolation to define the conditional probability paths. These paths are more efficient than diffusion paths, provide faster training and sampling, and result in better generalization.</div>
+    <div class="cn">此外，FM 还打开了用<b>非扩散</b>概率路径训练 CNF 的大门；其中特别有意思的一例是用<b>最优传输（OT）位移插值</b>来定义条件概率路径——这类路径比扩散路径<b>更高效、训练与采样更快、且泛化更好</b>。</div>
+    <div class="en">Training CNFs using Flow Matching on ImageNet leads to consistently better performance than alternative diffusion-based methods in terms of both likelihood and sample quality, and allows fast and reliable sample generation using off-the-shelf numerical ODE solvers.</div>
+    <div class="cn">在 <b>ImageNet</b> 上用 FM 训练 CNF，在<b>似然和样本质量</b>上都持续优于扩散类方法，并能用<b>现成的数值 ODE 求解器</b>快速、可靠地采样。</div>
+    <div class="note-b" style="margin-top:8px"><b>一句话抓 Abstract：</b>FM = 无需仿真地回归"条件概率路径的向量场"来训 CNF；扩散是其特例；用 OT 直线路径更快更好；采样只需现成 ODE 求解器。</div>
+    <div class="q">② Flow Matching 的 method（§2-4 核心，已对原文核验）</div>
+    <div class="note-b"><b>背景 CNF：</b>连续归一化流用一个<b>速度场 v_t(x)</b> 定义一个 ODE，把简单分布 p_0=N(0,I) 沿时间"流"到数据分布 p_1≈q。过去训 CNF 要在训练中解 ODE（仿真），很贵。FM 想"免仿真"地训这个速度场。</div>
+
+    <div class="note-h">§3 Flow Matching 目标（直接用不可行）</div>
+    <div class="code">FM 目标(Eq5):  L_FM(θ) = E_{t~U[0,1], x~p_t(x)} ‖ v_t(x) − u_t(x) ‖²
+  即: 用网络 v_t 回归"能生成目标概率路径 p_t 的目标速度场 u_t"
+问题: 我们既不知道合适的 p_t, 也拿不到生成它的闭式 u_t → 朴素 FM 不可算</div>
+
+    <div class="note-h">§3.1 用"条件概率路径"构造 + 第一关键观察(Theorem 1)</div>
+    <div class="note-b">把难搞的边际量拆成<b>每个数据样本 x1 的条件量</b>（可设计、可采样）：</div>
+    <div class="code">条件概率路径 p_t(x|x1): t=0 时=N(0,I); t=1 时≈集中在 x1 的窄高斯
+边际路径(Eq6):  p_t(x) = ∫ p_t(x|x1) q(x1) dx1   (t=1 时≈数据分布 q)
+边际速度场(Eq8): u_t(x) = ∫ u_t(x|x1) p_t(x|x1) q(x1) / p_t(x) dx1
+Theorem 1: 这样"边际化"出的 u_t 恰好生成边际路径 p_t (满足连续性方程)
+→ 把"未知的边际速度场"拆成"简单的、只依赖单样本的条件速度场"</div>
+
+    <div class="note-h">§3.2 Conditional Flow Matching (CFM)·第二关键观察(Theorem 2)·核心</div>
+    <div class="note-b">边际 u_t 含不可算积分，但可以改回归<b>条件速度场</b>（每样本、可算）：</div>
+    <div class="code">CFM 目标(Eq9): L_CFM(θ) = E_{t, x1~q(x1), x~p_t(x|x1)} ‖ v_t(x) − u_t(x|x1) ‖²
+  只需能"从 p_t(x|x1) 采样" + "算 u_t(x|x1)" —— 单样本定义, 都很容易
+Theorem 2(精髓): ∇_θ L_FM = ∇_θ L_CFM   (两者梯度完全相同!)
+→ 用可算的 CFM 训练, 等价于训不可算的 FM; 训出的 v_t 生成边际路径(t=1≈数据)
+  完全不需要知道边际路径/边际速度场, 只需设计"条件路径+条件速度场"</div>
+
+    <div class="note-h">§4 条件路径的具体构造：高斯路径 → 扩散是特例 → OT 直线路径</div>
+    <div class="code">高斯条件路径(Eq10): p_t(x|x1) = N( x | μ_t(x1), σ_t(x1)²·I )
+  边界: μ_0=0,σ_0=1 (都从同一个 N(0,I) 出发); μ_1=x1,σ_1=σ_min (t=1 集中在 x1)
+  选不同的 (μ_t, σ_t) 就得到不同路径:
+   · 扩散路径 = 高斯路径的一个特例(FM 统一了 diffusion)
+   · OT 路径 = μ_t(x1)=t·x1, σ_t=1−(1−σ_min)t  → 噪声到数据"直线、匀速"插值
+     (最优传输位移插值; 路径直 → ODE 积分步数少 → 训练/采样更快、泛化更好)</div>
+    <div class="note-b"><b>一句话抓 method：</b>想回归"生成数据的速度场"但边际量不可算 → 改回归<b>逐样本的条件速度场</b>（CFM），Theorem 2 保证两者<b>梯度相同</b>；条件路径用高斯族（扩散是特例），换成 <b>OT 的直线路径</b>就更快更好。这就是 rectified flow / SD3 高效采样的根。</div>
+
+    <div class="note-h">③ 与精读链路呼应</div>
+    <div class="note-b">对照之前讨论：diffusion 是 FM 在"高斯/扩散路径"下的特例；FM 把它推广到任意条件路径，OT 直线路径 → 少步 ODE 采样。consistency model 是另一条"压步数"的路（学直达终点的映射），FM/OT 是"把路径本身拉直"。两者都服务"扩散太慢"这个痛点，但手段不同（拉直路径 vs 学捷径映射）。</div>
+    <div class="note-h">④ 背景与实现深挖（QA 补充：ODE / CNF vs diffusion / score matching / DDPM / 训练对比 / CFM 推导）</div>
+
+    <div class="q">④-1 ODE 是什么 & 为什么"回归向量场"训练时不用解 ODE</div>
+    <div class="note-b"><b>ODE(常微分方程)</b>描述"一个量随时间怎么变"：给起点，沿"每时每刻往哪走"的规则推出整条轨迹。CNF/FM 里就是 dx/dt=v_t(x)，从噪声起点沿向量场流到数据。<b>"解 ODE"=数值积分</b>(一小步步走几十上百步，每步一次网络前向，贵)。<b>关键分清采样 vs 训练</b>：采样时都要解 ODE(噪声→数据)；但 <b>FM 训练是回归问题</b>——t 和 x 直接采样、目标 u_t 有闭式，不需要把轨迹走出来 → simulation-free。</div>
+    <div class="code">ODE:  dx/dt = v_t(x);   解 ODE(Euler): x_{t+Δ} = x_t + Δ·v_t(x_t)  走多步
+FM 训练 loss = E_{t~U[0,1], x~p_t} || v_θ(t,x) − u_t(x) ||²   (t,x 直接采样, u_t 闭式, 无仿真)</div>
+
+    <div class="q">④-2 CNF 和 diffusion 的关系</div>
+    <div class="note-b"><b>CNF</b> = 用 ODE(确定性)把噪声流成数据的<b>通用框架</b>；<b>diffusion</b> = 用 SDE(随机)加噪去噪，是<b>特例</b>。diffusion 定义的边际路径 p_t 存在一个<b>等价的确定性 ODE(probability flow ODE, Song 2021)</b>，那就是一个 CNF。包含关系：<b>diffusion 路径 ⊂ 高斯路径 ⊂ CNF 可表示路径</b>。FM 让 CNF 也能像 diffusion 一样高效训、且不限于 diffusion 路径(可用更直的 OT 路径)。</div>
+
+    <div class="q">④-3 score matching / DDPM / diffusion 怎么训</div>
+    <div class="note-b"><b>score</b> = ∇log p(x)(指向密度增大方向的向量场)。<b>Denoising Score Matching(Vincent 2011)</b>：在加噪数据上，score 的目标有闭式 = −ε/√(1−ᾱ_t) → <b>估计 score ⟺ 预测噪声 ε</b>，把难算的 ∇log p 变成"去噪回归"。<b>DDPM(Denoising Diffusion Probabilistic Models, Ho 2020)</b> 是现代扩散奠基作，用的就是这套。</div>
+    <div class="code">DDPM 前向闭式:  x_t = √ᾱ_t·x0 + √(1−ᾱ_t)·ε    (signal+noise 加权; √保方差=1, VP)
+DDPM 训练:      loss = || ε − ε_θ(x_t, t) ||²    (ε_θ = U-Net + sinusoidal time embedding, 输出同尺寸噪声)</div>
+
+    <div class="q">④-4 三种训练对比（diffusion / 传统 CNF / CNF+FM）</div>
+    <div class="code">                  diffusion(DDPM)     传统CNF(极大似然)      CNF + FM
+训练目标           回归噪声/score       极大似然              回归向量场
+训练要解ODE吗       否(一步造 x_t)       是(解整条轨迹)         否
+loss              ||ε−ε_θ||²          −log p (ODE积分)      ||v_θ−u_t||²
+采样              反向 T 步去噪         解 ODE               解 ODE(现成 solver)
+
+传统CNF:  log p_1(x) = log p_0(x0) − ∫ div(v_θ) dt;  每次迭代 odeint+adjoint 反传 → 慢
+FM(OT路径)伪代码:  x0=noise; x1=data; xt=(1−t)x0 + t·x1; u_t = x1 − x0; loss = ||v_θ(xt,t) − u_t||²</div>
+
+    <div class="q">④-5 CFM 为什么和 FM 梯度相同（Theorem 2 直觉）+ Theorem 3 闭式</div>
+    <div class="note-b">展开平方 ‖v−u‖² = ‖v‖² − 2⟨v,u⟩ + ‖u‖²：① ‖u‖² 不含 θ → 对 θ 梯度为 0(差的就是这个常数)；② ‖v‖² 项两 loss 期望相等(因 p_t 是 p_t(·|x1) 对 q 的边缘化)；③ 交叉项 ⟨v,u_t⟩ 代入 marginal u_t 的加权定义(Eq8)后，与 conditional 版相等。三项对上 → <b>∇_θ L_FM = ∇_θ L_CFM</b>，于是只回归 per-sample 的 u_t(x|x1) 即可，无需碰算不出的 marginal。</div>
+    <div class="code">Theorem 3 (高斯路径闭式 VF):  u_t(x|x1) = [σ'_t/σ_t]·(x − μ_t) + μ'_t
+OT 路径:  μ_t = t·x1,  σ_t = 1−(1−σ_min)t  →  u_t = [x1 − (1−σ_min)x] / [1 − (1−σ_min)t]
+          σ_min→0 时 = x1 − x0  (常速直线, 即 ④-4 伪代码的目标向量场)
+Diffusion 路径(VE/VP)是另一组 μ_t/σ_t 特例, 代入后与 Song 2021 probability flow ODE 的 VF 一致</div>
+    <div class="note-h">⑤ 实验：CIFAR-10 / ImageNet（§5，原文标 6）</div>
+    <div class="en">We explore the empirical benefits of using Flow Matching on the image datasets of CIFAR-10 and ImageNet at resolutions 32, 64, and 128. We also ablate the choice of diffusion path in Flow Matching, particularly between the standard variance preserving diffusion path and the optimal transport path. Unless otherwise specified, we evaluate likelihood and samples from the model using dopri5 at absolute and relative tolerances of 1e-5.</div>
+    <div class="cn">在 <b>CIFAR-10</b> 与 <b>ImageNet 32/64/128</b> 上验证 FM，并消融"标准 VP 扩散路径 vs 最优传输(OT)路径"。除非特别说明，似然与采样都用自适应 ODE 求解器 <b>dopri5</b>（绝对/相对容差 1e-5）。三块实验：①密度建模+样本质量；②采样效率；③条件生成（超分）。</div>
+
+    <div class="q">⑤-1 主结果 Table 1：同一模型换不同训练 loss，FM-OT 全面最优</div>
+    <div class="note-b">同一个 U-Net 架构（Dhariwal &amp; Nichol 2021，minimal changes），<b>同超参、同迭代数</b>（baseline 还额外多给迭代以利收敛），且是 <b>unconditional</b> 模型。三项指标：<b>NLL</b>（bits/dim 越低越好）、<b>FID</b>（50k 样本，越低越好）、<b>NFE</b>（自适应 solver 达到容差的平均函数评估次数，越低=采样越快）。</div>
+    <div class="code">Table 1 (左)  同架构 + 不同训练 loss     (NLL↓ / FID↓ / NFE↓)
+                     CIFAR-10             ImageNet-32           ImageNet-64
+  Model             NLL   FID    NFE      NLL   FID    NFE      NLL   FID    NFE
+  ── Ablations（扩散类 baseline）──
+  DDPM              3.12  7.48   274      3.54  6.99   262      3.32  17.36  264
+  Score Matching    3.16  19.94  242      3.56  5.68   178      3.40  19.74  441
+  ScoreFlow         3.09  20.78  428      3.55  14.14  195      3.36  24.95  601
+  ── Ours ──
+  FM w/ Diffusion   3.10  8.06   183      3.54  6.37   193      3.33  16.88  187
+  FM w/ OT          2.99  6.35   142      3.53  5.02   122      3.31  14.45  138   ← 全项最优
+
+Table 1 (右)  ImageNet-128 unconditional   (NLL↓ / FID↓)
+  MGAN           – / 58.9        Self-cond. GAN   – / 41.7
+  PacGAN2        – / 57.5        Uncond. BigGAN   – / 25.3
+  Logo-GAN-AE    – / 50.9        PGMGAN           – / 21.7
+  FM w/ OT     2.90 / 20.9    ← FID SOTA（IC-GAN 因用自监督 ResNet50 conditioning，单列排除）</div>
+    <div class="note-b"><b>读表 takeaway：</b>① FM-OT 在 CIFAR-10 与 ImageNet 全分辨率、三项指标（似然/质量/速度）上<b>同时最好</b>；② <b>NFE 差距尤其明显</b>——OT 把采样步数压到 122–142，扩散 baseline 要 178–601（正呼应 method：直路径 → ODE 好积分 → 少步）；③ CIFAR-10 的 FID 比前作偏高，作者<b>诚实归因</b>"所用架构没为 CIFAR-10 调优"；④ ImageNet-128 FID=20.9 是当时 <b>SOTA</b>（除用了 conditioning 的 IC-GAN）。</div>
+
+    <div class="q">⑤-2 为什么 FM 训练也收敛更快（Faster training, Figure 5）</div>
+    <div class="en">For ImageNet-128 Dhariwal &amp; Nichol (2021) train for 4.36m iterations with batch size 256, while FM (with 25% larger model) used 500k iterations with batch size 1.5k, i.e., 33% less image throughput.</div>
+    <div class="note-b">扩散类通常要极多迭代（ScoreFlow 报 1.3m、VDM 报 10m）；FM 收敛显著更快。Figure 5（ImageNet-64 训练期 FID 曲线）中 FM-OT 把 FID <b>降得更快也更低</b>。ImageNet-128 上：Dhariwal &amp; Nichol 训 <b>4.36m 迭代 @ batch 256</b>，而 FM（模型还大 25%）只用 <b>500k 迭代 @ batch 1.5k</b>，折合 <b>少 33% 的图像吞吐</b>就达到/超过。此外扩散的采样成本在训练过程中会剧烈变化，而 FM 的采样成本<b>恒定</b>（Appendix Figure 10）。</div>
+
+    <div class="q">⑤-3 采样效率：更少 NFE 拿同等质量（§6.2, Figure 6/7）</div>
+    <div class="note-b"><b>Sample paths（Figure 6, ImageNet-64 同一随机 seed）：</b>OT 路径<b>更早开始成像</b>（噪声近似线性递减），扩散路径直到轨迹末端才明显去噪。<b>Low-cost samples（Figure 7, ImageNet-32, 固定步 solver, ≤100 NFE）：</b>左图比较 low-NFE 与 1000-NFE 解的 per-pixel MSE（256 个噪声 seed）——FM-OT 数值误差最优，<b>只需约 60% 的 NFE</b> 即可达到扩散模型相同的误差阈值；右图 FID-vs-成本，FM-OT 即使在极低 NFE 也能有不错 FID，质量/成本折中最好。</div>
+    <div class="code">直觉呼应 method：OT 路径 μ_t = t·x1、常速直线 → 轨迹接近直 → 固定步 Euler/Midpoint 也低误差
+              → 同等质量所需 NFE 更少（≈60%）。这就是 rectified-flow / SD3 少步采样的实证根据。</div>
+
+    <div class="q">⑤-4 条件生成：图像超分 64→256（§6.3, Table 2）</div>
+    <div class="note-b">把 FM 用到<b>条件生成</b>：ImageNet 上把 64×64 上采到 256×256，按 SR3（Saharia 2022）协议在验证集上算指标。</div>
+    <div class="code">Table 2  ImageNet 超分 (64→256) 验证集      FID↓ / IS↑ / PSNR↑ / SSIM↑
+  Reference（原验证集）    1.9  / 240.8 /  –    /  –
+  Regression             15.2  / 121.1 / 27.9 / 0.801
+  SR3 (Saharia 2022)      5.2  / 180.1 / 26.4 / 0.762
+  FM w/ OT                3.4  / 200.8 / 24.7 / 0.747   ← FID / IS 大幅更好</div>
+    <div class="note-b">FM-OT 的 PSNR/SSIM 与 SR3 相近，但 <b>FID 5.2→3.4、IS 180.1→200.8 明显更好</b>；作者引 Saharia 观点：对生成质量而言 FID/IS 比 PSNR/SSIM 更有指示性（PSNR/SSIM 会偏向"回归式模糊平均"的解）。</div>
+
+    <div class="note-h">⑤-5 实现细节（Appendix E, Table 3 超参，便于复现）</div>
+    <div class="code">架构: U-Net (Dhariwal &amp; Nichol 2021), minimal changes; Adam(β1=.9, β2=.999, wd=0, ε=1e-8)
+精度: CIFAR10 / ImageNet-32 用 fp32; ImageNet-64/128/256 用 fp16 混合精度
+FM-OT / FM-Diffusion / SM-Diffusion 用完全相同架构 + 超参 + epochs（可比性）
+NLL: uniform dequantization + importance-weighted 估计(Eq47), dopri5 atol=rtol=1e-5 (torchdiffeq)
+
+                 CIFAR10    ImageNet-32   ImageNet-64   ImageNet-128
+  Channels        256        256           192           256
+  Depth           2          3             3             3
+  Ch. multiple    1,2,2,2    1,2,2,2       1,2,3,4       1,1,2,3,4
+  Attn res        16         16,8          32,16,8       32,16,8
+  Batch size      256        1024          2048          1536
+  GPUs            2          4             16            32
+  Iterations      391k       250k          157k          500k
+  Learning Rate   5e-4       1e-4          1e-4          1e-4
+  LR Sched        PolyDecay  PolyDecay     Constant      PolyDecay</div>
+
+    <div class="q">⑥ 结论（§7 原文）</div>
+    <div class="en">We introduced Flow Matching, a new simulation-free framework for training Continuous Normalizing Flow models, relying on conditional constructions to effortlessly scale to very high dimensions. Furthermore, the FM framework provides an alternative view on diffusion models, and suggests forsaking the stochastic/diffusion construction in favor of more directly specifying the probability path.</div>
+    <div class="cn">FM 是训练 CNF 的<b>免仿真</b>新框架，靠"条件构造"轻松 scale 到极高维；它给扩散模型一个<b>新视角</b>——放弃随机/扩散式构造，转而<b>直接指定概率路径</b>，从而能构造采样更快、生成更好的路径。</div>
+    <div class="note-b"><b>一句话抓实验：</b>同一 U-Net 换成 FM 目标、并把路径从扩散换成 <b>OT 直线路径</b>，就在 CIFAR-10 / ImageNet 32/64/128 上把<b>似然、FID、采样步数(NFE) 三项一起打到最好</b>：ImageNet-128 FID=20.9（除 conditioning 的 IC-GAN 外 SOTA），采样仅需约 60% NFE，训练更省吞吐；条件超分也在 FID/IS 上领先 SR3。这就是"直路径 → 少步高效"主张的实证支撑，也是后来 rectified-flow / SD3 / Flux 路线的底气。</div>
+    <div class="q">⑦ 训练 &amp; 推理实现（伪代码级，对照 Figure 2 / 4 / 10）</div>
+    <div class="note-b" style="color:var(--mut)">注：原论文<b>没有正式 Algorithm 框</b>，实现以公式(Eq 22/23/1)+ Appendix E 文字给出；下面是据此还原的<b>等价实现骨架</b>（PyTorch 风格），已对齐原文。</div>
+
+    <div class="note-h">⑦-1 训练：simulation-free，一个 batch 就几行（对照 Eq 23 + Figure 2）</div>
+    <div class="note-b">FM/CFM 训练是<b>纯回归、不解 ODE</b>。以 OT 路径为例：采时间 t、采噪声 x0、采数据 x1 → 直线插值得 xt → 目标向量场就是<b>常向量 x1−x0</b>（与 t、xt 无关）→ 回归它。</div>
+    <div class="code"># 训练一步（Conditional Flow Matching, OT 路径, Eq 22/23）
+x1 = sample_data()             # 真实样本 ~ q(data)
+x0 = randn_like(x1)            # 噪声    ~ N(0, I)
+t  = rand(batch, 1)            # 时间    ~ U[0,1]
+xt = (1 - t) * x0 + t * x1     # ψt(x0): 噪声↔数据 的直线插值 (σ_min→0)
+target = x1 - x0               # 条件向量场 ut(xt|x1): 常向量, 不依赖 t/xt
+pred   = v_theta(xt, t)        # 网络预测速度场 (U-Net, 与 DDPM 同架构)
+loss   = ((pred - target)**2).mean()      # CFM 回归损失 (Eq 23)
+loss.backward(); opt.step()
+# 含 σ_min 完整式: xt=(1-(1-σ_min)t)·x0 + t·x1,  target = x1-(1-σ_min)·x0</div>
+    <div class="note-b">对照 <b>Figure 2</b>：这就是网络要回归的目标场。左=扩散路径的条件 score（方向随 t 改变），右=OT 路径的条件向量场——<b>方向在时间上恒定</b>，所以回归任务更简单、更好拟合（原文：constant direction in time and is arguably simpler to fit）。蓝=幅值大、红=幅值小。</div>
+    <figure style="margin:14px 0"><img src="../imgs/flow-matching-for-generative-modeling/fig2.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)">
+    <figcaption class="kv" style="margin-top:6px">Figure 2: Compared to the diffusion path's conditional score function, the OT path's conditional vector field has constant direction in time and is arguably simpler to fit with a parametric model. Note the blue color denotes larger magnitude while red color denotes smaller magnitude.</figcaption></figure>
+
+    <div class="note-h">⑦-2 推理：从噪声解一个 ODE 到数据（对照 Figure 4）</div>
+    <div class="note-b">采样 = 给定训练好的速度场 v_θ，从 x0~N(0,I) 出发，沿 dx/dt=v_θ(x,t) 把 ODE 从 t=0 积分到 t=1。论文默认自适应求解器 <b>dopri5</b>(atol=rtol=1e-5, torchdiffeq)；也可固定步 Euler/Midpoint/RK4。</div>
+    <div class="code"># 采样(推理): 解 ODE  dx/dt = v_theta(x, t),  t: 0 -> 1
+x = randn(n, *shape)           # 起点 x0 ~ N(0, I)
+
+# (a) 自适应求解器(论文默认, 质量优先):
+x1 = odeint(v_theta, x, t=[0,1], method='dopri5', atol=1e-5, rtol=1e-5)   # torchdiffeq
+
+# (b) 固定步 Euler(NFE=N, 速度优先):
+for i in range(N):
+    t = i / N
+    x = x + (1.0/N) * v_theta(x, t)     # 一步 = 一次网络前向 = 1 NFE
+# OT 路径轨迹接近直线 -> N 很小也准 (少步高效)</div>
+    <div class="note-b">对照 <b>Figure 4</b>（2D checkerboard，每行从左到右是采样轨迹随 t 的演化，最右列=最终样本）：三行分别是 Score Matching / FM-Diffusion / FM-OT 学出的场所生成的轨迹。<b>FM-OT（最下行）最早浮现 checkerboard 图案</b>——同样步数下更早"成形"，故推理可用更少 NFE。原文还指出扩散轨迹会 overshoot 最终样本再回拉(backtracking)，而 OT 轨迹"保证是直线"(Figure 3)。</div>
+    <figure style="margin:14px 0"><img src="../imgs/flow-matching-for-generative-modeling/fig4.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)">
+    <figcaption class="kv" style="margin-top:6px">Figure 4: (left) Trajectories of CNFs trained with different objectives on 2D checkerboard data. The OT path introduces the checkerboard pattern much earlier, while FM results in more stable training. (right) FM with OT results in more efficient sampling, solved using the midpoint scheme.</figcaption></figure>
+
+    <div class="note-h">⑦-3 训练期采样成本 &amp; 似然(NLL)计算（对照 Figure 10 + Eq 47）</div>
+    <div class="note-b"><b>采样成本(Figure 10)：</b>自适应 solver 达到同一容差所需 NFE，反映"场好不好积分"。训练全程：score matching(绿)剧烈波动(峰值达上千)、FM-Diffusion(蓝)约 100、<b>FM-OT(橙)恒定在 ~50–60</b>——OT 场从一开始就好积分，这也是表里 FM-OT 的 NFE 最低且稳的原因。</div>
+    <div class="code"># 似然 / NLL(bits-per-dim): 连续变量替换 (instantaneous change of variables)
+#   log p1(x) = log p0(x0) - ∫_0^1 div(v_theta)(x_t, t) dt
+# 实现: 反向解 ODE(t:1->0)得 x0, 同时累积 divergence(Hutchinson trace 估计)
+# 论文: dopri5 atol=rtol=1e-5(torchdiffeq) + uniform dequantization
+#       + importance-weighted 估计(Eq 47, 多个 K 取平均)</div>
+    <figure style="margin:14px 0"><img src="../imgs/flow-matching-for-generative-modeling/fig10.webp" style="width:70%;border-radius:10px;border:1px solid var(--line)">
+    <figcaption class="kv" style="margin-top:6px">Figure 10: Function evaluations for sampling during training, for models trained on CIFAR-10 using dopri5 solver with tolerance 1e−5.</figcaption></figure>
+
+    <div class="note-b" style="margin-top:8px"><b>一句话抓实现：</b>训练 = 采 (t, x0, x1) → 直线插值 xt → 回归常向量场 x1−x0（几行代码、不解 ODE，这是能 scale 的关键）；推理 = 从噪声解一个 ODE（dopri5 或少步 Euler）到数据。OT 路径让"要学的场方向恒定、要走的轨迹是直线"，于是训练更好学、推理更少步——这就是 rectified-flow / SD3 落地时的实现骨架。</div>
+    <div class="q">⑧ 可运行代码实现（PyTorch，逐行对应公式）</div>
+    <div class="note-b">最小可跑实现：OT 路径 + toy MLP。换 U-Net + 图像 dataloader 即可训 ImageNet；换 μ_t/σ_t 即切到扩散等其它路径。核心只有两段——训练是几行回归、采样是解一个 ODE。</div>
+    <div class="code">import torch
+import torch.nn as nn
+
+# =============================================================
+#  Flow Matching (Lipman et al., 2022) 最小可运行实现
+#  训练 = Conditional Flow Matching(OT 路径);  采样 = 解 ODE
+#  toy 用 MLP; 换成 U-Net + 图像 dataloader 即可训 ImageNet
+# =============================================================
+
+SIGMA_MIN = 1e-4          # σ_min: t=1 时条件高斯的极小 std (Eq 10 边界)
+
+# ---- 速度场网络 v_θ(x, t): 吃样本 x 与时间 t, 吐同维速度向量 ----
+class VelocityField(nn.Module):
+    def __init__(self, dim, hidden=256):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(dim + 1, hidden), nn.SiLU(),
+            nn.Linear(hidden, hidden),  nn.SiLU(),
+            nn.Linear(hidden, dim),
+        )
+    def forward(self, x, t):
+        t = t.reshape(-1, 1)                        # t 整形成 (B,1)
+        return self.net(torch.cat([x, t], dim=-1))  # 输出 v_θ(x,t), 与 x 同维
+
+# ========================= 训练一步 =========================
+# 目标: CFM 损失(Eq 9), 用 ψ_t 重参数化(Eq 14), OT 路径(Eq 20/22/23)
+def train_step(v, x1, opt):
+    B = x1.shape[0]
+    t  = torch.rand(B, 1, device=x1.device)         # ① t ~ U[0,1]        (Eq 9)
+    x0 = torch.randn_like(x1)                        # ② x0 ~ N(0, I)      (路径起点 p0)
+
+    # ③ 路径上的点 x_t = ψ_t(x0) = σ_t·x0 + μ_t      (通用 Eq 11)
+    #    OT 路径: μ_t = t·x1, σ_t = 1-(1-σmin)t      (Eq 20)
+    #    合起来:  x_t = (1-(1-σmin)t)·x0 + t·x1       (Eq 22)
+    xt = (1 - (1 - SIGMA_MIN) * t) * x0 + t * x1
+
+    # ④ 目标速度场 u_t(x_t|x1) = dψ_t/dt = σ'_t·x0 + μ'_t   (Eq 13/14)
+    #    OT: μ'_t = x1, σ'_t = -(1-σmin)  →  u_t = x1-(1-σmin)·x0  (= Eq 23 括号内)
+    target = x1 - (1 - SIGMA_MIN) * x0
+
+    # ⑤ 回归: 让 v_θ(x_t,t) 拟合 target             (CFM 损失 Eq 9/14/23)
+    loss = ((v(xt, t) - target) ** 2).mean()
+    opt.zero_grad(); loss.backward(); opt.step()
+    return loss.item()
+    # 全程只有采样+代数, 不解任何 ODE → simulation-free (能 scale 的关键)
+
+# ===================== 采样 / 推理 =====================
+# 解 flow ODE(Eq 1):  dx/dt = v_θ(x,t),  从 x0~N(0,I) 积分 t: 0 → 1
+@torch.no_grad()
+def sample_euler(v, n, dim, steps=100, device='cpu'):
+    x  = torch.randn(n, dim, device=device)         # x(0)=x0 ~ N(0,I)  (Eq 1 初值)
+    dt = 1.0 / steps
+    for i in range(steps):                           # 固定步 Euler
+        t = torch.full((n, 1), i * dt, device=device)
+        x = x + dt * v(x, t)                         # x ← x + Δt·v_θ(x,t)  (解 Eq 1)
+    return x                                         # x(1) ≈ 数据样本 (p1≈q)
+
+@torch.no_grad()
+def sample_dopri5(v, n, dim, device='cpu'):          # 论文默认: 自适应求解器
+    from torchdiffeq import odeint
+    x0 = torch.randn(n, dim, device=device)
+    f  = lambda t, x: v(x, t.expand(x.shape[0], 1))  # ODE 右端 f(t,x)=v_θ
+    ts = torch.tensor([0.0, 1.0], device=device)
+    return odeint(f, x0, ts, method='dopri5', atol=1e-5, rtol=1e-5)[-1]
+
+# ========================= 主循环 =========================
+dim = 2
+v   = VelocityField(dim)
+opt = torch.optim.Adam(v.parameters(), lr=1e-3)      # 论文用 Adam
+for it in range(20000):
+    x1 = sample_data(512)           # 你的数据 ~ q(x1); 图像则换成 dataloader
+    train_step(v, x1, opt)
+samples = sample_euler(v, 1000, dim, steps=100)      # OT 直路径 → 少步也准</div>
+    <div class="note-h">换概率路径？只改 μ_t/σ_t 及其导数，目标用 Theorem 3 通用式</div>
+    <div class="code"># 通用采样点 (Eq 11):  x_t = σ_t(x1)·x0 + μ_t(x1)
+# 通用目标   (Eq 15):  u_t = σ'_t/σ_t · (x_t - μ_t) + μ'_t     [= dψ_t/dt, Theorem 3]
+#
+#   OT 路径      (Eq 20): μ_t = t·x1,        σ_t = 1-(1-σmin)t
+#                         → u_t = x1-(1-σmin)·x0   (Eq 21/23, 上面用的就是它)
+#   VP diffusion (Eq 18): μ_t = α_{1-t}·x1,  σ_t = sqrt(1-α²_{1-t}),  α_t=e^(-T(t)/2)
+#                         代入 Eq 15 → 得扩散的 u_t (Eq 19), 即 FM "统一扩散"</div>
+    <div class="note-h">代码 ↔ 公式 对应</div>
+    <div class="note-b">· 训练损失 = <b>CFM</b>(Eq 9)，重参数化成 ψ_t(x0) 形式(Eq 14)；与真正的 FM(Eq 5) <b>梯度相同</b>(Theorem 2)，所以只回归 per-sample 的 u_t 就等价于训不可算的边际目标。<br>· 路径采样点 x_t = σ_t·x0 + μ_t（<b>Eq 11</b>，OT 特例 <b>Eq 22</b>）。<br>· 目标速度场 u_t = σ'_t/σ_t·(x_t−μ_t)+μ'_t（<b>Eq 15 / Theorem 3</b>；OT 特例 → x1−(1−σmin)x0，即 <b>Eq 21/23</b>）。<br>· OT 路径 μ_t=t·x1, σ_t=1−(1−σmin)t（<b>Eq 20</b>）；VP diffusion 路径（<b>Eq 18</b>）代入 Theorem 3 得扩散 u_t（<b>Eq 19</b>）——这就是"扩散是 FM 特例"。<br>· 采样 = 解 flow ODE dx/dt=v_θ（<b>Eq 1</b>），用 dopri5 或少步 Euler；OT 直路径 → 少步也准。</div>
+    <div class="q">⑨ 真跑一遍：two-moons toy demo（本地实测结果，非论文图）</div>
+    <div class="note-b">把 ⑧ 的代码补成完整可跑脚本（数据用<b>纯 numpy 造 two-moons</b>，不依赖 sklearn；3 层 MLP，6000 步训练，100 步 Euler 采样），在本机 CPU 实跑约 23 秒。下图是<b>真实输出</b>：噪声 N(0,I) 沿 flow ODE 一步步流成 two-moons。</div>
+    <div class="code"># 数据 q(x1): two-moons(纯 numpy); 网络 VelocityField / train / sample 见 ⑧
+def sample_data(n):                      # q(x1): two-moons, 标准化
+    k = n // 2
+    a = np.pi * np.random.rand(k);    up = np.stack([np.cos(a),   np.sin(a)],   1)
+    b = np.pi * np.random.rand(n-k);  dn = np.stack([1-np.cos(b), 0.5-np.sin(b)], 1)
+    x = np.concatenate([up, dn], 0) + 0.05 * np.random.randn(n, 2)
+    return torch.tensor((x - x.mean(0)) / x.std(0), dtype=torch.float32)
+
+v = VelocityField();  train(v, steps=6000)     # CFM 训练 (Eq 9/22/23)
+traj = sample(v, n=3000, steps=100)            # 解 flow ODE 采样, 记录整条轨迹 (Eq 1)
+# 取 t=0/.25/.5/.75/1 五帧画散点 → 见下图</div>
+    <div class="note-b">训练 loss（真实输出，种子固定可复现）：step 0 → 1.98，step 2000 → 1.49，step 4000 → 1.33，step 6000 → 1.28。（CFM 的 loss 有正的理论下界，不会到 0——同一个 x_t 可由不同 (x0,x1) 生成，最优解是条件期望，所以看采样效果而非 loss 绝对值。）</div>
+    <figure style="margin:14px 0"><img src="../imgs/flow-matching-for-generative-modeling/fm_toy_demo.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)">
+    <figcaption class="kv" style="margin-top:6px">本地运行 cv_paper_reading/scripts/fm_toy_demo.py 的真实输出（非论文原图）：Flow Matching(OT) 学 two-moons —— 噪声 N(0,I) 沿 100 步 Euler ODE 逐步流成数据分布，t=1.0 还原出两个月牙。</figcaption></figure>
+    <div class="note-b"><b>读图：</b>t=0 是纯高斯噪声团，随 ODE 积分逐步成形，t=1.0 清晰还原 two-moons——这就是 ⑧ 代码"训练回归 + 采样解 ODE"真的跑通的实证。完整可跑脚本：<b>cv_paper_reading/scripts/fm_toy_demo.py</b>（依赖 torch/numpy/matplotlib，运行 <span class="code" style="display:inline;padding:1px 5px">MPLCONFIGDIR=/tmp python3 fm_toy_demo.py</span>）。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，caption 为论文原文，未改写）</h2>
+    <div class="note-b" style="margin-bottom:10px;color:var(--mut)">对应实验各节：<b>Figure 1</b> 生成质量（⑤-1）· <b>Figure 6</b> 采样路径（⑤-3）· <b>Figure 7</b> 采样效率（⑤-3）· <b>Figure 14</b> 条件超分（⑤-4）。（method/训练/推理图 <b>Figure 2/4/10</b> 内联在上方 ⑦ 实现块）</div>
+    <figure style="margin:0 0 22px"><img src="../imgs/flow-matching-for-generative-modeling/fig1.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)">
+    <figcaption class="kv" style="margin-top:6px">Figure 1: Unconditional ImageNet-128 samples of a CNF trained using Flow Matching with Optimal Transport probability paths.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/flow-matching-for-generative-modeling/fig6.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)">
+    <figcaption class="kv" style="margin-top:6px">Figure 6: Sample paths from the same initial noise with models trained on ImageNet 64×64. The OT path reduces noise roughly linearly, while diffusion paths visibly remove noise only towards the end of the path. Note also the differences between the generated images.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/flow-matching-for-generative-modeling/fig7.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)">
+    <figcaption class="kv" style="margin-top:6px">Figure 7: Flow Matching, especially when using OT paths, allows us to use fewer evaluations for sampling while retaining similar numerical error (left) and sample quality (right). Results are shown for models trained on ImageNet 32×32, and numerical errors are for the midpoint scheme.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/flow-matching-for-generative-modeling/fig14.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)">
+    <figcaption class="kv" style="margin-top:6px">Figure 14: Conditional generation 64×64→256×256. Flow Matching OT upsampled images from validation set.</figcaption></figure>
+    </div>
+  </div>
+</body></html>

@@ -360,7 +360,7 @@ def _blog_rows(lang, posts, include_design=True):
     if include_design:
         for d in DESIGN:
             rows.append({
-                "date": d["date"],
+                "date": d.get("date", ""),
                 "href": "/design/%s/" % d["slug"],
                 "title": d["title"] if lang == "zh" else d["title_en"],
                 "summary": d["summary"] if lang == "zh" else d["summary_en"],
@@ -824,7 +824,7 @@ def render_design_index(lang):
           <a class="link-chip" href="/design/{slug}/">{arrow}<span>{open_l}</span></a>
         </div></div>
       </article>""".format(
-            date=esc(d["date"]),
+            date=esc(d.get("date", "")),
             badge='<span class="tag tag--mono">中文</span>' if lang != "zh" else "",
             slug=esc(d["slug"]),
             title=esc(d["title"] if lang == "zh" else d["title_en"]),

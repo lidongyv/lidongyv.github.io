@@ -1,0 +1,191 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Towards Photorealistic and Efficient Bokeh Rendering via Diffusion Framework</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Towards Photorealistic and Efficient Bokeh Rendering via Diffusion Framework</h1>
+    <div class="au2" style="color:var(--mut)">Linxiao Shi ⋅ Siming Zheng ⋅ Zerong Wang ⋅ Hao Zhang ⋅ Jinwei Chen ⋅ Bo Li ⋅ Shifeng Chen ⋅ Peng-Tao Jiang</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2605.07429">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2605.07429">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Towards%20Photorealistic%20and%20Efficient%20Bokeh%20Rendering%20via%20Diffusion%20Framework">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Existing mobile devices are constrained by compact optical designs, such as small apertures, which make it difficult to produce natural, optically realistic bokeh effects. Although recent learning-based methods have shown promising results, they still struggle with photos captured under high digital zoom levels, which often suffer from reduced resolution and loss of fine details. A naive solution is to enhance image quality before applying bokeh rendering, yet this two-stage pipeline reduces efficiency and introduces unnecessary error accumulation. To overcome these limitations, we propose MagicBokeh, a unified diffusion-based framework designed for high-quality and efficient bokeh rendering. Through an alternative training strategy and a focus-aware masked attention mechanism, our method jointly optimizes bokeh rendering and super-resolution, substantially improving both controllability and visual fidelity. Furthermore, we introduce degradation-aware depth module to enable more accurate depth estimation from low-quality inputs. Experimental results demonstrate that MagicBokeh efficiently produces photorealistic bokeh effects, particularly on real-world low-resolution images, paving the way for future advancements in bokeh rendering. The code will be released publicly.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-towards-photorealistic-and-efficient-bokeh-rendering-vi -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b"><b>MagicBokeh</b>=首个面向<b>高倍数码变焦</b>(LQ 输入)的<b>统一单步扩散</b> bokeh 框架：把“超分(Real-ISR)”和“背景虚化(bokeh rendering)”塞进<b>一个 SD 模型一次前向</b>同时做，避开两阶段(先超分再虚化)的误差累积 + 双次推理低效。三件套：① <b>alternative training</b>(交替训 SR/bokeh 解耦冲突目标)；② <b>focus-aware mask attention(FAMA)</b>(用 defocus map 把 self-attention 限制在前景/背景各自区域)；③ <b>degradation-aware depth(DA depth)</b>(自蒸馏让 Depth Anything v2 在 LQ 图上也估准深度)。EBB400-LQ SOTA、单图 0.106s。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">手机光学受限(小光圈)难出自然 bokeh；现有学习法都假设输入是 all-in-focus 的高质量图，碰到<b>高倍数码变焦</b>(分辨率降、噪声放大、边界糊)就崩。朴素 two-stage(<b>先 Real-ISR 再 bokeh</b>)两病：① <b>误差累积</b>(超分输出不完美，虚化阶段进一步放大)；② <b>低效</b>(两次模型推理)。作者发现扩散模型(SD)既擅长细节生成、又自带 <b>bokeh prior</b>→ 干脆做统一扩散框架，质量+效率一起救。</div>
+    <div class="note-h">核心方法（统一扩散 + 三补丁）</div>
+    <div class="note-b">框架两部分：<b>HQ feature extraction</b>(LQ 不加噪直接喂，VAE encoder + 轻量 U-Net 注 LoRA，L2+LPIPS 监督) + <b>controllable bokeh rendering</b>(ControlNet 吃 defocus map 当结构条件)。① <b>alternative training</b>：先 SR 预训练打底；bokeh 阶段(冻 SD + HQ 特征提取，只训 ControlNet + bokeh LoRA)与 SR 阶段(defocus map 全 0 表 all-in-focus，只训 SR LoRA)<b>循环交替</b>，消除两任务冲突。② <b>FAMA</b>：用 defocus map 二值化出前景/背景 mask，注入 self-attention 让 ISR 专注对焦主体、bokeh 专注背景。③ <b>DA depth</b>：teacher(HQ)-student(degraded) 自特征蒸馏，LQ 图也估准 disparity。效率：U-Net <b>block pruning</b>(去 cross-attn + mid-stage + text encoder)。</div>
+    <div class="note-h">关键公式</div>
+    <div class="note-b"><b>defocus map(模糊半径)</b>：<b>r = K·|d − d_f|</b>(式1)，d=像素 disparity、d_f=用户指定对焦位置的 disparity、K=模糊强度、r=模糊半径。<b>focus-aware mask attention</b>：<b>Attention = softmax((QK^T + M)/√d)·V</b>(式2)，掩码 <b>M(x,y)=0 若同区域(mask=1)、否则 −∞</b>(式3，把注意力限制在前景/背景各自内部；SR 阶段 M=0 复原全图)。损失：HQ 特征提取用 L2 + LPIPS。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>EBB400-LQ(Tab.1, vs 两阶段 SOTA)</b>：MagicBokeh PSNR <b>24.23</b>/SSIM <b>0.8623</b>/LPIPS <b>0.2786</b>/DISTS <b>0.1600</b> 全保真指标第一，单图 <b>0.106s</b>(vs Dr.Bokeh+ 2.99s、BokehDiff+ 0.92s，快约 9–28×)。<b>真机用户研究(Fig.5)</b>：iPhone13Pro 5×–15× 变焦 50 图、50 人投票，MagicBokeh <b>71.7%</b> 偏好率(碾压各两阶段组合)。<b>DA depth(Tab.s1)</b>：degraded NYUv2 AbsRel 0.081→0.068、KITTI 0.123→0.105。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 首个统一“超分 + 高倍变焦虚化”单步扩散；② 用<b>交替训练 + 掩码注意力</b>显式解耦两个冲突任务(否则联合训会让主体 ISR 退化)；③ 复用扩散自带 bokeh prior，单步省时；④ 即顺手会 refocusing(把已虚化区重新对焦)；⑤ K=0 时退化成纯 Real-ISR 也有竞争力(Tab.s2 DRealSR PSNR 28.99 最佳)。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① 消融(Tab.2)各模块对 <b>PSNR 几乎无影响</b>(24.20~24.23)、主要提 no-reference 指标(CLIP-IQA/NIQE/MUSIQ)——说明改善偏“感知质量”而非像素保真，量化解释偏弱；② 对比 BokehDiff 某些 no-reference 指标更高，作者归因其“该虚的没虚”导致虚高分(<i>“regions that should exhibit bokeh remain in focus”</i>)，<b>属定性论证、未给定量证据</b>；③ defocus map 的 K、对焦 d_f 由用户给，<b>自动对焦决策不在本文范围</b>。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文大意：</b>手机受紧凑光学设计（小光圈）限制，难产生自然、光学级真实的 bokeh（背景虚化）。基于学习的方法虽有进展，但在<b>高数码变焦（high digital zoom）</b>下拍的照片上仍吃力——这类图<i>“suffer from reduced resolution and loss of fine details”</i>（分辨率降、细节丢）。朴素做法是先增强画质再虚化，但<i>“this two-stage pipeline reduces efficiency and introduces unnecessary error accumulation”</i>（两阶段低效 + 误差累积）。本文提 <b>MagicBokeh</b>：<i>“a unified diffusion-based framework designed for high-quality and efficient bokeh rendering”</i>。靠 <i>“an alternative training strategy and a focus-aware masked attention mechanism”</i> 把 bokeh 与超分<b>联合优化（jointly optimizes）</b>，提升可控性与保真；再加 <i>“degradation-aware depth module to enable more accurate depth estimation from low-quality inputs”</i>。</div>
+    <div class="note-b"><b>逐句拆解（5 句结构）：</b><br>1) <i>“small apertures … difficult to produce natural, optically realistic bokeh”</i> → <b>硬件层动机</b>：手机物理光圈太小，没有大光圈相机那种天然浅景深。<br>2) <i>“struggle with photos captured under high digital zoom levels”</i> → <b>具体痛点</b>=高倍数码变焦把图劣化成 LQ。<br>3) <i>“two-stage pipeline reduces efficiency and introduces unnecessary error accumulation”</i> → <b>靶子</b>=先 Real-ISR 再 bokeh 的两段式。<br>4) <i>“jointly optimizes bokeh rendering and super-resolution”</i> → <b>核心主张</b>=统一联合。<br>5) 三大组件：alternative training + focus-aware masked attention + degradation-aware depth。结论 <i>“particularly on real-world low-resolution images”</i> 点明卖点在真实低分图。</div>
+
+    <div class="note-h">📚 背景知识①（外部，非本文原文）：bokeh / DoF / disparity / defocus map</div>
+    <div class="note-b"><b>bokeh（散景/背景虚化）</b>=浅景深（depth-of-field, DoF）带来的美学效果：对焦平面清晰、前后景渐糊。<b>disparity（视差）</b>≈ 深度的倒数表示，越近视差越大。<b>defocus map</b>=逐像素“该虚多少”的图：本文用模糊半径 \(r=K\,|d-d_f|\) 算出——离用户指定对焦视差 \(d_f\) 越远的像素 \(r\) 越大、虚得越狠。defocus map 在本文当作 <b>ControlNet 的结构条件</b>来精确控制虚化强度与对焦面。对比相机原生 bokeh：相机靠大光圈物理成像，手机只能算法合成，所以 disparity / depth 的准确度直接决定虚化是否自然。</div>
+
+    <div class="note-h">📚 背景知识②：Stable Diffusion / 单步扩散 / ControlNet / LoRA / VAE</div>
+    <div class="note-b"><b>Stable Diffusion（SD）</b>=latent 扩散文生图模型，细节生成能力强，且本文观察到它<i>“possess the bokeh prior”</i>（自带虚化先验）。<b>单步扩散 ISR</b>（SinSR / OSEDiff / S3Diff）=把多步去噪压成<b>一步</b>前向，适合手机端实时。<b>ControlNet</b>=给扩散加结构条件控制的旁路网络（本文条件=defocus map）。<b>LoRA</b>（Low-Rank Adaptation）=低秩适配，只训极少参数微调大模型，本文借它<b>分别注入 SR LoRA / bokeh LoRA</b> 来在参数层面解耦两个任务。<b>VAE encoder</b>=把图编码进 latent 空间，本文只在第一个 ISR 阶段训练它。</div>
+
+    <div class="note-h">📚 背景知识③：Real-ISR / Depth Anything v2 / Real-ESRGAN / EBB</div>
+    <div class="note-b"><b>Real-ISR</b>（real-world image super-resolution）=真实世界图像超分，要修复未知退化（噪声/模糊/压缩）。<b>Depth Anything v2</b>=强单目深度大模型，本文当深度先验，但<i>“its performance is still challenged by image quality degradation”</i>——在 LQ 上深度估计快速退化，故需 DA depth 蒸馏修复。<b>Real-ESRGAN degradation pipeline</b>=合成“高质↔低质”训练对的标准退化管线，本文用它造 LQ-HQ 对、上采到 \(512\times512\)。<b>EBB</b>（Everything-is-Better Bokeh）数据集：本文从中取 400 对 + 手标对焦区，构造高变焦评测集 <b>EBB400-LQ</b>。</div>
+
+    <div class="note-h">② §1 Introduction — problem（痛点）</div>
+    <div class="note-b"><b>problem：</b>手机硬件受限<i>“often struggle to produce natural bokeh effects”</i>。现有 bokeh 法（物理光学模拟 / 大数据学习）几乎都有一个共同前提缺陷——<i>“they all assume that the input is an all-in-focus high-quality (HQ) image”</i>。一旦输入是高倍数码变焦图，就<i>“suffer from amplified noise, blurred subject boundaries, and unrealistic texture synthesis”</i>（噪声放大、主体边界糊、纹理失真）。朴素 two-stage（先 Real-ISR 再 bokeh）有两病：① <i>“since the output of the Real-ISR network is not always perfect, it may introduce error accumulation … further amplified during the subsequent bokeh rendering”</i>（误差累积）；② <i>“requires two separate model inferences, which affects computational efficiency”</i>（双推理低效）。</div>
+
+    <div class="note-h">②b §1 — solution（why 用统一扩散）</div>
+    <div class="note-b"><b>solution：</b>统一单步扩散 MagicBokeh——<i>“a unified diffusion-based single-step framework”</i>，一个模型同时做 ISR + bokeh。<b>why diffusion</b>：作者关键观察 <i>“images produced by generative models often contain inherent bokeh information, indicating that these models possess the bokeh prior”</i>——SD 本就懂虚化，复用其先验既省又好；这<i>“motivates us to consider whether we can design a unified diffusion-based approach that improves both the quality and efficiency”</i>。<b>提速手段</b>：<i>“we compress the computationally intensive U-Net component in SD by block pruning”</i>（去 cross-attention + mid-stage + text encoder）。</div>
+
+    <div class="note-h">②c §1 — why 必须解耦 + 三大贡献</div>
+    <div class="note-b"><b>why（解耦的必要性，最关键）：</b>把两任务硬塞一个模型会<i>“introduce conflicting optimization objectives between two tasks, leading to performance degradation during training”</i>——主体要锐化清晰 vs 背景要模糊，目标天然冲突；加上样本不均衡会偏科。所以两招：① <b>alternative training</b> 在<b>时间</b>上把两任务分开训；② <b>focus-aware mask attention</b> 在<b>空间</b>上把 self-attention 限制在前景/背景各自内部。<b>三大贡献（原文 bullet）：</b>(i) 单步框架同架构内同时做 Real-ISR 与 bokeh；(ii) alternative training + focus-aware mask attention + degradation-aware depth；(iii) <i>“state-of-the-art (SOTA) quantitative and qualitative results on both synthetic and high-zoom real-world photographs”</i>。</div>
+
+    <div class="note-h">③ §2 Related Work — 经典 vs 学习式 bokeh + diffusion Real-ISR</div>
+    <div class="note-b"><b>经典渲染（Classical）：</b>早期用 ray tracing 出物理准确 bokeh，但<i>“as the camera sampling space increased, the computational complexity increased exponentially”</i>（慢）。DeepFocus 靠完美深度图渲染，但真实世界拿不到完美深度。<b>Dr.Bokeh</b> 用 inpainting 估遮挡区 RGBD、模拟球面透镜散射，<i>“effectively reducing occlusion artifacts in boundary”</i>，但 disparity 不准时仍有 <i>“partial occlusion artifacts or color bleeding”</i>。<b>学习式（Learning-based）：</b>BokehMe（经典渲染器+神经修正）、MPIB（多平面图像 MPI 修遮挡）、EBokehNet（注入镜头属性控强度）、<b>BokehDiff</b>（diffusion + physics-inspired self-attention，本文主要对手）、AnytoBokeh（视频 one-step bokeh）。<b>diffusion Real-ISR：</b>SinSR（consistency 蒸馏确定性采样）、OSEDiff（variational score distillation 保真）、S3Diff（借 SD-Turbo 单步出 HQ）——本文把单步 Real-ISR 集成进 bokeh 管线。</div>
+
+    <div class="note-h">④ §3.1 Framework — 总览 + Single-Step HQ Feature Extraction</div>
+    <div class="note-b"><b>两大部件：</b><i>“MagicBokeh consists of two main parts: HQ feature extraction and controllable bokeh rendering.”</i> 前者从 LQ 图提 HQ 特征，后者管虚化。<b>HQ 特征提取（关键设计）：</b>借 SinSR/OSEDiff 的观察——<i>“directly using LQ images with little or no noise as input can substantially eliminate the uncertainty introduced by random noise sampling, while maximizing the retention of semantic content”</i>。所以 <b>LQ 不加噪直接喂</b>；<i>“we inject Low-Rank Adaptation (LoRA) into both the VAE encoder (only train in the first ISR training stage) and modified lightweight U-Net”</i>，用 <b>L2 loss + LPIPS loss</b> 监督，恢复 HQ 特征提取能力。</div>
+
+    <div class="note-h">④b §3.1 Controllable Bokeh Rendering + 式(1) defocus map</div>
+    <div class="note-b"><b>ControlNet 当条件控制：</b><i>“ControlNet receives a defocus map as the structural condition.”</i> 先从深度网络估 disparity map，再算 defocus map（逐像素模糊半径）：
+    \[ r = K\,|d - d_f| \tag{1} \]
+    其中 \(d\)=该像素 disparity、\(d_f\)=用户指定对焦位置的 disparity、\(K\)=模糊强度（blur intensity）、\(r\)=该像素模糊半径。这样模型<i>“can generate visually plausible bokeh with controllable depth-of-field (DoF), while preserving semantic consistency in the in-focus regions”</i>。维度上：disparity / defocus map 与图同分辨率（测试时归一化到 0–1），作为 ControlNet 的单通道结构条件。</div>
+
+    <div class="note-h">④c §3.2 Alternative Training Strategy（交替训练）</div>
+    <div class="note-b"><b>动机（现象）：</b>端到端联合训会<i>“a notable performance degradation in the ISR of subject areas”</i>（主体区超分退化），根因是 <i>“conflicting optimization objectives”</i> + 样本不均衡偏科。<b>解法（循环交替）：</b>先 <b>SR 预训练</b>打底（<i>“gives the network strong Real-ISR capability and a better starting point”</i>）；然后循环交替两阶段——<b>bokeh 阶段</b>：用 LQ all-in-focus 图 + defocus map 出 HQ bokeh，<i>“the original diffusion model and pre-trained HQ feature extraction model are fixed, and training specifically targets the ControlNet and the bokeh LoRA layers”</i>；<b>Real-ISR 阶段</b>：用 LQ-HQ 对，<i>“a defocus map with all-zero values is used as input to represent an all-in-focus condition, while the optimization is restricted solely to the SR LoRA layers”</i>。交替进行<i>“effectively reduces intertask interference”</i>。</div>
+
+    <div class="note-h">④d §3.3 Focus-aware Mask Attention（FAMA）+ 式(2)(3)</div>
+    <div class="note-b"><b>动机：</b>SD 的 self-attention 维系全局一致性，但直接注入 bokeh 条件会<i>“results in degradation of the restoration quality for focused regions”</i>。FAMA 用 defocus map 的对焦线索<b>调制 self-attention</b>：
+    \[ \mathrm{Attention}=\mathrm{softmax}\!\Big(\frac{QK^{\top}+M}{\sqrt{d}}\Big)\,V \tag{2} \]
+    掩码定义（同区放行、异区屏蔽）：
+    \[ M(x,y)=\begin{cases}0 & \text{if } M(x,y)=1\\ -\infty & \text{otherwise}\end{cases} \tag{3} \]
+    其中 \(Q,K,V\) 是 self-attention 的 query/key/value，\(d\) 是注意力维度。\(M\) 由 defocus map 提主体信息后<b>二值化</b>（<i>“with the same regions being 1 and different regions being 0”</i>）再 resize 到注意力分辨率，让 self-attention <b>只在前景内部或背景内部</b>交互——<i>“the ISR component is guided to prioritize the focused subject area, while the bokeh rendering component is steered toward enhancing background bokeh effects”</i>。注意 Real-ISR 阶段 <i>“the attention mask M is set to 0 to restore the whole image”</i>。</div>
+
+    <div class="note-h">④e §3.4 Degradation-aware Depth（自特征蒸馏）</div>
+    <div class="note-b"><b>问题：</b><i>“the accuracy of the depth estimation model deteriorates rapidly when applied to LQ images”</i>，坏 disparity 直接拖垮虚化。<b>方案=self-feature distillation</b>：teacher 和 student 都用预训练 <b>Depth Anything v2 (Large)</b> 当 backbone；<i>“both HQ images and simulated degraded images are respectively input into the teacher and student networks to extract features from encoder”</i>，通过 <b>特征蒸馏 \(L_f\) + 输出监督 \(L_{MSE}\)</b> 让 student 在 LQ 上也产 HQ-like 特征。训练用 <b>SA-1B 子集 200,000 样本</b> + Real-ESRGAN 造 LQ-HQ 对。</div>
+
+    <div class="note-h">⑤ §4.1 实验设置（数据 / 指标 / 实现）</div>
+    <div class="note-b"><b>数据：</b>HQ 特征提取训于 <b>LSDIR + 10k FFHQ 人脸</b>；bokeh GT 用自建 ray-tracing thin-lens 渲染器（类 MPIB/Dr.Bokeh，近 2k 背景图 + PhotoMatte85/RWP-636/AIM-500 前景，disparity 0–1、blur 参数 0–32）；Real-ESRGAN 造 LQ-HQ、上采到 \(512\times512\)。<b>指标：</b>full-reference（PSNR、SSIM、LPIPS）+ reference 感知（DISTS、FID）+ no-reference（NIQE、MANIQA、MUSIQ、CLIP-IQA）。<b>实现：</b>基座 <b>SD2.1</b>，U-Net <b>block pruning</b>（去 cross-attention + mid-stage + text encoder，因 <i>“text prompts … offer limited benefits and significant computational overhead”</i>）；LoRA 注入 VAE encoder + 轻量 U-Net；AdamW，ISR lr=5e-5、bokeh 阶段 lr=5e-5、Real-ISR 阶段 lr=5e-6；<b>约 20 小时 / 4× NVIDIA L40</b>。</div>
+
+    <div class="note-h">⑤b §4.2 EBB400-LQ 主结果（Tab.1 全表，真数字）</div>
+    <div class="note-b">两阶段基线：ISR 用 OSEDiff（标 *）/ S3Diff（标 +），bokeh 用 BokehMe/Dr.Bokeh/BokehDiff。推理时间在 L40s、\(512\times512\) 输入下测：</div>
+    <div class="note-b"><table style="width:100%;border-collapse:collapse;font-size:12px;color:#e3e7ff">
+    <tr style="color:#ffd35c;border-bottom:1px solid #2a2f5c"><td>方法</td><td>PSNR↑</td><td>SSIM↑</td><td>LPIPS↓</td><td>DISTS↓</td><td>MUSIQ↑</td><td>MANIQA↑</td><td>FID↓</td><td>Time(s)↓</td></tr>
+    <tr><td>BokehMe*</td><td>23.51</td><td>0.8459</td><td>0.3106</td><td>0.1666</td><td>57.70</td><td>0.4219</td><td>72.98</td><td>0.1648</td></tr>
+    <tr><td>Dr.Bokeh*</td><td>23.39</td><td>0.8488</td><td>0.3132</td><td>0.1677</td><td>52.40</td><td>0.3934</td><td>73.38</td><td>2.4021</td></tr>
+    <tr><td>BokehDiff*</td><td>23.65</td><td>0.8459</td><td>0.3049</td><td>0.1713</td><td>59.24</td><td>0.4251</td><td>72.65</td><td>0.3376</td></tr>
+    <tr><td>BokehMe+</td><td>23.75</td><td>0.8388</td><td>0.3138</td><td>0.1606</td><td>57.54</td><td>0.4137</td><td>72.25</td><td>0.7510</td></tr>
+    <tr><td>Dr.Bokeh+</td><td>23.67</td><td>0.8430</td><td>0.3134</td><td>0.1687</td><td>52.63</td><td>0.3876</td><td>73.10</td><td>2.9883</td></tr>
+    <tr><td>BokehDiff+</td><td>23.83</td><td>0.8397</td><td>0.3071</td><td>0.1735</td><td>59.36</td><td>0.4259</td><td>72.54</td><td>0.9238</td></tr>
+    <tr style="color:#7ee0c0"><td><b>MagicBokeh</b></td><td><b>24.23</b></td><td><b>0.8623</b></td><td><b>0.2786</b></td><td><b>0.1600</b></td><td>58.83</td><td>0.4138</td><td><b>72.43</b></td><td><b>0.1062</b></td></tr>
+    </table></div>
+    <div class="note-b"><b>读表：</b>保真四项 PSNR/SSIM/LPIPS/DISTS <b>全第一</b>，且<b>最快 0.1062s</b>（单步 + 单次推理，比 Dr.Bokeh+ 的 2.9883s 快约 <b>28×</b>、比 BokehDiff+ 的 0.9238s 快约 9×）。BokehDiff 的 MUSIQ（59.36）/MANIQA（0.4259）略高，作者解释<i>“BokehDiff produces inaccurate focus distributions … regions that should exhibit bokeh remain in focus, leading to higher metric values. However, these gains do not reflect realistic bokeh effects.”</i>（该虚的没虚→ no-reference 虚高分）。</div>
+
+    <div class="note-h">⑤c §4.3 真机 User Study（Fig.5）</div>
+    <div class="note-b"><b>动机：</b><i>“Synthetic degradation datasets fail to capture the complex artifacts in real-world photography, such as hybrid sensor circuit noise, motion blur from handheld shooting and lossy compression in digital zoom.”</i> <b>设置：</b>iPhone 13 Pro 采 <b>50 张</b>真实 LQ 图，覆盖人像/风景/室内外，变焦 <b>5×–15×</b>，平均分辨率 \(4032\times3024\)；<b>50 名</b>不同背景参与者各选最佳。<b>结果：</b>MagicBokeh <b>71.7%</b> 偏好率，碾压 OSEDiff/S3Diff × BoMe/Dr.Bo/BoDiff 各组合（最低组仅 0.8%、2.7%、3.1% 等个位数）。</div>
+
+    <div class="note-h">⑤d §4.4 消融实验（Tab.2 全表，真数字）</div>
+    <div class="note-b">EBB400-LQ 上逐模块消融（✓=启用）：</div>
+    <div class="note-b"><table style="width:100%;border-collapse:collapse;font-size:12px;color:#e3e7ff">
+    <tr style="color:#ffd35c;border-bottom:1px solid #2a2f5c"><td>FAMA</td><td>Strategy</td><td>DA depth</td><td>PSNR↑</td><td>LPIPS↓</td><td>CLIP-IQA↑</td><td>NIQE↓</td><td>MUSIQ↑</td><td>MANIQA↑</td><td>FID↓</td></tr>
+    <tr><td>✗</td><td>✗</td><td>✗</td><td>24.21</td><td>0.2931</td><td>0.3743</td><td>6.0786</td><td>57.41</td><td>0.4038</td><td>73.25</td></tr>
+    <tr><td>✗</td><td>✓</td><td>✓</td><td>24.22</td><td>0.2798</td><td>0.4157</td><td>5.9068</td><td>58.10</td><td>0.4065</td><td>75.23</td></tr>
+    <tr><td>✓</td><td>✗</td><td>✓</td><td>24.20</td><td>0.2946</td><td>0.3781</td><td>5.7076</td><td>56.08</td><td>0.3956</td><td>73.04</td></tr>
+    <tr><td>✓</td><td>✓</td><td>✗</td><td>24.20</td><td>0.2784</td><td>0.4209</td><td>5.8035</td><td>58.80</td><td>0.4114</td><td>75.03</td></tr>
+    <tr style="color:#7ee0c0"><td>✓</td><td>✓</td><td>✓</td><td><b>24.23</b></td><td>0.2786</td><td><b>0.4229</b></td><td><b>5.6341</b></td><td><b>58.83</b></td><td><b>0.4138</b></td><td><b>72.43</b></td></tr>
+    </table></div>
+    <div class="note-b"><b>读表：</b>PSNR 几乎不动（24.20~24.23），三模块主要拉升 <b>no-reference 感知指标</b>。去掉 alternative <b>Strategy</b> 掉得最狠（CLIP-IQA 0.4229→0.3781、MUSIQ 58.83→56.08、LPIPS 也变差到 0.2946）→ <b>解耦训练贡献最大</b>。FAMA 主要改善 no-reference（<i>“the full model and w/o FAMA seems minor differences in PSNR, the no-reference metrics show significant improvement”</i>）；DA depth 量化差异小、主要体现在定性（Fig.6）。</div>
+
+    <div class="note-h">⑤e §4.5 Refocusing + 附录 DA depth（Tab.s1）+ Real-ISR（Tab.s2）</div>
+    <div class="note-b"><b>Refocusing（Fig.7）：</b>真实照片常因自动对焦错误/多主体而部分失焦，本文方法建立在 LQ 输入上，<i>“generalize well to the task of refocusing”</i>，能<i>“produces smooth blur transitions when shifting focus from the coffee cup to background chairs”</i>（把对焦从咖啡杯平滑迁到背景椅子）。<b>DA depth（Tab.s1，退化场景）：</b>NYUv2 AbsRel <b>0.081→0.068</b>、δ1 0.926→0.946；KITTI AbsRel <b>0.123→0.105</b>、δ1 0.852→0.883——退化图上明显优于原始 Depth Anything v2，且 Clear 图几乎不掉。<b>Real-ISR（Tab.s2，K=0 退化成纯超分）：</b>DRealSR PSNR <b>28.99</b>（SinSR 28.35 / OSEDiff 27.91 / S3Diff 27.54，本文最佳）；RealSR PSNR 26.14（仅次于 SinSR 26.32）——说明统一模型即便不为超分专门设计也有竞争力。</div>
+
+    <div class="note-h">⑥ 疑问 / 存疑（[推测] 已标注）</div>
+    <div class="note-b">① 消融中三模块对 <b>PSNR 几乎无影响</b>（24.20~24.23），提升集中在 no-reference 感知指标——[推测] 改善偏“感知/美学”而非像素保真，论文未给像素层的强量化解释。② 对手 BokehDiff 某些 no-reference 指标更高，作者归因其“该虚的没虚”导致虚高分，属<b>定性论证</b>、未给定量证据（如失焦区误对焦比例）。③ defocus map 的 \(K\)、对焦视差 \(d_f\) 由<b>用户给定</b>，<i>“automatic”</i> 自动对焦决策不在本文范围。④ [推测] 训练时间 20h/4×L40 与端侧部署成本之间仍有 gap，论文未报手机端实测延迟（仅报 L40s 上 0.1062s）。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>高倍数码变焦 LQ 图做 bokeh——现有法假设 HQ all-in-focus 输入，朴素 two-stage（超分→虚化）误差累积 + 双推理低效。<br><b>method：</b>统一单步扩散——HQ 特征提取（LQ 不加噪 + LoRA + L2/LPIPS）+ ControlNet（defocus map \(r=K|d-d_f|\) 条件）；三补丁：alternative training（<b>时间</b>解耦 SR/bokeh）、focus-aware mask attention（式 2/3，<b>空间</b>把 self-attn 限前景/背景）、degradation-aware depth（自蒸馏让 DA v2 在 LQ 估准深度）；U-Net block pruning 提速。<br><b>experiment：</b>EBB400-LQ 保真四项全第一且最快 0.1062s；真机 50 图 71.7% 人选最佳；refocusing/纯超分（DRealSR PSNR 28.99）也强。<br><b>takeaways：</b>① 超分与虚化<b>可统一进一个扩散模型</b>、复用其自带 bokeh prior，省一次推理；② 冲突目标靠<b>“一时（交替训）一空（掩码注意力）”</b>双解耦，是本文最核心的可迁移思想；③ <b>LQ 下深度会退化、必须专门蒸馏修复</b>，否则坏 disparity 直接拖垮虚化质量。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-towards-photorealistic-and-efficient-bokeh-rendering-vi/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. MagicBokeh is the first unified method specifically designed for high-zoom bokeh rendering. (Zoom-in for best view)</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-towards-photorealistic-and-efficient-bokeh-rendering-vi/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Compared with low-resolution (LR) bokeh rendering (a) and two-stage super-resolution (SR) bokeh rendering (b), our proposed method (c) seamlessly integrates the SR with bokeh ren- dering within a unified framework, thereby achieving both com- putational efficiency and photorealistic bokeh effects.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-towards-photorealistic-and-efficient-bokeh-rendering-vi/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. The framework of MagicBokeh. We introduce an alternative training strategy to unified Real-ISR and bokeh rendering together. During the bokeh training, the Controlnet and bokeh LoRA layers are trainable to learn controllable bokeh rendering. During the Real-ISR training, only the SR LoRA is trainable to learn SR. During inference, given a high-zoom LQ photo, it can generate a disparity m</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-towards-photorealistic-and-efficient-bokeh-rendering-vi/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Qualitative comparison on EBB400-LQ. More results can be seen in the supplementary material.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-towards-photorealistic-and-efficient-bokeh-rendering-vi/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. The human preference on the real-world results.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-towards-photorealistic-and-efficient-bokeh-rendering-vi/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Visual comparison of the ablation study.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-towards-photorealistic-and-efficient-bokeh-rendering-vi/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Further application in refocusing.</figcaption></figure>
+    </div>
+  </div><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body></html>

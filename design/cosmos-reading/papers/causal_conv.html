@@ -1,0 +1,191 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>因果卷积 CausalConv3d · 交互动图</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--red:#fb7185}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 18% -10%,rgba(167,139,250,.18),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.65;min-height:100vh}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 18px 80px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.hero{padding:20px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(126,224,255,.08));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--accent);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(19px,2.8vw,28px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 35%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13px}
+h2.sec{font-size:17px;font-weight:800;margin:24px 0 4px;display:flex;align-items:center;gap:8px}
+h2.sec .bar{width:4px;height:17px;border-radius:3px;background:linear-gradient(180deg,var(--accent2),var(--accent))}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:10px}
+.panel{background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:14px;padding:16px;margin:10px 0}
+.ctrls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+button{background:var(--accent2);border:none;border-radius:8px;padding:7px 15px;color:#fff;font-size:13px;font-weight:700;cursor:pointer}
+button.sec{background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--text2)}
+button:hover{filter:brightness(1.12)}
+.eq{font-family:SFMono-Regular,Consolas,monospace;font-size:13px;color:var(--accent);background:rgba(126,224,255,.08);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0;min-height:38px}
+.eq .fut{color:var(--red);font-weight:800}
+.eq .past{color:var(--green);font-weight:800}
+.lgd{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text2);margin-top:8px}
+.lgd i{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:4px;vertical-align:-1px}
+pre{background:#0a0e1c;border:1px solid var(--line);border-radius:9px;padding:12px 14px;overflow-x:auto;font-size:12px;line-height:1.55;margin:8px 0}
+code{font-family:SFMono-Regular,Consolas,monospace}
+pre code{color:#cdd6f4}
+.cmt{color:#6b7394}
+.kw{color:#a78bfa}
+.st{color:#4ade80}
+.pts{font-size:13px;color:var(--text2)}.pts li{margin:5px 0}.pts b{color:var(--text)}
+.hl{color:var(--accent);font-weight:700}
+svg{width:100%;height:auto;display:block}
+.note2{margin-top:20px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+</style></head><body><div class=wrap>
+<a href="../index.html" class=backlink>← 教学文档主页</a>
+<a href="cosmos_tokenizer.html" class=backlink>Cosmos Tokenizer 精读</a>
+<a href="cosmos.html" class=backlink>Cosmos 架构图解</a>
+
+<header class=hero><div class=kick>Cosmos · CausalConv3d</div>
+<h1>因果卷积怎么实现 · 交互动图</h1>
+<p class=sub>基于开源 NVIDIA/Cosmos-Tokenizer 的 <code>layers3d.py CausalConv3d</code> 真实实现。核心：<b>时间维只在"过去"侧 pad（首帧复制 k−1 次），空间维对称 pad</b> → 每个输出只看当前+过去、绝不看未来。点 ▶ 播放看卷积核怎么滑。</p></header>
+
+<h2 class=sec><span class=bar></span>动图 1 · 因果卷积（时间维，kernel=3, stride=1）</h2>
+<div class=secsub>灰色 = 首帧复制的 padding；核滑到 t 时只覆盖 x[t-2],x[t-1],x[t]（绿=过去/当前），输出 y 与输入等长。</div>
+<div class=panel>
+<svg id=sv1 viewBox="0 0 920 300"></svg>
+<div class=eq id=eq1></div>
+<div class=ctrls>
+<button id=play1>▶ 播放</button>
+<button class=sec id=step1>⏭ 单步</button>
+<button class=sec id=reset1>⟲ 重置</button>
+<span style="font-size:12px;color:var(--text3)">速度</span>
+<input id=spd1 type=range min=300 max=1600 value=950 step=50 style="width:120px">
+</div>
+<div class=lgd>
+<span><i style="background:#2a3860"></i>首帧复制 pad</span>
+<span><i style="background:var(--green)"></i>核覆盖(过去+当前)</span>
+<span><i style="background:var(--accent)"></i>输入帧 x</span>
+<span><i style="background:var(--accent2)"></i>输出 y[t]</span>
+</div>
+</div>
+
+<h2 class=sec><span class=bar></span>动图 2 · 普通卷积对比（对称 pad → 会看未来）</h2>
+<div class=secsub>同样 kernel=3，但对称 pad：核滑到 t 覆盖 x[t-1],x[t],x[t+1]——红色 x[t+1] 是未来帧，因果卷积绝不允许。</div>
+<div class=panel>
+<svg id=sv2 viewBox="0 0 920 300"></svg>
+<div class=eq id=eq2></div>
+<div class=ctrls>
+<button id=play2>▶ 播放</button>
+<button class=sec id=step2>⏭ 单步</button>
+<button class=sec id=reset2>⟲ 重置</button>
+</div>
+<div class=lgd>
+<span><i style="background:var(--green)"></i>过去/当前</span>
+<span><i style="background:var(--red)"></i>未来帧(泄露!)</span>
+<span><i style="background:var(--accent2)"></i>输出 y[t]</span>
+</div>
+</div>
+
+<h2 class=sec><span class=bar></span>真实源码（layers3d.py CausalConv3d）</h2>
+<pre><code><span class=kw>class</span> CausalConv3d(nn.Module):
+    <span class=kw>def</span> __init__(self, chan_in, chan_out, kernel_size=3, **kw):
+        t_k, h_k, w_k = kernel_size            <span class=cmt># 时间/高/宽 核大小</span>
+        self.time_kernel_size = t_k
+        stride = kw.pop("stride", 1)
+        <span class=cmt># 空间维对称 pad；时间维这里为 0，留给 forward 做因果 pad</span>
+        self.pad = (w_k//2, w_k//2, h_k//2, h_k//2, <span class=st>0, 0</span>)
+        self.conv3d = nn.Conv3d(chan_in, chan_out, kernel_size,
+                                stride=(stride,1,1), dilation=(dilation,1,1))
+
+    <span class=kw>def</span> forward(self, x):                     <span class=cmt># x: [B,C,T,H,W]</span>
+        <span class=st># (1) 时间维因果 pad：把“第一帧”复制 (t_k-1) 次，接在最前面</span>
+        first_frame_pad = x[:, :, :1].repeat(1, 1, self.time_kernel_size-1, 1, 1)
+        x = torch.cat([first_frame_pad, x], dim=2)   <span class=cmt># 只在“过去”侧加，不补零</span>
+        <span class=st># (2) 空间维对称 pad</span>
+        x = F.pad(x, self.pad)
+        <span class=kw>return</span> self.conv3d(x)                  <span class=cmt># 时间长度 = 输入(左侧已 pad k-1)</span></code></pre>
+
+<h2 class=sec><span class=bar></span>关键点（为什么这样就"因果"了）</h2>
+<ul class=pts>
+<li><b>① 只在过去侧 pad</b>：时间维把<span class=hl>首帧复制 k−1 次</span>接在最前（普通卷积是两侧对称 pad）。核滑到 t 时感受野 = <code>[t-(k-1) … t]</code>，全是当前+过去。</li>
+<li><b>② 输出等长</b>：左侧多 pad k−1 个 → 卷积后时间长度 = 原输入（不缩短、不错位）。</li>
+<li><b>③ 用"复制首帧"而非补零</b>：避免序列开头出现人为 0 值边界失真（第一帧没有过去，用它自己顶上）。</li>
+<li><b>④ 空间维照常对称 pad</b>：H/W 无"未来"概念，用 <code>w_k//2, h_k//2</code> 正常两侧 pad。</li>
+<li><b>⑤ 为什么自驾/机器人要因果</b>：在线部署时 t 时刻只有过去+当前帧，模型不能依赖未来；因果卷积保证训练与推理一致（原文：<i>"each token is a function of the current and past inputs but not the future ones"</i>）。</li>
+</ul>
+
+<div class=note2><b>说明：</b>动图为教学示意（时间维、kernel=3、stride=1、8 帧），忠实反映 CausalConv3d 的因果 padding 机制；真实模型是 3D 且 factorized（空间(1,3,3) 与时间(3,1,1) 分开卷）。源码：NVIDIA/Cosmos-Tokenizer（Apache-2.0）。</div>
+
+<script>
+function build(svgId, eqId, mode){
+  const svg=document.getElementById(svgId), eq=document.getElementById(eqId);
+  const N=8, K=3;
+  const cell=58, gap=10, pitch=cell+gap;
+  const NS="http://www.w3.org/2000/svg";
+  const padL=(mode==='causal')?(K-1):0;
+  const originX=60, inY=70, outY=210;
+  function mk(tag,attrs){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
+  function txt(x,y,s,cls){const t=mk('text',{x:x,y:y,'text-anchor':'middle','dominant-baseline':'middle',class:cls||''});t.textContent=s;return t;}
+  svg.innerHTML='';
+  const stl=mk('style',{}); stl.textContent='.lab{fill:#aab1d0;font-size:13px;font-weight:700}.cl{fill:#e7eaf6;font-size:14px;font-weight:700;font-family:monospace}.cl2{fill:#c7b3ff;font-size:14px;font-weight:700;font-family:monospace}'; svg.appendChild(stl);
+  svg.appendChild(txt(28,inY+cell/2,'输入','lab'));
+  svg.appendChild(txt(28,outY+cell/2,'输出','lab'));
+  const inCells=[]; const total=N+padL;
+  for(let i=0;i<total;i++){
+    const isPad=i<padL; const x=originX+i*pitch;
+    const r=mk('rect',{x:x,y:inY,width:cell,height:cell,rx:9,fill:isPad?'#2a3860':'rgba(126,224,255,.14)',stroke:isPad?'#3a4a78':'#7ee0ff','stroke-width':2});
+    svg.appendChild(r);
+    svg.appendChild(txt(x+cell/2,inY+cell/2,isPad?'x0*':('x'+(i-padL)),'cl'));
+    inCells.push({r,x,isPad});
+  }
+  const outCells=[];
+  for(let t=0;t<N;t++){
+    const ai=(mode==='causal')?(t+padL):t; const x=originX+ai*pitch;
+    const r=mk('rect',{x:x,y:outY,width:cell,height:cell,rx:9,fill:'rgba(167,139,250,.10)',stroke:'#3a3f66','stroke-width':2});
+    svg.appendChild(r); svg.appendChild(txt(x+cell/2,outY+cell/2,'y'+t,'cl2'));
+    outCells.push({r,x});
+  }
+  const kbox=mk('rect',{y:inY-7,width:K*pitch-gap+14,height:cell+14,rx:12,fill:'none',stroke:'#ffd35c','stroke-width':3,opacity:0});
+  svg.appendChild(kbox);
+  const lines=mk('g',{}); svg.appendChild(lines);
+  let t=0, timer=null, speed=950;
+  function render(){
+    inCells.forEach(c=>{c.r.setAttribute('fill',c.isPad?'#2a3860':'rgba(126,224,255,.14)');c.r.setAttribute('stroke',c.isPad?'#3a4a78':'#7ee0ff');});
+    outCells.forEach(c=>c.r.setAttribute('fill','rgba(167,139,250,.10)'));
+    lines.innerHTML='';
+    let cover = (mode==='causal') ? [t,t+1,t+2] : [t-1,t,t+1];
+    const leftIdx=(mode==='causal')?t:(t-1);
+    kbox.setAttribute('x', originX+leftIdx*pitch-7); kbox.setAttribute('opacity',1);
+    const outC=outCells[t];
+    cover.forEach(ci=>{
+      if(ci<0||ci>=inCells.length) return;
+      const c=inCells[ci];
+      const future=(mode==='normal' && ci>t);
+      c.r.setAttribute('fill', future?'rgba(251,113,133,.35)':'rgba(74,222,128,.35)');
+      c.r.setAttribute('stroke', future?'#fb7185':'#4ade80');
+      lines.appendChild(mk('line',{x1:c.x+cell/2,y1:inY+cell,x2:outC.x+cell/2,y2:outY,stroke:future?'#fb7185':'#4ade80','stroke-width':2,opacity:.7}));
+    });
+    outC.r.setAttribute('fill','rgba(167,139,250,.45)'); outC.r.setAttribute('stroke','#a78bfa');
+    if(mode==='causal'){
+      const a=(t-2<0)?'x0*':('x'+(t-2)), b=(t-1<0)?'x0*':('x'+(t-1));
+      eq.innerHTML='y'+t+' = W·[ <span class=past>'+a+', '+b+', x'+t+'</span> ] + b　<span style="color:#7f87a8">只看过去+当前 ✓</span>';
+    } else {
+      const p=(t-1<0)?'x0(边界)':('x'+(t-1));
+      const fut=(t+1<N)?('<span class=fut>x'+(t+1)+'</span>'):'—(边界)';
+      eq.innerHTML='y'+t+' = W·[ <span class=past>'+p+', x'+t+'</span>, '+fut+' ] + b　'+((t+1<N)?'<span style="color:#fb7185">看了未来 x'+(t+1)+' ✗</span>':'');
+    }
+  }
+  function next(){t=(t+1)%N;render();}
+  render();
+  return {
+    play(btn){if(timer){clearInterval(timer);timer=null;btn.textContent='▶ 播放';}else{timer=setInterval(next,speed);btn.textContent='⏸ 暂停';}},
+    step(){if(timer){clearInterval(timer);timer=null;}next();},
+    reset(){if(timer){clearInterval(timer);timer=null;}t=0;render();},
+    setSpeed(v){speed=v;if(timer){clearInterval(timer);timer=setInterval(next,speed);}}
+  };
+}
+var A=build('sv1','eq1','causal');
+document.getElementById('play1').onclick=function(){A.play(this)};
+document.getElementById('step1').onclick=function(){A.step()};
+document.getElementById('reset1').onclick=function(){A.reset();document.getElementById('play1').textContent='▶ 播放'};
+document.getElementById('spd1').oninput=function(){A.setSpeed(1900-(+this.value))};
+var B=build('sv2','eq2','normal');
+document.getElementById('play2').onclick=function(){B.play(this)};
+document.getElementById('step2').onclick=function(){B.step()};
+document.getElementById('reset2').onclick=function(){B.reset();document.getElementById('play2').textContent='▶ 播放'};
+</script>
+</div></body></html>

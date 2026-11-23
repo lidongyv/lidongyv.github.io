@@ -1,0 +1,182 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Black-box Membership Inference Attacks on the Pre-training Data of Image-generation Models</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Black-box Membership Inference Attacks on the Pre-training Data of Image-generation Models</h1>
+    <div class="au2" style="color:var(--mut)">Tao Qi ⋅ Huili Wang ⋅ Yuanhong Huang ⋅ Wendan Wang ⋅ Lianchao Zhao ⋅ Jinrui Wang ⋅ Zichen Qin ⋅ Shangguang Wang ⋅ Yongfeng Huang</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2605.27020">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2605.27020">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Black-box%20Membership%20Inference%20Attacks%20on%20the%20Pre-training%20Data%20of%20Image-generation%20Models">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">The rapid advancement of diffusion-based image generation models has raised serious concerns regarding potential copyright and privacy infringements involving human-created data.Membership inference attacks (MIAs) have emerged as a promising tool for identifying unauthorized data usage during model training.Existing methods typically assess the ability of model to denoise perturbed suspect images as an indicator of membership status.However, the discriminative power of such features is highly dependent on the degree of model memorization and deteriorates significantly when applied to less exposed data (e.g., pre-training data).Although several methods attempt to enhance detection by leveraging internal model features, these features are generally inaccessible in mainstream closed-source image generation platforms, limiting their practicality.In this paper, we demonstrate that analyzing how a black-box diffusion model denoises a target image and corresponding perturbed textual instructions can reveal more distinctive membership cues. Based on this insight, we propose a black-box membership inference attack framework (named SD-MIA) that leverages a cross-modal data perturbation mechanism to detect pre-training data in diffusion models.We conduct extensive experiments on both a public benchmark dataset and a newly constructed dataset, each comprising pre-training membership and non-membership samples with identical distributions. Experimental results demonstrate that SD-MIA achieves superior performance compared to existing baselines, including those with the unfair advantage of accessing internal model features.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-black-box-membership-inference-attacks-on-the-pre-train -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">现有 diffusion 成员推断攻击（MIA，判断某图是否被用于训练）几乎都“<b>给图加噪 → 测模型去噪还原能力</b>”，但这招对<b>预训练数据</b>（曝光弱、记忆浅）失效，还常要访问模型内部去噪轨迹特征（闭源 API 拿不到）。本文抓住一个结构性非对称：<b>文本 embedding 全程不加噪</b>、且模型对预训练成员样本内化了“局部过拟合的文本→视觉映射”（<b>representation-region collapse</b>，表示区坍缩）。于是 <b>SD-MIA 改去扰动文本指令</b>（而非图像），用 cross-modal relevance 当“不可观测的生成概率”的 surrogate，<b>纯黑盒</b>即可检测预训练数据，反超能看内部特征的 gray-box 方法。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">三个硬伤：① 主流范式“扰图+测去噪”判别力<b>高度依赖记忆程度</b>，对预训练样本（vs fine-tuning）急剧退化（原文 “deteriorates significantly when applied to less exposed data”）；② 改进方法靠<b>内部去噪轨迹特征</b>，但闭源平台只暴露最终输出、拿不到中间状态 → gray-box 不实用；③ <b>评测协议有偏</b>：多数在 fine-tuning 合成设置上验证（人为过拟合、夸大记忆），或 non-member 取自无关数据集（如 Zhai 用 MS-COCO 对比 LAION 成员，引入域级差异让分类变简单）。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b"><b>根因（§3.2，为何 image 扰动失效）</b>：① VAE encoder <b>局部收缩</b>，Jacobian ‖J<sub>fv</sub>(x)‖₂ ≪ 1 把细粒度图像变化压没（式2 ‖δz‖₂ ≲ ‖J<sub>fv</sub>‖₂‖δx‖₂）；② 随机扩散轨迹注入的噪声进一步淹没残余扰动 → |δ<sub>x</sub>p(x<sub>m</sub>)−δ<sub>x</sub>p(x<sub>n</sub>)| ≈ ξ·δx → 0（式3），成员/非成员重建几乎无差。<br><b>文本不同</b>：text 全程不加噪、持续做 conditioning；训练把成员样本训成 representation-region collapse → ∇<sub>c</sub>p(member) ≈ 0、非成员不成立 → <b>δ<sub>c</sub>p(member) ≪ δ<sub>c</sub>p(non-member)</b>（式4-5），文本扰动成判别信号。<br><b>SD-MIA 两件套</b>：① <b>Indirect Textual Perturbation（§3.3）</b>：黑盒不能直接改 embedding，用 LLM（GPT-5）改写出 3 个 view 的位移谱——token-view（词法句法微改，τ<sub>t</sub>=0.9）/ style-view（改风格不改语义，τ<sub>s</sub>=0.8）/ semantic-view（改物体语义保风格，τ<sub>c</sub>=0.6），约束 sim(f<sub>e</sub>(c),f<sub>e</sub>(ĉ)) ≥ τ。② <b>Maximum Cross-Modal Relevance（§3.4）</b>：p(x|c) 不可查，用 CLIP relevance s(x,ĉ)=[h<sub>v</sub>(x)⊕h<sub>t</sub>(d<sub>x</sub>)]·[h<sub>v</sub>(x̂)⊕h<sub>t</sub>(d<sub>x̂</sub>)]（式6）当 surrogate；对每个 view 取 top-K% relevance 均值 pooling 对抗扩散随机性（式7），最后 s<sub>f</sub>=s<sub>f</sub>(x,ĉ)−s<sub>f</sub>(x,c) 近似 δ<sub>c</sub>p。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">benchmark：LAION-mi（SD v1.2–v1.5 + 分布对齐 non-member）+ 自建 <b>FlickrMIA-25</b>（member=LAION-2B，non-member=Flickr 2025-01-01 后的图，<b>时间不相交</b>）。Table1：SD-MIA <b>全部最高</b>——SD-v1-2 balanced AUC <b>66.28%</b>（次优 Reconstruction 59.66%），SD-v3-5 <b>66.93%</b>（最强 gray-box DRC 60.44%），<b>比 DRC 高 up to 10% AUC</b>；1:10 imbalanced 也稳。set-level（Fig4）<b>L=30 时 AUC &gt;95%</b>。闭源 DALL·E/Gemini/GPT-4o（Fig5）也超 SOTA 黑盒。鲁棒性（Fig6）：Gaussian blur 下 SD-MIA 61.5% 而 Reconstruction 掉到近随机。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>首次</b>系统化提出 cross-modal perturbation-reconstruction 机制做 diffusion MIA（原文 “has not been systematically conceptualized … in prior MIA studies”）；② <b>纯黑盒反超 gray-box</b>（连看不到内部特征都赢 DRC）；③ representation-region collapse 给了理论（curvature/Jacobian 推导 式1-5）+ gray-box 实证（Fig8：‖δ‖&lt;2.5 时成员 RSR 几乎不掉、非成员骤降）；④ 提出<b>无偏 benchmark</b>（blind baseline 0.518/0.533 ≈ 随机猜）且能迁移到 image-AR 模型（Infinity，AUC 58.68% vs 黑盒 baseline 55.55%）。</div>
+    <div class="note-h">疑问</div>
+    <div class="note-b">① representation-region collapse 与样本<b>出现频次 / 记忆强度</b>的定量关系，原文给了梯度范数论证 + RSR 实证，但未充分量化“多稀疏的预训练样本仍能 collapse” → <b>需查</b>。② 重度依赖外部 <b>GPT-5（生成扰动）+ CLIP（算 relevance）+ BLIP2（无描述时补 caption）</b>，这些外部模型自身偏差对结果的影响原文未讨论。③ instance-level AUC 仅 ~66%（虽超所有 baseline），真正强实用性靠 set-level（L=30 &gt;95%）。④ 摘要把 “OpenAI” 列为模型名疑为笔误，正文闭源实验实际是 DALL·E / Gemini / GPT-4o。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读：① Abstract 逐句 → ② Intro problem→solution→why → ③ Method 核心机制+关键公式 → ④ 实验/消融关键数值 + 全文一页总结。原文优先、引英文原句、外部概念单开背景块。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文（verbatim）：</b>“Existing methods typically assess the ability of model to denoise perturbed suspect images as an indicator of membership status. However, the discriminative power of such features is highly dependent on the degree of model memorization and <b>deteriorates significantly when applied to less exposed data (e.g., pre-training data)</b>.”</div>
+    <div class="note-b"><b>在说什么：</b>现有成员推断（MIA）的主流套路是"给嫌疑图加噪 → 看模型去噪/重建能力 → 重建得好就判定是训练成员"。但这条信号<b>强依赖记忆程度</b>：在被反复过拟合的 fine-tuning 数据上很灵，到了"被稀释的 pre-training 数据"上几乎失效。<b>为什么重要：</b>真实世界里绝大多数训练数据是在<b>大规模预训练</b>阶段消化的，所以"能否在 pre-training 数据上做 MIA"才是版权/隐私审计的实战命题。</div>
+    <div class="note-b"><b>原文（方法句）：</b>“we demonstrate that analyzing <b>how a black-box diffusion model denoises a target image and corresponding perturbed textual instructions</b> can reveal more distinctive membership cues. Based on this insight, we propose a black-box membership inference attack framework (named <b>SD-MIA</b>) that leverages a <b>cross-modal data perturbation</b> mechanism to detect pre-training data.”</div>
+    <div class="note-b"><b>逐词指路：</b>① “black-box”——只能通过 API 文生图、拿不到任何内部特征（这是和 gray-box 方法的根本分野）。② “perturbed textual instructions”——核心创新：不扰动图像，<b>扰动文本</b>条件。③ “cross-modal”——用"文本扰动 → 图像重建一致性"的跨模态机制。④ 结论 “SD-MIA achieves superior performance … including those with the <b>unfair advantage of accessing internal model features</b>”——黑盒的 SD-MIA 甚至打败了能看内部特征的 gray-box 方法。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>把 MIA 的探针从"加噪图像→看去噪"换成"扰动文本→看重建一致性"，纯黑盒就能在 pre-training 数据上可靠判定成员，且超过有内部访问特权的基线。</div>
+
+    <div class="note-h">② 📚 背景知识（外部 + 附录预备，读懂 SD-MIA 必备）</div>
+    <div class="note-b"><b>① 扩散模型（附录式8–10）：</b>前向加噪 \( q(z_t\mid z_{t-1})=\mathcal{N}(z_t;\sqrt{1-\beta_t}\,z_{t-1},\beta_t I) \)；反向去噪由网络 \( \epsilon_\theta(z_t,c,t) \) 预测噪声 \( p_\theta(z_{t-1}\mid z_t,c)=\mathcal{N}\!\big(z_{t-1};\tfrac{1}{\sqrt{1-\beta_t}}(z_t-\beta_t\epsilon_\theta(z_t,c,t)),\tilde\beta_t I\big) \)；训练最小化去噪分数匹配损失 \( \mathcal{L}(\theta)=\mathbb{E}_{z_0,c,t,\epsilon}[\|\epsilon-\epsilon_\theta(z_t,c,t)\|_2^2] \)。<b>关键：</b>文本 \(c\) 全程作为<b>条件</b>注入，不被加噪。</div>
+    <div class="note-b"><b>② Latent Diffusion 的 VAE：</b>SD 这类是 latent diffusion——图像先经 VAE encoder \( f_v \) 压成 latent \( z=f_v(x) \) 再扩散。VAE 是<b>局部收缩</b>（contractive）映射，雅可比范数 \( \|J_{f_v}(x)\|_2\ll 1 \)，会"抹平"图像上的细微扰动。这是后面"图像扰动失效"的物理根因。</div>
+    <div class="note-b"><b>③ MIA 三种访问级别（附录 Table 2）：</b><b>white-box</b>（看梯度/参数）、<b>gray-box</b>（看去噪轨迹中间态/latent 噪声预测，如 SecMIA/PIA/CLiD/DRC）、<b>black-box</b>（只有输入输出，如 REDIFFUSE/Reconstruction）。原文强调商业系统 “typically expose only final outputs”，所以 gray-box 在实战中不可用——SD-MIA 是<b>唯一同时满足 black-box + cross-modal(CM) + pre-training-data(PD) 评测</b>的方法。</div>
+    <div class="note-b"><b>④ 评测指标：</b><b>AUC</b>（ROC 曲线下面积，越高越能分开成员/非成员）；<b>TPR@5% FPR</b>（把误报率压到 ≤5% 时还能召回多少真成员——隐私审计更看重的低误报区指标）。</div>
+
+    <div class="note-h">③ §1 Introduction — problem → 现有不足 → solution → why（闭环）</div>
+    <div class="note-b"><b>problem：</b>原文 “the vast majority of training data is consumed during large-scale <b>pre-training</b> and remains substantially less exposed to the attacker.” 而 “image perturbation–based detection signals … <b>deteriorate sharply when applied to pre-training samples</b>.”——实战要审计的是 pre-training 数据，但现有图像扰动信号正好在这里失效。</div>
+    <div class="note-b"><b>现有不足（两条都堵死）：</b>① <b>fine-tuning 评测不真实</b>——“prior work commonly fine-tunes open-source diffusion models on randomly partitioned datasets”，人为制造强过拟合 → 虚高的检测精度，“do not reflect real-world deployments”。② <b>gray-box 不可得</b>——改进方法靠 “fine-grained internal features extracted from the denoising trajectory”（如 Kong et al. 用中间噪声预测），但 “practical image generation systems typically expose only final outputs … making such gray-box techniques infeasible”。</div>
+    <div class="note-b"><b>solution（转向文本模态）：</b>原文 “these observations <b>motivate a shift toward the textual modality</b> in our work. Since <b>text embeddings remain un-noised throughout generation</b>, and diffusion models usually internalize <b>locally overfitted textual–visual mappings</b> for pre-training samples, small textual perturbations for member textual descriptions tend to remain within a <b>collapsed representation region</b> and thus yield stable generations.”</div>
+    <div class="note-b"><b>why it works（机理）：</b>结构性不对称——对<b>成员</b>，文本小扰动仍落在"塌缩区"内 → 重建稳定；对<b>非成员</b>，没有这种塌缩结构 → 文本扰动把条件推到表示空间别处 → 输出明显发散。原文：“textual perturbations applied to non-member data are more likely to exit this region, producing noticeably divergent outputs and thereby offering informative signals.” 这个"member 稳 / non-member 散"的差异就是判别信号。</div>
+
+    <div class="note-h">Q&amp;A · 它要解决的主要问题是什么？</div>
+    <div class="note-b"><b>核心：</b>在<b>纯黑盒</b>（只能调 API）、且针对<b>pre-training 数据</b>（弱记忆）的现实约束下，做出可靠的成员推断。<b>三个被同时卡住的难点：</b>① 弱记忆 → 图像扰动信号太微弱；② 黑盒 → 拿不到 gray-box 的内部轨迹特征；③ 评测公平性 → 既有协议要么靠 fine-tuning 虚高、要么非成员取自无关数据集（MS-COCO）带域偏差。SD-MIA 用"文本扰动 + 跨模态一致性"绕开①②，用 LAION-mi/FlickrMIA-25 同分布基准解决③。</div>
+
+    <div class="note-h">④ §2 Related Work — 评测公平性是隐藏战场</div>
+    <div class="note-b"><b>方法谱系：</b>white/gray-box 靠内部信号（梯度、latent 噪声预测、重建损失），“effectiveness sharply declines in large-scale pre-training settings”；近期 gray-box（Fu/Kong/Zhai）尝试用 latent generative priors 攻 pre-training，但 “still rely on semi-transparent access to internal features”。<b>SD-MIA = fully black-box</b>。</div>
+    <div class="note-b"><b>评测偏差（论文专门点名）：</b>原文 “their non-member selection procedures often introduce <b>distributional biases</b> … For example, Zhai et al. selected non-members from the <b>MS-COCO</b> dataset to contrast against <b>LAION</b>-based pre-training members, resulting in domain-level discrepancies … that <b>inadvertently simplify the classification task</b>.”——非成员若取自不同域，分类器其实在分"域"而非"成员性"，会高估攻击效果。本文用 <b>LAION-mi</b>（成员/非成员同域同分布）+ 自建 <b>FlickrMIA-25</b>（成员=LAION-2B、非成员=2025 年后 Flickr 图，时间上与训练语料不相交）。Fig 3 用 PCA + blind 分类器证明无偏：准确率 0.518 / 0.533（≈随机）。</div>
+
+    <div class="note-h">⑤ §3.1–3.2 为什么图像扰动会失效（式1–3 推导）</div>
+    <div class="note-b"><b>威胁模型（§3.1）：</b>原文 “the adversary can only interact with \(\mathcal{M}_\theta\) via query-based text-to-image generation … obtain the corresponding generated images \(\hat x_i\sim\mathcal{M}_\theta(\cdot\mid c_i)\).” 拿不到参数、训练数据、优化过程、任何中间 latent。</div>
+    <div class="note-b"><b>推导（图像扰动信号被两道工序杀死）：</b>设扰动 \(\delta x\)，对（不可观测的）生成概率 \(p(x\mid c;\theta^*)\) 的影响（式1）：</div>
+    <div class="note-b">\[ \delta_x p \approx \big|\nabla_z p(z,c;\theta^*)\cdot\delta z\big| \lesssim \|\nabla_z p(z,c;\theta^*)\|_2\cdot\|\delta z\|_2 \]</div>
+    <div class="note-b">而 VAE 局部收缩（式2）：\( \|\delta z\|_2=\|f_v(x+\delta x)-f_v(x)\|_2 \lesssim \|J_{f_v}(x)\|_2\,\|\delta x\|_2 \)，且 \( \|J_{f_v}(x)\|_2\ll 1 \) → latent 扰动 \(\|\delta z\|_2\) 迅速消失。叠加扩散随机轨迹进一步淹没残余信号，得（式3）：\( |\delta_x p(x_m)-\delta_x p(x_n)|\approx \xi\cdot\delta x\to 0,\ |J_{f_v}(x)|\lt\xi \)。<b>结论：</b>成员/非成员在图像扰动下的重建差异 → 0（与 Fig 1A、Fig 2 一致：member/non-member 分布几乎重合，p=4.8e−01 不显著）。原文还补一刀：黑盒下 \(\delta_x p\) 本身不可观测，靠采样近似又引入额外随机性，进一步掩盖差异。</div>
+
+    <div class="note-h">⑥ §3.2 Our insight — 跨模态扰动（式4–5 + representation-region collapse）</div>
+    <div class="note-b"><b>关键不对称：</b>原文 “text and images follow <b>fundamentally different computational pathways</b> … textual instructions are mapped into representations that <b>remain un-noised throughout the entire generation process</b>, persisting as conditioning signals.” 文本不被加噪 → 文本扰动的信号能"活到"输出端。</div>
+    <div class="note-b"><b>representation-region collapse（表示区塌缩）：</b>原文 “the model usually internalizes a locally overfitted mapping … This induces a <b>representation-region collapse</b>, where a neighborhood of semantically proximate text variants funnels into a single visual mode.”——训练时模型把"某条描述及其语义邻域"过拟合地映到"某个训练图的视觉特征"，于是该描述附近一整块文本表示都坍缩到同一个视觉输出。</div>
+    <div class="note-b"><b>推导（式4–5）：</b>文本扰动 \(\delta c\) 的影响 \( \delta_c p \approx |\nabla_c p(z,c;\theta^*)\cdot\delta c|\lesssim\|\nabla_c p\|_2\cdot\|\delta c\|_2 \)（式4）。塌缩意味着成员对 \((x_m,c_m)\) 处 \( \|\nabla_c p(z_m,c_m;\theta^*)\|_2\approx 0 \)（梯度近零=局部平台=扰动不改变输出），非成员不满足。于是同样 \(\|\delta c\|_2\) 下 \( \delta_c p(x_m)\ll\delta_c p(x_n) \)，即（式5）：\( |\delta_c p(x_m)-\delta_c p(x_n)|\approx\|\nabla_c p(z_n,c_n;\theta^*)\cdot\delta c_n\|_2\gg 0 \)。<b>这就是判别信号的理论基础。</b>Fig 2 实证：文本扰动下 member/non-member 分布显著分离（p=1.3e−17）。</div>
+
+    <div class="note-h">Q&amp;A · 为什么成员处 \( \nabla_c p\approx 0 \)？这和"梯度"有什么关系？</div>
+    <div class="note-b"><b>直觉：</b>把"文本 → 生成概率"看成一个曲面。对成员，因为塌缩区是被过拟合压出来的一个<b>局部平台（高概率盆地）</b>，平台上微移文本几乎不改变生成概率 → 一阶梯度 \( \nabla_c p\approx 0 \) → 输出稳定。对非成员，没有这个被刻意压出来的平台，文本一动概率/输出就跟着变 → 梯度大 → 输出发散。<b>所以 SD-MIA 测的本质是"生成概率曲面在文本方向的曲率/平坦度"</b>（原文 “probability curvature”）：成员=平坦、非成员=陡峭。这比"图像方向"灵，是因为图像方向的扰动早被 VAE+扩散抹平了（见⑤）。</div>
+
+    <div class="note-h">⑦ §3.3 多视角文本扰动（token / style / semantic 三视角）</div>
+    <div class="note-b"><b>两个同时约束：</b>原文要求扰动 “remain within the collapsed neighborhood” 且 “induce a measurable embedding displacement \(\|\delta c\|\)”——既要够小（留在塌缩区内才能区分成员），又要够大（能测到位移）。黑盒下不能直接改 embedding，于是用 LLM（GPT-5）做<b>自然语言改写</b>间接造位移，并加相似度约束 \( \mathrm{sim}(f_e(c),f_e(\hat c))\ge\tau \) 防止漂太远。</div>
+    <div class="note-b"><b>三视角（位移梯度递增）：</b>① <b>token-view</b>（词法/句法改写、保语义，最小位移，τt=0.9）——探测"是否仍在塌缩区"；② <b>style-view</b>（改语气/详略/叙述风格、保语义，中等位移，τs=0.8）——测塌缩区对风格漂移的稳定性；③ <b>semantic-view</b>（改语义属性如换物体、保风格，最大位移，τc=0.6）——逼近"扰动离开塌缩区"的边界，对非成员最易触发发散。得到扰动集 \( \{\hat c^t_i,\hat c^s_i,\hat c^c_i\}_{i=1}^N \)。<b>附录给了三套 prompt</b>（token 只换措辞、style 只加 1–2 个风格词、semantic 只换主体保风格）。</div>
+
+    <div class="note-h">⑧ §3.4 Maximum Cross-Modal Relevance Estimation（式6–7）</div>
+    <div class="note-b"><b>难点：</b>真正想要的 \(p(x\mid\hat c;\theta^*)\) 黑盒不可查。<b>替代信号（式6）：</b>用"目标图 \(x\)"与"按扰动描述 \(\hat c\) 重建出的 \(\hat x\)"的<b>跨模态相关度</b>当 surrogate。先用 caption 模型得 \(d_x,d_{\hat x}\)，再用视觉/文本编码器（CLIP）\(h_v,h_t\) 拼接打分：</div>
+    <div class="note-b">\[ s(x,\hat c)=\big(h_v(x)\oplus h_t(d_x)\big)\cdot\big(h_v(\hat x)\oplus h_t(d_{\hat x})\big) \]</div>
+    <div class="note-b">塌缩区内的扰动重建 \(\hat x\) 贴近 \(x\)（高相关）、区外的发散（低相关），所以 \(s\) 是 \(p(x\mid\hat c;\theta^*)\) 的合理代理。</div>
+    <div class="note-b"><b>抗随机性：max-relevance pooling（式7）：</b>扩散采样随机 → 单次重建噪声大。利用第二重不对称：非成员"即使反复重采也基本重建不出 \(x\)"，成员"多次查询里总有几次能复现"。于是对每视角取 <b>top-K% 相关度的均值</b>：\( s^t=\frac{1}{n}\sum_{j=1}^n s(x,\hat c^t_{R_j}),\ n=\lfloor N\cdot K\%\rfloor \)（\(R_j\) 是 top 排名索引）；style/semantic 同理得 \(s^s,s^c\)，融合成统一估计 \(s_f(x,\hat c)\)。<b>最终判据：</b>\( s_f=s_f(x,\hat c)-s_f(x,c) \) 作为 \( \delta_c p \) 的经验近似——反映"文本扰动引起的生成概率位移"，成员小、非成员大。实现：CLIP ViT-L/14、缺描述用 BLIP2 生成、每条扰动查 10 次、5 个随机种子取均值±方差。</div>
+
+    <div class="note-h">Q&amp;A · 为什么是"取最大（top-K）"而不是"取平均"？</div>
+    <div class="note-b"><b>原因：</b>成员的"可复现性"是<b>偶发但确实存在</b>的——多次随机采样里，成员总有一部分能高保真复现目标图，非成员几乎永远不行。若取全体平均，成员那几次"高分"会被大量"普通分"稀释，信号被随机性糊掉；<b>取 top-K% 最大值</b>恰好放大"成员能复现、非成员不能"这一结构性差异（原文 “accentuates the separation … by pooling the highest relevance values obtained across multiple stochastic reconstructions”）。这是用"最好情况统计量"对抗扩散随机性的经典思路。</div>
+
+    <div class="note-h">⑨ §4 实验设置 + 主结果（Table 1 真实数值）</div>
+    <div class="note-b"><b>设置：</b>基准 = LAION-mi（SD v1.2–v1.5 成员 + 同分布非成员）+ 自建 FlickrMIA-25（含 SD3.5-large 与闭源 DALL·E/GPT-4o/Gemini）；7 个基线跨 white/gray/black；指标 AUC + TPR@5%FPR；balanced 与 imbalanced(1:10) 两种比例。</div>
+    <div class="note-b"><b>Table 1（balanced，AUC% / TPR@5%FPR%；摘关键行）：</b>
+<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0;color:#d7dcff">
+<tr style="color:#ffd35c"><td style="border:1px solid #2a2f5c;padding:3px">方法</td><td style="border:1px solid #2a2f5c;padding:3px">SD v1-2</td><td style="border:1px solid #2a2f5c;padding:3px">SD v1-4</td><td style="border:1px solid #2a2f5c;padding:3px">SD v1-5</td><td style="border:1px solid #2a2f5c;padding:3px">SD v3-5</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">Loss (white)</td><td style="border:1px solid #2a2f5c;padding:3px">51.59 / 4.73</td><td style="border:1px solid #2a2f5c;padding:3px">52.91 / 6.53</td><td style="border:1px solid #2a2f5c;padding:3px">53.75 / 6.53</td><td style="border:1px solid #2a2f5c;padding:3px">42.10 / 1.20</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">DRC (gray, 最强基线)</td><td style="border:1px solid #2a2f5c;padding:3px">54.66 / 11.27</td><td style="border:1px solid #2a2f5c;padding:3px">55.83 / 9.13</td><td style="border:1px solid #2a2f5c;padding:3px">54.61 / 9.40</td><td style="border:1px solid #2a2f5c;padding:3px">60.44 / 12.47</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">Reconstruction (black)</td><td style="border:1px solid #2a2f5c;padding:3px">59.66 / 12.13</td><td style="border:1px solid #2a2f5c;padding:3px">60.99 / 14.40</td><td style="border:1px solid #2a2f5c;padding:3px">60.30 / 11.73</td><td style="border:1px solid #2a2f5c;padding:3px">46.74 / 1.47</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">SD-MIA (black, 本文)</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">66.28 / 16.73</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">66.23 / 15.80</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">65.92 / 13.67</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">66.93 / 18.33</td></tr>
+</table>
+<b>读表：</b>SD-MIA 在四个模型 AUC 全部 ~66%，全面领先；原文 “outperform even the strongest gray-box baseline, DRC, by <b>up to 10% AUC</b>”。<b>关键看 SD v3-5</b>：多数基线在新架构上崩到随机甚至 &lt;50（Loss 42.10、SecMIA 34.68、Reconstruction 46.74），SD-MIA 仍 66.93——验证<b>跨模型/跨代泛化</b>。imbalanced(1:10) 下 SD-MIA 仍 ~65–66 AUC，证明 max-relevance pooling 在极不平衡下保信号。</div>
+
+    <div class="note-h">⑩ §4 set-level / 闭源 / 鲁棒性 / 消融（Fig4–7 + 附录 Table3）</div>
+    <div class="note-b"><b>set-level（Fig 4）：</b>从"单图"升到"判断整个数据集是否被用过"，随集合大小 L 增大性能单调升，原文 “when the set size reaches <b>L = 30, SD-MIA achieves an AUC exceeding 95%</b>”——成员信号可聚合放大，适合数据集级审计。</div>
+    <div class="note-b"><b>闭源模型（Fig 5）：</b>在 DALL·E-3 / Gemini-2.0 / GPT-4o-Image 上仍稳超 SOTA 黑盒基线。原文推断 “the method captures a <b>modality-level behavioral property</b> of modern large-scale generative models rather than relying on architectural artifacts specific to diffusion models.”——抓的是模态级行为，不是扩散结构特例（附录 Table 3 还在自回归图像模型 Infinity 上验证：SD-MIA 58.68 vs Reconstruction 55.55 AUC）。</div>
+    <div class="note-b"><b>鲁棒性（Fig 6）：</b>对目标图加 Gaussian blur / noise / brightness / shear 四类失真，SD-MIA 始终更稳。例：Gaussian blur 下 SD-MIA AUC 61.5%，而 Reconstruction “drops to near-random performance”——文本侧探针对图像失真不敏感。</div>
+    <div class="note-b"><b>消融（Fig 7）：</b>(A) 三视角单独都有正贡献，<b>token-view（最小位移）在某些模型上单独就很强</b>（对细微记忆敏感），三者整合互补最佳——“multi-view perturbation is crucial”。(B) 配对原始描述（PD）：拿不到原描述时用 BLIP 生成 surrogate，信号略弱但 “SD-MIA remains highly effective, outperforming the image-only DRC baseline”——证明实战可用。</div>
+
+    <div class="note-h">📌 全文一页总结（问题 → 方法 → 实验 → takeaway）</div>
+    <div class="note-b"><b>问题（§1）：</b>实战要审计的是<b>弱记忆的 pre-training 数据</b>且只有<b>黑盒 API</b>；现有图像扰动 MIA 在此失效、gray-box 内部特征拿不到、评测又常被非成员域偏差虚高。</div>
+    <div class="note-b"><b>方法（§3）：</b>洞察"<b>文本不被加噪</b> + <b>representation-region collapse</b>"——成员处生成概率对文本方向曲率近平（\(\nabla_c p\approx 0\)）、非成员陡。SD-MIA = ① <b>多视角文本扰动</b>（token/style/semantic 三档位移，LLM 改写 + 相似度约束 τ）；② <b>跨模态相关度</b>（CLIP \(h_v\oplus h_t\)）当不可观测 \(p\) 的 surrogate；③ <b>top-K% max-relevance pooling</b> 抗扩散随机性；判据 \( s_f=s_f(x,\hat c)-s_f(x,c)\approx\delta_c p \)。</div>
+    <div class="note-b"><b>实验（§4）：</b>LAION-mi + 自建 FlickrMIA-25（同分布、PCA 验证无偏）；7 基线全面落后，AUC ~66% 超最强 gray-box DRC 达 10%；SD v3-5 上别人崩到随机而它不崩；set-level L=30 AUC&gt;95%；闭源 DALL·E/Gemini/GPT-4o 与自回归 Infinity 均有效；对四类图像失真鲁棒。</div>
+    <div class="note-b"><b>Takeaway（≥3 条 + 适用边界）：</b><br>① <b>换模态换天地：</b>当图像扰动信号被 VAE 收缩 + 扩散随机性杀死时，转到"不被加噪的文本条件"是恢复判别力的关键——MIA 应顺着"信号能活到输出端"的模态走。<br>② <b>把不可观测量代理化：</b>真正的 \(p(x\mid c)\) 黑盒不可得，用跨模态相关度 + top-K pooling 构造稳定 surrogate，是黑盒攻击的通用范式。<br>③ <b>评测公平性是一等公民：</b>非成员必须同域同分布，否则分类器在分"域"不是分"成员"——本文用 LAION-mi/FlickrMIA-25 + blind 分类器 ≈0.5 自证清白。<br><b>适用边界 / 诚实：</b>(a) 绝对 AUC ~66%（实例级）<b>不算高</b>——pre-training 弱记忆下这是现实天花板，真正可靠靠 set-level 聚合（L=30 才 &gt;95%）；(b) 依赖外部大模型（GPT-5 改写、CLIP/BLIP 编码），其偏置可能影响信号 [论文未深入讨论]；(c) representation-collapse 的直接证据在附录 6.4（gray-box RSR 实验），正文是间接论证；(d) 阈值 τt/τs/τc、K% 等超参的敏感性正文未系统消融 [需查附录]。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-black-box-membership-inference-attacks-on-the-pre-train/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Methodology insights and framework. (A) Visual perturbation struggles to reveal the generation probability curvature gap between member and non-member, resulting in insignificant detection signals. (B) SD-MIA addresses this via a multi-view text perturbation mechanism, enabling precise measurement of curvature shifts and reliable detection of pre-training data in diffusion models.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-black-box-membership-inference-attacks-on-the-pre-train/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Distributional comparison between visual-perturbation method and text-perturbation black-box method SD-MIA.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-black-box-membership-inference-attacks-on-the-pre-train/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Aligned distributions and near-chance classifier accuracy demonstrate the absence of benchmark bias.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-black-box-membership-inference-attacks-on-the-pre-train/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Set-level MIA performance: (A) AUC results at different set sizes L; (B) corresponding p-values for sd v1–4 across L.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-black-box-membership-inference-attacks-on-the-pre-train/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Membership inference attack performance against closed-source image generation models (dall-e-3, gemini-2.0, gpt-4o).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-black-box-membership-inference-attacks-on-the-pre-train/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Robustness evaluation under four training-data distortion settings, image blur, Gaussian noise, brightness adjustment, and shear transformation. Within each sub-plot, the distortion intensity increases from left to right.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-black-box-membership-inference-attacks-on-the-pre-train/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Ablation study of SD-MIA, including: (A) perturbation view of textual input, and (B) paired textual description (PD).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-black-box-membership-inference-attacks-on-the-pre-train/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Gray-box evidence of representation collapse.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-black-box-membership-inference-attacks-on-the-pre-train/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. Efficiency-utility trade-off of SD-MIA compared to the Reconstruction baseline, evaluated across different numbers of re- peated generations.</figcaption></figure>
+    </div>
+  </div></body></html>

@@ -1,0 +1,205 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>TacoDepth: Towards Efficient Radar-Camera Depth Estimation with One-stage Fusion</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2025</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>TacoDepth: Towards Efficient Radar-Camera Depth Estimation with One-stage Fusion</h1>
+    <div class="au2" style="color:var(--mut)">Yiran Wang · Jiaqi Li · Chaoyi Hong · Ruibo Li · Liusheng Sun · Xiao Song · Zhe Wang · Zhiguo Cao · Guosheng Lin</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2025/papers/Wang_TacoDepth_Towards_Efficient_Radar-Camera_Depth_Estimation_with_One-stage_Fusion_CVPR_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=TacoDepth%3A%20Towards%20Efficient%20Radar-Camera%20Depth%20Estimation%20with%20One-stage%20Fusion">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2025-tacodepth-towards-efficient-radar-camera-depth-estimati -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">把 Radar-相机深度估计从"多阶段（先出 quasi-dense 中间深度再补全）"压成 <b>one-stage（一步融合直接出稠密 metric 深度）</b>。两大件：① <b>graph-based Radar 结构提取器</b>（GNN，把稀疏雷达点当图节点、用拓扑结构而非裸坐标，抗噪）；② <b>pyramid-based Radar 融合 + Radar-centered flash attention</b>（只在雷达点的"水平坐标邻域"里做 cross-attention，因为雷达水平坐标可靠、高度噪声大）。比上一个 SOTA <b>精度 +12.8% / 速度 +91.8%</b>，独立模式实时 37.5 fps。NTU+华科+商汤，CVPR 2025 Finalist。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">Radar 比 LiDAR <b>稀疏 1000×</b>、噪声大（大波束宽），3D Radar 还有<b>高度模糊</b>（俯仰天线不足）。为对付稀疏，主流方法走<b>多阶段</b>：先预测"准稠密(quasi-dense)中间深度"桥接稀疏雷达→稠密深度。但原文指出中间深度<b>本身仍稀疏且噪声大</b>——<i>"For some adverse lighting or weather conditions, e.g., glaring and nighttime scenarios, even no pixels are predicted with depth values"</i>→ 导致最终结构断裂/细节糊/伪影，且慢（RadarCam-Depth 四阶段 358ms）。本文问：能不能<b>不要中间结果、一步到位</b>？</div>
+    <div class="note-h">核心方法（one-stage 两大件）</div>
+    <div class="note-b">① <b>Graph-based Radar 结构提取（GE）</b>：雷达点=图节点、邻接矩阵=边，用轻量 GNN（PCA-GM）沿边聚合更新节点特征 → 捕获点间<b>距离/拓扑关系</b>（比裸坐标更 informative、对 outlier 更鲁棒）。② <b>Pyramid-based Radar 融合（PF）</b>：图像多尺度特征 {F<sub>1</sub>..F<sub>2L</sub>} 与雷达节点/边特征 N<sub>l</sub>/E<sub>l</sub> 分层融合（浅层=图像细节+雷达坐标，深层=语义+结构）。③ <b>Radar-centered flash attention</b>：query=图像像素、key/value=雷达点，但只在"水平坐标 x<sub>p</sub>±a<sub>l</sub>"的<b>窄带</b>内算注意力（式1-3）——利用"雷达水平坐标比高度可靠"这一物理先验 + flash attention 加速。④ <b>柔性推理</b>（式4）D=T<sub>θ</sub>(I, P | D*)：D* 为可选的相对深度（来自 MiDaS/DPT/Depth-Anything），有则 plug-in 更准、无则 independent 更快。</div>
+    <div class="note-h">关键结果（数值）</div>
+    <div class="note-b">nuScenes 0-80m（Table 1，mm）：independent <b>MAE 1833 / RMSE 4150 / 26.7ms</b>（CaFNet 2110/4766/103.9ms）；plug-in <b>MAE 1492 / RMSE 3325 / 29.3ms</b>（RadarCam-Depth 1690/3948/358.3ms，慢 12×）。效率（Table 3）：13.47M 参数 / 139G FLOPs，比 Singh 省 40.9%/72.2%。消融（Table 5）：PF 单独比 Singh 降 MAE 12.4%，再加 GE 又降 5.7%，全栈比纯 RGB 基线 +30.8%。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">用<b>图结构</b>而非坐标表征稀疏雷达（抗噪）；用<b>水平坐标可靠</b>的物理先验把全局注意力剪成窄带 flash attention（省算力）；一个模型<b>同时支持 independent/plug-in</b>（训练时随机半数样本喂相对深度、半数喂 0）；plug-in 配 Depth-Anything-v2 时 δ1 飙到 0.961（Table 4）。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① 论文 Limitation 写得极简（仅"提供了一种高效实现，未来可探索更多"），<b>没分析失败 case / 极端天气定量</b>；② Radar-centered 窄带假设"水平坐标准"——对 4D Radar 高度也较准时这个先验收益会变小（推断，原文未消融 4D 下去掉窄带）；③ 仍依赖 LiDAR 真值 + reprojection-accumulated 深度做监督（式5），非自监督；④ L=4 反而比 L=3 差（雷达太稀疏，Table 6）——GNN 深度受限于雷达点数。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿，基于本地 PDF 全文（52k 字符 / 11 页）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文（任务定义）：</b><i>"Radar-Camera depth estimation aims to predict dense and accurate metric depth by fusing input images and Radar data. Model efficiency is crucial for this task in pursuit of real-time processing on autonomous vehicles and robotic platforms."</i> → 任务 = 图像 + 毫米波雷达融合，输出<b>稠密且带绝对尺度（metric，单位米）</b>的深度；因为要上车/上机器人<b>实时</b>，模型效率是硬约束。</div>
+    <div class="note-b"><b>原文（痛点）：</b><i>"due to the sparsity of Radar returns, the prevailing methods adopt multi-stage frameworks with intermediate quasi-dense depth, which are time-consuming and not robust."</i> → 雷达回波太稀疏，主流法走<b>多阶段</b>，先造一张"准稠密(quasi-dense)中间深度"再补全，结果又慢又不鲁棒。</div>
+    <div class="note-b"><b>原文（方法）：</b><i>"the graph-based Radar structure extractor and the pyramid-based Radar fusion module are designed to capture and integrate the graph structures of Radar point clouds, delivering superior model efficiency and robustness without relying on the intermediate depth results."</i> → 两大件——<b>图结构提取器</b> + <b>金字塔融合模块</b>，抓雷达点云的<b>图结构</b>，<b>彻底去掉中间深度</b>。</div>
+    <div class="note-b"><b>原文（效果）：</b><i>"Compared with the previous state-of-the-art approach, TacoDepth improves depth accuracy and processing speed by 12.8% and 91.8%."</i> → 比上一个 SOTA <b>精度 +12.8%、速度 +91.8%</b>。<b>一句话抓 Abstract：</b>用图结构表征稀疏雷达 + 金字塔窄带注意力融合，做成 one-stage（一步出稠密 metric 深度），又快又准又鲁棒。NTU S-Lab + 华科 + 商汤，CVPR 2025 Finalist。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文，理解本文必备）</div>
+    <div class="note-b"><b>① mmWave Radar vs LiDAR：</b>毫米波雷达便宜、低功耗、全天候、可测速（多普勒），但点云<b>比 LiDAR 稀疏约 1000×</b>、噪声大（大波束宽 large beam width）。3D Radar 只有方位 + 距离 + 多普勒，<b>俯仰(高度)模糊</b>（elevation 轴天线元件不足）；4D Radar 补了高度维、点更密。这是本文"信水平坐标、不信高度"的物理根源。</div>
+    <div class="note-b"><b>② metric depth vs relative depth：</b>relative（相对/序）深度只知"谁远谁近"、无真实米数（MiDaS/DPT/Depth-Anything 这类单目大模型输出）；metric 深度带真实尺度。雷达/LiDAR 提供 metric scale。本文 plug-in 模式正是"用雷达把<b>相对深度校准成 metric</b>"。</div>
+    <div class="note-b"><b>③ quasi-dense（准稠密）深度 &amp; 多阶段：</b>把稀疏雷达点投到图像、用网络"稍微补密"得到的中间深度图。多阶段法先出它、再以它为条件出最终深度。本文论点：这中间图<b>本身仍稀疏带噪</b>（图2 红框里只有零星像素有值），是误差源头。</div>
+    <div class="note-b"><b>④ GNN / 图匹配 / PCA-GM：</b>GNN = 把数据建成"节点 + 边"的图，节点特征沿边聚合邻居信息。点云配准/匹配里常把点当节点、用图结构抗 outlier（孤立噪点连接弱、影响小）。<b>PCA-GM</b>[44] 是一种基于图匹配的节点特征聚合方法，本文借来沿边更新雷达节点特征。</div>
+    <div class="note-b"><b>⑤ Flash Attention（Dao 2022 [8]、FlashAttention-2 [7]）：</b>一种 IO-aware 的<b>精确</b>注意力实现，分块计算、减少 HBM 读写，<b>更快更省显存</b>但数值与标准注意力等价。本文用它实现"窄带注意力"，进一步压时间。</div>
+
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环</div>
+    <div class="note-b"><b>problem：</b><i>"The obstacle for fusing Radar in depth estimation lies in its sparsity and noises. Due to the large beam width, Radar point clouds are 1000x sparser with higher noise levels than LiDAR returns."</i> 现有法用多阶段绕开，但中间深度并不可靠——<i>"despite being described as quasi-dense, the intermediate depth remains sparse and noisy ... For some adverse lighting or weather conditions, e.g., glaring and nighttime scenarios, even no pixels are predicted with depth values."</i> 缺陷的中间结果 → <i>"disrupted structures, blurred details, or noticeable artifacts in final predictions"</i>。</div>
+    <div class="note-b"><b>核心问句（Intro 原文）：</b><i>"can models directly predict accurate and dense depth without the intermediate results, achieving one-stage Radar-Camera depth estimation with higher efficiency and robustness?"</i> ——全文就是把这个问句回答成 yes。</div>
+    <div class="note-b"><b>solution + why（Intro 即铺全）：</b>① 为何用图结构——<i>"Prior arts simply extract features from Radar coordinates or projected depth, sensitive to noises and outliers. In contrast, we utilize a graph-based Radar structure extractor to capture geometric structures and topologies of point clouds, improving robustness to inaccurate points."</i> ② 为何用水平坐标窄带——<i>"the projected horizontal coordinates of Radar points are generally more precise than the height dimension"</i>，故只在水平邻域关联、外部像素/点"不可能相关"就不算，省算力。③ 为何柔性推理——independent 快（无初始深度 + 后处理）、plug-in 准（借强相对深度模型），所以两者都支持。</div>
+
+    <div class="note-h">③ §1 续 — 三大贡献（verbatim contributions）</div>
+    <div class="note-b">① <i>"We propose TacoDepth, an efficient and accurate Radar-Camera depth estimation method with one-stage fusion."</i> ② <i>"We design the pyramid-based Radar fusion module, fusing Radar and image features effectively and efficiently."</i> ③ <i>"TacoDepth is flexible for both independent and plug-in processing, balancing model efficiency and performance."</i> 即"一步融合框架 + 金字塔融合模块 + 柔性推理"三件。</div>
+
+    <div class="note-h">④ §2 Related Work — 两条线（verbatim 锚点）</div>
+    <div class="note-b"><b>① mmWave Radar for Vehicles and Robotics：</b><i>"Compared with LiDAR, Radar is cheaper and more widely-equipped with lower power consumption. The reflection properties of mmWave also provide Radar with farther sensing ranges and stronger robustness to all-weather conditions."</i> 但 <i>"3D Radar suffers from height ambiguity due to insufficient antenna elements along the elevation axis, while this problem can be alleviated by the emerging 4D Radar."</i></div>
+    <div class="note-b"><b>② Radar-Camera Depth Estimation：</b>现有法分 independent 与 plug-in 两类，都用多阶段——<i>"Lin et al. and DORN use two CNNs for quasi-dense and final depth. RC-PDA and RC-DPT convert intermediate results into multiple channels for varied confidence levels. Singh et al. propose gated fusion to filter the inaccurate quasi-dense depth."</i> 而 <i>"RadarCam-Depth designs a plug-in module, aligning relative depth to metric scale in four stages, including initial depth, global scale alignment, quasi-dense depth, and scale learner."</i> 本文反其道——一步融合，去掉这些阶段。</div>
+
+    <div class="note-h">⑤ §3.1 Overview — 输入输出 + 两子任务</div>
+    <div class="note-b"><b>形式化：</b>输入单张图像 \(I\in\mathbb{R}^{H\times W\times 3}\) + 雷达点云 \(P\in\mathbb{R}^{K\times 3}\)（K 个点，每点 \(p\in\mathbb{R}^3\)），输出稠密 metric 深度 \(D\in\mathbb{R}^{H\times W}\)。任务拆成两个子任务：雷达信息的<b>提取（extraction）</b>与<b>融合（integration）</b>，分别由 graph-based Radar structure extractor（GE）与 pyramid-based Radar fusion module（PF）承担。</div>
+    <div class="note-b"><b>为何要换表征：</b>原文点名前作浪费——<i>"Singh et al. extract point features in 32,256 dimensions from the three-dimensional coordinates using a multi-layer perception (MLP), which inevitably introduces substantial redundancy and noise."</i> 即"3 维坐标硬撑成 32256 维"太冗余；本文改用点间<b>距离/关系</b>等几何结构，更 informative 也更抗 outlier。</div>
+
+    <div class="note-h">⑥ §3.1 Graph-based Radar 结构提取器（GE）</div>
+    <div class="note-b"><b>建图：</b><i>"Radar points are regarded as the graph nodes. The adjacency matrix of all points represents the graph edges. In each layer, the node features of Radar points can be updated and aggregated along edges by PCA-GM."</i> 即把每个雷达点当<b>节点</b>、点间邻接当<b>边</b>，逐层沿边聚合更新节点特征 → 从浅到深捕获"点坐标 + 图结构"。轻量 GNN（L 层），对孤立噪点天然鲁棒（图里连接弱）。</div>
+
+    <div class="note-h">⑦ §3.2 Pyramid-based Radar 融合 — 层级对应</div>
+    <div class="note-b"><b>分层融合：</b>GE 在层 \(l\in\{1,...,L\}\) 给出节点特征 \(N_l\) 与边特征 \(E_l\)；图像编码器（ResNet-18）给出多尺度特征 \(\{F_1,F_2,...,F_{2L}\}\)。融合规则：<b>节点 \(N_l\) 配 \(F_{2l-1}\)、边 \(E_l\) 配 \(F_{2l}\)</b>。原文：<i>"Shallow layers can merge image details with Radar coordinates, whereas deeper layers could fuse scene semantics and geometric structures."</i> 即金字塔式从细节到语义逐级融合。</div>
+
+    <div class="note-h">⑧ §3.2 Radar-centered Flash Attention（式1-3，含维度）</div>
+    <div class="note-b"><b>窄带裁剪（式1-2）：</b>对水平坐标 \(x_p\) 的雷达点，只保留水平坐标落在 \([x_p-a_l, x_p+a_l]\) 的图像像素生成 query：\[ \hat{F}_{2l}=F_{2l}[x_p-a_l<x_m<x_p+a_l],\quad \hat{F}_{2l}\in\mathbb{R}^{\hat{M}\times C_l} \] 反过来对像素 \(x_m\) 只关联邻近雷达点作 key/value：\[ \hat{E}_l=E_l[x_m-a_l<x_p<x_m+a_l],\quad \hat{E}_l\in\mathbb{R}^{\hat{K}\times K} \] \(a_l\)=层 l 的窄带宽度（实验取 {48,32,16}）；边特征第二维<b>保持原 K</b> 以保留完整图拓扑（preserve integral graph topologies）。</div>
+    <div class="note-b"><b>注意力（式3）：</b>\[ F'_{2l}[m]=\mathrm{softmax}\!\left(\frac{W_q\hat{F}_{2l}[m]\,(W_k\hat{E}_l)^T}{\sqrt{C_l}}\right)W_v\hat{E}_l \] 即标准缩放点积注意力，但 Q 来自图像窄带像素、K/V 来自邻近雷达边特征 → 跨模态关联只在小子集（\(\hat{M}\) 像素 × \(\hat{K}\) 点）上算，<i>"external pixels and points can not be correlated"</i>，成本大降。节点特征 \(N_l\) 与 \(F_{2l-1}\) 同理（只调线性投影维度）。再用 <b>flash attention</b>[7,8] 替换原始注意力[42] 进一步加速。</div>
+
+    <div class="note-h">⑨ §3.3 Flexible Inference（式4）</div>
+    <div class="note-b"><b>一个模型两种模式：</b>\[ D=\mathcal{T}_\theta(I, P \mid D^*) \] 竖线分隔"必需输入 \(I,P\)"与"可选输入 \(D^*\)（初始相对深度）"。plug-in 时引入<b>辅助分支</b>处理并融合 \(D^*\) 与图像特征，其余与 independent 完全一致。原文：plug-in 可借 <i>"state-of-the-art relative depth predictors"</i>（MiDaS / DPT / Depth-Anything-v2）更准；independent 无初始深度与后处理、更快。</div>
+
+    <div class="note-h">⑩ §3.4 训练 + L1 损失（式5）</div>
+    <div class="note-b"><b>双模共训：</b><i>"the training data is randomly divided into two equal portions in each epoch. For the auxiliary branch, one half of the data is provided with initial relative depth, while the other half adopts zero as input."</i> 即每 epoch 随机对半——一半喂相对深度、一半喂 0 → 同时优化 independent 与 plug-in。<b>损失（L1）：</b>\[ \ell_{L1}=\frac{1}{|\Omega_{gt}|}\sum_{\Omega_{gt}}|D-D_{gt}|+\frac{\lambda}{|\Omega_{acc}|}\sum_{\Omega_{acc}}|D-D_{acc}| \] \(D_{gt}\)=LiDAR 真值深度、\(D_{acc}\)=多帧重投影累积深度（nuScenes 累 160 邻帧；ZJU 用线性插值），\(\Omega\) 为有效深度掩膜，\(\lambda=1\)。</div>
+
+    <div class="note-h">⑪ §4.1-4.2 数据集 / 指标 / 实现细节</div>
+    <div class="note-b"><b>数据集：</b><b>nuScenes</b>（3D Radar，户外驾驶，1000 scenes、约 40000 同步 Radar-Camera 关键帧，Boston + Singapore，<b>700/150/150</b> train/val/test）；<b>ZJU-4DRadarCam</b>（4D Radar，地面机器人，更密的雷达与 LiDAR，<b>33409 帧</b>，29312 train+val / 4097 test）。<b>指标</b>：MAE、RMSE、iMAE、iRMSE、δ1、Rel；深度范围 50/70/80 米。<b>实现</b>：ResNet-18 图像编码器；GE 用 L=3 层 GNN；窄带宽度 \(a_l=\){48,32,16}；Adam，2×A6000，batch 12，50 epoch，lr 1e-4 每 10 epoch 衰减 1e-5；输入 900×1600（nuScenes）/ 300×1280（ZJU）。运行时按"一张 900×1600 图 + 30 个雷达点、单张 A6000"测。</div>
+
+    <div class="note-h">⑫ §4.3 主结果 — Table 1（nuScenes，mm）</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:11.5px;margin:2px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 5px;border-bottom:1px solid #2a2f5c">方法</td><td style="border-bottom:1px solid #2a2f5c">Time↓</td><td style="border-bottom:1px solid #2a2f5c">50 MAE</td><td style="border-bottom:1px solid #2a2f5c">50 RMSE</td><td style="border-bottom:1px solid #2a2f5c">70 MAE</td><td style="border-bottom:1px solid #2a2f5c">70 RMSE</td><td style="border-bottom:1px solid #2a2f5c">80 MAE</td><td style="border-bottom:1px solid #2a2f5c">80 RMSE</td></tr>
+<tr style="color:#9aa3c7"><td colspan=8 style="padding:2px 5px"><i>—— independent ——</i></td></tr>
+<tr><td style="padding:2px 5px">Lin et al.(IROS'20)</td><td>117.6</td><td>2034.9</td><td>4316.5</td><td>2294.7</td><td>5338.2</td><td>2371.0</td><td>5623.0</td></tr>
+<tr><td style="padding:2px 5px">RC-PDA(CVPR'21)</td><td>79.2</td><td>2225.0</td><td>4156.5</td><td>3326.1</td><td>6700.6</td><td>3713.6</td><td>7692.8</td></tr>
+<tr><td style="padding:2px 5px">DORN(ICIP'21)</td><td>392.5</td><td>1926.6</td><td>4124.8</td><td>2380.6</td><td>5252.7</td><td>2467.7</td><td>5554.3</td></tr>
+<tr><td style="padding:2px 5px">Singh et al.(CVPR'23)</td><td>94.2</td><td>1727.7</td><td>3746.8</td><td>2073.2</td><td>4590.7</td><td>2179.3</td><td>4898.7</td></tr>
+<tr><td style="padding:2px 5px">CaFNet(IROS'24)</td><td>103.9</td><td>1674.2</td><td>3674.5</td><td>2010.3</td><td>4493.1</td><td>2109.8</td><td>4765.6</td></tr>
+<tr><td style="padding:2px 5px">Li et al.(ECCV'24)</td><td>67.6</td><td>1524.5</td><td>3567.3</td><td>1822.9</td><td>4303.6</td><td>1927.0</td><td>4609.6</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 5px"><b>Ours(indep)</b></td><td><b>26.7</b></td><td><b>1423.6</b></td><td><b>3275.8</b></td><td><b>1712.6</b></td><td><b>3960.5</b></td><td><b>1833.4</b></td><td><b>4150.2</b></td></tr>
+<tr style="color:#9aa3c7"><td colspan=8 style="padding:2px 5px"><i>—— plug-in（同用 DPT-Hybrid）——</i></td></tr>
+<tr><td style="padding:2px 5px">RadarCam-Depth(ICRA'24)</td><td>358.3</td><td>1286.1</td><td>2964.3</td><td>1587.9</td><td>3662.5</td><td>1689.7</td><td>3948.0</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 5px"><b>Ours(plug-in)</b></td><td><b>29.3</b></td><td><b>1046.8</b></td><td><b>2487.5</b></td><td><b>1347.1</b></td><td><b>3152.8</b></td><td><b>1492.4</b></td><td><b>3324.8</b></td></tr>
+</table></div>
+    <div class="note-b"><b>读表：</b>① independent 全距离段 MAE/RMSE 均最低，且 <b>26.7ms</b> 远快于次优 Li et al.(67.6ms)；vs CaFNet 原文称 <i>"reduces RMSE, MAE, and inference time by over 10.9%, 13.1%, and 74.3%"</i>。② plug-in <b>29.3ms vs RadarCam-Depth 358.3ms（快约 12×）</b>，MAE/RMSE 还更低，原文 <i>"we even improve the speed by 91.8%"</i>（因后者四阶段）。</div>
+
+    <div class="note-h">⑬ §4.3 Table 2 — ZJU-4DRadarCam（4D Radar，mm）</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:11.5px;margin:2px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 5px;border-bottom:1px solid #2a2f5c">方法(0-50m)</td><td style="border-bottom:1px solid #2a2f5c">MAE</td><td style="border-bottom:1px solid #2a2f5c">RMSE</td><td style="border-bottom:1px solid #2a2f5c">iMAE</td><td style="border-bottom:1px solid #2a2f5c">iRMSE</td></tr>
+<tr><td style="padding:2px 5px">DORN(ICIP'21)</td><td>2210.2</td><td>4129.7</td><td>19.8</td><td>31.9</td></tr>
+<tr><td style="padding:2px 5px">Singh et al.(CVPR'23)</td><td>1785.4</td><td>3704.6</td><td>18.1</td><td>35.3</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 5px"><b>Ours(indep)</b></td><td><b>1120.1</b></td><td><b>2686.7</b></td><td><b>12.8</b></td><td><b>25.0</b></td></tr>
+<tr><td style="padding:2px 5px">RadarCam-Depth(plug)</td><td>1067.5</td><td>2817.4</td><td>10.5</td><td>22.9</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 5px"><b>Ours(plug-in)</b></td><td><b>930.2</b></td><td><b>2477.3</b></td><td><b>9.3</b></td><td><b>20.8</b></td></tr>
+</table></div>
+    <div class="note-b"><b>读表：</b>independent 下 Ours vs Singh et al. 原文 <i>"reduces depth errors by over 37.3%, 27.5%, 28.7%, and 29.1% for MAE, RMSE, iMAE, and iRMSE"</i>；plug-in vs RadarCam-Depth <i>"reduces the MAE, RMSE, iMAE, and iRMSE by over 12.8%, 10.8%, 9.6%, and 8.3%"</i>。证明 3D（nuScenes）与 4D（ZJU）雷达上都领先。</div>
+
+    <div class="note-h">⑭ §4.4 效率 Table 3 + plug-in 兼容性 Table 4</div>
+    <div class="note-b"><b>效率（Table 3，900×1600 + 30 点 @ A6000）：</b>Ours independent <b>13.47M 参数 / 139.30G FLOPs / 26.7ms</b>；vs 两阶段 Singh（22.81M/502.09G/94.2ms）<b>省 40.9%/72.2%</b>；vs 四阶段 RadarCam-Depth（33.26M/619.02G/358.3ms）<b>省 57.1%/77.4%</b>；DORN 高达 183.38M/923.47G/392.5ms。<b>独立模式 37.5 fps 实时</b>。</div>
+    <div class="note-b"><b>plug-in 换不同相对深度模型（Table 4，ZJU 0-70m，δ1↑/Rel↓/MAE↓）：</b><table style="border-collapse:collapse;width:100%;font-size:11.5px;margin:4px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 5px;border-bottom:1px solid #2a2f5c">相对深度模型</td><td style="border-bottom:1px solid #2a2f5c">Initial δ1</td><td style="border-bottom:1px solid #2a2f5c">RadarCam δ1/MAE</td><td style="border-bottom:1px solid #2a2f5c">Ours δ1/MAE</td></tr>
+<tr><td style="padding:2px 5px">DPT-Hybrid</td><td>0.903</td><td>0.921 / 1157.0</td><td><b>0.932 / 983.1</b></td></tr>
+<tr><td style="padding:2px 5px">MiDaS-v3.1</td><td>0.917</td><td>0.926 / 1177.2</td><td><b>0.944 / 852.4</b></td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 5px">Depth-Anything-v2</td><td>0.932</td><td>0.940 / 924.7</td><td><b>0.961 / 730.2</b></td></tr>
+</table>越强的相对深度模型 → 本文 plug-in 越准（δ1 最高 0.961、MAE 最低 730.2），且三档均超 RadarCam-Depth，证明<b>兼容性 + 可白嫖单目大模型</b>。</div>
+
+    <div class="note-h">⑮ §4.5 消融 — Table 5（组件）+ Table 6（层数）</div>
+    <div class="note-b"><b>组件消融（Table 5，nuScenes 0-70m，MAE/RMSE）：</b><table style="border-collapse:collapse;width:100%;font-size:11.5px;margin:4px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 5px;border-bottom:1px solid #2a2f5c">配置</td><td style="border-bottom:1px solid #2a2f5c">MAE↓</td><td style="border-bottom:1px solid #2a2f5c">RMSE↓</td></tr>
+<tr><td style="padding:2px 5px">RGB Baseline（纯图像 U-Net）</td><td>2474.3</td><td>5402.1</td></tr>
+<tr><td style="padding:2px 5px">Singh et al.(baseline)</td><td>2073.2</td><td>4590.7</td></tr>
+<tr><td style="padding:2px 5px">TacoDepth (w/o GE，仅 PF)</td><td>1815.6</td><td>4189.8</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 5px"><b>TacoDepth (Ours，GE+PF)</b></td><td><b>1712.6</b></td><td><b>3960.5</b></td></tr>
+</table>原文：仅 PF（用 MLP 提点特征）就比 Singh <i>"reduces MAE and RMSE by 12.4% and 8.7%"</i>（PF 之功）；再把 MLP 换成 GE <i>"further decreases MAE and RMSE by 5.7% and 5.5%"</i>；全栈比 RGB 基线 <b>+30.8%/26.7%</b>。</div>
+    <div class="note-b"><b>层数消融（Table 6，nuScenes 0-70m）：</b>L=1 → MAE 1840.6 / RMSE 4203.7；L=2 → 1787.8 / 4046.9；<b>L=3 → 1712.6 / 3960.5（最优）</b>；L=4 → 1729.3 / 3984.2（变差）。原文：<i>"more layers (L = 4) does not yield improvements but decreases efficiency"</i>——雷达太稀疏，GNN 深度受限于点数，故选 L=3。</div>
+
+    <div class="note-h">📌 全文总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>雷达稀疏(比 LiDAR 稀 1000×)噪声大，多阶段法靠"准稠密中间深度"桥接、但中间图本身稀疏带噪→慢且不鲁棒（夜间/眩光下甚至全空）。<b>method：</b>one-stage——GE（GNN 把雷达点当图、用拓扑抗噪）+ PF 金字塔融合 + Radar-centered flash attention（只在"可靠的水平坐标窄带"做跨模态注意力，式1-3）+ 柔性推理（式4，independent/plug-in 共训）。<b>experiment：</b>nuScenes 0-80m MAE 1833 / 26.7ms（碾压 CaFNet 2110/103.9ms），plug-in 比 RadarCam-Depth 快约 12× 还更准；参数/FLOPs 砍一半多；37.5fps 实时。</div>
+    <div class="note-b"><b>takeaway 1：</b><b>"去中间步骤"也能更准</b>——多阶段的 quasi-dense 中间深度被论文证明是误差源（夜间/眩光下甚至无有效像素），直接 one-stage 反而精度 +12.8%、速度 +91.8%。</div>
+    <div class="note-b"><b>takeaway 2：</b><b>把物理先验做成结构约束</b>——"雷达水平坐标比高度可靠"被落成 Radar-centered 窄带注意力，既注入归纳偏置又把全局注意力剪成小子集省算力（再叠 flash attention）。</div>
+    <div class="note-b"><b>takeaway 3：</b><b>图结构 &gt; 裸坐标</b>——用 GNN 的节点/边表征稀疏雷达，对 outlier 鲁棒（消融里 GE 再降 MAE 5.7%）；且一个模型同时吃 independent/plug-in，plug-in 还能白嫖 Depth-Anything-v2（δ1 0.961）。</div>
+
+    <div class="note-h">Q&amp;A · 与自动驾驶的关系（强相关，本文即 AD 任务）</div>
+    <div class="note-b"><b>本文就是自驾感知任务：</b>评测集 nuScenes 是标准车载多模态数据集，输入正是车上的<b>相机 + 3D/4D 毫米波雷达</b>，目标是稠密 metric 深度（喂给 3D 感知 / motion planning）。可直接借鉴点：① <b>"水平坐标可靠、高度噪"</b>是车载 3D Radar 的普遍特性，本文把它做成窄带注意力的归纳偏置，对量产 Radar-Camera 融合很实用；② <b>one-stage + 13.47M 参数 + 37.5fps</b> 的效率取向贴合车端部署约束；③ plug-in 能<b>白嫖单目大模型（Depth-Anything-v2）</b>的相对深度再用雷达校 metric，是低成本提精度的路子。</div>
+    <div class="note-b"><b>边界 / 疑问：</b>① 论文 Limitation 写得极简（仅"提供了一种高效实现，未来可探索更多"），<b>没给失败 case / 极端天气定量</b>；② Radar-centered 窄带假设"水平坐标准"——4D Radar 高度也较准时这个先验收益会变小 [推测]，原文未在 4D 下消融"去掉窄带"；③ 仍需 <b>LiDAR 真值 + 多帧重投影累积深度</b>做监督（式5），非自监督，量产车未必有 LiDAR；④ 未做时序/多帧动态一致性（单帧预测）。这些是落地前要补的。</div>
+
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-tacodepth-towards-efficient-radar-camera-depth-estimati/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Performance and efficiency. Circle area indicates infer- ence time (ms). Smaller circles showcase faster speed. The X-axis and Y-axis represent MAE and RMSE metrics for depth errors on the nuScenes [4] dataset. Lower MAE and RMSE mean higher accuracy. Our TacoDepth outperforms prior arts by large margins.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-tacodepth-towards-efficient-radar-camera-depth-estimati/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Intermediate quasi-dense depth maps [21, 26, 28, 29, 31, 37, 40] remain sparse and noisy. Pixels with valid depth values are visualized by the gray areas in the red rectangular boxes.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-tacodepth-towards-efficient-radar-camera-depth-estimati/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Overview of the TacoDepth. The graph-based Radar structure extractor captures graph structures of Radar point clouds through the node feature Nl and edge feature El in a certain layer l. The pyramid-based Radar fusion module integrates image and Radar features in a pyramidal hierarchical manner. In each layer, to efficiently build cross-modal correspondences, the Radar-centered flash att</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-tacodepth-towards-efficient-radar-camera-depth-estimati/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Visual results of independent models on nuScenes [4]. Both daytime and nighttime samples are presented. Prior arts [31, 37] exhibit disrupted structures and noticeable artifacts. TacoDepth produces accurate depth with finer details and more complete structures.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-tacodepth-towards-efficient-radar-camera-depth-estimati/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Visual results of plug-in models [21] on the ZJU-4DRadarCam [21]. The same depth predictor DPT-Hybrid [35] is adopted for fair comparisons. Regions with obvious differences are highlighted in the rectangular boxes. Best view zoomed in on-screen for details.</figcaption></figure>
+    </div>
+  </div></body></html>

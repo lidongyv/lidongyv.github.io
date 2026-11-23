@@ -1,0 +1,184 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>GLINT: Modeling Scene-Scale Transparency via Gaussian Radiance Transport</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre','code']}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>GLINT: Modeling Scene-Scale Transparency via Gaussian Radiance Transport</h1>
+    <div class="au2" style="color:var(--mut)">Youngju Na ⋅ Jaeseong Yun ⋅ Soohyun Ryu ⋅ Hyunsu Kim ⋅ Sung-Eui Yoon ⋅ Suyong Yeon</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2603.26181">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2603.26181">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=GLINT%3A%20Modeling%20Scene-Scale%20Transparency%20via%20Gaussian%20Radiance%20Transport">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">While 3D Gaussian splatting has emerged as a powerful paradigm, it fundamentally fails to model transparency such as glass panels, which are prevalent in everyday environments. The core challenge lies in decoupling the intertwined radiance contributions from transparent interfaces and the transmitted geometry observed through the glass. We present GLINT, a framework that models scene-scale transparency through explicit decomposed Gaussian representation. GLINT reconstructs the primary interface and separates outgoing radiance into reflection and transmission components according to its optical properties, enabling coherent Gaussian radiance transport. During the optimization, GLINT bootstraps transparency localization by utilizing geometry separation cues that emerge from our decomposition with the geometry and material priors from a pre-trained video relighting model. Extensive experiments demonstrate that GLINT achieves state-of-the-art performance in 3D reconstruction of complex transparent scenes.Our code will be released publicly.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">让 3DGS 第一次能重建<b>“场景级玻璃透明”</b>：把高斯显式拆成 <b>interface(界面) / transmission(透射) / reflection(反射)</b> 三套，光栅化出界面 G-buffer + 光追查透射/反射，按 Fresnel 加权混合（L_o=(1−t)·L_opaque+t·L_transparent），并用预训练<b>视频重打光模型 DiffusionRenderer</b> 的深度/法线/反照率先验 + “界面-透射深度差 Δz”<b>自举出透明 mask</b>（无需人工分割），在自建 3D-FRONT-T 与真实 DL3DV-10K 上几何 + 外观<b>双 SOTA</b>。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">3DGS 的 <b>monolithic α-blending</b> 把几何+外观混在一条 compositing 流里 → <b>“transparency-depth dilemma”</b>：要渲得好看，玻璃高斯得<b>低 opacity 或被剪枝</b>（露出背景）；要几何对，玻璃又得<b>高 opacity 锐边界</b>。两者冲突 → ghost-like 反射或玻璃几何缺失。现有法靠 object-centric 假设 + 分割 mask（[21,24]），或只重建 first-surface、拿不回透射辐射。</div>
+    <div class="note-h">核心方法（三分解 + 关键公式）</div>
+    <div class="note-b"><b>三套高斯：</b>G_intr（首见界面，含不透明+透明边界，存几何/材质、路由辐射）/ G_trans（透过玻璃看到的背景）/ G_refl（界面反射的环境光）。<b>hybrid 渲染</b>：interface 光栅化出 G-buffer B={z,n,t,s}（深度/法线/透明度/高光度），t 门控 opaque↔transparent、s 控 diffuse↔specular，secondary 用光追。<b>辐射传输（BSDF 启发）</b>：L_o=(1−t)·L_opaque+t·L_transparent（式5）；opaque 分支 L_opaque=(1−k_s)·L_intr+k_s·L_refl（式8），Fresnel(Schlick) F=F0+(1−F0)(1−max(0,ω_o·n))⁵（式6），k_s=s+(1−s)F（式7），反射方向 ω_r=2(n·ω_o)n−ω_o（式9）；transparent 分支 L_transparent=(1−k_s)·L_trans+k_s·L_refl（式10），光学薄假设 ω_t≈ω_o → L_trans=Trace(G_trans,x,ω_t)。<b>自举透明 mask</b>：M_trans=1((Δz&gt;τ_d)∧(â&lt;γ_a))（式13，Δz=|z_intr−z_trans|），监督 t：L_trans=λ_t‖M_trans−t‖₁（式14）；τ_d=0.01, γ_a=0.05。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">3D-FRONT-T 几何（Table 1）Normal MAE <b>7.96</b>（vs TSGS 9.89 / EnvGS 14.37 / 2DGS 25.97）、Depth AbsRel <b>0.04</b>（vs 0.08 / 0.13）、δ&lt;1.25 98.32、Mesh CD 0.34 / F1 0.836。photometric（Table 2）3D-FRONT-T PSNR <b>34.50</b>（vs EnvGS 33.71）、DL3DV-10K PSNR <b>30.21</b>（vs EnvGS 29.65）。代价：51 FPS / 训练 ~2.5h（vs TSGS 159 FPS·40min、EnvGS 80 FPS·1h）。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 第一个做 <b>scene-scale</b> 透明重建（非 object-centric、无需 mask）；② 显式三分解把 transparency-depth dilemma 解开；③ <b>第一个把视频重打光先验（DiffusionRenderer）引入 3DGS</b>——多视一致、不像单目预测器逐帧 flicker；④ 自举透明定位用 3D 深度差 Δz（比 2D 分割 G-SAM2 稳）；⑤ 自建 3D-FRONT-T benchmark（带 GT 深度/法线）。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① 只建 <b>first-order</b> 辐射，多次反弹/嵌套透明（玻璃柜里玻璃瓶、镜子房）未处理（Limitations 自陈）；② 依赖 multi-view 一致来分解，<b>稀疏视角/小视差</b>下 reflection↔transmission 分配 ill-posed；③ 慢（2.5h、51 FPS），论文承认是 efficiency↔capability 的 deliberate trade-off；④ <b>光学薄假设</b>（ω_t≈ω_o、忽略折射），厚玻璃/强折射需 volumetric 建模、不适用。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文，含 Supplementary）：① Abstract 逐句 ② Intro 闭环 ③ Method 核心机制+公式 ④ 实验/消融数值表 + 全文一页总结。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>第 1 句（痛点 + 核心难）：</b><i>"While 3D Gaussian splatting has emerged as a powerful paradigm, it fundamentally fails to model transparency such as glass panels. The core challenge lies in decoupling the intertwined radiance contributions from transparent interfaces and the transmitted geometry observed through the glass."</i> —— 3DGS 很强，但<b>根本上做不了透明（玻璃）</b>。核心难点：把"<b>界面反射的辐射</b>"与"<b>透过玻璃看到的背景几何辐射</b>"这两股缠在一起（intertwined）的辐射<b>解耦</b>。</div>
+    <div class="note-b"><b>第 2 句（解法范式）：</b><i>"We present GLINT, a framework that models scene-scale transparency through explicit decomposed Gaussian representation. GLINT reconstructs the primary interface and models reflected and transmitted radiance separately, enabling consistent radiance transport."</i> —— GLINT = 用<b>显式分解的高斯表示</b>建模场景级透明：重建主界面，把<b>反射与透射辐射分开建模</b>，从而一致地做辐射传输（radiance transport）。</div>
+    <div class="note-b"><b>第 3 句（无 mask 自举 + 先验）：</b><i>"During optimization, GLINT bootstraps transparency localization from geometry-separation cues induced by the decomposition, together with geometry and material priors from a pre-trained video relighting model."</i> —— 优化时靠"分解自然产生的<b>几何分离线索</b>（界面/透射深度差）"+ "<b>预训练视频重打光模型</b>的几何/材质先验"来<b>自举定位透明区</b>（不用人工分割 mask）。<b>一句话抓 Abstract：</b>把玻璃辐射拆成界面/透射/反射三套高斯 + Fresnel 加权传输 + 视频先验自举透明 = 场景级透明的几何 + 外观双 SOTA。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原创，理解 GLINT 必备）</div>
+    <div class="note-b"><b>① 2DGS（本文 base）：</b>3DGS 用 3D 协方差体素易致几何不准；2DGS 把每个高斯约束在<b>局部切平面</b>上（2D 协方差），做 perspective-correct splatting——相机光线与切平面求交得局部坐标 \(u_i\)，\(G_i(u_i)=\exp[-\tfrac{1}{2}(u^2+v^2)]\)（式1），\(\alpha_i=o_i\cdot G_i\)（式2），透射率 \(T_i=\prod_{j\lt i}(1-\alpha_j)\)（式3），像素色 \(L=\sum_i T_i\alpha_i c_i\)（式4）。GLINT 在它上面加分解。<b>② BRDF/BTDF/BSDF：</b>BRDF=双向反射分布函数；BTDF=双向透射分布函数；<b>BSDF=两者合体</b>（散射 = 反射 + 透射）。本文"BSDF-inspired"即把出射辐射按表面属性<b>劈成反射路径 + 透射路径</b>。<b>③ Fresnel + Schlick 近似：</b>Fresnel 描述"反射比例随入射角变化"（越掠射反射越强）；完整公式复杂，Schlick 近似 \(F=F_0+(1-F_0)(1-\cos\theta)^5\)（\(F_0\)=正入射反射率）。<b>④ Gaussian Ray Tracing / OptiX：</b>光栅化算"每像素一条主光线"高效，但查"每像素独特的二次路径（反射/透射）"不便，故 secondary 用光追：跟 EnvGS 把每个 2D 高斯表示成<b>一对三角形</b>→ 硬件 BVH 遍历加速求交（OptiX 引擎）。\(\mathrm{Trace}(\mathcal{G},\cdot)\) 即沿某方向在某套高斯里光追采辐射。<b>⑤ DiffusionRenderer（关键外部先验）：</b>一个视频逆向/正向渲染模型，原文明确 <i>"leverages the architecture of Stable Video Diffusion, it processes multiple frames in a single feed-forward pass"</i>——一次吃多帧、输出<b>多视一致</b>的深度/法线/反照率。GLINT 用其 encoder 当先验。<b>⑥ optically thin vs refractive：</b><b>光学薄</b>（薄玻璃）折射可忽略、光路近线性（\(\omega_t\approx\omega_o\)），但多深度辐射在同像素叠加——本文针对此；<b>折射型</b>（厚介质/水）需 volumetric 建模折射介质，本文不处理。</div>
+
+    <div class="note-h">② §1 Introduction — problem → 现有不足 → solution → why 闭环</div>
+    <div class="note-b"><b>problem（根因 = monolithic α-blending）：</b>原文 <i>"its monolithic α-blending formulation, which inherently conflates geometry and appearance across multiple radiance paths"</i>，导致 <i>"3DGS bakes these optical phenomena into entangled Gaussian primitives, achieving visual plausibility while compromising geometric accuracy and interpretability"</i>。本质：<i>"a single pixel captures a superposition of radiance from reflected and transmitted components originating from distinct physical locations"</i>（一个像素是来自不同物理深度的反射 + 透射辐射的叠加）。</div>
+    <div class="note-b"><b>现有不足：</b>① 标准 α-blending 陷入两难（见下方 Q&amp;A），<i>"often producing ghost-like reflections or missing transparent geometry"</i>；② 现有透明法 <i>"often rely on object-centric assumptions and segmentation masks, or are restricted to primary first-surface reconstruction, struggling to recover transmissive radiance contributions"</i>（要么 object-centric + 要 mask，要么只重建首表面、拿不回透射辐射）。</div>
+    <div class="note-b"><b>solution + why：</b>原文三贡献——<i>"a decomposed Gaussian representation ... through explicit separation of first-visible interface, transmission, and reflection components"</i> + <i>"a hybrid transparency-aware rendering scheme that unifies rasterization and ray tracing"</i> + <i>"3D-FRONT-T, a first synthetic benchmark for scene-scale transparency"</i>。<b>why 三分解才对：</b>透明像素本质是多路径辐射叠加，要解耦就得给每条路径<b>独立可优化的载体</b>（interface 管几何、transmission 管背景、reflection 管环境光），各自不再互相"抢 opacity"，从根上化解 transparency-depth 两难；先验则因 photometric loss 单独不足（每像素混了不同深度辐射、ill-posed），需几何/材质先验当 scaffold。</div>
+
+    <div class="note-h">Q&amp;A · transparency-depth dilemma 到底是什么矛盾？</div>
+    <div class="note-b"><b>两个互斥的诉求（原文）：</b>一方面，为了渲染出"透过玻璃看到的背景"，<i>"the Gaussians associated with glass must have negligibly low opacity or be pruned during optimization to reveal background objects"</i>——玻璃高斯的 opacity 必须接近 0、甚至被剪枝，否则挡住背景；另一方面，<i>"physically grounded glass geometry demands high opacity with sharp boundaries"</i>——要重建出物理正确的玻璃几何，又需要高 opacity、清晰边界。<b>矛盾：</b>同一团玻璃高斯，"渲染要它透明（低 opacity）"和"几何要它实在（高 opacity）"<b>不可兼得</b>，单一 α-blending 流只能折中 → 要么 ghost 反射、要么玻璃几何丢失。<b>GLINT 的破法：</b>把"渲染背景"交给 transmission 分支、"重建玻璃几何"交给 interface 分支，<b>两件事用两套高斯分开承担</b>，opacity 不再被迫折中。<b>[点评]</b> 这是全文最干净的"问题 → 解法"映射：一个矛盾两个诉求，就拆成两个载体。</div>
+
+    <div class="note-h">③ §3.1 Preliminaries — 2DGS 渲染（公式 1-4）</div>
+    <div class="note-b"><b>为何用 2DGS：</b>3DGS 用 3D 协方差体素、几何不准；2DGS 把高斯约束在切平面、做 perspective-correct splatting，几何更准。每个 2D 高斯由 3D 均值 \(\mu_i\)、切平面 2D 协方差 \(\Sigma_i^{2D}\)、SH 颜色 \(c_i\)、opacity \(o_i\) 参数化。渲染（光线与切平面求交得局部坐标 \(u_i=(u,v)\)）：\[ G_i(u_i)=\exp\!\big[-\tfrac{1}{2}(u^2+v^2)\big]\ \text{(1)},\quad \alpha_i(p)=o_i\cdot G_i(u_i(p))\ \text{(2)} \]\[ T_i=\prod_{j\lt i}(1-\alpha_j(p))\ \text{(3)},\quad L(o,d)=\sum_{i\in \mathcal{S}(r)}T_i\,\alpha_i(p)\,c_i(d)\ \text{(4)} \]即 front-to-back 合成。<b>两种算 \(\alpha_i\) 的方式</b>：Rasterization（tile-based，主表面可见性，高效）/ Ray Tracing（二次路径用，把每个 2D 高斯表成一对三角形走 BVH，OptiX 加速）——GLINT <b>两者混用</b>。</div>
+
+    <div class="note-h">④ §3.2 Decomposed Gaussian Representation（核心机制一：三功能集）</div>
+    <div class="note-b"><b>三功能集（按光学角色分）：</b>原文 <i>"explicitly partitions the scene's Gaussian primitives into three functional sets based on their optical roles: Interface, Transmission, and Reflection"</i>。① <b>Interface \(\mathcal{G}_{intr}\)</b>——相机光线首见的可见面（含 opaque + transparent 边界），编码 per-point 几何/材质、决定辐射如何路由；② <b>Transmission \(\mathcal{G}_{trans}\)</b>——透明面后可见的背景几何（透射路径）；③ <b>Reflection \(\mathcal{G}_{refl}\)</b>——界面（opaque + transparent 都有）反射的环境辐射。</div>
+    <div class="note-b"><b>Hybrid 渲染管线：</b>原文 <i>"a hybrid rendering approach that uses rasterization for primary surface visibility and ray tracing for secondary transmission and reflection paths"</i>。interface 光栅化产出 <b>G-buffer</b> \(\mathcal{B}=\{z,n,t,s\}\)（深度/法线/透明度/镜面度，按权重 \(\mathcal{A}_i=T_i\alpha_i\) 合成）；其中 <b>transparency \(t\in[0,1]\)</b> 门控 opaque↔transparent 分流、<b>specularity \(s\in[0,1]\)</b> 控 diffuse↔specular 平衡。再以 G-buffer 引导对 \(\mathcal{G}_{trans},\mathcal{G}_{refl}\) 做光追查询二次路径。</div>
+
+    <div class="note-h">⑤ §3.3 Radiance Transport — opaque 分支（公式 5-9）</div>
+    <div class="note-b"><b>主式（透明度门控插值，式5）：</b>\[ L_o=(1-t)\,L_{opaque}+t\,L_{transparent} \]由 G-buffer 的 \(t\) 决定走 opaque 还是 transparent 传输。原文 <i>"our formulation adopts a BSDF-inspired decomposition that splits outgoing radiance into reflection and transmission paths"</i>。<b>opaque 分支：</b>Fresnel-Schlick（式6，\(\omega_o=-d\)）\[ F(\omega_o)=F_0+(1-F_0)\big(1-\max(0,\omega_o\cdot n)\big)^5 \]可学镜面度 \(s\) 调出 Fresnel 加权因子（式7）\(k_s=s+(1-s)F(\omega_o)\)；出射 opaque 辐射（式8）\[ L_{opaque}=(1-k_s)\,L_{intr}+k_s\,L_{refl} \]其中 \(L_{intr}\) 是 interface 光栅化的基色，\(L_{refl}=\mathrm{Trace}(\mathcal{G}_{refl},x,\omega_r)\) 沿解析反射方向（式9）\(\omega_r=2(n\cdot\omega_o)n-\omega_o\) 光追得到。<b>[注]</b> 原文坦言这是简化的 diffuse-specular BRDF，<i>"omitting roughness and masking-shadowing terms for simplicity"</i>。</div>
+
+    <div class="note-h">⑥ §3.3 Radiance Transport — transparent 分支（公式 10）</div>
+    <div class="note-b"><b>transparent 分支（式10）：</b>\[ L_{transparent}=(1-k_s)\,L_{trans}+k_s\,L_{refl} \]同样用 \(k_s\)（式7）平衡"透射"与"反射"两份贡献。关键<b>光学薄假设</b>：原文 <i>"Under the optically thin assumption (ωt ≈ ωo), refraction-induced bending is negligible"</i>——折射弯折可忽略，故透射辐射可近似为沿原方向光追 \(L_{trans}=\mathrm{Trace}(\mathcal{G}_{trans},x,\omega_t)\)。<b>意义：</b>把透射/反射拆成独立可优化的高斯分量，<i>"mitigates the transparency–depth trade-off inherent in monolithic α-blending"</i>。</div>
+
+    <div class="note-h">⑦ §3.4 Optimization — 光度损失 + 几何先验正则（公式 11/12/15）</div>
+    <div class="note-b"><b>光度损失（式11）：</b>\[ \mathcal{L}_{photo}=\lambda_1\mathcal{L}_1+\lambda_{ssim}\mathcal{L}_{SSIM}+\lambda_{lpips}\mathcal{L}_{LPIPS} \]但仅 photometric 不够：原文 <i>"transparent scenes remain ill-posed because each pixel mixes reflected and transmitted radiance from different depths, making photometric cues alone insufficient"</i>。<b>视频先验正则（式12）：</b>用 DiffusionRenderer encoder 的 \(\hat z,\hat n\) 约束界面几何 \[ \mathcal{L}_{geo}=\lambda_d\mathcal{L}_{depth}(z,\hat z)+\lambda_n\mathcal{L}_{normal}(n,\hat n) \]其中 \(\mathcal{L}_{normal}=1-\cos(n,\hat n)\)，\(\mathcal{L}_{depth}\) 用<b>尺度-平移不变</b>形式（MonoSDF，式15）\(\mathcal{L}_{depth}=\tfrac{1}{N}\sum_i(w z_i+q-\hat z_i)^2\)（\((w,q)\) 闭式最小二乘逐图求解、消除单目深度的全局尺度歧义）；法线用 TSGS 的<b>阈值掩码监督</b>（cos 相似度 \(\ge\tau_n=0.3\)，从 10k 步起）抑制噪声先验。</div>
+
+    <div class="note-h">⑧ §3.4 Bootstrapping Transparency — 无 mask 自举（公式 13/14）</div>
+    <div class="note-b"><b>无需人工 mask：</b>原文 <i>"bootstrap transparency localization without manual segmentation masks ... they often fail or return noisy results for scene-scale transparency due to ambiguous boundaries and overlapping transmitted radiance"</i>。<b>主线索 = 界面-透射深度差：</b>\(\Delta z=|z_{intr}-z_{trans}|\)，原文 <i>"This signal, arising where multiple depth layers coexist, reveals the spatial separation between the interface and transmitted geometry"</i>（多深度层共存处 \(\Delta z\) 才大，正是玻璃所在）；辅以 diffuse-albedo \(\hat a\)（低值 → specular-dominant）。<b>二值透明 mask（式13）：</b>\[ M_{trans}=\mathbf{1}\big((\Delta z\gt\tau_d)\land(\hat a\lt\gamma_a)\big) \]监督预测的透明 buffer \(t\)（式14）\(\mathcal{L}_{trans}=\lambda_t\|M_{trans}-t\|_1\)。超参 \(\tau_d=0.01,\ \gamma_a=0.05\)。<b>[点评]</b> "分解本身产生的深度差 → 反过来自举透明定位"是个漂亮的自洽闭环：不靠外部分割，靠几何分离信号。</div>
+
+    <div class="note-h">Q&amp;A · 为什么用"视频"先验而非单目预测器？（Appendix F）</div>
+    <div class="note-b"><b>动机 = 多视一致性：</b>单目深度/法线预测器逐帧独立，对透明面尤其会 <b>flicker</b>（闪烁）、深度不一致——因为玻璃的外观随视角强烈变化（反射）。原文：<i>"Since the model leverages the architecture of Stable Video Diffusion, it processes multiple frames in a single feed-forward pass, producing geometric cues that are coherent across viewpoints. This is particularly crucial for transparent surfaces, where per-frame estimation often flickers or yields inconsistent depth due to view-dependent reflections."</i> 且模型还能给 <b>material（diffuse-albedo）</b>先验，帮助区分界面 vs 透射辐射。原文自评：<i>"GLINT is the first approach to adopt video relighting priors for 3D Gaussian splatting reconstruction."</i> <b>[点评]</b> 用"视频基础模型的多帧一致性"对症"透明面逐帧闪烁"，是 foundation-model 时代很对路的设计。</div>
+
+    <div class="note-h">⑨ §3 训练 — 三阶段 schedule（Appendix C，稳定性关键）</div>
+    <div class="note-b"><b>多阶段优化（先几何后辐射）：</b>① <b>0-5k warm-up</b>——只优化 interface 分量，让主表面几何先收敛；② <b>5k 之后</b>——引入 transmission + reflection 联合优化；③ <b>40k-60k</b>——<b>冻结 interface 高斯</b>，只更新 transmission/reflection 分量精修其辐射行为，避免破坏已建立的几何。初始化：interface 用 SfM 点云；reflection 跟 EnvGS（把 bounding box 切 \(32^3\) 子格、每格随机采 5 个 primitive）。<b>why 分阶段：</b>若一开始就三套一起优化，几何未稳时透射/反射会"乱抢"辐射、互相污染；先把 interface 几何锚定，再让二次分量在稳定 scaffold 上精修。</div>
+
+    <div class="note-h">⑩ §4 几何评测 — Table 1（3D-FRONT-T，真实数值）</div>
+    <div class="note-b">单卡 RTX 4090；baseline = 2DGS / PGSR / Ref-GS / EnvGS / TSGS。CD 单位 decimeter。
+    <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px">
+    <tr style="color:#9aa3c7"><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Method</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Normal MAE↓</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Depth AbsRel↓</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">δ&lt;1.25↑</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">CD↓</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">F1↑</td></tr>
+    <tr><td style="padding:3px 7px">2DGS</td><td style="padding:3px 7px">25.97</td><td style="padding:3px 7px">0.20</td><td style="padding:3px 7px">76.71</td><td style="padding:3px 7px">0.85</td><td style="padding:3px 7px">0.688</td></tr>
+    <tr><td style="padding:3px 7px">EnvGS</td><td style="padding:3px 7px">14.37</td><td style="padding:3px 7px">0.13</td><td style="padding:3px 7px">86.10</td><td style="padding:3px 7px">0.87</td><td style="padding:3px 7px">0.640</td></tr>
+    <tr><td style="padding:3px 7px">TSGS</td><td style="padding:3px 7px">9.89</td><td style="padding:3px 7px">0.08</td><td style="padding:3px 7px">95.56</td><td style="padding:3px 7px">0.52</td><td style="padding:3px 7px">0.798</td></tr>
+    <tr style="color:#ffd35c"><td style="padding:3px 7px"><b>GLINT (Ours)</b></td><td style="padding:3px 7px"><b>7.96</b></td><td style="padding:3px 7px"><b>0.04</b></td><td style="padding:3px 7px"><b>98.32</b></td><td style="padding:3px 7px"><b>0.34</b></td><td style="padding:3px 7px"><b>0.836</b></td></tr>
+    </table>
+    （PGSR 25.39 / 0.22 / 76.68 / 0.52 / 0.807、Ref-GS 41.55 / 0.28 / 57.52 略，全表见原文。）GLINT 在法线、深度、网格三类几何指标上<b>全面最佳</b>，尤其 Depth AbsRel 0.04（TSGS 0.08 的一半）。</div>
+
+    <div class="note-h">⑪ §4 光度 — Table 2 + 消融 — Table 3</div>
+    <div class="note-b"><b>光度（Table 2，PSNR↑）：</b>DL3DV-10K GLINT <b>30.21</b>（EnvGS 29.65 / PGSR 29.26 / 2DGS 29.18 / TSGS 25.94）；3D-FRONT-T GLINT <b>34.50</b>（EnvGS 33.71 / Ref-GS 32.30 / 2DGS 32.26 / TSGS 28.80）。注：TSGS 几何尚可但渲染质量低（拿不回透射 → 透过玻璃的物体糊）。</div>
+    <div class="note-b"><b>消融（Table 3，3D-FRONT-T，逐件验证）：</b>
+    <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px">
+    <tr style="color:#9aa3c7"><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">变体</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">PSNR↑</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Normal MAE↓</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">AbsRel↓</td></tr>
+    <tr><td style="padding:3px 7px">w/o \(\mathcal{G}_{trans}\)（去透射）</td><td style="padding:3px 7px">32.26</td><td style="padding:3px 7px">8.11</td><td style="padding:3px 7px">0.038</td></tr>
+    <tr><td style="padding:3px 7px">w/o \(\mathcal{G}_{refl}\)（去反射）</td><td style="padding:3px 7px">32.70</td><td style="padding:3px 7px">8.78</td><td style="padding:3px 7px">0.038</td></tr>
+    <tr><td style="padding:3px 7px">w/o \(\mathcal{L}_{trans}\)（去自举）</td><td style="padding:3px 7px">33.57</td><td style="padding:3px 7px">8.07</td><td style="padding:3px 7px">0.037</td></tr>
+    <tr><td style="padding:3px 7px">w/o \(\mathcal{L}_{geo}\)（去几何先验）</td><td style="padding:3px 7px">33.62</td><td style="padding:3px 7px"><b>24.69</b></td><td style="padding:3px 7px"><b>0.126</b></td></tr>
+    <tr style="color:#ffd35c"><td style="padding:3px 7px"><b>Full</b></td><td style="padding:3px 7px"><b>34.50</b></td><td style="padding:3px 7px"><b>7.96</b></td><td style="padding:3px 7px"><b>0.035</b></td></tr>
+    </table>
+    <b>验证了什么：</b>① 去 \(\mathcal{G}_{trans}\) 掉点最猛（原文 <i>"causes the most significant performance drop, as background content incorrectly blends with the interface Gaussians"</i>）；② 去 \(\mathcal{G}_{refl}\) 主要伤镜面/渲染、几何相对稳；③ \(\mathcal{L}_{trans}\) 是稳定正则；④ 去 \(\mathcal{L}_{geo}\) 法线 MAE 从 7.96 <b>暴涨到 24.69</b>、AbsRel 翻 3.6 倍——<b>几何先验对几何最关键</b>。</div>
+
+    <div class="note-h">⑫ §4 计算成本 — Table 4（有意的 capability↔efficiency 取舍）</div>
+    <div class="note-b"><b>成本对比（3D-FRONT-T）：</b>TSGS 159 FPS / ~40 mins / PSNR 28.80；EnvGS 80 FPS / ~1 h / 33.71；<b>Ours 51 FPS / ~2.5 h / 34.50</b>。GLINT <b>更慢</b>（光追二次路径 + 三套高斯 + 视频先验），但换来最高的几何 + 外观质量。这是<b>有意的取舍</b>：用更多算力把"场景级透明"从"做不了"做到 SOTA。<b>[诚实]</b> 论文未声称实时；51 FPS 是渲染帧率，训练 2.5h/场景在 5 场景小数据集上可接受，但大规模场景的可扩展性未讨论。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>① problem：</b>3DGS 的 <b>monolithic α-blending</b> 把玻璃的"反射 + 透射、多深度"辐射混成一团（<b>transparency-depth dilemma</b>：渲染要低 opacity、几何要高 opacity，不可兼得），做不了场景级透明的几何 + 外观重建；旧法又依赖 mask 或只重建首表面。</div>
+    <div class="note-b"><b>② method：</b>① 把高斯<b>显式分解</b>成 interface / transmission / reflection 三功能集；② <b>hybrid 渲染</b>（界面光栅化出 G-buffer \(\{z,n,t,s\}\) + 二次路径光追），BSDF 启发的 Fresnel 加权传输 \(L_o=(1-t)L_{opaque}+t\,L_{transparent}\)（式5-10，光学薄 \(\omega_t\approx\omega_o\)）；③ <b>DiffusionRenderer 视频先验</b>做几何/材质正则（式12/15）+ 用界面-透射<b>深度差 \(\Delta z\) 自举透明 mask</b>（式13/14，无需分割）；三阶段 schedule 先几何后辐射。</div>
+    <div class="note-b"><b>③ experiment：</b>自建 <b>3D-FRONT-T</b>（首个场景级透明 benchmark，带 GT 几何）+ 真实 DL3DV-10K；几何 Normal MAE <b>7.96</b>、Depth AbsRel <b>0.04</b>、δ&lt;1.25 98.32，光度 PSNR <b>34.50 / 30.21</b>，全面超 2DGS/PGSR/Ref-GS/EnvGS/TSGS；消融证明 \(\mathcal{G}_{trans}\) 与 \(\mathcal{L}_{geo}\) 最关键（去 \(\mathcal{L}_{geo}\) 法线 MAE 7.96→24.69）。</div>
+    <div class="note-b"><b>④ takeaway（≥3 条 + 适用边界）：</b><br>• <b>Takeaway 1：</b>透明重建的根本矛盾是 <b>transparency-depth dilemma</b>（同一团高斯的"透明诉求"与"几何诉求"互斥）；解法是把"渲染背景"与"重建几何"<b>拆给不同高斯分量承担</b>，从根上消除 opacity 折中。<br>• <b>Takeaway 2：</b>分解天然产生的<b>界面-透射深度差 \(\Delta z\)</b> 可<b>自举透明定位</b>（无需人工 mask），形成"分解 → 深度差 → 透明监督"的自洽闭环。<br>• <b>Takeaway 3：</b><b>视频（多帧）先验</b>比单目先验更适合透明面——多视一致、不逐帧闪烁，并提供 material 先验帮助区分界面 vs 透射；GLINT 是首个把视频重打光先验用于 3DGS 的工作。<br>• <b>适用边界 / 诚实点：</b>① 只建模 <b>first-order（一次）辐射</b>，原文将 multi-bounce / nested transparency（嵌套透明）列为 future work；② <b>光学薄假设</b>（\(\omega_t\approx\omega_o\)），不处理强折射的厚介质/水；③ 透明本质 ill-posed，稀疏视角下仍难；④ <b>较慢</b>（51 FPS / ~2.5h，明示是 capability↔efficiency 的有意取舍），大规模场景可扩展性未验证。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Our framework GLINT performs decomposed Gaussian radiance transport to reconstruct transparent surfaces with physically consistent geometry and appearance. (Left) The first row shows a rendered image, normal map, and transparency map. The second row visualizes the radiance contributions of the interface, transmission, and reflection components. (Right) Reconstructed Mesh.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Pipeline Overview. The interface component Gintr captures primary first-surface, while secondary components Gtrans and Grefl separately model transmission and reflection. The output color Lo is obtained through hybrid rendering under transparency-aware radiance transport and supervised by photometric loss Lphoto. DiffusionRenderer [26] provides priors that regularize the G-buffers via Lg</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Depth decomposition. (Left) Rendered image, (Middle) interface depth, and (Right) transmission depth.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Obtained transparency maps. GT images (first row) and learned transparency maps (second row).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Qualitative comparison on synthetic scenes. Each column shows results from GT, PGSR [5], EnvGS [39], TSGS [24], and Ours. For each scene, rows correspond to RGB (top) and depth maps (bottom).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Mesh visualization comparison. The meshes are ob- tained from TSDF fusion following baselines.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Qualitative comparison on DL3DV-10K dataset. Each column shows results from GT, PGSR [5], EnvGS [39], TSGS [24], and Ours. For each scene, rows correspond to RGB (top) and normal (bottom) maps.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. 3D-FRONT-T dataset. RGB, depth, and normal ground truth examples. As can be seen in the transparent surface (glass), the outgoing radiance for each pixel is entanglement of radiance from interface surface and the transmitted radiance.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 10. Qualitative ablation study on representation components. Visual comparison between the full model and ablated variants.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig10.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 11. Effect of geometric losses. Ablating geometric supervision leads to degraded geometry reconstruction. Removing Ldepth produces inaccurate interface depth, removing Lnormal results in unstable surface orientation, and removing all geometric losses (Lgeo) severely distorts both depth and normals.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig11.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 12. Effect of the transparency loss Ltrans. With the pro- posed transparency loss Ltrans, the learned transparency maps align well with the true transmitted content, while removing this loss leads to noisy or inconsistent transparency estimation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig12.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 13. Radiance decomposition comparison. Each 2 × 2 grid is arranged in clockwise order as rendered RGB, base color, reflection and transmission. EnvGS does not provide a transmission component, so the corresponding slot is left blank.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig13.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 14. Comparison with EnvGS [39] trained with a Dif- fusionRenderer [26] prior. With the DiffusionRenderer normal priors, EnvGS still fails to produce consistent depth and normals for transparent regions. In particular, the transmission surface re- mains incorrectly reconstructed, showing blurry rendering quality.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig14.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 15. Comparison of transparency masks across two scenes. Each scene is shown with three viewpoints (rows), including ground-truth reference RGB (left), our predicted transparency maps (middle), and G-SAM2 [31] masks (right). GT images provide visual context, high- lighting that our method consistently isolates transparent surfaces, while Grounded-SAM2 often produces noisy, incomplete or comp</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig15.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 16. Qualitative comparison on synthetic scenes. Each column shows results from GT, PGSR [5], EnvGS [39], TSGS [24], and Ours. For each scene, rows correspond to RGB (top), depth (middle), and normal (bottom) maps.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-glint-modeling-scene-scale-transparency-via-gaussian-ra/fig16.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 17. Additional qualitative comparisons on the DL3DV-10K dataset. Each column shows results from GT, PGSR [5], En- vGS [39], TSGS [24], and Ours. For each scene, rows correspond to RGB (top), depth (middle), and normal (bottom) predictions.</figcaption></figure>
+    </div>
+  </div></body></html>

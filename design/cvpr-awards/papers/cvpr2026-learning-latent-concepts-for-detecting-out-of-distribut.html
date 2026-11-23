@@ -1,0 +1,171 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Learning Latent Concepts for Detecting Out-of-Distribution Objects</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Learning Latent Concepts for Detecting Out-of-Distribution Objects</h1>
+    <div class="au2" style="color:var(--mut)">Ting Peng ⋅ Junhao Dong ⋅ Yew-Soon Ong</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2026/papers/Peng_Learning_Latent_Concepts_for_Detecting_Out-of-Distribution_Objects_CVPR_2026_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Learning%20Latent%20Concepts%20for%20Detecting%20Out-of-Distribution%20Objects">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Detecting out-of-distribution (OOD) objects is indispensable for safely deploying object detectors in the wild. Current approaches enable the unknown-aware ability by regularizing the instance-level feature space, such as outlier synthesis. Despite the general efficacy, it is challenging to truly learn the concept of `unknown&#x27; under the absence of real unknown data. In this paper, we propose UNO-Adapter, a simple yet highly effective framework tailored for OOD object detection. Our key insight is that in object detection, where in-distribution~(ID) and OOD objects may coexist within the same context, we need global abstraction and reasoning to help the detector learn their differences, i.e., unknown injection. UNO-Adapter consists of two key steps: unsupervised concept discovery and neural concept binder. The former introduces an object-centric learning paradigm to abstract and model the holistic image, including both ID and OOD, obtaining sparse and compressed slot-based representations with relational constraints. The latter dynamically combines slots with object candidates extracted by the detector, binding the concept of unknown to the de facto detector. During inference, we introduce an image-guided OOD object score to reinforce the distinction between ID and OOD. Experiments on standard benchmarks demonstrate the superiority of the proposed method. In particular, UNO-Adapter reduces the FPR95 by up to 11.96% compared to the previous best OOD object detection method.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-learning-latent-concepts-for-detecting-out-of-distribut -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b"><b>UNO-Adapter</b>：不动检测器(权重/结构/loss 全不改)，外挂一个"<b>给检测器注入‘unknown’概念</b>"的适配器来做 OOD 物体检测(OOD-OD)。核心洞察：检测场景里 <b>ID 与 OOD 物体共存于同一画面</b>，光看 instance 级特征不够，要像人一样做<b>全局抽象+关系推理</b>。三步：① <b>UCD</b> 无监督把整图抽象成稀疏 object-centric 的 slot(概念)；② <b>NCB</b> 推理时按相似度把 slot 绑到检测器的 query/instance 特征上(免训练)；③ <b>image-guided OOD score</b> 用重建一致性+分位数打分区分 ID/OOD。BDD-100K 上 FPR95 最多降 <b>11.96%</b>。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">现有 OOD 方法多为<b>图像二分类</b>设定(scoring function / 训练正则 / outlier synthesis)，搬到 OOD-OD 水土不服——OOD-OD 里 ID/OOD 同图共存。已有 OOD-OD 大多<b>只在 instance 级特征</b>上合成 outlier(VOS/SIREN/DFDD)，依赖检测器自带定位；一旦 instance 特征不准→① OOD 定位差 ② ID/OOD 决策边界扭曲。原文点题：模型 “only focusing on localized features without considering the broader contextual relationships and causal dependencies”。本文反问 “How can we devise a unified framework that imitates the human vision process for detecting OOD objects?”——人靠<b>对比+关系推理</b>形成概念，而非死记单个物体。</div>
+    <div class="note-h">核心方法（关键公式）</div>
+    <div class="note-b"><b>① UCD（无监督概念发现）</b>：基于 slot attention(+DINOSAUR 重建 DINO 特征)。slot 更新 ŝ_i=Σ_j α_ij·W_V·x_j(式2)；新增 <b>importance score</b> π_i^init=sigmoid(h_θ(s_i))(式3) + <b>relational matrix</b> W_ij=softmax_j((Uv_i)ᵀ(Vv_j)/√d)(式4)→π_i=Σ_j W_ij·π_j^init；再用 <b>信息瓶颈(VIB)</b> 精炼：σ'_i=σ_i(1−π_i)(式6)、z_i=µ_i+ε⊙σ'_i(式7)、加权 KL(式8)，L_UCD=L_recon+βL_KL(式9)。得到稀疏、解耦的 slot codebook。<b>② NCB（神经概念绑定，免训练）</b>：按归一化 importance 给每个 slot 分配 query 数 m_i=⌊π̂_i·M⌋(式10)，融合 Q_i={q…}+s''_i·π̂_i(式11)拼成 Q_fused(式12)——slot 补全局、query 管定位。<b>③ OOD score</b>：score=γ·cos(f̂_t,f_t)·Φ_τ(z_i)(式14)，f̂_t=SlotDecoder 重建的图级特征 vs DINO 特征 f_t、γ=max_i sigmoid(g_l(o_i))(式13) 校准、Φ_τ 分位数(τ=80%)替代易过自信的 MaxLogit。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>OOD-OD(Deformable DETR backbone)</b>：BDD-100K→MS-COCO <b>AUROC 97.61 / FPR95 9.88</b>、→OpenImages <b>99.04 / 3.80</b>(均 SOTA)；比次优 WFS FPR95 降 <b>11.96%(COCO)/4.03%(OpenImages)</b>。PASCAL-VOC→COCO 91.68/32.61。<b>消融(Table3)</b>：裸 baseline 88.92/28.60 →+UCD 94.69/14.25 →+UCD+NCB 97.61/9.88。<b>OOD score 拆解(Table5)</b>：MaxLogit 46.85/96.52 →+Φ_τ 80.30/57.36 →+γcos·Φ_τ 91.68/32.61。还在 <b>OWOD</b>(Table2)和 <b>ImageNet OOD 分类</b>(Table4)上验证可扩展。<b>开销(Table6)</b>：仅微调 0.1h、推理 11.54s(SIREN 要 retrain 2.1h)。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>"外挂不改检测器"</b>：不动权重/结构/loss，NCB 与 OOD score 都在<b>推理时</b>工作→可即插到 MSP/Energy/SIREN/SAFE 上都涨点；② 把 <b>object-centric slot(全局)</b> 与 <b>检测器 query(定位)</b> 互补绑定，是本文新意；③ 用 <b>信息瓶颈</b>给 slot 去冗余、用 importance 加权调制 KL，让 slot 稀疏可判别。BDD-100K 是自动驾驶数据集，论文也把 autonomous driving 列为目标高风险场景。</div>
+    <div class="note-h">疑问 / 待深挖</div>
+    <div class="note-b">① UCD 只在 PASCAL-VOC 上训一次就 “kept fixed across different datasets”，跨域(VOC→BDD 驾驶场景)slot 概念是否真迁移、靠什么保证，<b>原文未深究</b>；② 式8 写成 “L_KL=½π_i(µ_i+σ'_i²−2log(σ'_i²)−1)”，标准 KL 应是 µ_i²，<b>疑为排版漏平方(需对照原式)</b>；③ slot 数 S、分位 τ 固定跨数据集，Fig5 称 “stable within a certain range”，但<b>最优值与敏感区间的具体数原文图里未给文字数值</b>。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文提取，45K 字符）。结构：Abstract 逐句 → 背景 → Intro 闭环 → Method 公式 → 实验数值表 + 全文总结。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① 摘要 Abstract — 逐句精讲</div>
+    <div class="note-b"><b>任务与痛点：</b>“Detecting out-of-distribution (OOD) objects is indispensable for safely deploying object detectors in the wild.” 现有做法靠在实例级特征空间做正则（如 outlier synthesis），但“it is challenging to <b>truly learn the concept of 'unknown'</b> under the absence of real unknown data.” —— 没有真实未知数据时，很难真正学到「未知」这个概念。</div>
+    <div class="note-b"><b>核心洞察（本文方法 UNO-Adapter）：</b>“in object detection, where <b>ID and OOD objects may coexist within the same context</b>, we need <b>global abstraction and reasoning</b> to help the detector learn their differences, i.e., <b>unknown injection</b>.” 即检测场景里 ID 与 OOD 同框出现，需要全局抽象与推理，把「未知」概念<b>注入</b>到现成检测器。两步：<b>unsupervised concept discovery</b>（无监督概念发现，object-centric 的 slot 表示 + 关系约束）+ <b>neural concept binder</b>（把 slot 与检测器抽出的候选目标动态绑定）。推理期再加一个 <b>image-guided OOD object score</b> 强化 ID/OOD 区分。</div>
+    <div class="note-b"><b>结论数字：</b>“UNO-Adapter reduces the <b>FPR95 by up to 11.96%</b> compared to the previous best OOD object detection method.” 一句话抓摘要：<b>不改检测器、不加任务专属训练目标</b>，用 slot 概念建模把「未知」注入现成检测器，FPR95 最多降 11.96%。</div>
+
+    <div class="note-h">📚 背景知识（外部，读懂全文必备）</div>
+    <div class="note-b"><b>① OOD detection vs OOD-OD：</b>传统 OOD 检测是<b>二分类图像级</b>问题（基于训练好的 ID 分类器判一张图是否 OOD），方法有 scoring function（MSP/Energy/MaxLogit/KNN）、训练期正则、outlier synthesis。但 <b>OOD object detection (OOD-OD)</b> 更难：“ID and OOD samples often appear <b>within the same context</b> during test time”，模型要<b>同时定位+分类</b>新物体。</div>
+    <div class="note-b"><b>② Outlier synthesis（被对比的主流路线）：</b>VOS 估计类条件分布、从低似然区采样合成虚拟离群点；[51,54] 用 diffusion 合成特征；SIREN 在单位超球面上塑形表示。本文批评：这些大多<b>扩展分类思路、依赖实例级特征</b>，“If the instance-level feature extraction is inaccurate, it can lead to … <b>poor localization of OOD objects</b> … <b>distorted decision boundaries</b>”，因为只看局部特征、忽略场景的上下文关系与因果依赖。</div>
+    <div class="note-b"><b>③ Object-centric learning / Slot Attention / DINOSAUR：</b>把场景表示为「distinct objects 的组合」。<b>Slot Attention</b> 引入一组向量 slots 学解耦的物体表示，但更适合合成数据；<b>DINOSAUR</b> 改成「重构预训练自监督编码器（DINO）的深层特征」而非像素，能用到真实数据——本文采用它。本文指出其两短板：<b>不考虑 slot 重要性差异与彼此关系、表示仍冗余含噪</b>。</div>
+    <div class="note-b"><b>④ Information Bottleneck (IB) / VIB：</b>IB 目标 \(\min_S I(S';Y)-\beta I(S';X)\)——在「保留任务相关信息」与「压缩冗余」间权衡。<b>VIB</b>（深度变分 IB）用神经网络给可解近似：把输入编码成分布 \(q(s|x)\)（均值 \(\mu\)、方差 \(\sigma^2\)），用 reparameterization 采样。本文借它做 slot refinement。<b>人类类比</b>：作者反复强调“humans … abstract concepts through comparison and reason about their relationships”，本文就是模仿这种全局抽象+关系推理。</div>
+
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环</div>
+    <div class="note-b"><b>problem：</b>开放世界部署会遇到 OOD；现有 OOD-OD 多是「分类思路 + 实例级特征」，依赖检测器内建定位，一旦实例特征不准就<b>定位差 + 决策边界扭曲</b>，因为“only focusing on localized features without considering the broader contextual relationships and causal dependencies”。</div>
+    <div class="note-b"><b>solution：</b>核心提问“How can we devise a unified framework that <b>imitates the human vision process</b> for detecting OOD objects?” 主张：好的 OOD 检测器“must not only recognize individual objects but also understand the <b>latent concepts that define the relationships between them</b>.” 于是 UNO-Adapter——“capture and model key elements of the image <b>independently of the detection model</b>, and then <b>bind these elements to the detector's internal features, without requiring a retraining process</b>.” 三件套：UCD（抽 sparse object-centric slots）→ NCB（按相似度把 slot 与实例特征绑定）→ image-guided OOD score（重构保全局一致）。</div>
+    <div class="note-b"><b>why 这样设计：</b>① <b>不改检测器权重/结构、不加任务专属损失</b>——可插到 DETR、Faster R-CNN 之上，迁移性强；② UCD 用 relational modeling + information bottleneck，“encouraging task-relevant abstraction while reducing redundancy”，得到紧凑解耦的 slot codebook 把物体与背景噪声分开；③ slot 有全局理解但定位差、实例特征定位好但全局弱，NCB 取长补短。贡献：提出注入「未知」的 OOD-OD 框架；slot 概念发现 + slot-instance 绑定；显著超 SOTA（“reduces the FPR95 by 8.0% on BDD-100K”），并扩到 OWOD 与 OOD 图像分类。</div>
+
+    <div class="note-h">③ §2 Related Work — 定位与差异</div>
+    <div class="note-b"><b>OOD detection 两条线：</b>(1) scoring function——confidence-based、energy-based、distance-based、gradient-based；(2) 训练期正则——lower confidence、high energy；外加引入真/合成离群点（OE 用真实离群、MCD/UDG 用无标注离群、NPOS 非参密度估计增多样性、Dream-OOD 用 text-to-image diffusion）。但“mostly designed for image classification”。<b>OOD-OD：</b>VOS、[51/54] diffusion 特征合成、SIREN 超球面表示、[11] 借辅助视频。<b>本文差异</b>：“we propose to inject the concept of unknown <b>without changing the detector's original weights or architecture</b>.” —— 别人改 pipeline/加模块，本文外挂注入。</div>
+
+    <div class="note-h">④ §3.1 问题设定（Preliminaries）</div>
+    <div class="note-b"><b>形式化：</b>图像 \(x\in X\)、框 \(b\in\mathbb{R}^4\)、类别 \(y\in Y\)（\(K\)-way）。先在 ID 数据 \(D=\{(x_i,b_i,y_i)\}_{i=1}^N\) 训检测器。测试时判 ID/OOD，建模为二分类：预测 \(p(g|x^*,b^*)\)，\(g{=}1\) 为 ID、\(g{=}0\) 为 OOD。框架三问：(1) 无标注下如何发现局部模式与全局关系（UCD）？(2) 如何把概念与检测器内部特征绑定（NCB）？(3) 推理时如何判 OOD（OOD Score）？可建在 DETR / Faster R-CNN 上，亦可退化到图像分类（整图当单物体）。</div>
+
+    <div class="note-h">⑤ §3.2 UCD（一）— 粗 slot 表示（式1/2）</div>
+    <div class="note-b"><b>动机：</b>模仿人「先抓显著区域与整体结构」。原始 slot attention 两难：<b>固定 slot 数</b>不灵活、<b>slot 间交互不足</b>导致孤立表示丢关系。本文提<b>动态 slot attention</b>。给特征集 \(X=\{x_1,\dots,x_N\},\ x_j\in\mathbb{R}^{d_x}\)，学 \(S\) 个 slot \(s_i\in\mathbb{R}^{d_s}\)，交叉注意力
+    \[\alpha_{ij}=\mathrm{softmax}_i\!\left(s_i^\top W_Q x_j/\sqrt{d_s}\right)\quad(1)\]
+    slot 更新 \(\hat{s}_i=\sum_{j=1}^N \alpha_{ij}W_V x_j\)（式2），多轮迭代后收敛为离散的物体级表示。</div>
+
+    <div class="note-h">⑥ §3.2 UCD（二）— 关系正则 + slot 精炼（IB/VIB，式3-9）</div>
+    <div class="note-b"><b>重要性分数（关系建模）：</b>轻量网络 \(h_\theta\) 给初始重要性 \(\pi_i^{init}=\mathrm{sigmoid}(h_\theta(s_i))\)（式3）；关系矩阵 \(W_{ij}=\mathrm{softmax}_j\big((Uv_i)^\top(Vv_j)/\sqrt{d}\big)\)（式4），最终 \(\pi_i=\sum_j W_{ij}\pi_j^{init}\)，加权 slot \(s'_i=\pi_i\cdot s_i\)。</div>
+    <div class="note-b"><b>基于 IB 的精炼：</b>用 VIB 对每个 slot 编码 \(\mu_i=h(s_i),\ \sigma_i=h(s_i)\)（式5），<b>用重要性自适应缩放方差</b> \(\sigma'_i=\sigma_i(1-\pi_i)\)（式6，越重要→方差越小→保真度越高），重参数化 \(z_i=\mu_i+\epsilon\odot\sigma'_i,\ \epsilon\sim\mathcal{N}(0,I)\)（式7），解码 \(s''_i=g(z_i)\)。<b>加权 KL</b>
+    \[\mathcal{L}_{KL}=\tfrac{1}{2}\pi_i\big(\mu_i+\sigma_i'^2-2\log(\sigma_i'^2)-1\big)\quad(8)\]
+    总损失 \(\mathcal{L}_{UCD}=\mathcal{L}_{recon}+\beta\mathcal{L}_{KL}\)（式9），\(\mathcal{L}_{recon}=\|s''_i-s'_i\|^2\)。直觉：“When a slot has high importance (\(\pi_i\) close to 1), it contributes more … enforcing a stronger constraint … to maintain information fidelity.” 结果是离散、稀疏、解耦的概念 codebook，把物体与背景噪声分离。</div>
+
+    <div class="note-h">⑦ §3.3 Neural Concept Binder（推理期绑定，式10-12）</div>
+    <div class="note-b">slot 与检测器（DETR 的 query）来自<b>两个独立网络</b>，NCB 按相似度自适应融合、<b>无需训练</b>。先归一重要性 \(\hat{\pi}_i=\mathrm{softmax}(\pi)_i\)，按比例给每个 slot 分配 query 数 \(m_i=\lfloor\hat{\pi}_i\cdot M\rfloor\)，最后一个 slot 补齐 \(m_N=M-\sum_{i=1}^{N-1}m_i\)（式10）。融合：被分配的 query 集 \(Q_i=\{q_{k_i},\dots,q_{k_i+m_i}\}+s''_i\cdot\hat{\pi}_i\)（式11），拼接得 \(Q_{fused}=[Q_1;Q_2;\dots;Q_N]\in\mathbb{R}^{M\times D}\)（式12）。直觉：“Slot representations have <b>strong global understanding</b> … but lack precise localization, whereas instance-level features <b>excel at localization</b> but have limited global comprehension.” 绑定取长补短，且“requires <b>no training</b> and preserves the original feature spaces”。</div>
+
+    <div class="note-h">⑧ §3.4 Inference-Time OOD Score（式13/14）</div>
+    <div class="note-b"><b>image-guided：</b>把 query 当 slot、用 slot 重构解码器重建所有目标的倒数第二层特征得图级特征 \(\hat{f}_t=\mathrm{SlotDecoder}(o_1,\dots,o_N)\)，与固定 DINO backbone 的 \(f_t\) 算余弦相似——“a high similarity suggests a <b>low likelihood</b> that contains OOD objects”。<b>校准因子</b>修小目标误判：\(\gamma=\max_i \mathrm{sigmoid}(g_l(o_i))\)（式13）。<b>分位数策略</b>取代易过自信的 MaxLogit：\(\Phi_\tau(z_i)\)=logits 分布的 \(\tau\) 分位阈值。综合得
+    \[score(o_i,b_i)=\gamma\cdot\cos(\hat{f}_t,f_t)\cdot\Phi_\tau(z_i)\quad(14)\]
+    前两项是图级引导。（\(\tau{=}1\) 时退化为 MaxLogit。）</div>
+
+    <div class="note-h">⑨ §4.1 实验设置 + 实现细节</div>
+    <div class="note-b"><b>数据：</b>ID 用 PASCAL-VOC（20 类，16,551 训 / 4,952 验）与 BDD-100K（10 类，69,853 训 / 10,000 验）；OOD 用 MS-COCO 与 OpenImages（人工核对剔除 ID 类）。OWOD 按 [26] 把 COCO/VOC 分 4 个不重叠任务。指标：FPR95↓（ID TPR=95% 时 OOD 假阳率）、AUROC↑、mAP；OWOD 另报 U-Recall。<b>实现</b>：检测器 <b>Deformable DETR</b>（ImageNet-1K 预训、ResNet-50 backbone、transformer 用 DINO-ViT-b16 初始化）；slot 用 <b>DINOSAUR</b> 框架；<b>仅在 PASCAL-VOC 训、跨数据集固定</b>；refinement=三个两层 MLP（重要性 + VIB 编/解码），\(U,V\) 为 256 维 FC，\(\beta=0.5\)，Adam lr \(10^{-5}\)、30 epochs、batch 64。</div>
+
+    <div class="note-h">⑩ §4.2 OOD-OD 主结果 — Table 1 真实数值</div>
+    <div class="note-b kv"><b>Table 1（AUROC↑ / FPR95↓；Deformable DETR；无辅助数据）：</b><br>
+    方法 ｜ VOC→COCO ｜ VOC→OpenImages ｜ BDD→COCO ｜ BDD→OpenImages<br>
+    Energy ｜ 82.98/58.69 ｜ 83.69/56.89 ｜ 79.60/54.97 ｜ 77.48/60.06<br>
+    SIREN ｜ 78.23/64.77 ｜ 74.93/65.99 ｜ 86.56/53.97 ｜ 89.00/47.28<br>
+    SAFE ｜ 80.30/47.40 ｜ 92.28/20.06 ｜ 88.96/32.56 ｜ 94.64/16.04<br>
+    SyncOOD ｜ 86.52/36.44 ｜ 95.37/13.34 ｜ 95.44/22.67 ｜ 96.26/12.96<br>
+    SAFE+WFS ｜ 85.62/37.48 ｜ 94.91/11.27 ｜ 93.41/21.84 ｜ 96.85/7.83<br>
+    <b>UNO-Adapter ｜ 91.68/32.61 ｜ 95.40/19.90 ｜ 97.61/9.88 ｜ 99.04/3.80</b></div>
+    <div class="note-b"><b>读表 why：</b>① 在 BDD-100K 上“surpasses the second-best method WFS by <b>11.96% (MS-COCO)</b> and 4.03% (OpenImages) in terms of FPR95”（21.84→9.88）；BDD→OpenImages FPR95 低到 <b>3.80</b>、AUROC 99.04。② <b>即插即用</b>：把本文加到各 base 方法上（“w/ ours”）普遍提升，如 SAFE w/ ours BDD→COCO 95.99/16.25 优于原 SAFE 88.96/32.56。③ 作者点评 DFDD 这类生成式合成“exhibits clear performance degeneration on ID data”，因训练期正则把决策边界过度推向 ID。</div>
+
+    <div class="note-h">⑪ §4.2 扩展 — OWOD（Table 2）与 OOD 图像分类（Table 4）</div>
+    <div class="note-b"><b>OWOD（Table 2，U-Recall↑/mAP↑）：</b>UNO-Adapter 全面领先 Prob/ASGS——Task2 U-Recall <b>16.8</b>（ASGS 14.8）、mAP Both 45.8；Task3 U-Recall 17.0、mAP Both 37.1；Task4 mAP Both 31.6。且“achieves substantial performance improvements <b>at a lower cost</b>”（无需 OW-DETR/Prob 那种重训练）。<b>OOD 图像分类（Table 4，Near/Far OOD AUROC↑/FPR95↓）：</b>ImageNet-200 UNO-Adapter Near <b>87.90/50.42</b>、Far <b>97.84/16.92</b>（最佳基线 OODD 85.74/53.70、95.47/20.89）；ImageNet-1K Near 79.53/64.50、Far 94.31/22.68，均超 OODD/ViM/KNN，验证跨任务可扩展。</div>
+
+    <div class="note-h">⑫ §4.3 消融 — Table 3 / 5 / 6 真实数值</div>
+    <div class="note-b"><b>组件消融（Table 3，BDD-100K，两 OOD 集 AUROC/FPR95）：</b>无 UCD 无 NCB 88.92/28.60、92.74/15.56 → 仅 UCD 94.69/14.25、97.32/7.10 → UCD+NCB <b>97.61/9.88、99.04/3.80</b>，两模块各有贡献、组合最佳。<b>OOD score 消融（Table 5，VOC）：</b>MaxLogits 46.85/96.52 → 仅分位 \(Q_\tau(z_i)\) 80.30/57.36 → 全量 \(\gamma\cos(\hat{f}_t,f_t)\cdot Q_\tau\) <b>91.68/32.61</b>，分位策略与全局图引导都带大幅提升。<b>时间复杂度（Table 6）：</b>SIREN 需 retrain 2.1h、推理 36.31s；SAFE fine-tune 0.3h、11.54→14.37s；UNO-Adapter 仅 fine-tune <b>0.1h</b>、推理 <b>11.54s</b> 最快。超参（Fig 5）：slot 数 \(S\) 与分位 \(\tau\) 在一定范围内稳定，故跨数据集固定。</div>
+
+    <div class="note-h">⑬ 亮点 / 疑问 / 局限</div>
+    <div class="note-b"><b>亮点：</b>① <b>外挂式「概念注入」</b>——不动检测器权重/结构、无任务专属损失，天然即插即用（Table 1 “w/ ours” 行全面提升）；② 用 <b>object-centric slot + 关系约束 + IB</b> 显式建模「全局抽象与关系」，正中 OOD-OD「ID/OOD 同框」痛点；③ 推理期 OOD score 把<b>图级重构一致性</b>（\(\cos(\hat f_t,f_t)\)）+ 校准 \(\gamma\) + 分位 \(\Phi_\tau\) 三者相乘，缓解 MaxLogit 过自信；④ 又快又好（推理 11.54s，FPR95 大降）。</div>
+    <div class="note-b"><b>疑问/局限：</b>① <b>UCD 仍需在 PASCAL-VOC 上训 30 epoch</b>，并非完全免训——只是「不重训检测器」；slot 表示质量受 DINOSAUR/DINO 上限约束。② [推测] slot 数 \(S\) 固定，对极拥挤场景（远超 \(S\) 个物体）是否够用、关系矩阵 \(W_R\) 复杂度 \(O(S^2)\) 在大 \(S\) 时的代价，文中未深究（仅给 Fig 5 稳定性）。③ <b>OOD score 含多个超参</b>（\(\tau\) 默认 80%、\(\gamma\)、\(\beta{=}0.5\)），跨域固定虽方便但[推测] 极端域偏移下未必最优。④ 主结果基于 Deformable DETR；Faster R-CNN 结果在附录，[推测] 不同检测器迁移强度可能有别。⑤ image-guided score 依赖<b>固定 DINO backbone</b> 的特征，对 DINO 覆盖差的领域（医学/遥感）效果存疑。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>OOD object detection 中 ID/OOD 同框出现，现有「分类思路+实例特征+outlier 合成」忽略全局上下文与关系，导致定位差、决策边界扭曲。<br>
+    <b>method：</b>UNO-Adapter=UCD（动态 slot attention + 关系重要性 \(\pi_i\) + 基于 VIB 的 slot refinement，式1-9）抽稀疏解耦概念 → NCB（按归一重要性把 slot 与 DETR query 自适应绑定，免训练，式10-12）→ inference-time OOD score \(\gamma\cdot\cos(\hat f_t,f_t)\cdot\Phi_\tau(z_i)\)（式14）。全程<b>不改检测器</b>。<br>
+    <b>experiment：</b>OOD-OD（Table 1）BDD→COCO FPR95 21.84→9.88（降 11.96%）、BDD→OpenImages 99.04/3.80；OWOD（Table 2）U-Recall/mAP 全面超 Prob/ASGS；ImageNet 分类（Table 4）Near/Far 双超 OODD；消融证三模块与 OOD score 各项均有效，且推理仅 11.54s。<br>
+    <b>takeaways：</b>(1) <b>把「未知」当作需要全局抽象+关系推理的「概念」来学</b>，而非纯靠实例级 outlier 合成；(2) <b>object-centric slot + 信息瓶颈</b>给出稀疏解耦 codebook，是分离物体/背景噪声的关键；(3) <b>外挂注入、零检测器改动</b>带来即插即用与低成本，FPR95 最多降 11.96% 并扩展到 OWOD/分类。<br>
+    <b>limitation：</b>UCD 仍需训练、slot 数固定、OOD score 多超参跨域固定、依赖 DINO 特征、主结果限于 Deformable DETR。</div>
+    <!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-learning-latent-concepts-for-detecting-out-of-distribut/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Top: Popular approaches introduce task-specific reg- ularization objectives at the instance level to enhance ID-OOD discrimination. Bottom: Our approach injects the concept of un- known via slot-based modeling without any change to the detector.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-learning-latent-concepts-for-detecting-out-of-distribut/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Overview of the proposed UNO-Adapter, which consists of three components: unsupervised concept discovery (UCD), neural concept binder (NCB), and an OOD object score. During training, UCD extracts sparse, high-level concepts from dense pixels, enhances the correlations among these concepts, and reduces redundant information. During inference, the refined slots are integrated with instance</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-learning-latent-concepts-for-detecting-out-of-distribut/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. The visualization results of the activation map and segmentation mask. SA stands for original slot attention [35].</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-learning-latent-concepts-for-detecting-out-of-distribut/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Qualitative visualization of detection results. We compared the proposed method with SIREN [10] and SAFE [48].</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-learning-latent-concepts-for-detecting-out-of-distribut/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Analysis on hyperparameter sensitivity.</figcaption></figure>
+    </div>
+  </div></body></html>

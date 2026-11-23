@@ -1,0 +1,98 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Ch5 · WFM 预训练（§5 扩散 / 自回归 / 评估）</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--blue:#60a5fa;--red:#fb7185}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 18% -10%,rgba(167,139,250,.18),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.7;min-height:100vh}
+.wrap{max-width:940px;margin:0 auto;padding:26px 18px 90px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.hero{padding:22px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(126,224,255,.08));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--accent);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(21px,3vw,30px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 35%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13.5px}
+h2.sec{font-size:18px;font-weight:800;margin:28px 0 6px;display:flex;align-items:center;gap:8px}
+h2.sec .bar{width:4px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--accent2),var(--accent))}
+h3{font-size:15px;font-weight:800;color:var(--text);margin:16px 0 4px}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:8px}
+.callout{background:rgba(126,224,255,.07);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:13px 17px;margin:12px 0;font-size:13.5px;color:var(--text2)}.callout b{color:var(--text)}
+.quote{background:rgba(0,0,0,.25);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:8px 12px;margin:9px 0;font-size:12.5px;color:var(--text2);font-style:italic}.quote b{color:var(--amber);font-style:normal}
+.eqbox{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:9px 0;overflow-x:auto;font-size:14px;color:var(--text)}
+.fig{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:11px;padding:10px;margin:12px 0}
+.fig img{width:100%;border-radius:7px;background:#fff;display:block}
+.fig figcaption{font-size:11px;color:var(--text3);margin-top:7px;line-height:1.5}.fig figcaption b{color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0}
+th{background:rgba(167,139,250,.2);text-align:left;padding:8px 11px;font-weight:700;border-bottom:2px solid var(--accent2)}
+td{padding:7px 11px;border-bottom:1px solid var(--line);color:var(--text2);vertical-align:top}td b{color:var(--text)}
+.mono{font-family:monospace;color:var(--accent)}.hl{color:var(--accent);font-weight:700}
+.tag{font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:4px}
+.tp{background:rgba(96,165,250,.16);color:var(--blue);border:1px solid rgba(96,165,250,.4)}
+.note2{margin-top:20px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+</style></head><body><div class=wrap>
+<a href="../index.html" class=backlink>← 教学文档主页</a>
+<a href="diffusion_basics.html" class=backlink>Ch1 扩散基础</a>
+<a href="cosmos_posttrain.html" class=backlink>Ch6 后训练 →</a>
+
+<header class=hero><div class=kick>Ch 5 · WFM 预训练（§5）</div>
+<h1>预训练世界基础模型：扩散 & 自回归 & 评估</h1>
+<p class=sub>Tokenizer（Ch4）把视频压成 latent/token 后，WFM 在其上学"给定历史+条件预测未来"。Cosmos 造了<b>两族</b>：扩散 WFM（连续 token）和自回归 WFM（离散 token）。本章基于论文 §5 原文 + 架构原图。</p></header>
+
+<div class=callout><b>承上启下：</b>扩散原理见 <a href="diffusion_basics.html" style="color:var(--accent2)">Ch1</a>；这里看 Cosmos 怎么把它做成<b>视频世界模型</b>。两族对应两种 tokenizer：<b>扩散 ↔ 连续 CV8×8×8</b>、<b>自回归 ↔ 离散 DV8×16×16</b>。</div>
+
+<!-- 5.1 Diffusion WFM -->
+<h2 class=sec><span class=bar></span>5.1 · 扩散 WFM（Diffusion-based）</h2>
+<h3>Formulation（EDM 框架）<span class="tag tp">§5.1.1</span></h3>
+<div class=quote><b>原文：</b>"We build our diffusion-based WFM based on the <b>EDM framework</b> (Karras et al., 2022) ... corrupt a clean video latent x0 ... xσ = x0 + σε ... network Dθ is trained to predict the clean x0 ... objective E[λ(σ)‖Dθ(xσ;σ,c)−x0‖²]"</div>
+<div class=eqbox>x_σ = x₀ + σε　→　loss = E[ λ(σ)·‖ D_θ(x_σ; σ, c) − x₀ ‖² ]　（c=条件，如文本）</div>
+<p>就是 Ch1 讲的扩散，EDM 版：<b>连续 σ</b>、<b>预测干净 x₀</b>、作用在 tokenizer 的<b>连续 latent</b> 上。推理：纯噪声 → ODE/SDE sampler 去噪 → 干净 latent → 解码器还原视频。</p>
+
+<h3>Architecture：DiT 去噪器 <span class="tag tp">§5.1.2</span></h3>
+<div class=quote><b>原文：</b>"our denoiser network Dθ ... builds upon <b>DiT</b> (Peebles & Xie, 2023) ... applies repeated blocks of <b>self-attention, cross-attention (integrating input text), and feed-forward MLP</b> layers, modulated by <b>adaptive layer normalization (scale, shift, gate)</b> for a given time step t."</div>
+<p>拆解：</p>
+<ul style="font-size:13px;color:var(--text2);margin-left:18px">
+<li><b>3D patchification</b>：把 latent 切成小立方体 <span class=mono>(p_t=1, p_h=p_w=2)</span> → 拉平成一维时空 token 序列，长度 <span class=mono>T·H·W/(p_t·p_h·p_w)</span>。</li>
+<li><b>每个 block</b>：self-attention（时空内部关系）+ <b>cross-attention</b>（把文本条件塞进来）+ MLP。</li>
+<li><b>adaLN(scale/shift/gate)</b>：把"当前噪声档 t / σ"调制进每层归一化——让网络知道现在噪声多大（对应 Ch1 里网络要吃 σ）。</li>
+<li>用 <span class=mono>Cosmos-Tokenize1-CV8×8×8-720p</span> 的连续 latent。</li>
+</ul>
+<figure class=fig><img src="../imgs/fig12.webp" alt="Diffusion WFM architecture"><figcaption><b>Figure 11（原文）</b>：Overall architecture of Cosmos-Predict1 World Foundation Model. The model processes an input video through the encoder of Cosmos-Tokenize1-CV8×8×8-720p ... perturbed with Gaussian noise ... 3D patchification ... repeated blocks of self-attention, cross-attention (integrating input text), and feed-forward MLP layers, modulated by adaptive layer normalization (scale, shift, gate) for a given time step t ...</figcaption></figure>
+
+<h3>Training Strategy <span class="tag tp">§5.1.3</span></h3>
+<div class=quote><b>原文：</b>"<b>Joint image and video training</b> ... interleaves batches of image and video data ... a <b>domain-specific normalization</b> scheme that aligns the latent distributions ... frame-wise and channel-wise standardization ... better approximate an isotropic Gaussian prior."</div>
+<p>要点：① <b>图像+视频交替训</b>（借海量图像数据）；② <b>latent 归一化</b>（对齐图/视频分布、逐帧逐通道标准化 → 更接近各向同性高斯先验），带来"信噪比尺度不变"的训练稳定性。</p>
+
+<!-- 5.2 AR WFM -->
+<h2 class=sec><span class=bar></span>5.2 · 自回归 WFM（Autoregressive-based）</h2>
+<h3>Architecture：Transformer + 3D 位置编码 <span class="tag tp">§5.2.1</span></h3>
+<div class=quote><b>原文：</b>"modifications to the standard transformer ... 1) <b>3D-aware positional embeddings</b>, 2) <b>cross-attention</b> to enable textual inputs ... 3) <b>QK-Normalization</b> ... encoding input video through the encoder of Cosmos-Tokenize1-<b>DV8×16×16</b> to generate discrete tokens ... 3D <b>RoPE</b> ... cross-attention module that incorporates encoded text prompts (processed via a <b>T5</b> text encoder)."</div>
+<p>拆解：像 GPT 一样<b>逐 token 预测</b>离散视频 token，但加了三样：<b>3D RoPE + 3D 绝对位置编码</b>（让 token 知道自己在时/高/宽的位置）、<b>cross-attention 接 T5 文本</b>（可控）、<b>QK-Norm</b>（稳训练）。用离散 <span class=mono>DV8×16×16</span> tokenizer。</p>
+<figure class=fig><img src="../imgs/fig15.webp" alt="Autoregressive WFM architecture"><figcaption><b>Figure 14（原文）</b>：Architecture of Cosmos-Predict1-Video2World Model ... encoding input video through the encoder of Cosmos-Tokenize1-DV8×16×16-720p to generate discrete tokens ... transformer blocks ... absolute positional embedding and 3D RoPE ... cross-attention module that incorporates encoded text prompts (processed via a T5 text encoder), followed by a two-layer MLP ...</figcaption></figure>
+
+<h3>Diffusion Decoder：给离散 token"去糊" <span class="tag tp">§5.2.5</span></h3>
+<div class=quote><b>原文：</b>"aggressive compression ... could lead to <b>blurriness</b> and visible artifacts ... especially in the autoregressive WFM ... where only a few integers ... We resort to the <b>diffusion decoder</b> ... by fine-tuning Cosmos-Predict1-7B-Text2Video."</div>
+<div class=callout><b>这是重要的系统级细节（呼应 Ch4 的盲区）：</b>离散化压得狠 → 重建偏糊。Cosmos 把一个<b>扩散模型微调成"解码器"</b>：训练时同一视频<b>tokenize 两次</b>（离散 DV8×16×16 当条件、连续 CV8×8×8 当目标），让扩散 decoder 把模糊的离散 token <b>精修成清晰视频</b>。所以 AR 链路 = <b>自回归出 token + 扩散 decoder 精修</b>两段式。</div>
+<figure class=fig><img src="../imgs/fig16.webp" alt="Diffusion decoder training"><figcaption><b>Figure 15（原文）</b>：Cosmos diffusion decoder training. During training, each input video is tokenized twice: one through the target discrete tokenizer (DV8×16×16) and the other through a less-constrained continuous tokenizer (CV8×8×8). The discrete token video is used as the conditional input to the diffusion denoiser.</figcaption></figure>
+
+<!-- 5.3 Evaluation -->
+<h2 class=sec><span class=bar></span>5.3 · 评估：3D 一致性 + 物理对齐 <span class="tag tp">§5.3</span></h2>
+<div class=quote><b>原文：</b>"we evaluate our models on two aspects. First, ... the <b>3D consistency</b> of the generated videos ... Second, ... the <b>physics alignment</b> ... how well the rendered dynamics adhere to the laws of physics."</div>
+<table>
+<tr><th>维度</th><th>怎么测（原文）</th><th>为什么重要</th></tr>
+<tr><td><b>3D 一致性</b></td><td>RealEstate10K 选 500 静态场景视频，用多视图几何工具测生成视频是否几何自洽</td><td>世界模型要模拟几何合理的 3D 世界，不能"穿帮"</td></tr>
+<tr><td><b>物理对齐</b></td><td>看生成动态是否符合物理定律（如运动、碰撞）</td><td>Physical AI 的根本要求</td></tr>
+</table>
+<p class=secsub>论文也坦承：<i>"Evaluation of WFMs is a highly nontrivial task ... We leave a more comprehensive evaluation as future work."</i> —— 呼应 Ch4 盲区：<b>像素重建好 ≠ 世界模型强</b>，3D/物理一致性才是关键且难测。</p>
+<figure class=fig><img src="../imgs/fig22.webp" alt="physics rollouts"><figcaption><b>Figure 20（原文）</b>：Physics-scenario rollouts in simulation vs. pre-trained WFM ... reference (physically correct) simulation vs Cosmos-Predict1-7B-Video2World rollouts ... conditioned on 9 frames and a prompt focusing on the kinematic state of the simulated objects.</figcaption></figure>
+
+<h2 class=sec><span class=bar></span>小结：两族 WFM 对照</h2>
+<table>
+<tr><th></th><th>扩散 WFM (§5.1)</th><th>自回归 WFM (§5.2)</th></tr>
+<tr><td>输入 token</td><td>连续 latent (CV8×8×8)</td><td>离散 token (DV8×16×16)</td></tr>
+<tr><td>骨架</td><td>DiT（去噪）</td><td>Transformer（逐 token 预测）</td></tr>
+<tr><td>条件</td><td>self+cross-attn(text)+adaLN(t)</td><td>3D RoPE/APE + cross-attn(T5) + QK-Norm</td></tr>
+<tr><td>出图</td><td>ODE/SDE 去噪 → 解码</td><td>逐 token + <b>diffusion decoder 精修</b></td></tr>
+<tr><td>特点</td><td>质量高</td><td>可流式/实时，但需 decoder 去糊</td></tr>
+</table>
+
+<div class=note2><b>诚实边界：</b>本章 formulation/架构/训练/评估均引自论文 §5 原文（<span class="tag tp">标注小节</span>）；DiT/adaLN/RoPE/T5/QK-Norm 为通用组件术语。原图 fig11/14/15/20（按 figs.json 校准）配逐字英文 caption。具体超参、层数、λ(σ) 权重论文未全列，以官方 <code>cosmos-predict1</code> 源码为准。</div>
+</div></body></html>

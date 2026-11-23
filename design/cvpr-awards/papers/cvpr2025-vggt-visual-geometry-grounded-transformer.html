@@ -1,0 +1,177 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>VGGT: Visual Geometry Grounded Transformer</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2025</span> &nbsp; <span class="badge b-best_paper">🏆 Best Paper</span></div>
+    <h1>VGGT: Visual Geometry Grounded Transformer</h1>
+    <div class="au2" style="color:var(--mut)">Jianyuan Wang · Minghao Chen · Nikita Karaev · Andrea Vedaldi · Christian Rupprecht · David Novotny</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2025/papers/Wang_VGGT_Visual_Geometry_Grounded_Transformer_CVPR_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=VGGT%3A%20Visual%20Geometry%20Grounded%20Transformer">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2025-vggt-visual-geometry-grounded-transformer -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">一个标准大 Transformer（几乎不加 3D 归纳偏置）+ 海量 3D 标注数据，单次前馈（&lt;1 秒）从 1 / 几 / 数百张图直接预测全部 3D 属性（相机参数、深度图、点图、3D 点跟踪），无需几何后处理就超过依赖 Bundle Adjustment 的方法。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">传统 3D 重建靠 BA 等迭代优化（COLMAP / VGGSfM），复杂且慢；DUSt3R/MASt3R 前馈但只能处理两张图、靠 pairwise 融合 + test-time 优化拼多图。VGGT 追问：能否用纯网络直接解、几乎不要几何后处理？答案是能，且常常比带后优化的方法还好。</div>
+    <div class="note-h">核心架构</div>
+    <div class="note-b">①DINO 把每张图 patchify 成 tokens；②每帧追加 1 个 camera token + 4 个 register token，<b>第一帧用一组不同的 learnable token</b>（标记它为参考系）；③<b>Alternating-Attention（AA）</b>：24 层交替「帧内 frame-wise」与「跨帧 global」self-attention，<b>全程无 cross-attention</b>；④camera head（4 层 self-attn + linear 出内外参）+ DPT head（出 depth/point map + tracking 特征 + aleatoric 不确定度）；⑤tracking 用 CoTracker2（相关图 + self-attn）。约 1.2B 参数。</div>
+    <div class="note-h">关键设计</div>
+    <div class="note-b">• <b>第一帧 = 世界参考系</b>（相机置 identity），特殊 token 区分；除第一帧外对输入顺序 permutation-equivariant。<br>• <b>Over-complete 预测</b>：相机/深度/点图可互推（冗余），但显式同时预测全部反而提升精度；<b>推理时用 depth+camera 反投影得到的点图，比直接用 point head 更准</b>（把复杂任务分解成更简单子问题）。<br>• 坐标归一化：统一到第一相机系 + 按点图到原点平均距离归一化，并<b>让网络去学这个归一化</b>（不对网络输出再归一化）。<br>• 损失 = camera(Huber) + depth + pmap（都带 aleatoric 不确定度 + 梯度项）+ 0.05·track。1.2B 参数，64×A100 训 9 天。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">相机位姿 AUC@30：Re10K 85.3（前馈 0.2s）vs DUSt3R 67.7 / MASt3R 76.4（~7–9s），+BA 达 93.5；CO3D 88.2/91.8。MVS 深度（DTU Overall 0.382，逼近"已知 GT 相机"的方法）、点图（ETH3D 显著超 DUSt3R/MASt3R）、two-view matching（超 Roma）全 SOTA。VGGT 当 backbone 还能提升下游（动态点跟踪、前馈 NVS）。</div>
+    <div class="note-h">★ VGGT → D4RT 演进主线（精读重点）</div>
+    <div class="note-b">两者同根：大 Transformer + Alternating(帧内/跨帧) attention + 第一帧参考系 + 前馈；<b>D4RT 的 encoder 本质就是 VGGT 式的</b>。D4RT 正是补齐 VGGT 三处短板：<br>① VGGT 用<b>多个专用 head</b>（camera head + DPT head 各管一类 dense 输出）→ D4RT <b>单一 query 接口</b> q=(u,v,t_src,t_tgt,t_cam) 统一全部任务；<br>② VGGT 点图 viewpoint-invariant 但点跟踪是静态 track-any-point、<b>无法建动态对应</b> → D4RT <b>原生动态 4D 对应</b>（三时间索引解耦时空）；<br>③ VGGT <b>dense per-frame 解码</b> → D4RT <b>on-demand 独立 query 解码</b>，效率 18–300×。<br>一句话：VGGT 把"多任务 3D 重建"统一进一个前馈 backbone（但仍多 head + 静态 + dense）；D4RT 把"输出接口"也统一成一个 query（动态 + 按需 + 可并行）。这就是 CVPR Best Paper 连续两年（2025 VGGT → 2026 D4RT）的几何重建演进线。</div>
+    <div class="note-h">对感知 / BEV 的启发</div>
+    <div class="note-b">「极少归纳偏置 + 大数据 + 统一 backbone 多任务（深度/位姿/跟踪同出）」的范式，与 onemodel 多任务头的取舍直接呼应；over-complete 监督（冗余量一起监督提升精度、推理时子问题组合更稳）是个可借鉴的工程技巧。</div>
+    <div class="note-h">疑问 / 讨论</div>
+    <div class="note-b">① 静态场景假设（点图 viewpoint-invariant）对动态场景的局限——正是 D4RT 要解的；② 数百张图做 global attention 的显存/算力扩展性；③ 1.2B + 64×A100×9 天的训练成本与复现门槛。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">据深度 QA 精读笔记 + 本地 PDF 逐段整理：Abstract 逐句 → Intro 闭环 → Method（Alternating Attention / DINOv2 / 多任务损失 / 预测头）→ 实验数值 + 消融 + 全文总结。原文英文引用 + 中文指路。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文（定位句）：</b><i>"We present VGGT, a feed-forward neural network that directly infers all key 3D attributes of a scene, including camera parameters, point maps, depth maps, and 3D point tracks, from one, a few, or hundreds of its views."</i><br><b>在说什么：</b>VGGT 是一个<b>前馈网络</b>，从 1 张/几张/上百张视图，<b>一次性</b>直接推断一个场景的所有关键 3D 属性——相机参数、point map、depth map、3D 点轨迹。<b>为什么这么做（点评）：</b>关键词是 "directly" 与 "all"——一改"每个 3D 任务各训一个专用模型"的传统，主张一个共享 backbone 同时出全部量。</div>
+    <div class="note-b"><b>原文（效率 + 反传统句）：</b><i>"It is also simple and efficient, reconstructing images in under one second, and still outperforming alternatives that require post-processing with visual geometry optimization techniques."</i><br><b>在说什么：</b>简单高效——<b>1 秒内</b>重建，且<b>无需任何几何后优化</b>就能胜过那些要做后处理优化（如 Bundle Adjustment、Global Alignment）的方法。<b>点评：</b>这一句是全文的"爆点"——前馈直出居然打赢了"前馈 + 迭代优化"，直接动摇了"3D 必须靠几何优化"的范式。</div>
+    <div class="note-b"><b>原文（能力 + 衍生句）：</b><i>"The network achieves state-of-the-art results in multiple 3D tasks, including camera parameter estimation, multi-view depth estimation, dense point cloud reconstruction, and 3D point tracking. We also show that using pretrained VGGT as a feature backbone significantly enhances downstream tasks."</i><br><b>一句话抓 Abstract：</b>一个标准大 Transformer（几乎无 3D 归纳偏置）+ 海量 3D 标注数据 → 前馈直出全部 3D 量、秒级、免后优化、四项 SOTA，且可当通用 3D backbone 迁移到下游。</div>
+
+    <div class="note-h">📚 背景知识（外部补充）：SfM / MVS / BA / DUSt3R 谱系</div>
+    <div class="note-b"><b>SfM（Structure-from-Motion）：</b>从多视图估相机参数 + 重建稀疏点云，传统流程=图像匹配→三角化→<b>Bundle Adjustment（BA，迭代联合优化相机与 3D 点）</b>，代表 COLMAP。<b>MVS（Multi-View Stereo）：</b>已知相机参数下稠密重建几何。<b>BA / Global Alignment：</b>都是"迭代优化"——慢且复杂，正是 VGGT 想绕开的。</div>
+    <div class="note-b"><b>DUSt3R / MASt3R（直接前序）：</b>原文 <i>"DUSt3R and MASt3R have shown promising results in this direction, but these networks can only process two images at once and rely on post-processing to reconstruct more images, fusing pairwise reconstructions."</i> 即它们<b>一次只能吃两张图</b>、要靠后处理把成对结果融合。VGGT 的进步=一次吃上百张、且免后处理。<b>point map（点图）概念：</b>每个像素 \(y\) 对应一个 3D 点 \(P_i(y)\in\mathbb{R}^3\)，且<b>视角不变</b>（统一表达在第一台相机坐标系），这套表示正是 DUSt3R 引入、VGGT 继承的。</div>
+
+    <div class="note-h">② Introduction — problem → 现有不足 → solution → why neural-first works</div>
+    <div class="note-b"><b>problem：</b>原文 <i>"Traditionally, 3D reconstruction has been approached with visual-geometry methods, utilizing iterative optimization techniques like Bundle Adjustment (BA)."</i> 即便 SOTA 的 VGGSfM 把 ML 和几何端到端结合（differentiable BA），<i>"visual geometry still plays a major role in 3D reconstruction, which increases complexity and computational cost."</i> 几何优化=复杂 + 慢。</div>
+    <div class="note-b"><b>提问（全文动机）：</b>原文 <i>"we ask if, finally, 3D tasks can be solved directly by a neural network, eschewing geometry post-processing almost entirely."</i> 现有不足：DUSt3R/MASt3R 只能两图 + 靠成对融合后处理。</div>
+    <div class="note-b"><b>solution + why：</b>VGGT 一次处理上百视图、单前向出全部 3D 量。关键主张 <i>"it is unnecessary to design a special network for 3D reconstruction"</i>——只用标准大 Transformer，<i>"with no particular 3D or other inductive biases (except for alternating between frame-wise and global attention), but trained on a large number of publicly available datasets with 3D annotations."</i> <b>why it works（机理）：</b>把 3D 重建当成"GPT/CLIP/DINO 式的大模型 + 大数据"问题——不靠手工几何先验，而靠海量 3D 标注让网络<b>自己学会多视图几何</b>；§4.2 把 DUSt3R Overall 从 1.741 砍到 0.382，作者归因 <i>"our model's multi-image training scheme that teaches it to reason about multi-view triangulation natively instead of relying on ad hoc alignment procedures."</i></div>
+
+    <div class="note-h">Q&amp;A · 为什么"前馈直出"能打败"前馈 + 几何后优化"？</div>
+    <div class="note-b"><b>核心：</b>传统 pipeline 把"成对/逐帧预测"再用 BA/Global Alignment 拼接，拼接是<b>事后补救</b>——只能在已割裂的成对结果上做平均/对齐，误差已注入。VGGT 让<b>一个全局注意力 Transformer 一次看到所有帧</b>，多视图三角化的推理是<b>原生</b>在网络内部完成（global self-attention 跨帧建立对应），不是事后凑。原文对 DUSt3R 的批评一针见血：它 <i>"only averages multiple pairwise camera triangulations"</i>。<b>但诚实地说：</b>VGGT 并非完全否定优化——Table 1 显示 <i>"Ours (with BA)"</i> 把 Re10K AUC 从 85.3 进一步推到 93.5，作者承认 <i>"there is still room for improvement since post-optimization still brings benefits"</i>，且 VGGT 的准点预测可作 BA 的好初值、省掉三角化与迭代精修。</div>
+
+    <div class="note-h">③ §3.1 Problem 形式化（映射 + 维度，LaTeX）</div>
+    <div class="note-b"><b>统一映射：</b>输入 N 张 RGB 图 \(I_i\in\mathbb{R}^{3\times H\times W}\)，网络 \[ f\big((I_i)_{i=1}^{N}\big)=(g_i,D_i,P_i,T_i)_{i=1}^{N} \] 逐帧输出四类量：相机参数 \(g_i\in\mathbb{R}^9\)、深度图 \(D_i\in\mathbb{R}^{H\times W}\)、点图 \(P_i\in\mathbb{R}^{3\times H\times W}\)、跟踪特征网格 \(T_i\in\mathbb{R}^{C\times H\times W}\)。</div>
+    <div class="note-b"><b>相机参数化：</b>\(g=[q,t,f]\)，旋转四元数 \(q\in\mathbb{R}^4\) + 平移 \(t\in\mathbb{R}^3\) + 视场角 \(f\in\mathbb{R}^2\)，假设主点在图像中心。<b>视角不变点图（关键）：</b>原文 <i>"like in DUSt3R, the point maps are viewpoint invariant, meaning that the 3D points Pi(y) are defined in the coordinate system of the first camera g1, which we take as the world reference frame."</i> 即所有 3D 点都表达在<b>第一台相机</b>坐标系=世界系。<b>跟踪：</b>Transformer 不直接出轨迹，而是出特征 \(T_i\)，交给独立 tracking 模块 \(\mathcal{T}\)；两者 <i>"trained jointly end-to-end"</i>。第一帧外参固定为单位：\(q_1=[0,0,0,1],\ t_1=[0,0,0]\)。</div>
+
+    <div class="note-h">④ Over-complete Predictions（冗余预测反而更好——核心洞见）</div>
+    <div class="note-b"><b>现象：</b>四类量并不独立——原文 <i>"the camera parameters g can be inferred from the invariant point map P, for instance, by solving the Perspective-n-Point (PnP) problem"</i>，深度也能由点图+相机推出。<b>反直觉结论：</b><i>"tasking VGGT with explicitly predicting all aforementioned quantities during training brings substantial performance gains, even when these are related by closed-form relationships."</i> 即<b>明知冗余仍全部显式预测，训练收益反而大</b>（§4.5 消融实证）。<b>推理期的小技巧：</b>反过来，推理时不要直接用 point map head——原文 <i>"combining independently estimated depth maps and camera parameters produces more accurate 3D points compared to directly employing a specialized point map branch"</i>，即用 depth+camera 反投出点云更准（§4.3 Table 3 实证 0.709→0.677）。<b>点评：</b>训练时"多目标互为正则"，推理时"拆成简单子问题"——这是 VGGT 很精的工程哲学。</div>
+
+    <div class="note-h">⑤ §3.2 Feature Backbone（DINO 切块 + Alternating-Attention）</div>
+    <div class="note-b"><b>切块：</b>每张图经 <b>DINO</b> patchify 成 K 个 token \(t^I\in\mathbb{R}^{K\times C}\)，所有帧 token 合在一起送主干。<b>Alternating-Attention（AA，唯一的"3D 偏置"）：</b>原文 <i>"frame-wise self-attention attends to the tokens within each frame separately, and global self-attention attends to the tokens across all frames jointly."</i> 交替<b>帧内</b>与<b>全局</b>自注意力——既跨图融合信息、又对每图内部 token 归一化。默认 <i>"L = 24 layers of global and frame-wise attention"</i>，且 <i>"our architecture does not employ any cross-attention layers."</i> <b>why：</b>全局自注意力让网络一次性看到所有视图 → 原生多视图推理；帧内注意力保稳定。</div>
+
+    <div class="note-h">⑥ §3.3 Prediction heads（camera/register token + DPT + uncertainty + 跟踪）</div>
+    <div class="note-b"><b>特殊 token：</b>每帧图 token 外加 1 个 camera token \(t^g_i\in\mathbb{R}^{1\times C'}\) 和 4 个 register token \(t^R_i\in\mathbb{R}^{4\times C'}\)；<b>第一帧的 camera/register token 用一组不同的可学习 token</b>，让模型 <i>"distinguish the first frame from the rest, and to represent the 3D predictions in the coordinate frame of the first camera."</i> register token 预测后丢弃。</div>
+    <div class="note-b"><b>三个 head：</b>① <b>Camera head</b>=camera token 过 4 层 self-attention + 线性层，出内外参；② <b>Dense head</b>=图 token 过 <b>DPT</b> 转稠密特征 \(F_i\in\mathbb{R}^{C''\times H\times W}\)，再 3×3 卷积出 depth \(D_i\) 与 point map \(P_i\)，并输出跟踪特征 \(T_i\)，还预测 <b>aleatoric uncertainty</b> \(\Sigma^D_i,\Sigma^P_i\)（进 loss、训练后正比于置信度）；③ <b>Tracking head</b>=用 <b>CoTracker2</b> 架构：query 点双线性采样特征 → 与各帧特征图相关 → self-attention → 出各帧 2D 对应点，<i>"does not assume any temporal ordering of the input frames"</i>（可用于无序图集而非仅视频）。</div>
+
+    <div class="note-h">⑦ §4.1 Camera Pose Estimation（Table 1，真实数值）</div>
+    <div class="note-b"><b>设置：</b>Re10K（unseen，无方法在其上训练）/ CO3Dv2，每场景随机 10 帧，指标 AUC@30（综合相对旋转 RRA + 相对平移 RTA），H100 计时。</div>
+    <div class="note-b kv">
+&nbsp;&nbsp;方法　　　　　　Re10K↑ ｜ CO3Dv2↑ ｜ 时间<br>
+&nbsp;&nbsp;DUSt3R　　　　　67.7 ｜ 76.7 ｜ ~7s<br>
+&nbsp;&nbsp;MASt3R　　　　　76.4 ｜ 81.8 ｜ ~9s<br>
+&nbsp;&nbsp;VGGSfM v2　　　78.9 ｜ 83.4 ｜ ~10s<br>
+&nbsp;&nbsp;Fast3R(并行工作) 72.7 ｜ 82.5 ｜ ~0.2s<br>
+&nbsp;&nbsp;<b>Ours (Feed-Forward) 85.3 ｜ 88.2 ｜ ~0.2s</b><br>
+&nbsp;&nbsp;<b>Ours (with BA)　 93.5 ｜ 91.8 ｜ ~1.8s</b>
+    </div>
+    <div class="note-b"><b>读表：</b>前馈版 0.2s 即全面超过要 &gt;10s 后优化的 VGGSfM/MASt3R/DUSt3R；在<b>没人训过</b>的 Re10K 上优势更大，原文 <i>"This validates the superior generalization of VGGT."</i> 加 BA 再涨到 93.5（仍只 ~1.8s，因 VGGT 给了好初值，省掉三角化与迭代）。</div>
+
+    <div class="note-h">⑧ §4.2 多视图深度（Table 2）+ §4.3 点图（Table 3）</div>
+    <div class="note-b"><b>Table 2（DTU MVS，Acc/Comp/Overall↓）：</b>Ours <b>0.389 / 0.374 / 0.382</b>（<b>不知道</b> GT 相机）；DUSt3R（同样不知 GT 相机）2.677 / 0.805 / <b>1.741</b>；而知 GT 相机的 GeoMVSNet Overall 0.295、MASt3R 0.374。原文 <i>"Our method substantially outperforms DUSt3R, reducing the Overall score from 1.741 to 0.382"</i>，且<b>逼近"知道 GT 相机"的方法</b>。</div>
+    <div class="note-b"><b>Table 3（ETH3D 点图，10 帧，Umeyama 对齐）：</b>Ours (Point) 0.901 / 0.518 / <b>0.709</b> @~0.2s；<b>Ours (Depth + Cam) 0.873 / 0.482 / 0.677</b>（更优）；DUSt3R 1.167/0.842/1.005 @~7s、MASt3R 0.968/0.684/0.826 @~9s。<b>验证了 Over-complete 的推理技巧</b>：depth+camera 反投 &gt; 直接 point head，原文归因 <i>"decomposing a complex task (point map estimation) into simpler subproblems (depth map and camera prediction)."</i></div>
+
+    <div class="note-h">⑨ §4.4 双视图匹配（Table 4，跨任务泛化）</div>
+    <div class="note-b"><b>设置：</b>ScanNet-1500，用 tracking 分支找对应 → 估 essential matrix → 分解出相对位姿，指标 AUC@5/10/20。<b>结果：</b>Ours <b>33.9 / 55.2 / 73.4</b>，超过专门做双视图匹配的 SOTA Roma（31.8 / 53.4 / 70.9）。原文 <i>"Despite not being explicitly trained for two-view matching, VGGT achieves the highest accuracy among all baselines."</i> <b>点评：</b>这是"通用 backbone"含金量的旁证——没专门为该任务训练却拿第一。</div>
+
+    <div class="note-h">⑩ §4.5 消融（每个验证一个设计）</div>
+    <div class="note-b"><b>Table 5 · Backbone（ETH3D 点图 Overall↓，同参数量 2L 层）：</b>Cross-Attention <b>1.061</b> ｜ Global Self-Attention Only <b>0.827</b> ｜ <b>Alternating-Attention 0.709（最佳）</b>。结论：AA 明显优于纯全局或交叉注意力，且 <i>"architectures using cross-attention generally underperform compared to those exclusively employing self-attention."</i> <b>验证了 AA 这一唯一架构设计的必要性。</b></div>
+    <div class="note-b"><b>Table 6 · 多任务学习（ETH3D 点图 Overall↓）：</b>去掉 camera 监督 → <b>0.834</b>（最伤）；去 depth → 0.727；去 track → 0.790；全开 ✓✓✓ → <b>0.709（最佳）</b>。原文 <i>"incorporating camera parameter estimation clearly enhances point map accuracy, whereas depth estimation contributes only marginal improvements."</i> <b>验证了 Over-complete：明知冗余仍联合监督，反而最准；相机监督贡献最大。</b></div>
+
+    <div class="note-h">⑪ §4.6 下游迁移（Table 7 NVS + Table 8 动态跟踪）</div>
+    <div class="note-b"><b>Table 7 · 前馈新视角合成（GSO，PSNR/SSIM/LPIPS）：</b>Ours-NVS* 30.41 / 0.949 / 0.033，<b>且不需要输入相机参数、只用 20% 训练数据</b>，仍逼近需已知相机的 LVSM（31.71 / 0.957 / 0.027）。<b>Table 8 · 动态点跟踪（TAP-Vid，AJ/δvis/OA）：</b>把 CoTracker2 的 backbone 换成 VGGT 预训练特征后，CoTracker+Ours 在 Kinetics 57.2 / RGB-S 72.1 / DAVIS 64.7 全面领先；原文 <i>"VGGT's tracking features improve the δvis avg metric from 78.9 to 84.0 on the TAP-Vid RGB-S dataset."</i> <b>证明 VGGT 是可迁移的通用 3D backbone。</b></div>
+
+    <div class="note-h">⑫ §3.1 预测顺序 &amp; 排列等变性（permutation equivariance）</div>
+    <div class="note-b"><b>原文：</b><i>"The order of the images in the input sequence is arbitrary, except that the first image is chosen as the reference frame. The network architecture is designed to be permutation equivariant for all but the first frame."</i> <b>在说什么：</b>输入图的顺序<b>无所谓</b>（不像视频要时序），唯独"第一帧"被选作参考系；网络对"除第一帧外的所有帧"<b>排列等变</b>——打乱其余帧顺序，输出随之对应置换而结果不变。<b>why：</b>这正是 VGGT 能处理"无序图集"（而非仅视频）的根，也是它能当 SfM 用的前提（SfM 输入本就是无序照片集）。代价：必须用 camera/register 的"第一帧专属可学习 token"把第一帧从置换对称里"打破"出来，否则没有锚点定义世界系。</div>
+
+    <div class="note-h">Q&amp;A · 为什么第一帧特殊、坐标系如何锚定？</div>
+    <div class="note-b"><b>问题：</b>point map 视角不变要求所有 3D 点在同一世界系，世界系怎么定？<b>答：</b>原文把<b>第一台相机 \(g_1\) 直接当世界参考系</b>——其外参固定为单位：\(q_1=[0,0,0,1],\ t_1=[0,0,0]\)。为让网络"认得"第一帧，第一帧的 camera token、register token 用<b>另一组可学习 token</b>（与其余帧不同），原文 <i>"allow the transformer to identify the first camera."</i> <b>机理点评：</b>这是一个很轻的"对称性破缺"设计——不引入任何显式几何，仅靠一组特殊 token 就把"谁是原点"教给纯注意力网络，既保住了对其余帧的排列等变、又锚定了统一坐标系。</div>
+
+    <div class="note-h">📚 相关工作定位：Tracking-Any-Point / CoTracker 谱系</div>
+    <div class="note-b"><b>谱系（来自 §2 Related Work）：</b>点跟踪任务最早由 Particle Video 提出、PIPs 在深度学习时代复兴；TAP-Vid 给出三个 benchmark，TAPIR 改进，<b>CoTracker</b> 利用点间相关性穿透遮挡，DOT 做稠密跟踪，TAPTR 用端到端 Transformer，LocoTrack 把逐点特征扩到邻域。<b>VGGT 的定位：</b>不重造跟踪器，而是把自己的 dense 特征 \(T_i\) 喂给现成 <b>CoTracker2</b> 头；原文 <i>"we demonstrate that VGGT's features yield state-of-the-art tracking performance when coupled with existing point trackers."</i> 这与 Table 8"换 backbone 即涨点"一致——卖点是<b>特征质量</b>而非跟踪算法本身。</div>
+
+    <div class="note-h">Q&amp;A · "最小 3D 归纳偏置 + 大数据"是什么路线、为何成立？</div>
+    <div class="note-b"><b>主张：</b>原文 <i>"VGGT is based on a fairly standard large transformer, with no particular 3D or other inductive biases (except for alternating between frame-wise and global attention), but trained on a large number of publicly available datasets with 3D annotations. VGGT is thus built in the same mould as large models for natural language processing and computer vision, such as GPTs, CLIP, DINO, and Stable Diffusion."</i> <b>在说什么：</b>不往网络里塞极线几何、代价体（cost volume）、可微 BA 这些手工 3D 先验，只留一个 Alternating-Attention，把"学几何"的活全交给数据 + 规模——和 GPT/CLIP/DINO 一个套路：<b>通用大 backbone + 海量数据 → 涌现能力</b>。<b>why 成立（机理）：</b>多视图几何的约束（对应、三角化、刚体变换）本就蕴含在"同场景多视图的 3D 标注"里，足够大的注意力网络 + 足够多样的数据能把这些约束<b>统计地学出来</b>，无需人工编码；好处是同一 backbone 还能迁移到下游（Table 7/8）。<b>边界（诚实）：</b>这条路线高度依赖<b>大规模高质量 3D 标注数据</b>与算力，数据覆盖不到的极端域仍可能失效，且训练细节（loss 权重/数据清单）论文放在 supplementary，正文未全列。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>problem：</b>3D 重建长期依赖 BA/Global Alignment 这类迭代几何优化（慢、复杂），DUSt3R/MASt3R 虽神经化但只能两图 + 成对融合后处理。<b>method：</b>VGGT=标准大 Transformer（DINO 切块 + 唯一偏置 Alternating-Attention 交替帧内/全局自注意、L=24、无 cross-attention）+ camera/register token + camera head &amp; DPT dense head（出 depth/point/track 特征 + uncertainty）+ CoTracker2 跟踪头；统一映射 \(f((I_i))=(g_i,D_i,P_i,T_i)\)，点图视角不变（第一相机系）；<b>Over-complete</b>：训练显式预测全部冗余量、推理用 depth+camera 反投更准。</div>
+    <div class="note-b"><b>experiment：</b>相机位姿 Re10K 85.3 / CO3D 88.2（前馈 0.2s 即超 &gt;10s 的后优化法，+BA 达 93.5）；DTU 深度 Overall 0.382（DUSt3R 1.741）；ETH3D 点图 0.677；ScanNet 双视图匹配超 Roma；消融证 AA &gt; 全局/交叉、多任务联合监督最优；下游 NVS/动态跟踪迁移均涨点。</div>
+    <div class="note-b"><b>Takeaway（≥3 条）：</b>① <b>范式转变</b>——证明 3D 重建可以"neural-first"：标准大 Transformer + 大规模 3D 标注数据，几乎不用手工几何先验也能前馈直出全部 3D 量并 SOTA；② <b>冗余即正则</b>——明知相机/深度/点图存在闭式关系，仍全部显式预测，训练收益显著（相机监督贡献最大），而推理时拆成 depth+camera 子问题更准；③ <b>通用 3D backbone</b>——预训练特征可迁移到双视图匹配、NVS、动态点跟踪等下游并涨点；④ <b>承上启下</b>——VGGT 是 CVPR 2025 Best Paper，其"多 task-specific head + 无动态对应"两短板，正是次年 D4RT（统一 query 接口 + 原生动态跟踪）要补齐的靶子，几何重建连续两年拿奖。</div>
+    <!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-vggt-visual-geometry-grounded-transformer/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. VGGT is a large feed-forward transformer with minimal 3D-inductive biases trained on a trove of 3D-annotated data. It accepts up to hundreds of images and predicts cameras, point maps, depth maps, and point tracks for all images at once in less than a second, which often outperforms optimization-based alternatives without further processing.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-vggt-visual-geometry-grounded-transformer/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Architecture Overview. Our model ﬁrst patchiﬁes the input images into tokens by DINO, and appends camera tokens for camera prediction. It then alternates between frame-wise and global self attention layers. A camera head makes the ﬁnal prediction for camera extrinsics and intrinsics, and a DPT [57] head for any dense output.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-vggt-visual-geometry-grounded-transformer/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. In-the-wild comparison of our predicted 3D points to DUSt3R. As shown in the top row, our method successfully predicts the geometric structure of an oil painting, while DUSt3R predicts a slightly distorted plane. In the second row, our method correctly recovers a 3D scene from two images with no overlap, while DUSt3R fails. The third row provides a challenging example with repeated textu</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-vggt-visual-geometry-grounded-transformer/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Visualization of Rigid and Dynamic Point Tracking. Top: VGGT’s tracking module T outputs keypoint tracks for an unordered set of input images depicting a static scene. Bottom: We ﬁnetune the backbone of VGGT to enhance a dynamic point tracker CoTracker [38], which processes sequential inputs.</figcaption></figure>
+    </div>
+  </div></body></html>

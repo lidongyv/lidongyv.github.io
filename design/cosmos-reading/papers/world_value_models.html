@@ -1,0 +1,133 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>World Value Models (WVM) 精读 · 世界模型改造成机器人价值模型</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--panel:#161c34;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--red:#fb7185;--blue:#60a5fa}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 18% -10%,rgba(167,139,250,.18),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.65;min-height:100vh}
+.wrap{max-width:1120px;margin:0 auto;padding:26px 18px 80px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.hero{padding:20px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(126,224,255,.08));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--accent);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(20px,3vw,30px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 35%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13px;max-width:900px}
+.hero .meta{margin-top:10px;font-size:12px;color:var(--text3)}.hero .meta b{color:var(--text2)}
+.legend{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0;font-size:12px;color:var(--text2)}
+.lg{display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:999px;padding:4px 11px}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+h2.sec{font-size:17px;font-weight:800;margin:26px 0 4px;display:flex;align-items:center;gap:8px}
+h2.sec .bar{width:4px;height:17px;border-radius:3px;background:linear-gradient(180deg,var(--accent2),var(--accent))}
+h3.sub3{font-size:14px;margin:14px 0 4px;color:var(--text)}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:12px}
+.q{background:rgba(126,224,255,.06);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:9px 13px;margin:9px 0;font-size:13px;color:var(--text);font-weight:700}
+.a{font-size:13px;color:var(--text2);margin:0 0 6px 2px}
+.a b{color:var(--text)}
+.quote{background:rgba(0,0,0,.25);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:12.5px;color:var(--text2);font-style:italic}
+.quote b{color:var(--amber);font-style:normal}
+.box{background:rgba(17,23,45,.92);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0}
+.box b{color:var(--text)}
+pre{background:#0a0e1c;border:1px solid var(--line);border-radius:9px;padding:11px 13px;overflow-x:auto;font-size:12px;line-height:1.5;margin:8px 0}
+code{font-family:SFMono-Regular,Consolas,monospace;color:var(--accent)}
+pre code{color:#cdd6f4}
+.cmt{color:#6b7394}
+.kw{color:var(--accent2)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;background:rgba(0,0,0,.18);border-radius:10px;overflow:hidden;margin:10px 0}
+th{background:rgba(167,139,250,.2);text-align:left;padding:8px 11px;font-weight:700;border-bottom:2px solid var(--accent2);white-space:nowrap}
+td{padding:7px 11px;border-bottom:1px solid var(--line);color:var(--text2);vertical-align:top}
+td b{color:var(--text)}
+.win{color:var(--green);font-weight:700}
+.out{font-family:SFMono-Regular,Consolas,monospace;color:var(--green);font-size:12px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);border-radius:6px;padding:1px 7px;display:inline-block}
+.tag{font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:4px}
+.tag-code{background:rgba(74,222,128,.16);color:var(--green);border:1px solid rgba(74,222,128,.4)}
+.tag-paper{background:rgba(96,165,250,.16);color:var(--blue);border:1px solid rgba(96,165,250,.4)}
+.tag-warn{background:rgba(251,113,133,.16);color:var(--red);border:1px solid rgba(251,113,133,.4)}
+.figw{margin:14px 0;background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:11px;padding:10px}
+.figw img{width:100%;border-radius:7px;background:#fff;display:block}
+.figw figcaption{font-size:11.5px;color:var(--text3);margin-top:7px;line-height:1.55}.figw figcaption b{color:var(--accent)}
+.figs{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.fg{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:11px;padding:10px;margin:0}
+.fg img{width:100%;border-radius:7px;background:#fff;display:block}
+.fg figcaption{font-size:11px;color:var(--text3);margin-top:7px;line-height:1.5}.fg figcaption b{color:var(--accent)}
+.contrib{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin:8px 0}
+.cc{background:rgba(126,224,255,.05);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:10px 13px;font-size:12.5px;color:var(--text2)}.cc b{color:var(--text)}
+.note2{margin-top:20px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+.hl{color:var(--accent);font-weight:700}.hlp{color:var(--accent2);font-weight:700}
+</style></head><body><div class=wrap>
+<a href="../index.html" class=backlink>← 教学文档主页</a>
+<a href="../../world-model/wm_methods.html" class=backlink>World Model 方法全景</a>
+<a href="diffusion_basics.html" class=backlink>扩散 / Flow Matching 基础 →</a>
+
+<header class=hero><div class=kick>World Model × Robotic Manipulation · 论文精读</div>
+<h1>World Value Models (WVM)：把预训练世界模型改造成机器人价值模型</h1>
+<p class=sub>核心一句：机器人 <b>value model</b>（判断"任务完成到几成"）过去多建在 <b>VLM</b> 上，而 VLM 预训练看的是静态/稀疏图像、缺时序建模；本文改用天生擅长"看历史 + 想未来"的 <b>video world model</b> 作骨架，用 <b>MoT</b> 挂一个轻量 value DiT、以 <b>flow matching</b> 把价值建成分布式 value chunk，得到通才价值模型 WVM，并配套 800 条人工标注的次优轨迹 benchmark。</p>
+<div class=meta>论文：<i>World Value Models for Robotic Manipulation</i>（arXiv <b>2606.24742</b>, cs.RO, preprint 2026-06-18）｜ 作者：Zhihao Wang, Jianxiong Li, Yu Cui, Yuan Gao, Xianyuan Zhan, Junzhi Yu, Xiao Ma（<b>ByteDance Seed / 北大 / 清华</b>）｜ 项目页 zh1hao.wang/wvm ｜ 代码 github.com/255isWhite/WVM</div></header>
+
+<div class=legend>
+<span class=lg><span class="dot" style="background:var(--blue)"></span>📄 论文原文（英文原句引用）</span>
+<span class=lg><span class="dot" style="background:var(--accent2)"></span>📚 背景（外部知识 / 非本文原文）</span>
+<span class=lg><span class="dot" style="background:var(--amber)"></span>🔍 逐句指路 / 追问 why</span>
+<span class=lg><span class="dot" style="background:var(--red)"></span>⚠️ 推断 / 需核（原文未明写）</span>
+</div>
+
+<div class=box><b>一句话总览：</b>WVM = <span class=hl>预训练 video world model（Wan2.2）</span> 作骨架 + <span class=hl>轻量 value DiT</span> 通过 <span class=hl>Mixture-of-Transformers（MoT）非对称注意力</span> 挂上去（value 看 video、video 不受 value 影响）+ 把 value 建成 <span class=hl>flow-matching 分布式 value chunk</span>（一次预测 h 帧的 progress 分布，而非单个 scalar）+ 两个增强（<span class=hl>prefix randomization</span> 防走捷径、<span class=hl>video rewinding</span> 造 plateau/regression 监督）。配套提出 <span class=hl>Suboptimal-Value-Bench</span>（800 条含犹豫/重试的次优轨迹，逐帧人工标注）。</div>
+
+<!-- ============ §1 ABSTRACT ============ -->
+<h2 class=sec><span class=bar></span>1 · Abstract 逐句精读</h2>
+<div class=secsub>原文引用（英文原句）+ 逐句指路，不脑补转译。</div>
+
+<div class=quote><b>原文：</b>"Generalist value models play a pivotal role in scaling robotic policy learning from large-scale, mixed-quality data. Mathematically, accurate value estimation demands deep temporal understanding, requiring models to both ground the current belief using historical context and plan over future outcomes."</div>
+<p class=a><b>🔍 指路：</b>立题——<b>通才 value model</b> 是"从大规模、<b>混质量</b>数据里 scale 机器人策略学习"的关键。为什么？因为准确的 value 估计需要<b>深度时序理解</b>：既要用<b>历史 context</b> 把"现在处于任务的哪一步"(current belief) 锚定住，又要<b>向前规划</b>未来结果。一句话点出 value 的"双重时序能力"要求，这正是后面 world model 上场的伏笔。</p>
+
+<div class=quote><b>原文：</b>"However, most existing robotic value models are built on Vision-Language Model (VLM) backbones that are pretrained primarily on static or temporally sparse visual observations, lacking the requisite temporal modeling capabilities for value estimation."</div>
+<p class=a><b>🔍 指路：</b>靶子——现有机器人 value model 多建在 <b>VLM</b> 骨架上，而 VLM 预训练主要吃<b>静态或时序稀疏</b>的视觉观测（图文对、单图问答），<b>天生缺</b> value 估计所需的时序建模能力。这是本文要打的痛点。</p>
+
+<div class=quote><b>原文：</b>"Unlike VLMs, world models naturally excel at temporal modeling and future planning, making them ideal foundations for learning generalizable value functions. Driven by this insight, we marry world models with value estimation to construct a new generalist robotic value model, World Value Model (WVM), that offers accurate task progressions to assess data quality."</div>
+<p class=a><b>🔍 指路：</b>解法核心——<b>world model 天生擅长时序建模 + 未来规划</b>（因为它就是被训来"预测未来帧"的），恰好补上 VLM 的短板，是学习"可泛化 value function"的理想骨架。于是把 <span class=hlp>world model 与 value estimation "联姻"</span>造出 WVM，输出准确的 <b>task progression（任务进度）</b>来评估数据质量。<b>关键概念对齐</b>：这里的"value"不是抽象的 RL 回报，而是可读的<b>任务完成进度</b>（0→1），后面 §3.1 会证明在稀疏奖励下二者等价。</p>
+
+<div class=quote><b>原文：</b>"On standard benchmarks, WVM delivers state-of-the-art (SOTA) Value-Order Correlation (VOC) results. Complementing standard evaluation suites that contains only expert data, we further introduce Suboptimal-Value-Bench, a multi-embodiment benchmark consisting of 800 suboptimal trajectories with high-fidelity, human-labeled frame annotations."</div>
+<p class=a><b>🔍 指路：</b>结果 + 新 benchmark——标准 <b>VOC</b>（Value-Order Correlation，衡量预测 value 是否随任务推进单调上升，§3 背景块细讲）达 SOTA。但作者指出标准评测<b>只有专家（expert）数据</b>的局限，于是提出 <span class=hlp>Suboptimal-Value-Bench</span>：<b>800 条次优轨迹</b>、多形态（multi-embodiment）、<b>逐帧人工标注</b>。这是本文两大贡献之一。</p>
+
+<div class=quote><b>原文：</b>"Our evaluations show that WVM maintains its SOTA performance on Suboptimal-Value-Bench ... When deployed for policy learning, WVM improves manipulation performance across various policy extraction approaches in both simulated and real-world deployment, providing robust guidance for learning from mixed-quality data."</div>
+<p class=a><b>🔍 指路：</b>两点收尾——(1) WVM 在次优数据上仍 SOTA（robust）；(2) 把 WVM 接进<b>下游策略学习</b>（做数据过滤/加权），在<b>仿真 + 真机</b>都提升操作成功率。落点回到开头："帮助从混质量数据学策略"。</p>
+
+<!-- ============ §2 INTRO 闭环 ============ -->
+<h2 class=sec><span class=bar></span>2 · Introduction：problem → insight → solution 闭环</h2>
+<div class=secsub>按精读铁规：读完 Intro 就把"痛点→核心解法→为什么"三点挖透，不推迟到 Method。</div>
+
+<div class=box><b>痛点：现有 value model 的三个 bottleneck（原文 §1）</b>
+<div class=quote style="margin-top:8px"><b>原文：</b>"(1) inefficiencies in value learning due to a heavy dependence on scalar value supervision, (2) limited generalization resulting from narrow, task-specific customization, and (3) impaired temporal understanding and future planning capabilities, a direct consequence of the sparse visual modeling characteristic of underlying VLMs."</div>
+<p class=a style="margin-top:6px">① <b>标量监督低效</b>：只回归一个标量 value，信息量稀疏、样本效率低、scale 到异构视频语料时预测脆弱。<br>② <b>泛化差</b>：很多 value model 为单任务定制，当不了"通才进度估计器"。<br>③ <b>时序能力弱</b>：建在 VLM 上 → 继承了"静态/稀疏图像"的表征，抓不住稠密时序动态。</p></div>
+
+<div class=box><b>关键洞察（key insight）</b>
+<div class=quote style="margin-top:8px"><b>原文：</b>"the spatiotemporal priors embedded in world models can be repurposed as a powerful foundation for value learning. We introduce WVM, a World Value Model engineered to inherit rich spatial-temporal priors from a pretrained video world model."</div>
+<p class=a style="margin-top:6px">world model 里已经学到的<b>时空先验</b>（它被训来预测未来帧，必然懂"物体怎么动、任务怎么推进"）可以<b>直接改用（repurpose）</b>作 value 学习的骨架 —— 这是全文的支点。</p></div>
+
+<div class=box><b>怎么解（解法三件套，原文 §1）</b>
+<p class=a><b>① 架构：</b><span class=quote style="display:inline;padding:2px 6px">"WVM couples the video stream with a lightweight value Diffusion-Transformer (DiT) via a Mixture-of-Transformers (MoT) architecture ... value tokens to selectively attend to structural video latents while minimizing representation interference with the video generation stream"</span> → video 流 + 轻量 value DiT，用 MoT 耦合，value 选择性地"看" video 的结构化 latent，同时<b>尽量不干扰</b> video 生成流。</p>
+<p class=a><b>② 目标：</b><span class=quote style="display:inline;padding:2px 6px">"WVM formulates the value function as a distributional value chunk trained by flow matching ... superior ... compared to traditional scalar supervision and conventional categorical distributions"</span> → 把 value function 建成<b>分布式 value chunk</b>（一次出 h 帧的 value 分布），用 <b>flow matching</b> 训 → 稠密信号 + 更强表达力，胜过标量监督和传统 categorical 分布。</p>
+<p class=a><b>③ 增强：</b><span class=quote style="display:inline;padding:2px 6px">"video rewinding and value prefix randomization ... robust prediction both optimal and suboptimal task progress"</span> → <b>video rewinding</b>（把帧倒放/重复造出 plateau、regression）+ <b>value prefix randomization</b>（防止 value 流靠 prefix 走捷径）→ 让 WVM 对最优和次优进度都能鲁棒预测。</p></div>
+
+<h3 class=sub3>三大贡献（原文逐字）</h3>
+<div class=contrib>
+<div class=cc><b>① world model 作 value 骨架</b><br>"repurpose world models as foundational backbones for robotic value learning, leveraging their rich spatiotemporal priors to overcome the limitations of standard VLMs."</div>
+<div class=cc><b>② 首个大规模 value flow model</b><br>"the first large-scale value flow model that formulates value functions as distributional chunks ... SOTA ... effective for policy improvement."</div>
+<div class=cc><b>③ Suboptimal-Value-Bench</b><br>"a new evaluation suite featuring dense, human-labeled suboptimal trajectories tailored for value model evaluations."</div>
+</div>
+
+<!-- ============ §3 背景块 ============ -->
+<h2 class=sec><span class=bar></span>3 · 📚 背景块（外部知识，非本文原文，读懂 method 必需）</h2>
+<div class=secsub>下列概念是理解 WVM 的前置，均为外部知识 / 前作，显式标注来源，非本文原创。</div>
+
+<div class=box><b>① 机器人里的 value model / task progress</b><br>在机器人操作里，一个 <b>value model</b> 输入"当前观测（图像/视频）+ 语言指令"，输出这条轨迹<b>完成到几成</b>（task progress，归一化 0→1）。它的用途：给大规模 RL 提供学习信号、或作<b>离线数据过滤/加权</b>器（把"高进度片段"留下、"原地打转/退步"的滤掉）——这正是本文下游实验（AWR / Filtered BC）在做的事。</div>
+
+<div class=box><b>② VOC（Value-Order Correlation，出自 GVL [43]）</b><br>评估 value model 质量的常用指标：一条<b>专家轨迹</b>随时间推进，好的 value 预测应当<b>单调上升</b>；VOC 就是"预测 value 的排序"与"真实时间顺序"的相关性（越接近 +1 越好）。<span class=hl>局限（本文靶点）</span>：单调性判据<b>只对专家（最优）轨迹成立</b>，对"犹豫/重试"这类<b>非单调</b>的次优段无从评价 —— 所以本文要另造 Suboptimal-Value-Bench。</div>
+
+<div class=box><b>③ world model / WAM（World Action Model）</b><br>world model 学"给定历史（+动作）预测未来观测"的动态模型；在机器人里衍生出 <b>WAM</b>（动作条件的视觉动态模型）。本文用的骨架 <b>Wan2.2</b> 是一个视频生成世界模型（video DiT + video VAE）。关键点：world model 被训来"想象未来帧"，<b>天然编码了时序动态与前瞻规划能力</b> —— 这正是 value 估计缺的。</div>
+
+<div class=box><b>④ flow matching（本站"扩散/FM 基础"页有详解）</b><br>一种生成式训练范式：在噪声 ε~N(0,I) 与数据 y 之间线性插值 <code>y_τ = τ·y + (1−τ)·ε</code>，训练一个网络 <code>f</code> 预测<b>速度场</b> <code>y−ε</code>；推理时从噪声出发、沿速度场用 ODE 积分（Euler）回到数据。本文用它把 value 建成<b>连续分布</b>（而非一个点或离散 bin），采样即得 value。</div>
+
+<div class=box><b>⑤ distributional value：categorical vs flow-matching</b><br>把 value 建成<b>分布</b>而非标量是 RL 老做法（如 C51/HL-Gaussian）。传统 <b>categorical</b> 把 value 域切成固定 bin、预测每个 bin 概率——<span class=hl>问题</span>：固定 bin 支撑集保住了条件均值，却<b>丢失细粒度密度变化</b>，而排序类指标恰恰要这个。本文的 <b>flow-matching head</b> 捕捉<b>连续</b> return 密度、不限支撑集与分辨率 → 保留了区分相邻 chunk 所需的局部 value 差异（§5.3 消融证实 flow 胜过 HL-Gaussian）。</div>
+
+<div class=box><b>⑥ Mixture-of-Transformers（MoT [33]）</b><br>一种多模态 Transformer 结构：不同模态各有自己的 FFN / QKV 投影（模态专属参数），但在<b>共享的 self-attention</b> 里交互。本文用它把"video 流"和"value 流"耦合：两流各自 FFN/QKV，在 multi-modal self-attention 里让 value token 去 attend video token。好处是加 value 分支时<b>基本不改动、不污染</b>原 video world model。</div>
+
+<!-- SEC_MORE --></div></body></html>

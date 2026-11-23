@@ -1,0 +1,192 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Neural Inverse Rendering from Propagating Light</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2025</span> &nbsp; <span class="badge b-best_student">🎓 Best Student</span></div>
+    <h1>Neural Inverse Rendering from Propagating Light</h1>
+    <div class="au2" style="color:var(--mut)">Anagh Malik · Benjamin Attal · Andrew Xie · Matthew O&amp;#x27;Toole · David B. Lindell</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2025/papers/Malik_Neural_Inverse_Rendering_from_Propagating_Light_CVPR_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Neural%20Inverse%20Rendering%20from%20Propagating%20Light">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2025-neural-inverse-rendering-from-propagating-light -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">第一个能从<b>多视角、时间分辨的"光在传播"视频</b>（flash lidar 拍的）做<b>物理式逆渲染</b>的系统。核心招：把昂贵的递归 path tracing 换成<b>时间分辨的 neural radiance cache</b>（神经辐射缓存）——缓存"任意点、任意方向、任意时刻到达的辐射"，于是只需渲直接光 + 查缓存得间接光，不用递归。结果：在强<b>间接光</b>（镜面/漫反射互反射）下做出 SOTA 几何重建，还能新视角重渲光传播 + 重打光（relighting）。多伦多大学 + CMU，CVPR 2025 Best Student Paper。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">Lidar 测光速时延做 3D 重建，但只用<b>直接光</b>（直接反射回传感器的）；<b>间接光</b>（多次散射后才回来的）通常被当噪声丢掉，因为建模它要<b>递归 path tracing</b>，贵到 intractable。但原文强调间接光 <i>"are a rich source of information about material properties, appearance, and geometry"</i>。前作 Flying-with-Photons[48] 能重渲光传播视频但<b>非物理</b>→几何不准、不能 relight。本文要：物理式地建模+反演含间接光的时间分辨测量。</div>
+    <div class="note-h">核心方法（hybrid 表示 + 时间分辨缓存）</div>
+    <div class="note-b">① <b>几何</b>用 volume rendering（hash-encoding 网络 N<sup>geom</sup> 出 density σ + 法线 n）；<b>外观</b>用物理 BRDF（Disney–GGX）。② <b>时间分辨渲染方程</b>（式5）在经典渲染方程上加飞行时间 τ：L<sub>o</sub>(x,ω<sub>o</sub>,τ)=∫<sub>Ω</sub> f·L<sub>i</sub>(x,ω<sub>i</sub>,τ)(n·ω<sub>i</sub>)dω<sub>i</sub>。③ 入射光拆 <b>L<sub>i</sub>=L<sup>dir</sup><sub>i</sub>+L<sup>cache</sup><sub>i</sub></b>（直接+间接）：直接光（式6）含 Dirac δ、逆平方衰减、时延 τ−‖x−x<sub>ℓ</sub>‖/c；间接光走<b>时间分辨 radiance cache</b>（式7，二次光线 + 延迟拷贝），用 <b>split-sum 近似</b>（式12）把"积分 BRDF × 积分入射辐射"拆成两个神经网络预测。④ <b>逆渲染</b>（式13-16）：最小化渲染与实测 lidar 的差 + <b>radiometric prior</b>（式15，约束 cache 的直接/间接与完整物理模型一致）。</div>
+    <div class="note-h">关键结果（数值）</div>
+    <div class="note-b">仿真 4 场景（Table 1）：法线 <b>MAE 8.45</b>（FWP++ 22.80，好 2.7×）、<b>L1 深度 0.21</b>（FWP++ 0.47，好 2.2×）、PSNR 30.99（最高）、T-IOU 0.76。即<b>几何重建在强间接光下大幅领先</b>。实拍 4 场景：view synthesis 上 FWP++ 略胜（PSNR 28.45 vs 27.39），原文诚实归因于物理模型更受标定/model mismatch 影响。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">radiance cache 把递归积分摊销成"查表"→可处理实拍多视角；新能力：时间分辨 <b>relighting</b>（投 C-V-P-R 字样光源）、把光传播分解成直接/间接分量、甚至能<b>只用 CW-ToF 或强度图</b>（无 lidar）训练后重建光传播视频；自带 Disney-GGX 材质分解（albedo/roughness/metalness）。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① 实拍 view synthesis 输给 FWP++——物理约束是双刃剑（更准的几何 vs 更敏感的标定）；② 优化要<b>单 GPU 跑 1 天以上</b>（时间分辨向量大、I/O + 显存带宽瓶颈）；③ 需要专门的 flash lidar + SPAD 硬件，不是普通相机能用；④ 自驾相关性：lidar 是自驾核心传感器，强间接光/多路径正是车载 lidar 的难点之一（原文点名 autonomous navigation），但本文是离线逐场景优化、非实时，落地仍远。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿，基于本地 PDF 全文（51k 字符 / 11 页）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文（定位）：</b><i>"We present the first system for physically based, neural inverse rendering from multi-viewpoint videos of propagating light."</i> → <b>第一个</b>从"多视角的光传播视频"做<b>物理基逆渲染</b>的系统。"光传播视频"=用 flash lidar 拍下光脉冲在场景里飞行的逐时刻画面。</div>
+    <div class="note-b"><b>原文（核心技术）：</b><i>"Our approach relies on a time-resolved extension of neural radiance caching — a technique that accelerates inverse rendering by storing infinite-bounce radiance arriving at any point from any direction."</i> → 把 <b>neural radiance caching（神经辐射缓存）</b>扩到<b>时间分辨</b>：缓存"任意点、任意方向、无限次反弹"的辐射，避免递归路径追踪。</div>
+    <div class="note-b"><b>原文（效果）：</b><i>"The resulting model accurately accounts for direct and indirect light transport effects and, when applied to captured measurements from a flash lidar system, enables state-of-the-art 3D reconstruction in the presence of strong indirect light."</i> → 同时建模<b>直接光 + 间接光</b>，在<b>强间接光</b>下达到 SOTA 三维重建。</div>
+    <div class="note-b"><b>原文（新能力）：</b><i>"we demonstrate view synthesis of propagating light, automatic decomposition of captured measurements into direct and indirect components, as well as novel capabilities such as multi-view time-resolved relighting of captured scenes."</i> → 三件新事：光传播的新视角合成、直接/间接光<b>自动分解</b>、多视角<b>时间分辨重打光</b>。<b>一句话抓 Abstract：</b>用时间分辨辐射缓存，把 flash lidar 的光传播视频逆渲染成物理可解释的几何+材质，强间接光下重建 SOTA，还能重打光与分解直接/间接光。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文，理解本文必备）</div>
+    <div class="note-b"><b>① lidar / SPAD / 光子直方图：</b>lidar 用脉冲激光照场景、测背向散射"回声"的飞行时间（time-of-flight）算距离。本文用<b>皮秒脉冲激光 + 单光子雪崩二极管 SPAD</b>，SPAD 以皮秒精度记录单个光子到达时间，输出"光子计数直方图"——近似入射光的<b>时间分辨波形</b>（即一段"光在飞"的视频）。</div>
+    <div class="note-b"><b>② 直接光 vs 间接光：</b>direct=从表面直接反射回传感器的光（传统 lidar 只用它测距）；indirect=经多次散射/反射后才到传感器的光（镜面反射、漫反射互反射）。传统 lidar 把间接光<b>当噪声丢弃</b>，但它富含材质/外观/几何信息。本文要把间接光<b>显式建模并利用</b>。</div>
+    <div class="note-b"><b>③ 渲染方程 + NeRF 体渲染：</b>渲染方程（Kajiya 1986）描述某点某方向的出射辐射=入射辐射按 BRDF 加权在半球上的积分；递归求解会指数爆炸。NeRF 用体渲染（沿光线按密度 \(\sigma\) 加权积分）建模辐射场。<b>radiance caching（辐射缓存）</b>=存"每点入射辐射的半球"，再与本地 BRDF 积分得出射辐射，省掉递归。</div>
+    <div class="note-b"><b>④ BRDF / Disney–GGX：</b>BRDF（双向反射分布函数）描述材质如何把入射光反射到各方向。本文用 <b>Disney–GGX</b> 参数化材质，参数含 <b>albedo（反照率）、roughness（粗糙度）、metalness（金属度）</b>——逆渲染同时把这些解出来。</div>
+    <div class="note-b"><b>⑤ split-sum 近似：</b>把"BRDF×入射辐射"在半球上的积分<b>拆成两个独立积分的乘积</b>（积分的 BRDF × 积分的入射辐射），是实时渲染（UE4）里高效近似间接光的经典技巧，本文用它高效缓存出射间接光（式12）。</div>
+
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环</div>
+    <div class="note-b"><b>problem：</b>传统 lidar 只用<b>直接光</b>测距，间接光（多次散射）因为"建模需要递归路径追踪、贵且常 intractable"被丢弃。已有多视角重建工作要么用点云、要么只用 direct-only 时间分辨测量，<b>都忽略间接光</b>；最近的 Malik et al.（FWP）虽能渲染光传播新视角，但 <i>"does not use a physically-based model, and so cannot reconstruct accurate geometry or render the scene under novel illumination conditions."</i></div>
+    <div class="note-b"><b>solution：</b>提出从 flash lidar（泛光照亮全场景）的多视角时间分辨测量做逆渲染。用<b>混合神经表示</b>：几何用体渲染、外观用物理基模型+<b>辐射缓存模拟全局光照</b>。关键：<i>"instead of integrating light paths using path tracing, our radiance cache stores a representation of time-resolved radiance arriving at any point ... thereby removing the need to evaluate the rendering integral recursively."</i></div>
+    <div class="note-b"><b>why（amortized 缓存破递归）：</b>路径追踪要递归积分→贵且对噪声/局部极小敏感；用<b>摊销优化的辐射缓存</b>后，只需"渲染来自 lidar 的直接光 + 查缓存得任意表面点的间接光"，把递归积分变成一次查表，使多视角实拍逆渲染变得可行。</div>
+
+    <div class="note-h">③ §3 背景 — 渲染方程与辐射缓存（式1-4）</div>
+    <div class="note-b"><b>渲染方程（式1）：</b>\[ L_o(x(t),\omega_o)=\int_\Omega f(x,\omega_i,\omega_o)\,L_i(x,\omega_i)\,(n\cdot\omega_i)\,d\omega_i \] 入射辐射 \(L_i\) 按 BRDF \(f\) 加权、在法线 \(n\) 的正半球 \(\Omega=\{\omega_i:n\cdot\omega_i>0\}\) 上积分。<b>朴素求解会指数爆炸</b>（需递归算 \(L_i\)）。</div>
+    <div class="note-b"><b>辐射缓存（式2）：</b>把 \(L_i\) 换成查缓存 \(L_i^{\text{cache}}\)：\[ L_o(x(t),\omega_o)=\int_\Omega f(x,\omega_i,\omega_o)\,L_i^{\text{cache}}(x,\omega_i)\,(n\cdot\omega_i)\,d\omega_i \] 用多重重要性采样近似积分，<b>去掉递归</b>。<b>式3-4</b>：缓存值由 NeRF 沿二次光线体渲染得到，\(L_i^{\text{cache}}(o',\omega_i)=\sum_{k=1}^N w_k\,L_o^{\text{cache}}(x'(t_k),\omega'_o)\)，权重 \(w_k=(1-e^{-\sigma(\Delta t)_k})\,e^{-\sum_{j<k}\sigma(\Delta t)_j}\) 是体渲染的透射率×吸收。</div>
+
+    <div class="note-h">④ §4.1 时间分辨渲染方程（式5-6）</div>
+    <div class="note-b"><b>加入飞行时间 τ（式5）：</b>把式1 扩成时间分辨——\[ L_o(x(t),\omega_o,\tau)=\int_\Omega f(x(t),\omega_i,\omega_o)\,L_i(x(t),\omega_i,\tau)\,(n\cdot\omega_i)\,d\omega_i \] 多出时间维 \(\tau\)；\(f\) 用 Disney–GGX BRDF。入射光拆成直接+间接 \(L_i=L_i^{\text{dir}}+L_i^{\text{cache}}\)。</div>
+    <div class="note-b"><b>直接光（式6）：</b>\[ L_i^{\text{dir}}(x(t),\omega_i,\tau)=\frac{\delta(\omega_\ell-\omega_i)\,L_i^\ell\big(\omega_\ell,\tau-\tfrac{\|x(t)-x_\ell\|}{c}\big)}{\|x(t)-x_\ell\|^2} \] 含三个物理量：<b>Dirac delta</b> \(\delta(\omega_\ell-\omega_i)\)（光只从光源方向来）、<b>平方反比衰减</b> \(1/\|x-x_\ell\|^2\)、<b>飞行时延</b> \(\tau-\|x-x_\ell\|/c\)（按光速 \(c\)）。\(x_\ell\) 是光源位置。</div>
+
+    <div class="note-h">⑤ §4.1 时间分辨缓存与 lidar 测量（式7-8）</div>
+    <div class="note-b"><b>二次光线渲缓存（式7）：</b>从主光线上的点 \(o'=x\) 沿 \(\omega'_o=\omega_i\) 投二次光线，时间分辨体渲染 \(L_i^{\text{cache}}(o',\omega_i,\tau)=\sum_k w_k\,L_o^{\text{cache}}(x'(t_k),x_\ell,\omega'_o,\tau-\tfrac{t_k}{c})\)。物理含义：<i>"the light incident at \(o'\) ... at time \(\tau\) is the sum of delayed copies of the light leaving each point ... and the delay depends on the distance."</i> 即"各点出射光的<b>延迟叠加</b>"。</div>
+    <div class="note-b"><b>lidar 测量（式8）：</b>对主光线同样体渲染出射辐射得传感器测量 \(L_i(o,\omega_o,\tau)=\sum_k w_k\,L_o(x(t_k),\omega_o,\tau-\tfrac{t_k}{c})\)。<b>关键</b>：直接光与缓存<b>共享同一密度场</b> \(\sigma\)（式7、8 同源），保证几何一致。</div>
+
+    <div class="note-h">⑥ §4.2 缓存表示 — hash encoding + 直接/间接分解（式9-10）</div>
+    <div class="note-b"><b>神经表示（式9）：</b>外观用多分辨率 hash 编码 \(f^{\text{app}}=H^{\text{app}}(x)\)；几何用 hash 网络 \(\sigma,n=N^{\text{geom}}(x)\) 出密度与法线。<b>分解（式10）</b>：缓存出射辐射拆成 \(L_o^{\text{cache}}=L_o^{\text{cache,dir}}+L_o^{\text{cache,indir}}\)，分别处理直接、间接。</div>
+
+    <div class="note-h">⑦ §4.2 直接 + 间接光建模（式11-12）</div>
+    <div class="note-b"><b>直接（式11）：</b>\(L_o^{\text{cache,dir}}=f^{\text{dir}}(f^{\text{app}},n,\omega_\ell,\omega'_o)\,L_i^{\text{dir}}(x'(t),\omega_\ell,\tau)\,(n\cdot\omega_\ell)\)，其中 \(f^{\text{dir}}\) 是学 BRDF 的神经网络。</div>
+    <div class="note-b"><b>间接（式12，split-sum）：</b>\[ L_o^{\text{cache,indir}}\approx \underbrace{\int_\Omega f(n\cdot\omega'_i)d\omega'_i}_{f^{\text{indir}}_\Omega}\cdot \underbrace{\int_\Omega L_i\,d\omega'_i}_{L^{\text{indir}}_{i,\Omega}} \] 即把"BRDF×入射"积分<b>拆成两个网络的乘积</b>：\(f^{\text{indir}}_\Omega\) 预测积分 BRDF、\(L^{\text{indir}}_{i,\Omega}\) 预测积分入射辐射（向量化为离散时间区间）。两者都<b>条件于光源位置 \(x_\ell\)</b>——这正是后面能重打光的原因。</div>
+
+    <div class="note-h">⑧ §4.3 逆渲染损失（式13-16）</div>
+    <div class="note-b"><b>数据项（式13）：</b>\(L_{\text{data}}=\sum_{o,\omega_o,\tau}\alpha(L_i^{\text{cache}})\,\|L_i-L_i^{\text{meas}}\|^2\)，让渲染测量逼近实拍。<b>α 加权（式14）</b>：\(\alpha(L)=(\sum_\tau L)^{-\beta}\)，<i>"chosen to more strongly penalize errors in darker regions"</i>（类似 tonemapping，加重暗区误差以提感知质量）；权重用<b>缓存</b>的辐射算（不受蒙特卡洛噪声影响）。</div>
+    <div class="note-b"><b>辐射先验（式15）：</b>跟 Hadadan et al. 一样，约束"用缓存渲的直接/间接分量"与"用完整物理模型渲的"一致：\(L^{\text{dir/indir}}=\sum\alpha\|L_o^{\text{cache,dir/indir}}-L_o^{\text{dir/indir}}\|^2\)。<b>完整损失（式16）</b>：\(L_{\text{data}}+\lambda_{\text{cache}}L_{\text{cache}}+\lambda_{\text{dir}}L_{\text{dir}}+\lambda_{\text{indir}}L_{\text{indir}}\)，外加法线/平滑/材质/Zip-NeRF 的 proposal+distortion/mask 等正则。最小化它即同时解出几何、法线、外观与 Disney–GGX 材质。</div>
+
+    <div class="note-h">⑨ §4 采集系统 — 第一套"光源也动"的多视角数据</div>
+    <div class="note-b"><b>硬件（Figure 3）：</b>皮秒脉冲激光经光纤+准直镜+扩散片泛光照场景；扫描 SPAD 由仰角升降臂 + 方位旋转台控制视角。原文强调首创性：<i>"Our approach is the first to capture a multi-view dataset of photon count histograms where both the flash lidar light source and sensor vary in position."</i> 即<b>光源和传感器都随视角移动</b>（Malik et al. 的光源是固定的），这对"重打光"至关重要。</div>
+
+    <div class="note-h">⑩ §5 实验设置 — 任务/指标/基线</div>
+    <div class="note-b"><b>三任务：</b>(1) 时间分辨 lidar 测量的新视角合成；(2) 积分（稳态）lidar 图像的新视角合成；(3) 几何重建。<b>指标</b>：积分图用 PSNR/SSIM/LPIPS；时间分辨用 transient-IOU（T-IOU）；法线用 MAE、深度用 L1。<b>基线</b>：<b>T-NeRF</b>（只建直接光）、<b>FWP++</b>（Flying with Photons 的增强版，建直接+间接但<b>非物理</b>），两者用同样 hash 表示与正则保证公平。<b>数据</b>：仿真 4 场景（Cornell box / pots / peppers / kitchen，Mitsuba 2 渲染）+ 实拍 4 场景（globe / house / spheres / statue）。</div>
+
+    <div class="note-h">⑪ §5 主结果 — Table 1（sim + cap）</div>
+    <div class="note-b"><table style="border-collapse:collapse;width:100%;font-size:12px;margin:2px 0">
+<tr style="color:#9aa3c7"><td style="padding:3px 6px;border-bottom:1px solid #2a2f5c">方法</td><td style="border-bottom:1px solid #2a2f5c">PSNR↑</td><td style="border-bottom:1px solid #2a2f5c">LPIPS↓</td><td style="border-bottom:1px solid #2a2f5c">SSIM↑</td><td style="border-bottom:1px solid #2a2f5c">MAE↓(法线)</td><td style="border-bottom:1px solid #2a2f5c">L1↓(深度)</td><td style="border-bottom:1px solid #2a2f5c">T-IOU↑</td></tr>
+<tr style="color:#9aa3c7"><td colspan=7 style="padding:2px 6px"><i>—— 仿真 sim ——</i></td></tr>
+<tr><td style="padding:2px 6px">T-NeRF（仅直接光）</td><td>22.44</td><td>0.40</td><td>0.71</td><td>28.00</td><td>0.59</td><td>0.58</td></tr>
+<tr><td style="padding:2px 6px">FWP++（直接+间接，非物理）</td><td>29.00</td><td>0.30</td><td>0.87</td><td>22.80</td><td>0.47</td><td>0.73</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 6px"><b>ours（物理基）</b></td><td><b>30.99</b></td><td>0.31</td><td><b>0.89</b></td><td><b>8.45</b></td><td><b>0.21</b></td><td><b>0.76</b></td></tr>
+<tr style="color:#9aa3c7"><td colspan=7 style="padding:2px 6px"><i>—— 实拍 cap ——</i></td></tr>
+<tr><td style="padding:2px 6px">T-NeRF</td><td>14.67</td><td>0.53</td><td>0.35</td><td>—</td><td>—</td><td>0.23</td></tr>
+<tr><td style="padding:2px 6px">FWP++</td><td>28.45</td><td>0.32</td><td>0.81</td><td>—</td><td>—</td><td>0.55</td></tr>
+<tr style="color:#ffd35c"><td style="padding:2px 6px"><b>ours</b></td><td>27.39</td><td>0.33</td><td>0.80</td><td>—</td><td>—</td><td>0.54</td></tr>
+</table></div>
+    <div class="note-b"><b>读表（关键）：</b>① 仿真上 ours <b>几何碾压</b>——法线 MAE <b>8.45</b> vs FWP++ 22.80（降 63%）、深度 L1 <b>0.21</b> vs 0.47（降 55%），PSNR 也最高 30.99；② 实拍上 ours 的 view-synthesis 指标<b>略低于 FWP++</b>（PSNR 27.39 vs 28.45），原文诚实解释：<i>"FWP++ ... uses a far less constrained model—our approach is physically grounded and could thus be more sensitive to the calibration of the physical system and model mismatch."</i> 即物理模型受标定/模型失配影响，实拍无几何真值故省略 MAE/L1。</div>
+
+    <div class="note-h">⑫ §5.1-5.2 定性对比 — 为什么物理模型更可信</div>
+    <div class="note-b"><b>T-NeRF（仅直接光）：</b>遇强间接光（镜面反射、漫反射互反射）会<b>插入漂浮伪影（floaters）</b>来"解释"这些效应，导致几何错、新视角差。<b>FWP++（非物理）：</b>虽能拟合 view，但<b>过拟合</b>——<i>"it is free to use a mirror copy of the scene to explain specular reflections"</i>（用镜像副本解释镜面反射）、<i>"uses incorrect depths to explain diffuse inter-reflections"</i>（用错误深度解释漫互反射）。<b>ours：</b>物理建模让间接光被正确归因，故几何（尤其墙角、柱子凹槽等间接光区）更准。</div>
+
+    <div class="note-h">⑬ §5.3 新应用 — relighting / 跨模态训练 / 材质分解</div>
+    <div class="note-b"><b>时间分辨重打光：</b>因间接光缓存<b>条件于光源位置 \(x_\ell\)</b>（式12），可换新光源重渲——Figure 1 用投出"C-V-P-R"字样的脉冲源给 house 场景重打光（<i>"to our knowledge, has not been demonstrated before from captured multi-view, time-resolved measurements"</i>）；若光源强度剖面与训练差异大，用式15 辐射损失微调。<b>跨模态训练</b>：不必非要 lidar 监督——也能用 <b>CW-ToF</b> 或<b>普通强度图</b>训练（二者都可由时间分辨数据导出），训完仍能渲出光传播视频并分解直接/间接光。<b>材质分解</b>：顺带恢复 Disney–GGX 的 albedo/roughness/metalness。</div>
+
+    <div class="note-h">⑭ §2 Related Work — 三条研究线（verbatim 锚点）</div>
+    <div class="note-b"><b>① 时间分辨成像（time-resolved imaging）：</b>原文 <i>"These systems usually combine nanosecond or picosecond pulsed lasers with fast photodiodes or single-photon avalanche diodes (SPADs) to measure ultrafast variations in incident light."</i> 连续波 ToF 也能拍光传播，但 <i>"their temporal resolution is more limited (e.g., nanoseconds rather than picoseconds)"</i>。本文定位首创：<i>"the first to capture a multi-view dataset of photon count histograms where both the flash lidar light source and sensor vary in position."</i> 光源随相机移动正是后面能"重打光"的物理前提。</div>
+    <div class="note-b"><b>② 时间分辨渲染（time-resolved rendering）：</b>可微时间分辨渲染器已出现，但 <i>"robust analysis-by-synthesis scene reconstruction using these methods is an open problem due to computational complexity and sensitivity to initialization and noise."</i> 而非视距（NLOS）渲染器通常 <i>"assume that light reflects off of planar surfaces with known (usually diffuse) reflectance properties, or else model specific scattering paths rather than arbitrary light transport"</i>——本文<b>不做</b>这类限制性几何/材质假设，直接物理建模任意多次散射。</div>
+    <div class="note-b"><b>③ 物理基逆渲染（physically-based inverse rendering）：</b>用 NeRF 的物理基渲染要么 <i>"only consider direct illumination"</i>，要么 <i>"require explicitly simulating multiple light bounces to model indirect light, which is computationally expensive."</i> 辐射缓存是 <i>"data structures that store the hemisphere of incoming radiance at every point"</i>，再与本地 BRDF 积分得出射辐射；<i>"Combining the radiance cache with NeRFs leads to more efficient modeling of indirect light."</i> 与并发工作 Wu et al. 的区别：后者用 <i>"a collocated point light source and color camera"</i>（同位点光源+彩色相机），而本文强调 <i>"no previous technique performs physically-based inverse rendering from multi-viewpoint time-resolved measurements."</i></div>
+
+    <div class="note-h">⑮ §4.3 损失全家桶 + 采样细节（regularizers verbatim）</div>
+    <div class="note-b"><b>除主光度损失（式13-16）外，还叠加多项正则项：</b>① <b>L<sub>normals</sub></b> <i>"ties predicted normals to analytic normals from the density field"</i>（把预测法线绑到密度场的解析法线，参 Ref-NeRF）；② <b>L<sub>geom</sub></b> 对解析法线的平滑惩罚（smoothness penalty）；③ <b>L<sub>mat</sub></b> <i>"a smoothness penalty Lmat on the predicted BRDF parameters"</i>；④ <b>L<sub>interlevel</sub> + L<sub>distortion</sub></b> 沿用 Zip-NeRF 的 proposal resampling 与 distortion 损失；⑤ <b>L<sub>mask</sub></b> 掩膜损失。这些正则是 NeRF 系逆渲染稳定收敛的"标配"，论文用同一套配方公平地施加到所有基线。</div>
+    <div class="note-b"><b>采样策略：</b>二次光线用 <b>multiple importance sampling</b>（基于 BRDF）+ 可学习的入射光重要性采样器（learnable importance sampler，沿用 Attal et al.），后者用 <b>L<sub>vMF</sub></b>（von Mises–Fisher）监督。<b>向量化表示（关键工程细节）：</b><i>"We represent the time-resolved direct outgoing light as a one-hot vector, where each bin corresponds to a discrete time interval, and indirect light as a dense vector of the same size (where the size depends on the dataset)."</i> ——直接光在时间轴上是 <b>one-hot</b>（能量集中在一个飞行时刻），间接光是 <b>dense 向量</b>（多次散射拖出一整段波形），这正是直接/间接能被分离的结构性原因。</div>
+
+    <div class="note-h">⑯ 三大贡献（原文 verbatim contributions）</div>
+    <div class="note-b">① <i>"We propose a method for neural inverse rendering of propagating light using a physically-based model with a time-resolved radiance cache."</i>（物理基 + 时间分辨辐射缓存的逆渲染方法）② <i>"We capture a new dataset of multi-viewpoint, time-resolved flash lidar measurements with calibrated light source and camera positions."</i>（首个光源与相机位置都标定且都移动的多视角 flash-lidar 数据集）③ <i>"we show state-of-the-art results in geometry reconstruction under strong indirect light transport, and we render videos of propagating light from novel viewpoints and under novel illumination conditions."</i>（强间接光下几何重建 SOTA + 新视角/新光照下重渲光传播）。</div>
+
+    <div class="note-h">📌 全文总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>传统 lidar 丢弃富含信息的间接光；已有多视角重建要么忽略间接光、要么非物理（不能重建准几何/重打光）。<b>method：</b>物理基时间分辨渲染器 + <b>时间分辨神经辐射缓存</b>——直接光按平方反比+光速时延建模（式6），间接光用 split-sum 缓存（式12，条件于光源位置），用体渲染统一主/二次光线（式7-8），逆渲染损失含 α 暗区加权 + 辐射一致先验（式13-16）。<b>experiment：</b>仿真几何 SOTA（法线 MAE 8.45 vs 22.80、深度 L1 0.21 vs 0.47），实拍 view-synthesis 略逊非物理 FWP++ 但几何更可信。</div>
+    <div class="note-b"><b>takeaway 1：</b><b>"间接光是信号不是噪声"</b>——把传统 lidar 丢弃的多次散射光显式物理建模，反而在强间接光场景大幅提升几何重建精度（这是与自动驾驶最相关的结论）。</div>
+    <div class="note-b"><b>takeaway 2：</b><b>时间分辨辐射缓存 = 破递归的关键</b>——用摊销优化的缓存替代递归路径追踪，把"无限次反弹辐射"存成可查表的神经网络，使多视角实拍光传播逆渲染从 intractable 变可行。</div>
+    <div class="note-b"><b>takeaway 3：</b><b>物理 vs 拟合的取舍很诚实</b>——物理约束让几何更可信、能重打光/分解光/跨模态训练，但代价是对标定/模型失配更敏感（实拍 PSNR 略输纯拟合的 FWP++），且需 &gt;1 天单卡优化。</div>
+
+    <div class="note-h">Q&amp;A · 疑问 / 边界（原文 §6 限制）</div>
+    <div class="note-b"><b>① 物理模型更敏感：</b><i>"our method relies on a more constrained physical model ... we notice some performance degradation compared to baselines on captured data, where model mismatch is a potential issue"</i>——可靠更好标定缓解。<b>② 慢：</b><i>"requires more than one day of optimization on a single GPU"</i>（时间分辨向量巨大、I/O 与显存带宽瓶颈）；未来可用只预测单时刻信号的表示，或 3D Gaussian Ray Tracing / EVER 等更快表示。<b>③ 未做 NLOS：</b>本文未碰非视距成像，但框架原则上可扩展到非平面中继面的 NLOS。</div>
+
+    <div class="note-h">Q&amp;A · 与自动驾驶 / lidar 的关系（直接相关）</div>
+    <div class="note-b"><b>directly 相关：</b>原文亲自点名 <i>"lidar systems ... are popular in applications from autonomous driving to augmented reality and remote sensing"</i>，并在 §6 说 <i>"we believe our work has potential for impact in areas such as autonomous navigation or remote sensing — especially in scenarios with strong indirect lighting effects."</i> 可迁移点：① 自驾 lidar 在<b>玻璃幕墙/湿滑路面/隧道</b>等强间接光/多径场景常被"鬼影/多径"困扰，本文"把间接光显式建模而非当噪声丢"的思路可改善这些场景的几何重建 [推测]；② 直接/间接光<b>自动分解</b>对识别"反光误检"有潜在价值 [推测]。<b>边界：</b>本文是离线、单物体/房间尺度、需 SPAD 皮秒系统 + &gt;1 天优化，远非车载实时 lidar 的工况；要落地自驾需巨大的实时化与尺度扩展，原文均未涉及。</div>
+    <!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-neural-inverse-rendering-from-propagating-light/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. We introduce a method to model and invert multi-view, time-resolved measurements of propagating light from a flash lidar system. (row 1) Our method accurately recovers the geometry of this scene and enables rendering of time-resolved lidar measurements that reveal light propagation from novel views. (row 2) Physically-based modeling enables novel applications, such as time-resolved relig</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-neural-inverse-rendering-from-propagating-light/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Method overview. (a) Our time-resolved renderer combines physically-based rendering for primary rays (left inset), and neural rendering for an indirect radiance cache along secondary rays (right inset). (b) The incident radiance Li at a sensor pixel is a function of the outgoing radiance Lo from each point x(t) along a sensor ray, which integrates incident direct light Ldir i and indirec</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-neural-inverse-rendering-from-propagating-light/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Multi-view capture setup. An elevation arm controls the elevation angle and a rotation stage controls the azimuth angle of the scanning SPAD. Laser light is out-coupled from an optical fiber through a collimating lens and diffusers onto the scene.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-neural-inverse-rendering-from-propagating-light/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Simulated results. Compared to the baselines our method recovers more accurate normals and similar or improved intensity images due to physically-based modeling of time-resolved indirect light transport (see arrows in the lidar frame insets).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-neural-inverse-rendering-from-propagating-light/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Results on the captured dataset. Our method recovers more accurate normals compared to FWP++ (cols. 3, 5) due to its physically-based modeling of indirect light transport effects (visible in the individual lidar frames; cols. 4, 6). Areas where FWP++ predicts incorrect normals usually correspond to regions with indirect light (arrows).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-neural-inverse-rendering-from-propagating-light/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Relighting results using three different light sources (color-coded in the RGB channels) for the captured house scene (top) and the simulated kitchen scene (bottom).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-neural-inverse-rendering-from-propagating-light/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Our approach recovers time-resolved videos of propa- gating light after training on continuous-wave time-of-flight (CW- ToF) measurements or intensity images. The video frames show direct and indirect light transport effects (arrows).</figcaption></figure>
+    </div>
+  </div></body></html>

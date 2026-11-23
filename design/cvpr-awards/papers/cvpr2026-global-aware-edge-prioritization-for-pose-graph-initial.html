@@ -1,0 +1,213 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Global-Aware Edge Prioritization for Pose Graph Initialization</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Global-Aware Edge Prioritization for Pose Graph Initialization</h1>
+    <div class="au2" style="color:var(--mut)">Tong Wei ⋅ Giorgos Tolias ⋅ Jiri Matas ⋅ Daniel Barath</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2602.21963">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2602.21963">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Global-Aware%20Edge%20Prioritization%20for%20Pose%20Graph%20Initialization">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">The pose graph is a core component of Structure-from-Motion (SfM), where images act as nodes and edges encode relative poses. Since geometric verification is expensive, SfM pipelines restrict the pose graph to a sparse set of candidate edges, making initialization critical. Existing methods rely on image retrieval to connect each image to its $k$ nearest neighbors, treating pairs independently and ignoring global consistency. We address this limitation through the concept of edge prioritization, ranking candidate edges by their utility for SfM. Our approach has three components: (1) a GNN trained with SfM-derived supervision to predict globally consistent edge reliability; (2) multi-minimal-spanning-tree-based pose graph construction guided by these ranks; and (3) connectivity-aware score modulation that reinforces weak regions and reduces graph diameter. This globally informed initialization yields more reliable and compact pose graphs, improving reconstruction accuracy in sparse and high-speed settings and outperforming SOTA retrieval methods on ambiguous scenes. Code and models will be released.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-global-aware-edge-prioritization-for-pose-graph-initial -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">SfM 第一步“选哪些图像对去做昂贵的几何验证”长期靠 <b>per-image kNN 检索</b>（各对独立、忽略全局），本文改成 <b>edge prioritization</b>：用 <b>GNN</b>（在完整图上消息传递）预测每条边的“全局可用性”，监督信号<b>直接来自 SfM 几何</b>（RANSAC 内点数 + 共见 3D 点数），再用 <b>多棵最小生成树(MST) + 连通性感知的距离调制</b> 挑出稀疏却全局良连通的初始 pose graph——在稀疏/高速场景显著提升重建精度，歧义场景甚至<b>超过专门的 doppelganger 过滤器 DG++</b>。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">pose graph 是 SfM 的骨架（图像=节点、边=相对位姿），验证所有 C(n,2) 对不可行→必须稀疏选边、<b>初始化决定成败</b>（原文 “if important connections are missing at initialization, they are not recovered later”）。现有几乎全靠 per-image retrieval 连 k 近邻，三毛病：① 各对独立、<b>忽略全局结构</b>；② 初始化后只剪不加→全局重要但非冗余的边<b>永久丢失</b>；③ 易生成长链/病态区域/弱耦合子结构。</div>
+    <div class="note-h">核心方法（三件套 + 关键公式）</div>
+    <div class="note-b"><b>① GNN 边排序：</b>图像编码 d_i=f_en(I_i)（MegaLoc=DINOv2+SALAD）；完整图上边初始化 e⁰_ij=ReLU(f_l(d_i,d_j,⟨d_i,d_j⟩))；<b>两轮 edge-node 消息传递</b>（边更新 e^t_ij=f_edge([e^{t−1}_ij,d^t_i,d^t_j])、消息 m^t_ji=f_msg([e^t_ij,d^t_j])、聚合 m^t_i=(1/N)Σm^t_ji、节点更新 d^{t+1}_i=f_update([d^t_i,m^t_i])）；最终 r̂_ij=f_MLP(e²_ij)。<b>② 几何监督（自监督）：</b>u_ij=RANSAC 内点数（式1，即时可验证性）、v_ij=共见三角化 3D 点数（式2，长期有用性），GT 排序 r̃_ij=½(norm(u_ij)+norm(v_ij))（式3）；loss=<b>NDCGLoss2++</b>（LambdaRank，可微近似 NDCG，式4）。<b>③ 多 MST + 调制：</b>权重 w_ij=1−r̂_ij、Kruskal 求 MST；建 k 棵（已选边赋 ∞ cost）union 成 G_init；连通性调制 s^{(m)}_ij=(1−λ)·r̂_ij+λ·d̄^{(m−1)}(i,j)（式6，d̄=归一化最短路距离/直径，式5），把远离的弱连通对 boost、缩小图直径；只更新每图 top-5、丢 rank&lt;0.9、已选边 mask −∞。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">IMC23-PhotoTourism / MegaDepth：所有 k 下 AUC 最高，<b>k=1,2（极稀疏）gap 最大</b>；~99% 相机注册（提升来自“更优边”而非“更多相机”）；落在 accuracy-runtime <b>Pareto frontier</b>。VisymScenes 歧义场景（Table 1）k=5 Ours&gt;75% 正确，超 SALAD/MegaLoc；在 Ours 上叠 DG++ <b>无额外收益</b>（说明预测器已自带抑制误导边）。跨域<b>无需重训</b>。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>第一个在几何验证之前</b>预测边可靠性（其他 GNN 方法都在“已算出相对位姿”的图上操作）；② edge prioritization 全局排序 vs per-image kNN；③ <b>多 MST 直接用于初始化</b>（前作只在 refinement 用）；④ 连通性调制缩小图直径、强化弱区；⑤ 超过专门 doppelganger 过滤器 DG++。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① 调制开启后 COLMAP 时间明显上升（VisymScenes k=5 Ours 5.7→13.3 min），accuracy↔time trade-off；② <b>kNN 选边</b>时 k=2 反被 MegaLoc 略超（Appendix A：Ours 61.2 vs MegaLoc 63.9），优势主要在 MST 框架下兑现；③ GNN 在大图（N&gt;500）需 METIS 聚类避免显存爆，子图预测再聚合，可能引入边界效应；④ 监督依赖 RANSAC（原文承认 “can still be noisy or occasionally wrong”），低内点对需预过滤。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文，含 Appendix）：① Abstract 逐句 ② Intro 闭环 ③ Method 核心机制+公式 ④ 实验/消融数值表 + 全文一页总结。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract 逐句精讲（verbatim 引用 + 中文指路）</div>
+    <div class="note-b"><b>原文①：</b>“The pose graph is a core component of Structure-from-Motion (SfM), where images act as nodes and edges encode relative poses. Since geometric verification is expensive, SfM pipelines restrict the pose graph to a sparse set of candidate edges, making initialization critical.”<br><b>在说什么：</b>给出舞台与痛点——pose graph 是 SfM 骨架（图像=节点、边=两视图相对位姿）；几何验证（特征匹配 + RANSAC 估相对位姿）非常贵，所以只能验证<b>稀疏</b>候选边子集 → "初始化时选哪些边"成为成败关键。<br><b>为什么这么做：</b>验证全部 \( \binom{N}{2} \) 对在大规模下不可行，必须先廉价地"挑边"。</div>
+    <div class="note-b"><b>原文②：</b>“Existing methods rely on image retrieval to connect each image to its k nearest neighbors, treating pairs independently and ignoring global consistency. We address this limitation through the concept of edge prioritization, ranking candidate edges by their utility for SfM.”<br><b>在说什么：</b>点名现状缺陷=per-image kNN 检索、<b>各对独立评估、忽略全局一致性</b>；本文核心概念=<b>edge prioritization</b>（按"对 SfM 的实际有用度"为所有候选边排序）。<br><b>为什么这么做：</b>SfM 里"边一旦在初始化漏掉，后续只剪不补"，所以必须在选边阶段就引入全局视角。</div>
+    <div class="note-b"><b>原文③：</b>“Our approach has three components: (1) a GNN trained with SfM-derived supervision to predict globally consistent edge reliability; (2) multi-minimal-spanning-tree-based pose graph construction guided by these ranks; and (3) connectivity-aware score modulation that reinforces weak regions and reduces graph diameter.”<br><b>三件套直给：</b>GNN 全局排序 + 多 MST 建图 + 连通性调制；末句承诺 “improving reconstruction accuracy in sparse and high-speed settings and outperforming SOTA retrieval methods on ambiguous scenes”——稀疏/高速场景提精度、歧义场景超 SOTA 检索。<br><b>一句话抓 Abstract：</b>把"选边"从 per-image kNN 升级为"几何监督的 GNN 全局排序 + 多 MST + 连通调制"，得到稀疏但良连通的初始 pose graph。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原创，理解本文必备）</div>
+    <div class="note-b"><b>① SfM / pose graph / 几何验证：</b>SfM（Structure-from-Motion）从图像集恢复相机位姿 + 3D 结构。pose graph：节点=图像、边=候选图像对（待验证相对位姿）。<b>几何验证</b>=对一对图做特征匹配 + RANSAC 估相对位姿，<b>昂贵</b>，所以不能验所有 \( \binom{N}{2} \) 对。SfM 分 incremental（逐张注册，COLMAP [42]）与 global（联合估所有位姿，GLOMAP [36]），但都从 pose graph 初始化起步。</div>
+    <div class="note-b"><b>② 图像检索（被本文替代的 baseline）：</b>用全局描述子把相似图映到邻近 embedding：NetVLAD/VLAD、CosPlace、<b>DINOv2-SALAD</b>（optimal transport 聚合 patch token）、<b>MegaLoc</b>（fine-tune SALAD，SOTA 检索）、AnyLoc。共性问题：“operate strictly pairwise”——每条边孤立评估、忽略全局结构。</div>
+    <div class="note-b"><b>③ GNN 消息传递：</b>图神经网络通过"节点↔边"反复交换消息，让每条边的表示不仅依赖两端点、还聚合<b>全图上下文</b>。本文用它把"全局一致性"注入边排序。</div>
+    <div class="note-b"><b>④ MST / Kruskal：</b>最小生成树=用 \(N-1\) 条边、以最小总权重连通所有节点；Kruskal 贪心加最小权边（不成环）。本文设权 \( w_{ij}=1-\hat r_{ij} \)，故 MST 优先挑高可靠边、保证全局连通且稀疏。<b>单 MST 脆</b>（一条错边断大片），故用多棵。</div>
+    <div class="note-b"><b>⑤ NDCG / LambdaRank：</b>信息检索里评排序质量的指标——DCG 把高相关项排前面给高分、按位置打折，NDCG=DCG/IDCG \( \in[0,1] \)。NDCG 不可微，<b>LambdaRank / NDCGLoss2++</b> 用"成对交换对排序质量的影响"构造可微近似。本文据此把"选边"当<b>排序问题</b>（只在意相对次序，非绝对值）。</div>
+    <div class="note-b"><b>⑥ Doppelganger（歧义难点）：</b>视觉极像但几何无关的图像对（重复立面 / 对称建筑），会让 SfM 错连、reconstruction 断成多块。DoppelGanger++（DG++）是专门过滤它们的算法——本文在 VisymScenes 上不用它也超过它。</div>
+
+    <div class="note-h">② Introduction · problem → 现有不足 → solution → why 闭环</div>
+    <div class="note-b"><b>problem：</b>原文 “current initialization strategies rely almost exclusively on per-image retrieval, treating pairs independently and failing to integrate global cues” 且 “once the initial edges are chosen, later stages only prune but do not add connections, thus irreversibly losing the global context”。后果 “elongated chains, poorly conditioned regions, or multiple weakly coupled substructures”（长链 / 病态区域 / 弱耦合子结构）。</div>
+    <div class="note-b"><b>现有不足（为何 kNN 不够）：</b>“This greedy procedure operates independently per image and ignores the global structure.” 各图独立连 k 近邻 → "strong but non-redundant edges may be overlooked"。漏的边后期不可逆补回（“if important connections are missing at initialization, they are not recovered later [15,35,49]”）。</div>
+    <div class="note-b"><b>solution（三步）：</b>原文 “we introduce the notion of edge prioritization: ranking all candidate edges by their global utility for SfM”。① GNN + SfM-derived supervision 出全局边分；② 用分迭代算多棵 MST 保全局覆盖；③ 跨迭代调制边分强化弱连通区、缩短长链。</div>
+    <div class="note-b"><b>why（每步针对前一步缺陷）：</b>因"边漏后期不补"→必须初始化时就<b>全局推理</b>而非各对独立；因单 MST 脆（一错断片）→多 MST 提供 \(\ge k\) 条独立路径冗余；因多 MST 仍可能在 dense cluster 内反复挑、留大直径→再加"距离调制"显式拉通弱区。</div>
+
+    <div class="note-h">③ Related Work · 本文在谱系里的精确位置（§2）</div>
+    <div class="note-b"><b>vs 加速/过滤类：</b>Barath et al. [3] 复用中间位姿估计加速建图、[4] 用 Bayesian 提前终止不可匹配对的验证——“reduce verification cost but leave the initial choice of candidate edges unchanged”（只降验证成本，不改"选哪些边"）。</div>
+    <div class="note-b"><b>vs 单 MST 前作：</b>采样 MST 去重 [40]、建一棵 MST 再增量加边 [3]、Light3R-SfM [17] 用单棵 MST 当稀疏 prior——但 “a single tree is structurally fragile”。多 MST 此前只出现在 refinement（Xiao [51] 用 MST union 强制 loop consistency、Gan [19] 建正交树加速验证）。<b>本文区别：</b>“we construct multiple MSTs directly at initialization, guided by learned edge ranks”。</div>
+    <div class="note-b"><b>vs GNN-for-SfM：</b>PoGO-Net [29] 去噪相对位姿、Brynte [8] attention-GNN 估位姿、Damblon [15] 过滤离群边——“All these methods operate on graphs where relative poses have already been computed.” <b>本文最大新意：</b>“we predict edge reliability before geometric verification”——在算相对位姿<b>之前</b>就预测边可靠性。</div>
+
+    <div class="note-h">④ §3.1 Problem Statement · 形式化</div>
+    <div class="note-b"><b>目标：</b>给定 \(N\) 张图 \( I=\{I_1,\dots,I_N\} \)，构造初始 pose graph \( G_0=(V,E_0) \)，\(V\) 索引图像、\(E_0\) 为送往几何验证的图像对。给每对赋 rank \( r_{ij} \)，选全局连通的边集 \( E_0=\mathrm{Select}(r,\text{budget}) \)。</div>
+    <div class="note-b"><b>下游不变：</b>SfM 只在 \(E_0\) 上做匹配 + 验证，得 verified graph \( G_{pose}=(V,E),\ E\subseteq E_0 \)。原文 “Our contributions target the ranking and selection that define \(G_0\); the remainder of the pipeline remains unchanged”——本文只动"排序 + 选边"两件事，COLMAP 等照旧（所以它是<b>即插即用的前端</b>）。</div>
+
+    <div class="note-h">⑤ §3.2 Method · GNN 边排序（公式 + 维度）</div>
+    <div class="note-b"><b>编码 + 边初始化：</b>每图编码 \( d_i=f_{en}(I_i)\in\mathbb{R}^d \)（\(f_{en}\)=MegaLoc=DINOv2+SALAD）。在完整图上初始化每条有向边（引 [45]）：\[ e^{0}_{ij}=\mathrm{ReLU}\!\big(f_l(d_i,d_j,\langle d_i,d_j\rangle)\big),\quad e^{0}_{ij}\in\mathbb{R}^{d_l} \] 即把两端 embedding + 其余弦相似度过一层 FC。原文动机：“a naive rank estimator would use cosine similarity \(\langle d_i,d_j\rangle\), but such pairwise scores ignore the structure of the full image collection”。</div>
+    <div class="note-b"><b>两轮 edge-node 消息传递：</b>第 \(t\) 轮先更新边 \( e^{t}_{ij}=f_{edge}([e^{t-1}_{ij},d^{t}_i,d^{t}_j]) \)（\(f_{edge}\)=2 层 MLP+BN+ReLU）；再算消息 \( m^{t}_{ji}=f_{msg}([e^{t}_{ij},d^{t}_j]) \)，邻居平均 \( m^{t}_i=\tfrac1N\sum_{j=1}^N m^{t}_{ji} \)，节点更新 \( d^{t+1}_i=f_{update}([d^{t}_i,m^{t}_i]) \)。<b>重复 2 次</b>后出最终边分 \( \hat r_{ij}=f_{MLP}(e^{2}_{ij}) \)（2 层 linear+ReLU+dropout）。</div>
+    <div class="note-b"><b>意义：</b>原文 “enabling edge ranking that reflects global structural relations rather than solely local embedding similarity”——边分不再是纯局部 embedding 相似度，而是聚合了全图上下文。这正是它能在 k=1 极稀疏时碾压 kNN 的根（见消融 Table 2 去 GNN 暴跌）。</div>
+
+    <div class="note-h">⑥ §3.2 Method · 几何监督（自监督，eq.1–3）</div>
+    <div class="note-b"><b>两个互补信号：</b>对每对 (i,j) 跑匹配 + RANSAC——\( u_{ij}=\#\{\text{RANSAC inliers}\} \)（eq.1，<b>即时可验证性</b>）；\( v_{ij}=\#\{\text{3D points visible in both }I_i,I_j\} \)（eq.2，<b>长期多视有用性</b>）。原文：“\(u_{ij}\) measures the immediate verifiability of the pair, whereas \(v_{ij}\) reflects its long-term usefulness once a global reconstruction is formed.”</div>
+    <div class="note-b"><b>GT 排序（eq.3）：</b>\[ \tilde r_{ij}=\tfrac12\big(\mathrm{norm}(u_{ij})+\mathrm{norm}(v_{ij})\big) \] 归一化把 \(\lt 1000\) inliers 摊到 \([0,0.8]\)、更大的摊到 \([0.8,1.0]\)，原文 “ensuring that easy pairs do not dominate the training objective”（防易对主导）。<b>关键：</b>“entirely self-supervised … At inference time, no geometric verification runs”——监督全自动来自标准 SfM、无需人工标注；推理只凭 embedding + GNN 上下文出分。</div>
+
+    <div class="note-h">⑦ §3.2 Method · 为何用排序损失 NDCGLoss2++（eq.4）</div>
+    <div class="note-b"><b>排序而非回归：</b>原文 “We care about the relative ordering of image pairs, not the exact value of their labels. Thus, we train the model as a ranking rather than a regression problem.” DCG（eq.4）：\[ \mathrm{DCG}=\sum_{i=1}^{M}\frac{2^{v_i}-1}{\log_2(\hat r_i+1)},\quad v_i=M-r_i \]（\(r_i\) 为 GT 名次，\(r_i=1\) 为 top-1）；\( \mathrm{NDCG}=\mathrm{DCG}/\mathrm{IDCG} \)。</div>
+    <div class="note-b"><b>可微化：</b>NDCG 不可微 → 用 NDCGLoss2++ [47]（基于 LambdaRank [9,10]，“optimizes a differentiable approximation of NDCG by considering pairwise item swaps”）。唯一超参 \(k\)=每个 list 采样条数，设为<b>列表长一半</b>；训练只在 \(\tilde r_{ij}\) 的 top-half 边上算 loss。</div>
+
+    <div class="note-h">⑧ §4 Method · 多 MST 选边（为何 + 算法，eq. 权重）</div>
+    <div class="note-b"><b>为何不用 kNN：</b>原文 “kNN selection is local … can yield fragmented or weakly connected structures, creating long chains or disconnected components that significantly degrade global pose estimation.” 改用 MST：边权 \( w_{ij}=1-\hat r_{ij} \)（高分边优先入树），Kruskal [28] 求解，“globally connected and sparse”。</div>
+    <div class="note-b"><b>多棵 MST（冗余）：</b>(1) \( T_1=\mathrm{MST}(\{w_{ij}=1-\hat r_{ij}\}) \)；(2) \(m\gt 1\) 时把 \(T_1\dots T_{m-1}\) 已选边赋 \(\infty\) cost 再算 \(T_m\)；(3) \( G_{init}=\bigcup_{m=1}^{k}T_m \)，使每相机有 \(\ge k\) 条独立路径。<b>遗留问题：</b>“multiple MSTs alone do not ensure that the graph is well-connected … they may repeatedly favor edges within dense clusters … leaving the global diameter of the graph large”。</div>
+
+    <div class="note-h">⑨ §4 Method · 连通性调制（eq.5–6 + 工程细节）</div>
+    <div class="note-b"><b>全局连通表示（eq.5）：</b>当前图 \( G^{(m-1)}=\bigcup_{\ell=1}^{m-1}T_\ell \) 上算 hop 最短路 \( d^{(m-1)}(i,j) \) 与直径 \( D^{(m-1)}=\max_{i,j}d^{(m-1)}(i,j) \)，归一化 \[ \bar d^{(m-1)}(i,j)=\begin{cases} d^{(m-1)}(i,j)/D^{(m-1)} & D^{(m-1)}\lt+\infty\\ 1 & \text{otherwise}\end{cases} \] \(\bar d\) 越大表示这对在当前图里"离得越远"。</div>
+    <div class="note-b"><b>距离调制分（eq.6）：</b>\[ s^{(m)}_{ij}=(1-\lambda)\,\hat r_{ij}+\lambda\,\bar d^{(m-1)}(i,j),\quad \lambda\in[0,1] \] 两效果：已良连通对 \(\bar d\) 小 → 分由 \(\hat r\) 主导；跨弱连通区对 \(\bar d\) 大 → 被 boost 更易入选 → <b>缩小图直径</b>。<b>工程细节：</b>每 MST 后只更新每图 top-5 候选、丢预测 rank \(\lt 0.9\) 的边（“prevents unreliable pairs from receiving boosts”）、已选边赋 \(-\infty\) mask。<b>边界：</b>\(m=1\) 时 \(G^{(0)}\) 空、\(\bar d^{(0)}\equiv1\)，eq.6 退化为均匀缩放，首棵 MST 只看 \(\hat r\)。</div>
+    <div class="note-b"><b>可扩展（大图）：</b>\(N\gt500\) 时用 METIS [25] 把完整图切子图喂 GNN 防显存爆，\( n_{clusters}=1+\lfloor N/N_{max}\rfloor \)，每子图扩 1-hop 邻居、重叠对预测取平均聚合。</div>
+
+    <div class="note-h">Q&amp;A · 推理时真的不跑几何验证吗？那 u/v 哪来的？</div>
+    <div class="note-b"><b>训练时</b>才跑一次标准 SfM（匹配 + RANSAC + 三角化）得到 \(u_{ij},v_{ij}\) 当 GT 监督——这是离线、自监督、对训练集做的。<b>推理时</b>对新数据集只需：图像编码 → GNN 出 \(\hat r_{ij}\) → 多 MST + 调制选 \(E_0\)。原文明确 “no geometric verification runs”。所以本文是把"哪些对值得验证"的判断<b>从昂贵的逐对验证前移成一次廉价的全图预测</b>，省掉对大量无用对的验证。</div>
+
+    <div class="note-h">Q&amp;A · 为什么去掉 GNN 在 k=1 暴跌、k 大就差不多？</div>
+    <div class="note-b"><b>因为 GNN 提供的是"全局结构推理"。</b>k=1（单 MST）时全图只有 \(N-1\) 条边，每条边的取舍直接决定连通骨架，必须有全局视角才能挑对（Table 2：去 GNN 64.2→55.4）。k 变大后冗余路径多，即便个别边选得不完美也能被其他路径兜底，局部相似度（无 GNN）也够用，故 gap 收窄。这与 “the margins are largest at k=1 and k=2 … global reasoning is most important” 一致。</div>
+
+    <div class="note-h">⑩ §5 实验设置（数据 / 训练 / 指标）</div>
+    <div class="note-b"><b>数据：</b>训于 MegaDepth（153 train / 8 val 场景），GT 边分按 eq.3 构造；评测=held-out MegaDepth + IMC23 的 15 个 PhotoTourism 场景 + VisymScenes（doppelganger 歧义场景）。<b>骨干：</b>encoder=MegaLoc（frozen DINOv2 + SALAD），GNN 排序器训在其描述子上。COLMAP 在 MegaDepth/IMC23 用 SuperPoint+LightGlue，在 VisymScenes 用 SIFT 暴力匹配。</div>
+    <div class="note-b"><b>训练 / 评测协议：</b>每 batch 240 图（单场景，≤4 batch/场景），loss 只算 top-half 边；50 epochs、AdamW lr \(10^{-5}\)、NVIDIA Tesla H200（141GB,CUDA12.8），COLMAP 跑 CPU。指标（依 [36]）：AUC@2.5°/5°、% 注册相机、COLMAP mapping time；默认 \(k\in\{1,2,3,5\}\) MSTs；不用 GT intrinsics（COLMAP 自估）。</div>
+
+    <div class="note-h">⑪ §5.1 主结果（PhotoTourism / MegaDepth，Fig 3）</div>
+    <div class="note-b"><b>趋势：</b>“Across all values of k, our approach yields the highest pose accuracy. The margins are largest at k=1 and k=2, where pose graphs are extremely sparse and global reasoning is most important.” 三点关键发现：① 所有 baseline 在多 MST 框架下都比原生 kNN 好（“MST construction provides a stronger structural prior”）；② 各法都 ~99% 注册相机 → <b>AUC 提升源于"更优边"而非"更多相机"</b>；③ Ours 落在 accuracy-vs-runtime 的 <b>Pareto frontier</b>（同等耗时下精度最高）。MegaDepth 上同样全 k 段领先、k=1/2 gap 最大。</div>
+
+    <div class="note-h">⑫ §5.2 歧义消解（VisymScenes，Table 1，AUC@5°）</div>
+    <div class="note-b">用 MegaDepth 训的模型直接测、<b>无需重训</b>。Ours k=5 \(\gt75\%\) 正确重建，超 MegaLoc；在 Ours 上叠 DG++ 反而无益（“our predictor inherently suppresses misleading edges”）。
+    <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px">
+    <tr style="color:#9aa3c7"><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">方法 / config</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">k=2</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">k=3</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">k=5</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">Time(min)</td></tr>
+    <tr><td style="padding:3px 7px">MegaLoc w/o modul.</td><td style="padding:3px 7px">60.2</td><td style="padding:3px 7px">64.8</td><td style="padding:3px 7px">70.5</td><td style="padding:3px 7px">7.3</td></tr>
+    <tr><td style="padding:3px 7px">MegaLoc w/ modul.</td><td style="padding:3px 7px">64.1</td><td style="padding:3px 7px">65.3</td><td style="padding:3px 7px">74.7</td><td style="padding:3px 7px">14.1</td></tr>
+    <tr><td style="padding:3px 7px">MegaLoc + DG++</td><td style="padding:3px 7px">64.2</td><td style="padding:3px 7px">64.9</td><td style="padding:3px 7px">68.4</td><td style="padding:3px 7px">8.6</td></tr>
+    <tr><td style="padding:3px 7px">Ours w/o modul.</td><td style="padding:3px 7px">61.9</td><td style="padding:3px 7px">65.8</td><td style="padding:3px 7px">71.7</td><td style="padding:3px 7px">5.7</td></tr>
+    <tr style="color:#ffd35c"><td style="padding:3px 7px"><b>Ours w/ modul.</b></td><td style="padding:3px 7px"><b>66.0</b></td><td style="padding:3px 7px"><b>71.5</b></td><td style="padding:3px 7px"><b>75.6</b></td><td style="padding:3px 7px">13.3</td></tr>
+    <tr><td style="padding:3px 7px">Ours + DG++</td><td style="padding:3px 7px">62.8</td><td style="padding:3px 7px">65.6</td><td style="padding:3px 7px">70.7</td><td style="padding:3px 7px">7.4</td></tr>
+    </table>
+    <b>验证了什么：</b>歧义场景下"全局边排序 + 调制"比"局部相似度"和"专门的 doppelganger 过滤器"都更稳，且调制带来精度↑但 COLMAP 时间↑（5.7→13.3 min，accuracy↔time trade-off）。</div>
+
+    <div class="note-h">⑬ §5.3 消融 · 训练组件（Table 2，PhotoTourism AUC@5°）</div>
+    <div class="note-b">
+    <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px">
+    <tr style="color:#9aa3c7"><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">变体</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">k=1</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">k=2</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">k=3</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">k=5</td></tr>
+    <tr><td style="padding:3px 7px">Ours w/ SALAD backbone</td><td style="padding:3px 7px">61.2</td><td style="padding:3px 7px">71.0</td><td style="padding:3px 7px">72.4</td><td style="padding:3px 7px">73.4</td></tr>
+    <tr><td style="padding:3px 7px">Ours w/o GNN</td><td style="padding:3px 7px">55.4</td><td style="padding:3px 7px">70.4</td><td style="padding:3px 7px">72.3</td><td style="padding:3px 7px">72.3</td></tr>
+    <tr style="color:#ffd35c"><td style="padding:3px 7px"><b>Ours (MegaLoc)</b></td><td style="padding:3px 7px"><b>64.2</b></td><td style="padding:3px 7px">71.7</td><td style="padding:3px 7px">72.6</td><td style="padding:3px 7px">73.5</td></tr>
+    <tr><td style="padding:3px 7px">Oracle-RANSAC inliers</td><td style="padding:3px 7px">65.7</td><td style="padding:3px 7px">72.4</td><td style="padding:3px 7px">73.0</td><td style="padding:3px 7px">74.1</td></tr>
+    <tr><td style="padding:3px 7px">Oracle-3D inliers</td><td style="padding:3px 7px">65.4</td><td style="padding:3px 7px">72.1</td><td style="padding:3px 7px">73.5</td><td style="padding:3px 7px">74.3</td></tr>
+    <tr style="color:#9aa3c7"><td style="padding:3px 7px">Oracle*（u+v 合并）</td><td style="padding:3px 7px">66.7</td><td style="padding:3px 7px">72.3</td><td style="padding:3px 7px">73.6</td><td style="padding:3px 7px">74.2</td></tr>
+    </table>
+    <b>验证了什么：</b>① 去 GNN 在 k=1 暴跌 64.2→55.4 → 证全局推理在极稀疏时最关键；② 换弱骨干 SALAD 仍远超 raw SALAD → backbone-agnostic；③ Oracle 行（直接用几何 GT 排序）是上界，Ours 已逼近它（k=1: 64.2 vs 66.7）；④ RANSAC inliers 监督在小 k 最优、3D 点在大 k 最优，合并(Oracle*)最稳——印证 u/v 互补设计。</div>
+
+    <div class="note-h">⑭ §5.3 消融 · 连通性调制三组件（Table 3，VisymScenes AUC@5°）</div>
+    <div class="note-b">三开关：modul.（是否调制）/ top-5（每 MST 后只更新每图 top-5 候选）/ normalized dist.（调制前是否归一化距离）。
+    <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px">
+    <tr style="color:#9aa3c7"><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">modul. / top-5 / norm.</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">k=2</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">k=3</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">k=5</td></tr>
+    <tr><td style="padding:3px 7px">✗ / ✗ / ✗</td><td style="padding:3px 7px">61.9</td><td style="padding:3px 7px">65.8</td><td style="padding:3px 7px">71.7</td></tr>
+    <tr><td style="padding:3px 7px">✗ / ✓ / ✗</td><td style="padding:3px 7px">61.4</td><td style="padding:3px 7px">66.9</td><td style="padding:3px 7px">64.8</td></tr>
+    <tr><td style="padding:3px 7px">✓ / ✗ / ✗</td><td style="padding:3px 7px">63.5</td><td style="padding:3px 7px">64.7</td><td style="padding:3px 7px">68.9</td></tr>
+    <tr><td style="padding:3px 7px">✓ / ✓ / ✗</td><td style="padding:3px 7px">63.7</td><td style="padding:3px 7px">65.5</td><td style="padding:3px 7px">68.3</td></tr>
+    <tr><td style="padding:3px 7px">✗ / ✓ / ✓</td><td style="padding:3px 7px">60.3</td><td style="padding:3px 7px">67.3</td><td style="padding:3px 7px">67.1</td></tr>
+    <tr><td style="padding:3px 7px">✓ / ✗ / ✓</td><td style="padding:3px 7px">66.6</td><td style="padding:3px 7px">66.3</td><td style="padding:3px 7px">71.3</td></tr>
+    <tr style="color:#ffd35c"><td style="padding:3px 7px"><b>✓ / ✓ / ✓（全开）</b></td><td style="padding:3px 7px"><b>66.0</b></td><td style="padding:3px 7px"><b>71.5</b></td><td style="padding:3px 7px"><b>75.6</b></td></tr>
+    </table>
+    <b>验证了什么：</b>三组件需协同——全开在 k=5 最高(75.6)；单独开某项会在某些 k 反伤（如 ✗/✓/✗ 的 k=5 跌到 64.8），印证"距离归一化 + 仅 boost 可靠 top-5 + 调制"三者缺一不可。</div>
+
+    <div class="note-h">⑮ §5.3 消融 · kNN vs MST + Appendix（Fig 4 / App A,D,E）</div>
+    <div class="note-b"><b>kNN vs MST（Fig 4）：</b>kNN k=1 连通极差、AUC 极低；MST 保证连通、紧贴 oracle。<b>Appendix A（kNN 选边 AUC@5° IMC23）：</b>MegaLoc 1.2/63.9/64.0/66.5（k=1/2/3/5）；Ours 5.3/61.2/71.1/73.1——除 k=2 外全胜，说明优势主要在 MST 框架下兑现。</div>
+    <div class="note-b"><b>Appendix D（运行时，秒，IMC23，2 MSTs）：</b>MegaLoc Encoder 2.91 / Predictor 0.01 / MST 0.25 / COLMAP 2.3k；Ours Predictor 0.08（GNN 略慢）/ MST 0.30 / COLMAP <b>2.1k</b>。原文 “Edge prediction for ours is slower than MegaLoc due to GNN, but this step takes negligible time compared to COLMAP … COLMAP typically runs faster for ours due to better pair selection.”<br><b>Appendix E（换骨干 DINOv2，AUC@5° IMC23）：</b>pretrained DINOv2 56.0/67.4/70.1/72.4 → DINOv2+GNN 60.4/68.8/72.5/73.5——GNN 在任意骨干上都加分。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>problem：</b>SfM pose graph 初始化靠 per-image kNN 检索，各对独立、忽略全局、漏边不可逆 → 弱连通 / 长链 / 病态图。</div>
+    <div class="note-b"><b>method：</b>edge prioritization 三件套——① 几何监督（RANSAC 内点 \(u_{ij}\) + 共见 3D 点 \(v_{ij}\)）训 GNN 出全局边分（NDCGLoss2++ 排序）；② 多 MST（\(w=1-\hat r\)、Kruskal、已选边 \(\infty\)）保冗余连通；③ 连通性调制 \( s=(1-\lambda)\hat r+\lambda\bar d \) 缩直径、强弱区。<b>关键创新=在几何验证之前就全局预测边可靠性。</b></div>
+    <div class="note-b"><b>experiment：</b>PhotoTourism/MegaDepth 全 k 段 AUC 最高（稀疏 k=1,2 gap 最大）、落 Pareto frontier；VisymScenes k=5 \(\gt75\%\) 超 DG++ 且无需重训；消融证 GNN（k=1 命门）/ 调制三组件 / u-v 互补监督各自有效。</div>
+    <div class="note-b"><b>Takeaway：</b>① 把"全局推理直接搬进 pose graph 构建"且<b>前置到几何验证之前</b>，稀疏/歧义场景显著更稳更快；② 排序（而非回归）+ 几何自监督是把"对 SfM 有用"这件事可学习化的关键；③ MST 框架本身就是强 prior（连 baseline 都受益）。<b>诚实边界：</b>调制增 COLMAP 时间；kNN 选边下 k=2 优势减弱；大图需 METIS 聚类（可能边界效应）；监督依赖 RANSAC（原文承认 “can still be noisy or occasionally wrong”，低内点对需预过滤）。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-global-aware-edge-prioritization-for-pose-graph-initial/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Given a set of input image pairs (left), our method ranks all candidate edges by global matchability (middle) and constructs a compact, well-connected pose graph via multi-MST selection (right). The resulting initialization enables accurate and stable 3D reconstruction, even under sparse or ambiguous settings.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-global-aware-edge-prioritization-for-pose-graph-initial/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Overall pipeline. Input images are first encoded using a fine-tuned image encoder (DINOv2 backbone with SALAD aggregation). A complete graph is then constructed over image embeddings and processed by our GNN–MLP model to predict global edge ranks. During training, these predictions are supervised using geometry-derived ranking signals via a differentiable ranking loss. At inference, the </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-global-aware-edge-prioritization-for-pose-graph-initial/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. COLMAP reconstruction [42] performance using pose graphs constructed from multiple MSTs guided by baseline embedding similarities or our learned global edge ranks. Top row: Relative pose accuracy on IMC23-PhotoTourism [21] (AUC@2.5◦, left; AUC@5◦, middle) and on MegaDepth [30] (AUC@5◦, right) as the number of MSTs k increases. Bottom row: Percentage of registered cameras on PhotoTourism </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-global-aware-edge-prioritization-for-pose-graph-initial/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Edge selection strategies for pose graph initialization. We report COLMAP [42] relative pose AUC@5◦on IMC23- PhotoTourism [21] (left) and MegaDepth [30] (middle) when using either kNN or the proposed k minimal spanning tree approach (MSTs) for graph construction. Oracle∗curves correspond to ground-truth rankings from SfM-derived geometry. The percentage of successfully registered cameras</figcaption></figure>
+    </div>
+  </div></body></html>

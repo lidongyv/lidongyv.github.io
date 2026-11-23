@@ -1,0 +1,198 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>LDP-Slicing: Local Differential Privacy for Images via Randomized Bit-Plane Slicing</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>LDP-Slicing: Local Differential Privacy for Images via Randomized Bit-Plane Slicing</h1>
+    <div class="au2" style="color:var(--mut)">Yuanming Cao ⋅ Chengqi Li ⋅ Wenbo He</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2603.03711">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2603.03711">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=LDP-Slicing%3A%20Local%20Differential%20Privacy%20for%20Images%20via%20Randomized%20Bit-Plane%20Slicing">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Local Differential Privacy (LDP) is the gold standard trust model for privacy-preserving machine learning by guaranteeing privacy at the data source. However, its application to image data has long been considered impractical due to the high dimensionality of pixel space. Canonical LDP mechanisms are designed for low-dimensional data, resulting in severe utility degradation when applied to high-dimensional pixel spaces. This paper demonstrates that this utility loss is not inherent to LDP, but from its application to an inappropriate data representation. We introduce LDP-Slicing, a lightweight, training-free framework that resolves this domain mismatch. Our key insight is to decompose pixel values into a sequence of binary bit-planes. This transformation allows us to apply the LDP mechanism directly to the bit-level representation. To further strengthen privacy and preserve utility, we integrate a perceptual obfuscation module that mitigates human-perceivable leakage and an optimization-based privacy budget allocation strategy. This pipeline satisfies rigorous pixel-level $\varepsilon$-LDP while producing images that retain high utility for downstream tasks. Extensive experiments on face recognition and image classification demonstrate that LDP-Slicing outperforms existing DP/LDP baselines under comparable privacy budgets, with negligible computational overhead.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-ldp-slicing-local-differential-privacy-for-images-via-r -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">让“<b>本地差分隐私(LDP)直接保护整张图像</b>”第一次变实用——核心洞见：LDP 在图像上“没用”不是 LDP 的锅，而是<b>用错了表示</b>；把每个 8-bit 像素拆成 8 个二值 <b>bit-plane</b>（YCbCr 共 24 个），在二值域(k=2)上做 randomized response（翻转每个 bit），配合“小波 LL 剪枝防人眼”+“按 bit/通道重要性<b>最优分配隐私预算</b>”，既满足严格的<b>逐像素 ε-LDP</b>，又让隐私化后的图能直接喂标准识别/分类模型，零额外存储/传输开销、5.5ms/张。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">LDP 是隐私金标准（在<b>数据源头</b>加噪、不需可信 curator），但用于图像被认为不实用：8-bit 像素有 256 个值，k-ary randomized response 报真值概率 <b>p=e^ε/(e^ε+k−1)</b>，k=256 时 p 极小→输出几乎纯噪、信息全毁（“curse of dimensionality”）。前作只好退而求其次：要么用<b>中心化 DP</b>（需可信 curator、被攻破则全泄），要么把 LDP 用在<b>低维表示</b>（latent/feature/eigenvector）而非原始像素。</div>
+    <div class="note-h">核心方法（三模块 + 关键公式）</div>
+    <div class="note-b"><b>① 感知遮蔽（§4.1）：</b>1 级 Haar DWT 分 LL/LH/HL/HH，把低频 <b>LL 置零</b>再 IDWT 重建（LL-Pruning）。利用“人眼靠低频、CNN 靠高频”的不对称；DWT 多分辨率、避免 DCT 块伪影。是<b>公开确定性预处理、不耗隐私预算</b>。<b>② bit-plane 随机化（§4.2）：</b>每像素拆 bit x_ℓ=⌊x/2^{d−ℓ}⌋ mod 2（式1，YCbCr 共 24 plane），二值域上独立做 randomized response，报真概率 e^{ε_ℓ}/(e^{ε_ℓ}+1)（式2）。<b>③ 效用感知预算分配（§4.3）：</b>MSB/Y 通道含主结构、LSB/色度次要。约束优化 min Σ W_{c,b}/ε_{c,b} s.t. Σε_{c,b}=ε_total（式3）；权重 W_{c,b}=w_c·w_b（w_Y=4, w_Cb=w_Cr=1；w_b=2^{b−1}）；Lagrange 闭式解 <b>ε_{c,b}=ε_total·√W_{c,b}/Σ√W_{i,j}</b>（式4），重建 x̃=Σ 2^{8−ℓ}·x̃_ℓ（式5）。<b>隐私证明</b>：逐像素 ε_total-LDP（定理3=24 bit 独立 RR 的 sequential composition + 重建属 post-processing 不削隐私）；TV(P,Q)≤tanh(ε/2)（推论4），身份辨别 advantage≤½·tanh(ε/2)。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">人脸识别（Table 1）：LDP-Slicing(pixel-level) AgeDB <b>96.68</b>/LFW 99.75/CPLFW 91.08/CALFW 96.02，DP/LDP 类最佳、逼近非隐私 ArcFace(97.88/99.77/92.77/96.05)，远超 PEEP(87.47)/DCTDP(94.37)。身份辨别攻击 advantage（Table 2，越低越好）：CIFAR10 <b>0.25</b>/CIFAR100 0.1/LFW 4.5，远低于 DCTDP(4.97/5.98/12.58)。开销（Table 5）：<b>×1（零额外）</b> vs DCTDP ×63、DuetFace ×54；速度 5.5ms/张(232 img/s) vs MinusFace 68ms；隐私严格度比 DCTDP 严 ~4.7×。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>第一个在原始像素上做严格 pixel-level ε-LDP</b>（不靠手工/学习特征）；② 关键洞见“utility loss 是表示问题、非 LDP 固有”——bit-plane 把 <b>k=256 降到 k=2</b>；③ 按 bit/通道重要性最优分配预算（Lagrange 闭式解）；④ 输出标准图、零存储/传输开销、即插即用、Θ(N) 线性、可端侧部署；⑤ 抗白盒/黑盒重建 + StyleGAN(Map2V) 攻击。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① pixel-level ε-LDP 是<b>逐像素</b>保证，整图组合是 “loose worst-case”（作者承认），靠“独立扰动破坏空间相关性”<b>间接</b>实现 image-level 保护、非严格 image-level；② LL-Pruning 是<b>启发式</b>（无形式保证）、靠它防人眼；③ ε=20 这种“实用预算”偏大（强隐私 ε≤5.2 时 AgeDB 掉到 68.89）；④ 与 DCTDP 的预算换算是“理论上界”假设、非严格等价对比；⑤ 双刃剑（可被滥用逃避合法系统，作者有伦理声明）。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文，含 Supplementary）：① Abstract 逐句 ② Intro 闭环 ③ Method 机制+公式 ④ 实验/消融数值表 + 全文一页总结。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract 逐句精讲（verbatim 引用 + 中文指路）</div>
+    <div class="note-b"><b>原文①：</b>“Local Differential Privacy (LDP) is the gold standard trust model for privacy-preserving machine learning by guaranteeing privacy at the data source. However, its application to image data has long been considered impractical due to the high dimensionality of pixel space.”<br><b>在说什么：</b>LDP=金标准（源头加噪、零信任）；但用于图像因像素空间高维一直被认为不实用。<br><b>为什么：</b>这句立"靶"——LDP 好但图像用不了，全文要翻这个案。</div>
+    <div class="note-b"><b>原文②：</b>“This paper demonstrates that this utility loss is not inherent to LDP, but from its application to an inappropriate data representation … Our key insight is to decompose pixel values into a sequence of binary bit-planes. This transformation allows us to apply the LDP mechanism directly to the bit-level representation.”<br><b>在说什么：</b>翻案——效用损失<b>不是 LDP 固有缺陷、是表示用错了</b>；核心 insight=把像素拆成二值 bit-plane（于是 LDP 在二值域 \(k=2\) 天然好用）。</div>
+    <div class="note-b"><b>原文③：</b>“we integrate a perceptual obfuscation module that mitigates human-perceivable leakage and an optimization-based privacy budget allocation strategy. This pipeline satisfies rigorous pixel-level ε-LDP while producing images that retain high utility for downstream tasks.”<br><b>三件套：</b>bit-plane 随机化(核心) + 感知遮蔽(防人眼) + 预算最优分配；产出满足严格 pixel-level ε-LDP 且高可用的图。<br><b>一句话抓 Abstract：</b>bit-plane 把图变成 LDP-friendly 表示 + 小波防人眼 + 预算优化 = 实用的逐像素 ε-LDP。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原创，理解本文必备）</div>
+    <div class="note-b"><b>① 中心化 DP vs 本地 DP(LDP)：</b>中心化 DP 需<b>可信 curator</b> 先收集原始数据再加噪（如 DP-SGD），curator 被攻破则全泄；<b>LDP</b> 在<b>用户端/源头</b>就加噪，服务器永不见原始数据 → 零信任、更强，但加噪也更猛。</div>
+    <div class="note-b"><b>② ε-LDP 定义 + randomized response：</b>机制 \(\mathcal{M}\) 是 ε-LDP 当对任意两输入 \(x,x'\)、任意输出集 \(S\)：\[ \Pr[\mathcal{M}(x)\in S]\le e^{\varepsilon}\,\Pr[\mathcal{M}(x')\in S] \]（输出分布近乎不可区分）。ε 越小越隐私。<b>randomized response</b>(Warner 1965)=二值数据经典 LDP 机制：以概率 \(p\) 报真、\(1-p\) 报假。</div>
+    <div class="note-b"><b>③ bit-plane slicing（MSB/LSB）：</b>把 8-bit 像素的 8 个二进制位各抽成一"层"。<b>MSB</b>(高位)=粗结构信息集中处；<b>LSB</b>(低位)=噪声状纹理。第 \(b\) 位对像素值贡献 \(2^{b-1}\)。这是本文"非均匀分配预算"的依据（Fig 2 “coarse structural information is concentrated in the high-order MSB planes, while low-order LSB planes consist primarily of noise-like texture”）。</div>
+    <div class="note-b"><b>④ DWT vs DCT / YCbCr：</b>DWT(小波，本文用 1 级 Haar) 把图分成多分辨率子带 LL/LH/HL/HH；DCT(余弦变换)是分块的。LL=低频近似(人眼看内容靠它)。<b>YCbCr</b>=亮度 Y + 两色度 Cb/Cr；CNN 对色度退化鲁棒（JPEG chroma subsampling 也降色度），故给 Y 更高权重。</div>
+    <div class="note-b"><b>⑤ 两条 LDP 性质（证明基石）：</b><b>sequential composition</b>（\(\varepsilon_1\)-LDP + \(\varepsilon_2\)-LDP 串联 = \((\varepsilon_1+\varepsilon_2)\)-LDP）→ 24 bit 各自 \(\varepsilon_\ell\) 加起来=\(\varepsilon_{total}\)；<b>post-processing immunity</b>（对 LDP 输出再做任意映射不削隐私）→ bit 重建回像素不泄露。<b>TV 距离</b>=两分布最大可区分度。</div>
+
+    <div class="note-h">② Introduction · problem → 现有不足 → solution → why 闭环</div>
+    <div class="note-b"><b>problem：</b>视觉系统要用云端服务就得上交可识别图像 → 中心化风险（原文举 Facebook 未经同意存人脸模板 [38]）。早期模糊/像素化 “offer no formal privacy guarantees and have been shown to be reversible by modern deep learning attacks”；加密防访问但挡不住推理攻击、训练大模型不实用。</div>
+    <div class="note-b"><b>现有不足：</b>中心化 DP 需可信 curator（“If the curator is breached, the privacy of all raw data is irreversibly lost”）；LDP 无 curator 但 “confronts an insurmountable barrier with high-dimensional data”——单个 8-bit 像素 256 个取值，RR 注入 “overwhelming noise that destroys nearly all task-relevant information”（维度诅咒）。故前作只能退到中心化 DP 或对 latent/feature/eigenvector 等<b>低维表示</b>做 LDP。</div>
+    <div class="note-b"><b>solution + why：</b>原文 “an image can be transformed into an LDP-friendly representation without collapsing its dimensionality.” → bit-plane 切分（\(k{=}256\to k{=}2\)）+ 小波感知遮蔽 + 效用感知预算分配。<b>why bit-plane 对：</b>k-ary RR 噪声随 \(k\) 暴涨，而二进制是像素的"天然分解"，每 bit 仅 \(\{0,1\}\) 二选一、报真概率合理；且 MSB≫LSB 的语义差异正好让"按重要性分配预算"有的放矢——把同样的 ε 花在刀刃(Y 通道 MSB)上。</div>
+
+    <div class="note-h">③ §2 Related Work · 谱系（为何前作都不够）</div>
+    <div class="note-b"><b>纯遮蔽（脆）：</b>模糊/像素化/噪声 “no formal guarantees … repeatedly shown to be vulnerable to reconstruction”；InstaHide 这类 learnable instance encoding 也被 Carlini et al. [6] “decisively broken” + fusion-denoising 攻击。原文总结 “visual obscurity is a fragile defense against increasingly powerful learning-based attacks”。<b>频域启发式：</b>DCT 扰动/丢系数虽降视觉信息，但 “this frequency removal method is also reversible”。<b>DP 类：</b>中心化 DP（DP-SGD/DP-GAN/DP-Diffusion）需可信 curator；LDP 前作 “avoids applying LDP to raw pixels, instead applying LDP to lower dimensional intermediate representations”。<b>本文 gap：</b>“source-level privacy guarantees directly on high-dimensional pixel data without collapsing it”。</div>
+
+    <div class="note-h">④ §3.1 Threat Model · 两类攻击（含 Def 1）</div>
+    <div class="note-b"><b>对手：</b>控制服务器、完全知晓本文机制，但拿不到原始数据。两类攻击：① <b>reconstruction attack</b>（从隐私图 \(\tilde I\) 恢复感知相似的 \(I^*\)，定义沿用 Carlini [6]）；② <b>identity distinguishing attack（Def 1）</b>——给隐私图 \(\tilde x=\mathcal{M}(x)\) 与一张公开图 \(y\)，判断是否同一人 \(b=\mathbb{1}[i=j]\)，对手优势 \( \mathrm{Adv}^{link}_{\mathcal{M}}(\mathcal{A})=\big|\Pr[b'=b]-\tfrac12\big| \)。这模拟"跨匿名服务追踪用户"。</div>
+
+    <div class="note-h">⑤ §3.2 LDP 定义 + Randomized Response + 两定理</div>
+    <div class="note-b"><b>ε-LDP（Def 2）：</b>见背景②的式子——不需定义"邻接数据集"（区别于中心化 DP），直接保证任意两本地输入的输出分布近乎一致，是<b>更强</b>的保证。<b>RR（Def 3）：</b>二值 \(v\in\{0,1\}\)，\( \Pr[\mathcal{M}_{RR}(v)=v']=p \)（\(v=v'\)）否则 \(1-p\)。<b>两性质：</b>Thm 1 sequential composition（\(\varepsilon_1+\varepsilon_2\)）、Thm 2 closedness to post-processing。这两条是后面"24 bit 求和 = \(\varepsilon_{total}\) + 重建不泄露"的证明地基。</div>
+
+    <div class="note-h">⑥ §4 核心洞见 · 为何高基数 RR 崩、二值不崩</div>
+    <div class="note-b"><b>维度诅咒的数学根：</b>k-ary RR 报真概率 \[ p=\frac{e^{\varepsilon}}{e^{\varepsilon}+k-1} \] 对 8-bit 像素 \(k=256\)，即便中等 ε，\(p\) 也"vanishingly small"→ 输出几乎纯噪。<b>洞见：</b>“A pixel with 256 discrete states is a binary encoding of eight bits, and the significance of each bit corresponds to the semantic structure of the pixel.” 拆成二值后每 bit \(k=2\)，\(p=\frac{e^{\varepsilon_\ell}}{e^{\varepsilon_\ell}+1}\) 合理，且可按 bit 重要性分预算。三模块=感知遮蔽 + bit-plane 随机化 + 效用感知优化。</div>
+
+    <div class="note-h">⑦ §4.1 Method · 感知遮蔽（wavelet pruning）</div>
+    <div class="note-b"><b>动机（感知不对称）：</b>核心 LDP 防算法攻击，但大 ε 下残留结构仍可能被人眼看出。原文 “human vision primarily uses low-frequency image cues … whereas modern CNNs often exploit fine, high-frequency details”。<b>做法：</b>1 级 Haar DWT 分 LL + LH/HL/HH → <b>LL-Pruning</b>（把低频 LL 系数全置零）→ IDWT 重建。DWT 多分辨率、避免 DCT 激进剪频的块伪影，更保有用高频（消融 Table 3 证 DWT &gt; DCT）。<b>关键：</b>这步是<b>公开确定性预处理、不消耗 ε</b>（证明里用到）。</div>
+
+    <div class="note-h">⑧ §4.2 Method · bit-plane randomization（式1–2）</div>
+    <div class="note-b"><b>bit 分解（式1）：</b>\[ x_\ell=\Big\lfloor \frac{x}{2^{d-\ell}}\Big\rfloor \bmod 2,\quad \ell\in\{1,\dots,d\} \] \(d=8\)，YCbCr 三通道共 <b>24 个 bit-plane</b>。<b>逐 bit 二值 RR（式2）：</b>\[ \Pr[\mathcal{M}_{RR}(x_\ell)=\tilde x_\ell]=\begin{cases}\dfrac{e^{\varepsilon_\ell}}{e^{\varepsilon_\ell}+1} & \tilde x_\ell=x_\ell\\[4pt]\dfrac{1}{e^{\varepsilon_\ell}+1} & \text{otherwise}\end{cases} \] \(\varepsilon_\ell\)=该 plane 分到的预算。剩下的问题：\(\varepsilon_{total}\) 如何分到各 \(\varepsilon_\ell\)？</div>
+
+    <div class="note-h">⑨ §4.3 Method · 效用感知预算优化（式3–5）</div>
+    <div class="note-b"><b>为何不均匀分：</b>均匀 \(\varepsilon_\ell=\varepsilon_{total}/24\) 次优——MSB/Y 含主结构、LSB/色度次要，“Wasting privacy budget on noisy, low-impact LSBs … degrades utility for no meaningful privacy gain”。<b>约束优化（式3）：</b>\[ \min_{\{\varepsilon_{c,b}\}}\sum_{c,b}\frac{W_{c,b}}{\varepsilon_{c,b}}\quad \text{s.t.}\ \sum_{c,b}\varepsilon_{c,b}=\varepsilon_{total},\ \varepsilon_{c,b}\ge0 \]（失真 \(\propto 1/\varepsilon\)）。权重 \(W_{c,b}=w_c\cdot w_b\)：色度 \(w_Y=4,\ w_{Cb}=w_{Cr}=1\)（CNN 抗色度退化 + JPEG chroma subsampling 启发）、bit \(w_b=2^{b-1}\)（对像素值贡献）。<b>Lagrange 闭式解（式4）：</b>\[ \varepsilon_{c,b}=\varepsilon_{total}\cdot\frac{\sqrt{W_{c,b}}}{\sum_{i\in\{Y,Cb,Cr\}}\sum_{j=1}^{8}\sqrt{W_{i,j}}} \] → 重要信息分到最多预算(最少噪)。重建（式5）：\( \tilde x=\sum_{\ell=1}^{8}2^{8-\ell}\,\tilde x_\ell \)。</div>
+
+    <div class="note-h">⑩ §4.4 Method · 隐私证明（Thm 3 + TV bound 式6–7）</div>
+    <div class="note-b"><b>定理3：</b>LDP-Slicing 满足 <b>pixel-level \(\varepsilon_{total}\)-LDP</b>。证明=① per-pixel composition（24 bit 独立 RR，单 bit 似然比 \(\le e^{\varepsilon_\ell}\)，连乘 \(\le e^{\sum\varepsilon_\ell}=e^{\varepsilon_{total}}\)）；② post-processing immunity（重建是数据无关函数，按 Thm 2 不削隐私）；小波剪枝是公开确定性预处理、不耗 ε。<b>推论4（TV bound，式6–7）：</b>\[ TV(P,Q)\le\frac{e^{\varepsilon}-1}{e^{\varepsilon}+1}=\tanh(\varepsilon/2),\qquad \mathrm{Adv}^{link}_{\mathcal{M}}\le\tfrac12\tanh(\varepsilon/2) \] 给对手区分能力一个硬上界。</div>
+
+    <div class="note-h">Q&amp;A · 为什么 bit-plane 能解决"维度诅咒"？</div>
+    <div class="note-b">维度诅咒来自 k-ary RR 的报真概率 \(p=\frac{e^\varepsilon}{e^\varepsilon+k-1}\) 随 \(k\) 增大而趋 0：\(k=256\) 时几乎全噪。bit-plane 把"在 256 个值里选真值"换成"8 个独立的二选一"，每个子问题 \(k=2\)、\(p=\frac{e^{\varepsilon_\ell}}{e^{\varepsilon_\ell}+1}\)，加噪可控；总预算靠 composition 守恒（\(\sum\varepsilon_\ell=\varepsilon_{total}\)）。<b>本质：</b>没改变 LDP 也没降维（仍是逐像素保证），只是换了一个让 RR"吃得下"的等价表示——这正是 Abstract 说的 “not inherent to LDP, but … an inappropriate data representation”。</div>
+
+    <div class="note-h">Q&amp;A · 逐像素 ε-LDP 真能保护整张脸吗？（诚实）</div>
+    <div class="note-b"><b>作者自己点破局限：</b>“composing the privacy bounds across all pixels implies a loose worst-case theoretical guarantee for the full image”——把每像素 ε 组合到整图是<b>很松的 worst-case</b>。但实际有效，原因是 “semantic identity inherently relies on spatial correlation (e.g., contours and textures)”：对每像素 bit 独立扰动会 “severely disrupts structural dependencies and erodes global semantic information”。即理论整图界松，但独立扰动破坏了身份所依赖的空间相关性 → 实测攻击 advantage 很低（Table 2）。这是诚实的"理论-实证 gap"标注。</div>
+
+    <div class="note-h">⑪ §5.1 主结果 · 人脸识别精度（Table 1，%，默认 \(\varepsilon_{total}=20\)）</div>
+    <div class="note-b">MS1MV2 训 ResNet-50+ArcFace；Bold 为 DP/LDP 类最佳。
+    <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px">
+    <tr style="color:#9aa3c7"><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">方法 (保证)</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">AgeDB-30</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">LFW</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">CPLFW</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">CALFW</td></tr>
+    <tr style="color:#9aa3c7"><td style="padding:3px 7px">ArcFace (无隐私上界)</td><td style="padding:3px 7px">97.88</td><td style="padding:3px 7px">99.77</td><td style="padding:3px 7px">92.77</td><td style="padding:3px 7px">96.05</td></tr>
+    <tr><td style="padding:3px 7px">PEEP (feature-level)</td><td style="padding:3px 7px">87.47</td><td style="padding:3px 7px">98.41</td><td style="padding:3px 7px">79.58</td><td style="padding:3px 7px">90.06</td></tr>
+    <tr><td style="padding:3px 7px">DCTDP (block-level)</td><td style="padding:3px 7px">94.37</td><td style="padding:3px 7px">99.48</td><td style="padding:3px 7px">90.60</td><td style="padding:3px 7px">93.47</td></tr>
+    <tr style="color:#ffd35c"><td style="padding:3px 7px"><b>LDP-Slicing (pixel)</b></td><td style="padding:3px 7px"><b>96.68</b></td><td style="padding:3px 7px"><b>99.75</b></td><td style="padding:3px 7px"><b>91.08</b></td><td style="padding:3px 7px"><b>96.02</b></td></tr>
+    </table>
+    <b>验证了什么：</b>在 DP/LDP 类里全面最佳，LFW/CALFW 几乎追平非隐私 ArcFace。原文还指出 DCTDP 是 block-level，换算到 per-pixel 后本文隐私 “5 times stricter”（附录给 \(\varepsilon_{pixel}\le(64-1)\times3\times0.5=94.5\) vs 本文 20，约 4.7×）。分类上 LDP-Slicing 在 CIFAR-10 \(\varepsilon\le12\)、CIFAR-100 全预算下击败中心化 DP-SGD。</div>
+
+    <div class="note-h">⑫ §5.2 攻击防御（Table 2 identity dist. + 重建攻击）</div>
+    <div class="note-b"><b>身份辨别 advantage（%，越低越好）：</b>
+    <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12px">
+    <tr style="color:#9aa3c7"><td style="padding:2px 6px;border-bottom:1px solid #2a2f5c">方法</td><td style="padding:2px 6px;border-bottom:1px solid #2a2f5c">CIFAR10</td><td style="padding:2px 6px;border-bottom:1px solid #2a2f5c">CIFAR100</td><td style="padding:2px 6px;border-bottom:1px solid #2a2f5c">AgeDB</td><td style="padding:2px 6px;border-bottom:1px solid #2a2f5c">LFW</td><td style="padding:2px 6px;border-bottom:1px solid #2a2f5c">CALFW</td><td style="padding:2px 6px;border-bottom:1px solid #2a2f5c">CPLFW</td></tr>
+    <tr><td style="padding:2px 6px">DuetFace</td><td style="padding:2px 6px">5.07</td><td style="padding:2px 6px">7.14</td><td style="padding:2px 6px">6.97</td><td style="padding:2px 6px">19.75</td><td style="padding:2px 6px">12.98</td><td style="padding:2px 6px">8.89</td></tr>
+    <tr><td style="padding:2px 6px">DCTDP</td><td style="padding:2px 6px">4.97</td><td style="padding:2px 6px">5.98</td><td style="padding:2px 6px">5.65</td><td style="padding:2px 6px">12.58</td><td style="padding:2px 6px">10.92</td><td style="padding:2px 6px">10.36</td></tr>
+    <tr style="color:#ffd35c"><td style="padding:2px 6px"><b>LDP-Slicing</b></td><td style="padding:2px 6px"><b>0.25</b></td><td style="padding:2px 6px"><b>0.1</b></td><td style="padding:2px 6px"><b>0.42</b></td><td style="padding:2px 6px"><b>4.5</b></td><td style="padding:2px 6px"><b>3.87</b></td><td style="padding:2px 6px"><b>1.62</b></td></tr>
+    </table>
+    <b>重建攻击：</b>白盒（对手知全流程、训 denoiser + LL recovery 两阶段逆模型）下 “under medium to low privacy budget, the adversary fails to reconstruct a recognizable face”；黑盒（U-Net）下 DCTDP 被重建出近可辨人脸，而本文即便松到 \(\varepsilon_{total}=58\) 仍 “highly distorted”；连 StyleGAN 先验的 Map2V SOTA 攻击也 “fails to break LDP-Slicing”。</div>
+
+    <div class="note-h">⑬ §5.3 消融（Table 3，acc %，\(\varepsilon_{total}=20\)）</div>
+    <div class="note-b">
+    <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px">
+    <tr style="color:#9aa3c7"><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">配置</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">AgeDB-30</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">LFW</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">CPLFW</td><td style="padding:3px 7px;border-bottom:1px solid #2a2f5c">CALFW</td></tr>
+    <tr><td style="padding:3px 7px">(A) w/o LL Pruning</td><td style="padding:3px 7px">96.90</td><td style="padding:3px 7px">99.77</td><td style="padding:3px 7px">91.67</td><td style="padding:3px 7px">96.05</td></tr>
+    <tr><td style="padding:3px 7px">(B) LL + Uniform Budget</td><td style="padding:3px 7px">89.82</td><td style="padding:3px 7px">99.35</td><td style="padding:3px 7px">86.73</td><td style="padding:3px 7px">94.13</td></tr>
+    <tr><td style="padding:3px 7px">(C) DC Pruning + Util-aware</td><td style="padding:3px 7px">95.58</td><td style="padding:3px 7px">99.53</td><td style="padding:3px 7px">89.53</td><td style="padding:3px 7px">95.77</td></tr>
+    <tr style="color:#ffd35c"><td style="padding:3px 7px"><b>(D) LL + Util-aware (Ours)</b></td><td style="padding:3px 7px"><b>96.68</b></td><td style="padding:3px 7px"><b>99.75</b></td><td style="padding:3px 7px"><b>91.08</b></td><td style="padding:3px 7px"><b>96.02</b></td></tr>
+    </table>
+    <b>验证了什么：</b>① (A) 去 LL 剪枝精度几乎不变(96.90)——但 Fig 4 显示大 ε 下人眼可辨，故 LL 剪枝换的是<b>感知隐私</b>而非精度；② (B) <b>均匀预算暴跌</b>到 89.82（AgeDB −6.86）→ 证效用感知分配是关键；③ (C) DCT 剪枝 95.58 &lt; (D) DWT 96.68 → 证 DWT 更优（少块伪影、保高频）。</div>
+
+    <div class="note-h">⑭ §5.x 隐私-效用权衡 + 复杂度/开销（Table 4–5）</div>
+    <div class="note-b"><b>权衡（Table 4，AgeDB-30 acc / PSNR）：</b>\(\varepsilon=1\) 50.95/6.90dB → \(\varepsilon=5.2\) 68.89/6.94 → \(\varepsilon=12\) 93.70/7.30 → \(\varepsilon=20\) 96.68/7.62 → \(\varepsilon=58\) 97.45/9.94——“as the privacy guarantee becomes stronger (lower ε), utility declines”，平滑可预测、PSNR 同步。<b>开销（Table 5，×标准图，越低越好）：</b>Ours <b>×1（零开销）</b>、MinusFace ×1、PartialFace ×9、DuetFace ×54、DCTDP ×63。<b>速度：</b>Apple M4 上 112×112 图 <b>5.5 ms/张（232 img/s）</b> vs MinusFace 68 ms，复杂度 \(\Theta(N)\) 线性于像素数。<b>兼容性：</b>输出标准图、对下游任务不变，可零样本跨域（VGGFace2/CelebA/Chest X-Ray），且由 post-processing 性质，任何在隐私图上训练的模型自动继承隐私保证。</div>
+
+    <div class="note-h">⑮ §5 图像分类 vs 中心化 DP-SGD + 跨域泛化（含 Table 6/7）</div>
+    <div class="note-b"><b>分类（CIFAR-10/100，ResNet-56 from scratch）：</b>原文 “LDP-Slicing decisively outperforms DP-SGD at all privacy budgets ε ≤ 12 on CIFAR-10 and all budgets on CIFAR-100”——一个<b>本地</b>(零信任)模型在实用预算区间击败<b>中心化</b>(需可信 curator、δ 设 1e-10 逼近 pure-DP)的 DP-SGD，是很强的结果（Fig 7：优势随 ε 进入实用区间而扩大）。<b>跨域零样本（Table 6）：</b>MS1MV2 训练的模型直接测——Chest X-Ray \(\varepsilon=5.2\) 已 90.54%、\(\varepsilon=20\) 92.15%；VGGFace2 \(\varepsilon=20\) 67.15%、CelebA \(\varepsilon=20\) 80.44%，证 “task-agnostic robustness”。<b>色度权重消融（Table 7）：</b>\(4{:}1{:}1\)(本文) 全面最佳（CIFAR10 80.36 / AgeDB 96.68），\(2{:}1{:}1\)、\(1{:}1{:}1\) 依次下降 → 印证"给 Y 通道更多预算"的设计。</div>
+    <div class="note-b"><b>实现细节（附录 D）：</b>PPFR 用 ResNet-50(IR)+ArcFace（\(s=64,\ m=0.4\)），SGD(mom 0.9, wd 5e-4)，24 epochs，lr 0.1 在 10/18/22 epoch 降 10×，从 IR-50 预训练初始化 + 5-epoch warmup；小 ε(如 2.4) 用 gradient clipping(max norm 1) 防梯度消失。分类 ResNet-56、250 epochs、batch 128。全部实验在 NVIDIA H100 + PyTorch。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>problem：</b>LDP 是零信任金标准但用于图像因 \(k=256\) 像素空间噪声爆炸而"不实用"，前作只能退到中心化 DP 或低维表示。</div>
+    <div class="note-b"><b>method：</b>① 洞见"是表示问题非 LDP 固有"→ bit-plane 把像素拆成 24 个二值平面(\(k=2\)) 做 randomized response（式1–2）；② 小波 LL-Pruning 防人眼（不耗预算）；③ 按 \(W_{c,b}=w_c\cdot w_b\) 的 Lagrange 闭式解最优分配预算（式4）；④ 证明逐像素 \(\varepsilon_{total}\)-LDP（composition + post-processing）+ TV/advantage 上界。</div>
+    <div class="note-b"><b>experiment：</b>人脸识别 DP/LDP 类最佳、逼近非隐私（LFW 99.75/CALFW 96.02）；身份辨别 advantage 最低（CIFAR10 0.25 vs DCTDP 4.97）；抗白/黑盒 + StyleGAN 重建（\(\varepsilon=58\) 仍失真）；零存储开销、5.5 ms/张、比 DCTDP 严 ~4.7×；分类击败中心化 DP-SGD。</div>
+    <div class="note-b"><b>Takeaway：</b>① 把"换对表示"作为让 LDP 在像素上实用的钥匙（不改 LDP、不降维）；② 输出标准图即插即用、可端侧零信任部署；③ 按 bit/channel 重要性分预算是效用关键（均匀分会崩）。<b>诚实边界：</b>逐像素保证整图是 loose worst-case（靠破坏空间相关性间接保护语义）；LL 剪枝是启发式（且去掉精度几乎不降，主要换感知隐私）；实用 \(\varepsilon\) 偏大（默认 20）；作者承认可被滥用规避合法系统（双刃剑，伦理章节自述）。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-ldp-slicing-local-differential-privacy-for-images-via-r/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. The LDP-Slicing framework. Our method consists of two primary stages: (1) Perceptual obfuscation: the input image is transformed into the frequency domain via DWT, where the low-frequency (LL) band is pruned to remove human-perceptible information. (2) Bit-plane randomization: The obfuscated image is decomposed into binary bit-planes. A utility-aware randomized response mechanism is appl</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-ldp-slicing-local-differential-privacy-for-images-via-r/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Bit-plane slicing reveals the non-uniform distribu- tion of structural information. An 8-bit image (left) is decom- posed into its planes (right), from LSB (top-left) to MSB (bottom- right). This visualization shows that coarse structural information is concentrated in the high-order MSB planes, while low-order LSB planes consist primarily of noise-like texture. This motivates our non-un</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-ldp-slicing-local-differential-privacy-for-images-via-r/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Visual justification for channel-aware allocation and perceptual obfuscation. This figure shows an original image (a) and its YCbCr components before and after LL-pruning. It vali- dates two key decisions: (1) Channel Importance: The luma (Y) channel (b) contains the most structural information compared to the chroma channels (c,d). (2) Post-Pruning Signal: After LL- pruning (e), the res</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-ldp-slicing-local-differential-privacy-for-images-via-r/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Visual comparison between LL pruning (Bottom) versus without pruning (Top). (a) εtotal = 1. (b) εtotal = 2.4. (c) εtotal = 5.2. (d) εtotal = 12. (e) εtotal = 20. (f) εtotal = 32. (g) εtotal = 58.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-ldp-slicing-local-differential-privacy-for-images-via-r/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Resilience to a white-box reconstruction attack. The adversary has full knowledge of our pipeline and trains a special- ized two-stage inversion model. From top to bottom εtotal = 5.2, εtotal = 20, εtotal = 58 (a) The original images. (b) original images after LL removed. (c) LDP-Slicing privatized images. (d) LL recovered images. (e) Final recovered images.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-ldp-slicing-local-differential-privacy-for-images-via-r/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Resilience to black-box reconstruction attack. (a) The original images. Recovered LDP-Slicing image from (b) εtotal = 5.2, (c) εtotal = 20, and (d) εtotal = 58. (e) Recovered DCTDP image (εmean = 0.5).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-ldp-slicing-local-differential-privacy-for-images-via-r/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Privacy-utility trade-off on privacy-preserving image classification. LDP-Slicing is compared against the strong centralized DP-SGD model [1]. On both CIFAR-10 (a) and CIFAR-100 (b), our local model demonstrates a clear and growing advantage as the budget moves into a more practical range, comparing with the centralized trusted-curator model.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-ldp-slicing-local-differential-privacy-for-images-via-r/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Visual comparison on Map2V [51] reconstruction at- tack on PPFR SOTAs. Red squares highlight reconstructions that leak facial features. (a) Target images. (b) Reconstruction from DCTDP [23]. (c) Reconstruction from DuetFace [32]. (d) Re- construction from PartialFace [33]. (e) Reconstruction from LDP- Slicing (ours).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-ldp-slicing-local-differential-privacy-for-images-via-r/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. Qualitative comparison against other SOTAs. We compare LDP-Slicing (i) against (b) PPFR-FD [46], (c) DuetFace [32], (d) PartialFace [33], (e) ProFace [50], (f) AdvFace [47], (g) MinusFace [34], and DCTDP [23]. DCTDP and LDP-Slicing achieve a higher level of perceptual obfuscation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-ldp-slicing-local-differential-privacy-for-images-via-r/fig10.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 10. Black-box reconstruction attack (w/o LL pruning)</figcaption></figure>
+    </div>
+  </div></body></html>

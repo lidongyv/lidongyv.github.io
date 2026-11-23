@@ -1,0 +1,163 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Rethinking Dataset Distillation: Hard Truths about Soft Labels</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Rethinking Dataset Distillation: Hard Truths about Soft Labels</h1>
+    <div class="au2" style="color:var(--mut)">Priyam Dey ⋅ Aditya Sahdev ⋅ Sunny Bhati ⋅ Konda Reddy Mopuri ⋅ R. Venkatesh Babu</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2604.18811">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2604.18811">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Rethinking%20Dataset%20Distillation%3A%20Hard%20Truths%20about%20Soft%20Labels">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Despite the perceived success of large-scale dataset distillation (DD) methods, recent evidence \cite{qin2024a} finds that simple random image baselines perform on-par with state-of-the-art DD methods like SRe2L \cite{yin2024squeezerecoverrelabeldataset} due to the use of soft labels during downstream model training. This is in contrast with the findings in coreset literature, where high-quality coresets consistently outperform random subsets in the hard-label (HL) setting. To understand this discrepancy, we perform a detailed scalability analysis to examine the role of data quality under different label regimes, ranging from abundant soft labels (termed as SL+KD regime) to fixed soft labels (SL) and hard labels (HL). Our analysis reveals that high-quality coresets fail to convincingly outperform the random baseline in both SL and SL+KD regimes. In the SL+KD setting, performance further approaches near-optimal levels relative to the full dataset, regardless of subset size or quality, for a given compute budget. This performance saturation calls into question the widespread practice of using soft labels for model evaluation, where unlike the HL setting, subset quality has negligible influence. A subsequent systematic evaluation of five large-scale and four small-scale DD methods in the HL setting reveals that only RDED \cite{sun2024diversityrealismdistilleddataset} reliably outperforms random baselines on ImageNet-1K, but can still lag behind strong coreset methods due to its over-reliance on easy sample patches. Based on this, we introduce CAD-Prune, a compute-aware pruning metric that efficiently identifies samples of optimal difficulty for a given compute budget, and use it to develop CA2D, a compute-aligned DD method, outperforming current DD methods on ImageNet-1K at various IPC settings. Together, our findings uncover many insights into current DD research and establish useful tools to advance data-efficient learning for both coresets and DD.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft- -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">一篇「打假/反思」论文：大规模 dataset distillation(DD) 的「成功」主要是 <b>soft label(知识蒸馏)</b> 的功劳，不是蒸馏出的数据质量。在 soft-label 评测下，数据的<b>质量与大小几乎不影响性能</b>——性能由 compute 决定且很快饱和到接近全量；只有 <b>hard-label(HL)</b> 下数据质量才真正起作用。据此提 <b>DCS</b>(零成本诊断指标，证明 trajectory-matching DD 不 scale) 和 <b>CAD-Prune/CA2D</b>(compute-aware，HL 下 SOTA)。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">原文：Qin et al.[27] 发现 “simple random image baselines perform on-par with state-of-the-art DD methods like SRe2L ... due to the use of soft labels”。这与 coreset 文献矛盾(HL 下高质量 coreset 一贯超随机子集)。核心问题：“How does data quality, size and compute interplay ... under the SL+KD regime?”——soft label 到底把数据质量的作用稀释了多少？</div>
+    <div class="note-h">三种 label regime（关键概念，先分清）</div>
+    <div class="note-b">① <b>HL(hard label)</b>：one-hot 标签 + 交叉熵。② <b>SL(fixed soft label)</b>：teacher 给每图<b>一个</b> soft label，训 student 时冻结。③ <b>SL+KD</b>：teacher 给<b>每个 augmented image 一个</b> soft label(每图多个，cutmix 增强)，等价于 knowledge distillation——大规模 DD(SRe2L 系)默认用这个评测。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b">① <b>EL2N-SL(Def.1)</b>：把 EL2N importance 推广到 soft-label(KL loss)：EL2N-SL(x)=(1/T)·E‖p(w_t,x) − q(w_t,x)‖₂(q=teacher soft 分布，T=温度)。<br>② <b>DCS(Distillation Correlation Score)</b>：DCS(φ)=ρ({ℓ_Dtest(θ*_Sj)}, {L_distill(Sj,D)})(ρ=Spearman 秩相关)。把蒸馏 loss 与 downstream 泛化误差跨多个子集做相关——泛化误差只算一次可复用，<b>零成本</b>评估蒸馏目标好坏。<br>③ <b>CAD-Prune</b>：U_k(x)=连续 J 个 epoch 分数的标准差(uncertainty)；CAD(x)=末端窗口 W 内 U_k 的均值(W=2, J=6@IN1K)；关键=用 <b>compute-aligned checkpoint</b>(同 LR schedule)取「在该 budget 下还在被学」的样本。<br>④ <b>CA2D</b>：用 CAD-Prune 选合适难度样本 → RDED 式 crop/select/stitch patch 构 distilled set。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">Table 1(IN1K, ResNet-18) 是杀手锏——<b>HL 下差距大</b>(IPC50：RDED 38.49 / EL2N-Best 38.06 / Random 28.52 / EL2N-Hard 7.00)，到 <b>SL+KD 全部塌缩</b>(IPC50：SRe2L 52.58 / RDED 54.42 / Random 58.10 / EL2N-Best 59.16，random 甚至<b>反超</b> DD！全量 62.50)。提出方法 HL 下：CA2D IPC50 41.72 vs RDED 38.49；CAD-Prune IPC50 40.21 vs EL2N-Best 38.44。DCS：TM loss 在 RN-18 上恒≈0.999(TinyIN≈0.806)、与泛化<b>零相关</b>，10k→50k 合成迭代 loss/acc 几乎不变。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 直接挑战领域共识、给可操作建议：“we recommend eschewing ... the SL+KD setting for assessing DD methods”；② DCS 不用真合成+训练就能筛 distillation 目标(零成本诊断 + 可复用查找表)；③ CAD-Prune 用「compute-aligned checkpoint + uncertainty 窗口」解决「固定难度分数跨 IPC 不泛化」，2–4× 省算力。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① “regardless of quality” 有边界(原文脚注 3)：仍须属真实图像分布、IPC 须 ＞ 极小值；② 主要限<b>图像分类</b>，多模态/其他任务未验(原文 future work)；③ scaling law 拟合(附录C)：SL+KD 下 random 与 EL2N 的 b≈0.05 几乎一致、HL 下 b 显著不同——量化了「soft label 抹平数据效用」；④ compression-extraction trade-off(附录H.3)：distilled set 比 coreset 慢 ≥2× 才能榨干信息。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（本地 PDF 全文 PyMuPDF 提取，~96K 字符，含附录公式/全表）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）逐句精讲</div>
+    <div class="note-b"><b>原句①（打假）：</b>“recent evidence finds that simple random image baselines perform on-par with state-of-the-art DD methods like SRe2L due to the use of soft labels during downstream model training.”<br><b>指路：</b>random 子集 ≈ SOTA DD（SRe2L），根因是下游训练用了 <b>soft label</b>，而非蒸馏出的图像质量。</div>
+    <div class="note-b"><b>原句②（矛盾）：</b>“This is in contrast with the findings in coreset literature, where high-quality coresets consistently outperform random subsets in the hard-label (HL) setting.”<br><b>指路：</b>coreset 文献里高质量子集在 HL 下一贯赢随机——两边结论冲突，逼出本文的核心追问。</div>
+    <div class="note-b"><b>原句③（发现）：</b>“high-quality coresets fail to convincingly outperform the random baseline in both SL and SL+KD regimes … performance further approaches near-optimal levels relative to the full dataset, regardless of subset size or quality, for a given compute budget. This performance saturation calls into question the widespread practice of using soft labels for model evaluation.”<br><b>指路：</b>soft-label 评测下质量/大小几乎无影响、性能由 compute 决定并饱和到近全量——质疑用 soft label 评 DD 这件事本身。</div>
+    <div class="note-b"><b>原句④（工具）：</b>“only RDED reliably outperforms random baselines on ImageNet-1K, but can still lag behind strong coreset methods due to its over-reliance on easy sample patches … we introduce CAD-Prune … CA2D … outperforming current DD methods on ImageNet-1K at various IPC settings.”<br><b>指路：</b>HL 下只有 RDED 真超随机但仍输强 coreset（偏好 easy patch）；据此提 CAD-Prune + CA2D 在 HL 拿 SOTA。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原创）</div>
+    <div class="note-b"><b>① Dataset Distillation (DD) / IPC：</b>把大数据集 \( \mathcal{D} \) 合成成极小集 \( \mathcal{S} \)（每类 IPC=images-per-class 张），让在 \( \mathcal{S} \) 上训的模型逼近在 \( \mathcal{D} \) 上训的性能。<b>② Coreset selection：</b>不合成、直接从真实数据挑信息子集；与 DD 同属 data-efficient learning，但传统只在 HL 评测。<b>③ KD / soft label：</b>teacher 带温度 \( T \) 的 softmax 概率分布，比 one-hot 含更多类间关系；student 用 KL 散度对齐。</div>
+    <div class="note-b"><b>④ SRe2L [38]：</b>大规模 DD 奠基框架，把昂贵的合成步骤与 student 训练 <b>decouple</b>，后续 DWA/D4M/Minimax 多基于它。<b>⑤ RDED [34]：</b>从同类多张真实图里裁“最自信”的 patch 拼成合成图（真实 patch 重组）。<b>⑥ TM [2] / DATM [14]：</b>小规模 DD——TM 用 trajectory matching 对齐真实/合成数据上的训练参数轨迹；DATM 加匹配区间约束并联合优化 soft label。<b>⑦ EL2N / GraNd [26]：</b>coreset 难度分，估样本对训练的影响（详见下方公式）。</div>
+
+    <div class="note-h">② §1 Introduction：problem → solution → why 闭环</div>
+    <div class="note-b"><b>problem：</b>DD 靠 SRe2L 框架 scale 到 IN1K，但 Qin et al. 揭穿“the primary factor behind the success … stems from the use of these soft labels instead of the synthesized images”；之后新 DD 仍 “struggle to convincingly beat the random subset baseline except in very low data budget regimes”。核心追问（原文）：“How does data quality, size and compute interplay in shaping performance behavior under the SL+KD regime?”</div>
+    <div class="note-b"><b>solution（分三 regime 系统分析）：</b>(a) SL+KD——“performance is largely insensitive to dataset quality or size and is instead governed by compute, approaching the near-optimal full-dataset accuracy”；(b) SL——“dataset size still matters, but subset quality does not hold influence beyond very small IPC values”，根因 “tight clustering of difficulty scores during SL training”；(c) HL——RDED / TM / DATM 确实超随机，但与最好 coreset “mixed results”。</div>
+    <div class="note-b"><b>why（soft label 为何抹平质量）：</b>大量 teacher 监督把 student 直接拉向 teacher 的全量性能，子集自身的“难度差异”被冲淡——“increasing the amount of soft-label supervision during student training drives all methods (coresets and DD) toward the teacher’s full-dataset performance regardless of their underlying quality.”</div>
+
+    <div class="note-h">③ 三种 label regime 的精确定义（先分清）</div>
+    <div class="note-b"><b>HL（hard label）：</b>one-hot 标签 + 交叉熵。<b>SL（fixed soft label）：</b>teacher 在原数据上给每图<b>一个</b> soft label，student 训练时<b>冻结</b>（one soft label per image）。<b>SL+KD：</b>teacher 给<b>每个 augmented image（cutmix 增强）一个</b> soft label（每图多个），等价 knowledge distillation——大规模 DD（SRe2L 系）默认用这个评测。原文点出文献的不公：大规模 DD 报 SL+KD、小规模 DD 报 HL 或 SL、coreset 只报 HL，导致 “highly varying model performances reported in the literature”。</div>
+
+    <div class="note-h">④ §2 形式化设定 + 核心假设</div>
+    <div class="note-b"><b>DD 目标：</b>给定大数据集 \( \mathcal{D}_{train} \)，合成紧凑集使下游测试损失最小：\[ \mathcal{S}^*=\arg\min_{\mathcal{S}}\ \ell_{\mathcal{D}_{test}}(\theta_{\mathcal{S}}),\qquad \theta_{\mathcal{S}}^*=\arg\min_{\theta}\ \ell_{\mathcal{S}}(\theta) \] 各方法用代理蒸馏目标 \( \mathcal{L}_{\mathrm{distill}}(\mathcal{S},\mathcal{D}) \) 指导合成。<b>隐含假设（原文）：</b>“Minimization of \( \mathcal{L}_{\mathrm{distill}} \) should yield a synthetic set \( \hat{\mathcal{S}}^* \) that … lead to good downstream generalization on a test set \( \mathcal{D}_{test} \).” 本文核心就是质疑：在 soft-label 评测下这个假设还能不能区分好坏数据。</div>
+
+    <div class="note-h">⑤ §3.1 SL+KD 分析：scalability + Pareto + saturation</div>
+    <div class="note-b"><b>实验设置：</b>用 EL2N 在 IN1K 上造 IPC 10–700 的子集，保留分数 fraction \( f \) 从 100%（=random）降到 20%（造 easy/hard 子集），在 2–50 epoch 全量等效 compute 下训 ResNet-18。<b>结果：</b>HL 下 “improving performance requires jointly scaling dataset size (IPC), its quality and compute”；SL+KD 下 “performance is primarily dictated by compute, while remaining largely unaffected by dataset size or quality”，且所有子集都 near-optimal 到全量红线（IPC=IN1K）。</div>
+    <div class="note-b"><b>Pareto（Fig 1b）：</b>HL 有清晰 frontier（低 IPC 偏 easy 样本、高 IPC 偏 hard）；SL+KD “no such pareto-frontier exists: beyond the minimum IPC of 10, the performance of all subsets, regardless of difficulty or size, remains largely invariant.” <b>结论建议（原文）：</b>“we recommend eschewing from use of the SL+KD setting for assessing DD methods.” 脚注边界：“regardless of quality 不代表任意集（如高斯噪声）也行——仍须属真实图像分布”。</div>
+
+    <div class="note-h">⑥ §3.2 SL 分析 + EL2N-SL 公式（Definition 1）</div>
+    <div class="note-b"><b>原 EL2N（HL，外部）：</b>\( \mathrm{EL2N}(x)=\mathbb{E}\,\lVert p(w_t,x)-y\rVert_2 \)（\( p \)=softmax 输出、\( y \)=one-hot、期望取训练中权重 \( w_t \)），假设 hard label + 交叉熵。<b>本文推广到 SL（KL loss 下，Def.1）：</b>\[ \mathrm{EL2N\text{-}SL}(x)=\frac{1}{T}\,\mathbb{E}\,\lVert p(w_t,x)-q(w_t,x)\rVert_2 \] \( q \)=teacher 给的目标概率分布、\( T \)=softmax 温度（附录 D 给推导）。</div>
+    <div class="note-b"><b>结果：</b>SL 下 EL2N-SL 分数 “tightly clustered, indicating that most samples contribute similarly to the learning process”（难度同质化）→质量影响小；小规模 DD 把“学到的 soft label”换成 teacher soft label 后优势消失——“while DATM outperforms K-centers by ∼8% in the HL setting, it fails to do so in the SL setting.”</div>
+
+    <div class="note-h">⑦ §3.3 HL 设定 + 小规模 DD 结果（Table 2 全表）</div>
+    <div class="note-b"><b>Table 2（TinyImageNet, ConvNet-D4，HL ｜ SL，IPC 10/50，PDF 原值）：</b><br>| 方法 | HL@10 | HL@50 | SL@10 | SL@50 |<br>| DM | 13.51 | 22.76 | 16.12 | 36.58 |<br>| DC | 12.83 | 12.66 | 7.23 | 10.18 |<br>| TM | 20.11 | 28.16 | 26.11 | 36.43 |<br>| DATM | 19.26 | <b>29.51</b> | 28.43 | 37.39 |<br>| Random Real | 6.88 | 18.62 | 26.07 | 36.87 |<br>| K-centers | 11.38 | 22.02 | 27.11 | <b>37.45</b> |<br>→ HL 下 DATM(29.51)/TM(28.16) 明显超 K-centers(22.02)；切到 SL 全部塌缩到 ~36–37、DATM(37.39)≈K-centers(37.45)，DD 的优势消失。</div>
+
+    <div class="note-h">⑧ §4 DCS：零成本诊断蒸馏目标好坏</div>
+    <div class="note-b"><b>动机：</b>既然 DD 想用 \( \mathcal{L}_{\mathrm{distill}} \) 逼近 \( \mathcal{S}^* \)，那就直接评“这个目标和下游泛化对不对齐”。<b>定义（Spearman 秩相关 \( \rho \)）：</b>\[ \mathrm{DCS}(\phi)=\rho\!\left(\{\ell_{\mathcal{D}_{test}}(\theta^*_{\mathcal{S}_j})\}_{j=1}^{m},\ \{\mathcal{L}_{\mathrm{distill}}(\mathcal{S}_j,\mathcal{D})\}_{j=1}^{m}\right) \] 先在 \( m \) 个子集（coreset 或 distilled）各训 student 得泛化误差（<b>只算一次、当查找表复用</b>），再对任意（现有/未来）蒸馏目标算其 loss 与该误差的相关——“mitigate the compute-intensive process of generating distilled sets”，绕开合成 + 下游训练两步。</div>
+
+    <div class="note-h">⑨ §4.1 DCS 实证：trajectory-matching 不 scale</div>
+    <div class="note-b"><b>TM 目标在大模型上失灵：</b>“no correlation between the TM surrogate loss and generalization when using a larger architecture such as RN-18 … their TM surrogate loss remains unchanged at approximately 0.999”，而不同子集的 RN-18 性能差异很大；ConvNet-D4 上 TM loss 才有合理变化。<b>DATM 合成动态：</b>“despite 10k synthesis iterations, one can hardly observe any significant change in both loss and accuracy when using RN-18 for synthesis.” 结论：TM 类目标 “fails to capture meaningful variations between subsets”，无法 scale 到大模型/大数据（补充材料里 DM 目标 \( \rho=0.41 \)，比 TM 好但仍弱）。</div>
+
+    <div class="note-h">⑩ §5 提出方法：CAD-Prune 公式 + CA2D</div>
+    <div class="note-b"><b>动机：</b>固定难度分（EL2N-Hard/Dyn-Unc）跨 IPC 不泛化（低 IPC 喜 easy、高 IPC 喜 hard）；Lee &amp; Chung 的 sliding-window 准但 “requires multiple full training runs for each candidate window”（贵）。<b>CAD-Prune（compute-aware）：</b>用与下游<b>同 compute budget、同 LR schedule</b> 训全量，取末端窗口的 uncertainty——逐 epoch 不确定度（连续 \( J \) 个 epoch 分数的标准差）：\[ U_k(x)=\sqrt{\frac{\sum_{j=0}^{J-1}\big[\,\mathbb{S}(y\mid x,\theta^{k+j})-\bar{\mathbb{S}}\,\big]^2}{J-1}},\quad \bar{\mathbb{S}}=\tfrac{1}{J}\sum_{j=0}^{J-1}\mathbb{S}(y\mid x,\theta^{k+j}) \] 再对末端宽度 \( W \) 的窗口取均值：\[ \mathrm{CAD}(x)=\frac{\sum_{k=K-J-W}^{K-J-1}U_k(x)}{W},\qquad W=2,\ J=6\ (\text{IN1K}) \]</div>
+    <div class="note-b"><b>CA2D：</b>用 CAD-Prune 选出对该 compute budget“合适难度”的样本，再按 RDED 式 “crop, select, and stitch patches” 构造 distilled set（Compute-Aware Dataset Distillation）。<b>关键洞察（原文）：</b>必须用 compute-matched run 才能 “replicate which samples remain learnable at that stage”，用早期 checkpoint 不行——会漏掉只在低学习率阶段才学到的样本。</div>
+
+    <div class="note-h">⑪ §3 实验主表（Table 1 全表，IN1K / ResNet-18，PDF 原值）</div>
+    <div class="note-b" style="overflow-x:auto"><b>IPC 50，HL ｜ SL ｜ SL+KD（看“HL 有差距 → SL+KD 塌缩”）：</b><br>| 方法 | HL | SL | SL+KD |<br>| SRe2L (DD) | 9.79 | 27.64 | 52.58 |<br>| DWA (DD) | 8.26 | 28.42 | 53.25 |<br>| D4M (DD) | 21.56 | 44.33 | 58.08 |<br>| Minimax (DD) | 19.62 | 40.30 | 57.77 |<br>| RDED (DD) | <b>38.49</b> | 38.78 | 54.42 |<br>| Random Real | 28.52 | 48.49 | 58.10 |<br>| GraphCut | 31.88 | 45.50 | 59.22 |<br>| Dyn-Unc | 33.03 | 45.54 | 58.22 |<br>| EL2N-Hard | 7.00 | 44.12 | 58.16 |<br>| EL2N-Best | 38.06 | 48.76 | <b>59.16</b> |<br>| Full Dataset | 62.50 | 62.50 | 62.50 |<br>→ HL 下 EL2N-Hard(7.00) vs EL2N-Best(38.06) 差 31 分；SL+KD 下全部挤进 52–59，<b>Random(58.10) 反超所有 DD</b>，逼近全量 62.50。</div>
+    <div class="note-b"><b>headline 行的 IPC 10 / 100（HL ｜ SL ｜ SL+KD）：</b>SRe2L 2.82·14.89 ｜ 14.14·37.33 ｜ 30.94·61.38；RDED 14.34·44.36 ｜ 19.27·44.91 ｜ 32.10·58.61；Random 5.10·40.89 ｜ 19.96·55.65 ｜ 28.82·62.87；EL2N-Best 10.33·47.18 ｜ 22.82·56.05 ｜ 33.62·63.32。<b>读数：</b>SL+KD 列里 IPC100 各法都贴近全量 65.91，质量/方法差异被抹平。</div>
+
+    <div class="note-h">⑫ §5 提出方法结果（Table 3 全表，IN1K / HL）</div>
+    <div class="note-b">| 方法 | IPC 10 | IPC 50 | IPC 100 |<br>| EL2N-Best (coreset) | 10.53 | 38.44 | <b>47.76</b> |<br>| <b>CAD-Prune (ours)</b> | <b>12.57</b> | <b>40.21</b> | 47.40 |<br>| RDED (DD) | 14.34 | 38.49 | 44.36 |<br>| <b>CA2D (ours)</b> | <b>15.25</b> | <b>41.72</b> | <b>46.32</b> |<br>→ CAD-Prune 在 IPC 10/50 超 sliding-window 的 EL2N-Best（12.57/40.21 vs 10.53/38.44），IPC100 基本持平；CA2D 在三档全超 RDED。<b>效率：</b>“for IPC 100 coreset selection, this delivers 2–4× compute savings” —— 单次 compute-matched run 即得 budget-optimal 分数，无需为每个窗口重训。</div>
+
+    <div class="note-h">⑬ 失败/边界/Limitations/Future work</div>
+    <div class="note-b"><b>边界（原文脚注）：</b>“regardless of quality” 不含任意集——仍须属真实图像分布；size 在 IPC＞极小值（如 IPC 10）后才无额外增益。<b>compression-extraction trade-off（Fig 8）：</b>distilled set 随训练更久持续提升、coreset 早饱和——意味着 distilled set 要更长训练才能榨干信息。<b>Limitations / Future work：</b>“in model-stealing scenarios, a small dataset with repeated supervision could achieve near-optimal performance”（安全隐患）；研究限<b>图像分类</b>，多模态/分类外任务待探；“expressing non-optimizable DD objectives for evaluation under DCS requires care and is an open problem”。</div>
+
+    <div class="note-h">📌 全文总结（problem→method→experiment→takeaway，≥3 条硬结论）</div>
+    <div class="note-b"><b>problem：</b>大规模 DD 的“胜过随机”可能是 soft label 的假象——数据质量在 soft-label 评测下还重不重要？<b>method：</b>① 跨 HL/SL/SL+KD 的 scalability + Pareto + scaling-law 系统分析；② EL2N-SL（soft-label 版难度分）解释 SL 下质量失效；③ DCS（蒸馏目标 vs 泛化误差的 Spearman 相关，零成本诊断）；④ CAD-Prune（compute-aligned uncertainty 窗口）+ CA2D（RDED 式 patch）。</div>
+    <div class="note-b"><b>takeaway 1：</b>SL+KD 下数据质量/大小几乎不影响、性能由 <b>compute</b> 决定并饱和到近全量（Random 在 IPC50 达 58.10 反超所有 DD），故 “recommend eschewing the SL+KD setting for assessing DD methods”。<br><b>takeaway 2：</b>DCS 证明 <b>trajectory-matching（TM/DATM）目标不 scale</b> 到 RN-18（loss 恒≈0.999、与泛化零相关），是个不用真合成就能筛目标的诊断器。<br><b>takeaway 3：</b>HL 下质量仍是主因——<b>CAD-Prune / CA2D</b> 用 compute-aware 选样在 IN1K 各 IPC 超 EL2N-Best / RDED，并省 2–4× 算力。<b>对本仓库的启示：</b>评数据效率方法务必控住 label regime 与 compute（同 LR schedule 的 compute-matched run），否则“涨点”可能只是 soft-label/算力假象——这是做数据精简/蒸馏类实验的硬约束。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft-/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. (Left) Analysis of TM Loss objective behavior for different synthesis methods on TinyImageNet. Scatter plot displaying correlation of Avg. TM Loss with In-domain generalization of all the methods. Notice the complete lack of correlation when one evaluates the TM loss for larger architectures like RN-18, even though generalization performance varies significantly for the underlying distil</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft-/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Role of teacher strength in SL+KD saturation. We perform scaling analysis in the SL+KD regime with different teachers: (a) MobileNet-V2 (MNV2) teacher, and (b) a weak ResNet-18 (RN18) teacher, in order to ascertain the robustness of our observations in the SL+KD regime with varying strength of the teacher models. From the results, we find that, indeed, our observations do hold strong des</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft-/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Correlation analysis of distillation loss objectives on ImageNet-1K. We compute the proposed DCS score (see Sec-4 of the main paper) for SRe2L and DWA across multiple IPC settings and data subsets (each data point in the plot represents IPC-subset combination, see Sec. G.2 for details and discussion). One can observe a mis-alignment between these distillation objectives and their general</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft-/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. DCS Additional results. (a) DCS on small-scale method DM. We use DCS to plot the correlation of DM [39] loss objective with ID generalization error and find better-than- TM but modest correlation of ρ = 0.41. (b) DCS robustness across tasks. We also evaluate the robustness of DCS for an OOD task different than the ID task for SRe2L [38] on Mini-ImageNet- C dataset, and find that the DCS </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft-/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. (a) Analysis of TM Loss objective behavior for differ- ent synthesis methods on TinyImageNet. We calculate the TM Loss for various distilled sets with trajectories starting from differ- ent training epochs for both ConvNet-D4 and ResNet-18 model. For deeper and larger architectures like ResNet-18, TM Loss fails to capture any meaningful variation, settling around a constant value of ∼0.8</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft-/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Convergence analysis of DD methods vs coresets. We plot downstream student performance (Top-1 Error) as a function of training epochs. One can observe that performance keeps im- proving for distilled sets (solid line) with longer training, while it saturates for coresets (dashed line), indicating the existence of compression-extraction trade-off in training on distilled set.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft-/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. Class: Bakery in ImageNet-1K.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft-/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 10. Class: Leaf Beetle in ImageNet-1K.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft-/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 11. Class: Madagascar Cat in ImageNet-1K.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft-/fig10.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 12. Class: Boston Bull in ImageNet-1K.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-rethinking-dataset-distillation-hard-truths-about-soft-/fig11.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 13. Class: Garbage Truck in ImageNet-1K.</figcaption></figure>
+    </div>
+  </div></body></html>

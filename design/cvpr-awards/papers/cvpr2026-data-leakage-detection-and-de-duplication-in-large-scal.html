@@ -1,0 +1,197 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Data Leakage Detection and De-duplication in Large Scale Geospatial Image Datasets</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Data Leakage Detection and De-duplication in Large Scale Geospatial Image Datasets</h1>
+    <div class="au2" style="color:var(--mut)">Yeshwanth Kumar Adimoolam ⋅ Charalambos Poullis ⋅ Melinos Averkiou</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2304.02296">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2304.02296">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Data%20Leakage%20Detection%20and%20De-duplication%20in%20Large%20Scale%20Geospatial%20Image%20Datasets">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">In our study, we conducted a comprehensive analysis of three widely used datasets in the domain of building footprint extraction using deep neural networks: the INRIA Aerial Image Labelling dataset, SpaceNet 2: Building Detection v2, and the AICrowd Mapping Challenge datasets. Our experiments revealed several issues in the AICrowd Mapping Challenge dataset, where nearly 90% (about 250k) of the training split images had identical copies, indicating a high level of duplicate data. Additionally, we found that approximately 56k of the 60k images in the validation split were also present in the training split, amounting to a 93% data leakage.Furthermore, we present a data validation pipeline to address these issues of duplication and data leakage, which hinder the performance of models trained on such datasets. Employing perceptual hashing techniques, this pipeline is designed for efficient de-duplication and leakage identification. It aims to thoroughly evaluate the quality of datasets before their use, thereby ensuring the reliability and robustness of the trained models.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-data-leakage-detection-and-de-duplication-in-large-scal -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">对 3 个建筑物足迹提取常用遥感数据集（INRIA、SpaceNet 2、<b>AICrowd Mapping Challenge</b>）做数据质量审计，发现 AICrowd <b>极严重污染</b>：训练集近 <b>89–90%（约 25 万张）</b>是重复（精确或旋转/翻转增强副本），验证集 <b>93%（约 56k/60k）</b>也出现在训练集里（数据泄漏）。提出一个基于 <b>perceptual hashing(pHash)</b> 的轻量去重 + 泄漏检测 pipeline（DCT 算 64-bit 哈希、Hamming=0 精确碰撞、<b>4ms/图、纯 CPU</b>），主张数据集用前先体检。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">深度学习遥感（建筑足迹/道路提取）依赖大规模高质量数据集，社区常直接用公开 benchmark——AICrowd 因提供 <b>MS-COCO 格式多边形标注</b>被大量论文用于训练/评测/对比。但大数据集质量<b>难审计</b>（ImageNet/COCO/LAION-5B 动辄百万-十亿对）。<b>重复 + 泄漏会导致过拟合、虚高指标、不公平 benchmark</b>（训练-评测重叠会夸大报告性能）。所以亟需高效易用的 pipeline 在用前快速评估数据质量。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b"><b>Perceptual Hashing pipeline（§3.1，Fig1）</b>：输入图→下采样→<b>32×32 DCT（离散余弦变换）</b>→取低频 top-left 8×8（t<sub>L</sub>）→用 t<sub>L</sub> 均值阈值化（&gt;均值=1，否则 0）→flatten 成 <b>64-bit 感知哈希 H<sub>p</sub></b>。<br><b>去重 + 泄漏检测（§3.2）</b>：① 算全部图 hash；② 用 <b>hash 碰撞</b>（Hamming 距离阈值=0、纯等值比较→极快）找精确重复；③ 对 augmented duplicates：把目标集每图做 <b>90/180/270° 旋转 + 水平/垂直翻转</b>，算增强集 hash 与训练集比；④ 去重：增强训练集→算 hash→检碰撞→每组重复任意保留一张；⑤ 去泄漏：检训练↔验证碰撞、删训练里泄漏的验证图。<br><b>关键设计</b>：pHash 对<b>辐射增广</b>（亮度/对比度）天然不变，但对<b>几何增广</b>（旋转/翻转）不内在不变 → 靠“先枚举增广再 hash”克服（增广类型需数据集先验）。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>INRIA / SpaceNet 2（Tab1-2）</b>：泄漏/重复 <b>negligible</b>（overlap 0.003%-1.5%，且检出的多是水/草地低对比或 no-data raster 等<b>假阳</b>）→ 适合做 benchmark。<b>AICrowd（Tab3，重灾区）</b>：official val 中 <b>93.45%（56,368/60,317）</b>在训练集里；official test <b>93.26%</b> 在训练集里；official train <b>59.19% 内部重复</b>、33.92% 是 val 的精确副本；增强后 Augmented Train <b>89.55% 内部重复</b>、Augmented Val↔Train <b>97.04% 泄漏</b>。<b>去重后</b>：train 280,741 → 29,338 unique → 去泄漏后仅 <b>15,392（≈原 5.5%）</b>；val 60,317 → 14,166 unique。<b>过拟合实证</b>：HiSup 在 seen(重复) vs unseen test 子集 AP <b>79.7 vs 65.4</b>（附录 Tab5），且方法复制了训练集里的错误 GT 标注（Fig3）→ 记忆而非泛化、报告指标虚高。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>揭露广泛使用的 AICrowd 的严重污染</b>（train 89% 重复、val 93% 泄漏），警示社区——大量 SOTA 在污染数据上 benchmark、报告指标可能<b>无效</b>；② <b>极轻量实用</b>（DCT-based pHash，4ms/图，纯 CPU，Hamming=0），可直接审计 ImageNet/COCO/Cityscapes 等任意大数据集；③ 用 <b>seen/unseen 子集</b>定量证明泄漏导致过拟合；④ <b>pHash 比 aHash 假阳少</b>（基准上 pHash F1 0.9999/FP 0 vs aHash F1 0.9429/FP 664）。</div>
+    <div class="note-h">疑问</div>
+    <div class="note-b">① <b>几何不变性靠“先枚举增广再 hash”</b>，增广类型需数据集<b>先验</b>（limitation 自承）；对未枚举的几何变换（任意角旋转/缩放/裁剪）覆盖不全。② <b>只检精确 + 特定增广重复，不检 near-duplicate</b>（语义近似但非精确）：Hamming 阈值=0 很严，轻微像素差异（重采样/压缩）就漏；提高 bit depth 更敏感但增假阳。③ <b>数字口径要看清方向</b>：摘要 train 90%/250k 重复、val 93% 泄漏；contributions 写 train 89%、val 97%——“official vs augmented”“val-in-train vs train-in-val”不同口径易混。④ 方法本身简单（成熟 pHash），<b>贡献在“发现 + 警示 + 工具化”</b>而非新算法。（注：本文是遥感建筑足迹数据集审计，不与自驾感知/其他领域硬比。）</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读：① Abstract 逐句 → ② Intro problem→solution→why → ③ Method 核心机制+关键流程 → ④ 实验/结果关键数值 + 全文一页总结。原文优先、引英文原句、外部概念单开背景块。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文大意：</b>对建筑足迹提取（building footprint extraction）领域三个常用数据集（INRIA Aerial、SpaceNet 2: Building Detection v2、AICrowd Mapping Challenge）做系统体检。发现 <b>AICrowd</b> 问题严重：训练集近 <b>90%（约 250k）</b>图像有「完全相同的副本」（高度重复）；且验证集 6 万张里约 <b>56k</b> 也出现在训练集，构成 <b>93% 的数据泄漏</b>。为此提出一条基于 <b>perceptual hashing（感知哈希）</b>的数据校验流水线，高效做去重与泄漏识别，主张「数据集用前先验质量」以保模型可靠与鲁棒。</div>
+    <div class="note-b"><b>逐句拆解（verbatim 引原文）：</b><br>1) 重复 — <b>“nearly 90% (about 250k) of the training split images had identical copies, indicating a high level of duplicate data.”</b><br>2) 泄漏 — <b>“approximately 56k of the 60k images in the validation split were also present in the training split, amounting to a 93% data leakage.”</b>（验证集 93% 混进了训练集 = 自己考自己）<br>3) 方案 — <b>“we present a data validation pipeline to address these issues … Employing perceptual hashing techniques, this pipeline is designed for efficient de-duplication and leakage identification.”</b><br>4) 目的 — <b>“to thoroughly evaluate the quality of datasets before their use, thereby ensuring the reliability and robustness of the trained models.”</b></div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>这不是模型论文，是<b>数据集取证（forensics）</b>论文——用感知哈希（DCT 低频 → 64-bit 哈希 → 找碰撞）扒出 AICrowd 建筑足迹数据集存在「训练集内部巨量重复 + 验证/测试集 93% 泄漏进训练集」，从而质疑一批在该集上报的 SOTA 指标，并给出一条人人可用的去重/查漏流水线。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文 — 读懂本文必备）</div>
+    <div class="note-b"><b>① data leakage（数据泄漏）vs duplication（重复）：</b><b>泄漏</b>=训练集与评测集（验证/测试）之间有重叠（同一张图既训又评），导致「自己考自己」、报告指标虚高、benchmark 不公；<b>重复</b>=数据集内部同一图反复出现（含 exact 完全相同、augmented 旋转/翻转后的同图）。两者都会让模型<b>记忆而非泛化</b>，在 OOD（分布外）数据上崩。<br><b>② building footprint extraction（建筑足迹提取）：</b>从遥感卫星/航拍图里提取建筑轮廓（多边形/掩膜），用于城市理解、土地利用、规划等。常用网络 UNet/ResNet/attention，常用数据集 AICrowd（提供 MS-COCO 格式多边形标注，故 CV 社区爱用）、INRIA（栅格掩膜）、SpaceNet（GeoJSON/GeoTIFF）。</div>
+    <div class="note-b"><b>③ perceptual hashing（感知哈希）&amp; DCT：</b>把一张图压成一个短「指纹」（本文 64-bit），<b>视觉相同/相近的图哈希也相同/相近</b>（与密码学哈希相反——后者一像素变指纹全变）。主流有 aHash（平均哈希）、<b>pHash（基于 DCT 离散余弦变换）</b>、dHash（差值哈希）。<b>DCT</b>=把图像变到频域，能量集中在<b>低频（左上角）</b>，保留低频即抓「整体结构」、丢高频细节，故对亮度/对比度/微小结构变化鲁棒。<br><b>④ Hamming distance：</b>两个等长二进制串<b>不同位的个数</b>。本文取阈值 0（即两哈希完全相等才算碰撞/重复）。</div>
+
+    <div class="note-h">Q&amp;A · 它要解决的主要问题是什么？</div>
+    <div class="note-b"><b>核心：</b>大规模图像数据集（尤其 AICrowd）里隐藏的<b>重复 + 训练/评测泄漏</b>难以人工排查，会污染 benchmark、让模型过拟合、使报告指标失真；需要一条<b>高效、易用、与数据集无关</b>的自动化体检流水线。<br><b>双重交付：</b>① <b>分析结论</b>——量化三个数据集的污染程度（INRIA/SpaceNet 干净，AICrowd 重灾）；② <b>工具</b>——感知哈希去重/查漏流水线（原文 <b>“a practical and easy-to-adopt method for identifying and eliminating data duplication and leakage issues”</b>），可推广到 ImageNet/COCO/Cityscapes 等任意大图集。</div>
+
+    <div class="note-h">② §1 Introduction — problem → 为什么严重 → solution → 贡献</div>
+    <div class="note-b"><b>problem：</b>深度学习高度依赖大规模高质量公开 benchmark；AICrowd 因「大 + 提供 MS-COCO 多边形标注」被建筑足迹领域大量用于训练/评测/对比。但作者人工初查就发现 AICrowd <b>“a plethora of issues”</b>：官方 split 内的 exact/augmented 重复 + 跨 split 泄漏。<br><b>为什么严重（机理）：</b>原文 <b>“Excessive duplication and leakage in a benchmark dataset often lead to the trained models exhibiting overfitting behavior and performing poorly on out-of-distribution data at test time.”</b> 且 <b>“overlap between training and evaluation data can inflate reported performance and undermine fair benchmarking.”</b> 引 [10] 指出「重复有规模依赖效应，越大的模型越把近重复当 exact 记忆」。</div>
+    <div class="note-b"><b>solution + 贡献：</b>原文 <b>“the demand for an effective, easy-to-adopt pipeline to swiftly evaluate the quality of large-scale image datasets.”</b> 两点贡献：① 对三大遥感数据集做深入分析，量化 AICrowd 的 <b>“nearly 89% of the training images are duplicates (either exact or augmented), and significant data leakage, with about 97% of the validation images also present in the training split”</b>（注：97% 是把 augmented 也算进去的更严口径）；② 给出感知哈希去重/查漏流水线并在三集上验证其实用性。</div>
+
+    <div class="note-h">Q&amp;A · data leakage 和 duplication 区别？为什么危害这么大？</div>
+    <div class="note-b"><b>区别：</b><b>duplication</b> 是「同一集内」冗余（训练集里同图出现 N 次）→ 浪费算力、让模型对高频样本过拟合；<b>leakage</b> 是「跨集」重叠（验证/测试图出现在训练集）→ 评测时模型其实「见过答案」，指标虚高、对比不公。<br><b>危害放大链：</b>① 训练集内部 59% 重复（AICrowd Train↔Train）→ 等效有效数据远小于标称（280k 实则约 15k 独立图）；② 验证集 93% 泄漏 → 报告的验证/测试分数主要来自「记住的训练图」；③ 论文据此排名 → <b>“potentially invalidates the quantitative metrics reported on this dataset by several preceding works.”</b> <b>实锤证据</b>：模型连训练集里<b>错误的 GT 标注</b>都照抄复现（Fig3 PolyWorld/HiSup）——只有「记住」才会连错都记住，是过拟合的铁证。</div>
+
+    <div class="note-h">②′ §2 Related Work — 已有去重路线 &amp; 本文为何选 perceptual hashing</div>
+    <div class="note-b"><b>(A) 一堆 SOTA 正建在被污染的 AICrowd 上：</b>原文点名 building footprint 领域多篇工作 [6,8,11,15,24–26,29] 用了这个 <b>“contaminated AICrowd Mapping Challenge dataset”</b> 做评测，更有 [23,28,30] <b>“used exclusively to benchmark and evaluate the proposed methods”</b>——这正是本文要警示社区的动机（很多排名建在沙地上）。<br><b>(B) 已有去重方法三类，本文都没直接用：</b>① <b>hashing-based</b>——CE-Dedup [14]（用 hashing 去重显著缩小数据集、同时保住下游分类精度）、QHash [13]（针对「小视觉差异」如医学图像的去重）、Jafari et al. [9]（locality-sensitive hashing 在 ML / 图像视频处理适用性的综述）；② <b>自监督描述子</b>——[19]（self-supervised descriptor for image copy detection）、[27]（dataset-driven unsupervised object discovery 做实例检索）。<br><b>(C) 选型理由（原文 verbatim）：</b><b>“While these hashing techniques may be suitable for detecting near duplicates in an image dataset, we only focus on detecting exact and augmented duplicates (90° rotations and flips) in our experiments for which perceptual hashing would be more suitable.”</b> 自监督路线虽可能去重更彻底，但 <b>“pretraining on very large datasets can be challenging and may not generalize well to other substantially different datasets.”</b> 即本文刻意选「简单、与数据集无关、零训练」的 pHash，换来<b>可立即套用到任意大数据集</b>的实用性——贡献不在算法新，而在「发现 + 工具化 + 警示」。</div>
+
+    <div class="note-h">③ §3.1 感知哈希流水线（DCT 细节，Fig1）</div>
+    <div class="note-b"><b>原文定位：</b><b>“The pipeline is independent of any particular dataset and it is based on the calculation of perceptual hashes of images.”</b> 它能识别 exact 重复 + augmented 副本（<b>“images that have undergone transformations such as rotations and flips but remain inherently the same image”</b>）。<b>pHash 五步（Fig1）：</b>① 输入图按因子 \(d\) 下采样；② 算 <b>32×32 DCT</b>（2D 离散余弦变换，标准 DCT-II）：<br>\[ t(u,v)=\sum_{x=0}^{31}\sum_{y=0}^{31} I_d(x,y)\,\cos\!\Big[\tfrac{\pi}{32}\big(x+\tfrac12\big)u\Big]\cos\!\Big[\tfrac{\pi}{32}\big(y+\tfrac12\big)v\Big] \]<br>③ 低通：只留左上角 <b>8×8 低频</b> \(t_L\)（含结构主能量）；④ 算均值 \(\bar t_L=\frac{1}{64}\sum_{i,j}t_L(i,j)\)；⑤ 按均值二值化并展平成 64-bit 哈希：<br>\[ H_p(i,j)=\mathbb{1}\big[\,t_L(i,j) > \bar t_L\,\big]\ \in\{0,1\}^{8\times8}\ \to\ \mathbb{R}^{64} \]<br>「保低频 + 与均值比」正是它对亮度/对比度/小结构变化鲁棒的原因。</div>
+
+    <div class="note-h">④ §3.2 去重 &amp; 泄漏移除流程 + 碰撞判定</div>
+    <div class="note-b"><b>碰撞判定（§4）：</b>bit depth 64，<b>“we treated exact hash matches as a collision, i.e., adopted a Hamming distance threshold of 0”</b>：<br>\[ d_H(H_a,H_b)=\sum_{k=1}^{64}\mathbb{1}\big[H_a^k\neq H_b^k\big],\qquad \text{collision}\iff d_H=0 \]<br>用简单相等检查比对 → 极快（每图哈希计算 ~4ms、每次比较 ~4ms，AMD EPYC 7313/8 核/32GB）。<br><b>处理 augmented 副本：</b>pHash <b>不</b>天然抗几何变换（旋转/翻转），故<b>先把每张图做 90°/180°/270° 旋转 + 水平/垂直翻转再算哈希</b>，用增广集互比来抓 augmented 重复。<b>去重三步：</b>① 增广 train、算哈希、按碰撞去重 → 留唯一 train；② 同法处理 val；③ 查 train↔val 碰撞，删掉训练集里所有泄漏的验证图。</div>
+
+    <div class="note-h">⑤ §4 实验设置 + 三个数据集</div>
+    <div class="note-b"><b>INRIA：</b>5000×5000 航拍瓦片、0.3m 分辨率、180 train + 180 test 瓦片；切成 250×250 不重叠 patch → <b>72,000 train + 72,000 test</b>。<br><b>SpaceNet 2:</b> 24,586 卫星场景、650×650、0.3m、4 城（Las Vegas/Paris/Shanghai/Khartoum）。<br><b>AICrowd：</b>从更大的 SpaceNet v2 派生，<b>300×300 RGB</b> WorldView-3 patch、0.3m，<b>280,741 train + 60,317 val</b>，MS-COCO 多边形建筑足迹标注。<br><b>对照结论：</b>INRIA（Table1）与 SpaceNet 2（Table2）泄漏/重复<b>可忽略</b>（重叠 ~10⁻³%~1%），且少量检出多为「低对比水体/草地」或「no-data 栅格」<b>假阳性</b>（哈希对色彩/小结构不敏感所致）；唯独 AICrowd 出大问题。</div>
+
+    <div class="note-h">⑤′ 对照组实证 · INRIA / SpaceNet 2 到底有多干净（Table 1-2）</div>
+    <div class="note-b"><b>控制变量的意义：</b>同一条 pHash pipeline，在 INRIA/SpaceNet 上给出近 0、在 AICrowd 上给出 93%——证明 93% 是 AICrowd 真有问题，<b>不是工具 artifact</b>。<br><b>INRIA（Table 1，72,000 patch）：</b>official Train→Train 仅命中 <b>2</b> 张（2.78×10⁻³%）、Train→Test 6、Test→Train 7、Test→Test 4；即便 augmented 口径，最高也只 Augmented Test→Augmented Train <b>86</b>/432,000（19.91×10⁻³%≈0.02%）。<br><b>SpaceNet 2（Table 2）：</b>official Train→Train 105/10,593（<b>0.991%</b>）、Test→Train 43（1.219%），augmented 最高 Augmented Train→Train 163（<b>1.539%</b>）。<br><b>检出的还多是假阳：</b>INRIA 的命中 <b>“were simply low-contrast images containing only water bodies or grasslands with little to no buildings”</b>，SpaceNet 的命中 <b>“were simply no data rasters, which are a common artifact of georeferenced satellite imagery”</b>——因为 pHash <b>“is invariant to color and small structural changes”</b>，会把空旷低对比图误判为重复。这把双刃剑此处的好处是：确认两集 <b>“no real data leakage or duplication”</b>、可放心当 benchmark；坏处是阈值 / bit depth 需权衡（提高 bit depth 更敏感但碎检增多，本文 64-bit 已足够）。</div>
+
+    <div class="note-h">⑥ AICrowd 的触目数字（Table 3）</div>
+    <div class="note-b"><b>官方 split 直接互查（exact）：</b>
+<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0;color:#d7dcff">
+<tr style="color:#ffd35c"><td style="border:1px solid #2a2f5c;padding:3px">查询 → 目标</td><td style="border:1px solid #2a2f5c;padding:3px">命中数</td><td style="border:1px solid #2a2f5c;padding:3px">占比</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">Train → Train（内部重复）</td><td style="border:1px solid #2a2f5c;padding:3px">166,193</td><td style="border:1px solid #2a2f5c;padding:3px">59.19%</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">Val → Train（泄漏）</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">56,368</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">93.45%</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">Test → Train（泄漏）</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">56,608</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">93.26%</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">Aug-Train → Aug-Train</td><td style="border:1px solid #2a2f5c;padding:3px">251,403</td><td style="border:1px solid #2a2f5c;padding:3px">89.55%</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">Aug-Val → Aug-Train</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">351,182</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">97.04%</td></tr>
+</table>
+原文：<b>“93.45% (56,368) of the 60,317 official validation images were also present in the training split. In contrast, 33.92% (95,241) of the 280,741 official training images were exact duplicates of images in the validation split. Furthermore, 93.26% (56,608) of the 60,697 official test split images were also present in the training split.”</b> 即<b>验证/测试集 93%+ 是训练集见过的图</b>，augmented 口径下泄漏达 97%。</div>
+
+    <div class="note-h">Q&amp;A · 89% 重复 / 93% 泄漏是怎么算出来的？</div>
+    <div class="note-b"><b>算法：</b>对「查询集（search set）」每张图算哈希，去「目标集（targets set）」里找<b>哈希碰撞</b>（Hamming=0）；命中数 / 查询集总数 = overlap%。<br><b>两个不同视角解释「为何方向不同」：</b>Val→Train 93.45% = 「验证集里有 93% 能在训练集找到副本」（验证集小、几乎全泄漏）；Train→Val 仅 33.92% = 「训练集里有 34% 能在验证集找到副本」（训练集大、占比自然低）——<b>同一批重叠，分母不同所以百分比不同</b>，不矛盾。<br><b>exact vs augmented：</b>89%/97% 是把每图的 90°/180°/270°+翻转都算进去后的口径（augmented），比纯 exact 更高，因为很多「副本」其实是旋转/翻转过的同图。<b>89.55%</b> 的 Aug-Train↔Aug-Train 说明训练集内部近九成是彼此的几何变体。</div>
+
+    <div class="note-h">⑥′ augmented 完整口径 + 一个易被忽略的中间发现（38.72%）</div>
+    <div class="note-b"><b>泄漏检测过程中的关键中间数（原文 verbatim）：</b><b>“we found that 38.72% (108,707) of the official training images were exact or augmented duplicates of images found in the official validation split.”</b> 对比纯 exact 的 33.92%（95,241），<b>多出的约 5%（≈1.3 万张）正是「旋转 / 翻转后的几何变体」</b>——这就是为什么 augmented 口径系统性高于 exact。<br><b>Augmented 全口径（Table 3 下半）：</b>① Augmented-Train→Augmented-Train <b>251,403/280,741 = 89.55%</b>（训练集内部近九成互为几何变体）；② Augmented-Val→Augmented-Train <b>351,182/361,902 = 97.04%</b>（验证集增广后几乎全落在训练集增广里）；③ 连 <b>Augmented-Val→Augmented-Val 也有 46,151/60,317 = 76.51%</b>——<b>验证集自己内部就 76% 冗余</b>。<br><b>口径要点（避免把数字当矛盾）：</b>摘要 / 正文混用了几个数（train「90% / 250k」「89%」exact-or-augmented、val「93%」exact「97%」augmented），差异全来自 <b>① exact vs augmented 两种口径、② 谁查谁（search set → targets set，分母不同）</b>。读这篇务必先认准「search→targets + exact/augmented」再看百分比。</div>
+
+    <div class="note-h">⑦ De-dup 后的真实规模（280k → 15k）</div>
+    <div class="note-b"><b>去重 + 去泄漏后（§4.2.1）：</b>原文 <b>“the train split contained 29,338 unique images (out of the original 280,741) and the validation split contained 14,166 unique images (out of the original 60,317). From this subset … further prune the training split to 15,392 images.”</b><br><b>读法：</b>① 去掉 exact+augmented 重复后，280,741 的训练集只剩 <b>29,338</b> 张真正独立图（≈10.4%）、验证集 60,317 只剩 <b>14,166</b>；② 再删掉训练集中泄漏的验证图，训练集进一步降到 <b>15,392</b>。即<b>标称 28 万的训练集，真正可用的独立、无泄漏样本仅约 1.5 万</b>——缩水到 ~5.5%。这解释了为何在该集上训练极易过拟合。</div>
+
+    <div class="note-h">⑧ 过拟合实锤（Fig3 + 补充 Table 5 seen/unseen）</div>
+    <div class="note-b"><b>定性（Fig3）：</b>PolyWorld、HiSup 在 AICrowd 验证集上的预测<b>连训练集里错误/不完整的 GT 标注都照抄</b>——原文 <b>“these methods replicate the incorrect/incomplete ground truth annotations, indicating overfitting due to data leakage.”</b> 只有「记住了那张图」才会把错标也复现，是泄漏致过拟合的直接证据。<br><b>定量（补充 Table 5）：</b>用 HiSup 官方 checkpoint，把测试集分成 <b>seen</b>（与训练 exact 重复）和 <b>unseen</b>（无重叠）：
+<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0;color:#d7dcff">
+<tr style="color:#ffd35c"><td style="border:1px solid #2a2f5c;padding:3px">子集</td><td style="border:1px solid #2a2f5c;padding:3px">AP</td><td style="border:1px solid #2a2f5c;padding:3px">AP50</td><td style="border:1px solid #2a2f5c;padding:3px">AP75</td><td style="border:1px solid #2a2f5c;padding:3px">AR</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">All</td><td style="border:1px solid #2a2f5c;padding:3px">79.4</td><td style="border:1px solid #2a2f5c;padding:3px">92.7</td><td style="border:1px solid #2a2f5c;padding:3px">85.3</td><td style="border:1px solid #2a2f5c;padding:3px">81.5</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">Seen（见过）</td><td style="border:1px solid #2a2f5c;padding:3px">79.7</td><td style="border:1px solid #2a2f5c;padding:3px">92.7</td><td style="border:1px solid #2a2f5c;padding:3px">85.4</td><td style="border:1px solid #2a2f5c;padding:3px">81.9</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">Unseen（没见过）</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">65.4</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">87.1</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">74.5</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">69.3</td></tr>
+</table>
+AP 从 seen 79.7 暴跌到 unseen <b>65.4</b>（−14.3），AR 81.9→69.3——<b>“the model primarily memorizes seen samples rather than generalizing.”</b> 报告的 79.4 是被 seen 抬高的虚高分。</div>
+
+    <div class="note-h">⑨ PHash vs AHash 验证（Table 4 + 补充 Table 6 benchmark）</div>
+    <div class="note-b"><b>交叉验证（Table4）：</b>用标准 average hashing（aHash）复查 AICrowd，结论一致（Train↔Val 泄漏 pHash 93.4% vs aHash 93.5%），<b>“confirms that the AICrowd dataset suffers from considerable data leakage and duplication.”</b> 但 aHash 略多检出（因更易假阳性）。<br><b>受控 benchmark（补充 Table6）：</b>造 10,000 张含已知 GT 重复的基准（2,501 重复组/7,501 图 + 2,499 唯一，50% 重复率，增广含 exact/90°/180°/270°/水平/垂直翻转）：
+<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0;color:#d7dcff">
+<tr style="color:#ffd35c"><td style="border:1px solid #2a2f5c;padding:3px">方法</td><td style="border:1px solid #2a2f5c;padding:3px">Precision</td><td style="border:1px solid #2a2f5c;padding:3px">Recall</td><td style="border:1px solid #2a2f5c;padding:3px">F1</td><td style="border:1px solid #2a2f5c;padding:3px">FP</td><td style="border:1px solid #2a2f5c;padding:3px">FN</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">pHash</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">1.0000</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">0.9997</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">0.9999</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">0</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">2</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">aHash</td><td style="border:1px solid #2a2f5c;padding:3px">0.9164</td><td style="border:1px solid #2a2f5c;padding:3px">0.9709</td><td style="border:1px solid #2a2f5c;padding:3px">0.9429</td><td style="border:1px solid #2a2f5c;padding:3px">664</td><td style="border:1px solid #2a2f5c;padding:3px">218</td></tr>
+</table>
+pHash 近乎完美（F1 0.9999、<b>0 假阳性</b>），aHash 假阳性 664、F1 仅 0.9429 → <b>“perceptual hashing is less prone to false positive errors and hence is a more suitable choice.”</b></div>
+
+    <div class="note-h">Q&amp;A · 为什么唯独 AICrowd 重灾，而 INRIA / SpaceNet 干净？</div>
+    <div class="note-b"><b>关键线索（原文）：</b>AICrowd Mapping Challenge <b>“derived from the larger SpaceNet v2 challenge dataset”</b>，是把更大的 SpaceNet v2 卫星影像<b>裁成 300×300 的小 patch</b> 并配 MS-COCO 多边形标注得到的。<br><b>污染从哪来 [推测]：</b>① <b>重叠裁剪</b>——从大图密集切小 patch 时，若步长小于 patch 尺寸，相邻 patch 会大量重叠、甚至产生几乎相同的图；② <b>该挑战自身的增广</b>——把同一 patch 的旋转/翻转版本一并放进数据集（这正是「augmented duplicates」的来源，89%/97% 口径就是把这些几何变体算进去）；③ <b>切分时未按地理位置去重</b>——同一地块的 patch 被随机分到 train/val/test，造成跨 split 泄漏。相比之下 INRIA（5000×5000 瓦片切 250×250 <b>不重叠</b> patch）与 SpaceNet 2（官方 split）在构造时就避免了重叠裁剪与随机泄漏，故干净。<br><b>启示：</b>「从大图切 patch + 随机分 split + 内置增广」这一常见数据集构造流程，若不做<b>地理感知去重</b>，极易批量制造重复与泄漏——AICrowd 是典型反面教材。</div>
+
+    <div class="note-h">🛠 工程启示：怎样给「你自己的」大图数据集做体检</div>
+    <div class="note-b"><b>可直接照搬的最小流程（本文方法的工程化）：</b>① 对每张图算一个 <b>64-bit pHash</b>（下采样 → DCT → 8×8 低频 → 按均值二值化）；② 把哈希当字符串/整数存进哈希表，用<b>相等比对</b>找碰撞（Hamming=0），\(O(N)\) 近线性、每图 ~4ms，百万级也扛得住；③ 若数据集可能含旋转/翻转副本，先对每图做 90°/180°/270°+水平/垂直翻转再哈希（代价是放大 ~6 倍比对量，但仍快）；④ 分别在「train 内」「val 内」查重复、在「train↔val/test」查泄漏；⑤ 每组重复任选一张保留，并从训练集删掉所有泄漏到评测集的图。<br><b>注意事项：</b>pHash 抗色彩/亮度但不抗几何，故第 ③ 步必须；位深越高越敏感（更易区分细小差异，但碎检/假阴增多），本文 64-bit 已够建筑足迹场景；近重复（平移/缩放/裁剪）需改用更大 Hamming 阈值或自监督描述子（[19,27]），超出本文范围。<b>核心理念</b>：benchmark 数据集<b>用前先体检</b>，别让「自己考自己」的泄漏把你的 SOTA 指标抬成空中楼阁。</div>
+
+    <div class="note-h">📖 verbatim 关键英文原句速查（原文摘录 + 中文指路）</div>
+    <div class="note-b">
+    1) <b>“Excessive duplication and leakage in a benchmark dataset often lead to the trained models exhibiting overfitting behavior and performing poorly on out-of-distribution data at test time.”</b>（重复+泄漏 → 过拟合 + OOD 崩）<br>
+    2) <b>“Data leakage is prevalent in large-scale vision datasets, where overlap between training and evaluation data can inflate reported performance and undermine fair benchmarking.”</b>（泄漏普遍、虚高指标、损公平）<br>
+    3) <b>“Data duplication has scale-dependent effects, with larger models increasingly treating near-duplicates as exact memorization.”</b>（重复有规模效应）<br>
+    4) <b>“The pipeline is independent of any particular dataset and it is based on the calculation of perceptual hashes of images.”</b>（流水线与数据集无关）<br>
+    5) <b>“Augmented copies are images that have undergone transformations such as rotations and flips but remain inherently the same image.”</b>（增广副本定义）<br>
+    6) <b>“we treated exact hash matches as a collision, i.e., adopted a Hamming distance threshold of 0.”</b>（碰撞=哈希全相等）<br>
+    7) <b>“this method efficiently identifies exact duplicates as well as augmented copies of images in a dataset.”</b>（兼查 exact 与 augmented）<br>
+    8) <b>“render it unsuitable for benchmarking … This also potentially invalidates the quantitative metrics reported on this dataset by several preceding works.”</b>（AICrowd 不宜直接 benchmark、或使既往指标失效）<br>
+    9) 局限 — <b>“it is not inherently invariant to geometric augmentations such as rotation or flips. We overcome this limitation by augmenting the input images before the hash computation.”</b>（pHash 不抗几何变换，靠预增广弥补）</div>
+
+    <div class="note-h">⚠ 诚实边界 &amp; 疑问（含原文 limitation，推断标 [推测]）</div>
+    <div class="note-b"><b>① 只查 exact + augmented，不查 near-duplicate：</b>本文明确「only focus on detecting exact and augmented duplicates（90° 旋转/翻转）」，Hamming 阈值取 0；对「轻微平移/缩放/裁剪/局部改动」的近重复<b>不</b>覆盖（near-dup 需更大阈值或学习型描述子，原文把那留给别的工作）。<br><b>② pHash 不抗几何变换：</b>靠「预先增广 5 种几何变换再哈希」绕过，但<b>增广种类需按数据集统计先验选</b>（a priori info）——换个含任意角度旋转的数据集，这套固定增广会漏。<br><b>③ 假阳性的两面性：</b>哈希对色彩/小结构不敏感 → 把「低对比水体/no-data 栅格」误判为重复（INRIA/SpaceNet 的检出多是这种假阳性）；好处是确认这两集「无真实泄漏」，坏处是阈值/位深需权衡（提高 bit depth 更敏感但更多碎检）。<br><b>④ 过拟合量化仅 1 个模型：</b>seen/unseen 掉点只在 HiSup 一个 checkpoint 上量化（Table5），其余方法只给定性（Fig3 照抄错标）[推测：更多模型的 seen/unseen 系统对比会更有力]。<br><b>⑤ 范围：</b>结论限建筑足迹三数据集；流水线虽称可推广到 ImageNet/COCO 等，但本文未在那些集上实测。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>建筑足迹常用的 AICrowd 数据集被广泛用于训练/评测/排名，但其官方 split 存在巨量重复与跨集泄漏，污染 benchmark、使报告指标失真。<br><b>method：</b>感知哈希（pHash）流水线——下采样 → 32×32 DCT → 留 8×8 低频 → 按均值二值化 → 64-bit 哈希；Hamming=0 判碰撞；对 90°/180°/270°+翻转<b>预增广</b>后比对以抓 augmented 副本；极快（~4ms/图）。<br><b>takeaway 1（结论）：</b>AICrowd 训练集 <b>59% 内部重复</b>、验证/测试集 <b>93%+ 泄漏</b>进训练集（augmented 口径达 97%）；去重去泄漏后 28 万训练图<b>真正独立可用仅 ~1.5 万</b>（缩水到 ~5.5%）。INRIA/SpaceNet 2 则基本干净。<br><b>takeaway 2（危害实锤）：</b>方法（PolyWorld/HiSup）连训练集<b>错误 GT 都照抄</b>（Fig3）；HiSup 在 unseen 测试子集 AP 从 79.7 跌到 <b>65.4</b>（Table5）——报告分是被「见过的图」抬高的，泄漏致过拟合。<br><b>takeaway 3（工具价值）：</b>受控 benchmark 上 pHash F1 <b>0.9999、0 假阳性</b>，优于 aHash（F1 0.9429、664 假阳性）；流水线与数据集无关、易复用，主张「数据集用前先体检」。<br><b>适用边界：</b>只覆盖 exact+augmented（90° 类）重复，不抗任意几何/near-dup；增广需按数据集先验选；过拟合量化仅 HiSup 一例。<b>这是一篇「打假 + 给尺子」的数据集治理论文，提醒社区慎用被污染的 benchmark。</b></div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-data-leakage-detection-and-de-duplication-in-large-scal/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. The pipeline used for computing the perceptual hash, Hp of an image. The input image is first downsampled by a downsampling factor, d. The 32 × 32 discrete cosine transform, t of the downsampled image is computed and the lowest frequencies, tL (top-left 8 × 8 values) are retained. Finally, tL is thresholded by the mean of the retained low frequencies and flattened to result in the 64 −d </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-data-leakage-detection-and-de-duplication-in-large-scal/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Data Leakage. Here we show examples of data leakage in the AICrowd dataset [18] (CC BY-NC-SA 4.0). We sample four images from the validation split and show duplicates occurring in the training split.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-data-leakage-detection-and-de-duplication-in-large-scal/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Qualitative comparisons. Examples from the original AICrowd [18] (CC BY-NC-SA 4.0) validation set where images are annotated incorrectly. We show example predictions from PolyWorld [30] (first row) and HiSup [25] (second row). The ground truth is shown in the third row. In these examples, it can be seen that these methods replicate the incorrect/incomplete ground truth annotations, indic</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-data-leakage-detection-and-de-duplication-in-large-scal/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Qualitative Comparisons of Duplicates detected using Perceptual Hashing vs. Average Hashing. Here we show examples of data leakage in the AICrowd dataset [18] (CC BY-NC-SA 4.0). We sample two images from the test split in the 1st column and show duplicates occurring in the training split in the 2nd, 3rd, and 4th columns. It can be seen that the Perceptual Hashing approach is less prone t</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-data-leakage-detection-and-de-duplication-in-large-scal/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. False positive examples of data leakage. Here we show examples of falsely detected examples of data leakage in the SpaceNet 2: Building Detection v2 dataset [4] (CC BY-SA 4.0). We sample four images from the test split in column 1 and show duplicates occurring in the training split in columns 2, 3, and 4.</figcaption></figure>
+    </div>
+  </div></body></html>

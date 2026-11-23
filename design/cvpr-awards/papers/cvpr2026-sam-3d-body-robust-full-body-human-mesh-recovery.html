@@ -1,0 +1,171 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>SAM 3D Body: Robust Full-Body Human Mesh Recovery</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>SAM 3D Body: Robust Full-Body Human Mesh Recovery</h1>
+    <div class="au2" style="color:var(--mut)">Xitong Yang ⋅ Devansh Kukreja ⋅ Don Pinkus ⋅ Taosha Fan ⋅ Jinhyung Park ⋅ Soyong Shin ⋅ Jinkun Cao ⋅ Jia-Wei Liu ⋅ Nicolás Ugrinovic ⋅ Anushka Sagar ⋅ Jitendra Malik ⋅ Matt Feiszli ⋅ Piotr Dollár ⋅ Kris Kitani</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2602.15989">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2602.15989">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=SAM%203D%20Body%3A%20Robust%20Full-Body%20Human%20Mesh%20Recovery">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">We introduce SAM 3D Body (3DB), a promptable model for single-image full-body 3D human mesh recovery (HMR) that demonstrates state-of-the-art performance, with strong generalization and consistent accuracy in diverse in-the-wild conditions. 3DB estimates the human pose of the body, feet, and hands. It is the first model to use a new parametric mesh representation, Momentum Human Rig (MHR), which decouples skeletal pose and body shape. 3DB employs an encoder–decoder architecture and supports auxiliary prompts, including 2D keypoints and masks, enabling user-guided inference similar to the SAM family of models. We derive high-quality annotations from a multi-stage annotation pipeline that uses various combinations of manual keypoint annotation, differentiable optimization, multi-view geometry, and dense keypoint detection. Our data engine efficiently selects and processes data to ensure data diversity, collecting unusual poses and rare imaging conditions. We present a new evaluation dataset organized by pose and appearance categories, enabling nuanced analysis of model behavior. Our experiments demonstrate superior generalization and substantial improvements over prior methods in both qualitative user preference studies and traditional quantitative analysis. Both 3DB and MHR are open-source.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-sam-3d-body-robust-full-body-human-mesh-recovery -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">Meta 出品的「可提示」单图<b>全身(身+手+脚)</b>3D 人体 mesh 恢复(HMR)模型，对标 SAM 家族。三支柱：① <b>SAM 式 promptable encoder-decoder</b>(可选 2D keypoint / mask 引导)，共享 image encoder + 身/手<b>两个独立 decoder</b> 解决两者优化冲突；② 首个用新参数化 mesh <b>MHR(Momentum Human Rig)</b>——把「骨架 pose」与「体型 shape」<b>解耦</b>(vs SMPL 把二者纠缠)；③ <b>VLM 驱动的 data engine</b> 主动挖难样本 + 多阶段标注流水线 → <b>7M</b> 高质量标注。SOTA + 强泛化 + 用户偏好 5:1。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">原文：现有 HMR “exhibit unsatisfactory robustness when applied to in-the-wild images”，在 challenging pose / 严重遮挡 / 罕见视角上失败，且难在统一框架里同时估好 body 与 hands/feet。两根因：① <b>数据</b>——大规模、多样、高质量 mesh 标注难且贵(实验室数据 low diversity、pseudo-label low quality)；② <b>模型</b>——架构没解决 body 与 hand 的不同优化机制，也没处理单目的 uncertainty/ambiguity。</div>
+    <div class="note-h">核心方法 + 关键结构</div>
+    <div class="note-b">① <b>promptable encoder-decoder</b>：image encoder → 特征 F(可选 hand crop → Fhand)；2D keypoint prompt 编码成 token、mask 卷积后逐元素加到 image embedding。decoder query token = [Tpose(MHR+camera), Tprompt, Tkeypoint2D, Tkeypoint3D, Thand]；body decoder cross-attend(T,F)→O(Eq.10)，首 token 过 MLP 回归 <b>θ={P,S,C,Sk}</b>(pose/shape/camera/skeleton)。<br>② <b>两 decoder 解冲突</b>：body 与 hand 在「输入分辨率、相机估计、监督目标」上不同，shared encoder + 分离 decoder 缓解。<br>③ <b>MHR</b>：解耦 skeleton 与 shape(SMPL 把骨架+软组织揉进 shape space，参数不直接对应骨长、可解释/可控性差)。<br>④ <b>训练</b>：multi-task Ltrain=Σλ_i·L_i(2D/3D keypoint L1 + per-joint 可学 uncertainty、参数 L2 + 关节限位、hand box GIoU+L1)，3D keypoint 用 warm-up，模拟交互(多轮随机采 prompt)。<br>⑤ <b>推理 hand 融合</b>：用 hand decoder 的 wrist + body decoder 的 elbow 反过来 prompt body decoder，避免直接把 hand 塞进 kinematic tree 导致 elbow 错。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">Table 2(5 标准集)：3DB-H 3DPW PA-MPJPE <b>33.2</b> / EMDB <b>38.5</b>，超所有单图法、可比视频法，OOD 的 EMDB/RICH 泛化最好。Table 3(5 新集 <b>leave-one-out</b>)：EE4D-Phy PVE 49.7 vs CameraHMR 71.1、Harmony4D 63.5 vs 84.6——泛化碾压。Table 4(FreiHand 手)：3DB PA-MPJPE 5.5 ≈ SoTA 手专模型 WiLoR 5.5(还没训 FreiHand)。Table 6(3D 难 pose)：pose_3d:very_hard PVE 114.2 vs 213.66/186.35。用户研究(<b>7800 人</b>)：整体 5:1，vs 最强 baseline NLF <b>83.8%</b> win。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 把 SAM 的「promptable + 大数据引擎」范式搬到 HMR；② MHR 解耦骨架/体型带来可控可解释；③ data engine 用 VLM 按「失败分析」<b>迭代更新</b>挖掘规则、主动找 hard case(遮挡/倒立/劈叉/截断)——categorical 评测显示正是这些类别提升最大；④ <b>mask conditioning</b> 对多人近距离交互大涨(Hi4D PVE 91.4→58.3)；⑤ 偏好研究规模大(7800 人/20000+ 响应)。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① 限制(原文)：<b>逐人独立处理</b>，不建模 multi-person / human-object 交互；② hand 精度仍<b>不超</b>专用手模型，body decoder 单独的 hand 估计 suboptimal；③ MHR/3DB 对各年龄段体型(尤其 <b>children</b>)建模不足；④ 大量工程/数据细节(7M 数据配比、各 loss 权重 λ)靠经验设定，复现门槛高(Meta 级资源)；⑤ MHR 本身是另一篇([Ferguson 2025]，ATLAS 的增强)——本文是「用+适配」，MHR 内部细节需查原文(<b>外部</b>)。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（本地 PDF 全文 PyMuPDF 提取，~68K 字符，含全部评测表/附录）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① 引言/摘要 — 逐句精讲（这是 Meta 技术报告，开篇即摘要）</div>
+    <div class="note-b"><b>一句话立意：</b>Meta Superintelligence Labs 出的 <b>SAM 3D Body（3DB）</b>——单图<b>全身</b>（body+手+脚）三维网格重建（HMR）的 SOTA、可提示（promptable，像 SAM 一样可用 2D 关键点/mask 引导）、在野外（in-the-wild）极端姿态/视角下鲁棒，且<b>开源</b>。<br><b>逐句拆解（verbatim）：</b><br>1) <i>"We introduce SAM 3D Body (3DB), a promptable model for single-image full-body 3D human mesh recovery (HMR) that demonstrates state-of-the-art performance, with strong generalization and consistent accuracy in diverse in-the-wild conditions."</i><br>2) <i>"It is the first model to use a new parametric mesh representation, Momentum Human Rig (MHR), which decouples skeletal structure and surface shape."</i> —— 首次用 MHR，把<b>骨架结构</b>与<b>表面形状</b>解耦。<br>3) <i>"3DB employs an encoder–decoder architecture and supports auxiliary prompts, including 2D keypoints and masks, enabling user-guided inference similar to the SAM family of models."</i><br>4) <i>"is preferred by users in a study of 7,800 participants, achieving a significant 5 : 1 win rate in visual quality."</i> —— 7800 人用户研究、5:1 视觉胜率。</div>
+
+    <div class="note-h">📚 背景知识①（外部）：HMR / SMPL / SMPL-X / MANO</div>
+    <div class="note-b"><b>HMR（Human Mesh Recovery）</b>=从图像恢复人体 3D 网格（姿态+形状）。最常用人体模型 <b>SMPL</b>（Loper 2015）把人体参数化为 pose+shape；<b>SMPL-X</b> 进一步含手（MANO）和脸（FLAME）。原文点出 SMPL 的局限：<i>"SMPL models intertwine the skeletal structure and soft-tissue mass within the shape space, which can limit interpretability (e.g., the parameters do not always map directly to bone lengths) and controllability."</i> —— 骨架与软组织混在一个 shape space 里，<b>参数不直接对应骨长</b>，可解释性/可控性差。这正是本文换用 MHR 的动机。</div>
+
+    <div class="note-h">📚 背景知识②（外部）：MHR（Momentum Human Rig）核心</div>
+    <div class="note-b"><b>MHR</b>（Ferguson 2025，ATLAS 的增强版）<b>显式解耦骨架结构与体形</b>：\(\theta=\{P,S,C,Sk\}\) 分别是 pose（姿态）、shape（形状）、camera（相机）、skeleton（骨架）。好处：① 参数直接映射骨长，可解释；② 骨架与形状独立 → 更丰富的控制（如保持骨架改胖瘦）；③ 对全身重建更友好。原文：<i>"Momentum Human Rig … explicitly decouples the skeletal structure and body shape, and we adopt it as our representation of the human body."</i> 3DB 是<b>首个</b>用 MHR 的 HMR 模型，评测时把 MHR mesh 映射回 SMPL 格式以对齐既有 benchmark。</div>
+
+    <div class="note-h">📚 背景知识③（外部）：promptable 推理 + 评测指标</div>
+    <div class="note-b"><b>Promptable inference</b>（SAM 系 Kirillov 2023 / SAM2 Ravi 2024 推广）：让用户/系统给 prompt（2D 关键点、mask）引导预测。3DB 把 prompt token 直接塞进 transformer，实现<b>交互式</b> mesh 恢复。<b>指标：</b><b>MPJPE</b>（Mean Per-Joint Position Error，关节位置误差 mm，↓）、<b>PA-MPJPE</b>（Procrustes 对齐后，去掉全局旋转/平移/尺度，↓）、<b>PVE</b>（Per-Vertex Error，顶点误差 mm，↓）、<b>PCK@0.05</b>（Percentage of Correct Keypoints，关键点落在阈值内的比例，↑）。手部还用 <b>PA-MPVPE</b> 与 <b>F@5/F@15</b>（F-score，阈值 5mm/15mm 内的顶点比例）。这些指标里 PA-* 系列因做了 Procrustes 对齐，只评"姿态形状对不对"、不罚全局位姿，故常比未对齐的 MPJPE 小不少。</div>
+
+    <div class="note-h">② Introduction — problem → solution → why（数据 + 模型双瓶颈）</div>
+    <div class="note-b"><b>problem：</b>现有 HMR 在野外不鲁棒——<i>"current models often fail on individuals presenting challenging poses, severe occlusion, or captured from uncommon viewpoints. They also struggle to reliably estimate both the overall body pose and the fine details of the hands and feet in a unified full-body framework."</i> 作者把根因归为两面：① <b>数据</b>——大规模高质量 mesh 标注难且贵，实验室数据多样性低、伪标注质量差；② <b>模型</b>——现有架构没处理好 body 与 hand 各自不同的优化机制，也没好策略应对单目歧义。<b>solution：</b>3DB = 鲁棒全身 HMR 模型 + data engine 驱动的大规模高质量数据。<b>三条模型贡献：</b>(i) promptable encoder-decoder（可条件于 2D 关键点/mask/相机）；(ii) 共享 image encoder + body/hand 两路 decoder（缓解 body-hand 优化冲突）；(iii) 用 MHR 取代 SMPL。</div>
+
+    <div class="note-h">Q&amp;A · 为什么用 MHR，而不是大家都在用的 SMPL？</div>
+    <div class="note-b"><b>问：</b>既然 SMPL/SMPL-X 生态成熟（benchmark、工具都基于它），为何冒险换 MHR？<b>答：</b>因为 SMPL 把"骨架"和"软组织形状"塞进同一个 shape 空间，导致两个工程痛点：参数不直接对应骨长（不可解释）、改 pose 会牵连 shape（不可控）。MHR 把 \(Sk\)（skeleton）和 \(S\)（shape）<b>解耦成独立参数</b>，于是：① 全身重建时骨架/胖瘦/姿态各管各，减少耦合误差；② 对 hand decoder 这种"自由手腕"设计更友好（手腕能相对身体自由转）。代价是要把 MHR 网格映射回 SMPL 才能跑老 benchmark，作者已处理。这是"先把表示选对，再谈架构与数据"的第一性思路。</div>
+
+    <div class="note-h">③ 架构：Image Encoder（式1-2）</div>
+    <div class="note-b">人裁剪图 \(I\) 归一化后过视觉 backbone 得稠密特征 \(F=\text{ImgEncoder}(I)\)（式1）；可选地给手裁剪图 \(I_{hand}\) 得手特征 \(F_{hand}=\text{ImgEncoder}(I_{hand})\)（式2）。两个变体：<b>3DB-H</b> 用 ViT-H（632M）backbone，<b>3DB-DINOv3</b> 用 DINOv3（840M）encoder。输入 resize 到 \(512\times512\)，并用现成 FOV 估计器（MoGe-2）提供相机内参。两类 prompt：<b>2D 关键点</b>（位置编码+学习嵌入，作为 pose decoder 的额外 token）与 <b>mask</b>（卷积嵌入后逐元素加到 image embedding，SAM 式做法）。</div>
+
+    <div class="note-h">③ 架构：Decoder Tokens（式3-9）</div>
+    <div class="note-b">pose decoder 吃一组 query token，四类：<b>① MHR+Camera token</b>：初始 MHR/相机估计嵌成可学 token \(T_{pose}=\text{RigEncoder}(E_{init})\in\mathbb{R}^{1\times D}\)（式3）；<b>② 2D 关键点 prompt token</b>：\(T_{prompt}=\text{PromptEncoder}(K)\in\mathbb{R}^{N\times D}\)（式5），每个关键点表示为 \((x,y,\text{label})\in\mathbb{R}^{N\times3}\)（式6）；<b>③ Hand position token</b> \(T_{hand}\in\mathbb{R}^{2\times D}\)（可选，定位图中手位置，没有它也能出全身 rig）；<b>④ 辅助关键点 token</b> \(T_{keypoint2D}\in\mathbb{R}^{J_{2D}\times D}\)、\(T_{keypoint3D}\in\mathbb{R}^{J_{3D}\times D}\)（式7-8，增强交互/容量）。全部拼接：\(T=[T_{pose},T_{prompt},T_{keypoint2D},T_{keypoint3D},T_{hand}]\)（式9）。</div>
+
+    <div class="note-h">③ 架构：MHR Decoder + 输出（式10）</div>
+    <div class="note-b">body decoder 用 cross-attention 同时关注 query token \(T\) 与全身图特征 \(F\)：\(O=\text{Decoder}(T,F)\in\mathbb{R}^{(3+N+J_{2D}+J_{3D})\times D}\)（式10），把 prompt 信息与视觉上下文融合 → 鲁棒且<b>可编辑</b>的 mesh 恢复。\(O\) 的首 token 过 MLP 回归最终参数 \(\theta=\text{MLP}(O_0)=\{P,S,C,Sk\}\)（pose/shape/camera/skeleton）。可选的 hand decoder 用同样 prompt 但关注手特征 \(F_{hand}\) 得 \(O_{hand}\)，再合并进 body 输出改善手姿。这种"统一框架里同时出 body 与 hand"正是它区别于"只做身体"或"只做手"的关键。<b>为何这套设计能"可编辑"：</b>因为 prompt token 与视觉特征在 cross-attention 里平等参与，用户/系统加一个 2D 关键点就等于给优化加一条强约束，模型会顺着它重算整套 \(\theta\)。这让 3DB 在歧义场景（遮挡、截断、罕见视角）下可由人轻量介入纠偏，而不必重训——这正是"像 SAM 一样可提示"对 HMR 的迁移价值：把不可控的单目歧义，变成可交互、可收敛的推理过程。</div>
+
+    <div class="note-h">③ 为什么要 two-way decoder（body/hand 分离）？</div>
+    <div class="note-b">原文：<i>"This two-way-decoder design effectively alleviates conflicts in optimizing body and hand pose estimation, which arise from differences in input resolution, camera estimation, and supervision objectives."</i> —— body 与 hand 的<b>输入分辨率、相机估计、监督目标</b>都不同，硬塞进一个 decoder 会互相打架。共享 image encoder（省算力、共享语义）+ 两路独立 decoder（各自优化）是折中。推理时默认用 body 输出，检测到手就<b>合并 hand decoder 输出</b>；但直接把 hand 结果插进 MHR 运动学树中段会让相邻关节（尤其<b>肘部</b>）出错，于是用 hand decoder 的<b>手腕位置</b> + body decoder 的<b>肘部位置</b>反过来<b>prompt</b> body decoder 做精修——把"可提示"这一设计用在了自我纠错上。</div>
+
+    <div class="note-h">④ 训练：多任务损失 + 交互式 prompt 训练</div>
+    <div class="note-b">总损失 \(L_{train}=\sum_i\lambda_i L_i\)，各 \(L_i\) 针对特定预测头/解剖结构。<b>2D/3D 关键点损失</b>：L1，带<b>可学每关节不确定性</b>调制（按置信度加权）；3D 关键点先用骨盆/手腕归一化。<b>参数损失</b>：MHR pose/shape 用 L2，加<b>关节限位惩罚</b>防解剖不可能姿态。<b>手检测损失</b>：GIoU+L1 监督手框回归，预测手框不确定性、推理时对手被遮挡样本<b>关掉 hand decoder</b>。训练还<b>模拟交互</b>（SAM 式）：每样本多轮随机采样 prompt，并对用户给的关键点上调权重以鼓励 prompt 一致性。部分损失（如 3D 关键点）用 warm-up 渐增权重以稳训。</div>
+
+    <div class="note-h">⑤ Data Engine：VLM 挖掘困难样本</div>
+    <div class="note-b">核心是 <b>VLM 驱动的挖掘</b>：不靠简单启发式/随机采样，而让 VLM 自动生成并迭代更新"挖掘规则"，从数千万图里筛<b>高价值</b>样本送标注。VLM 专挑六类困难场景：<b>occlusion</b>（遮挡）、<b>unusual poses</b>（杂技/舞蹈等罕见姿态）、<b>interaction</b>（人-物/人-人）、<b>extreme scale</b>（异常远近）、<b>low visibility</b>（弱光/运动模糊/部分可见）、<b>hand-body coordination</b>（手语/运动中手身紧耦合）。挖掘规则<b>基于当前模型的失败分析迭代更新</b>（半自动：跑 3DB→看关键点误差最大的图→人工几词描述→喂 VLM 生成文本 prompt→VLM 选新图→人工标注），形成"模型越弱处越被挖"的闭环。</div>
+
+    <div class="note-h">⑤ 多阶段标注：单图/多视图 mesh fitting + 595 dense keypoints</div>
+    <div class="note-b"><b>单图 fitting：</b>先用当前 3DB 出初始 MHR + 高容量检测器出的 <b>595 个 dense 2D 关键点</b>（原文称这是"<i>the minimal manifold of a human body mesh</i>"——捕捉体形与手姿的最小流形），再梯度精修最小化复合损失 \(L_{fit}=\sum_j\lambda_j L_j\)（2D 关键点重投影 L2 + 初始锚定正则防漂移 + 学习的高斯混合 pose/shape 先验）。<b>多视图 fitting：</b>同步多相机 2D 关键点三角化得稀疏 3D，再二阶优化联合拟合所有帧/视角，加 3D 关键点损失与<b>时序平滑</b>，交替更新 camera/shape/skeleton/pose 并用 RANSAC/鲁棒损失滤噪。dense keypoint 检测器还用<b>稀疏关键点引导</b>+迭代自训练（投影 mesh→再训）两轮。</div>
+
+    <div class="note-h">⑥ 训练数据 7M（Table 1）</div>
+    <div class="note-b">混合<b>单视图野外 + 多视图一致 + 高保真合成</b>，共约 <b>7 百万</b>高质量标注图。单视图野外：MPII(5K)、COCO(24K)、3DPW(17K)、AIChallenger(172K)、SA-1B 子集(1.65M)。多视图：Ego-Exo4D(1.08M/4+视角)、Harmony4D(250K/20视角)、EgoHumans(272K/15视角)、InterHand2.6M(1.09M/66视角)、Re:Interhand(1.50M/170视角)、DexYCB、Goliath(966K/500+视角)。合成：Goliath 的<b>照相级合成扩展</b>(1.63M，带 GT MHR)。原文点出合成的价值：<i>"Synthetic data ensures accurate supervision … complementing real-world datasets that prioritize diversity over quality."</i> ⋆标的数据集额外训手 decoder。</div>
+
+    <div class="note-h">④ 实验：5 个标准 benchmark（Table 2，真数字）</div>
+    <div class="note-b"><b>3DPW（PA-MPJPE/MPJPE/PVE）：</b>3DB-H <b>33.2/54.8/64.1</b>、3DB-DINOv3 33.8/54.8/63.6，优于最强单图基线 NLF（33.6/54.9/63.7）、CameraHMR（35.1/56.0/65.9）、PromptHMR（36.1/58.7/69.4），甚至胜过视频法 GENMO（34.6/53.9/65.8）。<b>EMDB（域外）：</b>3DB-H <b>38.5/62.9/74.3</b>、DINOv3 38.2/61.7/72.5，大幅优于 NLF（40.9/68.4/80.6）、PromptHMR（41.0/71.7/84.5）——<b>泛化更好</b>。<b>RICH（域外）：</b>3DB-DINOv3 30.9/53.7/60.3（NLF 28.7/51.0/58.2 但 NLF 训练用了 RICH、3DB 没用）。<b>2D PCK@0.05：</b>COCO 3DB-H <b>86.8</b>、LSPET <b>68.9</b>（vs PromptHMR 79.2/55.6），均 SOTA。</div>
+
+    <div class="note-h">④ 实验：5 个新数据集泛化（Table 3，leave-one-out 真数字）</div>
+    <div class="note-b">为公平测泛化，3DB 用<b>留一法</b>（训练不含被测数据集），与同样没见过这些数据的基线比。结果（PVE/MPJPE，越低越好）：<b>Synthetic</b> CameraHMR 102.8/87.2、PromptHMR 92.7/80.7 → <b>3DB-H 留一 85.6/75.5、全量 55.2/47.2</b>；<b>Harmony4D</b> CameraHMR 84.6/70.8 → 3DB-H 留一 63.5/54.0、全量 41.0/33.9；<b>SA1B-Hard（Avg-PCK↑）</b>：CameraHMR 63.0、PromptHMR 59.0 → 3DB-H 留一 <b>73.1</b>、全量 76.6。原文：<i>"prior work still struggle with these five domains, incurring a significant drop in performance. In contrast, our leave-one-out model shows strong generalization."</i> 还观察到基线"<i>constantly trade places for second</i>"——各自过拟合一小片分布。</div>
+
+    <div class="note-h">④ 手部（Table 4）+ 2D/3D 类别分析（Table 5/6，真数字）</div>
+    <div class="note-b"><b>手部 FreiHand（Table 4，PA-MPVPE/PA-MPJPE/F@5）：</b>3DB-H <b>6.3/5.5/0.735</b>、DINOv3 6.2/5.5/0.737——<b>没在 FreiHand 上训练</b>却已逼近专门手模型（WiLoR 5.1/5.5/0.825、MaskHand 5.4/5.5/0.801）；这是"全身模型也能打手专用模型"的罕见结果。<b>2D 类别（Table 5，SA1B-Hard，aPCK body）：</b>3DB 在<b>全部 24 类全胜</b>，差距最大的是难场景：Camera-bottom-up 69.62 vs 55.18/46.56、Pose-Inverted body <b>78.18</b> vs 46.12/39.83、Pose-Leg/arm splits 83.69 vs 57.51/54.76。<b>3D 类别（Table 6，PVE）：</b>pose_3d:very_hard 3DB <b>114.20</b> vs CameraHMR 213.66 / PromptHMR 186.35；truncation:severe 126.53 vs 230.51/186.57——硬姿态/截断上优势巨大，作者归因于 data engine 挖来的难样本分布。</div>
+
+    <div class="note-h">④ 用户研究（7800 人，Fig 8 真数字）</div>
+    <div class="note-b">6 组成对比较（vs HMR2.0b/CameraHMR/NLF/PromptHMR/SMPLer-X/SMPLest-X），<b>7,800 名独立参与者</b>（每组 1,300）、<b>20,000+ 票</b>，问"哪个 3D 模型更匹配原图"。<b>3DB 胜率（Fig 8，wins/80）：</b>vs HMR2.0b 96.2%、vs CameraHMR 95.0%、vs <b>NLF（最强基线）83.8%</b>、vs PromptHMR 97.5%、vs SMPLer-X 98.8%、vs SMPLest-X <b>100.0%</b>。原文：<i>"Focusing on the strongest baseline, NLF, 3DB achieves a win rate of 83.8%."</i> 摘要里的"5:1 win rate"即此感知质量优势的概括——证明指标提升与<b>人类感知</b>一致。值得注意的是连最强基线 NLF 都被压到 83.8%，而对 SMPLest-X 是 80/80 全胜，说明 3DB 的优势不是"小数点后的指标内卷"，而是普通用户一眼就能看出的重建质量差距。</div>
+
+    <div class="note-h">Q&amp;A · data engine 的"失败驱动闭环"凭什么有效？</div>
+    <div class="note-b"><b>问：</b>为什么不直接收集更多数据，而要搞 VLM 挖掘 + 失败分析迭代？<b>答：</b>因为视频/批量数据虽多但<b>冗余</b>——原文：<i>"the poses, appearance, imaging conditions, and background might be very similar."</i> 多样性而非数量才是泛化瓶颈。data engine 的妙处是<b>把标注预算花在模型当前最弱处</b>：<i>"Mining rules are automatically updated iteratively based on failure analysis of the current model, allowing the engine to adaptively focus on the most challenging or informative samples."</i> 流程闭环——跑 3DB → 找关键点误差最大的图 → 人工几词标注 → 喂 VLM 造 prompt → VLM 从数千万图选同类难例 → 人工精标 → 重训。这等于让"模型的弱点"自动定义"下一批该标什么"，比固定启发式或随机采样高效得多，也直接解释了为何 3DB 在 inverted body / truncation:severe 这些罕见类上碾压基线（这些正是被反复挖出来训的）。</div>
+    <div class="note-h">Q&amp;A · 为何强调"留一法"和"细粒度类别评测"？</div>
+    <div class="note-b"><b>留一法（leave-one-out）：</b>因为不同方法训练数据不可比（CameraHMR/PromptHMR/NLF 分别训于 6/9/48 个数据集，且 licenses/代码不全），直接比不公平。3DB 用留一（训练剔除被测集）与"同样没见过该集"的基线比，<b>专测真泛化</b>，并另给"全量训练"作上界。原文：<i>"This ensures a fair comparison with prior work which have also not seen these datasets."</i> <b>细粒度类别：</b>传统 benchmark 的单一均值掩盖了"模型在哪类图上崩"。3DB 建 24 个 2D + 28 个 3D 类别（occlusion/truncation/viewpoint/pose 难度/shape/interaction 等），让分析"可解释、可扩展、客观"，从而能指着 truncation:severe、pose_3d:very_hard 说"这里我强 1.6-1.8×"。这种评测方法学本身就是贡献。</div>
+
+    <div class="note-h">🌟 亮点（为何是一篇有分量的系统/数据工作）</div>
+    <div class="note-b">① <b>统一框架同时打 body 与 hand</b>——首个让全身模型的手部逼近手专用 SoTA（FreiHand 未训练仍 5.5 PA-MPJPE）；② <b>用 MHR 解耦骨架/形状</b>，可解释、可控、利于全身重建；③ <b>VLM 数据引擎 + 多阶段标注</b>（595 dense keypoints + 多视图三角化 + 合成）造 7M 高质量数据，把"难样本"主动挖出来训——这是泛化碾压的根因；④ <b>promptable 设计</b>不仅交互，还用于<b>自我纠错</b>（手腕+肘部互 prompt 修精）；⑤ <b>评测方法学贡献</b>：建 24 个 2D + 28 个 3D 细粒度类别评测集，能定位模型在"倒立/截断/俯视"等场景的真实强弱，外加 7800 人感知研究。</div>
+
+    <div class="note-h">❓ 疑问 / Limitations（诚实）</div>
+    <div class="note-b">① <b>本质是工程+数据的胜利</b>：模型架构是 SAM 式 promptable encoder-decoder 的成熟范式，真正的护城河是 <b>7M 数据 + data engine + 标注管线</b>，复现门槛高（多视图采集、合成资产、标注团队、VLM 闭环），学术界难照搬。② <b>依赖外部组件</b>：相机内参靠 MoGe-2 FOV 估计器、初始化靠"当前版 3DB"自举、先验靠学习的 GMM——任一环节失准会传导。③ <b>RICH 上未夺第一</b>（NLF 28.7 vs 3DB 30.9），因 NLF 训练用了 RICH，说明"见过即占优"仍部分成立。④ <b>手部仍略逊</b>专用模型（F@5 0.735 vs WiLoR 0.825），自由手腕与身体约束的张力未完全消除。⑤ [推测] 失败分析"semi-manually"半人工，规模化与客观性存疑；超参 \(\lambda_i\) 经验设定。⑥ <b>评测里的"伪 GT"困境</b>：作者自己指出单视图数据集的 pseudo-GT 是"low-fidelity approximations"，所以才建多视图（100+ 相机）评测集——但这也意味着很多历史 benchmark 的绝对数值本身就有噪声，跨论文比较需谨慎。这篇的诚实之处在于：它没有回避"指标提升可能部分来自更干净的标注/评测"，反而用 7800 人感知研究做交叉验证，让"赢"落到人眼可感的程度上。</div>
+
+    <div class="note-h">📌 全文一页总结（problem→method→experiment→takeaway）</div>
+    <div class="note-b"><b>problem：</b>单图全身 HMR 在野外（极端姿态/遮挡/视角）不鲁棒，且 body 与 hand 难在统一框架里都做好；根因是数据（高质量 mesh 标注稀缺）+模型（body/hand 优化冲突、SMPL 表示耦合）双瓶颈。<br><b>method：</b>3DB = ① 用 MHR（解耦骨架/形状）替代 SMPL；② SAM 式 promptable encoder-decoder，共享 image encoder + body/hand 两路 decoder（式1-10），prompt 还用于自我纠错；③ VLM data engine 主动挖 6 类困难样本 + 多阶段标注（595 dense keypoints/多视图三角化/合成）造 7M 高质量数据。<br><b>experiment：</b>5 标准 benchmark SOTA（3DPW 33.2 PA-MPJPE、EMDB/RICH 域外领先），5 新数据集留一法泛化碾压（Synthetic PVE 102.8→85.6），手部逼近专用模型（FreiHand 未训练 5.5），2D/3D 24/28 类全胜（pose_3d:very_hard PVE 114 vs 213），7800 人用户研究 vs 最强 NLF 83.8% 胜率、vs SMPLest-X 100%。<br><b>takeaway：</b>全身 HMR 的鲁棒性主要来自<b>"把对的表示（MHR）+ 对的架构（two-way promptable）+ 对的数据（VLM 引擎 7M）"三件事一起做对</b>；可提示设计既是交互入口也是纠错杠杆。代价是工程/数据门槛极高。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-body-robust-full-body-human-mesh-recovery/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1 Full-body human mesh recovery results using SAM 3D Body (3DB). Our model demonstrates robust performance in estimating challenging poses across diverse viewpoints and produces accurate body and hand pose estimations within a unified framework.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-body-robust-full-body-human-mesh-recovery/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2 SAM 3D Body Model Architecture. We employ a promptable encoder–decoder architecture with a shared image encoder and separate decoders for body and hand pose estimation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-body-robust-full-body-human-mesh-recovery/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3 Left: GUI of our annotation tool for annotating 2D keypoints. Right: Comparison of the dense (thin) and sparse (thick) keypoints for pseudo annotation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-body-robust-full-body-human-mesh-recovery/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4 Example of single-image MHR mesh fitting for ITW datasets. Source: SA-1B Kirillov et al. (2023).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-body-robust-full-body-human-mesh-recovery/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5 Examples of MHR mesh fitting results. (a) Multi-view mesh fitting. Source: EgoExo4D Grauman et al. (2024). (b) Scan-based mesh fitting. Source: Re:Interhand Moon et al. (2023).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-body-robust-full-body-human-mesh-recovery/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6 Qualitative comparison of 3DB against state-of-the-art HMR methods. Source: SA-1B Kirillov et al. (2023).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-body-robust-full-body-human-mesh-recovery/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7 Qualitative results of hand estimation using the hand decoder of 3DB. Source: Freihand Zimmermann et al. (2019).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-body-robust-full-body-human-mesh-recovery/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8 Comparison of 3DB win rate against baselines for human preference study. Win rate (%) and number of wins out of 80.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sam-3d-body-robust-full-body-human-mesh-recovery/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9 Qualitative comparison to show the impact from using keypoint prompting and unifying the predictions from hand decoder and body decoder.</figcaption></figure>
+    </div>
+  </div></body></html>

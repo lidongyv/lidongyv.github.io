@@ -1,0 +1,200 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>FlowEdit: Inversion-Free Text-Based Editing Using Pre-Trained Flow Models</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">ICCV 2025</span> &nbsp; <span class="badge b-best_student">🎓 Best Student</span></div>
+    <h1>FlowEdit: Inversion-Free Text-Based Editing Using Pre-Trained Flow Models</h1>
+    <div class="au2" style="color:var(--mut)">Vladimir Kulikov · Matan Kleiner · Inbar Huberman-Spiegelglas · Tomer Michaeli</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/ICCV2025/papers/Kulikov_FlowEdit_Inversion-Free_Text-Based_Editing_Using_Pre-Trained_Flow_Models_ICCV_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=FlowEdit%3A%20Inversion-Free%20Text-Based%20Editing%20Using%20Pre-Trained%20Flow%20Models">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:iccv2025-flowedit-inversion-free-text-based-editing-using-pre-tr -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">用预训练 flow 模型（FLUX、SD3）做文本图像编辑，但<b>不做 inversion、不做优化、不动模型内部（model-agnostic）</b>。传统"editing-by-inversion"是 图→噪声→编辑图，要绕一圈高斯噪声；FlowEdit 直接构造一条 ODE 把<b>源分布直接映射到目标分布</b>（对应源/目标 prompt），<b>不经过高斯噪声</b>。这条直接路径<b>传输代价更低</b>→结构保持更好→复杂编辑 SOTA。核心 trick：把"inversion 编辑"重写成一条直接 ODE，再用<b>多次随机配对求速度场期望</b>得到更短、更优的路径。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">用 T2I 扩散/flow 编辑真实图，主流先 <b>inversion</b>（求出生成该图的初始噪声），再换 prompt 重新采样。但 editing-by-inversion 两大病：① <b>对源图保真度不足</b>（结构保不住）——哪怕在生成图上用<b>精确</b>已知噪声也常失败，说明问题不只是"反演不准"；② 为补救，很多方法在反演时记录<b>模型内部表示（attention map）再注入采样</b>，保真是好了但<b>绑死特定架构/采样器、迁不到 flow 模型</b>。FlowEdit 彻底不用 inversion、不用优化、不碰内部 → 换模型即插即用。</div>
+    <div class="note-h">核心方法（重解释 + 直接 ODE + 期望平均，关键公式）</div>
+    <div class="note-b"><b>① 重解释 inversion（§4）</b>：inversion 编辑其实可写成一条<b>不经噪声的直接路径</b>。定义 Z^inv_t=Z^src_0+Z^tar_t−Z^src_t（式5）：t=1 时 Z^inv_1=Z^src_0=X^src（因 Z^tar_1=Z^src_1），t=0 时 Z^inv_0=Z^tar_0=编辑图。求导得 ODE dZ^inv_t=V^Δ_t·dt（式6-7），其中 <b>V^Δ_t=V^tar(Z^tar_t,t)−V^src(Z^src_t,t)</b>。该路径<b>无噪声</b>：因 Z^src_t/Z^tar_t 含大致相同噪声，速度差抵消噪声、只剩"干净图预测"之差→自然 coarse-to-fine（t 大改粗结构、t 小改细纹理）。<b>② FlowEdit（§5）</b>：inversion 诱导的源→目标配对并非最优（Fig 3 toy：因必须穿过高斯，模式被打乱、传输代价高）。改进：<b>用同 marginal 的随机过程替代 inversion 路径并对速度场取期望</b>。令 Ẑ^src_t=(1−t)Z^src_0+t·N_t（式8，N_t~N(0,1) 独立于 Z^src_0），解 ODE dZ^FE_t=E[V^Δ_t(Ẑ^src_t, Z^FE_t+Ẑ^src_t−Z^src_0) | Z^src_0]·dt（式9），边界 Z^FE_1=Z^src_0。<b>Algorithm 1</b>：从 X^src 起，每步采 N_ti→Z^src_ti=(1−ti)X^src+ti·N_ti→Z^tar_ti=Z^FE_ti+Z^src_ti−X^src→V^Δ_ti=V^tar−V^src→Z^FE_{ti−1}=Z^FE_ti+(ti−1−ti)V^Δ_ti（可对 navg 个样本平均）。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">合成验证（1000 张 SD3 生成猫图、噪声<b>精确已知</b>→编辑成狗）：FlowEdit 传输代价更低 <b>MSE 1376 vs 2239</b>、<b>LPIPS 0.15 vs 0.25</b>（inversion）；且到达目标分布同样好 <b>FID 51.14 vs 55.88、KID 0.017 vs 0.023</b>——既更保结构、又确实生成目标分布。真实图（70+ 张 1024²、250+ 对，FLUX/SD3）：定性上 FlowEdit 是<b>唯一</b>既改对 prompt（如改加油站招牌文字）又保住背景/结构的方法；定量（Fig 7 LPIPS↓ vs CLIP↑）取得结构-文本对齐的<b>最佳折中</b>，对手要么保结构但编辑太弱、要么编辑强但毁结构。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>概念优雅</b>：先证明"inversion 编辑 ≡ 一条直接 ODE（V^Δ=目标速度−源速度，且无噪声）"，再指出它配对次优，顺势给出更短路径——动机从第一性推出而非堆 trick。② <b>真·model-agnostic</b>：不碰 attention/内部表示、不优化，FLUX 与 SD3 用同一套即可，未来新 flow 模型直接复用。③ <b>近乎零开销</b>：navg=1 就行（用相同噪声实例算 V^tar/V^src 抵消 artifact），步数与正常采样同量级。④ <b>nmax 调编辑强度</b>：nmax=T 最强、nmax&lt;T 跳过前段得更弱编辑。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① 方法是<b>启发式</b>，作者明说"not guaranteed to precisely map to target distribution、未必是 optimal transport"——理论保证有限。② <b>强结构保持是双刃剑</b>：要对大区域做实质性改动（换 pose、换背景）时反而受限（原文 limitation，Fig S6）。③ 与 DDS/PDS 的异同、为何"不是优化"（DDS 迭代反而增大其 loss、FlowEdit 必须用精确 lr=dt 且 Σ步长=1）等论证在 App. L，<b>正文未展开</b>。④ navg、N_t 协方差选择、各 App 细节正文从略，复现需查附录。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文 44.8k 字符 / 10 页提取）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）逐句精读</div>
+    <div class="note-b"><b>原文逐句 + 中文指路：</b><br>
+    1) <i>"Editing real images using a pre-trained text-to-image (T2I) diffusion/flow model often involves inverting the image into its corresponding noise map."</i> → 现状：编辑真实图常先做 inversion（图→噪声图）。<br>
+    2) <i>"However, inversion by itself is typically insufficient for obtaining satisfactory results, and therefore many methods additionally intervene in the sampling process. Such methods achieve improved results but are not seamlessly transferable between model architectures."</i> → 痛点：只 inversion 不够，要额外干预采样（注 attention 等），但<b>不跨架构通用</b>。<br>
+    3) <i>"Here, we introduce FlowEdit, a text-based editing method for pre-trained T2I flow models, which is inversion-free, optimization-free and model agnostic."</i> → 三大卖点：<b>免反演、免优化、模型无关</b>。<br>
+    4) <i>"Our method constructs an ODE that directly maps between the source and target distributions (corresponding to the source and target text prompts) and achieves a lower transport cost than the inversion approach."</i> → 核心：构造一条<b>直接</b>从源分布到目标分布的 ODE，传输代价更低。<br>
+    5) <i>"This leads to state-of-the-art results, as we illustrate with Stable Diffusion 3 and FLUX."</i> → 在 SD3 与 FLUX 上 SOTA。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>不再"图→高斯噪声→编辑图"，而是直接构造一条<b>不经过高斯噪声</b>的 source→target 分布 ODE（速度场之差 \(V^\Delta\) 驱动），传输代价(transport cost)更低 ⇒ 结构保持更好；且<b>免反演/免优化/模型无关</b>，对 SD3、FLUX 这类 rectified flow 模型即插即用、达到 SOTA。</div>
+
+    <div class="note-h">② §1 Introduction · problem（编辑即反演的三宗罪）</div>
+    <div class="note-b"><b>反演范式：</b><i>"A common first step… is inversion, i.e. extracting the initial noise vector that presumably generates the signal one wishes to edit. This noise vector is then used to generate the edited signal by injecting a different condition to the model, such as a modified text prompt."</i><br>
+    <b>罪一·保真不足：</b><i>"this editing-by-inversion paradigm often leads to insufficient fidelity to the source image."</i><br>
+    <b>罪二·改 inversion 也治不好：</b><i>"even when editing generated images, for which the initial noise is precisely known, editing-by-inversion commonly fails to preserve structure."</i>——即便噪声精确已知仍丢结构（这是关键反直觉点）。<br>
+    <b>罪三·特征注入不通用：</b><i>"Other methods intervene in the sampling process by injecting internal model representations (e.g. attention maps)… These methods achieve improved fidelity but are not easily transferable across model architectures and sampling schemes."</i></div>
+
+    <div class="note-h">③ §1 Introduction · solution + 核心洞察</div>
+    <div class="note-b"><i>"Rather than mapping the image to noise and the noise back to an edited image, it constructs a direct path between the source and target distributions… This path is shorter than that achieved by inversion, and thus maintains better fidelity to the source image."</i><br>
+    <b>动机来自一个 reinterpretation：</b><i>"Our method is motivated by a novel reinterpretation of editing-by-inversion as a direct path between the source and target distributions. Armed with this observation, we derive an alternative direct path that has a lower transport cost."</i>——先把"反演编辑"重写成一条直接路径，再换一条传输代价更低的直接路径。</div>
+
+    <div class="note-h">📚 背景知识 A：Rectified Flow（§3.1）</div>
+    <div class="note-b"><b>生成式 flow：</b>用 ODE \[ dZ_t=V(Z_t,t)\,dt \] 在两个分布 \(X_0,X_1\) 间构造传输，\(V\) 是时间相关速度场（神经网络）。常取 \(X_1\sim N(0,I)\)：从高斯采样、把 ODE 从 \(t{=}1\) 反解到 \(t{=}0\) 得 \(X_0\) 的样本。<br>
+    <b>Rectified Flow[26,28]：</b>训练使时刻 \(t\) 的边缘是线性插值 \[ Z_t\sim(1-t)X_0+tX_1 \] <i>"Rectified flows have the desired property that their sampling paths are relatively straight. This allows using a small number of discretization steps."</i>——路径近似<b>直线</b>，离散步数可以很少（SD3/FLUX 都是 rectified flow，正是 FlowEdit 的目标模型）。<br>
+    <b>T2I flow：</b>速度场 \(V(X_t,t,C)\) 额外条件于 prompt \(C\)，训练于 \((C,X_0)\) 对，从而能采样条件分布 \(X_0|C\)。</div>
+
+    <div class="note-h">④ §3.2 反演编辑的数学（公式3-4）</div>
+    <div class="note-b">给真实图 \(X^{src}\)、源 prompt \(c^{src}\)、目标 prompt \(c^{tar}\)，记两条件速度 \(V^{src}(X_t,t)\triangleq V(X_t,t,c^{src})\)、\(V^{tar}(X_t,t)\triangleq V(X_t,t,c^{tar})\)。<br>
+    <b>前向(求噪声)：</b>\[ dZ^{src}_t=V^{src}(Z^{src}_t,t)\,dt \] 从 \(Z^{src}_0=X^{src}\) 走到噪声 \(Z^{src}_1\)（Fig.2a 左路径）。<br>
+    <b>反向(生成编辑图)：</b>\[ dZ^{tar}_t=V^{tar}(Z^{tar}_t,t)\,dt \] 从 \(Z^{tar}_1=Z^{src}_1\) 走回编辑图 \(Z^{tar}_0\)（Fig.2a 右路径）。原文：<i>"Editing by inversion tends to produce unsatisfactory results, and is thus usually accompanied by feature map injection."</i></div>
+
+    <div class="note-h">📚 背景知识 B：CFG / SDEdit / 评测指标</div>
+    <div class="note-b"><b>① Classifier-Free Guidance (CFG)[18]：</b>采样时把"有条件预测"与"无条件预测"按强度外推 \(\hat{V}=V_\varnothing+s\,(V_c-V_\varnothing)\)，\(s\) 越大越贴 prompt。FlowEdit 给 source / target 用<b>不同 CFG 强度</b>（SD3 取 3.5/13.5、FLUX 取 1.5/5.5）——目标侧给更强引导以贴合编辑、源侧较弱以稳住结构，是其调参的关键不对称设计。<br>
+    <b>② SDEdit[30]：</b>最朴素的编辑基线——把源图加噪到某 strength（即 \(n_{max}\)），再以目标 prompt 正常采样。强度高=编辑强但丢结构，强度低=保结构但编辑弱，无法兼得（正是 Fig.7 里它落在权衡曲线一端的原因）。<br>
+    <b>③ 指标含义：</b>LPIPS[50]=两图深度特征感知距离（这里测编辑图 vs 原图，越低=结构/语义保留越多）；CLIP[38]=编辑图与目标 prompt 的图文相似度（越高=越贴文本）；FID[17]/KID[4]=两图像集合的分布距离（测"是否落在目标分布"，越低越好）。FlowEdit 的卖点正是在 LPIPS↓ 与 CLIP↑ 间取得别人取不到的平衡点。</div>
+
+    <div class="note-h">⑤ §4 关键重写：把反演编辑写成直接路径（公式5-7）</div>
+    <div class="note-b"><b>定义直接路径（式5）：</b>给定前向/反向轨迹 \(Z^{src}_t,Z^{tar}_t\)，令 \[ Z^{inv}_t=Z^{src}_0+Z^{tar}_t-Z^{src}_t \] 在 \(t{=}1\)：因 \(Z^{tar}_1=Z^{src}_1\) 得 \(Z^{inv}_1=Z^{src}_0=X^{src}\)；在 \(t{=}0\)：\(Z^{inv}_0=Z^{tar}_0\)（编辑图）。Fig.2b 灰平行四边形即式(5)。<br>
+    <b>微分成 ODE（式6）：</b>\[ dZ^{inv}_t=V^{\Delta}_t(Z^{src}_t,Z^{tar}_t)\,dt,\quad V^{\Delta}_t=V^{tar}(Z^{tar}_t,t)-V^{src}(Z^{src}_t,t) \] 即"目标速度−源速度"（Fig.2b 绿/红/橙箭头）。<br>
+    <b>消去 \(Z^{tar}_t\)（式7）：</b>\[ dZ^{inv}_t=V^{\Delta}_t\big(Z^{src}_t,\;Z^{inv}_t+Z^{src}_t-Z^{src}_0\big)\,dt,\quad Z^{inv}_1=Z^{src}_0 \]</div>
+
+    <div class="note-h">⑥ §4 为什么这条路径"无噪声"+coarse-to-fine</div>
+    <div class="note-b"><b>无噪声的原因（核心直觉）：</b><i>"the noisy images Z_t^tar and Z_t^src contain roughly the same noise constituent. Therefore, the vectors V^tar and V^src… remove roughly the same noise component, so that the difference vector V^Δ… encompasses the difference only between the clean image predictions."</i>——两支轨迹含<b>大致相同的噪声</b>，相减把噪声抵消，\(V^\Delta\) 只剩"干净图预测之差"。<br>
+    <b>粗到细演化：</b><i>"At the beginning of the path (t close to 1), the noise level… is substantial, and therefore the vector V^Δ captures only differences in coarse image structures. As t gets smaller… higher frequency contents are unveiled."</i>——<i>"a sort of autoregressive coarse-to-fine evolution"</i>：先改粗结构、最后改细纹理。</div>
+
+    <div class="note-h">⑦ §5 FlowEdit · 反演的配对很差（Fig.3 玩具例）</div>
+    <div class="note-b">"能写成直接 ODE"不等于"配对好"。Fig.3 玩具例：源/目标都是高斯混合，源模态在 \(\{(-15\sqrt2,-15\sqrt2),(15\sqrt2,15\sqrt2)\}\)、目标在 \(\{(-15,0),(0,15)\}\)。<i>"A good editing method should map each mode in the source distribution to its closest mode in the target distribution… source images are modified as little as possible."</i> 但反演<b>把蓝红模态混在一起</b>(intermixed)，传输代价高——根因是它必须先<b>穿过中间那个高斯</b>(bottom-left)。FlowEdit 则把蓝/红模态分开、各自映到最近目标模态。原文：<i>"Compared to editing-by-inversion, FlowEdit achieves less than twice as low a transportation cost, measured by the average squared distance between source samples and their paired target samples."</i> 并坦承 <i>"our method is based on a heuristic… it does not necessarily coincide with the optimal transport mapping."</i></div>
+
+    <div class="note-h">⑧ §5 FlowEdit 核心机制：多随机配对 + 平均速度（公式8-9）</div>
+    <div class="note-b"><b>关键 idea：</b><i>"Our key idea is to use multiple random pairings, and average their associated velocity fields."</i> 用同一个式(7) 的 ODE，但把 inversion 路径 \(Z^{inv}_t\) 换成<b>有相同边缘、但独立随机</b>的过程，再在每步对多次实现取平均。<br>
+    <b>替代前向过程（式8）：</b>\[ \hat{Z}^{src}_t=(1-t)Z^{src}_0+tN_t,\quad N_t\sim N(0,1)\ \text{且独立于}\ Z^{src}_0 \]
+    <b>FlowEdit ODE（式9）：</b>\[ dZ^{FE}_t=\mathbb{E}\Big[V^{\Delta}_t\big(\hat{Z}^{src}_t,\;Z^{FE}_t+\hat{Z}^{src}_t-Z^{src}_0\big)\,\big|\,Z^{src}_0\Big]\,dt,\quad Z^{FE}_1=Z^{src}_0 \] 期望对 \(\hat{Z}^{src}_t\)（即 \(N_t\)）取。<i>"we need not specify the covariance function of N_t as (9) depends only on the marginals."</i> Fig.2c：对每次 \(N_t\) 抽样算 \(\hat{Z}^{tar}_t=Z^{FE}_t+\hat{Z}^{src}_t-Z^{src}_0\)（灰平行四边形），算 \(V^\Delta\)（橙箭头），多次平均得最终更新方向。</div>
+
+    <div class="note-h">⑨ §5 Algorithm 1（逐行）</div>
+    <div class="note-b">输入：真实图 \(X^{src}\)、时间表 \(\{t_i\}_{i=0}^{T}\)、\(n_{max}\)、\(n_{avg}\)；初始化 \(Z^{FE}_{t_{max}}=X^{src}\)。<b>for \(i=n_{max}\) down to \(1\)：</b><br>
+    ① \(N_{t_i}\sim N(0,1)\)；<br>
+    ② \(Z^{src}_{t_i}\leftarrow(1-t_i)X^{src}+t_iN_{t_i}\)（加噪到 \(t_i\)）；<br>
+    ③ \(Z^{tar}_{t_i}\leftarrow Z^{FE}_{t_i}+Z^{src}_{t_i}-X^{src}\)（平行四边形关系）；<br>
+    ④ \(V^{\Delta}_{t_i}\leftarrow V^{tar}(Z^{tar}_{t_i},t_i)-V^{src}(Z^{src}_{t_i},t_i)\)（两次前向，无反传）；<br>
+    ⑤ \(Z^{FE}_{t_{i-1}}\leftarrow Z^{FE}_{t_i}+(t_{i-1}-t_i)V^{\Delta}_{t_i}\)（欧拉一步）。<br>
+    返回 \(Z^{FE}_0=X^{tar}_0\)；可选对 \(n_{avg}\) 个样本平均。<b>注意：步长必须恰为 \(dt=t_{i-1}-t_i\)，全程步长和为 1。</b></div>
+
+    <div class="note-h">⑩ §5.1 工程要点（navg / 相关噪声 / nmax）</div>
+    <div class="note-b"><b>navg：</b>式(9) 期望用 \(n_{avg}\) 次模型预测平均近似；\(n_{avg}\) 小时 \(N_t\) 的协方差开始起作用。技巧：选 \(N_t\) 协方差满足 \(\mathbb{E}[N_tN_s]=0\ (|t-s|>\delta)\)（\(\delta\) 为离散步），让噪声跨步独立，借"跨步平均"补偿。<br>
+    <b>相关噪声：</b>对 \(\hat{Z}^{tar}_t\) 与 \(\hat{Z}^{src}_t\) 用<b>同一份噪声实例</b>更鲁棒——<i>"aligned with the observation of Hertz et al. that calculating a difference between correlated noisy marginals reduces artifacts."</i><br>
+    <b>nmax（编辑强度）：</b>\(0\le n_{max}\le T\)。<i>"When n_max = T, the full edit path is traversed and the strongest edit is obtained. When n_max &lt; T, the first (T−n_max) timesteps are skipped, effectively shortening the edit path."</i></div>
+
+    <div class="note-h">⑪ §5.2 与 DDS/PDS 优化方法的关系</div>
+    <div class="note-b">表面像 DDS[15]/PDS[22]（用前向差近似 loss 梯度），<i>"in DDS, the update step is the difference between the two noise predictions, which can be considered similar to our V^Δ direction."</i> 但作者论证 FlowEdit <b>不是优化</b>：① App.L 显示 \(V^\Delta\) 写成噪声预测后与 DDS/PDS 更新<b>都不同</b>；② <i>"the DDS iterations do not decrease the DDS loss; they rather tend to increase it"</i>，且超过默认迭代数后质量<b>变差</b>；③ FlowEdit 用<b>单调递减</b>的时间表 \(\{t_i\}\)（非随机选 timestep），且学习率必须恰为 \(dt=t_{i-1}-t_i\)，<i>"Any slight deviation from this learning rate causes the results to deteriorate significantly."</i></div>
+
+    <div class="note-h">⑫ §5.3 合成实验：精确反演对照（cat→dog 真数值）</div>
+    <div class="note-b">用模型生成图保证 inversion <b>精确</b>（噪声已知）。数据：SD3 用 "a photo of cat" 的 Llama3[9] 变体生成 <b>1000 张猫</b>，把 prompt 的 "cat" 改 "dog" 做编辑。<br>
+    <b>传输代价（越低越好）：</b>latent 空间 MSE = <b>1376 vs 2239</b>（FlowEdit vs 反演）；解码图 LPIPS = <b>0.15 vs 0.25</b>。<br>
+    <b>目标分布对齐：</b>另生成 1000 张狗，算编辑结果 vs 真狗的 FID/KID：FID = <b>51.14 vs 55.88</b>，KID = <b>0.017 vs 0.023</b>。<br>
+    结论：FlowEdit 传输代价更低（结构/语义保持更好），且仍能落在目标分布里。</div>
+
+    <div class="note-h">⑬ §6 真实实验设置 + 对比方法</div>
+    <div class="note-b"><b>基模型/超参：</b>SD3 medium + FLUX.1 dev（HuggingFace 官方权重）。SD3：\(T=50,\ n_{max}=33\)，CFG source 3.5 / target 13.5；FLUX：\(T=28,\ n_{max}=24\)，CFG source 1.5 / target 5.5；两者 \(n_{avg}=1\)。<br>
+    <b>数据集：</b>70+ 张 \(1024^2\) 真实图（DIV2K[1] + 免版权源），源 prompt 由 LLaVA-1.5[27] 生成并人工微调（<i>"The source prompts have little effect on FlowEdit's results. In particular, they can be omitted."</i>），共 <b>250+ 文-图对</b>。<br>
+    <b>对比方法：</b>ODE inversion、SDEdit[30]、iRFDS[49]（SDS-based，仅 SD3）、RF-Inversion[39]（仅 FLUX）、RF Edit[46]（仅 FLUX）。不与 diffusion 编辑法直接比（<i>"not easily adapted to flow models, and a direct comparison would not be fair"</i>）。</div>
+
+    <div class="note-h">⑭ §6 定性 / 定量结果 + 风格编辑</div>
+    <div class="note-b"><b>定量（Fig.7）：</b>LPIPS 测结构保持(↓)、CLIP 测文本贴合(↑)。<i>"FlowEdit achieves a favorable balance between text adherence (CLIP) and structure preservation (LPIPS)… The other methods either maintain the structure… at the cost of a weak edit or modify the image with little regard to its original semantics."</i><br>
+    <b>定性（Fig.6）：</b><i>"FlowEdit is the only method that consistently adheres to the text prompt while preserving the structure of the original image."</i> 例：加油站招牌字（CAFE→FREE）只有 FlowEdit 既改字又保住车与背景；RF-Inversion 改了字但丢结构，iRFDS 保结构但改不彻底。<br>
+    <b>风格编辑（Fig.8）：</b>默认超参偏强结构保持、不适合换风格；<i>"we simply remove the dependence on the source image in the final generation steps"</i> 即可获得 Minecraft/Painting/Disney/Anime 等风格（牺牲少量原结构）。</div>
+
+    <div class="note-h">Q&amp;A · 追问 why</div>
+    <div class="note-b"><b>Q1：为什么"不经过高斯噪声"就能更好保结构？</b><br>因为传输代价(transport cost) ∝ 源样本到配对目标样本的平均平方距离。反演必须先把样本推到中间的标准高斯再拉回目标分布（Fig.3 bottom-left），这条"绕路"把不同模态混到一起、配对距离大；FlowEdit 直接在 source↔target 间走，路径短、配对到最近模态，代价小 ⇒ 改动最少 ⇒ 结构保持更好。合成实验 MSE 1376 vs 2239 直接量化了这点。</div>
+    <div class="note-b"><b>Q2：为什么 \(V^\Delta=V^{tar}-V^{src}\) 能消掉噪声、只留语义差？</b><br>同一时刻 \(t\)，\(\hat{Z}^{src}_t\) 与 \(\hat{Z}^{tar}_t\) 共享同一噪声成分（算法里用同一份 \(N_{t_i}\)）。两条件速度都指向"去掉同一噪声后的干净图预测"，相减把公共噪声抵消，剩下的就是"源 prompt 干净预测"与"目标 prompt 干净预测"之差 ⇒ 路径无噪声、且天然 coarse-to-fine。</div>
+    <div class="note-b"><b>Q3：为什么说它"model-agnostic"，相比注入 attention 的方法强在哪？</b><br>FlowEdit 只调用模型的<b>前向速度预测</b>（\(V^{src},V^{tar}\)），不读写任何 internal representation（attention map / feature），也不优化、不反演。所以换 SD3↔FLUX 这类不同架构/采样器时无需改内部 hook，直接套用；而 Prompt-to-Prompt / MasaCtrl / PnP 这类注入法绑定特定架构，迁到 flow 模型困难。</div>
+
+    <div class="note-h">📌 全文总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>"编辑=反演(图→高斯噪声→编辑图)"保真差、即便噪声精确也丢结构，且配特征注入后不跨架构通用。<br>
+    <b>method：</b>先把反演编辑<b>重写</b>成直接路径 \(Z^{inv}_t=Z^{src}_0+Z^{tar}_t-Z^{src}_t\)（式5-7），发现其 ODE 由速度差 \(V^\Delta=V^{tar}-V^{src}\) 驱动且无噪声；再换一条传输代价更低的直接路径——用替代前向 \(\hat{Z}^{src}_t=(1-t)Z^{src}_0+tN_t\)、对多次随机实现的 \(V^\Delta\) 取期望（式8-9, Alg.1），全程<b>免反演/免优化/不碰内部表示</b>。<br>
+    <b>experiment：</b>合成 cat→dog：MSE 1376 vs 2239、LPIPS 0.15 vs 0.25、FID 51.14 vs 55.88、KID 0.017 vs 0.023 全胜反演；真实 250+ 对上 LPIPS-CLIP 平衡 SOTA，是唯一"既贴文本又保结构"的方法（SD3 T=50/nmax=33、FLUX T=28/nmax=24, navg=1）。<br>
+    <b>takeaway：</b>① 把已有范式"重写成等价直接路径"是发现更优解的有力视角——洞察 \(V^{tar}-V^{src}\) 抵消公共噪声；② <b>不穿过高斯噪声</b>=传输代价更低=结构保持更好，可在玩具高斯混合上严格量化；③ 只用前向速度预测 ⇒ 真正<b>模型无关</b>，对 SD3/FLUX 等 rectified flow 即插即用。<br>
+    <b>局限[原文]：</b><i>"its strong structure preservation… can become a limitation when substantial modifications to large regions of the image are desired"</i>（如大幅改 pose/背景, Fig.S6）；启发式不保证落在 optimal transport 映射上。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-flowedit-inversion-free-text-based-editing-using-pre-tr/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. FlowEdit. We present an inversion-free, optimization-free and model agnostic method for text-based image editing using pre- trained flow models. As opposed to the editing-by-inversion paradigm, FlowEdit constructs an ODE that directly maps the source image distribution to the target image distribution (corresponding to the source and target prompts). This ODE achieves a lower transport c</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-flowedit-inversion-free-text-based-editing-using-pre-tr/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Editing by inversion vs. FlowEdit. (a) In inversion based editing, the source image Zsrc 0 is first mapped to the noise space by solving the forward ODE conditioned on the source prompt (left path). Then, the extracted noise is used to solve the reverse ODE conditioned on the target prompt to obtain Ztar 0 (right path). The images at the bottom visualize this transition. (b) We reinterpr</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-flowedit-inversion-free-text-based-editing-using-pre-tr/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Source to target pairings for editing-by-inversion and FlowEdit. Samples from the two modes in the source distribu- tion are colored in blue and red (top left). As can be seen in the right panes, FlowEdit results in separated blue and red modes, as opposed to editing-by-inversion, where the modes are inter- mixed, indicating higher transport cost in terms of MSE. This can be explained by</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-flowedit-inversion-free-text-based-editing-using-pre-tr/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Cats and dogs experiment. We generated 1000 cat images using diverse prompts and edited them to dog images using both FlowEdit and inversion. FlowEdit outperforms editing by inversion, achieving a lower transport costs and better FID and KID scores (computed against 1000 generated dog images).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-flowedit-inversion-free-text-based-editing-using-pre-tr/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. FlowEdit results. FlowEdit successfully edits diverse images using various editing prompts. The edits preserve the structure of the original image, changing only the specified region. FLUX was used for the first and third rows and SD3 for the second and fourth rows.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-flowedit-inversion-free-text-based-editing-using-pre-tr/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Qualitative comparisons. With both SD3 (left) and FLUX (right), FlowEdit better adheres to the target prompt while simulta- neously preserving the structure of the original image. The value next to SDEdit indicates the strength.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-flowedit-inversion-free-text-based-editing-using-pre-tr/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Quantitative comparisons. FlowEdit achieves a favor- able balance between text adherence (CLIP) and structure preser- vation (LPIPS) compared to other methods. Connected markers represent different hyperparameters (see App. B).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-flowedit-inversion-free-text-based-editing-using-pre-tr/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Text-based style editing. FlowEdit changes the style of an image at the cost of slightly deviating from the original image structure. SD3 was used for the first row and FLUX for the second. Hyperparameters used for these results are reported in App. D.</figcaption></figure>
+    </div>
+  </div><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"]],displayMath:[["\\[","\\]"]]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body></html>

@@ -1,0 +1,185 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Differentiable Vector Quantization for Rate-Distortion Optimization of Generative Image Compression</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Differentiable Vector Quantization for Rate-Distortion Optimization of Generative Image Compression</h1>
+    <div class="au2" style="color:var(--mut)">SHIYIN JIANG ⋅ Wei Long ⋅ Minghao Han ⋅ Zhenghao Chen ⋅ Ce Zhu ⋅ Shuhang Gu</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2604.10546">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2604.10546">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Differentiable%20Vector%20Quantization%20for%20Rate-Distortion%20Optimization%20of%20Generative%20Image%20Compression">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">The proliferation of visual data under tight storage and bandwidth budgets makes extremely low–bitrate generative image compression increasingly important. Vector quantization (VQ) is compelling in this regime because codebooks encode cross-channel correlations and dataset-level semantics, enabling perceptually faithful reconstructions when bits are scarce. We propose RDVQ, a vector-quantization (VQ) based generative image compression method designed for extremely low bitrates. While end-to-end learned image codecs rely on a differentiable rate term for rate–distortion (RD) optimization, however, a key challenge is that naïvely integrating VQ introduces non-differentiability and is not directly compatible with entropy modeling, forcing prior work to regulate bitrate only indirectly. We resolve this by defining a distance-aware soft posterior over codebook indices and training a conditional autoregressive entropy model to predict it. Therefore the cross-entropy between the approximate and predicted posteriors yields a differentiable rate loss, restoring a gradient pathway from rate to the encoder via codeword distances. Such predicted codebook index distribution enables prefix-only transmission at inference, with the model imputing the rest of the indices, delivering retraining-free bitrate control over a practical range. Our end-to-end RD optimized RDVQ outperforms all baseline methods in terms of DISTS and CLIPIQA, which reflect superior structural restoration and better alignment with human visual perception on the Kodak, DIV2K and CLIC2020 datasets.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-differentiable-vector-quantization-for-rate-distortion- -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">VQ 图像压缩一直缺一条"码率梯度回传编码器"的通路：硬最近邻分配不可微，rate loss 到不了 encoder。<b>RDVQ</b> 只在<b>码率估计支路</b>把硬分配换成 distance-aware 的 <b>soft 分布</b> p_soft=softmax(−d/τ)，让 ∂R/∂y≠0、rate loss 能反传塑形编码器——而<b>重建/熵编码仍走硬 VQ 不变</b>(train/inference 一致)。再配一个 masked-Transformer <b>自回归熵模型</b>(一鱼三吃：估码率/熵编码/前缀补全做免重训码率微调)。极低码率下又轻量(<b>251.9M</b>，&lt;20% baseline 参数)又 SOTA(DISTS/CLIPIQA)。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b"><b>SQ vs VQ 的两难：</b>SQ(标量量化)靠加噪/STE 可微→能端到端 RD 优化，但 element-wise "<i>fails to capture cross-channel dependencies, often leading to structural degradation under aggressive compression</i>"；VQ 把特征组映射到 codebook atom、"<i>encode joint structural and semantic patterns</i>"→感知保真更好，但 "<i>the discrete nearest-neighbor assignment prevents gradients from the rate objective from propagating back to the encoder</i>"。<b>后果(原文)：</b>"<i>a fundamental decoupling between representation learning and entropy modeling</i>"——prior p 基本不受约束、熵模型只能被动拟合它。所以旧 VQ 方法只能靠 codebook size[47]/selective transmission[33]/uniform coding[45,66] 等间接 heuristic 控码率。<b>核心挑战(原文)：</b>"<i>restore a differentiable rate-to-encoder pathway without changing the hard quantization process used in reconstruction and entropy coding</i>"。</div>
+    <div class="note-h">核心方法（含关键公式）</div>
+    <div class="note-b">① <b>双支路解耦</b>(§3.2)：重建/编码走<b>硬 VQ</b>、码率优化走<b>soft 松弛</b>。VQ 模块一次产出三样 y_q, y_ind, p_soft = VQ(y, C)(式3)——y_q 硬量化嵌入(重建用)、y_ind 离散索引(熵编码用)、p_soft 松弛分布(仅训练期估码率)。<br>② <b>可微 soft 松弛</b>(§3.3)：硬分配 y_ind=argmin_k‖y−C_k‖²(式4，不可微)；改算距离 d_{b,l,k}=‖y_{b,l}−C_k‖²(式5)，再 <b>p_soft=softmax_k(−d/τ)</b>(式6，τ→0 退化成 one-hot、有限 τ 可微)；surrogate 码率 <b>R_soft=E[−Σ_k p_soft·log q_ψ]</b>(式7，cross-entropy)。关键性质 <b>∂R_soft/∂y≠0</b>→rate loss 直接塑形 encoder，逼它输出"更好预测、更可压"的 latent。<br>③ <b>自回归熵模型</b>(§3.4)：masked-Transformer 预测 q_ψ；multi-scale token 按 coarse→fine 排成统一序 o，attention mask <b>M=(o&gt;oᵀ)</b>(式8) 只让每 token attend 合法前驱；q_ψ <b>三用</b>=训练估码率 + 推理熵编码 + 给定前缀自回归补全(免重训码率微调)。<br><b>损失：</b>L=L_D+λL_R(式11)；L_R=CE(p_soft, q_ψ)(式12)；L_D=L_codebook+L_MSE+L_LPIPS+0.1·L_GAN(式13)。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>SOTA + 轻量：</b>从零训练(仅 GAN+perceptual loss、无大预训练 backbone)即在 Kodak/DIV2K-val/CLIC2020 三库 <b>DISTS、CLIPIQA 全 SOTA</b>；<b>251.9M 参数</b>、&lt;20% of most baselines，2K 图 <b>1.3s</b>(RTX 4090)、BD-DISTS 最佳。<br><b>vs RDEIC：</b>DISTS 上省码率 <b>75.71%</b>、LPIPS 上省 <b>37.63%</b>(DIV2K-val)。<br><b>消融(Table 1, DIV2K-val)：</b>去掉 relaxation → DISTS 0.1005→<b>0.2147</b>、LPIPS 0.2321→0.5031、FID 19.96→<b>86.93</b>，且 bpp 还从 0.0247 涨到 0.0464(rate/distortion 两轴一起崩)；K-means VQ 同 bpp(0.0247)下 DISTS 0.1253/LPIPS 0.2831/FID 28.08 全面更差。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>"只改估码率支路"的极简切口</b>：不动重建/熵编码的硬 VQ，零侵入部署，relaxation 纯当 training surrogate；② <b>把 implicit/uniform 的 VQ prior 变成 learnable, entropy-aware prior</b>，真正端到端 RD；③ <b>熵模型一鱼三吃</b>(估码率/熵编码/前缀补全)，前缀传输+自回归补全做到 0.02–0.32bpp 免重训码率微调；④ 提出 entropy-constrained VQ 视角，暗示"图像 tokenization 与压缩可统一"。</div>
+    <div class="note-h">疑问 / 待核</div>
+    <div class="note-b">① τ/λ 是<b>分段手调</b>(bpp&lt;0.025 用 τ=0.1、λ∈{4.8,7.2,12}；更高 bpp 用 τ=0.01、λ∈{0.8,1.2})——换数据集是否要重调？原文未给自适应方案(原文未写)。② 测试期码率微调只在 "limited operating range" 平滑(正文 0.02–0.32bpp / 附录 0.05–0.3bpp)，超出范围补全质量原文未展开。③ codebook 固定 4096×32，对更高分辨率/更复杂纹理是否够、是否需更大 codebook，原文未消融(原文未写)。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">本地 PDF 全文精读(PyMuPDF 提取，约 6.6 万字符，正文+附录完整)。原文英文原句直引 + 中文指路，外部概念开背景块。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文大意：</b>极低码率图像压缩日益重要。Vector Quantization（VQ）结构保真强，但现有 VQ 方法<b>缺乏做联合率失真（RD）优化的原理性机制</b>，根因是「表示学习」与「熵建模」脱节。提出 <b>RDVQ</b>：通过对<b>码本分布做可微松弛（differentiable relaxation）</b>，让熵损失能直接塑造潜在先验，实现 VQ 压缩的端到端 RD 优化；再配一个<b>自回归熵模型</b>支持精确熵建模 + 测试期码率控制。实验证明 RDVQ 用<b>轻量架构</b>在极低码率取得有竞争力甚至更优的感知质量，参数远少于先前方法。相比 RDEIC，在 DIV2K-val 上 DISTS 省码率达 <b>75.71%</b>、LPIPS 省 <b>37.63%</b>。它给出 VQ 的「熵约束」表述，指向「图像 tokenization 与压缩」的统一视角。</div>
+    <div class="note-b"><b>逐句拆解（verbatim 引原文）：</b><br>1) 痛点 — <b>“existing methods lack a principled mechanism for joint rate–distortion (RD) optimization due to the disconnect between representation learning and entropy modeling.”</b>（VQ 的表示学习与熵建模脱节）<br>2) 解法 — <b>“a unified framework that enables end-to-end RD optimization for VQ-based compression via a differentiable relaxation of the codebook distribution, allowing the entropy loss to directly shape the latent prior.”</b>（可微松弛让熵损失能塑造先验）<br>3) 熵模型 — <b>“an autoregressive entropy model that supports accurate entropy modeling and test-time rate control.”</b><br>4) 战绩 — <b>“RDVQ reduces bitrate by up to 75.71% on DISTS and 37.63% on LPIPS on DIV2K-val”</b>、<b>“using less than 20% of the parameters of prior methods.”</b><br>5) 立意 — <b>“an entropy-constrained formulation of VQ … a more unified view of image tokenization and compression.”</b></div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>VQ 的「最近邻取索引」是不可微的，导致码率损失的梯度传不回编码器、编码器学出的先验 \(p\) 没被率约束过 → RD 优化是假的端到端。RDVQ 只在<b>码率估计支路</b>把「硬取索引」换成「按距离的 softmax 软分布」，把梯度桥重新接上，让熵损失真正塑造先验；重建/编码仍用硬 VQ，故部署流程不变。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文 — 读懂 RDVQ 必备）</div>
+    <div class="note-b"><b>① learned image compression &amp; 率失真（RD）：</b>学习式压缩 = transform autoencoder（编码器 \(g_a\)/解码器 \(g_s\)）+ quantizer（量化器）+ 学习的 entropy model（熵模型）。优化 RD Lagrangian \(\mathcal{L}=\lambda R+D\)：\(D\)=失真，\(R\)=码率（用熵模型预测分布的交叉熵估计），\(\lambda\) 调码率-质量权衡。<br><b>② SQ vs VQ：</b><b>Scalar Quantization（SQ）</b>逐元素量化（四舍五入），用 additive noise 或 <b>Straight-Through Estimator（STE）</b>近似可微 → 率/失真梯度都能回传，但<b>逐元素忽略跨通道依赖</b>，激进压缩下结构退化。<b>Vector Quantization（VQ）</b>把一组特征映到码本原子（codebook atom），编码联合结构/语义模式 → 感知保真好，<b>但最近邻取索引不可微</b>、率梯度断。</div>
+    <div class="note-b"><b>③ entropy model &amp; entropy coding：</b>熵模型预测每个符号的概率分布 \(q\)，码率 ≈ \(-\log_2 q\)（信息论下界）；预测越准、码率越低。算术编码据此无损压缩索引。<b>④ Generative Image Compression（GIC）：</b>在极低码率用生成先验（GAN/扩散/自回归）重建「看起来真」的纹理，而非逐像素保真（后者低码率下过度平滑）。<br><b>⑤ codebook / VQ-VAE：</b>码本 = 一组可学习向量（本文 4096×32）；VQ-VAE 把图编码成「码本索引序列」（离散 token），故 VQ 天然适合自回归建模与极低码率。<b>⑥ 指标：</b>bpp（bits per pixel，越低越省）；DISTS/LPIPS=感知相似（越低越好）、FID=分布真实度、CLIPIQA=无参考感知质量。</div>
+
+    <div class="note-h">Q&amp;A · 它要解决的主要问题是什么？</div>
+    <div class="note-b"><b>核心：</b>让 VQ 压缩能做<b>真正的端到端联合 RD 优化</b>。现状是 VQ 的「最近邻硬取索引」不可微，码率目标 \(R\) 定义在离散索引上，<b>梯度传不回编码器</b> → 编码器学出的先验分布 \(p\)（潜在分布）<b>不受率约束</b>，熵模型 \(q\) 只能被动拟合 \(p\) 而无法反过来塑造它。原文：<b>“the entropy model can only passively fit this distribution without influencing it. This leads to a fundamental decoupling between representation learning and entropy modeling.”</b><br><b>为何重要：</b>没有这条梯度通路，VQ 只能靠<b>间接启发式</b>调码率（改码本大小、选择性传输、均匀编码），先验「effectively fixed and suboptimal」，吃不到 SQ 那种「率/失真共同塑造编码器」的红利。RDVQ 要在<b>不改硬量化</b>的前提下，把这条「率→编码器」的可微通路补回来。</div>
+
+    <div class="note-h">② §1 Introduction — problem → 现有不足 → solution → why 闭环</div>
+    <div class="note-b"><b>problem（脱节）：</b>SQ 能联合优化但忽略跨通道依赖、激进压缩结构退化；VQ 感知好但 <b>“the discrete nearest-neighbor assignment prevents gradients from the rate objective from propagating back to the encoder.”</b> 结果 <b>“the encoder-induced latent distribution (i.e., the prior p) remains largely unconstrained.”</b><br><b>现有不足：</b>先前 VQ 法靠间接启发式控码率——调码本大小 [47]、选择性传输 [33,65]、均匀编码 [45,66]；即便引入学习熵模型 [13,65]，仍 <b>“lack a differentiable connection between the rate objective and the encoder, leaving the underlying prior effectively fixed and suboptimal.”</b></div>
+    <div class="note-b"><b>solution：</b>原文 <b>“The core idea is to replace hard nearest-neighbor assignments with a differentiable, distance-aware soft distribution over codebook entries.”</b> 这个松弛让率梯度能传到编码器，使熵损失同时优化先验 \(p\) 与熵模型 \(q\)：<b>“the traditionally implicit or uniform VQ prior becomes a learnable, entropy-aware prior that is fully integrated into the RD optimization process.”</b> 再加 masked-transformer 自回归熵模型（既精确估熵、又能做生成式索引补全 → 测试期改码率不重训）。<br><b>why（机理）：</b>软松弛让「编码器输出」朝「熵模型更易预测 = 更可压」的方向走（<b>“encourages encoder outputs that are easier to predict under the entropy model and thus more compressible”</b>），这正是 SQ 一直有、VQ 一直缺的那条优化信号。</div>
+
+    <div class="note-h">Q&amp;A · 为什么 VQ 做不了 joint RD optimization？</div>
+    <div class="note-b"><b>断点在「argmin 取索引」：</b>VQ 把连续特征 \(y_{b,l}\) 映到最近码本原子的索引 \(y_{ind}=\arg\min_k\|y_{b,l}-\mathcal{C}_k\|^2\)。这是个<b>离散选择</b>，对 \(y\) 不可导（argmin 的梯度几乎处处为 0）。码率 \(R\) 定义在这些离散索引的分布上，所以「\(y\to R\)」这条路断了——<b>率损失无法更新编码器</b>。<br><b>SQ 为什么行：</b>SQ 是「连续值 + 舍入」，可用 additive noise / STE 给出一条近似梯度路径绕过舍入。但 SQ 逐元素、抓不住跨通道结构。<br><b>RDVQ 的破法：</b>不动「重建/编码用的硬 VQ」，只在<b>率估计支路</b>把硬 argmin 换成软 softmax（按到各码字的距离），于是 \(\partial R_{soft}/\partial y\neq 0\)，梯度桥接通——<b>既保留 VQ 的结构优势，又拿回 SQ 的端到端可优化性</b>。</div>
+
+    <div class="note-h">②′ §2 Related Work — VQ 控码率两范式 &amp; GIC 三生成先验（含 AR↔压缩 的关键联系）</div>
+    <div class="note-b"><b>§2.1 VQ 控码率两范式（原文分类）：</b>VQ 因最近邻不可微做不了端到端 RD，<b>“most VQ-based methods focus on reconstruction quality while relying on indirect mechanisms for rate control”</b>，分两支：① <b>Dual-branch [45,54,66,67]</b>——VQ 与 SQ 混合以引入基于熵的码率建模；② <b>Single-branch [19,47,52,65,72]</b>——纯 VQ，靠 <b>codebook size 或 masking</b> 等启发式调码率。原文断言两支都不够：<b>“both paradigms still fall short of enabling true end-to-end RD optimization in VQ-based compression.”</b> RDVQ 正是要补这个真空。<br><b>§2.2 GIC 三条生成先验：</b>① <b>GAN</b>（早期 [2,3,48] 把 GAN 引入压缩，显著提感知质量）；② <b>Diffusion</b>（[24,53] 在 image domain 做纹理细化或 latent space 做细节恢复）；③ <b>Autoregressive（AR）models</b>——原文点出关键联系：<b>“By modeling conditional distributions over discrete tokens, AR models are closely related to entropy modeling in compression”</b>，且 <b>“This connection also suggests a natural mechanism for index completion under partial transmission.”</b> 这句正是 RDVQ「prefix 传输 + 自回归补全做测试期码率控制」的理论根基——把 AR 生成与熵建模 / 码率控制<b>统一</b>起来。<br><b>对照 distortion-oriented 编解码器：</b>VVC 等传统 / 失真导向法低码率下 <b>“often produce overly smooth results”</b>，而 GIC <b>“focuses on perceptual fidelity by restoring plausible textures”</b>——这解释了为何 RDVQ 主打 DISTS / CLIPIQA 等感知指标而非 PSNR。</div>
+
+    <div class="note-h">③ §3.1 问题 formulation（RD Lagrangian）</div>
+    <div class="note-b"><b>VAE 式压缩：</b>\(y=g_a(x)\)（分析变换/编码器），\(\hat x=g_s(\hat y)\)（合成变换/解码器）。<b>训练目标（式1-2）：</b><br>\[ \mathcal{L}=\lambda R + D(x,\hat x),\qquad R=\mathbb{E}_{\hat y}\big[-\log_2 q_\psi(\hat y)\big] \]<br>\(D\)=重建失真，\(R\)=期望码率（\(q_\psi\)=学习熵模型）。<b>关键：</b><b>“Effective joint RD optimization requires gradients from both D and R to propagate back to the encoder.”</b> SQ 用 noise/STE 满足这点；VQ 因率项定义在离散索引上、\(y\to R\) 不可微而满足不了。<b>中心挑战（原文）：</b><b>“to restore a differentiable rate-to-encoder pathway without changing the hard quantization process used in reconstruction and entropy coding.”</b>（在不改硬量化的前提下恢复「率→编码器」可微通路）</div>
+
+    <div class="note-h">④ §3.2 RDVQ 总览（解耦重建/编码路 与 率优化路）</div>
+    <div class="note-b"><b>核心设计：</b><b>“decouples the reconstruction/coding path from the rate-optimization path during training.”</b> VQ 模块同时产出三样（式3）：<br>\[ y_q,\ y_{ind},\ p_{soft}=\mathrm{VQ}(y,\mathcal{C}) \]<br>\(y_q\)=硬量化嵌入（<b>用于重建</b>，\(\hat x=g_s(y_q)\)）；\(y_{ind}\)=离散索引（<b>用于熵编码</b>）；\(p_{soft}\)=松弛分布（<b>仅训练时用于率优化</b>）。<br><b>训练 vs 推理：</b>训练时重建走硬 \(y_q\)、率走软 \(p_{soft}\) 支路；推理时<b>去掉松弛</b>，索引选择与熵编码全用标准硬 VQ。同一个 masked-Transformer 熵模型既做率估计/熵编码，又能<b>生成式补全索引</b>（prefix 传输 + 自回归补全 → 有限范围测试期码率控制，免重训）。</div>
+
+    <div class="note-h">⑤ §3.3 可微软松弛（核心机制 + 梯度桥）</div>
+    <div class="note-b"><b>从硬到软（式4-6）：</b>硬分配 \(y_{ind}(b,l)=\arg\min_k\|y_{b,l}-\mathcal{C}_k\|^2\)（不可微）；改算到各码字的距离 \(d_{b,l,k}=\|y_{b,l}-\mathcal{C}_k\|^2\)，再构造<b>距离感知软分布</b>：<br>\[ p_{soft}(b,l,k)=\mathrm{softmax}_k\!\Big(-\frac{d_{b,l,k}}{\tau}\Big) \]<br>\(\tau\) 控松弛锐度，<b>“As τ→0, p_soft approaches the one-hot hard assignment while remaining differentiable for finite τ.”</b>（τ→0 趋近 one-hot 硬分配，有限 τ 时可微）。<b>松弛率目标（式7）：</b><br>\[ R_{soft}=\mathbb{E}_{b,l}\Big[-\sum_{k=1}^{K} p_{soft}(b,l,k)\,\log q_\psi(b,l,k)\Big] \]<br>这是真实编码成本的<b>可微代理</b>。<b>梯度桥：</b>\( \dfrac{\partial R_{soft}}{\partial y}\neq 0 \)，故率目标能直接塑造编码器表示。</div>
+
+    <div class="note-h">Q&amp;A · 软松弛为什么能恢复梯度？训练/推理一致性如何保证？</div>
+    <div class="note-b"><b>为什么恢复梯度：</b>argmin 是「赢者通吃」的离散选择、对 \(y\) 无有用梯度；softmax 是<b>所有码字的加权平均</b>，权重 \(p_{soft}(b,l,k)\) 是 \(y\) 经距离 \(d_{b,l,k}\) 的<b>光滑函数</b>，故 \(R_{soft}\) 对 \(y\) 可导。直觉上：率损失会推动 \(y\) 落到「熵模型预测概率高（=更可压）」的码字附近。<br><b>训练/推理一致性（关键工程点）：</b>软松弛<b>只在训练的率估计支路用</b>；重建始终用硬 \(y_q\)、推理索引选择与熵编码用标准硬 VQ。原文：<b>“the proposed relaxation acts purely as a training surrogate, without changing the deployment pipeline of conventional VQ codecs.”</b> 所以 RDVQ 不引入「训练-部署不匹配」，落地与普通 VQ codec 一样。<b>消融实锤</b>：去掉松弛（w/o Relaxation）即便在更高码率下 DISTS 仍从 0.1005 暴涨到 0.2147、FID 19.96→86.93 —— 证明这条可微索引分布是端到端 RD 的命门。</div>
+
+    <div class="note-h">⑥ §3.4 自回归熵模型（依赖感知 token 排序 + mask）</div>
+    <div class="note-b"><b>为什么要它：</b>式7 的率目标依赖一个<b>准确的码本索引条件模型</b> \(q_\psi\)。用统一 masked-Transformer 建模多尺度 token 间的结构依赖。<b>依赖感知排序：</b>编码特征天然多尺度，含<b>尺度内空间依赖</b>与<b>尺度间层级依赖</b>。按原始 scale 组织构造因果序：每个 scale 内按空间分段排序（finer scale 切得更细），跨 scale 按 <b>coarse-to-fine</b> 排（细尺度 token 以粗尺度 token 为条件），各 scale 序展平拼成统一序向量 \(o\)。<b>掩码自回归（式8）：</b><br>\[ M=(o>o^\top) \]<br>每个 token 只能 attend 其合法前驱；按 \(o\) 重排输入对齐因果序，从而<b>并行训练 + 保持自回归分解</b>。该 \(q_\psi\) 一身三职：训练率估计、推理熵编码、给定 prefix 后<b>自回归补全 suffix</b> 索引（测试期码率控制，免重训）。</div>
+
+    <div class="note-h">⑦ 架构细节（multi-scale + codebook + 最大 bpp）</div>
+    <div class="note-b"><b>tokenizer（VQ-VAE，改自 LlamaGen）：</b>两处改动——① <b>去掉所有 attention 层</b>（提效/可扩展）；② 单尺度扩成<b>多尺度</b>（下采样因子 <b>16/32/64</b>，coarse-to-fine；每个高尺度 latent = 其特征与上采样后低尺度特征的<b>残差</b>，得干净层级分解）。<b>码本</b>：共享 <b>4096×32</b>，stage-1 学好后<b>冻结</b>以稳训。encoder/decoder 各 6 stage（每 stage 2 个 ResBlock + 下/上采样），通道 \(128\times[1,1,2,2,4,4,4]\)。<b>熵模型</b>：输入投影 32→768，<b>12 层 masked Transformer，8 头，MLP 扩展比 4</b>，输出对 4096 码字的线性分类。<b>多尺度抬高码率上界（式9）</b>，对 256×256 图：<br>\[ \mathrm{bpp}_{max}=\frac{(4^2+8^2+16^2)\cdot\log_2(4096)}{256^2}\approx 0.0615 \]<br>（4/8/16 = 256÷64/32/16，\(\log_2 4096=12\)）——比单尺度更宽的 RD 操作范围。</div>
+
+    <div class="note-h">⑦′ 附录A/B · 残差式多尺度 + 分辨率泛化 + 高分辨率三段微调</div>
+    <div class="note-b"><b>残差式多尺度（附录A）：</b>三尺度（下采样 16/32/64），<b>“each higher-scale latent is defined as the residual between its feature map and the upsampled lower-scale feature”</b>——高尺度只编码低尺度上采样后的<b>残差</b>，得干净的 coarse-to-fine 层级分解，既利于熵建模的跨尺度依赖、又抬高码率上界（式9）。<b>分辨率泛化（变长输入）：</b>把每尺度 latent 切成<b>非重叠空间窗口（4×4 / 8×8 / 16×16）</b>，对同一图像区域、跨尺度的窗口<b>分组拼成一个序列</b>处理；不同空间位置的组<b>独立并行批处理</b> → 支持任意分辨率推理同时保留局部多尺度对齐。<b>掩码序号细节：</b>尺度 \(i\) 空间位置均分 \(n_i=2^{(i+1)}\) 段，finer scale 的 decoding number 加上所有 coarser scale 的累计计数（scale2 加 \(n_1\)、scale3 加 \(n_1{+}n_2\)），确保细尺度 token 条件于全部粗尺度 token。<br><b>高分辨率三段微调（附录B）：</b>ImageNet 256² 大规模预训 → OpenImage 512²（bs4、lr1e-5、4×10⁵ iter）→ DF2K（512–2048 随机裁剪、bs1、lr5e-6）。原文：仅在 256² 训的模型 <b>“generalize poorly to high-resolution datasets”</b>，这套渐进微调让 DIV2K 上质量「ImageNet-only → OpenImage → DF2K」逐级提升（Fig S1）。</div>
+
+    <div class="note-h">⑧ 训练（三阶段 + 损失 + τ/λ 分段）</div>
+    <div class="note-b"><b>三阶段（先表示、后熵、再联合）：</b>① 在 ImageNet 256² 上用失真损失预训 tokenizer + 码本（7×10⁵ iters，bs32，lr1e-4，BF16），然后<b>冻结码本</b>；② 固定 tokenizer/码本，单独用率目标预训熵模型（4×10⁵ iters，bs80）；③ 用全目标 \(\mathcal{L}=\mathcal{L}_D+\lambda\mathcal{L}_R\) 联合微调（码本仍冻结，FP32，λ-curriculum 高码率→低码率）。再在 OpenImage(512²)→DF2K(512–2048 裁剪) 上高分辨率微调。<b>损失（式12-13）：</b>\( \mathcal{L}_R=\mathrm{CE}(p_{soft},q_\psi) \)；\( \mathcal{L}_D=\mathcal{L}_{codebook}+\mathcal{L}_{MSE}+\mathcal{L}_{LPIPS}+0.1\,\mathcal{L}_{GAN} \)。<b>τ/λ 分段（关键调参）：</b>超低码率（bpp&lt;0.025）用更平滑松弛 τ=0.1、λ={4.8,7.2,12}；较高码率（bpp&gt;0.025）用更锐 τ=0.01、λ={0.8,1.2}（τ 越小 \(p_{soft}\) 越锐、梯度越集中、率约束越强，故需与 λ 联调）。硬件：4× RTX4090（DF2K 微调用 RTX Pro 6000）。</div>
+
+    <div class="note-h">⑨ §4 实验设置 + 主结果</div>
+    <div class="note-b"><b>设置：</b>评测 Kodak（24 张 768×512）、CLIC2020-test（428 张 2K）、DIV2K-val（100 张 2K）；指标 DISTS/LPIPS/FID（有参考）+ CLIPIQA（无参考）+ bpp。基线按量化策略分组：传统 VVC；SQ（MS-ILLM/PerCo/ResULIC/StableCodec）；VQ（DDCM/OSCAR）；混合 SQ-VQ（DLF/RDEIC）。RDVQ <b>从零训练</b>（仅 GAN + LPIPS，不靠大预训练 backbone）。<b>主结果（Fig4 RD 曲线）：</b>RDVQ 在<b>所有数据集的 DISTS 与 CLIPIQA 上 SOTA</b>；LPIPS/FID 与依赖大规模预训练先验的方法（OSCAR/RDEIC/ResULIC）<b>相当甚至更优</b>。质性：超低码率（Kodak 低至 0.01 bpp）下 RDVQ 保住细结构边缘与重复纹理、伪影最少；VVC 过度平滑、扩散式 DDCM 幻觉纹理、混合 DLF 细节恢复不全。补充 Table S1（Kodak BD-DISTS，越低越好）：Ours 0.0 (anchor) 远胜 CGIC +5422.8%、Diffo +207.11%、OneDC +18.81%。</div>
+
+    <div class="note-h">⑩ 效率 + vs RDEIC 的码率节省</div>
+    <div class="note-b"><b>轻量高效（Fig6 BD-DISTS vs 参数量）：</b>RDVQ 取得<b>最佳 BD-DISTS</b> 而参数 <b>&lt;20%</b> 于多数基线，总参数 <b>251.9M</b>；2K 图推理 <b>1.3 秒</b>（RTX4090）。相比 foundation-model 式的 StableCodec/DLF，复杂度显著更低却性能更优。<br><b>vs RDEIC（核心战绩）：</b>DIV2K-val 上 <b>“RDVQ reduces bitrate by up to 75.71% on DISTS and 37.63% on LPIPS”</b>——在达到同等 DISTS 质量时省码率最高 75.71%。<b>意义：</b>不靠扩散/大预训练，仅 GAN+LPIPS 从零训，就在极低码率把「结构保真（DISTS）」做到 SOTA，印证「把率约束接进 VQ 编码器」这一机制本身的价值，而非堆参数。</div>
+
+    <div class="note-h">⑪ §4.3 消融 + 测试期码率控制 + 分析</div>
+    <div class="note-b"><b>消融（Table1，DIV2K-val，越低越好）：</b>
+<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0;color:#d7dcff">
+<tr style="color:#ffd35c"><td style="border:1px solid #2a2f5c;padding:3px">变体</td><td style="border:1px solid #2a2f5c;padding:3px">bpp</td><td style="border:1px solid #2a2f5c;padding:3px">DISTS</td><td style="border:1px solid #2a2f5c;padding:3px">LPIPS</td><td style="border:1px solid #2a2f5c;padding:3px">FID</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">RDVQ（full）</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">0.0247</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">0.1005</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">0.2321</td><td style="border:1px solid #2a2f5c;padding:3px;color:#7ee0c0">19.96</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">w/o Relaxation</td><td style="border:1px solid #2a2f5c;padding:3px">0.0464</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">0.2147</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">0.5031</td><td style="border:1px solid #2a2f5c;padding:3px;color:#ff9a9a">86.93</td></tr>
+<tr><td style="border:1px solid #2a2f5c;padding:3px">K-means VQ [47]</td><td style="border:1px solid #2a2f5c;padding:3px">0.0247</td><td style="border:1px solid #2a2f5c;padding:3px">0.1253</td><td style="border:1px solid #2a2f5c;padding:3px">0.2831</td><td style="border:1px solid #2a2f5c;padding:3px">28.08</td></tr>
+</table>
+① <b>去掉松弛</b>：即便码率涨到 0.0464（近 2 倍）质量仍崩（DISTS 0.1005→0.2147、FID 19.96→86.93）——<b>“the rate loss can only propagate to the encoder indirectly … resulting in a weak and unstable optimization signal.”</b> 可微索引分布是端到端 RD 的命门。② <b>K-means 改码本大小控码率</b>：同 bpp 下各指标都更差（DISTS 0.1253 vs 0.1005），说明<b>启发式控码率消不掉索引分布里的冗余</b>。<br><b>测试期码率控制：</b>RDVQ-Adj（prefix 传 + 自回归补全）在 0.02–0.32 bpp 沿 RD 曲线<b>平滑退化</b>、贴近 baseline；而 AE-Entropy（编码器与熵模型分开优化）和 Zero-padding 掉点大、伪影多——证明<b>联合 RD 优化让潜空间「可预测」</b>，才支撑得起部分传输下的稳定补全。<br><b>分析：</b>PCA 看编码特征（Fig10）随码率下降<b>越来越平滑、抑制高频</b>；码本利用率（Fig8）随率约束变强<b>越来越集中</b>到少数代表性原子——即模型主动减冗余。</div>
+
+    <div class="note-h">Q&amp;A · 测试期免重训调码率：4 种设置对比 + 为何只有 RDVQ-Adj 稳？</div>
+    <div class="note-b"><b>机制：</b>只传离散索引序列的一个 <b>prefix</b>，剩余 suffix 由熵模型<b>自回归补全</b>，靠改变 prefix 长度在有限范围调码率、<b>无需重训</b>。<b>受控对比 4 设置（共享同一轻量 backbone）：</b>(a) <b>RDVQ</b> 全索引传输；(b) <b>RDVQ-Adj</b> prefix 传输 + 自回归补全；(c) <b>AE-Entropy</b> 把 autoencoder 与熵模型<b>分开优化</b>；(d) <b>Zero-padding</b> 缺失特征直接填 0。<b>结果（Fig9）：</b>RDVQ-Adj 在 <b>0.02–0.32 bpp</b> 沿 RD 曲线 <b>“smooth and gradual degradation … closely tracking the baseline RDVQ”</b>；而 AE-Entropy 与 Zero-padding <b>“suffer from significantly larger quality drops and visible artifacts, reflecting the lack of predictability in their latent representations.”</b><br><b>为什么只有 RDVQ-Adj 稳（命门）：</b>原文 <b>“the jointly optimized latent space remains highly predictable under partial transmission”</b>——正因为端到端 RD 把 latent 训得「可预测」，部分传输下才能稳定补全。换言之，<b>prefix 补全的可行性是「联合 RD 优化」的副产物</b>，不是额外模块堆出来的。<b>vs UIGC [65]（前序补全式方法）：</b>原文 <b>“our predictor is directly coupled to the learned index distribution used in rate–distortion optimization, leading to better-calibrated entropy estimates within the supported operating range.”</b> 即 RDVQ 的补全器与「参与 RD 优化的同一个索引分布」直接耦合，故熵估计更校准。</div>
+
+    <div class="note-h">📖 verbatim 关键英文原句速查（原文摘录 + 中文指路）</div>
+    <div class="note-b">
+    1) <b>“the discrete nearest-neighbor assignment prevents gradients from the rate objective from propagating back to the encoder.”</b>（离散最近邻阻断率梯度）<br>
+    2) <b>“This leads to a fundamental decoupling between representation learning and entropy modeling, hindering true end-to-end RD optimization.”</b>（表示学习与熵建模脱节）<br>
+    3) <b>“we replace the hard index assignment only in the rate-estimation branch, while keeping hard vector quantization unchanged for reconstruction and entropy coding.”</b>（只在率估计支路换软分配）<br>
+    4) <b>“the relaxed objective encourages encoder outputs that are easier to predict under the entropy model and thus more compressible.”</b>（推动编码器输出更可压）<br>
+    5) <b>“the proposed relaxation acts purely as a training surrogate, without changing the deployment pipeline of conventional VQ codecs.”</b>（松弛仅训练代理、不改部署）<br>
+    6) <b>“removing the differentiable relaxation (w/o Relaxation) leads to a severe performance drop, even at a substantially higher bitrate.”</b>（去松弛即便更高码率也崩）<br>
+    7) <b>“As the bitrate decreases, the features progressively emphasize smooth, low-frequency structures while suppressing high-frequency details.”</b>（低码率→特征趋平滑）<br>
+    8) <b>“existing VQ-based image tokenizers … may be adapted into compression models under our framework.”</b>（tokenizer 与压缩统一视角）</div>
+
+    <div class="note-h">⚠ 诚实边界 &amp; 疑问（推断标 [推测]）</div>
+    <div class="note-b"><b>① 测试期码率控制是「有限范围」：</b>原文反复强调 prefix 补全只在「limited operating range / within a limited range」（约 0.02–0.32 / 0.05–0.3 bpp）有效——<b>不是任意码率自由调</b>，超出范围仍需训练对应 λ 的模型。<br><b>② 码本冻结：</b>RD 阶段码本固定（stage-1 学好后冻），稳训但也意味着<b>码本表达力在 RD 阶段不再被率约束塑造</b>，只塑造编码器与熵模型 [推测：联合更新码本或更优但更难训]。<br><b>③ τ/λ 需分段手调：</b>超低/较高码率要用不同 (τ,λ)（分段策略由 Fig S2 验证必要），说明对超参较敏感、非一套通吃。<br><b>④ DISTS 强、像素保真未必强：</b>主打感知指标（DISTS/CLIPIQA SOTA），但 GIC 本质牺牲逐像素 PSNR 换感知真实，<b>不适合要严格像素保真的场景</b>（补充才给 pixel-level 失真曲线）。<br><b>⑤ 75.71% 是「up to」上限值：</b>是 DIV2K-val 上 vs RDEIC 在 DISTS 维度的<b>最佳点</b>码率节省，非全码率/全指标平均；LPIPS 维度为 37.63%，需分维度看。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>VQ 压缩感知保真好，但「最近邻硬取索引」不可微 → 率梯度传不回编码器 → 编码器先验不受率约束、表示学习与熵建模脱节，做不了真端到端 RD 优化。<br><b>method：</b>RDVQ <b>只在率估计支路</b>把硬 argmin 换成距离感知的 \(p_{soft}=\mathrm{softmax}(-d/\tau)\)（式6），用 \(R_{soft}=\mathrm{CE}(p_{soft},q_\psi)\)（式7）做可微率代理，使 \(\partial R_{soft}/\partial y\neq 0\) 重接梯度桥；重建/编码仍用硬 VQ（训练-部署一致）。配多尺度 VQ-VAE（码本 4096×32、下采样 16/32/64）+ masked-Transformer 自回归熵模型（依赖感知排序，mask \(M=o>o^\top\)），三阶段训练、τ/λ 分段。<br><b>takeaway 1：</b>把「率→编码器」的可微通路补回来，VQ 也能像 SQ 一样端到端 RD 优化——消融证去掉松弛即便更高码率也崩（DISTS 0.1005→0.2147、FID→86.93），这是全文命门。<br><b>takeaway 2：</b>「软松弛仅作训练代理、硬 VQ 不变」是关键工程取舍——既拿回可优化性、又不引入训练-部署不匹配；联合 RD 让潜空间「可预测」，从而支撑 prefix 补全式测试期码率控制。<br><b>takeaway 3：</b>不靠扩散/大预训练，仅 GAN+LPIPS 从零训、参数 &lt;20% 于基线（251.9M、2K 图 1.3s），就在 DISTS/CLIPIQA SOTA，vs RDEIC 省码率最高 75.71%(DISTS)/37.63%(LPIPS)——把率约束接进 VQ 本身比堆参数更值钱。<br><b>立意：</b>给出 VQ 的「熵约束」表述，提示现有 VQ image tokenizer 可被改造成压缩模型，指向 tokenization 与压缩的统一视角。<b>适用边界：</b>测试期调码率仅限定范围；码本冻结；τ/λ 需分段；主打感知非像素保真。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-differentiable-vector-quantization-for-rate-distortion-/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Gradient-based rate control in VQ compression is chal- lenging due to non-differentiable indices.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-differentiable-vector-quantization-for-rate-distortion-/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Overview of RDVQ. The analysis transform ga extracts multi-scale features, which are flattened into a sequence y for vector quantization and entropy modeling. The VQ module produces hard-quantized embeddings yq, discrete indices yind, and a relaxed distri- bution psoft. During training, reconstruction is performed from yq, while the rate objective is computed as the cross-entropy between</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-differentiable-vector-quantization-for-rate-distortion-/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Dependency-aware ordering for autoregressive en- tropy modeling. Scale-wise spatial orders are defined within each scale and concatenated into a unified order vector o, from which the attention mask M = (o &gt; o⊤) is constructed.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-differentiable-vector-quantization-for-rate-distortion-/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Rate-distortion curves on the Kodak, the DIV2k-val and the CLIC2020-test datasets.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-differentiable-vector-quantization-for-rate-distortion-/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Visual examples on the CLIC2020 test set. Zoom in for better view.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-differentiable-vector-quantization-for-rate-distortion-/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Visual examples on the Kodak dataset.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-differentiable-vector-quantization-for-rate-distortion-/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Codebook usage becomes more concentrated under stronger rate constraints.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-differentiable-vector-quantization-for-rate-distortion-/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. Test-time rate adjustment via prefix transmission. Left: Rate–distortion curves on Kodak. Right: Visual comparisons at similar bitrates (Bpp / DISTS). RDVQ-Adj maintains competitive performance with gradual degradation, while AE-Entropy and Zero-padding suffer from more noticeable artifacts.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-differentiable-vector-quantization-for-rate-distortion-/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 10. PCA visualization of the largest-scale encoder features under different compression ratios. As the bitrate decreases, the features become progressively smoother, with high-frequency de- tails suppressed.</figcaption></figure>
+    </div>
+  </div></body></html>

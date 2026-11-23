@@ -1,0 +1,191 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>RayZer: A Self-supervised Large View Synthesis Model</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">ICCV 2025</span> &nbsp; <span class="badge b-honorable_student">🎓 Best Student 提名</span></div>
+    <h1>RayZer: A Self-supervised Large View Synthesis Model</h1>
+    <div class="au2" style="color:var(--mut)">Hanwen Jiang · Hao Tan · Peng Wang · Haian Jin · Yue Zhao · Sai Bi · Kai Zhang · Fujun Luan · Kalyan Sunkavalli · Qixing Huang · Georgios Pavlakos</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/ICCV2025/papers/Jiang_RayZer_A_Self-supervised_Large_View_Synthesis_Model_ICCV_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=RayZer%3A%20A%20Self-supervised%20Large%20View%20Synthesis%20Model">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:iccv2025-rayzer-a-self-supervised-large-view-synthesis-model -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">第一个<b>零 3D 监督</b>（无相机位姿、无几何）的大规模多视图 view synthesis 模型：吃<b>无位姿无标定</b>的多视图图，先估相机、再重建 latent 场景、最后渲染新视图；训练时<b>用自己预测的位姿去渲染目标视图</b>、只靠 2D 光度损失监督。纯 transformer，唯一 3D 先验是 <b>Plücker ray 结构</b>（连接相机-像素-场景）。结果不仅追平、还<b>反超</b>了训练+推理都吃位姿标注的 "oracle"（LVSM/GS-LRM）——因为它们被 COLMAP 的噪声位姿拖了后腿。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">自监督 + scaling law 撑起了 LLM/VLM/视觉生成的 foundation model，但 <b>3D Vision 仍重度依赖 GT 几何 + 相机位姿标注</b>（通常来自 COLMAP 这类慢且不完美的优化）→限制了可扩展性与上限。本文直接问：<b>"how far can we push a 3D Vision model without any 3D supervision?"</b>（不用任何 3D 监督能走多远）。痛点具体化：① COLMAP 位姿有噪声且耗时；② 现有 LRM/LVSM/GS-LRM 训练要 GT 位姿、推理还要准位姿；③ 已有自监督多视图工作（如 RUST）用 latent pose、disentangle 难、不显式 3D-aware。</div>
+    <div class="note-h">核心方法（关键公式 + 设计）</div>
+    <div class="note-b">把任务看成 <b>3D-aware 图像自编码</b>：disentangle 图像→相机+场景（重建），再 re-entangle→图像（渲染）。<b>控信息流防作弊</b>：图分两组 IA/IB（不重叠），IA 预测场景、IB 提供<b>光度自监督</b>（用 IB 的预测位姿去渲 IA 的场景）。<b>式1</b> L=(1/KB)Σ_{î∈îB}(MSE(I,î)+λ·Percep(I,î))，λ=0.2。模型纯 transformer、<b>pose-first 级联</b>（"even noisy cameras can be a strong condition for better scene reconstruction"）：① Camera Estimator 估 SE(3) 相对位姿（6D 旋转表示，式6）+ 单焦距内参（式7）；② 位姿→<b>pixel-aligned Plücker ray maps</b> R∈R^{K×H×W×6} 作条件；③ Scene Reconstructor 融合 fA+rA（<b>式8</b> 用<b>原始图 token f 而非 pose-transformer 输出 f*</b>，防 IB 信息泄漏）→ latent 场景 z*（式9）；④ Rendering Decoder（仿 LVSM）按目标 Plücker ray 渲染（式10-11）。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">DL3DV：RayZer <b>24.36</b> PSNR &gt; LVSM 23.69 &gt; GS-LRM 23.49；RealEstate：RayZer <b>27.48</b> &gt; LVSM 27.00 &gt; GS-LRM 24.25（<b>都反超 oracle</b>）。Objaverse（Blender 完美位姿）：LVSM 32.34 &gt; RayZer 31.52 &gt; PF-LRM 25.48（此时真 oracle 略胜，但差距小）。位姿 3D-aware 验证（Tab.5 插值渲染）：RayZer 27.01 vs PF-LRM 20.63 vs copy 19.56。Probing（Tab.6）：自监督学到的位姿特征比监督 baseline 更准（RealEstate R@10° 99.6 vs 87.0）。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>打破"3D 必须监督"信条</b>——self-predicted pose 渲染做自监督，0 标注；② <b>反超 oracle 的解释很硬</b>：COLMAP 噪声位姿给监督方设了上限，自监督反而学到"最利于重建的位姿空间"；③ <b>pose-first 是关键</b>：消融里 scene-first 直接崩到 13.31（vs 24.36）；④ <b>Plücker ray 作唯一 3D 先验</b>优雅解了 structure-motion 的鸡生蛋问题，相机与场景互相正则；⑤ 视频连续帧 &gt; 乱序图集（image index p.e. 带来局部位姿平滑），暗示用海量视频 scale 更香。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① 评测用<b>预测位姿</b>而非 GT 位姿渲染（follow RUST），与 oracle 口径不同——PSNR 直接可比性需谨慎，论文已说明"learned poses exist in a different space"；② 3D-awareness 插值时<b>插值系数仍来自 GT 位姿</b>（Tab.5），即"位姿空间几何性"的验证<b>借用了 GT</b>，并非全自给；③ 只做<b>静态场景</b>，动态/大基线泛化原文未涉（<b>原文未写</b>）；④ 训练 50k iter / batch 256，但单卡/总算力与训练时长正文未给（<b>需查附录</b>）。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">从 Abstract 起逐段精读（批量精读初稿，供后续 review/深化）。基于 CVF 官方 PDF 全文。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精读</div>
+    <div class="note-b"><b>原文逐句引用 + 中文指路：</b><br>1) <b>"We present RayZer, a self-supervised multi-view 3D Vision model trained without any 3D supervision, i.e., camera poses and scene geometry, while exhibiting emerging 3D awareness."</b> → 一句话定位：零 3D 监督（既不喂相机位姿、也不喂场景几何）训练，却"涌现"出 3D 感知。<b>emerging（涌现）</b>是关键词——3D 感知不是被显式监督出来的，而是从 2D 自监督任务里自然长出来的。<br>2) <b>"RayZer takes unposed and uncalibrated images as input, recovers camera parameters, reconstructs a scene representation, and synthesizes novel views."</b> → 四步 pipeline：输入<b>无位姿(unposed)无标定(uncalibrated)</b>多视图 → 估相机参数 → 重建场景表示 → 渲染新视图。<br>3) <b>"During training, RayZer relies solely on its self-predicted camera poses to render target views, eliminating the need for any ground-truth camera annotations and allowing RayZer to be trained with 2D image supervision."</b> → 自监督的<b>核心戏法</b>：用<b>自己预测的位姿</b>去渲染目标视图，从而只需 2D 图像监督、彻底甩掉 GT 相机标注。</div>
+    <div class="note-b"><b>4)</b> 涌现 3D 感知归因于两点：<b>"First, we design a self-supervised framework, which achieves 3D-aware auto-encoding of input images by disentangling camera and scene representations."</b>（自监督框架 = 3D-aware 自编码：把图像 disentangle 成相机 + 场景）+ <b>"Second, we design a transformer-based model in which the only 3D prior is the ray structure, connecting camera, pixel, and scene simultaneously."</b>（纯 transformer，唯一 3D 先验是 ray structure，同时连接相机/像素/场景）。<br><b>5)</b> 结论：<b>"RayZer demonstrates comparable or even superior novel view synthesis performance than 'oracle' methods that rely on pose annotations in both training and testing."</b> → 追平甚至<b>反超</b>那些训练+测试都吃位姿标注的 "oracle"。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>零 3D 监督的 view synthesis 大模型——靠"自预测位姿渲染目标视图"做 2D 光度自监督，纯 transformer + Plücker ray 作唯一先验，反超被 COLMAP 噪声位姿拖累的监督式 oracle。项目页 hwjiang1510.github.io/RayZer/。</div>
+
+    <div class="note-h">📚 背景知识 A — Latent set 场景表示 &amp; 学习式渲染（§3 Preliminaries 原文）</div>
+    <div class="note-b"><b>latent set 表示是什么：</b>原文 "Compressing data into tokens in latent space is a common practice in text, image, video, etc. Recently, this representation has also been extended to 3D research."。区别于经典的<b>显式</b>（mesh/点云）、<b>隐式</b>（NeRF/SDF）、<b>混合</b>（triplane/3DGS）这些<b>本身就 3D-aware</b> 的表示，latent set 是 <b>"not explicitly 3D-aware. It serves as a compression of scene information, where the 3D-awareness properties are fully learned."</b>——3D 性质全靠学。记作 \( z \in \mathbb{R}^{n\times d} \)：n 个 token、d 维特征。</div>
+    <div class="note-b"><b>怎么渲染 latent set：</b>需要一个网络 \( R_\theta \)（源自 SRT[57]/LVSM[30]），公式 \( v = R_\theta(z, r) \)，其中 r 是一条射线、v 是该像素被渲染的属性（如 RGB）。对比传统图形学渲染 \( v = R(\text{SCENE}, \text{RAY}) \)（R 是手工预定义的渲染方程，如 NeRF 的 alpha-blending ray marching）——RayZer 的 <b>"'rendering equation' is a learned model parameterized with weights θ"</b>，渲染方程本身是学出来的，而非手工写死。这是"几何免"（geometry-free）路线的根。</div>
+
+    <div class="note-h">📚 背景知识 B — LRM / LVSM / GS-LRM &amp; Plücker ray（外部）</div>
+    <div class="note-b"><b>大模型重建/视图合成谱系：</b>LRM=Large Reconstruction Model，用大 transformer 把 2D 多视图前馈映成 3D 表示再渲新视图（免 per-scene 优化）。<b>GS-LRM[86]</b> 输出 3D Gaussian。<b>LVSM[30]</b> 最激进——<b>"replace 3D representations and physical rendering equations with latent representations and learned rendering functions"</b>，丢掉显式 3D 表示与物理渲染方程，用 latent token 集 + 学习渲染函数。它们的<b>硬伤</b>：原文 "they still require ground-truth camera poses for supervised training and/or accurate camera annotations during inference"。RayZer 继承 LVSM 的 latent-set + 学习渲染，但<b>额外学会自己估位姿</b>、训练不要任何位姿标注。</div>
+    <div class="note-b"><b>Plücker ray 坐标：</b>每个像素对应一条 3D 射线，用 6 维 Plücker 坐标（方向 d + moment m=o×d）表示，与像素逐一对齐（pixel-aligned）。RayZer 把估出的 SE(3) 位姿 + 内参转成稠密 ray maps \( R \in \mathbb{R}^{K\times H\times W\times 6} \) 喂给场景重建。原文价值："This ray-based representation captures both the 2D ray-pixel alignment and the 3D ray geometry, providing fine-grained, ray-level details that encapsulate the physical properties of the camera model."——既含 2D ray-pixel 对齐、又含 3D ray 几何，比塞一个位姿矩阵更细粒度。</div>
+
+    <div class="note-h">📚 背景知识 C — COLMAP/SfM 鸡生蛋 &amp; RUST 对比 &amp; 6D 旋转（外部）</div>
+    <div class="note-b"><b>SfM / COLMAP 与"鸡生蛋"：</b>Structure-from-Motion（COLMAP[60]）从多图联合解"相机运动(motion) + 场景结构(structure)"——但二者互相依赖（要重建得先知相机，要定相机又得有结构对应）=<b>chicken-and-egg problem of structure and motion</b>。COLMAP 靠特征匹配 + BA 迭代优化，原文批它 <b>"requirements of dense-view inputs, slow speed, and sensitivity to hyper-parameters"</b>，在玻璃/白墙等弱纹理处常失败 → 产出噪声位姿。RayZer 用 Plücker ray 让相机与场景 <b>"regularize each other during training"</b> 来缓解。</div>
+    <div class="note-b"><b>RUST[58]（最相关自监督前作）对比：</b>RUST 从无位姿图学 latent 场景表示。原文列出 RayZer 三点不同：(1) <b>顺序相反</b>——"RayZer initially estimates camera poses and uses poses to condition the following latent reconstruction. In contrast, RUST ... first reconstructs the scene and then estimates the camera poses"（RayZer pose-first，RUST reconstruction-first）；(2) <b>位姿表示</b>——RayZer 用<b>显式 SE(3)</b>（可几何插值、disentangle 好），RUST 用 latent pose（"makes scene-pose disentanglement challenging and they are not explicitly 3D-aware"）；(3) RayZer 估<b>所有视图</b>位姿，RUST 只估 target 视图。消融 Tab.7 的 (3)+(4) 合起来 ≈ RUST。<br><b>6D 旋转表示[92]：</b>把 SO(3) 旋转参数化成连续 6D 向量（而非 3×3 矩阵或四元数），保证神经网络回归时的连续性，避免欧拉角/四元数的不连续奇点。</div>
+
+    <div class="note-h">② §1 Introduction — problem（被监督卡住的 3D Vision）</div>
+    <div class="note-b"><b>problem：</b>原文 "Self-supervised learning has driven the rise of foundation models ... This paradigm has proven highly effective for LLMs, VLMs, and visual generation. In contrast, 3D Vision models still rely heavily on ground-truth 3D geometry and camera pose labels, which are usually estimated from time-consuming optimization methods, e.g., COLMAP, and are not always perfect. This reliance limits both learning scalability and effectiveness."——别的模态都靠自监督 + scaling law 起飞了，唯独 3D Vision 还死抱 GT 几何/位姿标注（COLMAP，慢且不完美），<b>规模与上限双双受限</b>。</div>
+    <div class="note-b"><b>核心提问：</b>原文 "To break free from this constraint, we move beyond the supervised paradigm and ask: <b>how far can we push a 3D Vision model without any 3D supervision?</b>"——不用任何 3D 监督，一个 3D Vision 模型能走多远？这是全文的 driving question。</div>
+
+    <div class="note-h">② §1 Introduction — solution（自预测位姿渲染 = 3D-aware 自编码）</div>
+    <div class="note-b"><b>solution 核心：</b>原文 "The key insight of our self-supervised training is to use the camera poses predicted by RayZer itself to render views that provide photometric supervision, rather than following the standard protocol of using ground truth poses for rendering. Thus, RayZer can be trained with zero 3D supervision."——用<b>自己估的位姿</b>渲染、拿 2D 光度损失当监督，于是零 3D 监督可训。</div>
+    <div class="note-b"><b>解释为自编码：</b>原文 "this self-supervised task can be interpreted as 3D-aware image auto-encoding. Initially, RayZer disentangles input images into camera parameters and scene representations (reconstruction). It then re-entangles these predicted representations back into images (rendering)."——先 disentangle 成相机 + 场景（编码/重建），再 re-entangle 回图（解码/渲染）。<b>防作弊靠信息流分组</b>：原文 "we divide all images into two parts: one set predicts the scene representation (input views), while the other offers photometric self-supervision (target views) ... thereby preventing trivial solutions that are not 3D-aware."——用第二组(IB)的位姿去渲第一组(IA)的场景，防止学到"非 3D-aware 的平凡解"。</div>
+
+    <div class="note-h">② §1 Introduction — why（为何纯 transformer + 为何 Plücker ray）</div>
+    <div class="note-b"><b>why 纯 transformer：</b>原文 "RayZer is built only with transformers – no 3D representation, hand-crafted rendering equation, or 3D-informed architectures. This design is motivated by self-supervised large models in other modalities, enabling RayZer to flexibly and effectively learn domain-specific knowledge."——不塞任何 3D 归纳偏置，对标其它模态的自监督大模型，换取灵活性与可扩展性。</div>
+    <div class="note-b"><b>why Plücker ray 作唯一先验：</b>原文 "The only 3D prior incorporated in RayZer is the ray structure ... RayZer first predicts camera poses, which are then converted into pixel-aligned Plücker ray maps to guide the scene reconstruction that follows. This ray-based representation serves as a strong prior for addressing the chicken-and-egg problem of structure and motion, effectively allowing the camera and scene representations to regularize each other during training."——ray structure 把相机/像素/场景绑在一起，把"鸡生蛋"问题转成相机与场景<b>互相正则</b>的可训练问题。这就是 Intro 已经闭环的 problem→solution→why。</div>
+
+    <div class="note-h">③ §2 Related Work — 三大流派定位</div>
+    <div class="note-b"><b>(1) 大规模 3D 模型两条路：</b>一条<b>注入 3D 归纳偏置</b>（multi-view stereo / epipolar geometry）；另一条<b>纯 transformer 故意不要 3D 偏置</b>（LRM、LEAP、DUSt3R、SRT、LVSM）。后者中 LVSM/SRT 进一步用 latent 表示 + 学习渲染。但原文点破共性短板："they still require ground-truth camera poses for supervised training and/or accurate camera annotations during inference"。MegaSynth/Stereo4D 走"合成/立体视频扩数据"路线，但 "curating data for different tasks can be laborious"。</div>
+    <div class="note-b"><b>(2) 自监督 3D 表示学习：</b>单视图法只能特定类别或部分观测；半监督法仍靠全监督初始化权重。最相关是多视图自监督（Zhou et al./Lai et al. 用相机运动作 2D/3D warping 正则，但 "this strong inductive bias limits the learning effectiveness"），以及 RUST（见背景 C）。<br><b>(3) 优化式 unsupervised SfM/SLAM/NVS：</b>per-scene 优化（COLMAP、NoPe-NeRF、BARF、CF-3DGS），与 RayZer "feed-forward parametrized model, learning priors by training on large data" 形成对照——它们 "do not have learnable model parameters to encode priors"，常需现成 3D 监督模型做正则/初始化。</div>
+
+    <div class="note-h">④ §4.1 自监督学习框架 — IA/IB 信息流 + 式1 损失</div>
+    <div class="note-b"><b>输入输出：</b>聚焦<b>静态场景</b>。输入一组无位姿无标定多视图 \( I = \{I_i \in \mathbb{R}^{H\times W\times 3}\,|\,i=1,...,K\} \)（来自无标签视频帧或图集）；输出 = 输入的参数化（相机内参、逐视图位姿、场景表示），支持新视图合成。</div>
+    <div class="note-b"><b>信息流控制：</b>把 \( I \) 切成<b>不重叠</b>两子集 \( I_A, I_B \)（\( I_A \cup I_B = I \), \( I_A \cap I_B = \varnothing \)）。<b>IA 预测场景表示，IB 提供监督</b>：RayZer 渲染对应 IB 的图像 \( \hat{I}_B \)，施加光度损失（<b>式1</b>）：\[ \mathcal{L} = \frac{1}{K_B}\sum_{\hat{I}\in \hat{I}_B}\big(\mathrm{MSE}(I,\hat{I}) + \lambda\cdot \mathrm{Percep}(I,\hat{I})\big) \] 其中 \( K_B=|I_B| \)，λ 是感知损失[32,42]权重（实现取 <b>λ=0.2</b>）。原文 "The two sets are randomly sampled during training."——两组训练时随机采。</div>
+
+    <div class="note-h">④ §4.2 模型总览 — 为何 pose-first 级联</div>
+    <div class="note-b"><b>级联预测（cascaded prediction of camera and scene）是命门设计：</b>原文 "This is motivated by the fact that even noisy cameras can be a strong condition for better scene reconstruction, which is analogous to traditional structure-from-motion methods and is in contrast with recent reconstruction-first methods."——即使<b>带噪的相机</b>也是后续场景重建的强条件，类比传统 SfM、对立于"先重建后估位姿"的 reconstruction-first 路线。原文 "This design can provide mutual regularization of predicting pose and scene during training"——pose 与 scene 训练时互相正则。<br>整体流：先 tokenize 图像 → camera estimator 估所有视图的内参 + SE(3) 位姿 → 转 Plücker ray maps → scene reconstructor 从 IA + 其 ray maps 出 latent 场景 → rendering decoder 用 IB 的预测相机渲 \( \hat{I}_B \) 算式1。</div>
+
+    <div class="note-h">④ Image Tokenization（patch + 双重位置编码）</div>
+    <div class="note-b">仿 ViT 把每张图切成不重叠 patch（patch size s），每个 patch \( \in \mathbb{R}^{s\times s\times 3} \) 经线性层编码成 token \( \in \mathbb{R}^{d} \)，得 patch 对齐 token 图 \( f_i \in \mathbb{R}^{h\times w\times d} \)（\( h=H/s, w=W/s \)）。<b>加两种位置编码</b>：sinusoidal 空间 p.e. + sinusoidal 图像 index p.e.（同一图所有 token 共享 index p.e.）。原文关键观察："When training on continuous video frames, these image index embeddings also encode sequential priors, which benefits pose estimation."——连续视频帧时 index p.e. 编码<b>时序先验、利于位姿估计</b>。最后 reshape 成集合 \( f \in \mathbb{R}^{Khw\times d} \)（transformer 对 token 排列不变）。</div>
+
+    <div class="note-h">④ Camera Estimator \( E_{cam} \)（式2-7：位姿 + 内参）</div>
+    <div class="note-b"><b>相机 token 初始化：</b>一个可学相机 token \( \in \mathbb{R}^{1\times d} \) 重复 K 次 + 加 index p.e. → \( p \in \mathbb{R}^{K\times d} \)。full self-attention：<b>式2</b> \( \{f^*, p^*\} = E_{cam}(\{f, p\}) \)（式3-5 展开为 \( y_0=\{f,p\} \), \( y_l=\text{TransformerLayer}_l(y_{l-1}) \), \( \{f^*,p^*\}=\text{split}(y_{l_T}) \)）。<b>注意</b>：原文 "f* is not used for the following computation – it is only used as context to update p"，f* 仅作上下文。</div>
+    <div class="note-b"><b>位姿（式6）：</b>选一视图为 canonical（identity 旋转、零平移），其余预测<b>相对位姿</b>；SO(3) 用<b>连续 6D 表示</b>，\( p_i = \mathrm{MLP}_{pose}([p^*_i, p^*_c]) \in \mathbb{R}^9 \) → 转成 SE(3) 位姿 \( P_i \)。<b>内参（式7）：</b>单焦距假设（fx=fy、各视图共享、principal point 在中心），\( \mathrm{focal} = \mathrm{MLP}_{focal}(p^*_c) \) → 内参矩阵 \( K \in \mathbb{R}^{3\times 3} \)。</div>
+
+    <div class="note-h">④ Scene Reconstructor \( E_{scene} \)（式8-9：关键防泄漏设计）</div>
+    <div class="note-b">把 IA 的相机参数 \( P_A \) 转 pixel-aligned Plücker rays \( R \in \mathbb{R}^{K\times H\times W\times 6} \) → tokenize 成 \( r \in \mathbb{R}^{Khw\times d} \)。取 IA 对应的 \( f_A, r_A \)（各 \( \in \mathbb{R}^{K_A hw\times d} \)）沿特征维融合 <b>式8</b>：\( x_A = \mathrm{MLP}_{fuse}([f_A, r_A]) \in \mathbb{R}^{K_A hw\times d} \)。</div>
+    <div class="note-b"><b>★ 防泄漏的关键设计（全文最易忽略却最重要的一处）：</b>原文 "Importantly, we use the raw image tokens f rather than the pose transformer output f* for this fusion. This design choice prevents leakage of information from the image set IB, since the camera estimator transformer producing f* has access to a global context that includes tokens from IB."——融合用<b>原始 token f 而非 pose transformer 的输出 f*</b>，因为 f* 经过 full self-attn 见过全局（含 IB）会泄漏 IB 信息、让自监督"作弊"。再 <b>式9</b> \( \{z^*, x^*_A\} = E_{scene}(\{z, x_A\}) \)，\( z \in \mathbb{R}^{L\times d} \) 为可学场景 token、L 为 token 数，\( z^* \) 为最终场景表示、\( x^*_A \) 丢弃。</div>
+
+    <div class="note-h">④ Rendering Decoder \( D_{render} \)（式10-11，仿 LVSM）</div>
+    <div class="note-b">目标图 → pixel-aligned Plücker rays → tokenize 成目标 token \( r \in \mathbb{R}^{hw\times d} \)；full self-attention 解码 <b>式10</b> \( \{r^*, z'\} = D_{render}(\{r, z^*\}) \)（z′ 丢弃）；patch 级解码 RGB <b>式11</b> \( \hat{I} = \mathrm{MLP}_{rgb}(r^*) \in \mathbb{R}^{hw\times(3s^2)} \)，reshape 回 \( \mathbb{R}^{H\times W\times 3} \)。训练时用 IB 的预测 Plücker ray maps \( R_B \) 渲 \( \hat{I}_B \) 算式1。整个 pipeline 端到端、纯 transformer、无任何手工渲染方程。</div>
+
+    <div class="note-h">⑤ §5 实验设置（数据集 / 评测协议 / baseline / 实现）</div>
+    <div class="note-b"><b>实现：</b>RayZer 共 <b>24 transformer 层</b>（camera estimator / scene encoder / rendering decoder 各 <b>8 层</b>）；lr=\(4\times 10^{-4}\) cosine 调度、<b>50,000 iterations</b>、batch size <b>256</b>、λ=0.2、分辨率 256、patch size 16。<b>数据集</b>：场景级 DL3DV[45]、RealEstate[91]，物体级 Objaverse[15]（渲成视频），各自独立训练测试。<b>输入/目标视图数</b>（\( |I_A| / |I_B| \)）：DL3DV 16/8、RealEstate 5/5、Objaverse 12/8；采样 index 范围分别 64-96、128-192、50-65（按数据难度/相机基线选）。</div>
+    <div class="note-b"><b>评测协议（与 oracle 不同口径，必读）：</b>原文 "the evaluation protocol of RayZer is different from the 'oracle' and supervised methods, which use ground-truth poses to render images. Instead, we use predicted poses to render novel views ... Since the model is trained without explicit pose annotations, the learned poses exist in a different space ... This evaluation protocol follows RUST."——RayZer 用<b>预测位姿</b>渲染（不是 GT 位姿），因为学到的位姿活在不同空间。"target views are used only for pose estimation and not for scene representation prediction, ensuring that no information leakage occurs."<br><b>baseline</b>：① "oracle"（GS-LRM、LVSM encoder-decoder 版，训练+推理都用 GT 位姿，LVSM 也用 latent set 故为主对比）；② 监督式 PF-LRM（学位姿+重建，推理 pose-free）。公平起见 GS-LRM/LVSM 用 16 层（参数量同 RayZer，除 RayZer 多一个 camera estimator），PF-LRM 用 24 层。RUST 无公开实现，故在 Tab.7 消融其关键设计差异。</div>
+
+    <div class="note-h">⑤ §5.2 主结果 — DL3DV / RealEstate / Objaverse 三表（PDF 真实数值）</div>
+    <div class="note-b"><b>核心结论：</b>原文 "without any 3D labels during training, RayZer achieves performance comparable to the best 'oracle' model, LVSM. In fact, RayZer even outperforms LVSM on DL3DV and RealEstate10k while performing slightly worse on Objaverse."。下表为连续视频帧输入、Even/Random Sample 的 PSNR↑/SSIM↑/LPIPS↓（粗体绿=RayZer 优于 oracle）：</div>
+    <div class="note-b">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;color:#d7dcff">
+    <tr style="color:var(--gold)"><td>数据集</td><td>方法</td><td>训练监督</td><td>PSNR↑(even)</td><td>SSIM↑</td><td>LPIPS↓</td><td>PSNR↑(rand)</td></tr>
+    <tr><td>DL3DV</td><td>GS-LRM</td><td>2D+Cam(COLMAP)</td><td>23.49</td><td>0.712</td><td>0.252</td><td>23.02</td></tr>
+    <tr><td>DL3DV</td><td>LVSM</td><td>2D+Cam(COLMAP)</td><td>23.69</td><td>0.723</td><td>0.242</td><td>23.10</td></tr>
+    <tr style="color:#7ee0c0"><td>DL3DV</td><td>RayZer</td><td>2D only</td><td>24.36</td><td>0.757</td><td>0.209</td><td>23.72</td></tr>
+    <tr><td>RealEstate</td><td>GS-LRM</td><td>2D+Cam(COLMAP)</td><td>24.25</td><td>0.770</td><td>0.227</td><td>23.21</td></tr>
+    <tr><td>RealEstate</td><td>LVSM</td><td>2D+Cam(COLMAP)</td><td>27.00</td><td>0.851</td><td>0.157</td><td>25.88</td></tr>
+    <tr style="color:#7ee0c0"><td>RealEstate</td><td>RayZer</td><td>2D only</td><td>27.48</td><td>0.861</td><td>0.146</td><td>26.32</td></tr>
+    <tr><td>Objaverse</td><td>LVSM(真oracle)</td><td>2D+GT Cam</td><td>32.34</td><td>0.950</td><td>0.050</td><td>32.34</td></tr>
+    <tr><td>Objaverse</td><td>PF-LRM</td><td>2D+GT Cam(render)</td><td>25.48</td><td>0.882</td><td>0.110</td><td>25.43</td></tr>
+    <tr style="color:#7ee0c0"><td>Objaverse</td><td>RayZer</td><td>2D only</td><td>31.52</td><td>0.945</td><td>0.052</td><td>31.42</td></tr>
+    </table></div>
+    <div class="note-b"><b>读表（核心 insight）：</b>DL3DV/RealEstate 位姿来自 <b>COLMAP（噪声）</b>→给监督 oracle 设了上限，RayZer 反超（DL3DV 24.36&gt;23.69、RealEstate 27.48&gt;27.00）；Objaverse 是 <b>Blender 完美位姿</b>→真 oracle LVSM 略胜（32.34 vs 31.52）但 gap 小。原文 "our self-supervised approach enables the model to learn a pose space that optimally benefits latent reconstruction and novel view synthesis."。Fig.4 显示 GS-LRM/LVSM 在 COLMAP 常失败处（"glasses and white walls"）consistently underperform。</div>
+
+    <div class="note-h">⑤ §5.2-5.3 连续帧vs乱序图 (Tab.4) &amp; 位姿 3D 感知 (Tab.5) &amp; Probing (Tab.6)</div>
+    <div class="note-b"><b>连续帧 vs 乱序图集（Tab.4，DL3DV）：</b>(1) 连续帧训练 24.36/0.757/0.209（even）、23.72（rand）；(2) 乱序图训练骤降到 <b>20.56/0.576/0.334</b>（even）、20.02（rand）。原文归因 "the image index positional embedding encourages local pose smoothness that benefits the learning of pose estimation on continuous frames"，并暗示 "scaling training data using video resources, which are plentiful online, could be more advantageous"——用海量在线视频 scale 更香。</div>
+    <div class="note-b"><b>位姿 3D 感知（Tab.5，Objaverse，插值预测位姿渲染，插值系数取自 GT 位姿）：</b>RayZer <b>27.01</b>/0.900/0.075 vs PF-LRM 20.63/0.819/0.160 vs RayZer-copy（复制最近渲染视图）19.56/0.812/0.159 → 预测位姿<b>可插值、几何良定、3D-aware</b>。<b>Probing（Tab.6，冻结相机编码器、监督训 2 层 MLP 读出位姿）：</b>自监督特征 readout <b>优于</b>从零监督训的同架构 baseline，如 RealEstate 旋转 R@10° <b>99.6%</b>(self-sup) vs 87.0%(sup)、R@20° 99.9 vs 96.4、平移 t@0.1 61.2 vs 44.6；DL3DV R@10° 47.6 vs 39.3；Objaverse R@10° 33.6 vs 19.8。说明自监督 NVS 任务<b>反而养出更好的隐位姿空间</b>。</div>
+
+    <div class="note-h">⑤ §5.4 消融实验 Tab.7（DL3DV 连续，逐项拆设计）</div>
+    <div class="note-b"><b>四组消融（PSNR even/rand，对照 (0) RayZer 24.36/23.72）：</b><br>(1) <b>latent set → 3DGS+光栅化</b>：<b>训练 failed 不收敛</b>。原文 "verifies the optimization difficulty of explicit 3D representation and demonstrates the flexibility of the latent representation with its learned rendering decoder."<br>(2) <b>去 Plücker ray、改塞 SE(3) pose token</b>：降到 <b>22.73</b>/0.687/0.249（21.88 rand），证明 Plücker 对 structure-and-motion 的正则有效。<br>(3) <b>去显式位姿、直接用 latent camera token \( p^* \)</b>：23.13/0.700/0.251（22.36 rand），略好于(2)但仍逊于(0)；原文 "the camera tokens \( p^* \) can leak target image information, while SE(3) poses ... serve as an information bottleneck"，且 SE(3) 几何良定可插值。<br>(4) <b>scene-first 而非 pose-first</b>：<b>崩到 13.31</b>/0.338/0.732（13.12 rand），铁证 pose-first 是命门。原文 "championing traditional pose-first methods in the context of self-supervised learning"。注：(3)+(4) 合起来概念上 ≈ RUST。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>problem：</b>3D Vision 被 GT 相机位姿/几何标注（COLMAP，慢且噪）卡住可扩展性与上限——"how far can we push a 3D Vision model without any 3D supervision?"<br><b>method：</b>把 view synthesis 看成 <b>3D-aware 图像自编码</b>，<b>用自预测位姿渲染目标视图做 2D 光度自监督</b>（式1，λ=0.2）；纯 transformer（24 层，3 模块各 8 层）、<b>pose-first 级联</b>——估 SE(3) 位姿(6D 旋转)/单焦距(式6-7) → 转 Plücker ray maps \( R\in\mathbb{R}^{K\times H\times W\times 6} \) 作唯一 3D 先验 → latent 场景重建(式8-9，用原始 token f 防泄漏) → 学习式渲染解码(式10-11)；靠 IA/IB 信息流分组逼出 disentanglement。</div>
+    <div class="note-b"><b>experiment：</b>DL3DV 24.36 / RealEstate 27.48 PSNR <b>反超</b>吃 COLMAP 位姿的 oracle（LVSM/GS-LRM）；Objaverse 完美位姿下真 oracle LVSM 略胜（32.34 vs 31.52）但 gap 小；预测位姿可插值且 3D-aware（27.01 vs PF-LRM 20.63）；probing 优于监督 baseline（RealEstate R@10° 99.6 vs 87.0）。<br><b>takeaway：</b>① <b>3D 监督并非必需</b>——自监督能学出"最利于重建的位姿空间"，甚至超过被噪声 GT 拖累的监督方；② <b>pose-first + Plücker ray</b> 是把"鸡生蛋"转成可互相正则的关键（scene-first 崩到 13.31、去 Plücker 降到 22.73、3DGS 直接不收敛）；③ 视频连续帧（带时序 index p.e.）显著优于乱序图集（24.36 vs 20.56），暗示用海量在线视频 scale 的潜力。</div>
+
+    <div class="note-h">🧐 疑问 / 局限（含 [推测]）</div>
+    <div class="note-b">① 评测用<b>预测位姿</b>而非 GT 位姿渲染（follow RUST），与 oracle 口径不同——PSNR 直接可比性需谨慎，原文已诚实说明 "learned poses exist in a different space"；② 3D-awareness 插值实验（Tab.5）的<b>插值系数仍来自 GT 位姿</b>，即"位姿空间几何性"的验证<b>借用了 GT</b>，并非全自给（原文明示）；③ 仅做<b>静态场景</b>（"We focus on the standard setting of modeling static scenes"），动态/大基线泛化<b>原文未涉及</b>；④ [推测] 单卡/总算力与训练时长正文未给（只给 50k iter / batch 256），<b>需查 Appendix</b>；⑤ [推测] latent set token 数 L、patch token 维度 d 的具体取值正文未列，亦在 Appendix；⑥ [推测] 每数据集<b>独立训练</b>，未验证跨数据集/跨域单模型泛化，可能限制"foundation model"叙事的当下落地。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-rayzer-a-self-supervised-large-view-synthesis-model/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. We propose RayZer, a self-supervised multi-view 3D Vision model trained on unlabeled data without any annotations, e.g., camera pose labels. At inference, RayZer supports feed-forward novel view synthesis from unposed &amp; uncalibrated images. RayZer achieves novel view synthesis performance comparable to that of supervised “oracle” methods (GS-LRM and LVSM), which require camera labels in </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-rayzer-a-self-supervised-large-view-synthesis-model/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Our proposed self-supervised training framework. This is an abstract design that we later operationalize with our RayZer model (illustrated in Fig. 3 and Sec. 4). We divide the input images into two sets IA and IB. We predict the scene represen- tation from IA, and use the predicted cameras of IB (shown in orange) to render the scene. We leverage photometric loss between raw input IB and</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-rayzer-a-self-supervised-large-view-synthesis-model/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. RayZer self-supervised learning framework. RayZer takes in unposed and uncalibrated multi-view images I and predicts per-view camera parameters and a scene representation, which supports novel view rendering. (Left) RayZer ﬁrst estimates camera parameters, where one view is selected as the canonical reference view (in blue box). RayZer predicts the intrinsics and the relative camera pose</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-rayzer-a-self-supervised-large-view-synthesis-model/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Visualization results on RealEstate and DL3DV. We compare RayZer with “oracle” methods GS-LRM and LVSM, which use COLMAP pose annotations in both training and testing. Our self-supervised RayZer model does not use any pose annotations. Generally, RayZer performs on par with “oracle” methods (ﬁrst row), and can outperform them on cases that COLMAP usually struggles to handle, e.g., glasse</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-rayzer-a-self-supervised-large-view-synthesis-model/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Visualization results on Objaverse. RayZer performs on par with LVSM and outperforms the supervised method PF-LRM.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-rayzer-a-self-supervised-large-view-synthesis-model/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Visualization of RayZer predicted cameras learned with self-supervision. We visualize 3 out of 5 rendered views due to space limit, where the image index is highlighted by its color.</figcaption></figure>
+    </div>
+  </div><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"]],displayMath:[["\\[","\\]"]]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body></html>

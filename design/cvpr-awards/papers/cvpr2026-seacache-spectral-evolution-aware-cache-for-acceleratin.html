@@ -1,0 +1,181 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>SeaCache: Spectral-Evolution-Aware Cache for Accelerating Diffusion Models</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>SeaCache: Spectral-Evolution-Aware Cache for Accelerating Diffusion Models</h1>
+    <div class="au2" style="color:var(--mut)">Jiwoo Chung ⋅ Sangeek Hyun ⋅ MinKyu Lee ⋅ Byeongju Han ⋅ Geonho Cha ⋅ Dongyoon Wee ⋅ Youngjun Hong ⋅ Jae-Pil Heo</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2602.18993">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2602.18993">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=SeaCache%3A%20Spectral-Evolution-Aware%20Cache%20for%20Accelerating%20Diffusion%20Models">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Diffusion models are a strong backbone for visual generation, but their inherently sequential denoising process leads to slow inference. Previous methods accelerate sampling by caching and reusing intermediate outputs based on feature distances between adjacent timesteps. However, existing caching strategies typically rely on raw feature differences that entangle content and noise. This design overlooks spectral evolution, where low-frequency structure appears early and high-frequency detail is refined later. We introduce Spectral-Evolution-Aware Cache (SeaCache), a training-free cache schedule that bases reuse decisions on a spectrally aligned representation. Through theoretical and empirical analysis, we derive a Spectral-Evolution-Aware (SEA) filter that preserves content-relevant components while suppressing noise. Employing SEA-filtered input features to estimate redundancy leads to dynamic schedules that adapt to content while respecting the spectral priors of the underlying diffusion model. Extensive experiments on diverse visual generative models and the baselines show that SeaCache achieves state-of-the-art latency-quality trade-offs.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">免训练、即插即用的扩散模型推理加速 cache。核心洞察=扩散有 <b>spectral evolution</b>(早期出低频结构、后期补高频细节)。以前的 cache(TeaCache 等)在「原始特征空间」量相邻步距离来决定 skip，但原始特征把 content(signal)与 noise 纠缠。SeaCache 在算距离<b>前</b>先过一个由「最优线性去噪器(Wiener)」推出的 timestep 相关 <b>SEA filter</b>，让 cache 决策跟着 signal 走、压住高频 noise——latency-quality 取最优。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">原文：扩散/RF 推理慢(几十~几百步)。step reduction/distillation、quantization、efficient attention 都要额外训练/调参；caching 免训练复用相邻步特征。但现有 cache “measure errors directly in the raw feature space and overlook spectral evolution”——raw 特征把 content 与 noise 缠在一起。spectral evolution 等价于 <b>SNR 随步变化</b>：signal=对齐 clean、主在低频；noise=高频、随机。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b">噪声模型 <b>x_t=a_t·x0+b_t·ε</b>(Eq.1)。<br>① <b>SEA filter</b>(§4.1)：最优线性 MMSE 去噪器的 Wiener 频响 <b>G_t(f)=a_t·S_x(f)/(a_t²·S_x(f)+b_t²)</b>(Eq.5，S_x=x0 功率谱)；反向 t↓→a_t↑→通带变宽=逐步恢复高频(spectral evolution)。特征滤波 <b>P(G_t,I_t)=iFFT(G_t(f)⊙FFT(I_t))</b>(Eq.6)。密度归一 ν_t=(1/L·ΣG_t(f_ℓ))⁻¹、G_norm_t=ν_t·G_t(Eq.7) 让各步距离可比。<br>② <b>动态 cache</b>(§4.2)：output 要跑完才有→用 input proxy I_t=ϕ(x_t,t)。cache 度量 <b>Δ̃_t=L1rel(P(G_norm_t,I_t), P(G_norm_{t+1},I_{t+1}))</b>(Eq.8)；relative L1=∥·∥1/(∥·∥1+ξ)(Eq.3)；累计超阈值 δ 才 refresh(Eq.4)。SEA-filtered input 距离紧跟 SEA-filtered output(Fig.5)，比 raw/poly input 准。<br>③ <b>plug-and-play</b>：不改架构/不重训、network &amp; sampler agnostic、只依赖 (a_t,b_t)。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">FLUX(Table 1, ~50% refresh)：SeaCache PSNR <b>26.285</b>/LPIPS 0.106/SSIM 0.893、9.4s/1098 TFLOPs，全面超 TeaCache(20.762)/TaylorSeer(22.783) 且最快。HunyuanVideo(Table 3)：PSNR <b>32.39</b> vs TeaCache 23.40 / TaylorSeer 24.14(<b>+8 dB</b>)。Wan2.1(Table 4)：26.60 vs 20.84/16.15。消融(Fig.8)：SEA ＞ 1−SEA ＞ w/o norm ＞ 静态 LPF30%。plug 到 DiCache 也涨(Fig.9)。SEA 滤波 overhead 仅 <b>0.4~0.6%</b>。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 第一个把「<b>显式频率先验</b>」注入 cache 复用决策(prior cache 只在 raw 空间量)；② SEA filter 从 Wiener 最优线性去噪器<b>严格推出</b>，非 heuristic；③ refresh pattern 自动集中在早期步(Fig.10)，省掉「手动固定前几步必算」的超参；④ 真·plug-and-play，能叠加到 DiCache、distillation(LightX2V)、efficient attention(Jenga)。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① 假设(limitation)：natural-image power-law 谱(β=2 图/3 视频)、wide-sense stationary、signal-noise 独立——后期步/纯合成背景可能不成立；② 分析在 image/video 域，但模型多在 <b>latent space</b> 跑，encoder 会重塑谱→filter 只是近似最优；③ 度量仍是 input proxy 近似 output(非真 output)；future=per-timestep 谱估计、latent 域 content-aware filter、轻量非线性修正。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（本地 PDF 全文 PyMuPDF 提取，~79K 字符，含 Wiener 推导/runtime/全 VBench 表）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>一句话立意：</b>扩散模型推理慢，缓存（caching）复用相邻时间步特征可加速；但现有缓存用<b>原始特征差异</b>判断"该不该跳"，把<b>内容与噪声混在一起</b>。SeaCache 用一个<b>训练无关</b>的"频谱演化感知（SEA）滤波器"，先把特征滤到"内容对齐"的频谱空间再量距离，于是缓存决策只看<b>信号</b>不被噪声带偏。<br><b>逐句拆解（verbatim）：</b><br>1) <i>"existing caching strategies typically rely on raw feature differences that entangle content and noise."</i> —— 病根：原始特征差异纠缠内容+噪声。<br>2) <i>"This design overlooks spectral evolution, where low-frequency structure appears early and high-frequency detail is refined later."</i> —— 忽略了<b>频谱演化</b>（低频结构先现、高频细节后补）。<br>3) <i>"a Spectral-Evolution-Aware (SEA) filter that preserves content-relevant components while suppressing noise."</i> —— SEA 滤波器保内容、抑噪声。<br>4) <i>"SeaCache achieves state-of-the-art latency-quality trade-offs."</i> —— SOTA 的延迟-质量权衡，且<b>plug-and-play</b>、训练无关。</div>
+
+    <div class="note-h">📚 背景知识①（外部）：扩散/RF 加速三条路线 + caching</div>
+    <div class="note-b"><b>扩散（diffusion）与整流流（rectified-flow, RF）</b>模型靠<b>迭代去噪</b>生成图/视频，需几十到几百步 → 推理延迟高。常见加速三路：<b>蒸馏（distillation）</b>压步数、<b>量化（quantization）</b>降精度、<b>高效注意力（efficient attention）</b>降每步成本——但都要<b>额外训练</b>或任务特定调参。第四条互补路线是 <b>caching（缓存）</b>：利用相邻时间步的<b>冗余</b>，复用上一步的中间特征、跳过部分前向，<b>无需训练</b>。早期是<b>静态</b>调度（固定间隔缓存），近期是<b>动态</b>调度（按当前与缓存特征的距离决定何时复用）——本文属于后者，但换了"量距离的空间"。</div>
+
+    <div class="note-h">📚 背景知识②（外部，本文核心 prior）：spectral evolution = SNR 演化</div>
+    <div class="note-b"><b>频谱演化（spectral evolution）：</b>多项独立研究证明扩散去噪有规律——<i>"early timesteps establish low-frequency structure and later timesteps refine high-frequency detail."</i> 即早期搭低频骨架（轮廓/布局）、后期补高频细节（纹理/边缘）。本文把它等价为<b>信噪比（SNR）的演化</b>：定义 <b>signal</b>=与干净样本对齐、主要在低频的<b>内容</b>分量；<b>noise</b>=集中在高频、反映随机变化的<b>残差</b>分量。关键洞察：缓存该跳过与否，应只看<b>signal 是否变了</b>（内容冗余），而不该被高频 noise 的随机抖动误导。这是 SeaCache 与所有"在原始特征空间量距离"的方法的根本分野。原文对 signal/noise 的定义很精确：<i>"We use the term signal for the content-carrying component that is aligned with the clean sample and mainly lies in low frequencies, and noise for the residual component that is concentrated in high frequencies and reflects stochastic variation."</i> 并把频谱演化等价为 SNR 演化：<i>"spectral evolution at a given timestep can be interpreted as a change in the signal-to-noise ratio."</i> 因此"内容冗余"应当用<b>信号分量的差异</b>来度量，而不是被高频随机噪声主导的原始差异——这是全文方法论的支点。</div>
+
+    <div class="note-h">📚 背景知识③（外部）：TeaCache 的相对 ℓ1 + 累积刷新（式3-4）</div>
+    <div class="note-b"><b>TeaCache</b>（本文主要对照）用时间步调制输入 \(I_t=\phi(x_t,t)\)（把 timestep embedding 注入 \(x_t\)）作为"输入特征"，它与去噪输出 \(O_t\) 强相关但便宜。相对 ℓ1 距离：
+    \[ \Delta_t=L1_{rel}(I_t,I_{t+1})=\frac{\lVert I_t-I_{t+1}\rVert_1}{\lVert I_{t+1}\rVert_1+\xi} \tag{3} \]
+    （\(\xi\) 防除零）。<b>累积刷新规则</b>：自上次刷新 \(t_a\) 起复用输出，直到累积距离超阈值 \(\delta\)：
+    \[ \sum_{s=t_a}^{t_b-1}\Delta_s\le\delta&lt;\sum_{s=t_a}^{t_b}\Delta_s \tag{4} \]
+    在 \(t_b\) 触发刷新并清零累加器。\(\delta\) 小→刷新频繁、保真高；\(\delta\) 大→更快但有伪影。SeaCache <b>只替换距离度量 \(\Delta_t\)</b>，刷新规则照旧。</div>
+
+    <div class="note-h">📚 背景知识④（外部）：caching 为何优于蒸馏/量化，以及静态 vs 动态</div>
+    <div class="note-b">原文把 caching 的定位讲得很清楚：蒸馏/量化/高效注意力 <i>"are effective but introduce added training overhead and dependence on task or data-specific tuning."</i> 而 caching <i>"reduces the number of forward passes by reusing intermediate features from previous timesteps"</i> 且无需训练。<b>静态调度（static）</b>如 [31,36,79] 在固定间隔缓存，<i>"yields predictable speedups"</i> 但 <i>"cannot adapt to input diversity"</i>。<b>动态调度（dynamic）</b>如 AdaCache/TeaCache/DiCache <i>"decide when to reuse based on the distance between current and cached features"</i>。但作者一针见血：<i>"These approaches focus on where to cache … while the error itself is still measured in the raw feature space."</i> —— 大家都在研究"缓存哪层/哪块"，却没人改"在什么空间量误差"。SeaCache 正是补上这一刀：换度量空间，而非换缓存位置。还有一类工作 [35,37,81] 研究"跨频带<b>如何</b>复用"，而本文聚焦"<b>何时</b>复用"，两者正交。也就是说，本文不和"如何更聪明地复用缓存特征"的工作竞争，而是改进"判断要不要复用"这一步的度量空间，因此可以与它们叠加使用。</div>
+
+    <div class="note-h">② Introduction — problem → solution → why + oracle 实验</div>
+    <div class="note-b"><b>problem：</b>现有动态缓存（TeaCache/DiCache）都在<b>原始特征空间</b>量误差，忽略频谱演化这一关键 prior。<b>solution：</b>把频谱演化注入缓存调度——设计一个聚焦 signal、压低 noise 的缓存度量。<b>why（oracle 实验证据）：</b>为隔离"频谱滤波"本身的效果，作者做了 oracle——直接比较<b>连续输出特征</b>（去掉输入→输出近似误差）在"raw"与"SEA-filtered"两空间下的缓存决策。结论：<i>"The filtered criterion yields cache decisions that more closely track the full-compute trajectory, as evidenced by consistently higher PSNR."</i> 即在相同 refresh ratio（跑全量去噪的时间步占比）下，SEA-filtered 的 PSNR 一致更高（FLUX 与 Wan2.1 1.3B 上均如此，Fig 2）。<b>三条贡献：</b>① 基于时间步对齐频谱表示的缓存策略；② 揭示 raw 度量忽略频谱演化、本文按内容而非噪声决策；③ 多模型上更优延迟-质量权衡。</div>
+
+    <div class="note-h">Q&amp;A · 为什么"原始特征距离"不够好？</div>
+    <div class="note-b"><b>问：</b>TeaCache 用相邻步特征的 ℓ1 距离判冗余，已经挺直觉，为何说它次优？<b>答：</b>因为原始特征里<b>内容信号和随机噪声混在一起</b>。早期步本应"内容变化大"（搭骨架），但原始距离可能被高频噪声抖动掩盖或夸大；而真正决定"输出会不会变"的是<b>内容信号</b>。Fig 5 给了实锤：把 SEA 滤波器分别作用到 input 与 output，<b>SEA(input) 几乎完美追踪 SEA(output)</b> 沿整条轨迹，而 raw input、多项式拟合 input（TeaCache 用的）<b>对齐都更差</b>，尤其早期步。而且 SEA-filtered input 在早期步距离更大，正好对应"很多缓存法都手动强制重算前几步"的经验——SeaCache 让这件事<b>自动发生</b>，不用手调"前几步必算"这个超参。</div>
+
+    <div class="note-h">③ §4.1 SEA 滤波器：线性 MMSE 去噪器的频率响应（式5）</div>
+    <div class="note-b">前向加噪：\(x_t=a_t x_0+b_t\varepsilon,\ \varepsilon\sim\mathcal{N}(0,I)\)（式1）；DPM \(a_t=\sqrt{\bar\alpha_t},b_t=\sqrt{1-\bar\alpha_t}\)，RF \(a_t=1-\alpha_t,b_t=\alpha_t,\alpha_t=t/T\)。受 Spectral Diffusion 启发，作者考虑<b>线性 MMSE 去噪器</b> \(\hat x_0=h_t * x_t\)（最小化 \(J_t(h_t)=\lVert h_t*x_t-x_0\rVert_2^2\)），其最优滤波器的频率响应是 <b>Wiener-like</b> 形式：
+    \[ G_t(f)=\frac{a_t\,S_x(f)}{a_t^2\,S_x(f)+b_t^2} \tag{5} \]
+    \(S_x(f)\) 是 \(x_0\) 的功率谱（自然图像近似幂律谱）。逆扩散中 \(t\) 从 \(T\) 降到 0、\(a_t\) 从 0 升到 1 → \(G_t(f)\) 的通带<b>逐渐纳入高频</b>（Fig 4a），精确复现了"低频先、高频后"的频谱演化。DPM 与 RF 的滤波器行为几乎一致。<b>直觉</b>：式5 就是经典 Wiener 滤波器——当某频率上"信号功率 \(a_t^2 S_x\) 远大于噪声 \(b_t^2\)"时增益接近 \(1/a_t\)（通过），反之趋 0（抑制）。早期 \(a_t\) 小、只有低频信号能压过噪声 → 只通低频；随 \(t\) 减小 \(a_t\) 增大，越来越多高频也能"赢过"噪声 → 通带展宽。这正是把"频谱演化"从经验观察落成了<b>可计算的、随 \((a_t,b_t)\) 解析变化的滤波器</b>，而不是手设一个固定截止频率。</div>
+
+    <div class="note-h">③ §4.1 频域滤波算子 P（式6）+ 增益归一化（式7）</div>
+    <div class="note-b"><b>滤波算子：</b>对特征做 FFT、乘时间步相关滤波器、再 iFFT 回原空间：
+    \[ P(G_t,I_t)=\text{iFFT}\big(G_t(f)\odot\text{FFT}(I_t)\big) \tag{6} \]
+    （\(f\) 索引 Fourier 网格上的径向频率，\(\odot\) 逐元素乘并跨通道/时空广播）。<b>增益归一化（关键）：</b>原始 \(G_t\) 各时间步增益不同 → 距离跨步不可比。强制径向频率上<b>常数均值增益</b>：
+    \[ \nu_t=\Big(\tfrac{1}{L}\sum_{f_\ell\in F}G_t(f_\ell)\Big)^{-1},\quad G_t^{norm}(f)=\nu_t\,G_t(f) \tag{7} \]
+    得密度归一化响应 \(G_t^{norm}\)（Fig 4b，单位均值增益）。归一化后滤波特征能量跨步稳定，距离才公平可比——消融证明<b>去掉归一化 PSNR 会掉</b>（特征幅度漂移、度量有偏）。</div>
+
+    <div class="note-h">③ §4.2 输入代理：SEA(input) 追踪 SEA(output)（Fig 5）</div>
+    <div class="note-b">理想是用 <b>SEA-filtered 输出</b>差异做度量（最准），但输出 \(O_t\) 只有跑完全量去噪才有 → 无加速意义。于是需要一个<b>输入侧代理</b>尽量逼近 SEA-filtered 输出距离。作者比了 raw input \(I_t\)、raw output \(O_t\)、TeaCache 的多项式拟合 input、以及它们的 SEA-filtered 版本。Fig 5 结论：<i>"The SEA-filtered input distances \(P_t(G_t, I_t)\) closely follow the SEA-filtered output distances \(P_t(G_t, O_t)\) along the entire trajectory, while raw input and polynomial fitted input show weaker alignment, especially at early timesteps."</i> 原因正是 SEA 滤波<b>抑制随机噪声、保留内容分量</b>，使相邻步特征成为更稳、更忠实的输出变化代理——这就为"训练无关、即插即用"的调度提供了理论+经验支撑。</div>
+
+    <div class="note-h">③ §4.2 最终缓存度量（式8）+ 刷新规则</div>
+    <div class="note-b">于是 SeaCache 在<b>密度归一化滤波后</b>量相对 ℓ1：
+    \[ \tilde\Delta_t=L1_{rel}\big(P(G_t^{norm},I_t),\,P(G_{t+1}^{norm},I_{t+1})\big) \tag{8} \]
+    累积规则（式4）完全不变：刷新于 \(t_a\) 后，输出复用到 \(t\in[t_a,t_b-1]\)，下次刷新在累积 \(\tilde\Delta\) 超 \(\delta\) 的最小 \(t_b\)。整个机制<b>只依赖采样器共享的调度系数 \((a_t,b_t)\)</b>、训练无关、架构无关，相当于"在距离计算前插一步滤波"——这就是它能挂到任意现有缓存策略上的原因。流程（Fig 3）：input 特征 → FFT → 乘 \(G_t^{norm}\) → iFFT → 量 \(\tilde\Delta_t\) → 累积判跳/刷。</div>
+
+    <div class="note-h">④ 实验设置（FLUX / HunyuanVideo / Wan2.1）</div>
+    <div class="note-b"><b>模型：</b>FLUX.1-dev（文生图）、HunyuanVideo & Wan2.1 1.3B（文生视频），均 50 步默认采样。<b>prompts/分辨率：</b>文生图用 200 条 DrawBench、生成 1024×1024；文生视频用 944 条 VBench、生成 480p×65 帧。<b>指标：</b>以原模型全量输出为参考，算缓存样本的 <b>PSNR↑/LPIPS↓/SSIM↑</b>，并用 <b>CycleReward</b>（图像奖励基准）测感知偏好；TFLOPs 用 Calflops 测。<b>refresh ratio</b>=跑全量去噪的时间步占比（越低越快）。两档预算：约 50% 与约 30%。baselines：TeaCache、TaylorSeer、ToCa、∆-DiT、DiCache（均官方实现，调 \(\delta\) 或 stride \(S\) 控缓存比）。<b>公平性细节</b>：所有方法共享同一初始随机种子；对 TaylorSeer 明确强制图像前 5 步、视频前 3 步重算（按其默认）；TaylorSeer 的 expansion order 在 FLUX 设 1、视频设 2。这种"统一种子 + 各自最优配置 + 同一参考输出算 PSNR/LPIPS/SSIM"的协议，保证了表格里的对比是同口径的——这也是为什么 SeaCache 在"延迟、FLOPs、三项保真指标"上同时领先才更有说服力，而不是靠挑有利配置。</div>
+
+    <div class="note-h">④ 文生图 FLUX 结果（Table 1/2，真数字）</div>
+    <div class="note-b"><b>Original 50 步：</b>20.9s / 2976 TFLOPs。<b>约 50% 预算（Latency/TFLOPs/PSNR/LPIPS/SSIM）：</b>TeaCache(δ=0.3) 11.4/1547/20.762/0.211/0.810；TaylorSeer(S=3) 9.8/1191/22.783/0.163/0.828；<b>SeaCache(δ=0.3) 9.4/1098/26.285/0.106/0.893</b>——延迟/FLOPs 最低且三项指标全最好。<b>约 30% 预算：</b>TeaCache(δ=0.6) 7.1/892/17.214/0.348/0.714；TaylorSeer(S=5) 7.5/834/19.972/0.236/0.762；<b>SeaCache(δ=0.6) 6.4/773/21.332/0.226/0.798</b>——最快且最优。<b>CycleReward 平均排名（越低越好）：</b>SeaCache 50% 档 <b>1.91</b>、30% 档 <b>1.96</b>，均优于 TeaCache(2.01/2.07)、TaylorSeer(2.08/1.98)。质性上 30% 档基线丢失提示词文字"quantum"，SeaCache 忠实保留。</div>
+
+    <div class="note-h">④ 文生视频 HunyuanVideo / Wan2.1（Table 3/4，真数字）</div>
+    <div class="note-b"><b>HunyuanVideo（Original 182.6s/14038）：</b>约 50% 档 TeaCache(δ=0.12) 98.5/6994/23.40/0.133/0.805、TaylorSeer(S=2) 96.9/7299/24.14/0.152/0.820、<b>SeaCache(δ=0.19) 90.8/6747/32.39/0.047/0.932</b>——PSNR 比最强基线<b>高约 8 dB</b>！约 30% 档 SeaCache(δ=0.35) 58.1/4598/26.46/0.133/0.857。<b>Wan2.1 1.3B（Original 176.3s/8214）：</b>约 50% 档 TeaCache(δ=0.09) 86.6/4107/20.84/0.171/0.721、TaylorSeer(S=2) 93.1/4189/16.15/0.336/0.543、<b>SeaCache(δ=0.2) 83.9/3942/26.60/0.075/0.873</b>；30% 档 SeaCache(δ=0.35) 56.6/2793/21.78/0.170/0.740。频谱感知调度<b>跨架构（图/视频）一致有效</b>，质性上能保住 "STOP" 字样、清晰熊猫/咖啡杯而基线模糊失真。<b>怎么读这组数</b>：在<b>更省（更低 latency/TFLOPs）</b>的同时还<b>更准（更高 PSNR/SSIM、更低 LPIPS）</b>，这在加速研究里是少见的"既要又要"——通常省算力必掉质量。SeaCache 之所以能两头占，是因为它没有"少算"内容关键的早期步，而是把省下来的预算精准花在"内容已稳"的后期步上。尤其注意 Wan2.1 上 TaylorSeer 在激进档崩得厉害（PSNR 14.18、SSIM 0.453），而 SeaCache 仍稳在 21.78/0.740——说明频谱感知度量在<b>高压缩比下更鲁棒</b>，因为它不会误判"高频噪声抖动"为"内容变化"而乱刷新或乱跳过。</div>
+
+    <div class="note-h">④ 消融（SEA vs 1-SEA vs w/o norm vs LPF）</div>
+    <div class="note-b">Fig 8 比四种缓存距离变体（FLUX+HunyuanVideo）：<b>SEA filter 最优</b>；<b>1-SEA</b>（追踪噪声分量而非信号）曲线相似但一致偏低——说明跟噪声演化"有点用但不如盯信号"；<b>去归一化（w/o norm）</b>掉点（滤波特征幅度跨步漂移、度量有偏）；<b>静态低通 LPF(30%)</b>（只保最低 30% 频率）明显更差。原文结论：<i>"simply emphasizing low frequencies is insufficient and that the timestep-dependent spectral evolution captured by the SEA filter is crucial."</i> ——关键不是"一味强调低频"，而是<b>随时间步变化的频谱演化</b>。这把"为什么 SEA 而不是简单低通"讲死了。</div>
+
+    <div class="note-h">④ 即插即用（DiCache+Ours）+ 刷新模式（Fig 10）</div>
+    <div class="note-b"><b>即插即用：</b>把 SEA 滤波器套到 DiCache（一个基于中间 block 特征的动态缓存）上、不改其策略与网络，仅滤波其 block 级特征并沿用其累积规则——FLUX 上 <b>DiCache+Ours 在相同 refresh ratio 下 PSNR 一致更高</b>（Fig 9），延迟/FLOPs 相当。证明 SEA 距离不限于输入侧特征，也能增强中间表示上的缓存度量。<b>刷新模式（Fig 10，30% 预算）：</b>SeaCache <b>自动把刷新集中在早期时间步</b>（对齐频谱演化先验），而 TeaCache 把刷新<b>均匀网格状</b>铺开、不适配时间步重要性。这<b>消除了"手动指定前几步必算"的超参</b>，把缓存预算用得更有效。</div>
+
+    <div class="note-h">Q&amp;A · 为什么"早期步距离更大"反而是好事？</div>
+    <div class="note-b"><b>问：</b>Fig 5 显示 SEA-filtered input 在早期步距离更大，这不是说早期"更该刷新、更费算力"吗？<b>答：</b>恰恰对——早期步在搭<b>低频骨架</b>，内容信号变化本就剧烈，这时<b>必须重算</b>才能保住结构；后期只补高频细节、内容信号趋稳，<b>可以多复用</b>。原文：<i>"the SEA-filtered input distances are larger at early timesteps, which is consistent with the common practice of always recomputing early steps in many prior caching schemes."</i> 妙处在于：别的方法靠<b>手动 hardcode "前 N 步必算"</b>来近似这个规律（多一个要调的超参），SeaCache 因为度量本身就尊重频谱演化，<b>自动</b>把刷新预算分配到早期（Fig 10 可视化证实），既省心又把预算用在刀刃上。这就是"把对的先验放进度量"带来的免费午餐。</div>
+    <div class="note-h">Q&amp;A · SeaCache 与 TeaCache/TaylorSeer 的本质差异一句话？</div>
+    <div class="note-b"><b>TeaCache：</b>在 raw input 特征空间量相对 ℓ1、用多项式拟合近似输出变化——<b>度量空间含噪</b>。<b>TaylorSeer：</b>用泰勒展开外推缓存特征（关注"如何复用/外推"）。<b>SeaCache：</b>不改缓存位置、不改外推方式，只把<b>度量搬到 SEA 滤波后的频谱空间</b>，让"跳不跳"由内容信号说了算。原文定位：<i>"SeaCache explicitly models spectral evolution through a timestep-conditioned SEA filter motivated by a linear-denoiser view, and applies gain normalization to enable stable distance measurements across timesteps."</i> 三者正交：SeaCache 的 SEA 度量甚至能<b>叠加</b>到 DiCache 上再涨点（Fig 9），说明它是一个可与现有缓存器组合的"度量层"改进，而非互斥的新缓存器。</div>
+
+    <div class="note-h">🌟 亮点（为何能进 Finalist）</div>
+    <div class="note-b">① <b>把"频谱演化"这一扩散先验首次注入缓存决策</b>——原文称 SeaCache 是 <i>"the first caching policy that injects an explicit frequency prior into the reuse decision."</i>；② <b>有理论根</b>：从线性 MMSE 去噪器推出 Wiener-like 频率响应（式5），不是拍脑袋的滤波；③ <b>训练无关、架构/采样器无关、即插即用</b>——只在距离计算前插一步滤波，挂到 TeaCache/DiCache 都涨点；④ <b>自动调度</b>消除"前几步必算"的手调超参；⑤ 图+视频三模型系统验证，延迟-质量权衡全面 SOTA（HunyuanVideo PSNR +8dB）。⑥ <b>简洁优雅</b>：核心就是"FFT→乘一个解析滤波器→iFFT→量距离"，没有新增可学参数、没有改网络，复现门槛极低，却把一个被大家忽视的物理先验（频谱演化）用对了地方——这种"少即是多"的工作往往最受审稿人青睐。</div>
+
+    <div class="note-h">❓ 疑问 / Limitations（诚实）</div>
+    <div class="note-b">① <b>线性去噪器假设很强</b>：SEA 滤波器是<b>最优线性 MMSE 去噪器</b>的频率响应，作者自己承认 <i>"although the linearity assumption on \(h_t\) is restrictive, it still provides useful insight"</i>——真实去噪器是高度非线性的网络，这套频率响应只是"有用的近似/启发"。② <b>依赖功率谱假设</b>：推导假定 \(S_x(f)\) 服从自然图像幂律谱，对非自然分布（如特殊纹理/合成内容）是否成立未充分讨论。③ <b>仍是"何时复用"而非"如何复用"</b>：作者明确只解决 when-to-reuse，跨频带差异化复用（how）留给未来。④ <b>额外 FFT/iFFT 开销</b>：虽轻量，但每步多了频域往返，[推测] 在极小模型或极高分辨率下占比可能上升（论文以 latency 已含此开销作答，但未单列 FFT 成本）。⑤ 超参 \(\delta\) 仍需按目标 refresh ratio 选（虽比"前 N 步必算"少了一个手调超参，但阈值本身仍要按预算调）。⑥ <b>视频上的时空滤波</b>：图像是 2D、视频扩到 3D 时空滤波，时间维的频谱演化是否与空间维同构、幂律谱假设是否仍成立，论文未深入——但实测视频上确实有效，说明近似够用。</div>
+
+    <div class="note-h">📌 全文一页总结（problem→method→experiment→takeaway）</div>
+    <div class="note-b"><b>problem：</b>扩散模型迭代去噪慢，动态缓存能加速但都在<b>原始特征空间</b>量"该不该跳过"，把内容与噪声纠缠、忽略了"低频先现/高频后补"的频谱演化先验。<br><b>method：</b>SeaCache 从线性 MMSE 去噪器推出 Wiener-like 时间步相关频率响应 \(G_t(f)\)（式5），经密度归一化得 SEA 滤波器 \(G_t^{norm}\)（式7），对输入特征做 FFT→乘滤波器→iFFT（式6）得"频谱演化感知特征"，再量相对 ℓ1 \(\tilde\Delta_t\)（式8），沿用累积阈值刷新规则——训练无关、即插即用、只依赖 \((a_t,b_t)\)。<br><b>experiment：</b>FLUX 50% 档 9.4s/26.285 PSNR（碾压 TeaCache 11.4s/20.762）、CycleReward 排名最低；HunyuanVideo PSNR 比最强基线高约 8dB（32.39 vs 24.14）、Wan2.1 同样领先；消融证 SEA>1-SEA>w/o-norm>静态低通；挂到 DiCache 也涨点；自动把刷新集中到早期步。<br><b>takeaway：</b>缓存决策不该在 raw 特征空间做，而应在<b>尊重扩散频谱演化的、信号聚焦的频谱空间</b>做——一个有理论、训练无关、即插即用、跨架构通用的加速器。代价是线性/幂律谱假设与额外频域开销。一句话记忆点：<b>别在含噪的原始空间问"内容变了没"，先把噪声滤掉、只盯信号再问</b>——而这个"该滤多少高频"恰好由扩散自身的频谱演化（Wiener 滤波器）解析地告诉你。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Conceptual illustration and motivation of the proposed caching scheme (SeaCache) compared with previous caching schemes. The lower panel shows a denoising trajectory of a cat image where coarse low-frequency structure appears at early steps and fine high-frequency details emerge at later steps, illustrating the spectral evolution of iterative generative models. SeaCache applies a Spectra</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Latency-quality trade-off in oracle experiments. We compare cache decisions based on raw output differences and SEA-filtered output differences (Sec. 4.1) on FLUX [28, 29] and Wan2.1 1.3B [63]. The refresh ratio is the fraction of timesteps that run a full denoiser evaluation instead of reusing cached fea- tures. For each criterion, PSNR is computed between the cached sample and the corr</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Overview of SeaCache. Given input features It and It+1, SeaCache first applies FFT, multiplies by the timestep-dependent SEA filters Gnorm t and Gnorm t+1 , and then applies iFFT to obtain spectral-evolution-aware features P(Gnorm t , It) and P(Gnorm t+1 , It+1) (Sec. 4.1). A spectrum-aware dynamic caching module (Sec. 4.2) measures the relative distance e∆t between consecutive filtered </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Visualization of timestep-dependent denoising filters. (a) Optimal linear denoising responses Gt(f) across timesteps, where early steps primarily pass low-frequencies and later steps gradually include higher frequencies, reflecting spectral evolution. (b) Corresponding normalized filters Gnorm t (f) with unit mean gain, which stabilize filtered feature energy across timesteps and are use</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Relative ℓ1 across the generation process. Stepwise relative ℓ1 distances between consecutive timesteps for different feature choices, averaged over ten samples for each model. In- put denotes distances on the timestep-modulated input features It. Output is the last block outputs Ot. SEA(Input), SEA(Output) ap- plies the SEA filter to the input and output features, respectively. Poly(Inp</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Qualitative comparison of SeaCache and baselines on FLUX at refresh ratios of approximately 30% and 50%.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Qualitative comparison of text-to-video generative mod- els at refresh ratios of approximately 30% and 50%.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Ablation on spectrum-aware filtering. Trade-offs for different cache metrics on FLUX and HunyuanVideo. Results are averaged over 200 prompts for FLUX and 20 randomly selected from VBench for HunyuanVideo, with the other settings fixed.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. Plug-and-play adaptation to DiCache. PSNR-refresh ratio trade-off on FLUX when applying the SEA-based cache met- ric to DiCache [6]. “DiCache+Ours” denotes DiCache combined with our SEA filter, while “DiCache” uses the original metric.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig10.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 10. Refresh pattern across timesteps on FLUX. Per- timestep refresh ratio at a 30% budget. (a) SeaCache automati- cally concentrates refreshes on early timesteps, whereas (b) Tea- Cache spreads refreshes more uniformly over the trajectory.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig11.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 11. Qualitative comparison between MagCache and SeaCache at matched refresh ratios on FLUX.1-dev and Wan2.1 1.3B T2V. At the same refresh ratio, SeaCache better preserves the uncached trajectory while reducing refresh operations.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig12.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 12. Additional qualitative comparison of SeaCache and baselines on FLUX at refresh ratios of approximately 30% and 50%.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-seacache-spectral-evolution-aware-cache-for-acceleratin/fig13.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 13. Additional T2V qualitative comparison of SeaCache and baselines at refresh ratios of approximately 30% and 50%.</figcaption></figure>
+    </div>
+  </div></body></html>

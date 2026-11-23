@@ -1,0 +1,170 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>SparseWorld-TC: Trajectory-Conditioned Sparse Occupancy World Model</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>SparseWorld-TC: Trajectory-Conditioned Sparse Occupancy World Model</h1>
+    <div class="au2" style="color:var(--mut)">Jiayuan Du ⋅ Yiming Zhao ⋅ Zhenglong Guo ⋅ Yong Pan ⋅ Wenbo Hou ⋅ Zhihui Hao ⋅ Kun Zhan ⋅ Qijun Chen</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2511.22039">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2511.22039">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=SparseWorld-TC%3A%20Trajectory-Conditioned%20Sparse%20Occupancy%20World%20Model">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">This paper introduces a novel architecture for trajectory-conditioned forecasting of future 3D scene occupancy. In contrast to methods that rely on variational autoencoders (VAEs) to generate discrete occupancy tokens, which inherently limit representational capacity, our approach predicts multi-frame future occupancy in an end-to-end manner directly from raw image features. Inspired by the success of attention-based transformer architectures in foundational vision and language models such as GPT and VGGT, we employ a sparse occupancy representation that bypasses the intermediate bird’s eye view (BEV) projection and its explicit geometric priors. This design allows the transformer to capture spatiotemporal dependencies more effectively. By avoiding both the finite-capacity constraint of discrete tokenization and the structural limitations of BEV representations, our method achieves state-of-the-art performance on the nuScenes benchmark for 1‒3 second occupancy forecasting, outperforming existing approaches by a significant margin. Furthermore, it demonstrates robust scene dynamics understanding, consistently delivering high accuracy under arbitrary future trajectory conditioning.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy- -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">4D occupancy world model 的“<b>去 VAE + 去 BEV</b>”版：把场景表示成一堆 <b>sparse anchor</b>(每个 = 一束随机初始化的 3D 点 + 一个 feature 向量)，用<b>纯 attention feed-forward transformer</b>(VGGT 式、一次前向出多帧未来，非自回归/非扩散)，再用 ego <b>trajectory 当条件</b> steer 未来场景演化。camera-only 在 Occ3D-nuScenes 1–3s 预测 SOTA(<b>+18.7% mIoU、+11.7% IoU</b>)，长时 8s 衰减极慢，甚至 camera 输入打过用 Occ-GT 输入的 DOME/COME。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">现有 occupancy world model 两条主流路线都有硬伤：① <b>VAE/VQ-VAE tokenization</b>把场景压成 discrete token → 有限词表 <i>“constrain representational capacity and discard fine-grained information”</i>；② <b>BEV</b> 固定分辨率中间表示 → 引入 explicit geometric constraints、限制不同尺度时空特征的灵活交互。受 GPT/VGGT 纯 attention feed-forward 的成功启发，作者主张<b>直接从 raw image feature 端到端预测、两个都不要</b>。</div>
+    <div class="note-h">核心方法（sparse anchor + 全 attention）</div>
+    <div class="note-b">① <b>稀疏表示</b>：单帧 occupancy M={A_i}，anchor A_i=(P_i, f_i)，P_i 是 M 个随机 3D 点、f_i∈R^D 是 feature；f_i 给每个点解出 offset Δp 和语义 s(把随机点“denoise”成正确 occupancy)。② <b>三种 embedding</b>：occupancy anchor + 轨迹 spatiotemporal embedding(position+time, MLN 式融合) + sensor embedding(deformable attention 把 anchor 中心投到多视图特征上采样)。③ <b>全 attention fusion</b>：每个未来帧 occupancy 先 cross-attend 过去 sensor，再 frame-level self-attn 融 trajectory，最后 temporal attention 跨所有未来帧；frame+temporal 模块堆叠迭代 L 次，把随机点逐步 refine 成准确 occupancy。</div>
+    <div class="note-h">关键公式</div>
+    <div class="note-b">表示：<b>M={A_i}_{i=1}^N，A_i=(P_i, f_i)，P_i={p_{i,j}∈R^3}_{j=1}^M</b>(式1)；world model：<b>O_{1:T}=F(M_{1:T}, S_{−T′:0}, τ)</b>(式3，输入=各未来帧初始表示 + 过去 T′ 帧观测 + 轨迹)。轨迹时空嵌入(MLN 式)：<b>f″_t=γ(f^{Pn}_i)·(f_i+f^{Tn}_i)+β(f^{Pn}_i)</b>，γ/β 是作用在 position embedding 上的两条 linear。损失：<b>L=L_CD+L_focal</b>(式6)——Chamfer Distance(式5)对齐预测点云与 GT voxel 中心 + focal 监督语义。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b"><b>Occ3D-nuScenes 1–3s(camera, Tab.1)</b>：Large avg <b>26.42 mIoU / 49.21 IoU</b>，超次优 COME(22.26/44.07) +18.7%/+11.7%；Small 25.60/49.02 且 ~2× 快(9.35 FPS)。<b>DINOv3 版</b> Large* avg <b>29.89 mIoU / 53.52 IoU</b>，camera 输入<b>反超</b>用 Occ-GT 的 DOME(27.10 mIoU)与 I2-World(49.80 IoU)。<b>长时 8s(Tab.2)</b>：Large(camera) avg 22.33 mIoU / 45.35 IoU，超 COME(Occ-GT) 17.1%/51.4%，8s 时 IoU 39.97 vs COME 21.44(<b>衰减慢得多</b>)。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 同时甩掉 VAE 与 BEV，VGGT-like 一次前向出未来(非自回归/扩散)；② <b>随机点→occupancy</b> 的“去噪”范式，像 conditional video generation 把随机点云变成驾驶场景；③ <b>Random Ensemble 训练</b>(随机选预测长度 L、无固定时间步长)显著提升长时(Tab.4 +1.97 mIoU)；④ query 数可变 → 强 scalability(N/M 越大越好，Tab.8)；⑤ 可扩展接 feed-forward 3DGS 直接预测未来 sensor 图像。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① anchor 数 N=600(Small)/4800(Large) 与点数 M 的 trade-off 机理(为何 Large 用更多 anchor 但更少点 M=16)正文只给结果、未深析；② 长时单一 GT 评测的公平性作者自己也承认 multi-possibility 问题(<i>“raises questions about the fairness of using a single ground truth”</i>)；③ deformable attention 的 sampling offset 由 anchor 点集的 mean/std 决定，具体头数/层数等<b>需查 supp / Sparse4D 系</b>。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+<!-- QA_LOG -->
+    <div class="kv">深化精读（本地 PDF 全文 PyMuPDF 提取，正文 11 页 + supplementary 共 16 页，~50K 字符，含全部 Table 真实数值/Eq.1-6/变体配置/per-class）。最后更新 2026-06-23。verbatim 英文引用 + 中文指路，存疑标 [推测]。arXiv:2511.22039v3（Tongji + Li Auto）。</div>
+
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文逐句：</b><br>1) “a novel architecture for trajectory-conditioned forecasting of future 3D scene occupancy.” —— 轨迹条件的未来 3D 占据预测架构。<br>2) “In contrast to methods that rely on variational autoencoders (VAEs) to generate discrete occupancy tokens, which inherently limit representational capacity, our approach predicts multi-frame future occupancy in an end-to-end manner directly from raw image features.” —— 不用 VAE 离散 token（限表达力），直接从原始图像特征端到端预测多帧未来占据。<br>3) “Inspired by ... GPT and VGGT, we employ a sparse occupancy representation that bypasses the intermediate bird’s eye view (BEV) projection and its explicit geometric priors.” —— 受 GPT/VGGT 启发用<b>稀疏占据表示</b>绕过 BEV 投影及其几何先验。<br>4) “By avoiding both the finite-capacity constraint of discrete tokenization and the structural limitations of BEV representations” —— 同时规避<b>离散化的有限容量</b>与 <b>BEV 的结构限制</b>。<br>5) “state-of-the-art performance on the nuScenes benchmark for 1–3 second occupancy forecasting ... robust scene dynamics understanding ... under arbitrary future trajectory conditioning.”</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>把未来占据预测做成 VGGT 式纯注意力 feed-forward——用一组“锚点(3D 随机点+特征)”当稀疏占据表示，跨帧 cross/self/temporal attention 把随机点去噪成准确占据，轨迹作为条件引导演化，端到端、无 VAE token、无 BEV，nuScenes 1-3s SOTA。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原文）</div>
+    <div class="note-b"><b>① Occupancy world model：</b>预测未来 3D 场景占据（每体素是否被占 + 语义类），自驾“世界模型”核心能力，4D=3D 空间 + 1D 时间。<br><b>② VAE / VQ-VAE [16,39]：</b>把连续场景压成离散 token（codebook 有限词表）；OccWorld 用 occupancy VQ-VAE，DOME/COME 用连续 Occ-VAE。本文认为离散 token “constrain representational capacity and discard fine-grained information”。<br><b>③ BEV（bird’s eye view）：</b>俯视特征图，引入<b>固定分辨率 + 显式几何约束</b>；本文认为它 “impose explicit geometric constraints that can limit the flexible interaction of spatiotemporal features across different scales”。<br><b>④ Sparse perception（Sparse4D/SparseBEV/OPUS/SparseDrive）：</b>用一组 query/anchor 而非 dense voxel，绕过 BEV；本文占据表示承此思路。<br><b>⑤ Deformable attention：</b>把 3D query 用标定+ego pose 投到多视图特征图采样特征，3D 稀疏感知常用。<br><b>⑥ VGGT [41] / GPT [1]：</b>纯注意力 feed-forward，单次前向出结果；本文要把这套搬到占据预测。<br><b>⑦ Chamfer Distance：</b>两点云间双向最近点距离，点云/占据建模常用监督。<br><b>⑧ Occ3D-nuScenes [38]：</b>标准 3D 占据基准；指标 geometric IoU（占据几何）+ semantic mIoU（按类）。对比基线 OccWorld/DOME/COME/I2-World/DFIT-OccWorld 等。</div>
+
+    <div class="note-h">② §1 Introduction — problem（两大限制）</div>
+    <div class="note-b"><b>限制一（离散 token）：</b>“many recent approaches encode observations into discrete tokens using VAEs and then predict future occupancy from these limited-vocabulary representations. Such tokenization can constrain representational capacity and discard fine-grained information.”<br><b>限制二（BEV 几何先验）：</b>“Unlike methods that depend on fixed-resolution bird’s eye view (BEV) representations, which introduce explicit geometric constraints into feature interactions” —— BEV 固定分辨率 + 显式几何约束限制跨尺度时空特征交互。<br><b>替代路线之缺（flow field）：</b>有的把占据建模 recast 成动/静 flow field，但 “does not inherently preserve generative capabilities”（不保生成能力）。</div>
+
+    <div class="note-h">③ §1 — motivation / solution（稀疏锚 + 纯注意力闭环）</div>
+    <div class="note-b"><b>motivation（原文）：</b>“Pure attention-based feed-forward architectures have demonstrated remarkable flexibility and representational capacity ... as exemplified by GPT and VGGT. However, these capabilities remain underexplored for future occupancy prediction.”<br><b>solution（原文）：</b>“we represent scene occupancy using a set of anchors, each composed of a group of 3D query points and an associated feature vector. For each future frame, the anchor features interact through self-attention and cross-attention mechanisms with image features from past frames, accessed via deformable attention. This process iteratively refines the initially randomized points into accurate, context-aware occupancy representations. Trajectory information is incorporated as a conditioning signal to steer the temporal evolution.” —— 锚点(随机 3D 点+特征) ↔ 过去帧图像特征(deformable) ↔ 自/交叉注意力迭代精化随机点 → 准确占据；轨迹当条件引导演化。</div>
+
+    <div class="note-h">④ §1 — 三大贡献</div>
+    <div class="note-b">① <b>纯注意力 transformer 占据世界模型</b>：稀疏占据表示端到端融合时空，<b>免离散 token、免 BEV 几何先验</b>；② <b>轨迹条件占据预测框架</b>：沿给定轨迹精确引导场景演化 + 高时序一致；③ <b>SOTA</b>：nuScenes 1-3s 占据预测 state-of-the-art，长时(8s)亦有竞争力。原文：“conditioning scene evolution on a given trajectory is straightforward: we embed the trajectory as feature vectors and let them interact with the scene features.”</div>
+
+    <div class="note-h">⑤ §2 Related Work — 三维度定位</div>
+    <div class="note-b"><b>沿三个技术维度梳理（原文）：</b><br>• <b>Tokenization：</b>OccWorld(VQ-VAE 离散) / OccLLaMA(场景 tokenizer) / RenderWorld(AM-VAE 双 codebook 分 air/non-air) / I2-World(多尺度 token) vs DOME/COME(连续 Occ-VAE)。<br>• <b>Intermediate representation：</b>BEV（多数 VAE 法 + PreWorld/DFIT-OccWorld）、Gaussian（GaussianAD/RenderWorld 3DGS）、triplane/hexplane（DTT/DynamicCity）。<br>• <b>Generation paradigm：</b>autoregressive（OccWorld/OccLLaMA/Occ-LLM）、non-autoregressive（DFIT-OccWorld）、diffusion（DOME/COME+ControlNet/DTT）。<br><b>本文定位：</b>“Rather than relying on handcrafted tokenizers or intermediate representations ... favoring a VGGT-like feed-forward architecture that predicts future occupancy in a single forward pass.”——既非 AR 也非 diffusion，单次前向。</div>
+
+    <div class="note-h">⑥ §3.1 稀疏世界模型表示（Eq.1-3）</div>
+    <div class="note-b"><b>单帧占据（Eq.1）：</b>\[ M=\{A_i\}_{i=1}^N,\quad A_i=(P_i,f_i) \] \( P_i=\{p_{i,j}\in\mathbb{R}^3\}_{j=1}^M \) 是锚 i 的 M 个 3D 点，\( f_i\in\mathbb{R}^D \) 特征向量。\( f_i \) 为每点预测 offset \( \Delta p_{i,j}\in\mathbb{R}^3 \) 与语义 \( s_{i,j}\in\mathbb{R}^C \)。<b>初始化：</b>中心 \( c_i\sim U(Space) \) 均匀撒；点 \( p_{i,j}\leftarrow c_i+\epsilon_{i,j},\ \epsilon_{i,j}\sim N(0,\sigma^2 I) \)；特征 \( f_i\leftarrow 0 \)（全零）。<br><b>轨迹（Eq.2）：</b>\( \tau=\{x_t\}_{t=1}^T \)，\( x_t \) 含平面位置 (x,y)、朝向 θ、时间戳 t。<br><b>世界模型（Eq.3）：</b>\[ O_{1:T}=F(M_{1:T},S_{-T':0},\tau) \] 原文：因锚点随机初始化，“operates similarly to a conditional video generation model that transforms random 3D point clouds into sequential driving scenarios conditioned on both past sensor observations and future trajectory.”</div>
+
+    <div class="note-h">⑦ §3.2.1 轨迹时空嵌入</div>
+    <div class="note-b"><b>Position Embedding：</b>每 waypoint 7D 全局坐标 (x,y,z,q0,q1,q2,q3) → 16D 齐次矩阵(当前 ego 相对坐标) → MLP 投到与锚特征 \( f_i \) 同维，得 \( f^{P_n}_i \)。<br><b>Time Embedding：</b>固定原始传感器频率下时间戳 [0,1,...,n]（0=当前），整数经标准 sinusoidal 位置编码得 \( f^{T_n}_i \)。<br><b>Spatiotemporal Embedding（借鉴 MLN [43]）：</b>\[ f''_t=\gamma(f^{P_n}_i)\cdot(f_i+f^{T_n}_i)+\beta(f^{P_n}_i) \] γ、β 是作用于 \( f^{P_n}_i \) 的两个独立线性层，隐式学相邻帧仿射变换。最终轨迹 \( \tau=\{f''_t\}_{t=1}^T \)。原文“we do not assume uniform temporal sampling”（不假设均匀采样）。</div>
+
+    <div class="note-h">⑧ §3.2.2 Deformable Attention 传感器嵌入</div>
+    <div class="note-b"><b>原文：</b>每锚点集中心 \( c_i \) 当 deformable attention 的 query，“calculate the mean and standard deviation of anchor point set \( P_i \) along the x,y,z directions as the basis for sampling offsets.” 用相机内外参 + ego pose 把中心投到 backbone（ResNet 或 ViT）多尺度图像特征图；若因 FOV 重叠投进多视，“aggregate by averaging the sampled features across all m views”。每锚中心从过去 \( T' \) 帧采特征 + sinusoidal 时间嵌入（FC 处理）提供运动线索，得传感器嵌入 \( S=\{f'_i\}_{i=1}^{N\times T'} \)。</div>
+
+    <div class="note-h">⑨ §3.2.3 全注意力融合架构（Eq.4）</div>
+    <div class="note-b"><b>统一嵌入（Eq.4）：</b>\[ O_{1:T}=F\big(\{f_i\}_{i=1}^{N\times T},\{f'_i\}_{i=1}^{N\times T\times T'},\{f''_t\}_{t=1}^T\big) \] 注：Eq.1 的随机点 \( P_i \) 不可学，故从输入省略。<br><b>三步注意力（每未来帧 t）：</b>① occupancy 嵌入 \( \{f^t_i\} \) <b>cross-attend</b> 过去 sensor 嵌入 \( \{f'^t_i\} \)；② 更新后的 occupancy 特征与<b>轨迹嵌入</b>经 frame-level self-attention 融合；③ <b>temporal attention</b> 跨所有未来帧 self-attention，捕长程时空依赖。<b>堆叠 frame + temporal 模块 ×L 次</b>，把随机 3D 锚点逐步精化成未来 T 帧准确占据。</div>
+
+    <div class="note-h">⑩ §3.3 训练策略（random ensemble + Eq.5-6）</div>
+    <div class="note-b"><b>Random Ensemble Strategy：</b>设最大 horizon T，训练时随机选目标序列长度 \( L\in\{2,...,T\} \) 监督对应 L 帧。原文：“no fixed temporal stride is prescribed, the scene evolution is governed solely by the trajectory embeddings” —— 无固定步长，演化全由轨迹嵌入控，提泛化（消融证明）。<br><b>Loss（Eq.5-6）：</b>取 GT 占据 voxel 中心当目标点，用 Chamfer Distance \[ L_{CD}=\frac{1}{|P|}\sum_{p\in P}D(p,P_g)+\frac{1}{|P_g|}\sum_{p_g\in P_g}D(p_g,P),\ D(x,Y)=\min_{y\in Y}\|x-y\|_1 \] 对齐预测点与目标点；匹配的目标点提供语义标签，用 focal loss \( L_{focal} \) 监督语义。总目标 \( L=L_{CD}+L_{focal} \)。</div>
+
+    <div class="note-h">⑪ §4.1 实现细节 + 四个变体</div>
+    <div class="note-b"><b>设置：</b>过去 2s 帧；未来 horizon T=3s 和 8s。<b>变体：</b><br>• <b>Small</b>：N=600 锚 × M=128 点，ResNet-50；<br>• <b>Large</b>：N=4800 × M=16（更强、更慢）；<br>• <b>Small*/Large*</b>：换 <b>DINOv3-Base</b> backbone，配置同上。<br>训练 70 epoch / 8× H20 / total batch 8 / AdamW / lr 2e-4 / cosine。指标 geometric IoU + semantic mIoU（输入：camera，对比时也列用 GT occ 输入的法）。</div>
+
+    <div class="note-h">⑫ §4.2 主结果（Table 1 真实数值，Camera 输入）</div>
+    <div class="note-b" style="overflow-x:auto"><b>Table 1 Occ3D-nuScenes（Camera；mIoU/IoU avg of 1-3s；FPS）：</b><br>| 方法 | mIoU | IoU | FPS |<br>| SparseWorld [5] | 13.20 | 22.03 | 8.00 |<br>| I2-World-STC | 18.97 | 28.77 | 4.21 |<br>| COME(prev SOTA) | 22.26 | 44.07 | — |<br>| <b>TC-Small</b> | 25.60 | 49.02 | 9.35 |<br>| <b>TC-Large</b> | <b>26.42</b> | <b>49.21</b> | 3.58 |<br>| <b>TC-Small*</b> | 27.71 | 51.05 | 5.63 |<br>| <b>TC-Large*</b> | <b>29.89</b> | <b>53.52</b> | 2.08 |<br>Large 比前 SOTA COME <b>mIoU +18.7%（26.42 vs 22.26）、IoU +11.7%（49.21 vs 44.07）</b>；Small 约 2× 快于 Large/I2-World。</div>
+    <div class="note-b"><b>跨输入对比（关键）：</b>原文“camera-based SparseWorld-TC-Large* achieves a higher average mIoU (29.89 vs. 27.10) than DOME”、“higher average IoU (53.52 vs. 49.80) compared to I2-World”——<b>用 camera 的本文超了用 GT occupancy 输入的法</b>（归因长时衰减更小）。</div>
+
+    <div class="note-h">⑬ §4.2 长时预测（Table 2，8s）</div>
+    <div class="note-b"><b>Table 2（扩到 8s）：</b>SparseWorld-TC-Large（Camera）mIoU avg <b>22.33</b>、IoU avg <b>45.35</b>；对比 DOME/COME（均用 Occ GT 输入）COME 19.07/29.96。原文：“consistently outperforms DOME and COME after 2 seconds for the mIoU metric while having better performance in all timestamps for the IoU metric ... surpassing COME by 17.1% and 51.4%.” IoU 各时刻全胜（如 8s 时 39.97 vs COME 21.44）。<b>本文用 camera、对比法用 GT occ</b>，长时衰减显著更慢。</div>
+
+    <div class="note-h">⑭ §4.3/supp 消融全表</div>
+    <div class="note-b" style="overflow-x:auto"><b>Table 3 轨迹（Small，1-3s avg）：</b>w/o Traj 15.44/32.19 → Pred Traj(BEVPlanner) 21.57/44.76 → GT Traj 25.60/49.02——轨迹是强条件，越准越好，predicted 也鲁棒。<br><b>Table 4 训练策略（1-8s avg）：</b>Fixed 20.36/43.25 → <b>Random Ensemble 22.33/45.35</b>。<br><b>supp Table 6 嵌入模块：</b>none 15.44/32.19 → +TE 17.45/35.06 → +PE 23.07/47.53 → <b>+STE 25.60/49.02</b>（位置嵌入 PE 贡献最大）。<br><b>supp Table 7 注意力：</b>Small 25.60/49.02；w/o Temporal Attn 25.07/47.53；<b>w/o Deformable Attn 23.89/46.55（掉最多）</b>。</div>
+    <div class="note-b"><b>supp Table 8 显存×N/M×性能：</b>Small(N600/M128) 5.4GB/25.60；Large(N4800/M16) 7.7GB/26.42；Large+(M64) 9.2GB/27.25；Small* 7.1GB/27.71；Large* 14.4GB/29.89；<b>Large*+(N9600) 24.6GB/30.88</b>——锚数/每锚点数越多越好（线性换显存）。<br><b>supp Table 9 小目标：</b>Q4800→9600 motorcycle +1.08 / pedestrian +1.43；class reweighting +1.00 / +1.83。<br><b>supp Table 5 RayIoU（Large*）：</b>1s 35.8 / 2s 31.6 / 3s 28.9（解 voxel mIoU 沿深度轴的不一致惩罚）。<br><b>supp per-class（Table 10）：</b>静态类(drive.suf. 1s 74.98)远高于动态/小类(traffic cone 1s 10.28、pedestrian 15.70)，且随时间衰减。</div>
+
+    <div class="note-h">⑭b §4.4/supp B Occupancy→Sensors（feed-forward 3DGS）+ 收敛</div>
+    <div class="note-b"><b>从占据到传感器观测（正文 §4.4 + supp B.1）：</b>原文“our proposed architecture is further capable of directly predicting future sensor observations”。做法：在 Fig.2 的解码网络里加额外 MLP，“All of these MLPs collectively generate 3D Gaussian parameters, center offsets, and classification logits in a single feed-forward pass.”——即同一前向同时出 3D Gaussian 参数 + 中心偏移 + 分类 logits，再用 3DGS [14] 的 differential Gaussian rasterization 渲染前视图、与 GT 图算 L1 loss 实现自监督。当前实现“only supports the front-view camera”，支持 256×704 与 128×352，并把锚数/每锚点数提到 7200/32 缓解 query 稀疏造成的 voids。<br><b>轨迹条件预测（Fig.6/11）：</b>在分叉路口给不同轨迹（Go Straight / Turn Left / Turn Right）作条件，生成不同未来驾驶场景，验证“future occupancy prediction capability conditioned by the trajectory”。<br><b>收敛（supp B.2）：</b>Fig.9 展示模型如何 “converge from noise to the detailed occupancy”——随机点云逐步去噪成精细占据，呼应 Eq.1 的随机初始化设计。</div>
+
+    <div class="note-h">⑮ 亮点 / 创新点</div>
+    <div class="note-b">① <b>VGGT 式纯注意力 feed-forward</b>占据世界模型，单次前向出多帧未来，<b>同时干掉 VAE 离散 token 与 BEV 几何先验</b>；② <b>稀疏锚表示</b>（随机 3D 点 + 特征），把“随机点云去噪成占据”当条件视频生成，天然可变 query 数 → 强 scalability（N/M 线性换性能）；③ <b>轨迹时空嵌入</b>（PE+TE+MLN 式 STE）+ deformable attention 取多视图证据，轨迹作条件精确引导演化；④ <b>random ensemble</b> 训练支持任意 horizon/间隔，长时衰减小；⑤ <b>camera 输入反超 GT-occ 输入</b>的 DOME/I2-World，且可扩展 feed-forward 3DGS 直接预测未来传感器观测。</div>
+
+    <div class="note-h">⑯ 疑问 / 边界 / 局限（supp + 推断）</div>
+    <div class="note-b">① <b>Failure cases（supp B.3）</b>：重度遮挡的 car/barrier、未来 6s 才出现的小目标预测不准；② [推测] per-class（Table 10）显示<b>小目标/动态类</b>（pedestrian/traffic cone/bicycle）mIoU 远低于静态大类且随时间快速衰减——稀疏锚对稀有小目标覆盖不足，故需更多 query + class reweighting（Table 9）；③ <b>From Occupancy to Sensors（feed-forward 3DGS）目前仅前视相机</b>、256×704/128×352，靠加锚数(7200)+点数(32)补 query 稀疏导致的 voids；④ [推测] 长时预测“single ground truth 评测公平性”原文自承存疑（多可能性）；⑤ Large* 30.88 mIoU 需 24.6GB 显存，性能-显存取舍明显。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem→method→experiment→takeaway：</b><br><b>problem</b>：占据世界模型受困于 VAE 离散 token 的有限容量 + BEV 的固定分辨率/几何约束，难灵活建跨尺度时空依赖。<br><b>method</b>：① 稀疏锚表示（随机 3D 点+特征，Eq.1-3）；② VGGT 式纯注意力——occupancy 嵌入 cross-attend 过去 sensor(deformable)→融轨迹(frame self-attn)→跨帧 temporal attn，堆叠 ×L 把随机点精化成占据（Eq.4）；③ Chamfer+focal 监督 + random ensemble 训练（Eq.5-6）。<br><b>experiment</b>：nuScenes 1-3s Large mIoU 26.42(+18.7%)/IoU 49.21(+11.7%)，Large* 29.89/53.52 且 camera 输入反超 GT-occ 的 DOME/I2-World；长时 8s mIoU 22.33/IoU 45.35 超 COME 17.1%/51.4%；消融证轨迹/PE/deformable/temporal/ensemble 均有效。<br><b>takeaway 1</b>：占据预测可<b>抛弃离散 token 与 BEV</b>，用纯注意力 feed-forward + 稀疏锚直接从图像特征端到端建模，更准更省。<br><b>takeaway 2</b>：把场景表示成<b>“随机点云→去噪占据”</b>使模型像条件视频生成，query 数可变带来强 scalability（N/M 线性换性能）。<br><b>takeaway 3</b>：<b>轨迹作为显式条件 + random ensemble 训练</b>让长时预测衰减更小、支持任意 horizon，camera 输入即可超过用 GT 占据的扩散/AR 法。<br><b>边界</b>：小目标/重遮挡/长时小物体 failure、3DGS 仅前视、大模型显存高。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Without VAE codebook and BEV representations, the model represents future multi-frame occupancy using sparse queries and leverages image evidence from prior frames to con- vert randomly sampled 3D points into reliable future occupancy.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Occupancy is modeled as a collection of anchors formed by a bundle of 3D points paired with an occupancy embedding. The embedding is decoded by two MLPs to yield per point offsets and semantic class logits, which denoise sampled points to a con- sistent occupancy field.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. We embed the sensor observations, occupancy priors, and trajectories into feature vectors. These embeddings pass through stacked frame-level attention and temporal attention blocks that iteratively fuse cross-modal and cross-time information into occupancy features. Those occupancy features finally decode random points into meaningful occupancy predictions.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Qualitative results of our proposed SparseWorld-TC are presented here. Our method effectively captures both dynamic and static changes in the surrounding environment over a 3-second forecasting horizon.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Long-term 4D occupancy world model forecasting.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Forecasting with conditioned trajectories.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Gaussian splatting reconstruction during training.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Future observation forecasting on validation set.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. Model Convergence Visualization.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig10.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 10. Failure cases: (left) the car and barrier with heavy oc- clusion, (right) small objects appear in the future 6 seconds.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig11.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 11. Additional qualitative results in the different trajectory conditions.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig12.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 12. Additional qualitative results of our proposed SparseWorld-TC are presented here.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-sparseworld-tc-trajectory-conditioned-sparse-occupancy-/fig13.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 13. Additional qualitative results of our proposed SparseWorld-TC are presented here.</figcaption></figure>
+    </div>
+  </div></body></html>

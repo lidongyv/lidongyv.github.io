@@ -1,0 +1,195 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Cosmos Tokenizer 精读（§4）· 数据流·源码·QA</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--panel:#161c34;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--red:#fb7185;--blue:#60a5fa}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 18% -10%,rgba(167,139,250,.18),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.65;min-height:100vh}
+.wrap{max-width:1120px;margin:0 auto;padding:26px 18px 80px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.hero{padding:20px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(126,224,255,.08));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--accent);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(20px,3vw,30px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 35%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13px;max-width:900px}
+.legend{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0;font-size:12px;color:var(--text2)}
+.lg{display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:999px;padding:4px 11px}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+h2.sec{font-size:17px;font-weight:800;margin:26px 0 4px;display:flex;align-items:center;gap:8px}
+h2.sec .bar{width:4px;height:17px;border-radius:3px;background:linear-gradient(180deg,var(--accent2),var(--accent))}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:12px}
+.q{background:rgba(126,224,255,.06);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:9px 13px;margin:9px 0;font-size:13px;color:var(--text);font-weight:700}
+.a{font-size:13px;color:var(--text2);margin:0 0 6px 2px}
+.quote{background:rgba(0,0,0,.25);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:12.5px;color:var(--text2);font-style:italic}
+.quote b{color:var(--amber);font-style:normal}
+.box{background:rgba(17,23,45,.92);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0}
+pre{background:#0a0e1c;border:1px solid var(--line);border-radius:9px;padding:11px 13px;overflow-x:auto;font-size:12px;line-height:1.5;margin:8px 0}
+code{font-family:SFMono-Regular,Consolas,monospace;color:var(--accent)}
+pre code{color:#cdd6f4}
+.cmt{color:#6b7394}
+.kw{color:var(--accent2)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;background:rgba(0,0,0,.18);border-radius:10px;overflow:hidden;margin:10px 0}
+th{background:rgba(167,139,250,.2);text-align:left;padding:8px 11px;font-weight:700;border-bottom:2px solid var(--accent2);white-space:nowrap}
+td{padding:7px 11px;border-bottom:1px solid var(--line);color:var(--text2);vertical-align:top}
+td b{color:var(--text)}
+.out{font-family:SFMono-Regular,Consolas,monospace;color:var(--green);font-size:12px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);border-radius:6px;padding:1px 7px;display:inline-block}
+.flow{display:flex;flex-direction:column;align-items:center;margin:8px 0}
+.node{width:100%;max-width:820px;background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:12px;padding:11px 15px}
+.node .t{font-size:13.5px;font-weight:800;color:var(--text)}
+.node .d{font-size:12px;color:var(--text2);margin-top:3px}
+.arrow{width:2px;height:22px;background:linear-gradient(180deg,var(--accent2),var(--accent));position:relative;margin:3px 0}
+.arrow::after{content:"▼";position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);color:var(--accent);font-size:10px}
+.tag{font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:4px}
+.tag-code{background:rgba(74,222,128,.16);color:var(--green);border:1px solid rgba(74,222,128,.4)}
+.tag-paper{background:rgba(96,165,250,.16);color:var(--blue);border:1px solid rgba(96,165,250,.4)}
+.tag-warn{background:rgba(251,113,133,.16);color:var(--red);border:1px solid rgba(251,113,133,.4)}
+.figs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.fg{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:11px;padding:10px;margin:0}
+.fg img{width:100%;border-radius:7px;background:#fff;display:block}
+.fg figcaption{font-size:11px;color:var(--text3);margin-top:7px;line-height:1.5}.fg figcaption b{color:var(--accent)}
+.note2{margin-top:20px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+.hl{color:var(--accent);font-weight:700}.hlp{color:var(--accent2);font-weight:700}
+</style></head><body><div class=wrap>
+<a href="../index.html" class=backlink>← 教学文档主页</a>
+<a href="cosmos.html" class=backlink>Cosmos 架构图解</a>
+<a href="causal_conv.html" class=backlink>因果卷积交互动图 →</a>
+<a href="cosmos_encoder.html" class=backlink>Encoder/Decoder 整体结构 →</a>
+<a href="../../world-model/wm_methods.html" class=backlink>World Model 方法全景</a>
+
+<header class=hero><div class=kick>Cosmos 精读 · §4 Tokenizer</div>
+<h1>Cosmos Tokenizer 精读：数据流 · 源码级实现 · 每步 output</h1>
+<p class=sub>论文 <i>Cosmos WFM Platform for Physical AI</i>（arXiv 2501.03575）§4 + 开源 <b>NVIDIA/Cosmos-Tokenizer</b>（Apache-2.0）源码逐行核对。<b>每个阶段都写清楚 output 的张量形状</b>。</p>
+</header>
+
+<div class=legend>
+<span class=lg><span class="dot" style="background:var(--green)"></span>✅ 源码确认（文件:行号）</span>
+<span class=lg><span class="dot" style="background:var(--blue)"></span>📄 论文原文</span>
+<span class=lg><span class="dot" style="background:var(--red)"></span>⚠️ 未公开（训练码不在开源推理仓）</span>
+</div>
+
+<div class=box><b>一句话：</b>Tokenizer = 把视频压成紧凑 token/latent 再由解码器重建的<b>自编码器</b>；连续版（AE）出 16 维连续向量喂扩散，离散版（FSQ）出整数 token 喂自回归。骨架 = <span class=hl>Haar 无损小波前处理 + factorized 因果编码器 + 量化/AE + 镜像解码器</span>。</div>
+
+<!-- ===== 1. 数据流 + output ===== -->
+<h2 class=sec><span class=bar></span>1 · 数据流：每一步的 output 形状（以 Discrete Video「DV」为例）</h2>
+<div class=secsub>配置来自 <code>configs.py</code> 的 discrete_video：空间压缩 16×、时间压缩 8×、base channels=128、channels_mult=[2,4,4]、patch_size=4。</div>
+<div class=flow>
+<div class=node><div class=t>① 输入视频</div><div class=d>output: <span class=out>x = [B, 3, T, H, W]</span>（RGB，in_channels=3）</div></div>
+<div class=arrow></div>
+<div class=node><div class=t>② Haar Patcher3D（patch_size=4 → 2 级 DWT，无参可逆） <span class="tag tag-code">patching.py</span></div><div class=d>每级把 T/H/W 各 ÷2、拆 8 子带拼通道。做 2 级 → 通道 ×4³=64、时空 ÷4。<br>output: <span class=out>[B, 192, T/4, H/4, W/4]</span>（192 = 3×64）</div></div>
+<div class=arrow></div>
+<div class=node><div class=t>③ conv_in（空间(1,3,3)+时间(3,1,1) 分离因果卷积） <span class="tag tag-code">layers3d.py:773</span></div><div class=d>output: <span class=out>[B, 128, T/4, H/4, W/4]</span>（升到 base channels=128）</div></div>
+<div class=arrow></div>
+<div class=node><div class=t>④ 3× Down Stage（每级 2×ResBlock + attn@res32 + 下采样） <span class="tag tag-code">layers3d.py:790</span></div><div class=d>通道 128→256→512→512；空间下采样 log2(16)−log2(4)=<b>2 次</b>、时间下采样 log2(8)−log2(4)=<b>1 次</b>。<br>output: <span class=out>[B, 512, T/8, H/16, W/16]</span>（累计 空间16× 时间8×）</div></div>
+<div class=arrow></div>
+<div class=node><div class=t>⑤ mid + CausalNormalize + conv_out <span class="tag tag-code">layers3d.py:826</span></div><div class=d>output（编码器出的 latent z）: <span class=out>z = [B, 16, T/8, H/16, W/16]</span>（z_channels=16）</div></div>
+<div class=arrow></div>
+<div class=node><div class=t>⑥ 量化（离散 DV 走 FSQ） <span class="tag tag-code">quantizers.py:71</span></div><div class=d>FSQ 把每个空间-时间位置的 6 维向量映成 1 个整数 index（码本 64000）。<br>output（离散 token indices）: <span class=out>idx = [B, T/8, H/16, W/16] ∈ {0..63999}</span><br>output（喂解码器的量化 latent）: <span class=out>z_q = [B, 6, T/8, H/16, W/16]</span></div></div>
+<div class=arrow></div>
+<div class=node><div class=t>⑦ 解码器（镜像）+ UnPatcher3D 逆 Haar</div><div class=d>output（重建视频）: <span class=out>x̂ = [B, 3, T, H, W]</span>（与输入同形，精确还原分辨率）</div></div>
+</div>
+
+<h3 style="font-size:14px;margin:14px 0 4px;color:var(--text)">各阶段 output 形状总表（DV，spatial 16× / temporal 8×）</h3>
+<table>
+<tr><th>阶段</th><th>操作</th><th>output 形状</th><th>通道/压缩</th></tr>
+<tr><td>①</td><td>输入</td><td class=out>[B, 3, T, H, W]</td><td>3ch</td></tr>
+<tr><td>②</td><td>Haar ×2 级</td><td class=out>[B, 192, T/4, H/4, W/4]</td><td>×64ch, 时空÷4</td></tr>
+<tr><td>③</td><td>conv_in</td><td class=out>[B, 128, T/4, H/4, W/4]</td><td>128ch</td></tr>
+<tr><td>④</td><td>3× Down</td><td class=out>[B, 512, T/8, H/16, W/16]</td><td>512ch, 空16×时8×</td></tr>
+<tr><td>⑤</td><td>conv_out → z</td><td class=out>[B, 16, T/8, H/16, W/16]</td><td>z=16ch</td></tr>
+<tr><td>⑥a</td><td>FSQ → indices</td><td class=out>[B, T/8, H/16, W/16]</td><td>整数∈{0..63999}</td></tr>
+<tr><td>⑥b</td><td>FSQ → z_q</td><td class=out>[B, 6, T/8, H/16, W/16]</td><td>6ch(=len levels)</td></tr>
+<tr><td>⑦</td><td>Decoder+逆Haar</td><td class=out>[B, 3, T, H, W]</td><td>重建</td></tr>
+</table>
+<div class=secsub>连续版 CV：空间/时间都 8×，⑤ 出 <span class=out>[B,16,T/8,H/8,W/8]</span> 连续 latent，不量化，直接喂扩散。</div>
+
+<!-- ===== 2. §4.1 架构（原文+源码）===== -->
+<h2 class=sec><span class=bar></span>2 · §4.1 架构（原文 + 源码）</h2>
+<div class=quote><b>原文：</b>"we employ causal temporal convolution layers and causal temporal attention layers to preserve the natural temporal order ... using a single unified network architecture. The encoder employs a wavelet transform ... a total spatiotemporal compression ratio ranging from 256 to 2048 ... For the continuous tokenizer, we use a vanilla autoencoder (AE) ... For the discrete tokenizer, we use the Finite-Scalar-Quantization (FSQ)."</div>
+<p class=a><b>指路：</b>编码器 = 因子化（空间/时间分离）因果卷积 + 注意力；前端 Haar 小波；图像视频统一网络；总压缩 <span class=hl>256–2048×</span>。连续=AE、离散=FSQ。</p>
+<pre><code><span class=cmt"># EncoderFactorized 关键结构 (layers3d.py:731)</span>
+conv_in = Sequential(
+  CausalConv3d(in, 128, kernel=(1,3,3)),  <span class=cmt># 只做空间</span>
+  CausalConv3d(128,128, kernel=(3,1,1)),  <span class=cmt># 只做时间(因果) → "factorized"</span>
+)
+<span class=cmt"># 下采样次数：空间/时间独立</span>
+num_spatial_downs  = log2(spatial_compression)  - log2(patch_size)  <span class=cmt># DV:4-2=2</span>
+num_temporal_downs = log2(temporal_compression) - log2(patch_size)  <span class=cmt># DV:3-2=1</span></code></pre>
+<p class=a><b>因果 padding（原文+源码）</b>：<span class=quote style="display:inline;padding:2px 6px">"causal padding in temporal convolutions such that each token is a function of the current and past inputs but not the future ones"</span> —— 时间维只 pad 过去，不看未来，对齐自驾/机器人的因果性。</p>
+
+<!-- ===== 3. §4.2 训练 ===== -->
+<h2 class=sec><span class=bar></span>3 · §4.2 训练策略（两阶段）<span class="tag tag-paper">论文</span> <span class="tag tag-warn">代码未开源</span></h2>
+<div class=secsub>⚠️ 训练 loss 代码<b>不在</b>开源推理仓（grep 全仓无 vgg/gram/optical/discriminator）；以下为论文 §4.2 原文描述，具体权重/VGG 层论文未给。</div>
+<table>
+<tr><th>阶段</th><th>Loss（原文）</th><th>作用</th></tr>
+<tr><td rowspan=3><b>Stage 1</b><br>打底</td><td>L1 reconstruction</td><td>像素级 input↔recon 距离</td></tr>
+<tr><td>implicit-perceptual（VGG-19 特征 L1）</td><td>保语义/结构</td></tr>
+<tr><td>optical-flow loss</td><td>时序平滑，压 flicker</td></tr>
+<tr><td rowspan=2><b>Stage 2</b><br>锐化</td><td>Gram-matrix loss（VGG-19 特征）</td><td>风格类，锐化细节</td></tr>
+<tr><td>adversarial loss</td><td>GAN 逼真细节</td></tr>
+<tr><td><b>离散专属</b></td><td>Straight-Through Estimator (STE)</td><td>让不可导量化能回传梯度</td></tr>
+</table>
+<p class=a><b>课程训练（原文）</b>："Initially, we train on images, followed by videos with progressively longer durations ... progressively increase the spatial resolution" —— 图像 → 短视频 → 长视频、分辨率渐升、图/视频联合。</p>
+
+<!-- ===== 4. 量化 ===== -->
+<h2 class=sec><span class=bar></span>4 · 量化：连续 AE vs 离散 FSQ（源码）</h2>
+<p class=a><b>连续（AE）</b>：z 直接是 16 维连续向量，<span class=hl>不量化</span>、全程可导，喂扩散。<br><b>离散（FSQ）</b> <span class="tag tag-code">quantizers.py:143</span> 四步（<b>output 每步标注</b>）：</p>
+<pre><code><span class=cmt"># FSQ.quantize / codes_to_indices（真实源码，levels=[8,8,8,5,5,5]）</span>
+def bound(z):                          <span class=cmt># ① tanh 限幅到格点范围</span>
+    half=(levels-1)*(1+eps)/2
+    return (z+shift).tanh()*half - offset   <span class=cmt># output: 连续、有界</span>
+def quantize(z):
+    q = round_ste(bound(z))            <span class=cmt># ② STE 四舍五入到整数格点</span>
+    return q / (levels//2)             <span class=cmt># ③ 归一化到[-1,1]; output: zhat</span>
+def codes_to_indices(zhat):            <span class=cmt># ④ 混合进制 → 唯一整数</span>
+    return (scale_shift(zhat) * _basis).sum(-1)  <span class=cmt># _basis=cumprod([1]+levels[:-1])</span>
+    <span class=cmt># output: index ∈ {0 .. 8*8*8*5*5*5-1 = 63999}</span></code></pre>
+<p class=a><b>码本大小</b> = 8·8·8·5·5·5 = <span class=hl>64000</span>；embedding_dim = 6 = len(levels)。<b>为何 FSQ 不用 VQ</b>：FSQ 无可学码本、无 commitment/EMA、天然满码 → 不坍塌。</p>
+<p class=a><b>VQ（对比，源码 <span class="tag tag-code">quantizers.py:307</span>）——印证"是 argmin 最近邻不是分类器"</b>：</p>
+<pre><code><span class=cmt"># VectorQuantizer.forward</span>
+d = ||z||² + ||e||² - 2·z·eᵀ           <span class=cmt># 到每个码字的距离</span>
+idx = torch.argmin(d, dim=1)           <span class=cmt># ← argmin 最近邻(无 softmax/分类头)</span>
+z_q = matmul(one_hot(idx), embedding.weight)   <span class=cmt># 查表; output: z_q</span>
+z_q = z + (z_q - z).detach()           <span class=cmt># STE</span></code></pre>
+
+<!-- ===== 5. STE ===== -->
+<h2 class=sec><span class=bar></span>5 · STE 真实实现 <span class="tag tag-code">utils.py:106</span></h2>
+<pre><code>def round_ste(z):
+    zhat = z.round()
+    return z + (zhat - z).detach()     <span class=cmt># 前向=round, 反向=恒等(梯度直穿)</span>
+<span class=cmt"># output: 前向数值=z.round(); 反向 ∂output/∂z = 1</span></code></pre>
+
+<!-- ===== 6. Haar ===== -->
+<h2 class=sec><span class=bar></span>6 · Haar 小波怎么实现（源码 + 手算）</h2>
+<div class=box><b>本质：相邻两个数 → 求和(低频) + 求差(高频)，stride=2 每次跳 2 格 → 长度减半。</b></div>
+<p class=a><b>一维手算</b> <code>[4,6,2,8]</code>：低通(和) <code>[10,10]</code>（4+6, 2+8）；高通(差) <code>[-2,-6]</code>（4−6, 2−8）→ output <span class=out>低[10,10] + 高[-2,-6]</span>，4 数→4 数，<span class=hl>不丢信息</span>只是分粗/细。</p>
+<p class=a><b>二维</b>：先横(W)后竖(H) 各做一次 → 2×2 块出 <b>4 子带</b> LL/LH/HL/HH（1 缩略图 + 3 方向细节）；<b>三维视频</b>：T/H/W 各一次 → <b>8 子带</b>。</p>
+<pre><code><span class=cmt"># patching.py 真实滤波器与卷积</span>
+haar = [0.707, 0.707]                  <span class=cmt># 1/√2</span>
+hl = haar                              <span class=cmt># 低通=求和</span>
+hh = haar * (-1)**[0,1] = [0.707,-0.707]  <span class=cmt># 高通=求差</span>
+xl = conv2d(x, hl, stride=(1,2))       <span class=cmt># 沿 W 求和, W÷2</span>
+xh = conv2d(x, hh, stride=(1,2))       <span class=cmt># 沿 W 求差, W÷2</span>
+xll,xlh = conv2d(xl, hl/hh, stride=(2,1))  <span class=cmt># 再沿 H, H÷2</span>
+xhl,xhh = conv2d(xh, hl/hh, stride=(2,1))
+out = cat([xll,xlh,xhl,xhh], dim=1)    <span class=cmt># output: 4 子带塞通道; RGB[3,H,W]→[12,H/2,W/2]</span></code></pre>
+<p class=a><b>可逆无损</b>：知道 和=a+b、差=a−b 就能解出 a=(和+差)/2, b=(和−差)/2；源码 <code>UnPatcher3D._idwt</code> 用 <code>conv_transpose3d</code> 精确逆回去。<b>与 bilinear 区别</b>：bilinear 丢高频、不可逆；Haar 把高频塞进通道全保留、可逆。该层 <code>requires_grad=False</code>（无参）。</p>
+
+<!-- ===== 7. Gram / 蒸馏澄清 ===== -->
+<h2 class=sec><span class=bar></span>7 · Gram 为何表征纹理 + "感知损失 vs 蒸馏"</h2>
+<p class=a><b>Gram</b> \(G_{ij}=\sum_p F_{ip}F_{jp}\)：对空间位置求和，<b>丢掉"在哪"、只留"什么特征共现"</b> → 纹理/风格统计。两图 Gram 接近=纹理接近（与物体位置无关）。</p>
+<p class=a><b>感知损失 vs 蒸馏（诚实澄清）</b>：特征蒸馏确实存在（不止蒸 logits）。二者形式相通（都在冻结网络特征空间算 L1）；区别在意图：<b>蒸馏</b>=两个不同网络对同一输入对齐特征（迁移能力）；<b>感知损失（本文）</b>=同一冻结 VGG 对"原图 vs 重建图"两个不同输入算距离、优化的是重建图。机制上感知损失就是一种以 VGG 为参照的特征级监督。</p>
+
+<!-- ===== 8. Results ===== -->
+<h2 class=sec><span class=bar></span>8 · §4.3 结果（原文）</h2>
+<div class=quote><b>原文：</b>"Our tokenizers achieve state-of-the-art reconstruction quality ... while being 2x to 12x faster"</div>
+<p class=a>重建质量 SOTA（PSNR/SSIM），且比同类快 <span class=hl>2–12×</span>——tokenizer 快 = 整条 WFM 训练/推理都省。</p>
+
+<!-- ===== 论文原图 ===== -->
+<h2 class=sec><span class=bar></span>9 · 论文原图（逐字 caption，按 figs.json 校准）</h2>
+<div class=figs>
+<figure class=fg><img src="../imgs/fig10.webp" alt="tokenizer arch"><figcaption><b>Figure 9</b>：Overall Cosmos Tokenizer architecture illustrating the integration of temporal causality and an encoder-decoder structure. Temporal causality (left) processes sequential inputs, while the encoder-decoder (right) leverages wavelet transforms and causal operations to capture spatial and temporal dependencies in the data.</figcaption></figure>
+<figure class=fg><img src="../imgs/fig07.webp" alt="tokenization pipeline"><figcaption><b>Figure 6</b>：Video tokenization pipeline. An input video is encoded into tokens, which are usually much more compact than the input video. The decoder then reconstructs the input video from the tokens.</figcaption></figure>
+<figure class=fg><img src="../imgs/fig08.webp" alt="continuous vs discrete"><figcaption><b>Figure 7</b>：Visualization of continuous and discrete tokenizers. Tokens along spatial (H/s_HW × W/s_HW) and temporal (1 + T/…) dimensions.</figcaption></figure>
+</div>
+
+<div class=note2><b>诚实边界：</b>数据流形状/配置/量化/小波/编码器结构 = 开源 <code>NVIDIA/Cosmos-Tokenizer</code>（✅ 带文件行号）+ 论文 §4（📄）。<b>训练损失（VGG/Gram/光流/对抗）与 VGG 具体层</b> 不在开源推理仓、论文亦未细化（⚠️），故只给论文文字描述、未给代码。output 形状按 DV(spatial16×/temporal8×) 配置推导，CV 版为 8×/8×。</div>
+</div></body></html>

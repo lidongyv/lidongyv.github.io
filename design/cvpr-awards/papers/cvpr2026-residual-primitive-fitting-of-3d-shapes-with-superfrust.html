@@ -1,0 +1,174 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Residual Primitive Fitting of 3D Shapes with SuperFrusta</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Residual Primitive Fitting of 3D Shapes with SuperFrusta</h1>
+    <div class="au2" style="color:var(--mut)">Aditya Ganeshan ⋅ Matheus Gadelha ⋅ Thibault Groueix ⋅ Zhiqin Chen ⋅ Siddhartha Chaudhuri ⋅ Vladimir G. Kim ⋅ Wang Yifan ⋅ Daniel Ritchie</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2512.09201">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2512.09201">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Residual%20Primitive%20Fitting%20of%203D%20Shapes%20with%20SuperFrusta">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">We introduce a framework for converting 3D shapes into compact and editable assemblies of analytic primitives, directly addressing the persistent trade-off between reconstruction fidelity and parsimony. Our approach combines two key contributions: a novel primitive, termed SuperFrustum, and an iterative inference algorithm, Residual Primitive Fitting (ResFit). SuperFrustum is a analytical primitive that is simultaneously (1) expressive, being able to express various common solids such as cylinders, spheres, cones &amp; their tapered and bent forms, (2) editable, being compactly parameterized with 8 parameters, and (3) optimizable, with a sign distance field differentiable w.r.t. its parameters almost everywhere. ResFit is an unsupervised procedure that interleaves global shape analysis with local optimization, iteratively fitting primitives to the unexplained residual of a shape to discover a parsimonious yet accurate decompositions for each input shape. On diverse 3D benchmarks, our method achieves state-of-the-art results, improving IoU by over 9 points while using nearly half as many primitives as prior work. The resulting assemblies bridge the gap between dense 3D data and human-controllable design, producing high-fidelity and editable shape programs.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-residual-primitive-fitting-of-3d-shapes-with-superfrust -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">把任意 3D 形状拆成「又准又少」的可编辑解析 primitive 拼装。两大件：① <b>SuperFrustum</b>——单个解析 SDF primitive，仅 <b>8 参数</b>却同时 expressive(能 morph 成 cuboid/cylinder/cone/sphere/torus 及其 taper/bend/hollow 变体)、editable、optimizable(几乎处处可导)；② <b>ResFit</b>——无监督迭代拟合，<b>全局形状分解(MSD「先剥最厚部分」)↔局部梯度优化交替</b>，每轮只对「还没解释的 residual」补 primitive。结果：IoU 比 SOTA +6~9 分、primitive 数≈砍半。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">原文 “a fundamental trade-off between reconstruction fidelity and program parsimony”。3D 生成的资产 “structurally unorganized”，难做 animation/rigging/editing。primitive 表示要准就堆 “dense, redundant assemblies of overlapping primitives”、要少就 “fail to capture fine geometric details or curved structures”。两根因：① 常用家族(cuboid/superquadric/ellipsoid)表达力弱→要很多个；② 推理本身——先定完整分割的方法 brittle(“segmentation errors propagate directly to the final assembly”)，从头优化一大堆 primitive 要面对 “highly non-convex loss landscape”。</div>
+    <div class="note-h">核心方法 + 关键公式</div>
+    <div class="note-b">总目标(Occam)：z*=argmax O(x,z)，<b>O(x,z)=R(x,E(z)) − α|z|</b>(R=重建精度，|z|=primitive 数，α=10⁻³ 权衡)。<br>① <b>SuperFrustum</b>：SF(p)=f(p;θ)，θ=(s,r,d,t,b,o)；assembly 用递归 smooth union <b>F_{k+1}=U(F_k, g_{k+1}; β_k)</b>。<br>② <b>ResFit</b>：analysis(MSD 分解 residual 出 seed)↔optimization(调参 max O)交替，到 O 饱和或预算 K 停。<br>③ <b>MSD</b>：Γ_k⊆{p | f(p)≤τ} 且连通，τ 取使 Vol(Γ_k) 达体积比 κ 的最小值，dilate 回 R_k=Γ_k⊕B_|τ|，更新 residual f_{k+1}=f_k\R_k。<br>④ <b>loss</b>：L_total=L_rec+λ_count·L_count+λ_qual·L_qual——L_rec=curvature 加权 occupancy MSE、L_count=Σq_i(Gumbel-Softmax existence)、L_qual=overlap+union 一致性；末尾 discrete pruning 贪心删(改善 O 才删)。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">3DGen-Prim：Ours IoU 88.74 vs MPS 82.67(<b>+6.1</b>)、#Prims 23.98 vs 42.96(≈半)、Overlap 0.210 vs 0.684(<b>&gt;3× 降</b>)；Toys4K：IoU 89.92 vs 80.60(<b>+9.3</b>)。消融：ResFit+MSD 89.86 ＞ Single-shot+MSD 87.95 ＞ ResFit+CoACD 88.02；SuperFrustum+SmoothUnion 88.37 ＞ Cuboid 82.33 ＞ Superquadric 76.50。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① 灵感来自 <b>Shadertoy/Demoscene</b> 社区为「最小描述长度」做的 analytic SDF(paniq / Inigo Quilez)，被改造来做 inverse modeling；② analysis↔optimization <b>双向互 inform</b>，同时破「分割先行 brittle」与「从头优化 non-convex」两难；③ 顺带做 4 应用：textured deployable asset / CSG program / image-to-primitive / 语义分割细化。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① 慢：full 10-round 652.6s/shape，原文承认 “not yet optimized for speed”；② 限制(原文 conclusion)：“restricted by its purely additive composition; shapes requiring subtractive operations remain challenging”；③ SuperFrustum 的 SDF 完整闭式公式正文未给(“provided in the supplementary”)——<b>原文未写正文、需查 supplementary</b>。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（本地 PDF 全文 PyMuPDF 提取，~46K 字符）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）逐句精讲</div>
+    <div class="note-b"><b>原句①（任务）：</b>“a framework for converting 3D shapes into <b>compact and editable assemblies of analytic primitives</b>, directly addressing the persistent trade-off between <b>reconstruction fidelity and parsimony</b>.”<br><b>精讲：</b>把任意 3D 形状转成"少而准"的解析基元装配体，正面解决"重建精度 vs 简洁性"这对长期矛盾。</div>
+    <div class="note-b"><b>原句②（两大贡献）：</b>“a novel primitive, termed <b>SuperFrustum</b>, and an iterative fitting algorithm, <b>Residual Primitive Fitting (ResFit)</b>.” SuperFrustum 三性合一：“(1) expressive … (2) editable, being compactly parameterized with <b>8 parameters</b>, and (3) optimizable, with a sign distance field <b>differentiable w.r.t. its parameters almost everywhere</b>.”</div>
+    <div class="note-b"><b>原句③（ResFit 是什么）：</b>“an unsupervised procedure that interleaves global shape analysis with local optimization, iteratively fitting primitives to <b>the unexplained residual</b> of a shape to discover a parsimonious yet accurate decompositions for each input shape.”<br><b>精讲：</b>注意 “unsupervised” + “for each input shape”——它不是训练一个网络去预测，而是<b>对每个形状单独做无监督优化</b>，因此天然不受训练分布限制（这正是它能泛化到 novel/复杂物体、而学习式方法做不到的根因）。</div>
+    <div class="note-b"><b>原句④（成绩+愿景）：</b>“improving <b>IoU by over 9 points</b> while using <b>nearly half as many primitives</b> as prior work. The resulting assemblies <b>bridge the gap between dense 3D data and human-controllable design</b>, producing high-fidelity and editable shape programs.”<br><b>精讲：</b>同时更准 + 更省（推动 fidelity-parsimony Pareto 前沿），且产出的是"人可控编辑"的 shape program，而非一堆不可解释的稠密表示。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原创；读懂本文必备）</div>
+    <div class="note-b"><b>① 基元装配 / shape abstraction（外部）：</b>用一组可解释的解析"零件"（cuboid/cylinder/sphere/superquadric）拼出复杂形状，得到可编辑、结构化的资产，契合认知科学 “humans perceive objects as compositions of simpler forms”（Biederman 1987 recognition-by-components）。</div>
+    <div class="note-b"><b>② Superquadrics / SDF / CSG（外部）：</b><b>Superquadric</b>=用指数参数化的隐式曲面族（Barr 1981），表达力强但不可精确还原 cube/cone 且难编辑；<b>SDF（signed distance field）</b>=每点到表面的有符号距离，零等值面即表面，可微则可梯度优化；<b>CSG</b>=用并/交/差组合基本体的实体造型树。</div>
+    <div class="note-b"><b>③ Shadertoy / Demoscene 解析基元（本文灵感源）：</b>图形社区为"最小描述长度+实时渲染"造出可在单一函数式里平滑 morph 的统一解析基元（Quilez 的 SDF 库、paniq 的 sdsuperprim）。原文：“These formulations were developed to <b>minimize scene-description size</b> … not for inverse modeling … We find that, when carefully adapted, these formulations are <b>exceptionally well-suited for inverse modeling</b>.”</div>
+    <div class="note-b"><b>④ ACD / CoACD / MSD（分解方法）：</b><b>ACD（Approximate Convex Decomposition）</b>把形状切成近似凸块；<b>CoACD</b>=collision-aware 的树搜索版；<b>MSD（Morphological Shape Decomposition, Pitas 1990）</b>=形态学"先剥最厚部分"。本文选 MSD 是因为它能产出<b>非凸</b>区域、且对残差噪声鲁棒。</div>
+
+    <div class="note-h">② §1 Introduction（problem → solution → why 闭环）</div>
+    <div class="note-b"><b>problem：</b>3D 生成虽强但输出 “structurally unorganized”，难做动画/绑定/编辑；基元化能给结构。但推理基元装配有<b>根本矛盾</b>：“Approaches that prioritize high fidelity often yield <b>dense, redundant assemblies of overlapping primitives</b> … methods that enforce parsimony may <b>fail to capture fine geometric details or curved structures</b>.”</div>
+    <div class="note-b"><b>归因两因素：</b>① 基元族（cuboid/superquadric/ellipsoid）表达力不足→需大量实例；② 推理流程有缺陷——先承诺完整分割的方法 “any initial segmentation errors propagate directly to the final assembly”（脆），从头优化一大堆基元的方法要 “navigate a highly non-convex loss landscape”。</div>
+    <div class="note-b"><b>solution + why：</b>“marries a highly expressive primitive with a robust inference strategy.” SuperFrustum 补齐"表达力/可编辑/可优化"三者常缺其一的空白；ResFit “tightly interleaves global shape analysis with local primitive optimization”，让自顶向下分析与自底向上基元表示<b>互相纠错</b>，从而既紧凑又高保真。</div>
+
+    <div class="note-h">③ §2 Related Work（三类基元推理定位本文）</div>
+    <div class="note-b"><b>① Shape-analysis-driven：</b>按曲率/厚度/凸性把形状分区再拟合基元——“brittle across diverse shapes and sensitive to tuning … the decomposition is fixed and independent of what the primitives can represent.” ② <b>Optimization-driven：</b>直接调基元参数最小化重建误差——“effective on small assemblies, they often <b>require many primitives</b> for high fidelity.” ③ <b>Learned：</b>神经网络预测参数/部件布局，“generalize poorly to novel or complex objects.” 本文 = <b>analysis 与 optimization 双向耦合</b>，让分解适配基元表达力。</div>
+
+    <div class="note-h">④ §3 任务定义与目标函数（式1-2，Occam's razor）</div>
+    <div class="note-b">给定 3D 形状 \(x\)，推一段程序 \(z\)（一串基元 \(\{f_{\theta_i}\}_{i=1}^{|z|}\) 经组合算子执行成闭合曲面 \(E(z)\)）。目标（式1-2）： \[ z^* = \arg\max_z O(x,z),\quad O(x,z) = R(x, E(z)) - \alpha|z| \] \(R\)=重建精度，\(|z|\)=程序复杂度（基元数），\(\alpha\) 控精度↔简洁权衡。“Maximizing O thus favors <b>concise programs that explain the geometry with a small set of expressive parts</b>.”（α=10⁻³）</div>
+
+    <div class="note-h">⑤ §3.1 ResFit 迭代框架（analysis↔optimization 交替）</div>
+    <div class="note-b">动机：“a <b>disconnect</b> between the geometric analysis (top-down) and the primitive representation (bottom-up)”。流程交替两阶段：<b>分析阶段</b>把当前残差体分解成区域，给新基元播种；<b>优化阶段</b>调参最大化 \(O\)，分离"已解释"与"残差"。循环到 \(O\) 饱和或达迭代预算 \(K\)。<br><b>双向纠错设计：</b>防过参数化——每轮只播种少量基元 + soft 正则惩罚冗余 + hard pruning 删降质部件；防欠参数化——基元按局部支撑优化、每轮重优化整个装配体，“This enables <b>self-correction</b> as new parts are added.”<br><b>为何这能打破两难：</b>纯优化式方法从头同时调"一大锅基元（soup）"，要在<b>高度非凸</b>的重建 loss 里硬搜，极易陷入纠缠的劣解；纯分析式方法又先把分割<b>钉死</b>，与基元能表达什么脱节。ResFit 把"提全局结构"与"调局部参数"两信号交替喂给彼此，相当于每轮都用最新残差几何重新指导下一批基元该放哪、放几个，从而既不冗余堆叠也不漏掉未解释区域。</div>
+
+    <div class="note-h">⑥ §3.2 SuperFrustum 基元（式3-4，表达力/可编辑/可优化三合一）</div>
+    <div class="note-b"><b>表格对比（Table，三性）：</b>Superquadrics ✗表达✓编辑✓优化、Algebraic Surf ✓✗✓、Multi-type(PA) ✓✓✗、<b>SuperFrusta ✓✓✓</b>。<br><b>定义（式3）：</b>SuperFrustum 是某 SDF 的零等值面 \( SF(p) = f(p;\theta),\ \theta=(s,r,d,t,b,o) \)，<b>仅 8 个标量</b>直观控制 anisotropic scale \(s\)、profile rounding \(r\)、dilation \(d\)、taper \(t\)、bulge \(b\)、onion/shell thickness \(o\)。SDF “piecewise-C1 … differentiable almost everywhere”，可平滑 morph 出 cuboid/cylinder/cone/torus 及弯曲、空心、平滑封口等形态。</div>
+    <div class="note-b"><b>装配体组合（式4）：</b>每个实例有位姿 \((R_i,t_i)\) 与形参 \(\theta_i\)，给出 \( g_i(p)=f(R_i^\top(p-t_i);\theta_i) \)；再用 smooth union 递归合成 \[ F_1(p)=g_1(p),\quad F_{k+1}(p)=U\!\big(F_k(p), g_{k+1}(p); \beta_k\big) \] \(\beta_k\) 控混合锐度，最终曲面=\(F\) 的零等值面。</div>
+
+    <div class="note-h">⑦ §3.3 MSD 初始化（式5-6，"先剥最厚"）</div>
+    <div class="note-b">MSD 每步找最厚的近匀厚连通区做种子。每轮 \(k\) 找经半径 \(|\tau|\) 腐蚀仍存活的最厚内部连通分量 \(\Gamma_k\)： \[ \Gamma_k \subseteq \{p\in\Omega \mid f(p)\le\tau\},\quad \Gamma_k\ \text{is a cc} \] 阈值 \(\tau\le0\) 取使 \(\mathrm{Vol}(\Gamma_k)\) 达体积比 \(\kappa\) 的最小值；再膨胀回原半径 \(R_k=\Gamma_k\oplus B_{|\tau|}\)，并从形状中减去更新残差： \[ f_{k+1}(p) = f_k(p)\setminus R_k,\quad f_1\equiv f \] <b>选 MSD 而非 ACD 的两理由（原文）：</b>① “ACD's convexity constraint <b>over-partitions non-convex structures</b> that a single SuperFrustum can model”（如弯曲/空心件）；② MSD “substantially more <b>robust to the noisy surface artifacts</b>” —— 正适合迭代残差体。每个分解体用 PCA 初始化 SuperFrustum 位姿/尺度（cylindricity score 选 canonical 方向）。</div>
+
+    <div class="note-h">⑧ §3.4 Decomposition-Aware Optimization（式7-8，三项损失+剪枝）</div>
+    <div class="note-b"><b>① 重建（式7）：</b>监督占据场 \( \hat{o}(p)=\sigma(-\beta F(p)) \) 对齐 GT 占据 \(o(p)\)，按主曲率加权强调薄/高曲率结构： \[ w(p)=1+\sigma(\kappa(p)),\quad L_{rec}=\frac{1}{|M|}\sum_{p\in M} w(p)\big(\hat{o}(p)-o(p)\big)^2 \] 只在空间掩码 \(M=\{p\mid F(p)<\tau\}\) 内算。<b>② 简洁（parsimony）：</b>每基元配 Gumbel-Softmax 存在变量 \(q_i\in(0,1)\)，调制 SDF \(f_i^*(p)=q_i f_i(p)+(1-q_i)\)，损失 \(L_{count}=\sum_i q_i\)。<b>③ 质量：</b>\(L_{qual}=L_{overlap}+L_{union}\)——前者惩罚多基元重叠覆盖，后者惩罚"被 smooth union 占据但任何单基元都没占"的过度混合。</div>
+    <div class="note-b"><b>总损失（式8）：</b> \( L_{total}=L_{rec}+\lambda_{count}L_{count}+\lambda_{qual}L_{qual} \)（\(\lambda_{count}=10^{-3},\lambda_{qual}=10^{-2}\)）。<b>剪枝：</b>可微优化收敛后，对体积/贡献微小的基元试删，“deletions are greedily accepted if they improve the primary objective O.”</div>
+
+    <div class="note-h">⑨ §4 实验设置（数据/指标/基线）</div>
+    <div class="note-b"><b>数据：</b>① 3DGen-Prim 不公开，用 3DGen-Bench 的 510 prompts + Hunyuan3D-2.1 重建；② Toys4K 用最远点采样选 500 个几何多样形状。<b>指标：</b>重建——voxel IoU(128³)、CD、EMD(2048 点)、<b>BiSurfIoU</b>（双向近表面 IoU）；程序质量——\(|z|\)(#Prims)、Overlap Ratio、<b>IntraPrim</b>（基元内 PartField 特征方差，↓越纯）、<b>InterPrim</b>（基元特征质心最近邻距离，↑越有区分）。<b>基线：</b>Primitive Anything (PA，学习式，预测 cuboid/cylinder/ellipsoid) 及其 TTO 变体；Marching Primitives (MPS，superquadric 优化式，128 体素)。</div>
+
+    <div class="note-b"><b>指标深入（为何要 BiSurfIoU / IntraPrim / InterPrim）：</b>voxel IoU(128³) 只看体积重合、对薄壳/曲面不敏感，故引入 <b>BiSurfIoU</b>——“the mean of IoU scores from near-surface points sampled on both the target and reconstructed shapes, with the latter surface extracted via <b>dual contouring</b> of the SDF”，更能反映表面保真。语义指标基于 <b>PartField</b> 特征：把目标面上的点关联到最近基元后，<b>IntraPrim</b>=基元内特征方差（越低=单个基元语义越纯，不会一个基元横跨多语义部件），<b>InterPrim</b>=基元特征质心间最近邻距离（越高=不同基元对应不同语义部件，分得开），两者按 size-weighted 平均。</div>
+
+    <div class="note-h">⑩ 主表 Table 1（真实数值，Gold=最佳）</div>
+    <div class="note-b"><b>3DGen-Prim：</b>Ours <b>IoU 88.74 / BiSurfIoU 80.19 / CD 0.168 / EMD 0.073 / #Prims 23.98 / Overlap 0.210</b>；MPS 82.67 / 71.53 / 0.884 / 0.093 / 42.96 / 0.684；PA(TTO) 53.73 / 37.90 / 0.742 / 0.131 / 64.87 / 0.493；PA 34.62 / 30.56 / 7.588 / 0.119 / 19.81 / 0.402。<br><b>Toys4K：</b>Ours <b>89.92 / 85.66 / 0.154 / 0.067 / 23.67 / 0.208</b>；MPS 80.60 / 72.75 / 1.147 / 0.086 / 30.62 / 0.588。<br><b>结论：</b>IoU 比 prior 高 <b>+6.1（3DGen-Prim）/ +9.3（Toys4K）</b>，基元数约为 MPS 一半，体积重叠降 <b>3× 以上</b>，且 IntraPrim 最低 / InterPrim 居前（语义更纯、部件更可分）。</div>
+
+    <div class="note-h">⑪ 消融 Table 2 + Table 3（基元族 & 拟合策略）</div>
+    <div class="note-b"><b>基元族（Table 2，IoU/CD/#Prims/Overlap）：</b>Cuboid 82.33 / 0.129 / 20.49 / 0.298；SQ(superquadric) 76.50 / 0.523 / 18.17 / 0.286；SP(superprimitive，无 taper/bend) 86.66 / 0.134 / 21.36 / 0.291；SF(no union) 87.15 / 0.173 / 18.68 / 0.257；<b>SF + smooth union 88.37 / 0.147 / 21.46 / 0.199</b>。证明 taper/bend 自由度与 smooth union 都关键；SQ 因轴向错配易陷局部最优（MPS 靠不可微的周期性 axis-flip 缓解，本文受控对比里不用）。</div>
+    <div class="note-b"><b>拟合策略（Table 3）：</b>Single+CoACD 86.56 / 0.368 / 26.67 / 0.226；Single+MSD 87.95 / 0.337 / 28.17 / 0.236；ResFit+CoACD 88.02 / 0.290 / 24.18 / 0.214；<b>ResFit+MSD 89.86 / 0.157 / 23.46 / 0.207</b>。结论：迭代 ResFit &gt; single-shot（后者对初始分割敏感、无法把容量重分配给未解释区域）；MSD &gt; CoACD（非凸分区给曲/空/分叉几何更好的初始化）。</div>
+
+    <div class="note-h">⑫ Timing + CSG 推理（Table 4）</div>
+    <div class="note-b"><b>时间（Toys4K）：</b>full 10 轮 ResFit <b>652.6s/shape</b>；但 2 轮变体 <b>184.1s 即达 86.54 IoU / 仅 15.54 基元</b>，匹配甚至略超 MPS@256³（86.30 IoU，194.6s）却用 5× 更少基元。PA 58.3s、MPS@128³ 37.9s 更快但质量低。作者注：“ResFit is <b>not yet optimized for speed</b>; dedicated CUDA kernels … may reduce runtime.” —— 这说明<b>当前瓶颈在工程实现而非算法本质</b>：2 轮就能打平 MPS@256³ 的精度且基元数仅约 1/5，意味着大部分质量在前两轮就拿到了，后续 8 轮主要在打磨细节与剪枝，给"按质量预算自适应早停"留了清晰的提速空间。</div>
+    <div class="note-b"><b>CSG 程序（Table 4，ABC 100 样本）：</b>把 SuperFrustum 参数约束为 cuboid/cylinder/cone/sphere 的重心插值（onion 算子天然含"减去"形态），得离散 CSG。CAPRI-Net 84.46 / 0.100 / 23.0；Ours(Solid) 82.64 / 0.192 / 14.18；<b>Ours 88.30 / 0.127 / 13.16</b>——精度与 CAPRI-Net 相当但基元数约 2/3，树更可解析。</div>
+
+    <div class="note-h">⑬ §5 应用（四类下游）</div>
+    <div class="note-b">① <b>可编辑/可部署资产</b>：每基元配局部 2D 球面纹理对着 textured mesh 优化，可直接 sphere-trace 部署且保持可编辑；② <b>CSG 程序推理</b>（见⑫）；③ <b>Image-to-primitive</b>：接 Hunyuan3D-2.1 从图生 3D 再 ResFit；④ <b>语义分割增强</b>：把 PartObjVerse 粗标签与基元装配体求交，“subdivide large parts into functionally meaningful subcomponents <b>without drifting outside their semantic boundaries</b>”，为开放世界部件分割提供解析先验。</div>
+
+    <div class="note-h">⑭ 关键追问（why these choices）+ 局限</div>
+    <div class="note-b"><b>Q：为什么 IoU 大涨却基元更少？</b> 单个 SuperFrustum 能表达 cuboid/cone 的弯曲/锥化/空心变体，一个顶过去好几个 superquadric/cuboid；ResFit 又把容量按残差精准分配并剪冗余。<b>Q：为什么用 occupancy + 曲率加权而非纯 CD？</b> CD 主导时易牺牲薄/高曲率结构；曲率权 \(w(p)=1+\sigma(\kappa(p))\) 让优化盯住细节。<b>局限（§6）：</b>“restricted by its <b>purely additive composition</b>; shapes requiring <b>subtractive operations remain challenging</b>.” 未来：tree-of-shapes 分解、更丰富 CSG/交互编辑。</div>
+
+    <div class="note-h">⑮ 深入：SuperFrustum 为何适合 inverse modeling</div>
+    <div class="note-b"><b>① 与 superquadric 的本质差异：</b>superquadric 用指数参数化，轴向一旦与目标几何错配就极易陷入<b>糟糕的局部最优</b>（原文：“SQs are particularly susceptible to poor local minima when their axes misalign with the target geometry”），MPS 这类方法只能靠<b>不可微的周期性 axis-flipping</b> 等启发式硬救；而 SuperFrustum 的 SDF “differentiable almost everywhere”，可纯梯度优化，无需这些 hack——这是它"可优化（optimizable）"那一栏打✓的关键。</div>
+    <div class="note-b"><b>② taper/bulge/bend/onion 自由度为何重要：</b>消融 Table 2 里去掉 taper/bend 的 SuperPrimitive(SP) 从 SF 的 87.15 IoU 掉到 86.66，cuboid 掉到 82.33、superquadric 更掉到 76.50——说明<b>"锥化+弯曲+鼓胀+空心"这几个自由度正是单基元能吃下曲面/非匀厚结构的来源</b>，让一个 SuperFrustum 顶替过去要好几个简单基元才能拼出的弯管、空心碗沿、锥形腿等。onion（空心/壳）算子还顺带在<b>纯加法</b>框架里"偷渡"出了减法形态，使 CSG 推理无需显式 subtraction 算子。</div>
+    <div class="note-b"><b>③ smooth union 的取舍：</b>消融显示 SF+smooth union 把 Overlap 从 0.257 压到 <b>0.199</b>（同时 IoU 88.37）——平滑并集让相邻基元用"融合"而非"相交堆叠"来形成连续体，既减重叠又更接近人类对"一个连续零件"的认知；代价是 \(L_{union}\) 必须约束过度混合，否则会糊成一团失去可编辑性，这正是 \(L_{qual}=L_{overlap}+L_{union}\) 两项要同时存在的原因。</div>
+
+    <div class="note-h">📌 全文总结（≥3 条 takeaway）</div>
+    <div class="note-b"><b>Takeaway 1（基元设计）：</b>SuperFrustum 把 Shadertoy/Demoscene 为"最小描述长度+实时渲染"造的统一解析 SDF 反过来用于 inverse modeling——8 参数同时满足表达力/可编辑/可优化，是"用对工具"而非"造大网络"的胜利。</div>
+    <div class="note-b"><b>Takeaway 2（推理范式）：</b>ResFit 的 analysis↔optimization 双向交替 + 在残差上迭代，破解了"先分割后拟合（脆）"与"从头优化一大堆（非凸）"的两难，self-correction 让欠/过参数化都能纠回，是把 top-down 与 bottom-up 信号耦合的范式样本。</div>
+    <div class="note-b"><b>Takeaway 3（成绩与边界）：</b>跨 3DGen-Prim/Toys4K，IoU +6~9 点、基元数减半、重叠降 3×，并能产出可编辑资产 / 结构化 CSG / 细粒度分割，整体把 fidelity-parsimony Pareto 前沿外推。<b>但</b>纯加法组合是硬伤——需要"挖洞/相减"的形状仍难，且 full 版 652.6s/shape 偏慢（未做 CUDA 优化）。</div>
+    <div class="note-b"><b>定性印证（Fig 5）：</b>原文 “Our assemblies exhibit higher geometric fidelity and are more interpretable, using a compact set of <b>non-overlapping, semantically aligned primitives</b>. In contrast, baseline reconstructions can show lower fidelity on complex structures and tend to produce assemblies with greater primitive overlap.” —— 数值优势（IoU↑、Overlap↓、IntraPrim↓）在可视化上对应"零件更少、更不重叠、更像人会怎么拆这个物体"。这也解释了为什么作者反复强调"editable"：只有当装配体里每个基元都对应一个语义清晰、互不打架的部件时，下游的交互编辑/绑定/换纹理才真正可用。</div>
+    <div class="note-b"><b>一句话定位：</b>本文不是又训了一个更大的网络，而是用"<b>对的解析基元（SuperFrustum）+ 对的迭代推理（ResFit）</b>"这条 optimization-as-inference 路线，在无监督、逐形状的设定下同时拿下精度、简洁与可编辑——对追"可控、可编辑 3D 资产"的工业管线（动画/绑定/CAD/游戏）是直接可用的一块拼图。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-residual-primitive-fitting-of-3d-shapes-with-superfrust/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. (Left) Primitive assemblies inferred by our method capture a wide range of shapes, including hollow forms (vase), curved &amp; toroidal parts (bike), intricate geometry (ladder, robot), and smooth organic shapes (crab). (Right) Our approach shifts the reconstruc- tion–parsimony Pareto frontier: compared to state-of-the-art methods, Marching Primitives [18] (MPS) and Primitive Anything [45] (</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-residual-primitive-fitting-of-3d-shapes-with-superfrust/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. SuperFrustum— An Expressive, Compact &amp; Differentiable Primitive. SuperFrustum is a unified analytic SDF primitive with only 8 parameters controlling dilation, taper, bulge, onion-like hollowing, profile roundness, and axial scaling. Its SDF is C0- continuous and fully differentiable (almost eveywhere) with respect to all parameters, enabling robust inverse modeling and gradient-based opt</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-residual-primitive-fitting-of-3d-shapes-with-superfrust/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. ResFit infers parsimonious assemblies by interleaving shape analysis and primitive optimization. Shape decomposition provides initial primitives, which are refined with decomposition- aware optimization. Residual unexplained volumes are then ex- tracted and seeded with new primitives.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-residual-primitive-fitting-of-3d-shapes-with-superfrust/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Morphological Shape Decomposition (MSD) iteratively extracts connected regions of similar thickness. Top: successive MSD partitions of a input mesh. Bottom: MSD yields regions that form suitable initialization seeds for SuperFrusta —capturing non-convex structures such as bicycle tires (left), a cat’s curved tail (center), and bowl rims (right). In contrast, CoACD over-partitions these r</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-residual-primitive-fitting-of-3d-shapes-with-superfrust/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Our method reconstructs target shapes with high geometric fidelity and produces more interpretable assemblies, using compact, minimally-overlapping primitives. In contrast, Primitive Anything [45] (PA) and Marching Primitives [18] (MPS) often lose fine structure and generate assemblies with substantial primitive overlap.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-residual-primitive-fitting-of-3d-shapes-with-superfrust/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Assigning per-primitive spherical 2D textures &amp; opti- mizing it against a textured mesh, begets Edtiable &amp; Deployable assets.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-residual-primitive-fitting-of-3d-shapes-with-superfrust/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Our method can infer CSG programs using canonical solids (e.g., cylinders, cuboids; cf. Sec. 5), producing far more parsable and structured trees than CAPRI-Net [46].</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-residual-primitive-fitting-of-3d-shapes-with-superfrust/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Our method can infer primitive assemblies from images by leveraging Text-2-3D models (Hunyuan3D-2.1 [33]).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-residual-primitive-fitting-of-3d-shapes-with-superfrust/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. ResFit enables finer, semantically consistent part seg- mentation. Row 1 shows the coarse semantic regions provided in PartObjVerse. Row 2 shows the primitive assemblies inferred by ResFit. Intersecting each coarse region with its corresponding assembly (Row 3) yields meaningful sub-parts—capturing func- tional structure while remaining strictly within the original seman- tic boundaries.</figcaption></figure>
+    </div>
+  </div></body></html>

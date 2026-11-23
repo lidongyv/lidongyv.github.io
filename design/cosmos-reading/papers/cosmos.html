@@ -1,0 +1,178 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>Cosmos WFM · 架构与数据流图解</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--panel:#161c34;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--red:#fb7185;--blue:#60a5fa}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 18% -10%,rgba(167,139,250,.18),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.6;min-height:100vh}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 18px 80px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.hero{padding:20px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(126,224,255,.08));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--accent);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(20px,3vw,30px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 35%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13px;max-width:900px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0;font-size:12px;color:var(--text2)}
+.lg{display:inline-flex;align-items:center;gap:5px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:999px;padding:4px 11px}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+h2.sec{font-size:17px;font-weight:800;margin:26px 0 4px;display:flex;align-items:center;gap:8px}
+h2.sec .bar{width:4px;height:17px;border-radius:3px;background:linear-gradient(180deg,var(--accent2),var(--accent))}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:12px}
+/* flow */
+.flow{display:flex;flex-direction:column;align-items:center;gap:0;margin:6px 0}
+.node{width:100%;max-width:760px;background:rgba(0,0,0,.22);border:1px solid var(--line);border-radius:12px;padding:12px 16px;position:relative}
+.node .t{font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.node .d{font-size:12px;color:var(--text2);margin-top:4px}
+.node .shape{font-family:SFMono-Regular,Consolas,monospace;font-size:11.5px;color:var(--accent);background:rgba(126,224,255,.08);border:1px solid var(--line);border-radius:6px;padding:1px 7px;display:inline-block;margin-top:6px}
+.tag{font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;margin-left:2px}
+.tag-code{background:rgba(74,222,128,.16);color:var(--green);border:1px solid rgba(74,222,128,.4)}
+.tag-paper{background:rgba(96,165,250,.16);color:var(--blue);border:1px solid rgba(96,165,250,.4)}
+.tag-warn{background:rgba(251,113,133,.16);color:var(--red);border:1px solid rgba(251,113,133,.4)}
+.arrow{width:2px;height:26px;background:linear-gradient(180deg,var(--accent2),var(--accent));position:relative;margin:3px 0}
+.arrow::after{content:"▼";position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);color:var(--accent);font-size:11px}
+.arrow .lab{position:absolute;left:12px;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:11px;color:var(--text3);background:var(--bg2);padding:0 6px;border:1px solid var(--line);border-radius:5px}
+.branch{display:flex;gap:14px;width:100%;max-width:760px;flex-wrap:wrap}
+.branch .node{flex:1;min-width:300px}
+.nb-c{border-left:3px solid var(--green)}.nb-d{border-left:3px solid var(--amber)}
+.mono{font-family:SFMono-Regular,Consolas,monospace}
+.box{background:rgba(17,23,45,.92);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0}
+.steps{counter-reset:s;display:flex;flex-direction:column;gap:8px}
+.step{background:rgba(0,0,0,.2);border:1px solid var(--line);border-left:3px solid var(--accent2);border-radius:9px;padding:9px 13px;font-size:12.5px;color:var(--text2)}
+.step b{color:var(--text)}
+.step .mono{color:var(--accent)}
+.macro{display:flex;flex-wrap:wrap;align-items:stretch;gap:0}
+.mcell{flex:1;min-width:150px;background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:11px;padding:11px 13px}
+.mcell h4{font-size:13px;color:var(--text);margin-bottom:4px}
+.mcell p{font-size:11.5px;color:var(--text3)}
+.marrow{display:flex;align-items:center;color:var(--accent);font-size:16px;padding:0 4px}
+.note2{margin-top:20px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+.hl{color:var(--accent);font-weight:700}.hlp{color:var(--accent2);font-weight:700}
+@media(max-width:640px){.branch .node{min-width:100%}}
+</style></head><body><div class=wrap>
+<a href="../index.html" class=backlink>← 教学文档主页</a>
+<a href="../../world-model/wm_methods.html" class=backlink>World Model 方法全景</a>
+<a href="cosmos_tokenizer.html" class=backlink>§4 Tokenizer 精读（数据流·源码·QA）→</a>
+
+<header class=hero><div class=kick>Cosmos WFM · 精读配图</div>
+<h1>Cosmos 数据流转与架构图解</h1>
+<p class=sub>基于 <b>NVIDIA/Cosmos-Tokenizer 开源源码（Apache-2.0）</b> + 论文 <i>Cosmos World Foundation Model Platform for Physical AI</i>（arXiv 2501.03575）绘制。每个环节标注张量形状、真实配置与来源置信度。</p>
+</header>
+
+<div class=legend>
+<span class=lg><span class="dot" style="background:var(--green)"></span>✅ 源码确认（含文件行号）</span>
+<span class=lg><span class="dot" style="background:var(--blue)"></span>📄 论文明写</span>
+<span class=lg><span class="dot" style="background:var(--red)"></span>⚠️ 未公开（训练码不在开源仓）</span>
+</div>
+
+<!-- ============ 图1：Tokenizer 数据流 ============ -->
+<h2 class=sec><span class=bar></span>图 1 · Tokenizer 数据流（以 Discrete Video「DV」为例）</h2>
+<div class=secsub>视频 → Haar 无损前处理 → 因子化因果编码器 → 量化/AE → 解码器重建。形状按 DV 配置：空间压缩 16×、时间压缩 8×。</div>
+<div class=flow>
+
+  <div class=node><div class=t>① 输入视频 <span class="tag tag-code">configs.py</span></div>
+  <div class=d>RGB 视频，in_channels=3</div>
+  <div class=shape>x : [B, 3, T, H, W]</div></div>
+
+  <div class=arrow><span class=lab>Patcher3D(haar, patch_size=4)</span></div>
+
+  <div class=node><div class=t>② Haar 小波前处理（无参·可逆） <span class="tag tag-code">patching.py</span></div>
+  <div class=d>做 <b>log2(4)=2 级</b> 3D 离散小波（DWT）。每级把 T/H/W 各 ÷2、拆成 <b>8 个子带</b>拼到通道维（LL…HHH）。<span class=hl>信息不丢</span>（子带全保留），<span class=mono>requires_grad=False</span>。</div>
+  <div class=shape>→ [B, 3·4³=192, T/4, H/4, W/4]　(通道×64, 时空各÷4)</div></div>
+
+  <div class=arrow><span class=lab>conv_in（factorized 因果卷积）</span></div>
+
+  <div class=node><div class=t>③ conv_in：空间+时间分离的因果卷积 <span class="tag tag-code">layers3d.py:773</span></div>
+  <div class=d><span class=mono>CausalConv3d(k=(1,3,3))</span> 只做空间 → <span class=mono>CausalConv3d(k=(3,1,1))</span> 只做时间。<b>factorized</b>=空间与时间解耦；<b>causal</b>=时间维只 pad 过去、不看未来。base channels=128。</div>
+  <div class=shape>→ [B, 128, T/4, H/4, W/4]</div></div>
+
+  <div class=arrow><span class=lab>3 × Down Stage</span></div>
+
+  <div class=node><div class=t>④ 3 个下采样 Stage <span class="tag tag-code">layers3d.py:790</span> <span class="tag tag-paper">§4.1</span></div>
+  <div class=d>channels_mult=[2,4,4] → 通道 <span class=mono>128→256→512→512</span>。每 stage：<b>2× CausalResnetBlockFactorized3d</b> + （当分辨率=32 时）<b>CausalAttnBlock(空间注意力)+CausalTemporalAttnBlock(时间注意力)</b> + <b>CausalHybridDownsample3d</b>。<br>下采样次数：空间 <span class=mono>log2(16)−log2(4)=2</span> 次、时间 <span class=mono>log2(8)−log2(4)=1</span> 次（空/时独立控制）。</div>
+  <div class=shape>→ [B, 512, T/8, H/16, W/16]　(累计 空间16× 时间8×)</div></div>
+
+  <div class=arrow><span class=lab>mid + norm + conv_out</span></div>
+
+  <div class=node><div class=t>⑤ mid 瓶颈 + 输出头 <span class="tag tag-code">layers3d.py:826</span></div>
+  <div class=d>mid = ResnetBlock + (空间attn+时间attn) + ResnetBlock；末端 <span class=mono>CausalNormalize</span> + factorized <span class=mono>conv_out</span> 投到 z_channels。</div>
+  <div class=shape>→ z : [B, 16, T/8, H/16, W/16]　(z_channels=16)</div></div>
+
+  <div class=arrow><span class=lab>分叉：连续 or 离散</span></div>
+
+  <div class=branch>
+    <div class="node nb-c"><div class=t>⑥a 连续路线（CV） <span class="tag tag-code">continuous_video</span></div>
+    <div class=d><b>AE 形式</b>（formulation=AE），latent 直接是 16 维连续向量。空间/时间压缩 <b>8×/8×</b>。→ 喂 <span class=hl>Diffusion WFM</span>（§5.1）。</div>
+    <div class=shape>continuous latent : [B, 16, T/8, H/8, W/8]</div></div>
+
+    <div class="node nb-d"><div class=t>⑥b 离散路线（DV）→ FSQ <span class="tag tag-code">quantizers.py:71</span></div>
+    <div class=d><b>Finite Scalar Quantization</b>：<span class=mono>bound(z)=tanh 限幅 → round_ste 四舍五入 → /half 归一化</span>；再 <span class=mono>codes_to_indices</span> 用混合进制 basis 把每点映成唯一整数。<br>levels=<span class=mono>[8,8,8,5,5,5]</span> → <span class=hl>码本 64000</span>，embedding_dim=6。→ 喂 <span class=hlp>Autoregressive WFM</span>（§5.2）。</div>
+    <div class=shape>token indices : [B, T/8, H/16, W/16] ∈ {0..63999}</div></div>
+  </div>
+
+  <div class=arrow><span class=lab>Decoder（镜像对称）+ UnPatcher3D 逆 Haar</span></div>
+
+  <div class=node><div class=t>⑦ 解码器重建 <span class="tag tag-code">layers3d.py</span></div>
+  <div class=d>结构与编码器镜像：上采样 ResBlock + 注意力 → <b>UnPatcher3D</b> 用 <span class=mono>conv_transpose3d</span> 做逆小波，<span class=hl>精确还原</span>分辨率。</div>
+  <div class=shape>x̂ : [B, 3, T, H, W]　(重建视频)</div></div>
+
+</div>
+
+<!-- ============ 图2：两种量化对比 ============ -->
+<h2 class=sec><span class=bar></span>图 2 · 量化分叉：连续 AE vs 离散 FSQ（含 FSQ 内部）</h2>
+<div class=secsub>同一个编码器输出 z，两种约束方式 → 服务两种生成骨架。</div>
+<div class=box>
+<div class=steps>
+<div class=step><b>连续（AE）</b>：z → 瓶颈 → <span class=mono>continuous latent(16ch)</span>，<span class=hl>不量化</span>，全程可导。直接给扩散模型在连续空间加噪/去噪。</div>
+<div class=step><b>离散（FSQ）</b> <span class="tag tag-code">quantizers.py:143</span>：
+① <span class=mono>bound(z)</span>=<b>tanh</b> 把每维压进 [-half, half]；
+② <span class=mono>round_ste(·)</span>=<b>四舍五入到整数格点</b>（前向 round，反向恒等 <span class=mono>z+(round(z)−z).detach()</span>）；
+③ <span class=mono>/(levels//2)</span> 归一化到 [-1,1]；
+④ <span class=mono>codes_to_indices</span>：<b>混合进制</b> <span class=mono>(zhat·_basis).sum()</span>（_basis=cumprod([1]+levels[:-1])）→ 每个格点一个唯一整数 index。</div>
+<div class=step><b>为什么用 FSQ 不用 VQ</b>：FSQ 无可学码本、无 commitment/EMA、天然满码 → 不会码本坍塌。仓里也实现了 VQ（<span class=mono>argmin 最近邻</span>查 nn.Embedding + commitment loss + STE）与 LFQ/ResFSQ，但默认 <span class=mono>quantizer=FSQ</span>。<span class="tag tag-code">quantizers.py:307</span></div>
+</div></div>
+
+<!-- ============ 图3：两条 WFM 生成路线 ============ -->
+<h2 class=sec><span class=bar></span>图 3 · 预训练 WFM 两条路线（§5，论文）</h2>
+<div class=secsub>Tokenizer 产出的两种表示，分别喂两种 transformer 生成骨架。</div>
+<div class=branch>
+  <div class="node nb-c"><div class=t>Diffusion WFM <span class="tag tag-paper">§5.1</span></div>
+  <div class=d>输入<b>连续 token</b>。从高斯噪声<b>迭代去噪</b>出整段视频；transformer(DiT) 架构。含 prompt upsampler；评估 3D 一致性 + 物理对齐（§5.3）。</div>
+  <div class=shape>连续 latent + 噪声 → 去噪 → 视频</div></div>
+  <div class="node nb-d"><div class=t>Autoregressive WFM <span class="tag tag-paper">§5.2</span></div>
+  <div class=d>输入<b>离散 token</b>。像 GPT 一样<b>逐块预测</b>下一 token（cross-entropy）；含实时生成优化（§5.2.4）+ <b>diffusion decoder</b>（§5.2.5）把 token 渲染回高清。</div>
+  <div class=shape>离散 token 序列 → 逐块自回归 → 视频</div></div>
+</div>
+
+<!-- ============ 图4：平台全景 ============ -->
+<h2 class=sec><span class=bar></span>图 4 · Cosmos 平台全景（预训练 → 后训练）</h2>
+<div class=secsub>论文主张的 pre-training→post-training 范式（§2/§3/§6）。</div>
+<div class=macro>
+  <div class=mcell><h4>① 数据清洗 <span class="tag tag-paper">§3</span></h4><p>20M 小时 → ~100M clip(2–60s)；VLM 每 256 帧打 caption；H.264 GPU + Ray 编排。</p></div>
+  <div class=marrow>→</div>
+  <div class=mcell><h4>② Tokenizer <span class="tag tag-code">开源</span></h4><p>连续(AE)/离散(FSQ)；Haar 前处理 + factorized 因果编解码；SOTA 重建、2–12× 快。</p></div>
+  <div class=marrow>→</div>
+  <div class=mcell><h4>③ 预训练 WFM <span class="tag tag-paper">§5</span></h4><p>Diffusion + Autoregressive 两族，大规模视频自监督 → 通用「世界通才」。</p></div>
+  <div class=marrow>→</div>
+  <div class=mcell><h4>④ 后训练 <span class="tag tag-paper">§6</span></h4><p>小数据微调到：相机控制 / 机器人操作 / <b>自动驾驶</b>。+ Guardrails 安全护栏(§7)。</p></div>
+</div>
+
+<style>
+.figs{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px;margin:8px 0}
+.fg{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:11px;padding:10px;margin:0}
+.fg img{width:100%;border-radius:7px;background:#fff;display:block}
+.fg figcaption{font-size:11px;color:var(--text3);margin-top:7px;line-height:1.5}
+.fg figcaption b{color:var(--accent)}
+</style>
+<h2 class=sec><span class=bar></span>图 5 · 论文原图（arXiv 2501.03575 · 逐字原文 caption）</h2>
+<div class=secsub>从本地 PDF 抠取（<span class=mono>pdf_figs</span>），配论文原始英文 caption。注意：抠图文件号与论文 Figure 号有偏移，下方已按 <span class=mono>figs.json</span> 校准对齐。caption 末尾 … 表示原文较长截断。</div>
+<div class=figs>
+  <figure class=fg><img src="../imgs/fig10.webp" alt="Cosmos Tokenizer architecture"><figcaption><b>Figure 9（Tokenizer 架构）</b>：Overall Cosmos Tokenizer architecture illustrating the integration of temporal causality and an encoder-decoder structure. Temporal causality (left) processes sequential inputs, while the encoder-decoder (right) leverages wavelet transforms and causal operations to capture spatial and temporal dependencies in the data.</figcaption></figure>
+  <figure class=fg><img src="../imgs/fig07.webp" alt="Video tokenization pipeline"><figcaption><b>Figure 6（tokenization 流程）</b>：Video tokenization pipeline. An input video is encoded into tokens, which are usually much more compact than the input video. The decoder then reconstructs the input video from the tokens. Tokenizer training is about learning the encoder and decoder to maximally preserve the visual information in the tokens.</figcaption></figure>
+  <figure class=fg><img src="../imgs/fig08.webp" alt="Continuous vs discrete tokenizers"><figcaption><b>Figure 7（连续 vs 离散）</b>：Visualization of continuous and discrete tokenizers. Tokens along spatial (H/s_HW × W/s_HW) and temporal (1 + T/…) dimensions.</figcaption></figure>
+  <figure class=fg><img src="../imgs/fig01.webp" alt="Cosmos WFM overview"><figcaption><b>Figure 1（WFM 全景）</b>：Cosmos World Foundation Models. Pre-trained Cosmos WFMs generate high-quality 3D consistent videos with accurate physics. The Cosmos suite of models includes both diffusion and autoregressive transformer models, which are trained using continuous and discrete latent representations of videos, respectively. …</figcaption></figure>
+  <figure class=fg><img src="../imgs/fig04.webp" alt="Cosmos platform components"><figcaption><b>Figure 4（平台组成）</b>：Cosmos World Foundation Model Platform consists of several major components: video curator, video tokenizer, pre-trained world foundation model, world foundation model post-training samples, and guardrail.</figcaption></figure>
+  <figure class=fg><img src="../imgs/fig12.webp" alt="Diffusion WFM architecture"><figcaption><b>Figure 11（Diffusion WFM 架构）</b>：Overall architecture of Cosmos-Predict1 World Foundation Model. The model processes an input video through the encoder of the Cosmos-Tokenize1-CV8×8×8-720p to obtain latent representations, which are subsequently perturbed with Gaussian noise. These representations are then transformed using a 3D patchification process. …</figcaption></figure>
+  <figure class=fg><img src="../imgs/fig15.webp" alt="Autoregressive WFM architecture"><figcaption><b>Figure 14（Autoregressive WFM 架构）</b>：Architecture of Cosmos-Predict1-Video2World Model. The pipeline begins by encoding input video through the encoder of Cosmos-Tokenize1-DV8×16×16-720p to generate discrete tokens, which are transformed into learned embeddings. These embeddings are processed through repeated transformer blocks, each consisting of absolute positional embedding and 3D RoPE components …</figcaption></figure>
+</div>
+
+<div class=note2><b>来源与诚实边界：</b>形状/配置/量化/小波/编码器结构均来自开源仓 <span class=mono>NVIDIA/Cosmos-Tokenizer</span>（✅ 标注文件行号）与论文 arXiv 2501.03575（📄）。<b>训练损失</b>（VGG 感知 / Gram / 光流 / 对抗）与 <b>VGG 具体层</b>不在开源推理仓、论文也未细化（⚠️），故图中未画其内部。Diffusion/AR WFM 的 DiT 细节以论文 §5 文字为准，未逐层展开。生成于精读会话，配 Fig 5/6 原图见 PDF。</div>
+</div></body></html>

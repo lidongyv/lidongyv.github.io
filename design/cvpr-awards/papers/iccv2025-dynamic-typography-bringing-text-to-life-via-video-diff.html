@@ -1,0 +1,208 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Dynamic Typography: Bringing Text to Life via Video Diffusion Prior</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">ICCV 2025</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Dynamic Typography: Bringing Text to Life via Video Diffusion Prior</h1>
+    <div class="au2" style="color:var(--mut)">Zichen Liu · Yihao Meng · Hao Ouyang · Yue Yu · Bolin Zhao · Daniel Cohen-Or · Huamin Qu</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/ICCV2025/papers/Liu_Dynamic_Typography_Bringing_Text_to_Life_via_Video_Diffusion_Prior_ICCV_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Dynamic%20Typography%3A%20Bringing%20Text%20to%20Life%20via%20Video%20Diffusion%20Prior">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">给一个字母（如 "CAMEL" 里的 "M"）+ 一句动画 prompt（"A camel walks across the desert"），<b>自动把这个字母变形成 prompt 的主体并让它动起来</b>，全程保持<b>矢量格式 + 可读性</b>（还认得出是 "M"）。不需要任何文字动画数据集——用 <b>SDS（score distillation）</b>从冻结的文本→视频扩散模型里蒸出运动先验，直接优化 Bézier 控制点位置。把视频拆成<b>Canonical Field</b>（共享基础形状，聚合语义）+ <b>Deformation Field</b>（逐帧形变），两个坐标 MLP 联合优化，配 legibility(LPIPS) 与 structure(三角网格) 两个正则。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">文字动画很有表现力（电影/广告/网页/meme），但<b>手工做需要图形设计+动画专业能力</b>，门槛高。现有文本→视频扩散模型虽能出时序一致的动画，却<b>做不了这个任务</b>——高质量"文字动画"数据集稀缺，模型生成的结果<b>跟字母形状完全无关、丢失可读性</b>（Fig 7）。于是需要一个<b>data-efficient、零数据集、无需微调大模型</b>的方案。三个硬要求：① <b>Legibility</b> 每帧仍读得出原字母；② <b>Semantic Alignment</b> 变形/运动符合 prompt；③ <b>Temporal Consistency</b> 运动连贯、外观稳定。</div>
+    <div class="note-h">核心方法（双场 + SDS + 双正则，关键公式）</div>
+    <div class="note-b">字母=FreeType 取轮廓→闭合的 cubic Bézier 曲线，N 个控制点 P_letter∈R^{N×2}；输出 k 帧视频 V={P_letter+ΔP^t}，学逐帧位移 ΔP^t。<b>① Canonical Field C</b>（坐标 MLP）：把原字母控制点映射成<b>共享的 canonical 形状</b> P_C（所有帧的变形基底）；<b>② Deformation Field D</b>（坐标 MLP，借鉴 CoDeF/动态 NeRF）：把视频看成 3D 体 (x,y,t)，复制 canonical 形状 k 份，D 映射 (P_C,t)→P_V=P_C+ΔP；都用 NeRF 位置编码 γ(p)(式1) 捕高频。<b>运动分解</b>（式2-3，follow LiveSketch）：Δp^t_i = local（每点单独预测）+ global（整帧共享的仿射：scale/shear/rotation θ/translation），全由 D 的 MLP 输出。<b>③ SDS loss</b>（式4）：可微 rasterizer R 把 P_V 渲成像素视频→加噪→冻结 T2V 模型按 prompt y 去噪，∇_φ L_SDS=[w(τ)(ε_θ(z_τ(V);y,τ)−ε)·∂V/∂φ]，联合优化两场参数 φ，<b>把运动先验蒸进控制点</b>、无需数据集。<b>④ Legibility 正则</b>（式5）：L_legibility=LPIPS(R(P_C),R(P_letter))，让 canonical 形状感知上贴近原字母。<b>⑤ Structure 正则</b>（式6-7）：对 canonical 形状控制点做 <b>Delaunay 三角化</b>，约束相邻帧（及 canonical↔letter）对应三角网格的<b>角度变化</b>，防 Bézier 自交导致的黑白"洞"与闪烁；令第 (k+1) 帧≡canonical 形状，把结构约束传播到每一帧。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">33 样本数据集（全字母，动物/人/物），对比 Gen-2(T2V)/DynamiCrafter(I2V)/LiveSketch/FlipSketch(矢量)，均 24 帧 3s 256²。定量（Table 1）：本方法 PIC <b>0.5302</b>(最高,可读性) + T2V Align <b>21.44</b>(最高,语义) + CLIP Temporal 0.9963(有竞争力)；Gen-2 完全做不了被排除。User study：808 份回答，本方法 <b>48.89%</b> 被选最佳，vs DynamiCrafter 0.69 / vs LiveSketch 0.71 / vs Gen-2 0.83（p 全 &lt;1e-19）。消融（Table 2）：去 canonical 场 warping error 0.0165→<b>0.0362</b>（闪烁最严重）、去 legibility PIC 0.531→0.492、去 structure PIC→0.491——各模块都有效。SDS 基模型可换 ModelScope/AnimateDiff/ZeroScope，<b>model-agnostic</b>。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>零数据集</b>：靠 SDS 从现成 T2V 模型蒸运动先验，不收数据、不微调大模型，且能随 T2V 进步而升级。② <b>canonical+deformation 解耦</b>是质量关键：直接学逐帧位移会扭曲/闪烁，拆出共享基底形状 + 逐帧形变后，legibility/structure 正则只需作用在 canonical 形状即可传播到全帧。③ <b>三角网格 structure 正则</b>精准对症 SVG 填充规则下的"Bézier 自交→黑白洞→闪烁"问题，是矢量动画特有的工程洞察。④ 矢量表示=分辨率无关 + 可编辑（换渲染风格、可嵌回原词）。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① 运动质量<b>受限于 T2V 基模型</b>——基模型不懂的特定运动就做不好（原文承认的 limitation）。② prompt 与字母形状<b>差异过大</b>时会有困难（原文 limitation，正文未给量化边界）。③ NeRF 位置编码维度 L、λ1/λ2 权重等细节"in the appendix"，<b>正文未给全</b>。④ 单样本 24 帧需 1000 iter ≈ 40 min（H800），<b>非实时</b>，逐字母逐 prompt 优化、批量生产成本较高。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文 49.6k 字符 / 11 页提取）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）逐句精读</div>
+    <div class="note-b"><b>原文逐句 + 中文指路：</b><br>
+    1) <i>"Text animation serves as an expressive medium, transforming static communication into dynamic experiences by infusing words with motion to evoke emotions, emphasize meanings, and construct compelling narratives."</i> → 立意：文字动画是有表现力的媒介，把静态沟通变成动态体验。<br>
+    2) <i>"Crafting animations that are semantically aware poses significant challenges, demanding expertise in graphic design and animation."</i> → 痛点：做"语义感知"的文字动画门槛高，需要图形设计与动画专业能力。<br>
+    3) <i>"We present an automated text animation scheme, termed 'Dynamic Typography', which deforms letters to convey semantic meaning and infuses them with vibrant movements based on user prompts."</i> → 任务定义：按 prompt 把字母变形以传达语义、并赋予生动运动。<br>
+    4) <i>"The animation is represented by a canonical field that aggregates the semantic content in a canonical shape and a deformation field that applies per-frame motion to deform the canonical shape."</i> → 表示=canonical 场（基底形状聚合语义）+ deformation 场（逐帧运动）。<br>
+    5) <i>"Two fields are jointly optimized by the priors from text-to-video diffusion model using score-distillation loss with designed regularization, encouraging the video coherence with the intended textual concept while maintaining legibility and structural integrity throughout the animation."</i> → 优化=SDS 蒸馏 T2V 先验 + 设计的正则，兼顾语义连贯、可读性与结构完整。<br>
+    6) <i>"We demonstrate the generalizability of our approach across various text-to-video models and highlight the superiority of our methodology over baselines."</i> → 泛化到多种 T2V 模型，且优于 baseline。</div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>把字母拆成"共享基底形状（canonical）+ 逐帧形变（deformation）"两个坐标 MLP 场，用 <b>SDS</b> 从<b>冻结</b>的文本→视频扩散模型蒸出运动先验来联合优化 Bézier 控制点，再配 legibility(LPIPS)+structure(三角网格) 两个正则，让字母按 prompt 活起来、又仍认得出原字母——<b>零数据集、不微调大模型</b>。</div>
+
+    <div class="note-h">② §1 Introduction · problem（问题与动机）</div>
+    <div class="note-b"><b>价值：</b><i>"By animating text to convey emotion, emphasize meaning, and create a dynamic narrative, text animation transforms static messages into vivid, interactive experiences"</i>，应用于 <i>"movies, advertisements, website widgets, and online memes"</i>。<br>
+    <b>与已有方法区别：</b><i>"Unlike previous methods that apply simple and fixed motion patterns to text, the letters are deformed and brought to life with vivid movements based on the user's semantic prompt."</i> 例子：<i>"the letter 'M' in 'CAMEL' can be animated with the prompt 'A camel walks steadily across the desert'"</i>。<br>
+    <b>为什么不能直接用 video diffusion：</b><i>"current video generation methods struggle with this text animation task due to the scarcity of high-quality text animation datasets. They tends to produce results that are completely unrelated to the shape of the letters, leading to severe loss of legibility, as shown in Fig. 7."</i> → 缺数据集 ⇒ 直接生成结果跟字母形状无关、丢可读性。</div>
+
+    <div class="note-h">③ §1 Introduction · solution（方法思路四步）</div>
+    <div class="note-b"><b>① 矢量表示：</b><i>"we represent each input letter and every output frame as a vectorized, closed shape composed of a collection of Bézier curves, controlled by a set of control points… they are resolution-independent, keeping text clear at any scale, and provide substantial editability."</i><br>
+    <b>② SDS 蒸先验：</b><i>"We apply score distillation sampling (SDS) as a data-efficient method to distill prior knowledge from pretrained video diffusion model, optimizing the positions of the control points… without requiring a specific text animation dataset."</i><br>
+    <b>③ 双场分解（受 CoDeF[37] 启发）：</b><i>"we represent the video by a canonical field encoding the semantic content in a canonical shape and a temporal deformation field recording the transformation from the canonical shape, both represented in coordinates-based MLP."</i><br>
+    <b>④ 两个正则：</b><i>"we apply perceptual loss as a form of regularization on the canonical shape"</i>（legibility）+ <i>"a novel shape preservation regularization based on the triangulation of the canonical shape, which forces the deformation between the consecutive frames to adhere to the principle of being conformal"</i>（structure）。</div>
+
+    <div class="note-h">④ §4 三条硬性需求（评测维度的来源）</div>
+    <div class="note-b">原文 §4 明确列出 Dynamic Typography 的三条 crucial requirements，后面三个评测指标一一对应：<br>
+    • <b>Legibility Preservation</b>：<i>"The deformed letter should remain legible in each frame during animation."</i> → 对应 PIC。<br>
+    • <b>Semantic Alignment</b>：<i>"The letter should be deformed and animated in a way that aligns with the semantic information in the text prompt."</i> → 对应 T2V Alignment。<br>
+    • <b>Temporal Consistency</b>：<i>"The deformed letter should move coherently while preserving a relatively consistent appearance in each animation frame."</i> → 对应 CLIP Temporal / Warping Error。</div>
+
+    <div class="note-h">📚 背景知识 A：SDS / Word-as-Image</div>
+    <div class="note-b"><b>SDS（Score Distillation Sampling, DreamFusion[40]）：</b>不训练生成模型，而是把一个<b>冻结</b>的扩散模型当"打分器"——对当前可微渲染结果加噪→让扩散模型预测噪声→用(预测噪声−真噪声)当梯度反传到渲染参数，把结果朝"扩散模型认为符合 prompt"的方向推。本文用 T2V 扩散模型当先验、优化 Bézier 控制点位置。<br>
+    <b>Word-as-Image[19]（Iluz et al.）：</b>SDS 做字母语义变形的<b>静态版</b>（单图），本文是<b>动态版</b>（视频）。本文取字形轮廓、对比实验里给 baseline 喂的 conditioning 图都沿用 Word-as-Image 的设定，保证公平。</div>
+
+    <div class="note-h">📚 背景知识 B：Canonical+Deformation / SVG 填充 / 指标</div>
+    <div class="note-b"><b>① Canonical + Deformation 场（CoDeF[37]/动态 NeRF[38,41]）：</b>把动态内容拆成"标准帧/规范形状(canonical)" + "形变场(deformation，记录每帧相对 canonical 的位移)"，复杂的逐帧建模归约成"一个稳定基底 + 平滑形变"，天然利于时序一致。两场都用<b>坐标 MLP</b>实现。<br>
+    <b>② Bézier 曲线 / SVG 填充规则：</b>字体(TrueType[39]/PostScript[1])用 Bézier/B-Spline 曲线定义字形轮廓，控制点决定形状、分辨率无关。SVG 填充用 <i>"non-zero rule or even-odd rule"</i>（从点向无穷画线、数与边界交点数定内外）；当 Bézier 曲线<b>自交</b>边界复杂 ⇒ 交替黑白"holes"，且相邻帧自交模式突变 ⇒ flickering。<br>
+    <b>③ 评测指标：</b>PIC(Perceptual Input Conformity, 用 DreamSim[14] 算每帧与原字母感知相似度)=可读性；T2V Alignment(X-CLIP[30] 帧-文本 cosine)=语义对齐；CLIP Temporal(相邻帧 CLIP cosine, follow EvalCrafter[27])=时序一致；Warping Error(RAFT[47] 光流 warp 后像素差)=闪烁程度。</div>
+
+    <div class="note-h">⑤ §2 Related Work · 本文定位</div>
+    <div class="note-b"><b>静态文字风格化：</b>artistic text style transfer(纹理合成/GAN) + semantic typography(Word-as-Image[19] 用 SDS、DS-Fusion[46] 用 latent diffusion)。<i>"While these works produce only static images with limited semantic expression, our Dynamic Typography introduces motion to text."</i><br>
+    <b>动态文字动画：</b>dynamic style transfer + kinetic typography；如 Wakey-Wakey[53] 用 meme GIF 驱动。<i>"these approaches require specific driven videos and are limited to simple motion patterns that typically lack semantic information, such as shaking, zooming in and out. In contrast, our method generates arbitrary motion patterns using only text prompts as input."</i><br>
+    <b>T2V/I2V 生成：</b>LiveSketch[15]/FlipSketch[3] 能动任意 sketch，但 <i>"when the input becomes letters, LiveSketch and FlipSketch struggle to preserve legibility and consistency"</i>——这正是本文要解决的。</div>
+
+    <div class="note-h">⑥ §3 Preliminary · 矢量字形表示</div>
+    <div class="note-b"><i>"Modern font formats like TrueType and PostScript utilize vector graphics to define glyph outlines. These outlines are typically collections of Bézier or B-Spline curves."</i> 流程：用 <b>FreeType[8]</b> 提取指定字母轮廓 → 转成由若干 cubic Bézier 曲线组成的<b>闭合曲线</b>（Fig.3，端点橙色、内控制点蓝色）→ <i>"iteratively subdivide the letter's Bézier segments until reaching a pre-defined threshold to ensure sufficient control points to represent semantic deformation."</i> 矢量表示 <i>"not only ensures resolution-independent quality but also enables flexible visual styling through simple parameter adjustments"</i>（Fig.4 同一矢量路径不同渲染风格）。</div>
+
+    <div class="note-h">⑦ §4 Method · 问题形式化</div>
+    <div class="note-b">原字母初始化为 cubic Bézier 控制点集 \( P_{letter}=\{p_i\}_{i=1}^{N}=\{(x_i,y_i)\}_{i=1}^{N}\in\mathbb{R}^{N\times2} \)，\(N\) 为控制点总数。输出 \(k\) 帧视频 \( V=\{P^t\}_{t=1}^{k}\in\mathbb{R}^{k\times N\times2} \)。目标=学逐帧位移 \( \Delta P^t=\{(\Delta x_i^t,\Delta y_i^t)\}_{i=1}^{N} \)，最终视频 \( V=\{P_{letter}+\Delta P^t\}_{t=1}^{k} \)。原文：<i>"Our goal is to learn the per-frame displacement to be added on the set of control point coordinates of the original letter's outline."</i></div>
+
+    <div class="note-h">⑧ §4.1 Canonical+Deformation 场（公式1-3）</div>
+    <div class="note-b"><b>为什么要拆两场：</b><i>"Independently learning the per-frame displacement that directly converts the input letter into animation frames is challenging. Directly optimizing the displacement may lead to severe artifacts… including distortion, flickering, and abrupt appearance changes in the adjacent frame."</i><br>
+    <b>位置编码（式1）：</b>两场都是坐标 MLP，先做 NeRF 位置编码捕高频：\[ \gamma(p)=\big(\sin(2^0\pi p),\cos(2^0\pi p),\dots,\sin(2^{L-1}\pi p),\cos(2^{L-1}\pi p)\big) \]
+    <b>Canonical 场 \(C\)：</b>\( C:\gamma(P_{letter})\to P_C \)，学所有帧共享的基底形状。<b>Deformation 场 \(D\)：</b>把视频当 3D 体 \((x,y,t)\)，canonical 复制 \(k\) 份 \(\{(P_C,t)\}_{t=1}^{k}\)，\( D:\gamma(P')\to P_V=P_C+\Delta P \)。<br>
+    <b>运动分解（式2-3，follow LiveSketch[15]）：</b>\[ \Delta p_i^t=\Delta p_i^{t,local}+\Delta p_i^{t,global} \] global 是整帧共享的仿射（含 scale \(s_x,s_y\)、shear \(sh_x,sh_y\)、rotation \(\theta\)、translation \(d_x,d_y\)）作用于 \((x_{C,i},y_{C,i})\) 再减原坐标；local 每控制点单独预测。两者都由 deformation MLP 输出，训练时 <i>"interleavely optimize local motion and global motion"</i>。</div>
+
+    <div class="note-h">⑨ §4.1 SDS 损失（公式4）</div>
+    <div class="note-b">可微 rasterizer[26] \(R\) 把控制点 \(P_V\) 渲成像素视频 \(V\)；选 timestep \(\tau\)、采噪声 \(\epsilon\sim N(0,1)\) 加噪得 \(z_\tau(V)\)；冻结 T2V 模型按 prompt \(y\) 去噪出 \(\epsilon_\theta\)；梯度：\[ \nabla_\phi \mathcal{L}_{SDS}=\Big[w(\tau)\big(\epsilon_\theta(z_\tau(V);y,\tau)-\epsilon\big)\frac{\partial V}{\partial\phi}\Big] \] 联合优化两场参数 \(\phi\)。prompt 选与该词语义相关的运动描述（"M" in "CAMEL" → "A camel walks steadily across the desert"）。这是<b>无数据集</b>的关键：把运动先验直接蒸进控制点。</div>
+
+    <div class="note-h">⑩ §4.2 Legibility 正则（公式5）</div>
+    <div class="note-b">问题：<i>"the text-to-video foundation model's prior knowledge naturally deforms the letter's shape… However, this significant appearance change compromises the letter's legibility."</i> 解法：用 LPIPS[58] 约束 canonical 形状与原字母渲染图的感知距离：\[ \mathcal{L}_{legibility}=\text{LPIPS}\big(R(P_C),R(P_{letter})\big) \] <i>"Once the canonical shape is perceptually regularized, our structure preservation regularization ensures each frame maintains structural similarity to this canonical form, thereby propagating legibility."</i> ——只约束 canonical，再靠 structure 正则<b>传播</b>到每帧。</div>
+
+    <div class="note-h">⑪ §4.3 Structure Preservation 正则（公式6-7）</div>
+    <div class="note-b">根因：优化挪动控制点 ⇒ Bézier 曲线复杂自交（Fig.5d）⇒ SVG 填充规则下出现交替黑白 "holes" ⇒ 相邻帧突变 ⇒ <i>"severe flickering effects that degrade animation quality"</i>。解法：对 canonical 形状控制点做 <b>Delaunay 三角化[4,9]</b>，用相邻帧对应三角网格的<b>角度向量</b>差当正则；并令第 \((k{+}1)\) 帧 \(T_{i,k+1}\equiv T_{i,C}\)（即 canonical），把约束传到每帧；再对 canonical↔letter 加同样约束：\[ \mathcal{L}_{structure}=\lambda_1\cdot\tfrac{1}{m}\sum_{i=1}^{m}\|T_{i,letter}-T_{i,C}\|_2^2+\lambda_2\cdot\tfrac{1}{k\times m}\sum_{t=1}^{k}\sum_{i=1}^{m}\|T_{i,t+1}-T_{i,t}\|_2^2 \] 其中 \(m\) 为每帧三角网格数，\(T_{i,t}\in\mathbb{R}^3\) 是第 \(t\) 帧第 \(i\) 个三角网格的角度。<i>"this angle-based naïve approach effectively maintains the triangular structure… without significantly affecting the motion liveliness."</i></div>
+
+    <div class="note-h">⑫ §5 实验设置 + 主结果（Table 1 + User Study）</div>
+    <div class="note-b"><b>数据集：</b>workshop 收集，覆盖全字母，含 animals/humans/objects，共 <b>33 samples</b>，每样本=word+待动字母+一句运动 prompt。<b>对比 baseline</b>：Gen-2[43](商用 T2V)、DynamiCrafter[54](I2V)、LiveSketch[15]/FlipSketch[3](矢量)。统一 <b>24 帧 / 3 秒 / 256×256</b>。Gen-2 因 <i>"completely incapable"</i>（与字母形状无关）被排除定量。</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;color:#e3e7ff;margin:4px 0 10px">
+    <tr style="color:#9aa3c7;border-bottom:1px solid #2a2f5c;text-align:left"><th>Method</th><th>PIC↑(可读)</th><th>T2V Align.↑(语义)</th><th>CLIP Temp.↑</th></tr>
+    <tr><td>DynamiCrafter (I2V)</td><td>0.5151</td><td>17.8124</td><td>0.9979</td></tr>
+    <tr><td>LiveSketch (矢量)</td><td>0.4841</td><td>20.2402</td><td>0.9930</td></tr>
+    <tr><td>FlipSketch (矢量)</td><td>0.5173</td><td>20.2806</td><td>0.9888</td></tr>
+    <tr style="color:#ffd35c"><td><b>Ours</b></td><td><b>0.5302</b></td><td><b>21.4391</b></td><td>0.9963</td></tr>
+    </table>
+    <div class="note-b">DynamiCrafter 的 CLIP Temp 最高(0.9979)是因为它<b>几乎不动</b>（时序自然最"一致"），但语义对齐最差(17.81)。<b>User Study</b>：808 responses / 101 participants，每人答 8 题。<b>48.89%</b> 选本方法为最佳；Ours vs DynamiCrafter 395:175(ratio 0.69, p=3.12e-20)、vs LiveSketch 395:159(0.71, p=1.16e-23)、vs Gen-2 395:79(0.83, p=9.83e-48)——统计显著领先。</div>
+
+    <div class="note-h">⑬ §5.2 消融实验全表（Table 2）</div>
+    <div class="note-b">Warping Error 用 RAFT[47] 估光流、warp 后算像素差（越低越平滑）。去掉 canonical 时，legibility loss 改成"每帧 vs 原字母"、structure loss 只在相邻帧间。</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;color:#e3e7ff;margin:4px 0 10px">
+    <tr style="color:#9aa3c7;border-bottom:1px solid #2a2f5c;text-align:left"><th>配置</th><th>PIC↑</th><th>T2V Align.↑</th><th>Warping Err↓(闪烁)</th></tr>
+    <tr style="color:#ffd35c"><td><b>Full Model</b></td><td><b>0.5310</b></td><td><b>21.4447</b></td><td>0.0165</td></tr>
+    <tr><td>No Canonical Shape</td><td>0.5178</td><td>20.0568</td><td>0.0362</td></tr>
+    <tr><td>No Legibility</td><td>0.4924</td><td>20.2857</td><td>0.0156</td></tr>
+    <tr><td>No Struc. Pre.</td><td>0.4906</td><td>20.6285</td><td>0.0178</td></tr>
+    </table>
+    <div class="note-b"><b>读法：</b>去 canonical 场 ⇒ warping error 翻倍(0.0165→0.0362)，bullfighter 外观帧间漂移、闪烁最严重，all metrics 全降；去 legibility ⇒ PIC 掉最多(0.4924，字母"R"形状丢失)；去 structure ⇒ PIC 最低(0.4906，canonical 偏离原字母+帧间不一致)。三件互补，full model 在 PIC/T2V 双第一、warping error 第二好。</div>
+
+    <div class="note-h">⑭ §5.3-5.4 泛化性 + 控制点数分析</div>
+    <div class="note-b"><b>泛化（§5.3）：</b>SDS 基模型可换 <b>ModelScope(1.7B)[48] / AnimateDiff[16] / ZeroScope[29]</b>，对同一样本("K" in "Knight")都能出对的运动且保 "K" 形 ⇒ <i>"future advancements in text-to-video models with stronger prior knowledge will benefit our approach"</i>（model-agnostic）。<br>
+    <b>控制点数（§5.4）：</b>FreeType 默认 75 个；增到 204/420 几何细节更丰富，但<i>"too many control points may lead to self-intersection of the Bézier curves, causing abrupt and frequent changes of black and white regions"</i>——用户可按需调。<br>
+    <b>训练设置：</b>Adam，lr canonical 5e-3 / local 5e-3 / global 1e-3；global scaling 2.0(translation) / 1e-2(rotation) / 5e-2(scale) / 1e-1(shear)；24 帧=1000 iter ≈ 40 min（H800）。</div>
+
+    <div class="note-h">Q&amp;A · 追问 why（逐条）</div>
+    <div class="note-b"><b>Q1：为什么非要拆 canonical + deformation 两个场，不直接学逐帧位移？</b><br>原文 §4.1：直接独立预测每帧位移会 distortion/flickering/abrupt change。拆出"共享 canonical 形状 + 逐帧形变"后，所有帧共用稳定基底，运动只是基底上的平滑形变 ⇒ 天然时序一致；且 legibility/structure 两个正则只需作用在 canonical 上，再经"令第 k+1 帧≡canonical"<b>传播</b>到每帧，事半功倍。消融里 No Canonical 的 warping error 翻倍正是证据。</div>
+    <div class="note-b"><b>Q2：legibility 与 semantic alignment 本质矛盾（越像 camel 越不像 M），怎么平衡？</b><br>靠分工：SDS 把形状朝 prompt 语义拉，LPIPS legibility 正则把 canonical 拽回"像原字母"，structure 正则保帧间结构稳定。三者联合优化在"像 camel"与"像 M"之间找平衡点——定量上 Ours 同时拿最高 PIC(可读) 与最高 T2V Align(语义)，说明平衡得比 baseline 好。</div>
+    <div class="note-b"><b>Q3：为什么用三角网格角度变化，而不是直接锁控制点位移？</b><br>因为根源是 SVG 填充规则下 Bézier 曲线<b>自交</b>产生黑白洞+闪烁。Delaunay 三角化把形状离散成网格，约束相邻帧对应三角形的<b>角度</b>变化=保持局部几何(conformal/近似保角) ⇒ 阻止曲线频繁自交、保结构连续，又不像"锁死控制点"那样扼杀运动活力。</div>
+
+    <div class="note-h">📌 全文总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>语义感知文字动画手工门槛高；video diffusion 因缺数据集做不了、丢字母可读性。<br>
+    <b>method：</b>矢量(Bézier 控制点)表示 + 把视频拆成 canonical 场(共享基底形状) + deformation 场(逐帧 global 仿射 + local 逐点运动)，用 SDS 从冻结 T2V 模型蒸运动先验优化控制点，配 LPIPS legibility 正则(canonical 像原字母) + 三角网格 structure 正则(防自交闪烁、把结构传播到每帧)。<br>
+    <b>experiment：</b>PIC 0.5302 / T2V 21.44 双第一，user study 48.89% 被选最佳(p 全 &lt;1e-19)；消融证 canonical(防闪烁,warp 0.0165 vs 0.0362)/legibility(保字形)/structure(保一致)各有效；可换 ModelScope/AnimateDiff/ZeroScope 多 T2V 基模型。<br>
+    <b>takeaway：</b>① <b>SDS + 矢量表示</b>是"无数据集做生成式编辑"的有效范式，且能随基模型进步而升级；② <b>canonical/deformation 解耦</b>是让优化稳定、时序一致、正则可传播的关键设计；③ 针对输出表示(SVG 填充规则)的<b>领域特化正则</b>(三角网格角度)比通用约束更对症。<br>
+    <b>局限[原文承认]：</b>运动质量受 T2V 基模型上限(对某些运动 unaware)；prompt 与字形差异过大时难以平衡语义与可读性；逐样本 24 帧 ~40min 非实时。NeRF 位置编码维度 \(L\)、\(\lambda_1/\lambda_2\) 权重细节 <i>"can be found in the appendix"</i> [推测正文未给全]。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Given a letter and a text prompt that briefly describes the animation, our method automatically semantically reshapes a letter and animates it in vector format while maintaining legibility. Our approach allows for a variety of creative interpretations that can dynamically bring words to life. We strongly recommend watching the video results on the https://animate-your-word.github.io/demo</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. An overview of the framework. We represent the animation into a Canonical Field that aggregates the semantic content in a canonical shape and a Deformation Field that applies per-frame motion to deform the canonical shape, both implemented as coordinate- based MLPs. These fields are jointly optimized by the video prior from frozen pre-trained video foundation model using Score Distillati</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. B´ezier curves representation of letter “B”. The endpoints are marked in orange, and the inner control points are in blue.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Different rendering styles of the same vector path of a stylized letter “N”, showcasing the versatility of SVG graphics.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Adjacent frames of animation for letter “E” in “JET”. A large area of alternating black and white “holes” occur within each frame, as highlighted within the red circles, causing severe flick- ering between the adjacent frames. (d) visualizes the underlying control points and the associated B´ezier curves for frame 1.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Illustration of the Mesh-based structure preservation. We apply this regularization between the canonical shape and the input letter and then propagate the structural constraint to every frame by regularizing the last frame with the canonical shape and regularizing every frame with its next frame.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Visual comparisons between the baselines and our model. Text-to-video model (Gen-2) generates colorful images but with no relation to the original letter shape. The image-to-video model (DynamiCrafter) produces results with minimal or unreasonable motion. The general animation models (LiveSketch and FlipSketch) struggles to preserve legibility or maintain a consistent appearance.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. User Study results. Users are required to select the best animation based on legibility preservation, semantic alignment, and temporal consistency. The pie chart shows the percentage of each method being selected as the best animation.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff/fig09.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. Visual comparisons of ablation study. Some artifacts are highlighted in red cycles. Removing canonical shape or structure preservation regularization results in shape deviation and inconsistent artifacts. Without legibility regularization, each animation frame loses the letter “R” shape.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff/fig10.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 10. Visual results of the same animation sample (“K”) us- ing different text-to-video base models. All generated animations accurately depict the user’s prompt and maintain the “K” shape, showing the generalizability of our methods across different text- to-video foundation models.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-dynamic-typography-bringing-text-to-life-via-video-diff/fig11.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 11. The effect of the number of control points. The first row displays the result generated with the default number of control points extracted by FreeType [8], which is 75. In the second and third rows, the number of control points is increased to 204 and 420 respectively.</figcaption></figure>
+    </div>
+  </div><script>window.MathJax={tex:{inlineMath:[["\\(","\\)"]],displayMath:[["\\[","\\]"]]}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body></html>

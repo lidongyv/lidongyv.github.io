@@ -1,0 +1,187 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Proxy-GS: Unified Occlusion Priors for Training and Inference in Structured 3D Gaussian Splatting</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Proxy-GS: Unified Occlusion Priors for Training and Inference in Structured 3D Gaussian Splatting</h1>
+    <div class="au2" style="color:var(--mut)">Yuanyuan Gao ⋅ YUNING GONG ⋅ Yifei Liu ⋅ Jingfeng Li ⋅ Dan Xu ⋅ Yanci Zhang ⋅ Dingwen Zhang ⋅ Xiao Sun ⋅ Zhihang Zhong</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2509.24421">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2509.24421">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Proxy-GS%3A%20Unified%20Occlusion%20Priors%20for%20Training%20and%20Inference%20in%20Structured%203D%20Gaussian%20Splatting">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">3D Gaussian Splatting (3DGS) has emerged as an efficient approach for achieving photorealistic rendering. Recent MLP-based variants further improve visual fidelity but introduce substantial decoding overhead during rendering. To alleviate computation cost, several pruning strategies and level-of-detail (LOD) techniques have been introduced, aiming to effectively reduce the number of Gaussian primitives in large-scale scenes. However, our analysis reveals that significant redundancy still remains due to the lack of occlusion awareness. In this work, we propose Proxy-GS, a novel pipeline that exploits a proxy to introduce Gaussian occlusion awareness from any view.At the core of our approach is a fast proxy system capable of producing precise occlusion depth maps at resolution 1000$\times$1000 under 1 ms. This proxy serves two roles: first, it guides the culling of anchors and Gaussians to accelerate rendering speed. Second, it guides the densification towards surfaces during training, avoiding inconsistencies in occluded regions, and improving the rendering quality. In heavily occluded scenarios, such as the MatrixCity Streets dataset, Proxy-GS not only equips MLP-based Gaussian splatting with stronger rendering capability but also achieves faster rendering speed than the original 3DGS. Specifically, it achieves more than $2.5\times$ speedup over Octree-GS, and consistently delivers substantially higher rendering quality.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-proxy-gs-unified-occlusion-priors-for-training-and-infe -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">西工大×上海AI Lab×川大×港科大：给 <b>MLP-based 3D 高斯泼溅（Octree-GS）</b>补上"<b>遮挡感知</b>"。核心是一套<b>轻量 proxy（代理）网格</b>，用 <b>GPU 硬件光栅化在 1ms 内出 1000×1000 遮挡深度图</b>，一图两用：① 训练&推理时<b>剔除被遮挡的 anchor/Gaussian</b>（提速）；② 训练时<b>引导致密化朝表面生长</b>（提质，避免在遮挡区长出不一致的高斯）。重遮挡场景（MatrixCity 街道）比 Octree-GS <b>快 &gt;2.5×（实测部分 block 达 3–4.5×）且画质更高</b>。原文：“a proxy capable of producing precise occlusion depth maps at resolution 1000×1000 under 1 ms”。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">3DGS 快但 vanilla 高斯<b>冗余</b>（硬拟合每个训练视角、不管几何）。MLP 变体（Scaffold-GS/Octree-GS）画质更好，但<b>每帧要跑 MLP decoder 解码高斯属性</b>，大场景里 anchor 巨多→解码开销爆炸。已有招数都不够：剪枝损质量；LOD（按距离降细节）<b>只在少遮挡环境有效</b>。但真实世界（城市街道、多房间室内）<b>到处是遮挡</b>。作者一分析发现：<b>大量被解码的 anchor 落在重遮挡区</b>，白白增加解码负担却不进画面——根因是"缺遮挡感知"。且实际部署用消费级 GPU（RTX4090）而非 A100，要善用其<b>硬件光栅化单元</b>。</div>
+    <div class="note-h">核心方法（proxy 一图两用 + 关键公式）</div>
+    <div class="note-b">建在 Octree-GS 上（anchor+latent feature f → MLP 解码 {μ,Σ,c,α}=MLP_θ(f_i,v_i)，式1）。① <b>构 proxy 网格</b>：从稠密点云（户外 COLMAP/合成 TSDF，室内 MapAnything 补稠密）做表面简化只留<b>粗几何</b>；网格切 cluster，用 <b>Hi-Z 层级遮挡 + Early-Z</b> 加速，深度图<b>常驻 GPU</b>直接喂 CUDA culling（免 GPU-CPU-GPU 往返）。② <b>Proxy-Guided Filter（推理/训练共用）</b>：单 CUDA kernel 融合遮挡+视锥剔除——投到 NDC、取硬件深度 z_hw∈[0,1] 转线性深度 <b>d_mesh=n·f/(f−z_hw(f−n))（式4）</b>、加安全裕度 <b>d̂=d_mesh+γ（式5，γ=0.3 最优）</b>、<b>剔除条件 Cull(p)=（z_h&gt;d̂）（式6）</b>（点在深度图后方=被遮挡）。③ <b>Proxy-Guided Densification（训练专用）</b>：原致密化在大梯度高斯旁长 anchor、易长到 proxy 深度<b>后方</b>（被遮挡不解码=浪费）。改为：算 patch L1 误差 ℓ_P，选 ℓ_P&gt;3ℓ̄ 的高误差 patch，读其中心硬件深度反投影到 3D 当新 anchor 位置 <b>p̂_P=o+R⊤(d_mesh·K⁻¹[u,v,1]⊤)</b>，并用 proxy-grid（cell h、每格≤K 个）防冗余——<b>让 anchor 贴着表面长</b>。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">• <b>MatrixCity（重遮挡，Table1）</b>：Proxy-GS vs Octree-GS——Block1&amp;2 PSNR 22.11 vs 21.94 / FPS <b>126 vs 32（3.9×）</b>；Block3&amp;4 21.06 vs 20.95 / <b>134 vs 30（4.5×）</b>；Block5 21.68 vs 21.41 / <b>151 vs 48（3.1×）</b>。<b>质量、速度双赢</b>。<br>• <b>真实场景（Table2）</b>：重遮挡 Small City FPS <b>139 vs 51（2.73×）</b>；少遮挡 Berlin 275 vs 263、CUHK-LOWER 239 vs 212（增益小）→ 增益随遮挡程度变化。<br>• <b>anchor 数（Table9）</b>：MatrixCity Block3&amp;4 <b>190k vs 1040k</b>（解码量降 ~5×），Small City 350k vs 840k；少遮挡 Berlin 40k vs 60k。<br>• <b>深度获取速度（Table6）</b>：本法 151 FPS vs Nvdiffrast 32 / 3DGS depth 54。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>把图形学硬件光栅化 + Hi-Z/Early-Z + Vulkan-CUDA zero-copy interop 引入 3DGS 训练循环</b>，1ms 出深度、全程不离 GPU——工程上很扎实；② proxy <b>一图两用</b>（剔除+致密化）统一了训练与推理的遮挡先验（标题"Unified"由来）；③ 对 proxy 质量<b>鲁棒</b>（Fig7：分辨率从 108MB 降到 824KB 影响很小，因城市多平面；&lt;5% 顶点噪声仍稳，靠 anchor↔高斯天然 offset 容错）；④ 可叠加 FlashGS/Hardware-3DGS 再提速（+40 FPS）。</div>
+    <div class="note-h">疑问 / 待核</div>
+    <div class="note-b">① <b>提速数字口径不一</b>：摘要"&gt;2.5×"、结论"up to 2.5×"、Intro"up to 3×"，但 Table1 实测最高 ~4.5×（134 vs 30）——文字偏保守/前后不统一，需以表格为准。② <b>依赖 proxy 网格质量</b>：顶点噪声&gt;5% 或几何破碎会破坏遮挡边界、显著掉点（Fig6 地面长出伪凸起），室内无纹理区还得靠 MapAnything/VGGT 这类大模型补几何（多一层依赖与失败点）。③ 增益<b>强依赖场景遮挡程度</b>：航拍/少遮挡室内几乎无提速，泛化价值集中在城市街道这类重遮挡场景。④ γ、proxy-grid 的 h/K 等超参靠经验调（Table10 给了 γ ablation，h/K 正文未细给）。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文 53.2K 字符 / 14 页提取，含正文+附录 Hi-Z/QEM/interop）。原文英文原句 + 中文指路，追问 why、给数值表、外部概念标“外部非本文”、原文未写处标“原文未写/需查”。</div>
+<!-- QA_LOG -->
+    <script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]}};</script>
+    <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>立靶：</b>原文 <i>"Recent MLP-based variants further improve visual fidelity but introduce substantial decoding overhead during rendering. To alleviate computation cost, several pruning strategies and level-of-detail (LOD) techniques have been introduced … However, our analysis reveals that significant redundancy still remains due to the lack of occlusion awareness."</i><br><b>指路：</b>MLP 型 3DGS（Scaffold-GS/Octree-GS）画质高但解码贵；剪枝/LOD 能减 Gaussian，但<b>缺少遮挡感知（occlusion awareness）</b>，大量冗余仍在——尤其被遮挡区域的 anchor 白白解码。</div>
+    <div class="note-b"><b>解法：</b>原文 <i>"we propose Proxy-GS, a novel pipeline that exploits a proxy to introduce Gaussian occlusion awareness from any view. At the core of our approach is a fast proxy system capable of producing precise occlusion depth maps at resolution 1000×1000 under 1 ms."</i><br><b>指路：</b>用<b>轻量代理网格（proxy mesh）</b>+ 硬件光栅化，<b>1ms 内</b>出 1000×1000 遮挡深度图。</div>
+    <div class="note-b"><b>双重作用 + 战绩：</b>原文 <i>"This proxy serves two roles: first, it guides the culling of anchors and Gaussians to accelerate rendering speed. Second, it guides the densification towards surfaces during training … In heavily occluded scenarios such as the MatrixCity Streets dataset, Proxy-GS achieves more than 2.5× speedup over Octree-GS while also improving rendering quality."</i> 即 proxy 一图两用：<b>推理时剔除遮挡 anchor（提速）</b>+ <b>训练时引导致密化贴表面（提质）</b>。</div>
+
+    <div class="note-h">📚 背景知识（外部，非本文原创）</div>
+    <div class="note-b"><b>① 3DGS / MLP-based 3DGS（外部）：</b>vanilla 3DGS[14] 显式高斯实时渲染但易冗余、view-dependent 细节弱；<b>Scaffold-GS[27]</b> 用 voxel grid 放 anchor、每 anchor 配 latent feature 经 MLP 解码出高斯属性；<b>Octree-GS[30]</b> 把 anchor 组织成多级 octree，按相机距离选 LOD 层减少每帧解码 anchor 数。本文 baseline = Octree-GS。</div>
+    <div class="note-b"><b>② Hardware Rasterization（外部，核心利用点）：</b>GPU 固定功能图形管线——顶点→裁剪/NDC→光栅化成 fragment→深度/模板测试解决可见性。原文 <i>"we will later exploit this machinery in a depth-only pass on a proxy mesh to obtain a conservative Z-buffer at negligible cost, which we then consume as a visibility prior."</i> 用 ROP/Early-Z/Hi-Z 这套硬件能力做"只出深度"的轻量 pass。</div>
+    <div class="note-b"><b>③ 评测指标（外部）：</b>PSNR↑（峰值信噪比）、SSIM↑（结构相似）、LPIPS↓（感知相似，越低越好），加 <b>FPS↑</b> 测速度。数据集：MatrixCity（合成大城市街景，8477 街景图分 5 block）、Small City、Berlin、CUHK-LOWER（航拍）、ZipNeRF 室内。</div>
+
+    <div class="note-h">② §1 Introduction — problem → solution → why 闭环</div>
+    <div class="note-b"><b>problem：</b>原文 <i>"vanilla 3DGS often produces heavily redundant Gaussians … structured MLP-based Gaussian approaches … impose extra decoding operations at inference, leading to increased computational cost."</i> 且 LOD 只对"远处内容"有效：<i>"this approach is mainly effective in relatively occlusion-free environments. In contrast, real-world scenarios are full of occlusions, especially in large-scale modern city streets."</i></div>
+    <div class="note-b"><b>硬件动机（务实）：</b>原文 <i>"since most practitioners rely on consumer-grade GPUs rather than datacenter-oriented ones such as A100s … Consumer GPUs … are equipped with dedicated hardware rasterization units. The widespread adoption of 3DGS thus requires careful adaptation to hardware rasterization."</i>——消费级 GPU 自带硬件光栅化单元，要善用。</div>
+    <div class="note-b"><b>solution + why：</b>原文 <i>"By bridging hardware rasterization with a PyTorch-based proxy renderer, Proxy-GS can efficiently cull occluded anchors with negligible time consumption … during training, the proxy guidance is incorporated again to provide stronger structural cues for anchor selection and densification."</i> 三条贡献：① proxy-guided training pipeline（让 MLP 法有遮挡感知、画质更高）；② 一致训练/测试设置下遮挡场景 <b>&gt;3× FPS</b> 且画质更好；③ <b>1000² 深度图 &lt;1ms</b>。</div>
+
+    <div class="note-h">③ §3.1 Preliminaries — MLP-based 3DGS（式1）</div>
+    <div class="note-b">anchor 配 latent feature \(f\)，经 MLP 按视角解码高斯属性：</div>
+    <div class="note-b">\[ \{\mu_j, \Sigma_j, c_j, \alpha_j\}_{j\in M} = \text{MLP}_\theta(f_i, v_i)_{i\in N} \tag{1} \]其中 \(\mu_j\)（均值）、\(\Sigma_j\)（协方差）、\(c_j\)（颜色）、\(\alpha_j\)（不透明度）由第 \(i\) 个 anchor 在视向 \(v_i\) 下解码。原文 <i>"the decoded Gaussians inherit structural cues from the underlying SfM prior, which reduces redundancy and improves robustness."</i> Octree-GS 进一步用 octree 多分辨率支持 LOD。</div>
+
+    <div class="note-h">③ §4.1–4.2 Method — Motivation + Proxy Guided Filter（式2–6）</div>
+    <div class="note-b"><b>动机（一针见血）：</b>原文 <i>"a large proportion of anchors correspond to heavily occluded regions, which substantially increases the decoding burden without contributing to the final image quality."</i> 根因：<i>"their anchor selection does not explicitly account for occlusions, the anchors are optimized merely to fit RGB images."</i></div>
+    <div class="note-b"><b>深度获取：</b>proxy mesh 经 QEM 简化 + 切 cluster + Hi-Z 剔除 + Early-Z 的<b>仅深度 pass</b>，深度图留在 GPU 经 Vulkan–CUDA interop <b>zero-copy</b> 进 PyTorch（避免 GPU-CPU-GPU 往返）。把硬件深度 \(z_{hw}\in[0,1]\) 用近/远平面 \(n,f\) 转线性相机空间深度：</div>
+    <div class="note-b"><b>投影到像素（式2–3）：</b>先把点投到 NDC 坐标 \((x_{ndc}, y_{ndc}, z_{ndc})\)，深度 \(z_h \le \tau\ (\tau{=}10^{-4})\) 的点视为无效（在相机后或贴近近平面），再映射到离散像素：\[ x_{pix} = \frac{(x_{ndc}+1)}{2}\cdot W, \qquad y_{pix} = \frac{(y_{ndc}+1)}{2}\cdot H \tag{2} \]越界即丢弃：\( x_{pix}\lt 0 \lor x_{pix}\ge W \lor y_{pix}\lt 0 \lor y_{pix}\ge H \)（式3）。\(W,H\) 为图像宽高。对有效像素再取硬件深度做下面的线性化与剔除。</div>
+    <div class="note-b">\[ d_{mesh}(x_{pix},y_{pix}) = \frac{n\,f}{f - z_{hw}(x_{pix},y_{pix})\,(f-n)} \tag{4} \qquad \hat{d} = d_{mesh} + \gamma \tag{5} \]\(\gamma\) 是安全裕度。<b>剔除判据</b>：点的相机空间深度 \(z_h\) 在深度图之后即剔除：</div>
+    <div class="note-b">\[ \text{Cull}(p) = \begin{cases} \text{true}, & z_h \gt \hat{d}(x_{pix},y_{pix}) \\ \text{false}, & z_h \le \hat{d}(x_{pix},y_{pix}) \end{cases} \tag{6} \]原文 <i>"a point is removed if its camera-space depth lies behind the depth map at the corresponding pixel, which effectively performs occlusion culling on the image plane."</i> 遮挡剔除与视锥剔除<b>融合进单个 CUDA kernel</b>。</div>
+
+    <div class="note-h">③ §4.3 Proxy-Guided Densification（贴表面致密化）</div>
+    <div class="note-b"><b>痛点：</b>原文 <i>"new anchors are generated around Gaussian splats that exhibit large gradients … this procedure may introduce redundant anchors behind the proxy mesh depth: although these Gaussians have large gradients, the new anchors feature do not decode due to occlusion."</i>——大梯度处长 anchor，但若在遮挡面后则白长。</div>
+    <div class="note-b"><b>做法：</b>按 patch 算 L1 误差，挑误差异常高的 patch（相对帧内均值）：\(\ell_P = \frac{1}{|\Omega_P|}\sum_{(u,v)\in\Omega_P}\ell(u,v)\)，\(\bar\ell = \frac{1}{|S|}\sum_{P\in S}\ell_P\)，选 \(\ell_P \gt \tau,\ \tau = 3\bar\ell\)。对选中 patch 取中心像素、读硬件深度、转 \(d_{mesh}\)，<b>反投影到 3D 作为新 anchor 位置</b>：\(\hat{p}_P = o + R^\top\big(d_{mesh}(u_P,v_P)\,K^{-1}[u_P,v_P,1]^\top\big)\)。为防 3D 冗余，维护 cell 尺寸 \(h\) 的 proxy-grid，每格最多 \(K\) 个 anchor：\(c(a) = \lfloor (a-b_{min})/h \rfloor \in \mathbb{Z}^3\)，仅当 \(\kappa[c(a)] \lt K\) 时插入。<br><b>设计直觉：</b>本策略受多视图深度致密化 [22] 启发——既然 proxy 深度图是预计算好的，就能用它把"误差大但解码不出来"的 anchor 直接挪到<b>可见表面</b>上，让新增的高斯长在真正贡献画面的地方，而非被遮挡的虚空里；patch 阈值取帧内均值的 3 倍，是为了只在<b>显著欠拟合</b>的区域触发生长，避免全局滥长 anchor 又把 FPS 拖垮。这与"推理剔除遮挡 anchor"形成训练-推理闭环：剔除省的是解码、致密化补的是有效几何，两端都围绕同一张 proxy 深度先验。</div>
+
+    <div class="note-h">④ §5.1 主结果 — MatrixCity（Table 1，真实数值）</div>
+    <div class="note-b">PSNR↑/SSIM↑/LPIPS↓/FPS↑，三组 block 平均：
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px;margin:6px 0"><tr style="color:var(--accent)"><td>Method</td><td>B1&2 PSNR</td><td>SSIM</td><td>LPIPS</td><td>FPS</td><td>B5 PSNR</td><td>SSIM</td><td>LPIPS</td><td>FPS</td></tr>
+    <tr><td>3DGS</td><td>21.55</td><td>.730</td><td>.366</td><td>115</td><td>20.70</td><td>.697</td><td>.425</td><td>121</td></tr>
+    <tr><td>Scaffold-GS</td><td>21.44</td><td>.721</td><td>.375</td><td>81</td><td>20.56</td><td>.693</td><td>.426</td><td>71</td></tr>
+    <tr><td>Hierarchical-GS</td><td>20.50</td><td>.707</td><td>.418</td><td>61</td><td>20.22</td><td>.673</td><td>.463</td><td>60</td></tr>
+    <tr><td>Octree-GS</td><td>21.94</td><td>.737</td><td>.347</td><td>32</td><td>21.41</td><td>.731</td><td>.375</td><td>48</td></tr>
+    <tr style="color:var(--gold)"><td>Proxy-GS</td><td>22.11</td><td>.751</td><td>.330</td><td>126</td><td>21.68</td><td>.744</td><td>.362</td><td>151</td></tr></table>
+    <b>读表：</b>Block5 对比 Octree-GS：PSNR 21.41→21.68、FPS <b>48→151（≈3.1×）</b>、LPIPS .375→.362。Proxy-GS 在质量与速度<b>同时</b>超越 Octree-GS（后者 FPS 仅 30–48，是最慢的）。3DGS/Hierarchical-GS FPS 高但画质明显差。</div>
+
+    <div class="note-h">④ §5.1 真实场景泛化 — Table 2（Small City / Berlin / CUHK）</div>
+    <div class="note-b">Small City 遮挡重、Berlin 与 CUHK 遮挡较弱：
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px;margin:6px 0"><tr style="color:var(--accent)"><td>Method</td><td>SmallCity PSNR</td><td>FPS</td><td>Berlin PSNR</td><td>FPS</td><td>CUHK PSNR</td><td>FPS</td></tr>
+    <tr><td>3DGS</td><td>22.90</td><td>132</td><td>27.79</td><td>187</td><td>25.48</td><td>138</td></tr>
+    <tr><td>Octree-GS</td><td>23.03</td><td>51</td><td>27.83</td><td>263</td><td>26.42</td><td>212</td></tr>
+    <tr style="color:var(--gold)"><td>Proxy-GS</td><td>23.09</td><td>139</td><td>27.85</td><td>275</td><td>26.44</td><td>239</td></tr></table>
+    <b>读表：</b>遮挡重的 Small City 提速最猛——原文 <i>"our approach delivers substantial improvements over the MLP-based method Octree-GS, achieving higher rendering quality while boosting FPS by 2.73×"</i>（51→139）。遮挡弱的航拍/室内场景增益较小但仍正向，证明<b>不会在低遮挡场景引入额外开销</b>。</div>
+
+    <div class="note-h">④ §5.2 消融1 — 训练/推理策略（Table 3，Block5）</div>
+    <div class="note-b">关键消融，含 average decoded anchor 数：
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0"><tr style="color:var(--accent)"><td>ID</td><td>Occ.Train</td><td>Proxy-Densify</td><td>Proxy-Infer</td><td>PSNR↑</td><td>FPS↑</td><td>Avg anchor</td></tr>
+    <tr><td>1 (baseline)</td><td>✗</td><td>✗</td><td>✗</td><td>21.41</td><td>48</td><td>719k</td></tr>
+    <tr><td>2</td><td>✗</td><td>✗</td><td>✓</td><td>19.06</td><td>165</td><td>82k</td></tr>
+    <tr><td>3</td><td>✓</td><td>✗</td><td>✓</td><td>21.50</td><td>147</td><td>93k</td></tr>
+    <tr style="color:var(--gold)"><td>4 (full)</td><td>✓</td><td>✓</td><td>✓</td><td>21.68</td><td>143</td><td>106k</td></tr></table>
+    <b>读表（核心洞见）：</b>ID2 仅推理时剔除 → FPS 暴涨（48→165）但 <b>PSNR 崩到 19.06</b>，因 <i>"the inconsistency between anchors and their associated Gaussians during training"</i>；ID3 训练时也用 proxy → 质量反超 baseline（21.50）；ID4 加 proxy-guided densification → 质量最佳 21.68。anchor 数 <b>719k→106k</b> 是提速根源。</div>
+
+    <div class="note-h">④ §5.2 消融2 — 集成/深度源/裕度（Table 4/6/10）</div>
+    <div class="note-b"><b>Table 4（Block1，与不同 3DGS 渲染器集成）：</b>Original 3DGS 23.27/.786/.322/112；FlashGS 23.27/.785/.322/115；Hardware 3DGS 23.20/.781/.328/<b>155</b>（再 +40 FPS，质量略降）。说明 Proxy-GS 正交于底层加速。<br><b>Table 6（深度获取 FPS，Block5）：</b>Nvdiffrast 32、3DGS 提取 54、<b>Ours 151</b>——本文深度源最快。<br><b>Table 10（安全裕度 \(\gamma\)，Small City）：</b>\(\gamma{=}0.1\) 22.94/142（近处有 artifact）；<b>\(\gamma{=}0.3\) 23.09/139（最优 trade-off）</b>；\(\gamma{=}0.6\) 23.02/135；\(\gamma{=}1.0\) 23.05/128（裕度大→anchor 多→FPS 降）。</div>
+
+    <div class="note-h">④ §5.2 消融3 — proxy 质量依赖（Fig5–7）</div>
+    <div class="note-b"><b>分辨率（鲁棒）：</b>原文 <i>"varying the proxy resolution has only a marginal effect on rendering quality … because modern urban scenes (buildings, facades, and roads) are dominated by broad, near-planar surfaces, so even coarse proxies preserve the visibility structure."</i> 从 fine(108MB) 到 coarse(824KB) 影响很小。<br><b>顶点噪声（敏感）：</b>原文 <i>"adding vertex noise disrupts the global geometry and breaks the occlusion boundaries, which inherently leads to a much larger degradation."</i> 但因 anchor 与解码高斯间有固有 offset，<b>≤5% 噪声内影响有限</b>（鲁棒性来源）。</div>
+
+    <div class="note-h">③ §2 Related Work — 效率派 3DGS 的三条路线坐标</div>
+    <div class="note-b">本文把"让 3DGS 渲染更快"的工作分三类，逐一指出它们为何还不够：<br>① <b>剪枝/压缩</b>（LightGaussian[6]、Compact-3DGS[19]、MaskGaussian[26]）——直接减高斯数，但原文 <i>"they inevitably face scalability bottlenecks in large scenes, where aggressive pruning results in performance degradation."</i><br>② <b>LOD 架构</b>（Hierarchical-GS[16] 合并邻近高斯、LetsGo[5] 多分辨率、CityGaussian[25]、LODGE[17]、Horizon-GS[12]、VastGaussian[23]）——按距离选细节层，但主要解决"远处冗余"，对近处遮挡无能为力。<br>③ <b>缓存/内核优化</b>（Cache-GS[31] 复用解码高斯把 Octree-GS 提速 2× 但掉质量、FLASH-GS[7] CUDA 内核优化）。<br><b>最接近的工作</b>是 OccluGaussian[24]（按 cluster 分区推理遮挡）与 Ye et al.[37]（预渲染深度图引导），原文区分：<i>"While OccluGaussian reasons about occlusion by partitioning scenes into clusters, our approach performs per-pixel, proxy-guided filtering, which preserves fine details and aligns with actual rendering cost"</i>；[37] 的深度靠 surfel 渲染，比本文 proxy 慢。</div>
+
+    <div class="note-h">③ §3.2 Hardware Rasterization — 为何"几乎免费"</div>
+    <div class="note-b">原文把硬件光栅化讲透：<i>"the GPU's fixed/near–fixed-function graphics path that transforms vertices to clip/NDC, discretizes primitives into fragments, interpolates attributes, and resolves visibility via depth/stencil tests."</i> 关键单元是 <b>ROP（Raster Operations Processor）</b>，负责深度/模板测试与混合，<i>"These mechanisms underpin the extreme throughput and bandwidth efficiency of the pipeline."</i> 本文只跑<b>depth-only pass</b>（关颜色写、留深度写）+ <b>Early-Z</b>（fragment shader 极简）+ <b>Hi-Z cluster culling</b>（先剔不可见 cluster），故能在复杂城市场景里也 &lt;1ms 出深度，且深度图<b>留在 GPU</b>直接喂 CUDA 剔除（避免 GPU-CPU-GPU 往返）。这正是"proxy 几乎零成本"的工程根基。</div>
+
+    <div class="note-h">④ §5.2 渲染时间拆解 — 省在哪（Fig3）</div>
+    <div class="note-b">Fig3 把推理时间拆成三块：Depth rendering（深度渲染）、Anchor filter（anchor 剔除）、Rendering（渲染）。结论：原文 <i>"The lightweight proxy-based depth rendering takes nearly negligible time (around 1 ms). Our anchor filtering is also faster due to the reduced number of anchors. The rendering stage is where most of the savings come from: with fewer anchors, both the decoding overhead and Gaussian rasterization are significantly reduced."</i> 即<b>主要加速来自"解码 anchor 数大幅减少"</b>（Table9：Block3&4 从 Octree-GS 的 1040k 降到 190k，Block5 从 720k 降到 80k），而新增的深度 pass 开销几乎可忽略——这是"用极小新开销换巨大解码节省"的净赚买卖。</div>
+
+    <div class="note-h">⑤ 疑问 / 边界 / 待核（[推测] 已标注）</div>
+    <div class="note-b">① <b>依赖一张好 proxy mesh</b>——室内 textureless 场景靠 MapAnything[13]/VGGT[32]/CityGS-X[9] 生成，若 mesh 顶点噪声 &gt;5% 或几何错，遮挡边界破裂、画质显著退化（Fig6）。<br>② 增益<b>强依赖场景遮挡程度</b>：航拍/室内少遮挡场景仅边际提升，原文亦自承 <i>"the extent of performance gains may vary depending on the characteristics of the scene"</i>。<br>③ Abstract 说 ">2.5× speedup"、Intro/Fig1 说 "up to 3×"，口径随场景不同（Block5 ≈3.1×、Small City 2.73×）[已核：均为真实表值]。<br>④ 大量工程细节（QEM 简化、Hi-Z cluster culling、Vulkan-CUDA interop）在 Appendix 7.5/7.6，正文只给框架 [需查 Supp]。<br>⑤ 训练用 A100-40GB、推理用 RTX 4090（贴合"消费级部署"叙事）。</div>
+
+    <div class="note-h">📌 全文总结（problem→method→experiment→takeaway）</div>
+    <div class="note-b"><b>problem：</b>MLP 型 3DGS（Octree-GS）画质高但解码贵；现有剪枝/LOD <b>无遮挡感知</b>，大量被遮挡 anchor 白白解码，尤其大尺度城市街景。</div>
+    <div class="note-b"><b>method：</b>引入<b>轻量 proxy mesh + 硬件光栅化</b>，&lt;1ms 出 1000² 深度图，一图两用：① 推理时按式4–6 做 per-pixel 遮挡剔除（融进单 CUDA kernel）；② 训练时 proxy-guided densification 把新 anchor 反投影贴到表面、proxy-grid 限格内 anchor 数。</div>
+    <div class="note-b"><b>experiment：</b>MatrixCity Block5 对 Octree-GS：PSNR 21.41→21.68、FPS 48→151（≈3.1×）、anchor 719k→106k；Small City 2.73×；消融证"训练也必须用 proxy"（否则 PSNR 崩到 19.06），proxy 分辨率鲁棒、顶点噪声敏感（≤5% 可容）。</div>
+    <div class="note-b"><b>takeaway 1：</b><b>把硬件光栅化当"免费"的可见性先验</b>是核心巧思——消费级 GPU 自带 ROP/Early-Z，proxy-only depth pass 几乎零成本，零拷贝喂回 PyTorch。</div>
+    <div class="note-b"><b>takeaway 2：</b><b>训练与推理必须用同一遮挡先验</b>（unified）——只在推理剔除会因 train/test anchor 分布不一致而崩质量（ID2→19.06），这是"Unified"标题的实证支撑。</div>
+    <div class="note-b"><b>takeaway 3：</b>遮挡剔除把解码 anchor 数砍到 ~1/7，速度提升与遮挡程度正相关；方法<b>正交</b>于 FlashGS/Hardware-3DGS 等底层加速，可叠加。原文收尾：<i>"establishing a new state-of-the-art in efficient 3D scene representation."</i></div>
+    <!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-proxy-gs-unified-occlusion-priors-for-training-and-infe/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. We propose Proxy-GS, an occlusion-aware training and inference framework built upon lightweight proxies. By introducing proxy-guided densification, our method effectively guides anchors to grow in more geometrically meaningful regions. As a result, Proxy- GS not only achieves higher rendering quality but also delivers significantly faster rendering compared to state-of-the-art MLP-based </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-proxy-gs-unified-occlusion-priors-for-training-and-infe/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Proxy-GS Framework. We first construct a lightweight proxy mesh. During rendering, hardware rasterization produces a depth map in under 1 ms, which is then used to efficiently cull anchors that are occluded. During training, in addition to the same rendering pipeline, we further introduce structure-aware anchor densification, encouraging anchors to grow adaptively along the proxy mesh ge</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-proxy-gs-unified-occlusion-priors-for-training-and-infe/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Comparison of the time proportion of each inference component (Rendering, anchor filter, depth rendering) with that of Octree-GS on MatrixCity dataset.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-proxy-gs-unified-occlusion-priors-for-training-and-infe/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. Qualitative comparison. Visualization on different datasets, where the regions with noticeable differences are highlighted and zoomed in with red boxes [4, 16, 21, 34].</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-proxy-gs-unified-occlusion-priors-for-training-and-infe/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Ablation on proxy fidelity: (a) PSNR vs. Proxy Resolu- tion; (b) PSNR vs. Vertex Noise.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-proxy-gs-unified-occlusion-priors-for-training-and-infe/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 8. Visualization on different safety margins.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-proxy-gs-unified-occlusion-priors-for-training-and-infe/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 9. Mesh visualization. Scenes include different datasets [4, 16, 21, 34].</figcaption></figure>
+    </div>
+  </div></body></html>

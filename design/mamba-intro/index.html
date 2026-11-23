@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mamba 入门 · 从 SSM 到选择性扫描</title>
+<style>
+:root{
+  --bg:#0b1020;--bg2:#11172d;--card:#161c34;--line:#2a3157;
+  --ink:#e7eaf6;--mut:#aab1d0;--accent:#7ee0ff;--accent2:#a78bfa;
+  --gold:#ffd35c;--green:#4ade80;--red:#fb7185;--panel2:#1e2548
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(165deg,#0b1020,#141a35 55%,#1a1240);
+  color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.65}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+header.top{position:sticky;top:0;z-index:30;background:rgba(11,16,32,.92);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:10px 20px}
+header.top nav{max-width:980px;margin:0 auto;display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13px}
+header.top .brand{font-weight:800;color:var(--ink);margin-right:6px}
+header.top a{color:var(--mut)}header.top a:hover{color:var(--accent)}
+.wrap{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+h1{font-size:30px;line-height:1.25;margin:8px 0 4px}
+.sub{color:var(--mut);font-size:15px;margin-bottom:16px}
+.tldr{background:rgba(126,224,255,.08);border:1px solid rgba(126,224,255,.28);border-radius:14px;
+  padding:16px 18px;margin:18px 0;color:#d4f4ff;font-size:15px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:18px 0;scroll-margin-top:70px}
+.box h2{font-size:18px;margin:0 0 10px;color:var(--accent);border-left:4px solid var(--accent);padding-left:10px}
+.box h3{font-size:15px;margin:16px 0 6px;color:var(--accent2)}
+p,li{font-size:14.5px;color:#d8dcf5}
+ul{padding-left:20px;margin:8px 0}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--panel2);color:#cdd5e0;white-space:nowrap}
+tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+code{background:#0d1030;border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px;color:#cfe3ff}
+pre{background:#0a0e1e;border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;font-size:12.5px;line-height:1.5;color:#c8d8ff}
+.tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;margin-right:6px}
+.tag-core{background:rgba(126,224,255,.15);color:var(--accent);border:1px solid rgba(126,224,255,.35)}
+.tag-wm{background:rgba(167,139,250,.15);color:var(--accent2);border:1px solid rgba(167,139,250,.35)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+.demo{background:#0a0e1e;border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
+.demo label{display:block;font-size:13px;color:var(--mut);margin-bottom:6px}
+.demo input[type=range]{width:100%;accent-color:var(--accent)}
+.demo canvas{width:100%;height:160px;border-radius:8px;background:#060912;display:block;margin-top:8px}
+.demo .val{color:var(--gold);font-weight:700;font-size:13px}
+.scan-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+.scan-cell{background:#0a0e1e;border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;font-size:12px;color:var(--mut)}
+.scan-cell b{color:var(--accent);display:block;margin-bottom:4px}
+.scan-cell.active{border-color:var(--accent);background:rgba(126,224,255,.06)}
+.mermaid-wrap{background:#0a0e1e;border:1px solid var(--line);border-radius:10px;padding:12px;overflow-x:auto}
+footer{color:var(--mut);font-size:12px;text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid var(--line)}
+</style>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'}};</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+</head>
+<body>
+<header class="top"><nav>
+  <span class="brand">🐍 Mamba 入门</span>
+  <a href="#tldr">一句话</a>
+  <a href="#symbols">符号</a>
+  <a href="#ssm">SSM</a>
+  <a href="#zoh">ZOH</a>
+  <a href="#mamba">Mamba</a>
+  <a href="#scan">Scan</a>
+  <a href="#s6">S6</a>
+  <a href="#vision">Vision</a>
+  <a href="#wm">World Model</a>
+  <a href="#lessons">启示</a>
+  <a href="#demo">交互</a>
+</nav></header>
+
+<div class="wrap">
+  <span class="tag tag-core">Gu &amp; Dao 2023</span><span class="tag tag-wm">World Model 支线</span>
+  <h1>Mamba 入门指南</h1>
+  <div class="sub">从状态空间模型 (SSM) → 选择性机制 → Selective Scan → S6 → Vision Mamba / World Model</div>
+
+  <div class="tldr" id="tldr">
+    <b>一句话：</b>Mamba 把序列建模看成<b>用有限维记忆 \(h\) 压缩无限历史</b>。
+    <b>ZOH</b> 负责连续→离散；<b>选择性</b>让 \(B,C,\Delta\) 随输入变化从而「记什么/忘什么」；
+    <b>Selective Scan</b> 是高效算这套动力学的 GPU 算法；<b>S6</b> 就是带选择性的 SSM 层。
+    推理复杂度 \(O(1)\)/步，训练 \(O(L)\)。
+  </div>
+
+  <!-- 符号速查 -->
+  <div class="box" id="symbols">
+    <h2>符号速查（防混）</h2>
+    <table>
+      <tr><th>符号</th><th>连续/离散</th><th>含义</th></tr>
+      <tr><td>\(h(t)\)</td><td>连续</td><td>记忆状态向量</td></tr>
+      <tr><td>\(h'(t)\)</td><td>连续</td><td>状态对时间的<b>导数</b>（变化率），不是转置</td></tr>
+      <tr><td>\(h_t\)</td><td>离散</td><td>第 \(t\) 步结束后的状态</td></tr>
+      <tr><td>\(A\)</td><td>连续参数</td><td>记忆自然衰减/演化率（可学习，HiPPO 初始化）</td></tr>
+      <tr><td>\(\Delta\)</td><td>离散化步长</td><td>这一步跨越多长时间；Mamba 里由输入动态生成</td></tr>
+      <tr><td>\(\Delta A\)</td><td>中间量</td><td>步长 × 动力学矩阵，<b>不是</b>「变化的 A」</td></tr>
+      <tr><td>\(\bar{A}, \bar{B}\)</td><td>离散参数</td><td>ZOH 离散化后的转移/写入矩阵，由 \(\Delta,A,B\) 算出</td></tr>
+      <tr><td>\(C, D\)</td><td>—</td><td>读出矩阵 / skip connection</td></tr>
+    </table>
+  </div>
+
+  <!-- SSM -->
+  <div class="box" id="ssm">
+    <h2>1. SSM：有记忆的滤波器</h2>
+    <h3>连续动力学</h3>
+    <p>\[ h'(t) = A\,h(t) + B\,x(t), \qquad y(t) = C\,h(t) \]</p>
+    <p>类比水库：\(h\) 是水位，\(x\) 是降雨，\(A\) 是蒸发，\(B\) 是入流系数，\(C\) 是出水口。</p>
+    <h3>离散递推（实际计算）</h3>
+    <p>\[ h_t = \bar{A}_t\,h_{t-1} + \bar{B}_t\,x_t, \qquad y_t = C_t h_t + D x_t \]</p>
+    <h3>LTI vs 选择性</h3>
+    <table>
+      <tr><th></th><th>LTI SSM (S4)</th><th>Selective SSM (Mamba)</th></tr>
+      <tr><td>参数</td><td>\(A,B,C,\Delta\) 固定</td><td>\(B_t,C_t,\Delta_t\) 由 \(x_t\) 生成</td></tr>
+      <tr><td>训练</td><td>可转 global convolution</td><td>只能 recurrence scan</td></tr>
+      <tr><td>能力</td><td>线性滤波器</td><td>内容感知的读/写/遗忘</td></tr>
+    </table>
+  </div>
+
+  <!-- ZOH -->
+  <div class="box" id="zoh">
+    <h2>2. ZOH：Zero-Order Hold 离散化</h2>
+    <p><b>假设</b>：在 \([t, t+\Delta)\) 内输入保持不变，把连续 ODE 积分为一步递推。</p>
+    <p>\[ \bar{A} = \exp(\Delta A), \qquad \bar{B} = (\Delta A)^{-1}(\exp(\Delta A) - I)\cdot \Delta B \]</p>
+    <ul>
+      <li>\(\bar{A}\)：旧记忆保留多少（\(\Delta\) 大 → 更忘旧状态）</li>
+      <li>\(\bar{B}\)：新输入写入多少</li>
+      <li>\(\Delta\) 大 ≈ RNN forget gate 大开；\(\Delta\) 小 ≈ 保持记忆、忽略当前输入</li>
+    </ul>
+  </div>
+
+  <!-- Mamba -->
+  <div class="box" id="mamba">
+    <h2>3. Mamba Block 工作流程</h2>
+    <div class="mermaid-wrap"><pre class="mermaid">
+flowchart TB
+  X["输入 x (B,L,D)"] --> Proj["Linear → x_branch, z_branch"]
+  Proj --> Conv["Causal Conv1d（局部上下文）"]
+  Conv --> Gen["从 x 投影 Δ, B, C"]
+  Gen --> ZOH["ZOH 离散化 → Ā, B̄"]
+  ZOH --> Scan["Selective Scan"]
+  Scan --> Gate["y ⊙ silu(z)"]
+  Gate --> Out["Linear 输出"]
+    </pre></div>
+    <h3>核心动机</h3>
+    <p>序列建模 = <b>用有限状态压缩无限上下文</b>。Attention 不压缩（存 KV）；LTI SSM 压缩但「盲」；Mamba 压缩 + 内容感知。</p>
+  </div>
+
+  <!-- Selective Scan -->
+  <div class="box" id="scan">
+    <h2>4. Selective Scan 在做什么？</h2>
+    <p><b>不是新模型</b>，是高效计算「输入依赖 SSM 递推」的并行算法。</p>
+    <p>逐步递推：\(h_t = \bar{A}_t h_{t-1} + \bar{B}_t x_t\)。参数随时变 → 无法用固定卷积 → 必须 scan。</p>
+    <h3>Parallel Scan 关键</h3>
+    <p>仿射递推 \(h_t = a_t h_{t-1} + b_t\) 可结合：</p>
+    <p>\[ (a_2, b_2) \circ (a_1, b_1) = (a_2 a_1,\; a_2 b_1 + b_2) \]</p>
+    <p>→ 整条序列 \(O(L)\) 并行。工程上还做 <b>kernel fusion</b>（SRAM 内离散化+scan）和 <b>recomputation</b>（反向重算省显存）。</p>
+  </div>
+
+  <!-- S6 -->
+  <div class="box" id="s6">
+    <h2>5. S6 是什么？</h2>
+    <p><b>S6 = SSM + Selection</b>（Mamba 论文 Algorithm 2）。相对 S4（LTI 结构化 SSM），S6 让 \(B,C,\Delta\) 输入依赖。</p>
+    <table>
+      <tr><th>名称</th><th>特点</th></tr>
+      <tr><td>S4</td><td>LTI，可卷积，训练快但选择性差</td></tr>
+      <tr><td>S5</td><td>多输入并行化变体</td></tr>
+      <tr><td><b>S6</b></td><td>Selective SSM，Mamba 核心层</td></tr>
+    </table>
+    <p>VMamba 的 SS2D 说「4 路 S6」= 4 个扫描方向各跑一遍 selective SSM。</p>
+  </div>
+
+  <!-- Vision Mamba -->
+  <div class="box" id="vision">
+    <h2>6. Vision Mamba &amp; SS2D</h2>
+    <div class="grid2">
+      <div>
+        <h3>Vim（类 ViT）</h3>
+        <p>patch 展平 → <b>双向</b> 1D SSM scan → 弥补单向因果偏置。</p>
+      </div>
+      <div>
+        <h3>VMamba（类 Swin）</h3>
+        <p>分层 backbone + <b>SS2D</b>：4 方向 Cross-Scan → 4 路 S6 → Cross-Merge 求和。</p>
+      </div>
+    </div>
+    <h3>SS2D 三步</h3>
+    <pre>Cross-Scan:  H×W → 4 条序列（行正/行反/列正/列反）
+S6 ×4:       每路独立 selective scan
+Cross-Merge: 逆变换 + 逐元素相加 → (B,C,H,W)</pre>
+    <div class="scan-grid" id="scanDirs">
+      <div class="scan-cell active"><b>→</b>行优先 左上→右下</div>
+      <div class="scan-cell"><b>←</b>行优先反向</div>
+      <div class="scan-cell"><b>↓</b>列优先 左上→右下</div>
+      <div class="scan-cell"><b>↑</b>列优先反向</div>
+    </div>
+  </div>
+
+  <!-- World Model -->
+  <div class="box" id="wm">
+    <h2>7. Mamba × World Model</h2>
+    <table>
+      <tr><th>工作</th><th>场景</th><th>核心思路</th></tr>
+      <tr><td><b>Drama</b> (2024)</td><td>RL / Atari</td><td>Mamba-2 作 WM backbone，7M 参数高效</td></tr>
+      <tr><td><b>MWM</b> (2025)</td><td>RL 长记忆</td><td>Mamba WM + 熵正则，\(O(1)\) 推理</td></tr>
+      <tr><td><b>Long-Context SSM Video WM</b> (ICCV 2025)</td><td>视频生成</td><td>因果 Mamba 时序 + 邻帧 local attention</td></tr>
+    </table>
+    <p>动机：Transformer WM 滑窗导致「转头回来场景变了」；Mamba 恒定推理成本 + 长时记忆。</p>
+  </div>
+
+  <!-- 设计启示 -->
+  <div class="box" id="lessons">
+    <h2>8. 从 Mamba 设计能学到什么</h2>
+    <ul>
+      <li><b>先定义约束</b>：有限状态压缩无限历史 → 自然推出选择性 + scan</li>
+      <li><b>内容感知 ≠ Attention</b>：动态 \(B,C,\Delta\) 即可选择性读写</li>
+      <li><b>算法×硬件协同</b>：parallel scan + kernel fusion 决定能否落地</li>
+      <li><b>知道边界</b>：擅长长序列因果；弱于精确 copy/检索 → 常 hybrid attention</li>
+      <li><b>\(\Delta\) 是统一旋钮</b>：同时控制时间尺度、记忆衰减、类似 RNN gate</li>
+    </ul>
+  </div>
+
+  <!-- 交互 demo -->
+  <div class="box" id="demo">
+    <h2>9. 交互：\(\Delta\) 如何影响记忆保留</h2>
+    <p>固定 \(A=-1\)，调节步长 \(\Delta\)，观察 \(\bar{A}=\exp(\Delta A)\) 下旧记忆衰减曲线（10 步递推，每步输入相同）。</p>
+    <div class="demo">
+      <label>步长 \(\Delta\)：<span class="val" id="deltaVal">0.5</span> &nbsp;|&nbsp; \(\bar{A}=\exp(\Delta A)\)：<span class="val" id="aBarVal">0.607</span></label>
+      <input type="range" id="deltaSlider" min="0.05" max="3" step="0.05" value="0.5">
+      <canvas id="memCanvas" width="900" height="160"></canvas>
+      <p style="font-size:12px;color:var(--mut);margin:8px 0 0">纵轴：归一化记忆强度 · 横轴：时间步。\(\Delta\) 越大，旧记忆衰减越快（更「健忘」、更聚焦当前）。</p>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>参考资料</h2>
+    <ul>
+      <li><a href="https://arxiv.org/abs/2312.00752" target="_blank">Mamba: Linear-Time Sequence Modeling with Selective State Spaces</a></li>
+      <li><a href="https://arxiv.org/abs/2401.10166" target="_blank">VMamba: Visual State Space Model</a></li>
+      <li><a href="https://arxiv.org/abs/2401.09417" target="_blank">Vision Mamba (Vim)</a></li>
+      <li><a href="https://arxiv.org/abs/2410.08893" target="_blank">Drama: Mamba-Enabled MBRL</a></li>
+      <li><a href="https://arxiv.org/abs/2505.20171" target="_blank">Long-Context State-Space Video World Models</a></li>
+    </ul>
+  </div>
+
+  <footer>Mamba 入门 Demo · 整理自论文精读笔记 · PushGo 部署</footer>
+</div>
+
+<script>
+mermaid.initialize({startOnLoad:true,theme:'dark',themeVariables:{primaryColor:'#1e2548',primaryTextColor:'#e7eaf6',lineColor:'#7ee0ff'}});
+
+(function(){
+  const A = -1;
+  const slider = document.getElementById('deltaSlider');
+  const dVal = document.getElementById('deltaVal');
+  const aVal = document.getElementById('aBarVal');
+  const canvas = document.getElementById('memCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function draw(){
+    const delta = parseFloat(slider.value);
+    const aBar = Math.exp(delta * A);
+    dVal.textContent = delta.toFixed(2);
+    aVal.textContent = aBar.toFixed(3);
+
+    const W = canvas.width, H = canvas.height;
+    const steps = 12;
+    const mem = [1];
+    for(let i=1;i<=steps;i++) mem.push(mem[i-1]*aBar + (1-aBar)*0.3);
+
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='#2a3157';ctx.lineWidth=1;
+    for(let i=0;i<=4;i++){const y=20+i*(H-40)/4;ctx.beginPath();ctx.moveTo(50,y);ctx.lineTo(W-20,y);ctx.stroke();}
+
+    const padL=50,padR=20,padT=20,padB=30;
+    const plotW=W-padL-padR, plotH=H-padT-padB;
+    ctx.strokeStyle='#7ee0ff';ctx.lineWidth=2.5;ctx.beginPath();
+    mem.forEach((v,i)=>{
+      const x=padL+(i/steps)*plotW;
+      const y=padT+plotH*(1-v);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle='#7ee0ff';
+    mem.forEach((v,i)=>{
+      const x=padL+(i/steps)*plotW;
+      const y=padT+plotH*(1-v);
+      ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();
+    });
+
+    ctx.fillStyle='#aab1d0';ctx.font='11px sans-serif';
+    ctx.fillText('t=0',padL,H-8);
+    ctx.fillText('t='+steps,W-padR-20,H-8);
+    ctx.fillText('memory',8,padT+10);
+  }
+  slider.addEventListener('input',draw);
+  draw();
+
+  const cells=document.querySelectorAll('.scan-cell');
+  let idx=0;
+  setInterval(()=>{cells.forEach(c=>c.classList.remove('active'));cells[idx%4].classList.add('active');idx++;},1200);
+})();
+</script>
+</body>
+</html>

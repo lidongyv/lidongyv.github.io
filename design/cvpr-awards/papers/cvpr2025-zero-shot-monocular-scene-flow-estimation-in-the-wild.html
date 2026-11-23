@@ -1,0 +1,180 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Zero-Shot Monocular Scene Flow Estimation in the Wild</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]}};</script><script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2025</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Zero-Shot Monocular Scene Flow Estimation in the Wild</h1>
+    <div class="au2" style="color:var(--mut)">Yiqing Liang · Abhishek Badki · Hang Su · James Tompkin · Orazio Gallo</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/CVPR2025/papers/Liang_Zero-Shot_Monocular_Scene_Flow_Estimation_in_the_Wild_CVPR_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Zero-Shot%20Monocular%20Scene%20Flow%20Estimation%20in%20the%20Wild">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2025-zero-shot-monocular-scene-flow-estimation-in-the-wild -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">第一个能<b>零样本（zero-shot）跨场景</b>做单目场景流（scene flow=每个像素的 3D 运动）的通用模型。三招破局：① 不再"深度网络 + 运动网络"分开，而是<b>在 DUSt3R/MASt3R 的 pointmap 几何模型上加一个运动头、几何+运动联合预测</b>（还反过来让动态场景深度更准）；② 攒了一套 <b>1M 样本</b>的数据配方（合成+真实、室内外）+ 跨数据集尺度对齐；③ 选对参数化——<b>pointmap + 相机系 3D offset（CSO）</b>。结果在 KITTI/VKITTI2/Spring 上 3D EPE 全面领先，还能零样本泛化到 DAVIS 随手拍视频和 RoboTAP 机器人操作。NVIDIA + Brown，CVPR 2025 Finalist。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">深度/分割都有大模型零样本泛化了，<b>scene flow 却没有</b>。三大拦路虎：① <b>几何与运动纠缠</b>——图像上看到的 2D 位移=深度×运动的合成，估错一个 SF 就错；即便联合预测，还有<b>尺度歧义</b>。② <b>SF 标注稀缺</b>，且有的数据 metric（有真实米数）有的 relative（相对尺度），混训不处理会互相打架。③ SF 对<b>参数化</b>极敏感——深度+光流、或前后 3D 点相减都掉点。原文：<i>"no such general models exist for scene flow."</i></div>
+    <div class="note-h">核心方法（联合预测 + 数据配方 + 参数化）</div>
+    <div class="note-b">① <b>架构</b>：ViT 双权重共享编码器 + cross-attention 解码器 + 三个 DPT 头（HX1/HX2 出 pointmap，HS 出 3D offset），backbone=CroCoV2、用 <b>MASt3R 预训练权重</b> bootstrap 几何（式1）。② <b>数据配方</b>（Table 1）：SHIFT/DynamicReplica/MOVi-F/PointOdyssey/VKITTI2/Spring 共 <b>&gt;1M 样本</b>；缺光流用 RAFT 补、缺 SF 用"深度+位姿+光流"反算（式2-4，SF=x₂−x₁），用前后向一致性 + 深度/光流有效性筛 SF 有效掩码（式5）。③ <b>尺度自适应</b>（式8-12）：metric 数据不动；relative 数据把预测/GT 都按"到相机原点平均距离 ẑ/z"归一化再算 L1 loss——<b>同时吃 metric 和 relative 数据却仍输出 metric SF</b>。④ <b>光流监督</b>（式14）：把 SF 投影成光流 µ̂=π(X̂₁+Ŝ,K)−π(X̂₁,K)，逼几何与运动自洽。总 loss L=L_X+L_S+0.1·L_µ。⑤ <b>参数化 CSO</b>（相机系 3D offset）胜过 EP（端点）和 ∆D+OF。</div>
+    <div class="note-h">关键结果（数值）</div>
+    <div class="note-b">KITTI 域内 EPE <b>0.452</b>（Self-Mono-SF 0.454；D+OF 基线 DUSt3R 3.404 / MASt3R 3.708 惨败）。<b>零样本（Ours-exclude，没在测试集训）</b>：KITTI EPE 0.641 碾压"在该集微调过"的 DUSt3R 3.404；Spring EPE 0.014 vs Self-Mono-SF 1.005、OpticalExpansion 0.029。VKITTI2 域内 EPE 0.190 vs Self-Mono-SF 0.294。证明<b>联合几何-运动 + 大数据 = 真泛化</b>。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">把静态几何大模型（DUSt3R/MASt3R）成功"动态化"——<b>训运动反而让动态场景的深度也更准</b>（几何与运动纠缠的实证）；尺度自适应让 metric+relative 数据能混训还保 metric 输出；前向式（feedforward）、稠密、比 TAP 点追踪更密更准；零样本跨域（驾驶→随手拍→机器人）。</div>
+    <div class="note-h">疑问 / 边界</div>
+    <div class="note-b">① 原文承认 <b>相机自运动（ego-motion）与场景运动仍纠缠在一起</b>没拆开——对"只想要动态物体运动"的下游（如运动分割/跟踪）不够直接；② 两帧输入、依赖伪标签（RAFT 光流 + 深度反算 SF），<b>伪标签噪声会进训练</b>；③ 评测主要在合成/半合成（VKITTI2/Spring）+ KITTI，真实复杂街景定量仍有限；④ 对自驾：scene flow 本是经典 AD 任务（KITTI 起家），本文最大价值是<b>跳出"只在驾驶域 work"</b>，但单目 SF 精度/尺度仍不如 lidar/stereo，量产更可能作辅助线索（推断）。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿，基于本地 PDF 全文（67k 字符 / 14 页）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文（缺口句）：</b><i>"Large models have shown generalization across datasets for many low-level vision tasks, like depth estimation, but no such general models exist for scene flow."</i><br><b>在说什么：</b>深度估计等低层视觉任务已有跨数据集泛化的大模型，但<b>场景流（scene flow, SF）还没有这样的通用模型</b>。<b>点评：</b>开篇即点明这是一个"别的任务都有大模型、唯独 SF 没有"的空白——全文目标=填这个空白。</div>
+    <div class="note-b"><b>原文（三挑战句）：</b><i>"We identify three key challenges and propose solutions for each. First, we create a method that jointly estimates geometry and motion for accurate prediction. Second, we alleviate scene flow data scarcity with a data recipe that affords us 1M annotated training samples across diverse synthetic scenes. Third, we evaluate different parameterizations for scene flow prediction and adopt a natural and effective parameterization."</i><br><b>在说什么：</b>三个挑战对应三个解法——① 几何与运动<b>联合估计</b>；② 用<b>数据配方</b>造出 100 万标注样本破解数据稀缺；③ 选对<b>参数化</b>方式。这三点正好是全文 §3.1 / §3.2-3.3 / §3.4 的骨架。</div>
+    <div class="note-b"><b>原文（结果句）：</b><i>"Our model outperforms existing methods as well as baselines built on large-scale models in terms of 3D end-point error, and shows zero-shot generalization to the casually captured videos from DAVIS and the robotic manipulation scenes from RoboTAP."</i><br><b>一句话抓 Abstract：</b>把 DUSt3R/MASt3R 的"静态几何大模型"扩成"几何+运动联合"，配 1M 多域数据 + scale-adaptive 训练 + CSO 参数化，做出<b>首个能 in-the-wild 零样本泛化</b>的单目场景流模型。</div>
+
+    <div class="note-h">📚 背景知识（外部补充）：scene flow / pointmap / DUSt3R 谱系</div>
+    <div class="note-b"><b>scene flow（场景流）：</b>每个 3D 点从 \(t_1\) 到 \(t_2\) 的 3D 位移场，=几何（点在哪）+ 运动（点怎么动）。<b>monocular SF（单目场景流，本文设定）：</b>只给单目 RGB、<b>不给任何 3D 信息/相机位姿</b>，要同时估 3D 结构与 3D 运动——本质 ill-posed。<b>pointmap（点图）：</b>DUSt3R 引入，每像素对应一个 3D 点。<b>CroCoV2 / DUSt3R / MASt3R：</b>CroCoV2=cross-view completion 预训练；DUSt3R 用它做"成对图 → 统一坐标系点图"的静态几何；MASt3R 把 DUSt3R 绑到<b>度量空间（metric）</b>并改进匹配。<b>本文站在它们肩上</b>：用 MASt3R 预训练权重 bootstrap 几何，再扩出运动。</div>
+
+    <div class="note-h">② Introduction — 三大挑战（problem → why SF 难泛化）</div>
+    <div class="note-b"><b>挑战一·几何与运动纠缠：</b>原文 <i>"geometry and motion are entangled, and thus require joint reasoning. That is because the 2D displacement we observe in image space is the combined effect of depth and motion, so an error in estimating either one will result in incorrect SF predictions."</i> 即图像上看到的 2D 位移=深度与运动的<b>合成效应</b>，且 <i>"estimating SF remains ill-posed because of the scale ambiguity"</i>。</div>
+    <div class="note-b"><b>挑战二·数据稀缺 + 尺度不一：</b>原文 <i>"good generalization requires training on large and diverse datasets, but labeled SF data are scarce. Further, some datasets are metric and some are in relative units, which can compromise learning if not properly accounted for."</i> 这一点 <i>"is well known in single-image depth estimation, it has not been addressed for SF estimation."</i></div>
+    <div class="note-b"><b>挑战三·参数化敏感：</b>原文 <i>"the estimation of SF is sensitive to the choice of parametrization. We find that, using depth + optical flow or taking the difference between the estimated 3D points before and after motion both compromise the quality of the results."</i> 即 ∆D+OF 与 EP 两种常见参数化都会拉低质量——所以要专门研究并选 CSO。</div>
+
+    <div class="note-h">Q&amp;A · 为什么"联合估计"是成败关键？</div>
+    <div class="note-b"><b>核心：</b>深度错了→反投的 3D 点错→算出的 3D 位移（SF）必错；反过来若有运动线索，又能帮网络消歧深度。两者在 2D 投影后<b>不可分</b>，分开建模等于丢信息。<b>本文做法（机理）：</b>不为运动单设网络，而是 <i>"extend them to predict offsets jointly with geometry, and train them for both tasks"</i>——共享 backbone 出几何 + 运动。<b>关键反证：</b>原文发现 <i>"this joint training also improves their depth estimates for dynamic scenes, further supporting our observation that geometry and motion are entangled."</i> 即联合训练<b>连深度都变准了</b>，反向证明了"纠缠"假设；§4.3 也实测：加光流损失 \(\mathcal{L}_\mu\) 不仅 SF 涨、深度 \(\delta_1\text{-}m\) 也 +0.034。</div>
+
+    <div class="note-h">③ §3.1 架构（ViT 双编码器 + 交叉解码器 + 三个 DPT 头，Eq1）</div>
+    <div class="note-b"><b>输入输出：</b>两张图 \(I_1,I_2\in\mathbb{R}^{H\times W\times 3}\)（同一可能运动的相机在 \(t_1,t_2\) 拍，<b>无相机位姿</b>），估从 \((C_1,t_1)\to(C_2,t_2)\) 的 3D 映射。输出三张图：点图 \(\hat{X}_1,\hat{X}_2\in\mathbb{R}^{H\times W\times3}\)（都在 \(C_1\) 坐标系、分别属 \(t_1/t_2\) 时刻）+ 场景流偏移图 \(\hat{S}\in\mathbb{R}^{H\times W\times3}\)。</div>
+    <div class="note-b"><b>网络（Fig 2，Eq1）：</b>ViT 双权重共享编码器分支 \(\text{Enc}_v\) + 每帧一个 cross-attended 解码器 \(\text{Dec}_v\)（\(v\in\{1,2\}\)，各 \(B\) 个 block \(G^v_i\)），后接三个 DPT 头：\[ \hat{X}_1=H_{X_1}(G^1_0,\dots,G^1_B),\ \ \hat{X}_2=H_{X_2}(G^2_0,\dots,G^2_B),\ \ \hat{S}=H_S(G^1_0,\dots,G^1_B) \] 采用 <b>CroCoV2</b> backbone 以便直接吃 DUSt3R/MASt3R 预训练权重。原文点出双向增益：<i>"the 3D prior for geometry prediction can help better handle motion, and simultaneously the motion estimation head HS can help improve geometry prediction through its learned temporal correspondences."</i></div>
+
+    <div class="note-h">④ §3.2 数据配方（1M 样本 + 伪真值生成，Eq2/4/5/6）</div>
+    <div class="note-b"><b>动机：</b>原文 <i>"scene flow is more difficult to measure than other low-level properties like depth and optical flow, as it depends upon both geometry and motion."</i> 故扩充 4 个动态数据集（SHIFT / DynamicReplica / MOVi-F / PointOdyssey）+ VKITTI2 / Spring，<b>Table 1 合计 &gt;1M 样本</b>（室内外、合成+真实）。每样本含：\(I_1,I_2\)、深度 \(D_1,D_2\) 及有效掩码、光流 \(\mu\)、场景流 \(S\)、内参 \(K\)、相对位姿 \([R|t]\)、度量指示 \(\mathbf{1}_m\)。</div>
+    <div class="note-b"><b>伪真值生成（数据不全时补）：</b>缺光流 → 用 <b>RAFT</b> 生成；缺 SF → 由深度+位姿+光流算：先反投 \(\mathbf{x}_1=\pi^{-1}(D_1[\mathbf{p}_1],K)\)，再沿光流找对应 \(\mathbf{p}_2=\mathbf{p}_1+\mu[\mathbf{p}_1]\)、反投 \(\mathbf{x}_2=\pi^{-1}(D_2[\mathbf{p}_2],K)\)，得 SF\(=\mathbf{x}_2-\mathbf{x}_1\)。遮挡处理用前后一致性 \(\mathbf{1}_{cyc}\)，有效性 \(M_S=M_\mu\wedge M_{D_1}\wedge M_{D_2}\wedge\mathbf{1}_{cyc}\)。GT 点图 \(X_1=\pi^{-1}(D_1,K),\ X_2=[R|t]^{-1}\pi^{-1}(D_2,K)\)。<b>只在有效像素算损失</b>（No silent error 的诚实做法）。</div>
+
+    <div class="note-h">⑤ §3.3 Scale-adaptive 优化（度量/相对混训，Eq8/10）</div>
+    <div class="note-b"><b>问题：</b>不同数据集尺度不一致——有的 metric、有的 relative（Fig 3）。MiDaS 用 scale-invariant loss 但放弃度量；本文 <i>"instead of giving up metric estimation, we show how to leverage both metric and non-metric data for metric SF."</i> <b>做法：</b>度量数据（\(\mathbf{1}_m=1\)）不动；非度量（\(\mathbf{1}_m=0\)）先归一化——尺度因子=到 \(C_1\) 原点的有效点平均距离 \(\hat{z}=\frac{\sum M_{D_v}\|\hat{X}_v\|_2}{\sum M_{D_v}}\)（GT 用 \(z\)），再 \(\hat{X}^*_v=\hat{X}_v/\hat{z},\ \hat{S}^*=\hat{S}/\hat{z}\)。<b>几何与运动共享同一尺度</b>，所以 SF 和点图用同一个 \(\hat{z}\) 归一。损失 \(\mathcal{L}_X,\mathcal{L}_S\) 对度量样本用原值 L1、非度量用归一化 L1。</div>
+
+    <div class="note-h">⑥ §3.3 光流监督把几何与运动"绑"在一起（Eq14/15）</div>
+    <div class="note-b"><b>问题：</b>\(\hat{X}\) 与 \(\hat{S}\) 虽共享 backbone，但在 \(\mathcal{L}_X/\mathcal{L}_S\) 里<b>各自独立、无交互</b>。<b>解法：</b>用光流把二者关联——SF 投影回 2D 光流 \(\hat{\mu}=\pi(\hat{X}_1+\hat{S},K)-\pi(\hat{X}_1,K)\)，对 \(\hat{\mu}\) 加损失 <i>"encourages the network to produce X and S that are consistent and agree with ground truth intrinsics K."</i> 因光流是投影量，<b>与尺度无关、无需归一化</b>。最终损失 \(\mathcal{L}=\mathcal{L}_X+\mathcal{L}_S+0.1\,\mathcal{L}_\mu\)。<b>点评：</b>这是把"2D 可观测量（光流）"当作"3D 几何×运动一致性"的桥梁，很巧。</div>
+
+    <div class="note-h">⑦ §3.4 三种参数化 + 为何选 CSO（Fig 4）</div>
+    <div class="note-b"><b>三选一（同架构，只改 \(H_S\) 三维输出的解释方式）：</b>① <b>CSO（Camera-space 3D offsets，本文）</b>=\(\hat{S}\) 直接是相机系下的 3D 偏移向量场（含相机+物体运动）；② <b>∆D+OF</b>=前两维当光流 \(\hat{\mu}\)、第三维当深度变化 \(\Delta D\)，再合成 \(D_2=\hat{X}_{1z}+\Delta D,\ \hat{S}[\mathbf{p}]=\pi^{-1}(D_2,K)[\mathbf{p}+\hat{\mu}[\mathbf{p}]]-\hat{X}_1[\mathbf{p}]\)；③ <b>EP（End point）</b>=直接预测点在 \(C_2,t_2\) 的 3D 位置，SF\(=\hat{S}-\hat{X}_1\)。<b>结论（§4.4 实证）：</b>CSO 的 AccS 0.398 &gt; EP 0.281 &gt; ∆D+OF 0.311，且 ∆D+OF 在<b>相机位姿未知</b>时 EPE 暴涨到 11.905——因为它隐含依赖相机几何。</div>
+
+    <div class="note-h">⑧ §4.2 主结果（Table 2 真实数值，in/out-of-domain）</div>
+    <div class="note-b"><b>设置：</b>KITTI / VKITTI2 / Spring，指标 SF：EPE↓/AccS↑/AccR↑/Out↓；深度：AbsR/δ1（相对 r、度量 m）。<b>Ours-exclude</b>=训练时<b>剔除</b>被测数据集 = 零样本。</div>
+    <div class="note-b kv">
+&nbsp;&nbsp;[KITTI 实拍] EPE↓：<b>Ours 0.452</b> ｜ Self-Mono-SF 0.454（in-domain 持平略优）<br>
+&nbsp;&nbsp;[KITTI 零样本] <b>Ours-exclude 0.641</b> ｜ OpticalExpansion 2.537 ｜ DUSt3R 2.088 ｜ MASt3R 3.320 ｜ MonST3R 3.594<br>
+&nbsp;&nbsp;[VKITTI2] EPE↓：<b>Ours 0.190</b> ｜ Self-Mono-SF 0.294；零样本 Ours-exclude 0.409<br>
+&nbsp;&nbsp;[Spring] EPE↓：<b>Ours 0.013</b> / 零样本 0.014 ｜ Self-Mono-SF 1.005 ｜ OpticalExpansion 0.029
+    </div>
+    <div class="note-b"><b>读表：</b>① 对单目 SF 法——Self-Mono-SF 仅在 KITTI 训练，到 Spring 直接崩（AccS 0.694→0.251、AbsR-r 0.244→0.501），而 Ours 零样本仍稳；② 对 D+OF 拼接法——原文 <i>"our model tested—but not trained—on KITTI (Ours-exclude) achieves an EPE of 0.641, compared with 3.404 by DUSt3R and 3.708 by MASt3R when they are finetuned on our data recipe"</i>，即<b>零样本的 Ours 远胜在该集上微调过的 D+OF</b>，证明"联合 &gt; 深度与运动分开拼"。</div>
+
+    <div class="note-h">⑨ §4.3 Scale 策略消融（Table 3，每个验证什么）</div>
+    <div class="note-b"><b>四种尺度策略（KITTI，EPE↓）：</b><b>Align</b>（把预测整体缩放到 GT）1.596 ｜ <b>Always</b>（DUSt3R 式全归一到 0–1）0.899 ｜ <b>Never</b>（MASt3R 式假设全 metric 不归一）0.758 ｜ <b>Xor</b>（仅当相对深度才归一、度量不动）<b>0.452</b>。原文 <i>"The Xor-based variants achieve the best scene flow estimation… significantly outperforming Align, Always, and Never."</i> <b>验证了 scale-adaptive 是大规模混训的关键。</b><br><b>光流损失 \(\mathcal{L}_\mu\)：</b>去掉后 SF EPE <b>掉 0.049</b>；且 <i>"using Lµ also improves depth estimation with an improvement of 0.034 in terms of δ1-m"</i>——再次印证几何-运动纠缠。</div>
+
+    <div class="note-h">⑩ §4.4 参数化消融（Table 3）+ 与自动驾驶/BEV 的关系</div>
+    <div class="note-b"><b>参数化（KITTI）：</b>CSO AccS <b>0.398</b> ｜ EP 0.281 ｜ ∆D+OF 0.311，深度质量相当（δ1-r 0.927）；∆D+OF 在相机位姿未知时 EPE <b>11.905</b>。原文 <i>"This validates our choice of CSO parameterization for robust scene flow estimation under real-world conditions."</i></div>
+    <div class="note-b"><b>Q&amp;A · 与自动驾驶/BEV 感知的关系：</b>SF 是 4D 占据/运动预测的底座——本文证明"<b>不需要 LiDAR/立体、单目两帧</b>即可零样本出稠密 3D 运动场"，对量产纯视觉方案有吸引力。可借鉴：① <b>几何+运动联合</b>而非"深度网络 + 光流网络"拼接（拼接误差大，Table 2 已证）；② <b>metric/relative 混训的 Xor scale 策略</b>对"多来源数据（仿真+路采、有的有度量有的没有）"训练直接可用；③ 用现成大模型权重（MASt3R）bootstrap 省数据。<b>边界（诚实）：</b>仅两帧、<b>相机自运动与物体运动仍纠缠未解耦</b>（作者在 Conclusion 明确列为 limitation），高速/大位移、夜间等域外仍需验证。</div>
+
+    <div class="note-h">📚 评测指标解读（SF 四指标 + 深度四指标）</div>
+    <div class="note-b"><b>场景流（§4.1 遵循 [28,63] 传统）：</b>① <b>EPE（End Point Error）</b>=预测 3D 位移与真值的平均欧氏距离（越小越好，全文头号指标，也即 Abstract 的 "3D end-point error"）；② <b>AccS（Accuracy Strict）</b>=严格阈值下"算对"的点比例；③ <b>AccR（Accuracy Relax）</b>=放宽阈值的正确比例；④ <b>Out（Outliers）</b>=离群点比例。<b>深度：</b><b>AbsR</b>=绝对相对误差 \(|d-\hat d|/d\)，<b>δ1</b>=误差在 1.25 倍内的点比例；后缀 <b>-r</b>=relative（尺度无关）、<b>-m</b>=metric（带真实尺度）。<b>读表要点：</b>很多对手 AbsR-m / δ1-m 直接 0.000 或极差（如 DUSt3R δ1-m=0.000），因为它们<b>不输出度量尺度</b>——这正是本文"既泛化又保 metric"的卖点所在。</div>
+
+    <div class="note-h">Q&amp;A · DUSt3R / MASt3R 为何天生做不了场景流？</div>
+    <div class="note-b"><b>核心：</b>原文 <i>"These models are limited to static scenes and cannot reason about motion explicitly."</i> DUSt3R/MASt3R 的 point map 假设场景<b>静态</b>——它把两视图对齐到同一坐标系求几何，<b>没有"同一物理点在两时刻动了多少"的运动通道</b>。所以即便把它们当 D+OF 基线（深度 + RAFT 光流拼 SF），Table 2 上 KITTI EPE 也高达 3.404 / 3.708——因为动态前景的深度被静态假设带偏、再叠加光流误差。<b>本文修法：</b>不丢掉它们的几何先验，而是<b>扩出运动头 \(H_S\)</b> 并联合训练，把"静态几何大模型"升级成"动态几何+运动大模型"。MonST3R 是并行工作，只增强了动态鲁棒性、仍未把运动场显式联合出来。</div>
+
+    <div class="note-h">⑪ §2 相关工作定位：vs TAP/SpaTracker、vs 多帧</div>
+    <div class="note-b"><b>vs 单目 SF 老路：</b>Mono-SF 靠分段平面+刚体假设、Optical-Expansion 把 2D 光流"升维"到 3D、Self-Mono-SF 首个直接出 3D 运动向量；但原文指它们 <i>"largely focus on autonomous driving scenarios and only show very limited generalization capabilities."</i> <b>vs TAP/SpaTracker：</b>原文 <i>"SpaTracker… combines CoTracker's 2D tracking with input depth to track in 3D. It relies on an off-the-shelf single-image depth estimator, where depth noise harms 3D motion estimation; while our method tackles this issue by solving geometry and motion jointly."</i> 且 <i>"TAP methods offer sparse motion estimation, whereas our two-frame formulation provides dense information."</i> <b>定位结论：</b>本文=唯一"两帧、稠密、几何运动联合、零样本"的单目 SF。</div>
+
+    <div class="note-h">Q&amp;A · 为什么 ∆D+OF 在相机位姿未知时 EPE 暴涨到 11.905？</div>
+    <div class="note-b"><b>现象（Table 3）：</b>同一网络、同样数据，仅把 \(H_S\) 的三维输出解释成"光流 + 深度变化"，KITTI EPE 从 CSO 的 0.452 飙到 <b>11.905</b>。<b>机理：</b>∆D+OF 要靠 \(D_2=\hat{X}_{1z}+\Delta D\) 再 \(\pi^{-1}\) 反投 + 沿 \(\hat{\mu}\) 找对应才能合成 \(\hat{S}\)（Eq16），这条链路<b>隐含假设几何/相机一致</b>；当相机自运动未知时，"深度变化 \(\Delta D\)"无法区分"相机靠近了"还是"物体动了"，误差被反投放大。原文给出的判断是 <i>"∆D+OF's performance significantly degrades in scene flow estimation when camera poses are unknown."</i> <b>对比 CSO：</b>CSO 直接在相机系回归 3D 偏移，<b>不经反投合成、不偷偷依赖位姿</b>，因此鲁棒——这就是"参数化敏感"挑战的实证落点。[精确放大系数为本人据 Eq16 的推断，论文只给了"显著退化"的定性结论 + 11.905 的数值。]</div>
+
+    <div class="note-h">📊 Table 1 训练数据明细（数据配方的真实构成）</div>
+    <div class="note-b">原文 Table 1 列出"数据配方"的 6 个来源（标注差异很大，正是要做 scale-adaptive + 伪真值补全的原因）：</div>
+    <div class="note-b kv">
+&nbsp;&nbsp;数据集　　　　　场景类型　　　度量? OF? SF?　帧数 / 场景数<br>
+&nbsp;&nbsp;SHIFT　　　　　 驾驶　　　　　 metric ✗OF ✗SF　150k / 3000（6 相机）<br>
+&nbsp;&nbsp;Dynamic Replica　室内　　　　　 metric ✓OF ✗SF　72k / 484（2 相机）<br>
+&nbsp;&nbsp;Virtual KITTI 2　驾驶　　　　　 metric ✓OF ✓SF　35k / 40（2 相机）<br>
+&nbsp;&nbsp;MOVi-F　　　　　Kubric 风格　　 relative ✓SF　137k / 5736（1 相机）<br>
+&nbsp;&nbsp;PointOdyssey*　 室内&amp;Kubric　 metric　　　　100k / 39（*忽略含烟雾场景）<br>
+&nbsp;&nbsp;Spring　　　　　 Sintel 风格动画 ✓OF ✓SF　4k / 30（2 相机）
+    </div>
+    <div class="note-b"><b>读数据表的三点洞察：</b>① <b>标注极不齐</b>——有的有 SF、有的只有 OF、有的连 OF 都没有，所以必须用 RAFT 补光流、用"深度+位姿+光流"反算 SF（Eq2/4）；② <b>度量混杂</b>——SHIFT/VKITTI2/PointOdyssey 是 metric，MOVi-F 是 relative，直接混训会被尺度污染，故需 Xor scale 策略；③ <b>多域覆盖</b>——驾驶+室内+合成动画+Kubric，靠 multiple cameras 累计 <b>&gt;1M 样本</b>，这正是"in-the-wild 泛化"的数据底座。实现上 ViT Encoder/Dec1/Dec2/HX1/HX2 都用 <b>MASt3R 预训练权重</b>初始化（EP 变体里 \(H_S\) 也按 \(H_{X_1}\) 初始化）。</div>
+
+    <div class="note-h">📌 全文一页总结（problem → method → experiment → takeaway）</div>
+    <div class="note-b"><b>problem：</b>场景流缺通用大模型、难 in-the-wild 泛化，根因三挑战——几何运动纠缠、SF 数据稀缺且尺度不一、参数化敏感。<b>method：</b>① 架构=CroCoV2 ViT 双编码器 + 交叉解码器 + 三 DPT 头，<b>联合</b>出点图 \(\hat{X}_1,\hat{X}_2\) 与偏移 \(\hat{S}\)（Eq1，用 MASt3R 权重 bootstrap）；② 数据配方造 &gt;1M 样本（缺 SF 用深度+位姿+光流补伪真值，Eq2/4/5/6）；③ scale-adaptive 优化（Xor：相对才归一，Eq8/10）+ 光流投影一致性损失 \(\mathcal{L}=\mathcal{L}_X+\mathcal{L}_S+0.1\mathcal{L}_\mu\)；④ 参数化选 CSO（相机系 3D 偏移）。</div>
+    <div class="note-b"><b>experiment：</b>KITTI EPE 0.452（零样本 0.641 仍碾压在该集微调过的 DUSt3R 3.404/MASt3R 3.708）；VKITTI2 0.190；Spring 0.013；消融证 Xor &gt; Align/Always/Never、\(\mathcal{L}_\mu\) 同时提升 SF 与深度、CSO &gt; EP/∆D+OF；零样本迁移 DAVIS/RoboTAP。</div>
+    <div class="note-b"><b>Takeaway（≥3 条）：</b>① <b>联合即正则</b>——几何与运动在 2D 投影后不可分，共享 backbone 联合训练不仅做出 SF，还反过来把动态场景的深度也变准（\(\mathcal{L}_\mu\) 实测同时涨）；② <b>数据配方 + 尺度自适应是泛化引擎</b>——1M 多域样本 + Xor 尺度策略让 metric/relative 数据共训，把零样本 EPE 压到远低于在该集微调的对手；③ <b>参数化要选"自包含、不偷偷依赖相机几何"的 CSO</b>——∆D+OF 在位姿未知时 EPE 暴涨 11.905 是反面教材；④ <b>站在大模型肩上</b>——用 MASt3R 预训练权重 bootstrap 几何，是小数据撬动大泛化的实用路线；遗留 limitation=相机自运动与物体运动尚未解耦。</div>
+    <!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-zero-shot-monocular-scene-flow-estimation-in-the-wild/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Our model for monocular scene flow estimation predicts accurate pointmaps and 3D offsets for dynamic scenes from two input images (shown below each pane) captured by two cameras C1 and C2 at times t1 an t2, respectively. The image shows an interpolation of the pointmaps from C1 at t1 to C2 at t2. These examples are from datasets not seen in training, showcasing the strong generalization </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-zero-shot-monocular-scene-flow-estimation-in-the-wild/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Overview. Our method jointly predicts pointmaps (X1, X2) and scene flow S with an information-sharing ViT backbone followed by three prediction heads (HX1, HX2, HS).</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-zero-shot-monocular-scene-flow-estimation-in-the-wild/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Different datasets have different scales. Here we show a frame from MOVi-F [27], which is in relative scale, and one from Virtual KITTI [12], which is in metric units. We need to account for this while training for both geometry and motion.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-zero-shot-monocular-scene-flow-estimation-in-the-wild/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 4. SF parameterizations. Given cameras C1 and C2 capturing a 3D point at two times, t1 and t2, EP expresses the displacement as the coordinates of x(t2) in C2, ∆D+OF as d2 −d1 and optical flow µ, and CSO (ours) as the 3D offset between the two points, in red in the diagram. Note: The faded blue point to the right has not been transformed from C1 into C2; it is visualized here with exactly t</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-zero-shot-monocular-scene-flow-estimation-in-the-wild/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. Qualitative Results. We compare our method with SF baselines and one representative ∆D+OF baseline. We show qualitative results from KITTI and VKITTI2 datasets. For each scene we show a pair of input images, and for each baseline we show error maps against Ours for both scene flow (AccR) and depth (δ1). The color legend is shown above.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2025-zero-shot-monocular-scene-flow-estimation-in-the-wild/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Qualitative Results on DAVIS [75], with scene flow shown via the CIE-LAB [34] colorwheel overlaid on the estimated 3D points. Our result is more consistent than other approaches the leg geometry in the top, the bicycle turning motion in the middle, and the motorcycle rider in the bottom. Compared to SpaTracker [114]’s particle tracking, our monocular scene flow is denser and more geometr</figcaption></figure>
+    </div>
+  </div></body></html>

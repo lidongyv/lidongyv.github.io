@@ -1,0 +1,192 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>ViT^3: Unlocking Test-Time Training in Vision</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">CVPR 2026</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>ViT^3: Unlocking Test-Time Training in Vision</h1>
+    <div class="au2" style="color:var(--mut)">Dongchen Han ⋅ Yining Li ⋅ Tianyu Li ⋅ Zixuan Cao ⋅ Ziming Wang ⋅ Jun Song ⋅ Cheng Yu ⋅ Bo Zheng ⋅ Gao Huang</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://arxiv.org/pdf/2512.01643">arXiv PDF ⬇</a><a class="btn" target=_blank href="https://arxiv.org/abs/2512.01643">arXiv 摘要</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=ViT%5E3%3A%20Unlocking%20Test-Time%20Training%20in%20Vision">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract">Test-Time Training (TTT) has recently emerged as a promising direction for efficient sequence modeling. TTT reformulates attention operation as an online learning problem, constructing a compact inner model from key–value pairs at test time. This reformulation opens a rich and flexible design space while achieving linear computational complexity. However, crafting a powerful visual TTT design remains challenging: fundamental choices for the inner module and inner training lack comprehensive understanding and practical guidelines. To bridge this critical gap, in this paper, we present a systematic empirical study of TTT designs for visual sequence modeling. From a series of experiments and analyses, we distill six practical insights that establish design principles for effective visual TTT and illuminate paths for future improvement. These findings culminate in the Vision Test-Time Training (ViT$^3$) model, a pure TTT architecture that achieves linear complexity and parallelizable computation. We evaluate ViT$^3$ across diverse visual tasks, including image classification, image generation, object detection, and semantic segmentation. Results show that ViT$^3$ consistently matches or outperforms advanced linear-complexity models (e.g., Mamba and linear attention variants) and effectively narrows the gap to highly optimized vision Transformers. We hope this study and the ViT$^3$ baseline can facilitate future work on visual TTT models. Code will be released.</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:cvpr2026-vit-3-unlocking-test-time-training-in-vision -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">一篇<b>系统性 empirical study</b>：把 Test-Time Training（TTT，把 attention 重写成"测试时在 KV 上在线训练一个小内层模型"的 O(N) 范式）在视觉里彻底摸一遍设计空间，蒸出 <b>6 条实用 insight</b>（内层 loss / lr / batch / epoch / 内层模型架构与深度），据此拼出 <b>ViT³</b>——一个纯 TTT、线性复杂度、可并行的视觉 backbone。在分类/生成/检测/分割上稳定追平或超过 Mamba 与各种 linear attention，并显著缩小与"重度调优 Softmax ViT"的差距。定位是给视觉 TTT 立一个强 baseline + 设计准则。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">Softmax attention 是 O(N²)，长视觉序列代价爆炸。线性方案 linear attention 把 K,V 压成 d×d 线性权重 W=KᵀV 得 O(N)，但<b>状态容量有限、naive 压缩丢信息、表达力弱</b>。TTT[56] 提供新路：把整个 attention 看成<b>在线学习</b>——把 KV 当 mini-dataset，测试时对内层模型 F_W 做几步自监督训练得到 W*，再用 query 取输出 O=F_{W*}(Q)；内层用线性复杂度模块即得 O(N) 但有"学出来的非线性状态"。<b>但 TTT 太灵活→设计空间巨大且没人系统研究</b>（内层 loss/lr/batch/epoch、内层架构/大小怎么选都没准则）→无法做出强的视觉 TTT。本文中心问题：<i>能为高效又有表达力的 TTT 立什么设计准则、怎么指明未来改进方向？</i></div>
+    <div class="note-h">核心：六条 insight + ViT³ 设计（关键公式）</div>
+    <div class="note-b"><b>TTT 内层训练（式5）</b>：V̂_B=F_W(K_B)，W←W−η·∂L(V̂_B,V_B)/∂W；初始 W0 是外层可学习参数，内层更新被 unroll、与外层端到端联合训练。<b>六条 insight</b>：① 混合二阶导 ∂²L/∂V̂∂V 为 0 的内层 loss 不适合 TTT（外层对 W_V 的梯度要穿过它，式6）——L1/MAE 最差；② 视觉用<b>单 epoch 全批量(B=N)</b>内层训练最好（mini-batch 引入因果偏置，适合语言不适合非因果视觉）；③ 较大内层 lr=1.0 有效；④ 增大内层<b>宽度</b>容量持续涨点（r1→r4：78.9→79.6）；⑤ 当前设定下<b>加深</b>内层反而变差（3 层 77.5＜2 层 78.9，优化瓶颈）；⑥ <b>卷积</b>做内层模型特别适合视觉（把全局 K,V 压进局部 conv kernel→输出同时含全局+局部）。<b>ViT³ 内层</b>=两模块：F1=FC(x)⊙SiLU(FC(x))（简化 GLU，倍增容量又好优化）+ F2=DWConv(x)（局部全局融合）；每个 TTT block 里 1 个 head 用 F2、其余用 F1，drop-in 替换 attention。两族：ViT³（非层级 DeiT 式）/ H-ViT³（4-stage 层级）；生成用 DiT³（替 DiT 的 attention）。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">分类(ImageNet-1K)：非层级 ViT³-S <b>81.6</b>（DeiT-S 79.8 / Vim-S 80.3 / Agent-DeiT-S 80.5）；层级 H-ViT³-B <b>84.9</b>（MESA 训 85.5），全面超 VMamba/SOFT++/VVT/MILA，且 H-ViT³-S 用约一半参数/FLOPs 就超更大的 SOFT-L++、VMamba-B。检测(COCO/Mask R-CNN) H-ViT³-T 1× APᵇ 47.3/APᵐ 42.8 超 VMamba-T、MILA-T。分割(ADE20K/UPerNet) H-ViT³-T mIoU <b>48.0</b>（&gt;VMamba-T 47.9）。生成 DiT³-S/8 FID 153.60→<b>143.49</b>。普遍规律：序列越长(检测/分割 N≫d)，TTT 的"非线性内层 + 在线学习"相对固定状态的 linear/Mamba 优势越明显。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>把 TTT 的设计空间讲清楚</b>：6 条 insight 既是准则也是未来方向（如 insight 5 直指"深内层优化难"是开放问题），对一个新范式比单点 SOTA 更有价值。② <b>统一视角</b>（Fig 1）：Softmax attention = 宽度 N、Softmax 激活的 2 层 MLP；linear attention = d×d 线性层；TTT = 任意内层模型——把三者放进同一框架，解释力强。③ <b>conv 做内层</b>的洞察优雅：全局信息编进局部 kernel 权重，天然融合全局+局部，是视觉特化。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① ViT³/H-ViT³/DiT³ 的逐层超参（stage 配置、head 数、F1/F2 head 划分比例）原文说"in the Appendix"——<b>正文未给全，需查附录</b>。② insight 5 的"深内层难优化"只给了假设+部分证据（残差/初始化缓解有限），<b>根因未定论</b>，是留给后人的坑。③ 分割上 H-ViT³ 仍逊于 TransNeXt（重度调优 ViT），差距未完全抹平。④ href arXiv id 2512.01643（2025.12）；各表 ‡ 表示用了 MESA 抗过拟合训练策略，比较时需对齐。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文 61k 字符 / 13 页提取）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文逐句 + 中文指路：</b><br>1) <i>“TTT reformulates attention operation as an online learning problem, constructing a compact inner model from key-value pairs at test time.”</i> → TTT 定义：把 attention 重写成在线学习，测试时从 KV 构紧凑内层模型。<br>2) <i>“This reformulation opens a rich and flexible design space while achieving linear computational complexity.”</i> → 好处=O(N) + 灵活设计空间。<br>3) <i>“crafting a powerful visual TTT design remains challenging: fundamental choices for the inner module and inner training lack comprehensive understanding and practical guidelines.”</i> → <b>痛点</b>：内层模块/训练怎么选没准则。<br>4) <i>“we distill six practical insights … culminate in the Vision Test-Time Training (ViT³) model, a pure TTT architecture that achieves linear complexity and parallelizable computation.”</i> → 贡献=6 条 insight + ViT³。<br>5) <i>“consistently matches or outperforms advanced linear-complexity models (e.g., Mamba and linear attention variants) and effectively narrows the gap to highly optimized vision Transformers.”</i></div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>TTT 在视觉潜力大但没人会调；本文系统实验出 6 条准则、据此造 ViT³（纯 TTT、O(N)、可并行），在分类/生成/检测/分割上超 Mamba/linear attention、逼近 Softmax ViT。代码 github.com/LeapLabTHU/ViTTT。</div>
+
+    <div class="note-h">📚 背景知识①（外部）：O(N²) Softmax vs O(N) linear attention</div>
+    <div class="note-b"><b>Softmax attention</b>=主流 token mixer，但对序列长 \(N\) 是 \(O(N^2)\)，长视觉序列代价爆炸。<b>linear attention</b>=用线性核换 Softmax，靠矩阵乘结合律把 \((QK^\top)V\) 重排成 \(Q(K^\top V)\) 得 \(O(N)\)，但 <i>“linear attention suffers from limited expressive power”</i>——\(d\times d\) 线性状态容量有限、naive \(K^\top V\) 压缩丢信息。还有 Mamba（selective SSM，sequential scan）也是 \(O(N)\) 但固定状态。本文路线=用 TTT 范式做 \(O(N)\) 但更有表达力。</div>
+
+    <div class="note-h">📚 背景知识②：统一视角（Fig.1，全文最关键 framing）</div>
+    <div class="note-b">把三种 token mixer 都看成“给 \(Q\) 用的一个内层模型”：<b>Softmax attention</b>=\(O=\sigma(QK^\top)V\)，即一个<b>宽度=\(N\)、激活=Softmax 的 2 层 MLP</b>（\(W_1=K^\top,W_2=V\)）→评 \(O\) 时 \(O(N^2)\)。<b>Linear attention</b>=\(O=Q(K^\top V)\)，即把 \(K,V\) <b>压成一个 \(d\times d\) 线性层</b> \(W=K^\top V\)→\(O(N)\) 但状态小、信息丢。<b>TTT</b>=内层 \(F_W(\cdot):\mathbb{R}^d\to\mathbb{R}^d\) 可以是<b>任意模块</b>，把 KV 当 mini-dataset 在线训出 \(W^*\)→\(O=F_{W^*}(Q)\)；当 \(F_W\) 用线性复杂度模块（如 hidden 4d 的 2 层 MLP）即得 \(O(N)\) 且有非线性状态。</div>
+
+    <div class="note-h">📚 背景知识③：内层/外层 loop + 算力代价（Remark 4）</div>
+    <div class="note-b"><b>内层（inner loop）</b>=\(F_W\) + 式5 的几步在线更新（per-sequence，测试时也跑）；<b>外层（outer loop）</b>=整网在真实数据上的常规训练。关键：内层更新<i>“is differentiable and is optimized jointly with the outer network … the inner updates are unrolled and learned end-to-end”</i>（meta-learning 式“梯度的梯度”），故带 TTT 层仍端到端可训。<b>代价（Remark 4）：</b>内层要 (i) 对 \(K\) 前向 \(\hat V=F_W(K)\)、(ii) loss 反向、(iii) 对 \(Q\) 前向 \(O=F_W(Q)\)；反向≈2× 前向，合计 <b>≈1+2+1=4×</b> 同架构外层模块的 FLOPs——故“内层要轻量又有表达力”是核心矛盾。</div>
+
+    <div class="note-h">② §1 Introduction — problem → solution → why</div>
+    <div class="note-b"><b>problem：</b>ViT 的 Softmax attention \(O(N^2)\) 处理长序列贵；社区转 \(O(N)\)，代表 linear attention 但 <i>“suffers from limited expressive power, making it impractical for many applications”</i>。TTT 给新路：<i>“in each context a compact inner model is trained or constructed from the key–value pairs and then applied to every query.”</i> <b>但</b> <i>“the very flexibility of TTT introduces a critical bottleneck: a large and under-explored design space.”</i></div>
+    <div class="note-b"><b>solution + why：</b>中心问题 <i>“What design principles can be established for building efficient yet expressive Test-Time Training module, and how to enable future improvement?”</i> 系统探索两方面——inner training（loss/lr/batch/epoch）+ inner model（架构/大小），蒸出 6 条 insight，据此造 ViT³。<b>为什么做 empirical study 而非单一新模块：</b>TTT 是新范式、设计空间大且无地图，作者把<b>立准则 + 强 baseline + 揭示未来方向</b>列为核心贡献，比抢单点 SOTA 对社区更有用。</div>
+
+    <div class="note-h">②c §2 Related Work — TTT 的跨域版图</div>
+    <div class="note-b"><b>降 \(O(N^2)\) 的两条老路：</b>① 减少参与 attention 的 token（locality / sparsity）；② 重设计 attention 范式做 \(O(N)\) 全局建模（linear attention 族）。本文补的是第三条——<b>TTT-based 线性复杂度</b>。<b>TTT 已在多域开花：</b><i>“LaCT attains effective linear-time language modeling by applying large chunk test-time training”</i>；<i>“TTT layers allow pretrained diffusion Transformers that could only generate 3-second clips to produce coherent one-minute videos”</i>（视频生成）；<i>“TTT3R views 3D reconstruction as a test-time training process, achieving a 2× improvement in global pose estimation”</i>。TTT 还与 <b>fast weight programmers、meta-learning、Test-Time Scaling、recurrent depth</b> 密切相关。但作者点明：<i>“the superiority of TTT methods remain locked by the under-explored design space”</i>——正是本文要解的。</div>
+
+    <div class="note-h">③ §3 Preliminaries — 式(1)-(4)</div>
+    <div class="note-b"><b>Softmax（式1-2）：</b>\(O_i=\sum_j \frac{\exp(Q_iK_j^\top)}{\sum_j\exp(Q_iK_j^\top)}V_j\)，重写为
+    \[ O=\sigma(QK^\top)V\triangleq\sigma(QW_1)W_2=\mathrm{MLP}(Q),\quad W_1=K^\top,\ W_2=V \tag{2} \]
+    <b>Linear（式3-4）：</b>用线性核 \(\phi\) 替 Softmax、忽略归一化标量后
+    \[ O=Q(K^\top V)\triangleq QW=\mathrm{FC}(Q),\quad W=K^\top V\in\mathbb{R}^{d\times d} \tag{4} \]
+    维度：\(Q,K,V\in\mathbb{R}^{N\times d}\)，投影 \(W_{Q/K/V}\in\mathbb{R}^{C\times d}\)。</div>
+
+    <div class="note-h">③b §3.2 TTT Model — 式(5)</div>
+    <div class="note-b">把 KV 当 dataset \(D=\{(K_i,V_i)\}_{i=1}^N\)，用自监督在线学习压进 \(F_W:\mathbb{R}^d\to\mathbb{R}^d\) 的权重：
+    \[ \hat V_B=F_W(K_B),\qquad W\leftarrow W-\eta\cdot\frac{\partial L(\hat V_B,V_B)}{\partial W} \tag{5} \]
+    \(L\)=自监督重建目标（鼓励 \(F_W(K_i)\) 预测对应 \(V_i\)）；初始 \(W_0\) 是外层可学习参数；几步内层更新后用 \(W^*\) 产出 \(O=F_{W^*}(Q)\)。当 \(F_W\) 用线性复杂度架构（如 ratio 4.0 的 2 层 MLP），TTT 层继承 \(O(N)\) 时空复杂度且有“学出来的非线性状态”。</div>
+
+    <div class="note-h">④ §4 设置 + Insight 1（loss）式(6) + Table 1</div>
+    <div class="note-b"><b>设置：</b>DeiT-S 把 attention 换成 TTT 层做 baseline，ImageNet-1K 标准 300 epoch，逐项改动看影响；研究内层训练时内层先固定为 2 层 MLP（SiLU，ratio 1.0）。<b>Insight 1：</b><i>“loss functions L for which \(\partial^2 L/\partial\hat V\partial V\) vanishes are not suitable for TTT.”</i> 机制（式6）：外层对 value 投影 \(W_V\) 的梯度
+    \[ \frac{\partial G}{\partial W_V}=\frac{\partial\hat V_B}{\partial W}\cdot\frac{\partial^2 L(\hat V_B,V_B)}{\partial\hat V_B\partial V_B}\cdot\frac{\partial V_B}{\partial W_V} \tag{6} \]
+    若中间的混合二阶导≈0→外层梯度信号消失→学不动。Table 1：MAE/L1（导数是 sign、混合二阶导几乎处处 0）最差 <b>76.5</b>；Smooth L1（部分区域消失）78.1；Dot product 78.9 / MSE 79.2 / RMSE 78.8（无此病，~79.0）。<b>Remark 1：</b>Softmax attention 隐式满足“\(F(K_i)\approx V_i\)”这个 TTT 训练目标。</div>
+
+    <div class="note-h">④b Insight 2（batch/epoch，Table 2）</div>
+    <div class="note-b"><b>Insight 2：</b><i>“a single epoch of full-batch (batch gradient) inner training works well for vision.”</i> Table 2：\(B=N\) <b>78.9</b> ＞ N/2 78.6 ＞ N/3 78.3 ＞ N/4 78.1；多 epoch 略升（2ep 79.1、3ep 79.2）但掉吞吐+不稳，<b>4ep 直接发散（57.0*）</b>。<b>why：</b>sequential mini-batch 引入<b>因果偏置</b>（<i>“updates from earlier mini-batches change the inner-module weights … updates from later mini-batches can overwrite those produced earlier”</i>）——适合<b>因果</b>的语言、不适合<b>非因果</b>的视觉。Remark 2 还把现有方法分两类：parallel（全局非因果，≈单 epoch 全批量）vs sequential（Mamba 沿扫描路径，更富空间依赖）；为视觉设计 mini-batch 内训算法是未来方向。</div>
+
+    <div class="note-h">④c Insight 3（lr）式(7) + Table 3</div>
+    <div class="note-b"><b>Insight 3：</b>较大内层 lr=1.0 有效。Table 3：0.1→77.5 / 0.2→78.1 / 0.5→78.7 / <b>1.0→78.9</b> / 2.0→78.9 / 5.0→76.7* / 10.0→76.9*（发散）/ token-wise Dynamic→78.7（视觉里反而更差）。<b>Remark 3：</b>lr 数学上可被 \(K,V\) 缩放吸收：
+    \[ \eta\cdot\frac{\partial L}{\partial W}=\eta K^\top(KW-V)=\tilde K^\top(\tilde KW-\tilde V),\quad \tilde K=\sqrt\eta K,\ \tilde V=\sqrt\eta V \tag{7} \]
+    但实践上因初始化尺度/norm 层，\(\eta\) 仍是关键超参（类比 Softmax 的 \(1/\sqrt d\) 可吸收进 Q,K 却众所周知很关键）。</div>
+
+    <div class="note-h">④d Insight 4（加宽有益）+ Insight 5（加深反直觉，Table 4/6）</div>
+    <div class="note-b"><b>Insight 4：</b>增大内层<b>宽度</b>持续涨点。Table 4：2 层 MLP hidden \(d\to4d\)，r1 78.9 / r2 79.2 / r3 79.5 / r4 <b>79.6</b>——这是 TTT 相对 linear attention（被限死 \(d\times d\)）的核心优势。<b>Insight 5（反直觉）：</b><i>“in current TTT settings, deep inner models suffer from optimization difficulties.”</i> Table 4：FC（1 层）79.1 ＞ 2 层 MLP 78.9 ＞ 3 层 MLP <b>77.5</b>；Fig.3 显示越深训练 loss 越高→<b>欠拟合/优化瓶颈</b>（非容量不足）。佐证：约束输出层为恒等的 SiLU(FC(x)) 78.9→<b>79.4</b>、去输出层的 SwiGLU 79.0→<b>79.7</b>。<b>成因（Remark 5）：</b>外层——深内层初始化 \(W_0\) 难端到端优化；内层——深度致内层梯度爆炸/消失。Table 6：残差(+x 78.8)与朴素 init(79.0)缓解有限（均＜79.4）。→“让深内层可训”是开放方向。</div>
+
+    <div class="note-h">④e Insight 6（卷积内层，Table 4）</div>
+    <div class="note-b"><b>Insight 6：</b><i>“convolutional architectures are particularly appropriate as inner models for visual tasks.”</i> Table 4：Conv 79.9 / <b>DWConv 80.1</b>（全表最佳）。<b>why：</b>TTT 把全局 \(K,V\) 压进 \(F_W\) 参数，当 \(F_W\) 是 conv→<i>“global information is effectively encoded into the local convolution kernel weights”</i>，\(O=F_W(Q)\) 同时实现全局（更新的 kernel 权重）+ 局部（感受野）交互。<b>Remark 6：</b>此时 KV 数据集泛化为 \(\{(K^{loc}_i,V_i)\}\)，3×3 conv 即 \(K^{3\times3}_i\)（\(K_i\) 的 9 邻域 key）。</div>
+
+    <div class="note-h">⑤ §5 ViT³ 架构（落地 6 条 insight）</div>
+    <div class="note-b"><b>内层训练：</b>单 epoch 全批量 GD + lr 1.0 + dot-product loss。<b>内层模型=两模块：</b>\(F_1=\mathrm{FC}(x)\odot\mathrm{SiLU}(\mathrm{FC}(x))\)（简化 GLU，<i>“doubles the capacity of a naive \(d\times d\) linear state while remaining easy to optimize”</i>）+ \(F_2=\mathrm{DWConv}(x)\)（局部全局融合）；<b>每个 TTT block 里 1 个 head 用 \(F_2\)、其余用 \(F_1\)</b>，drop-in 替换 attention。宏观结构同 Transformer（Norm→TTT Block→Norm→FFN）。两族：<b>ViT³</b>（非层级 DeiT 式，B(C,H)×12）/ <b>H-ViT³</b>（层级 4-stage）；生成用 <b>DiT³</b>（替 DiT 的 attention）。位置编码用 conditional positional encodings。</div>
+
+    <div class="note-h">⑤b §5.1 分类 ImageNet-1K（Table 5/7 真数字）</div>
+    <div class="note-b"><table style="width:100%;border-collapse:collapse;font-size:12px;color:#e3e7ff">
+    <tr style="color:#ffd35c;border-bottom:1px solid #2a2f5c"><td>模型</td><td>类型</td><td>#Param</td><td>Top-1</td></tr>
+    <tr><td>DeiT-S</td><td>Transformer</td><td>22M</td><td>79.8</td></tr>
+    <tr><td>Vim-S</td><td>Mamba</td><td>26M</td><td>80.3</td></tr>
+    <tr><td>Agent-DeiT-S</td><td>Linear</td><td>23M</td><td>80.5</td></tr>
+    <tr style="color:#7ee0c0"><td><b>ViT³-S（非层级）</b></td><td>TTT</td><td>24M</td><td><b>81.6</b></td></tr>
+    <tr><td>VMamba-B</td><td>Mamba</td><td>89M</td><td>83.9</td></tr>
+    <tr><td>SOFT-L++</td><td>Linear</td><td>85M</td><td>84.1</td></tr>
+    <tr><td>MILA-B‡</td><td>Linear</td><td>96M</td><td>85.3</td></tr>
+    <tr style="color:#ffd35c"><td><b>H-ViT³-T / S / B</b></td><td>TTT</td><td>29/54/94M</td><td><b>83.5 / 84.4 / 84.9</b> (84.0/84.9/85.5‡)</td></tr>
+    </table></div>
+    <div class="note-b"><b>读表：</b>非层级 ViT³-S 81.6 超 DeiT-S 79.8 / Vim-S 80.3 / Agent-DeiT-S 80.5、ViT³-T 76.5 / ViT³-B 82.6；层级 H-ViT³ 全面超 VMamba/SOFT++/VVT。原文：<i>“H-ViT³-S attains higher performance than the larger SOFT-L++ and VMamba-B, despite using roughly half of parameters and FLOPs.”</i>（‡=MESA 抗过拟合训练。）非层级档位细节：ViT³-T <b>76.5</b>（DeiT-T 72.2 / Vim-T 76.1 / Agent-DeiT-T 74.9）、ViT³-B <b>82.6</b>（DeiT-B 81.8 / ConvNeXt-B-iso 82.0），三个 size 都稳超同量级 Transformer/Mamba/Linear 基线，说明 6 条 insight 拼出的内层设计在不同容量下都成立。</div>
+
+    <div class="note-h">⑤c §5.2 检测 COCO（Table 8）+ §5.3 分割 ADE20K（Table 9）</div>
+    <div class="note-b"><b>检测（Mask R-CNN 1×, AP↑）：</b>H-ViT³-T APᵇ <b>47.3</b>/APᵐ 42.8（VMamba-T 47.3/42.7、MILA-T 46.8/42.1）；H-ViT³-S 49.1/44.1；H-ViT³-B 50.0/44.6（3× schedule 同样追平/超线性方案）。<b>分割（UPerNet, mIoU↑）：</b>H-ViT³-T <b>48.0</b>（VMamba-T 47.9 / SOFT-T++ 46.5 / VVT-S 46.8）；H-ViT³-S 50.2；H-ViT³-B 51.7（仍＜TransNeXt-B 53.0 等重度调优 ViT）。<b>关键规律（原文）：</b><i>“token sequences in object detection are typically much longer … N ≫ d. Under these conditions, existing linear-complexity designs such as VMamba and SOFT++ tend to be constrained by limited state capacity and therefore frequently underperform”</i>——序列越长，TTT 的“非线性内层 + 在线学习”相对固定状态优势越大。</div>
+
+    <div class="note-h">⑤d §5.4 生成 DiT³（Table 10 全表）+ §5.5 效率</div>
+    <div class="note-b">把 DiT 的 Softmax attention 换成 ViT³ block 得 DiT³，FID-50K @256²（<b>无额外调参，全档位超 DiT</b>）：</div>
+    <div class="note-b"><table style="width:100%;border-collapse:collapse;font-size:12px;color:#e3e7ff">
+    <tr style="color:#ffd35c;border-bottom:1px solid #2a2f5c"><td>Model</td><td>FLOPs</td><td>FID↓</td><td>IS↑</td></tr>
+    <tr><td>DiT-S/8 → <b>DiT³-S/8</b></td><td>0.36→0.40G</td><td>153.60 → <b>143.49</b></td><td>8.34</td></tr>
+    <tr><td>DiT-S/4 → <b>DiT³-S/4</b></td><td>1.41→1.57G</td><td>100.41 → <b>93.77</b></td><td>14.42</td></tr>
+    <tr><td>DiT-S/2 → <b>DiT³-S/2</b></td><td>6.06→6.23G</td><td>68.40 → <b>62.65</b></td><td>21.59</td></tr>
+    <tr><td>DiT-B/8 → <b>DiT³-B/8</b></td><td>1.42→1.51G</td><td>122.74 → <b>120.41</b></td><td>10.94</td></tr>
+    <tr><td>DiT-B/4 → <b>DiT³-B/4</b></td><td>5.56→5.88G</td><td>68.38 → <b>65.25</b></td><td>22.29</td></tr>
+    <tr style="color:#7ee0c0"><td>DiT-B/2 → <b>DiT³-B/2</b></td><td>23.01→23.35G</td><td>43.47 → <b>39.31</b></td><td>36.99</td></tr>
+    </table></div>
+    <div class="note-b"><b>效率（Fig.4）：</b>线性时空复杂度让 ViT³ 随分辨率 scale 更省——<i>“At 1248² resolution (i.e., 6,084 tokens per image), ViT³-T attains a 4.6× speedup over DeiT-T and reduces GPU memory consumption by 90.3%.”</i> 这正是 \(O(N)\) 相对 \(O(N^2)\) Softmax 的本质收益：序列越长、收益越大。注意生成任务里 DiT³ 仅替换 token mixer、其余训练配方照搬 DiT，FID 仍单调改善，侧证 TTT block 是真正的 drop-in 增益而非靠调参堆出来的。</div>
+
+    <div class="note-h">Q&amp;A · 追问 why</div>
+    <div class="note-b"><b>Q：TTT 凭什么比 linear attention / Mamba 强？</b> linear attention 把 KV 压进固定 \(d\times d\) 线性状态（信息瓶颈死板）；Mamba 是固定容量 selective SSM。TTT 内层是<b>可学习非线性模块</b>，且测试时还对当前序列在线“拟合”几步——相当于<b>每条序列定制一个压缩器</b>。序列越长（N≫d，检测/分割）固定小状态越吃亏，TTT 优势越大（§5.2 明确点出），代价是内层 ~4× FLOPs。<br><b>Q：为什么“加宽内层有用、加深反而有害”？</b> 加宽=纯增容量、优化难度几乎不变；加深=TTT 内层既要在<b>外层 unroll</b> 下学初始化 \(W_0\)、又要在<b>内层几步更新</b>里稳定传梯度，深度同时恶化两处（Remark 5），训练 loss 反升、欠拟合。约束输出层为恒等能缓解，侧证是优化问题而非表达力问题。<br><b>Q：为什么视觉要全批量、语言要 mini-batch？</b> sequential mini-batch 让“先处理的 token 改权重影响后处理的 token”，本质是<b>因果/单向</b>依赖——语言天生因果受益；视觉非因果（全局），强加因果偏置反而损性能。</div>
+
+    <div class="note-h">⑥ 疑问 / 待查（[推测] 已标注）</div>
+    <div class="note-b">① ViT³/H-ViT³/DiT³ 逐层超参（stage 配置、head 数、F1/F2 head 划分比例）正文丢到附录——附录 Tab.11-13 给了 backbone 配置（如 ViT³-S=B(384,6)×12、H-ViT³ 四 stage），但 F1/F2 在多 head 里的精确比例（“1 head 用 F2、其余 F1”）对不同 H 的影响未单独消融。② insight 5 的“深内层难优化”只给假设+部分证据（残差/init 缓解有限），<b>根因未定论</b>，是留给后人的坑（理论上深网更强，能否在 TTT 框架内训起来=fundamental direction）。③ 分割上 H-ViT³-B 51.7 仍逊 TransNeXt-B 53.0，差距未抹平。④ 作者自承未覆盖的轴：inner optimizer、inner data augmentation、Transformer inner model（<i>“this paper is not exhaustive”</i>）。⑤ ‡=MESA 训练，跨表比较需对齐该标记。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>Softmax attention \(O(N^2)\) 贵；linear attention \(O(N)\) 但弱；TTT 范式有潜力但设计空间大且无准则，做不出强的视觉 TTT。<br><b>method：</b>系统实验内层训练（loss/lr/batch/epoch）+内层模型（架构/大小），蒸出 6 条 insight（loss 需混合二阶导非零 / 单 epoch 全批量 / lr=1.0 / 加宽有益 / 加深有害 / 卷积内层最适视觉），据此造 ViT³（内层=简化 GLU \(F_1\)+DWConv \(F_2\) 混合 head，drop-in 替 attention，\(O(N)\) 可并行）。<br><b>experiment：</b>分类 ViT³-S 81.6 / H-ViT³-B 84.9(85.5‡)；检测 H-ViT³-T APᵇ 47.3；分割 H-ViT³-T mIoU 48.0；生成 DiT³-S/8 FID 153.6→143.5；1248² 下比 DeiT-T 快 4.6×、省显存 90.3%。<br><b>takeaways：</b>① <b>统一视角</b>（Softmax=N 宽 MLP / linear=d×d 线性 / TTT=任意内层）解释力强，是理解高效 attention 的好框架；② 视觉 TTT 的甜点=<b>“单 epoch 全批量 + 大 lr + 宽而浅的非线性/卷积内层”</b>，且 conv 内层把全局信息编进局部 kernel 很优雅；③ 最大开放问题是<b>让深内层可优化</b>——解决它有望让 TTT 真正比肩 SOTA Transformer。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-vit-3-unlocking-test-time-training-in-vision/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Illustration of Softmax attention [59], linear atten- tion [32], and Test-Time Training (TTT) module [56]. (a) Softmax attention can be viewed as building a two-layer MLP that directly uses the uncompressed keys K and values V , where the hidden width equals the sequence length N and the nonlinearity is Soft- max. While effective, this N-width MLP leads to O(N 2) costs when applied to th</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-vit-3-unlocking-test-time-training-in-vision/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. Illustration of the TTT model building block. TTT shares the same macro architecture as Transformer.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/cvpr2026-vit-3-unlocking-test-time-training-in-vision/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. Results of TTT models with inner modules of 1, 2, 3 layers (FC, two-layer and three-layer MLP). Deeper inner models lead to higher training loss, and thus lower test accuracy.</figcaption></figure>
+    </div>
+  </div><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body></html>

@@ -1,0 +1,184 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>Automated Model Evaluation for Object Detection via Prediction Consistency and Reliability</title><style>
+:root{--bg:#0f1226;--bg2:#171a35;--card:#1d2147;--ink:#e8ebff;--mut:#9aa3c7;--line:#2a2f5c;
+--gold:#ffd35c;--silver:#c8d2e0;--stu:#7ee0c0;--accent:#7c9cff;--accent2:#b07cff;}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(160deg,#0c0f22,#141735 60%,#1a1340);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px}
+.hero{padding:54px 0 26px;text-align:center;background:radial-gradient(1200px 420px at 50% -120px,rgba(124,156,255,.28),transparent)}
+.hero h1{font-size:38px;margin:0 0 10px}
+.hero .sub{color:var(--mut);font-size:16px}
+.badge{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-best_paper{background:rgba(255,211,92,.18);color:var(--gold);border:1px solid rgba(255,211,92,.5)}
+.b-best_student{background:rgba(126,224,192,.16);color:var(--stu);border:1px solid rgba(126,224,192,.5)}
+.b-honorable{background:rgba(200,210,224,.14);color:var(--silver);border:1px solid rgba(200,210,224,.4)}
+.b-honorable_student{background:rgba(176,124,255,.16);color:#d9c2ff;border:1px solid rgba(176,124,255,.45)}
+.b-candidate{background:rgba(124,156,255,.12);color:var(--accent);border:1px solid rgba(124,156,255,.35)}
+.confbar{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px}
+.section-title{font-size:21px;margin:30px 0 6px;border-left:4px solid var(--accent);padding-left:12px}
+.section-sub{color:var(--mut);font-size:13px;margin:0 0 14px 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px}
+.card{background:linear-gradient(180deg,var(--card),var(--bg2));border:1px solid var(--line);border-radius:15px;
+padding:16px;transition:.18s;display:flex;flex-direction:column;min-height:140px}
+.card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card.win{border-color:rgba(255,211,92,.5)}
+.card h3{font-size:15px;margin:9px 0 7px;line-height:1.35}
+.card .au{color:var(--mut);font-size:12px;flex:1}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+#q{flex:1;min-width:220px;padding:11px 14px;border-radius:11px;border:1px solid var(--line);background:#0e1230;color:var(--ink);font-size:14px}
+.chip{padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:#11152f;color:var(--mut);cursor:pointer;font-size:13px}
+.chip.active{background:var(--accent);color:#0b0e22;border-color:var(--accent);font-weight:700}
+.count{color:var(--mut);font-size:13px;margin:6px 2px}
+.footer{color:var(--mut);font-size:12.5px;text-align:center;padding:38px 0 30px}
+.btn{display:inline-block;padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:#11152f;color:var(--ink);font-size:13px}
+.btn:hover{border-color:var(--accent);text-decoration:none}
+.btn.pdf{background:rgba(255,211,92,.14);border-color:rgba(255,211,92,.4);color:var(--gold)}
+.paper{max-width:880px;margin:0 auto;padding:28px 22px 60px}
+.paper h1{font-size:26px;line-height:1.3;margin:12px 0}
+.paper .au2{color:var(--mut);margin:8px 0}
+.conftag{color:var(--accent2);font-size:13px;font-weight:700}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0}
+.box h2{font-size:15px;margin:0 0 10px;color:var(--accent)}
+.abstract{font-size:14.5px;color:#d7dcff}
+.tldr{background:rgba(255,211,92,.08);border:1px solid rgba(255,211,92,.3);border-radius:14px;padding:14px 18px;margin:16px 0;color:#ffe9b0}
+.notes{border-style:dashed}
+.back{color:var(--mut);font-size:14px}
+
+.plist{margin:8px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);transition:.13s;text-decoration:none}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:rgba(124,156,255,.10);text-decoration:none}
+.prow .pt{flex:1;min-width:0}
+.prow .pt b{display:block;color:var(--ink);font-size:15px;line-height:1.35;font-weight:600}
+.prow .pt span{color:var(--mut);font-size:12.5px}
+.prow .bdg{flex:none}
+.prow .pdfmark{color:var(--gold);font-size:12px;flex:none}
+.notes{border:1px dashed rgba(255,211,92,.5);background:rgba(255,211,92,.05)}
+.notes-todo{color:var(--mut);font-style:italic}
+.note-h{color:var(--gold);font-weight:700;margin:14px 0 4px}
+.note-b{color:#e3e7ff;margin:0 0 6px}
+.kv{color:var(--mut);font-size:13px}
+</style></head><body>
+  <div class="paper">
+    <a class="back" href="../index.html">← 返回论文库</a>
+    <div style="margin-top:12px"><span class="conftag" style="color:var(--accent2);font-weight:700">ICCV 2025</span> &nbsp; <span class="badge b-candidate">Finalist</span></div>
+    <h1>Automated Model Evaluation for Object Detection via Prediction Consistency and Reliability</h1>
+    <div class="au2" style="color:var(--mut)">Seungju Yoo · Hyuk Kwon · Joong-Won Hwang · Kibok Lee</div>
+    <div class="links"><a class="btn pdf" target=_blank href="https://openaccess.thecvf.com/content/ICCV2025/papers/Yoo_Automated_Model_Evaluation_for_Object_Detection_via_Prediction_Consistency_and_ICCV_2025_paper.pdf">CVF 官方 PDF ⬇</a><a class="btn" target=_blank href="https://scholar.google.com/scholar?q=Automated%20Model%20Evaluation%20for%20Object%20Detection%20via%20Prediction%20Consistency%20and%20Reliability">Scholar</a></div>
+    
+    <div class="box"><h2>摘要 Abstract</h2><div class="abstract kv">见上方 arXiv / CVF 链接。</div></div>
+    <div class="box notes"><h2>📝 精读笔记</h2>
+<!-- NOTES:iccv2025-automated-model-evaluation-for-object-detection-via-pre -->
+    <div class="note-h">灵魂一句</div>
+    <div class="note-b">给一个目标检测器在<b>没有标注的新测试集</b>上估算它的 mAP（AutoEval / 无标签性能预测）。核心 idea：充分利用检测器在 NMS <b>之前</b>就产出的大量候选框。提两个免标签分数——<b>Consistency（一致性）</b>：低置信框与其周边 pre-NMS 框"合并框"的空间吻合度高 → 反复定位到没有物体的区域 → mAP 低（负相关）；<b>Reliability（可靠性）</b>：高置信框周边 pre-NMS 框里高置信框的占比高 → 分类+定位强共识 → mAP 高（正相关）。两个分数 + 线性回归即可预测 mAP。再配一个用 ImageNet-C corruption 造的、更真实且覆盖更广 mAP 区间的 meta-dataset。</div>
+    <div class="note-h">问题 &amp; 动机</div>
+    <div class="note-b">部署前要评估模型，但标注新环境测试数据贵且慢；AutoEval[6] 就是在<b>无 GT 标签</b>下估性能。但已有 AutoEval 几乎都做<b>图像分类</b>（靠 covariate shift / 特征分布距离）。检测性能还受 object scale、遮挡、背景杂乱、物体交互影响，<b>covariate shift 抓不住这些空间关系</b>。已有唯一检测 AutoEval（Yang 等的 BoS[45]）用 MC-dropout 扰动测"框稳定性"，三大缺陷：① 测试时<b>随机</b>→多次结果不一致；② 要<b>额外一次前向</b>→推理翻倍；③ <b>不用置信度</b>→高估不可靠预测。PCR 改用<b>单次前向</b>就有的 pre-NMS 框 + 显式 confidence。</div>
+    <div class="note-h">核心方法（PCR：Consistency + Reliability + 回归，含关键公式）</div>
+    <div class="note-b"><b>关键观察（Fig 2）</b>：最终预测与 GT 的 IoU 与其 confidence 正相关——低置信预测 IoU 低 → <b>confidence 不只代表分类、也指示定位质量</b>；而某最终框关联的 pre-NMS 框 confidence 总更低。<b>① Consistency S^C</b>（针对低置信框）：把第 i 个最终框 overlap 的所有 pre-NMS 框<b>合并</b>成一个紧包围框 B_merge（式1：中心取包围范围中点、宽高取全范围），算 S^C(i)=[IoU(B_final,B_merge)+CC]/2，其中 CC=1−中心距/(最终框半对角线)（式2-3，尺度不变的中心接近度）；图像级 S^C=各框加权平均、权重 σ_C(confidence) 是<b>负 scale 的 sigmoid</b>→低置信≈1、高置信≈0（强调低置信框，式4）。S^C 越高=反复锁定无物体区域→mAP 低（r=0.836 负相关）。<b>② Reliability S^R</b>（针对高置信框）：=高置信最终框周边 pre-NMS 框中"高置信框"的占比（式5），σ_R 是正 scale + floor α 的 sigmoid→高置信≈1、低置信≈α。S^R 越高=同位置反复高置信→分类+定位强共识→mAP 高（r=0.858 正相关）。<b>③ AutoEval</b>：在 meta-dataset 各子集上对 S̄^C、S̄^R 做<b>最小二乘线性回归</b>预测 mAP̂=w0+w1·S̄^C+w2·S̄^R（式6-7），留一交叉验证。</div>
+    <div class="note-h">关键结果</div>
+    <div class="note-b">4 个检测器（RetinaNet/Faster R-CNN × ResNet-50/Swin-T）、两类任务。<b>车辆检测</b>（10 源数据集）PCR 平均 RMSE <b>5.03</b>、平均排名 <b>1.13</b>；<b>行人检测</b>（9 源数据集）PCR RMSE <b>3.60</b>、排名 <b>1.00</b>——均全面超 PS/ES/AC/ATC/BoS（BoS 车辆 6.94、行人 6.22）。随 corruption 严重度升高，PCR RMSE 3.57→12.32 远比 BoS 4.80→23.30 鲁棒（Fig 6）。消融：S^C 单用 6.67 / S^R 单用 6.52 / 合用 <b>6.43</b>（互补）。PCR 与 BoS 的"一致性"几乎不相关（r=0.046），<b>PCR+BoS 联合</b>进一步降到 5.04。mAP50/mAP75 估计 PCR 同样最佳。</div>
+    <div class="note-h">亮点</div>
+    <div class="note-b">① <b>免费信号</b>：pre-NMS 候选框本是 NMS 要丢的"废料"，PCR 单次前向就能用——比 BoS 省一半推理、且确定性（无随机 dropout）。② <b>confidence 既测分类又测定位</b>这个观察(Fig 2)是整个方法的地基，两个分数都由它派生。③ <b>corruption-based meta-dataset</b>（ImageNet-C 10 腐蚀 × 5 严重度 = 50 子集）比强增广更真实、mAP 覆盖从 ~0% 到 40% 更宽，AutoEval 评测更可信。④ 对自驾感知有直接价值：上线后<b>无需人工标注即可监控</b>车辆/行人检测器在新场景的掉点。</div>
+    <div class="note-h">疑问 / 待查</div>
+    <div class="note-b">① 超参 k_C=−60、k_R=10、α=0.2、c=0.5 的调参过程与敏感性原文说"in the supplementary"——<b>正文未给全</b>。② 线性回归依赖 meta-dataset 的覆盖；若真实部署分布超出 corruption 模拟范围，外推可靠性<b>原文未验证</b>。③ 方法依赖"检测器产出 pre-NMS 候选框"，对<b>无 NMS 的 DETR 类</b>检测器是否适用、如何适配，<b>原文未讨论</b>（实验只含 RetinaNet/Faster R-CNN）。</div>
+<!-- /NOTES -->
+    </div>
+    <div class="box" id="qa"><h2>📖 逐段精读 · 笔记</h2>
+    <div class="kv">批量精读初稿（基于本地 PDF 全文 49.6k 字符 / 10 页提取）。最后更新 2026-06-21。</div>
+<!-- QA_LOG -->
+    <div class="note-h">① Abstract（摘要）— 逐句精讲</div>
+    <div class="note-b"><b>原文逐句 + 中文指路：</b><br>1) <i>“assessing their performance in real-world applications still relies on costly manual annotation.”</i> → 痛点：评估检测器要昂贵的人工标注。<br>2) <i>“we develop an automated model evaluation (AutoEval) framework for object detection.”</i> → 目标=检测的 AutoEval。<br>3) <i>“We propose Prediction Consistency and Reliability (PCR), which leverages the multiple candidate bounding boxes that conventional detectors generate before non-maximum suppression (NMS).”</i> → 方法 PCR，核心资源=NMS 前的候选框。<br>4) <i>“jointly measuring 1) the spatial consistency between boxes before and after NMS, and 2) the reliability of the retained boxes via the confidence scores of overlapping boxes.”</i> → 两个分数=一致性 + 可靠性。<br>5) <i>“we construct a meta-dataset by applying image corruptions of varying severity.”</i> → 配套 corruption-based meta-dataset。<br>6) <i>“PCR yields more accurate performance estimates than existing AutoEval methods, and the proposed meta-dataset covers a wider range of detection performance.”</i></div>
+    <div class="note-b"><b>一句话抓 Abstract：</b>用检测器 NMS 前的候选框算“一致性(低置信)+可靠性(高置信)”两个无标签分数，线性回归出 mAP；再用真实 corruption 造覆盖更广的评测集。代码 github.com/YonseiML/autoeval-det。</div>
+
+    <div class="note-h">📚 背景知识①（外部）：AutoEval + covariate shift</div>
+    <div class="note-b"><b>AutoEval（Deng &amp; Zheng 2021）[6]：</b><i>“estimating performance on unlabeled test datasets”</i>——无 GT 下先算与性能相关的标量分数，再用回归映射到精度。早期分类法用 confidence-based（max softmax、predictive entropy）、prediction disagreement、self-supervised surrogate（rotation/contrastive）、dataset-level 特征统计（Fréchet 距离、average feature energy）。<b>covariate shift</b>=源/目标域在特征提取阶段的分布差异。作者论点：<i>“covariate shift cannot capture these intricate spatial relationships”</i>——检测性能还受 object scale、occlusion、background clutter、object interactions 影响，光看特征分布距离抓不住。</div>
+
+    <div class="note-h">📚 背景知识②：NMS 与 pre-NMS 候选框</div>
+    <div class="note-b"><b>NMS（Non-Maximum Suppression）：</b>检测器先在各处回归出大量重叠候选框 + 各自 confidence，NMS 按 confidence 保留局部最高、抑制与其高 IoU 的其余框→得最终预测。<b>pre-NMS 框</b>=被抑制掉的那些候选。本文变废为宝的依据：<i>“discarded pre-NMS boxes still contain valuable information about localization”</i>（Soft-NMS [2]）。关键事实：<i>“the associated pre-NMS boxes have even lower confidence than nearby post-NMS boxes”</i>——某最终框关联的 pre-NMS 框 confidence 总更低，这是 Consistency 设计的前提。</div>
+
+    <div class="note-h">📚 背景知识③：BoS（主要对手）+ ImageNet-C + DIoU</div>
+    <div class="note-b"><b>BoS（Box Stability, Yang 等 2024）[45]：</b>唯一已有检测 AutoEval——<i>“compares bounding boxes generated by a detector with and without Monte Carlo dropout perturbations applied to feature maps”</i>，框越稳=性能越好。三大缺陷（原文）：<i>“First, it is stochastic at test time … Second, it requires an additional forward pass … effectively doubling the inference cost. Third, it does not incorporate model confidence … leading to an overestimation of unreliable predictions.”</i> <b>ImageNet-C（Hendrycks 2019）[19]：</b>模拟真实退化的 corruption（噪声/模糊/天气/数字），各 5 级严重度。<b>DIoU [48]：</b>把中心归一化距离加进 IoU 的检测损失；本文 CC 思路类似但<i>“differing in several aspects, e.g., the normalization factor”</i>。</div>
+
+    <div class="note-h">② §1 Introduction — problem</div>
+    <div class="note-b"><b>problem：</b>部署前评估关键，但<i>“annotating test data is often costly and time-consuming”</i>。<i>“Research on AutoEval has primarily focused on image classification”</i>，靠 covariate shift。但 <i>“object detection performance is sensitive to various factors such as variations in object scales, occlusion, background clutter, and object interactions; covariate shift cannot capture these intricate spatial relationships”</i>——作者据此判断 <i>“estimating covariate shift alone cannot address the full spectrum of challenges in object detection.”</i></div>
+
+    <div class="note-h">②b §1 — solution（bottom-up）+ why 用 pre-NMS 框</div>
+    <div class="note-b"><b>solution（bottom-up 三步，Intro 自包含）：</b><i>“1) collecting several measures from model outputs, 2) analyzing their correlations with performance variations, and 3) developing a method based on these insights.”</i> 聚焦“检测器先产很多候选框、NMS 留高置信丢重叠低置信”这一事实，<i>“examine relationships between pre- and post-NMS boxes by measuring their geometric proximity and confidence scores, capturing both localization and classification aspects.”</i> 两条直觉：<i>“For low-confidence boxes, the high spatial consistency between pre- and post-NMS boxes indicates repeated mislocalization”</i>（→低 mAP）；<i>“for high-confidence boxes … Pre-NMS boxes with high confidence imply that the model is confident in both aspects, thereby promoting correct detection results”</i>（→高 mAP）。<br><b>why 不用 BoS 的 dropout：</b>pre-NMS 框<b>单次前向就有</b>、确定性、且显式用 confidence，省一半算力。</div>
+
+    <div class="note-h">②c §1 — 三大贡献</div>
+    <div class="note-b">(i) <b>PCR</b>——<i>“an effective AutoEval method for object detection that leverages the spatial alignment and confidence scores of the bounding boxes before and after NMS”</i>；(ii) <b>Corruption-based meta-dataset</b>——<i>“a realistic and scalable benchmark”</i>；(iii) <b>Extensive empirical validation</b>——在 RetinaNet/Faster R-CNN × ResNet-50/Swin-T 四检测器、两类 meta-dataset 上一致超 SOTA。</div>
+
+    <div class="note-h">③ §2 Related Work — 四条线</div>
+    <div class="note-b"><b>Object Detection：</b>两阶段（R-CNN 系，先生成再精修 region proposal）vs 一阶段（YOLO/RetinaNet 单次）；真实部署的 distribution shift 致 benchmark 与实际掉点。<b>AutoEval：</b>分类上很成熟（confidence/disagreement/surrogate/feature-statistics），但 <i>“the extension to other computer vision tasks, such as object detection, remains underexplored”</i>。<b>AutoEval for Detection：</b>仅 BoS[45]（MC-dropout 框稳定性），三缺陷如前述。<b>Model Confidence：</b>以往多把 confidence 当分类概率去校准，<i>“the explicit relationship between confidence scores and localization quality remains unexplored”</i>——本文正是抓住“confidence 也指示定位质量”这一观察。</div>
+
+    <div class="note-h">④ §3 关键观察（Fig.2：confidence ↔ 定位质量）</div>
+    <div class="note-b">整个方法的地基：<i>“the Intersection over Union (IoU) between a final prediction and its ground-truth box is correlated with the confidence score, i.e., predictions with low confidence tend to exhibit low IoU with ground-truth boxes.”</i> 推论：<i>“model confidence, which is often used as a proxy for classification accuracy, also serves as an indicator of localization performance.”</i> Fig.2 在 10 个数据集上按 confidence&gt;0.5 分组，<b>低置信组 IoU 明显低于高置信组</b>——故 confidence 同时编码分类与定位质量，Consistency/Reliability 两个分数都由它派生。</div>
+
+    <div class="note-h">④b §3.1 Consistency — 式(1)-(4)</div>
+    <div class="note-b"><b>合并框（式1）：</b>对第 \(i\) 个最终框 overlap 的 pre-NMS 框集，取中点为中心、全范围为宽高：
+    \[ x_{merge}=\tfrac{1}{2}\big(\min_j x_{min}^{(ij)}+\max_j x_{max}^{(ij)}\big),\quad w_{merge}=\max_j x_{max}^{(ij)}-\min_j x_{min}^{(ij)} \tag{1} \]
+    （\(y,h\) 同理）→ \(B_{merge}\) 紧紧包住所有 pre-NMS 框。<b>中心接近度（式2）</b>补 IoU 在合并框细长时失真的问题：
+    \[ \mathrm{CC}(B_{final},B_{merge})=1-\frac{\sqrt{(x_{final}-x_{merge})^2+(y_{final}-y_{merge})^2}}{\sqrt{w_{final}^2+h_{final}^2}\,/\,2} \tag{2} \]
+    归一化因子=最终框半对角线，<b>尺度不变</b>，=1 表示中心完全重合。per-框分数 \(S^{C(i)}=\tfrac12(\mathrm{IoU}+\mathrm{CC})\)（式3）；图像级（式4）按 confidence <b>负 scale</b> sigmoid 加权（强调低置信框）：
+    \[ S^C=\tfrac{1}{N}\sum_{i=1}^N S^{C(i)}\cdot\sigma_C\!\big(h(B_{final}^{(i)})\big),\quad \sigma_C(x)=\tfrac{1}{1+\exp(-k_C(x-c))} \tag{4} \]
+    \(k_C\)<b>负</b>→低置信≈1、高置信≈0。<b>直觉+证据：</b><i>“A high consistency score indicates that the detector consistently focuses on a region without a ground-truth object, which is associated with low mAP”</i>——Fig.4(a) 显示 \(S^C\) 与 mAP <b>强负相关 r=0.836</b>（ρ=0.850）。且 \(S^C\) 与 BoS 分数<b>无相关</b>，概念正交。</div>
+
+    <div class="note-h">④c §3.2 Reliability — 式(5)</div>
+    <div class="note-b">聚焦高置信最终框：<i>“A concentration of pre-NMS boxes with high confidence indicates that both the classification and regression heads repeatedly identify an object at the same location, thereby promoting the reliability of the prediction.”</i> 定义为“高置信最终框周边 pre-NMS 框中高置信框的占比”：
+    \[ S^R=\frac{\sum_{i=1}^N\sum_{j=1}^{K_i}\mathbb{1}[h(B_{final}^{(i)})>c]\,\sigma_R\!\big(h(B^{(ij)})\big)}{\sum_{B^{(ij)}\in\mathcal{P}}\sigma_R\!\big(h(B^{(ij)})\big)},\quad \sigma_R(x)=\alpha+\tfrac{1-\alpha}{1+\exp(-k_R(x-c))} \tag{5} \]
+    \(k_R\)<b>正</b> + floor \(\alpha\)→高置信≈1、低置信≈\(\alpha\)（保留少量贡献）；\(\mathcal{P}=\bigcup_i\mathcal{B}^{(i)}\) 取并集确保每个 pre-NMS 框只计一次。<b>直觉+证据：</b><i>“A high reliability score indicates that the detector repeatedly assigns high confidence to a region, suggesting strong consensus in both classification and localization, which is associated with high mAP”</i>——Fig.4(c) 显示 \(S^R\) 与 mAP <b>强正相关 r=0.858</b>（ρ=0.858）。</div>
+
+    <div class="note-h">④d §3.3 PCR for AutoEval — 式(6)-(7) + 留一 CV</div>
+    <div class="note-b">在 meta-dataset \(\mathcal{D}=\{\mathcal{D}_m\}_{m=1}^M\) 上对每个子集算平均分（式6）\(\bar S^C(f,\mathcal{D}_m)=\tfrac{1}{|\mathcal{D}_m|}\sum_{\mathcal{I}}S^C(f,\mathcal{I})\)（\(\bar S^R\) 同理），再<b>最小二乘线性回归</b>预测 mAP：
+    \[ \widehat{\mathrm{mAP}}(f,\mathcal{D}_m)=w_0+w_1\,\bar S^C(f,\mathcal{D}_m)+w_2\,\bar S^R(f,\mathcal{D}_m) \tag{7} \]
+    训练/评测用 <b>leave-one-out cross-validation</b>：<i>“a meta-dataset is constructed using all source datasets except one for training, while the remaining source dataset is held out for evaluation and used without any transformations.”</i></div>
+
+    <div class="note-h">⑤ §4 Corruption-Based Meta-Dataset</div>
+    <div class="note-b">动机：prior[45] 用强增广（sharpness/equalize/solarize/rotation 等）→<i>“such strong augmentations may not adequately reflect the environmental shifts … and that such a meta-dataset may fail to capture the full range of detection performance.”</i> 本文改用 ImageNet-C corruption：<b>10 类</b>{gaussian/shot/impulse noise, defocus blur, snow, frost, fog, contrast, pixelate, jpeg} × <b>5 级 severity</b> = <b>50 子集</b>；<i>“We exclude corruptions that alter the coordinates of bounding boxes, e.g., zoom blur, elastic transformation.”</i> 结果（Fig.5d）：增广版 mAP 分布窄、偏（&lt;15% 几乎没有、集中 25%/35%），<i>“our corruption-based meta-dataset covers a broader range of mAP, spanning from near 0% to 40% with a smoother distribution.”</i></div>
+
+    <div class="note-h">⑤b §5.1 实验设置</div>
+    <div class="note-b"><b>检测器：</b>RetinaNet / Faster R-CNN × ResNet-50 / Swin-T（四组合）。<b>数据：</b>每子集 250 图；车辆 10 源（COCO/BDD/Cityscapes/DETRAC/ExDark/KITTI/Self-driving/Roboflow/Udacity/Traffic，训于 COCO “car”），行人 9 源（COCO/Caltech/CrowdHuman/Cityscapes/Self-driving/ExDark/EuroCity/KITTI/CityPersons，训于 CrowdHuman）。<b>基线：</b>PS、ES、AC、ATC（前四为分类法适配）、BoS（取 3 次平均消随机性）。<b>超参：</b>\(c=0.5,\ k_C=-60,\ k_R=10,\ \alpha=0.2\)。<b>指标：</b>估计 mAP 与真 mAP 的 <b>RMSE↓</b>。</div>
+
+    <div class="note-h">⑤c §5.2/5.3 主结果（Table 1/2 真数字）</div>
+    <div class="note-b"><table style="width:100%;border-collapse:collapse;font-size:12.5px;color:#e3e7ff">
+    <tr style="color:#ffd35c;border-bottom:1px solid #2a2f5c"><td>方法</td><td>车辆 Avg RMSE↓</td><td>车辆 Rank</td><td>行人 Avg RMSE↓</td><td>行人 Rank</td></tr>
+    <tr><td>PS</td><td>7.74</td><td>3.13</td><td>7.44</td><td>4.50</td></tr>
+    <tr><td>ES</td><td>8.62</td><td>4.75</td><td>7.53</td><td>5.00</td></tr>
+    <tr><td>AC</td><td>9.27</td><td>5.13</td><td>6.03</td><td>3.13</td></tr>
+    <tr><td>ATC</td><td>9.17</td><td>4.38</td><td>6.62</td><td>4.13</td></tr>
+    <tr><td>BoS（前检测法）</td><td>6.94</td><td>2.50</td><td>6.22</td><td>3.25</td></tr>
+    <tr style="color:#7ee0c0"><td><b>PCR (Ours)</b></td><td><b>5.03</b></td><td><b>1.13</b></td><td><b>3.60</b></td><td><b>1.00</b></td></tr>
+    </table></div>
+    <div class="note-b"><b>读表：</b>车辆 PCR Avg RMSE <b>5.03</b>/rank <b>1.13</b>、行人 <b>3.60</b>/rank <b>1.00</b>，全面超 PS/ES/AC/ATC/BoS。原文：<i>“PCR achieves the lowest average RMSE … consistently outperforming all baselines.”</i> 在更真实的 corruption-based meta-dataset 上优势尤其明显（如 RetinaNet-R50 车辆：BoS 13.50 → PCR 6.43）。</div>
+
+    <div class="note-h">⑤d §5.4 消融（Table 3/4/5）</div>
+    <div class="note-b"><b>S^C / S^R（Table 3）：</b>\(S^C\) 单用 6.67 / \(S^R\) 单用 6.52 / <b>合用 6.43</b>——<i>“these two scores capture complementary aspects: while the consistency score focuses on low-confidence predictions, the reliability score focuses on high-confidence predictions.”</i> 一个抓 failure、一个抓 success。<b>Consistency 组件（Table 4）：</b>IoU only 6.76 → <b>+Closeness 6.67</b>（CC 有效补 IoU）。<b>confidence 加权（Table 5）：</b>不加权 \(S^C_{all}\) 8.24 → 低置信加权 \(S^C\) <b>6.67</b>——验证“强调低置信框”的设计正确。</div>
+
+    <div class="note-h">⑤e §5.4 mAP50/75（Table 6）+ severity（Fig.6）+ PCR+BoS（Table 7）</div>
+    <div class="note-b"><b>mAP50/75（Table 6, RetinaNet+R50, RMSE↓）：</b>PCR <b>6.43 / 9.89 / 7.78</b>（mAP/mAP50/mAP75）全面碾压 BoS 13.50/22.75/14.43、ES 14.87/25.12/15.63——<i>“PCR achieves the best estimate for both mAP50 and mAP75.”</i> <b>severity 鲁棒（Fig.6, RMSE）：</b>PCR 1→5 级 <b>3.57/4.90/6.47/9.71/12.32</b>，BoS 4.80/7.88/12.43/17.98/<b>23.30</b>——<i>“PCR consistently achieves a lower RMSE and demonstrates robustness across different severity levels.”</i> 越难越占优。<b>PCR+BoS（Table 7）：</b>BoS 8.96 / PCR 5.66 / <b>PCR+BoS 5.04</b>——两者一致性概念<b>几乎不相关（r=0.046, ρ=−0.020, Fig.7）</b>，正交故可叠加。</div>
+
+    <div class="note-h">Q&amp;A · 追问 why</div>
+    <div class="note-b"><b>Q：为什么“低置信框 + 高一致性”反而预示低 mAP（反直觉）？</b> 关键在<b>低置信</b>这个条件。某最终框的 pre-NMS 框 confidence 总更低；若这些更低置信的框还<b>高度一致地</b>聚在同一处，说明检测器“固执地反复”在一个<b>大概率没真物体</b>的区域刷框——这种 confident-but-wrong 的一致性对应错检、低 mAP。反之低置信 + 低一致性只是信息不足、不下判断（Fig.4b）。<br><b>Q：S^C 和 S^R 不是冗余吗？</b> 不冗余：\(S^C\) 用 \(\sigma_C\)（负 scale）<b>只看低置信</b>最终框、测空间一致性（定位）；\(S^R\) 用 \(\sigma_R\)（正 scale）<b>只看高置信</b>最终框、测周边高置信框占比（分类+定位共识）。消融 6.67/6.52→6.43 证明互补。<br><b>Q：相比 BoS 的根本优势？</b> ① 确定性（BoS MC-dropout 随机、要跑 3 次）；② 单次前向（BoS 要额外加扰动前向、推理翻倍）；③ 显式用 confidence（BoS 不用、会高估不可靠预测）。结果全任务 RMSE/排名更优，severity 越高越稳，且与 BoS 正交可叠加。</div>
+
+    <div class="note-h">⑥ 疑问 / 待查（[推测] 已标注）</div>
+    <div class="note-b">① 超参 \(k_C=-60,\ k_R=10,\ \alpha=0.2,\ c=0.5\) 的调参过程与敏感性原文说 <i>“provided in the supplementary material”</i>——<b>正文未给全</b>。② 线性回归依赖 meta-dataset 覆盖；若真实部署分布超出 corruption 模拟范围，<b>外推可靠性原文未验证</b>（[推测] 这是 regression-based AutoEval 的共性风险）。③ 方法依赖“检测器产 pre-NMS 候选框”，对<b>无 NMS 的 DETR 类</b>检测器是否适用、如何适配，<b>原文未讨论</b>（实验只含 RetinaNet/Faster R-CNN）。④ [推测] \(S^C\) 和 \(S^R\) 都以 confidence 阈值 \(c=0.5\) 切“高/低置信”，对校准很差的检测器，这个硬阈值可能需重调。</div>
+
+    <div class="note-h">📌 全文一页总结（≥3 takeaway）</div>
+    <div class="note-b"><b>problem：</b>检测器上线前评估要昂贵标注；已有 AutoEval 偏分类、covariate shift 抓不住检测的空间关系；唯一检测法 BoS 随机、费算力、不用 confidence。<br><b>method：</b>PCR 用 NMS 前候选框算两个免标签分数——<b>Consistency</b>（合并 pre-NMS 框与最终框的 IoU+中心接近度 CC，对低置信框加权，式1-4）+ <b>Reliability</b>（高置信最终框周边高置信 pre-NMS 框占比，式5），最小二乘线性回归预测 mAP（式7）；配 ImageNet-C corruption meta-dataset（10×5=50 子集）。<br><b>experiment：</b>车辆 RMSE 5.03/rank 1.13、行人 3.60/rank 1.00，全面超 PS/ES/AC/ATC/BoS；\(S^C\) vs mAP r=0.836、\(S^R\) vs mAP r=0.858；severity 越高越稳（5 级 12.32 vs BoS 23.30）；\(S^C\)+\(S^R\) 互补（6.43）；mAP50/75 同最佳；与 BoS 正交可叠加（5.04）。<br><b>takeaways：</b>① <b>被 NMS 丢弃的 pre-NMS 候选框是免费的性能信号</b>，单次前向即可无标签估 mAP，比 BoS 省一半算力且确定性；② <b>confidence 同时编码分类与定位质量</b>（Fig.2）是 PCR 的地基，两个分数都由它派生；③ 评测 AutoEval 该用<b>真实 corruption</b>（更真实、mAP 覆盖更广）而非强增广。对自驾感知尤其有用——无标注即可监控部署后车辆/行人检测器的掉点。</div>
+<!-- /QA_LOG -->
+    </div>
+    <div class="box"><h2>🖼 论文原图（本地 PDF 截图，原文 caption 未改写）</h2>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-automated-model-evaluation-for-object-detection-via-pre/fig01.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 1. Visual example of PCR. Green boxes represent the ground-truth bounding boxes, and red and blue boxes denote an incorrect detection with low confidence and a correct detection with high confidence, respectively. Orange boxes show the pre- NMS candidate boxes, where the overlaid numbers indicate their confidence scores. (a) Consistency. The red box overlaps many pre-NMS boxes, yielding hig</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-automated-model-evaluation-for-object-detection-via-pre/fig02.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 2. The average IoU between ground-truth boxes and final predictions, grouped by confidence level using a threshold of 0.5 across datasets. Predictions with low confidence generally exhibit lower IoU than those with high confidence, indicating a correlation between confidence and localization quality.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-automated-model-evaluation-for-object-detection-via-pre/fig03.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 3. (a) A merged box tightly encloses all pre-NMS boxes as- sociated with a post-NMS box. (b) Consistency is computed based on IoU and a closeness term measured by the normalized distance between the center points of a post-NMS box and its correspond- ing merged box.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-automated-model-evaluation-for-object-detection-via-pre/fig04.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5. (a–c) Sample images from: (a) the original DE- TRAC [44] dataset, (b) the augmentation-based meta-dataset, and (c) the corruption-based meta-dataset. (d) Histogram of mAP dis- tributions for the augmentation-based meta-dataset [45] and our proposed corruption-based meta-dataset.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-automated-model-evaluation-for-object-detection-via-pre/fig05.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 5 compares the augmentation-based meta-dataset from prior work [45] and our proposed corruption-based meta-dataset. As shown in Figure 5(b), images generated by strong augmentations often appear artificial, whereas those generated by corruptions are more realistic, as shown in Figure 5(c). In terms of performance coverage, Figure 5(d) shows that the augmentation-based meta-dataset exhibits </figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-automated-model-evaluation-for-object-detection-via-pre/fig06.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6. Severity vs. RMSE.</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-automated-model-evaluation-for-object-detection-via-pre/fig07.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 6 compares the average RMSE of BoS [45] and PCR. While the average RMSE increases with the sever- ity level for both methods, PCR consistently achieves a lower RMSE and demonstrates robustness across different severity levels. This suggests that PCR not only performs well within a specific range of mAP, but also generalizes across diverse conditions, enabling reliable AutoEval across a wide</figcaption></figure>
+    <figure style="margin:0 0 22px"><img src="../imgs/iccv2025-automated-model-evaluation-for-object-detection-via-pre/fig08.webp" style="width:100%;border-radius:10px;border:1px solid var(--line)"><figcaption class="kv" style="margin-top:6px">Figure 7. Consistency scores of PCR and BoS [45].</figcaption></figure>
+    </div>
+  </div><script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},options:{skipHtmlTags:['script','noscript','style','textarea','pre']}};</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body></html>

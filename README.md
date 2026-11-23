@@ -134,29 +134,48 @@ summary_en: One-line English summary.
 
 ## 研究站（`/design/`）
 
-`design/` 下是 7 个独立成站的研究笔记 / 综述，源目录在
-`C:\Users\Admin\Desktop\design`，由 `_build/design.py` 复制过来，清单在
-`_build/gen/data_design.py`。
+`design/` 下是 12 个独立成站的研究笔记 / 综述，由 `_build/design.py` 从两个源目录复制，
+清单在 `_build/gen/data_design.py`。
 
-它们同时出现在博客列表里（带「站」标记），并各自有 `/design/<slug>/` 入口。
+**源目录写在 `_build/sources.local.json`（已 gitignore），不进仓库**——里面是本机路径，不公开。
+
+| 源 | 说明 | 条目 |
+|---|---|---|
+| `design` | 个人研究站点 | `wam-survey`、`gs-reading`、`world-model-reading`、`embodied-wam`、`distill-research`、`fsd-v15`、`vla-rl` |
+| `demos` | 论文阅读 demo | `cvpr-awards`、`cosmos-reading`、`deepseek-v4-reading`、`mamba-intro`、`vggt-reading` |
+
+`demos` 组标了 `"images": "webp"`，截图会被重新编码（最长边 1500、q80）并把 HTML 里的引用改成 `.webp`。
+
+它们同时出现在博客列表里（带「站」标记），并各自有 `/design/<slug>/` 入口。日期不是手写的，
+取源目录里最新的文件修改时间。
 
 **只发布自建正文**，以下内容被排除：
 
 | 排除项 | 原因 |
 |---|---|
-| `*.pdf`（1.14 GB，72 个） | 论文 PDF，既超出 Pages 容量，也不是我们该托管的 |
-| `raw/`（55 MB） | 抓取的 CVPR / ICCV 会议页面 |
+| `*.pdf` | 论文 PDF（两个源合计 1.7 GB），既超出 Pages 容量，也不是我们该托管的 |
+| `raw/` | 抓取的 CVPR / ICCV 会议页面 |
 | 保存的 arXiv 论文页 | 第三方全文，且依赖 arxiv 自己的 `/static/` 资源 |
-| 两份公众号文章副本（丁文伯、吴佳俊） | 别人写的，不是你的博客 |
-| `__pycache__`、`*.pyc`、`*.bin`、`*.whl`、`*.tex`、会话转储 | 构建垃圾 |
+| 公众号文章副本 | 别人写的，不是你的博客 |
+| `__pycache__`、`*.pyc`、`*.bin`、`*.whl`、`*.tex`、`*.mp4`、会话转储 | 构建垃圾 |
 | 单文件 > 6 MB | 体积保护 |
-| `auto_docs/site` | 与 `world-model-reading` 逐文件哈希相同，只发一份 |
+| 与公司相关的 demo | 见下 |
 
-如果源目录新增了项目：在 `_build/gen/data_design.py` 里加一条（slug / src / 标题 / 日期 /
-摘要 / 标签），然后 `python _build/build.py`。构建时会先清空 `design/` 再复制，所以删掉
-清单里的条目，对应站点也会消失。
+### 脱敏
 
-- 发布内容约 **37 MB**，GitHub Pages 上限 **1 GB**（约 4%），余量 25 倍以上；
+`demos` 里 56 个目录多数是公司项目（运营数据、OKR、issue 管理、团队信息、量产方案等），
+**只挑出与公司完全无关的 5 个论文阅读项目**。构建时还会做一次文本脱敏：
+
+- 替换表在 `sources.local.json` 的 `scrub` 里（同样是 gitignore 的），代码里不出现公司名；
+- 每次构建会打印替换次数，当前为 **0**（这 5 个项目本身不含公司标识）；
+- 发布前可用这条命令复核：搜索 `design/` 下所有 html/md/json/txt，应当 0 命中。
+
+如果源目录新增了项目：在 `_build/gen/data_design.py` 里加一条（slug / root / src / 标题 /
+摘要 / 标签），然后 `python _build/build.py`。构建会先清空 `design/` 再复制，删掉条目对应站点即消失。
+
+## 容量与成本
+
+- 发布内容约 **135 MB**（`design/` 113.8 MB + 其余 20.8 MB），GitHub Pages 上限 **1 GB**（约 13%）；
 - 12 个论文 / 报告 PDF（共 133 MB）已迁到 Release
   [`papers-2026-11`](https://github.com/lidongyv/lidongyv.github.io/releases/tag/papers-2026-11)，
   页面链接直接指向 Release 下载地址，不再占用 Pages 配额，也不会再吃站点流量；
