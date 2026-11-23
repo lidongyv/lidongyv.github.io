@@ -7,7 +7,7 @@ import os
 from . import layout as L_
 from . import releases
 from .blog import parse_front_matter, render_markdown, plain, word_count
-from .data_core import PROFILE, STATS, FOCUS, CAREER, EDUCATION
+from .data_core import PROFILE, FOCUS_AREAS, CAREER, EDUCATION
 from .data_works import PAPERS, MANUSCRIPTS, PATENTS, PROJECT_PAGES, PROJECTS_INTRO
 from .data_repos import REPOS, REPO_GROUPS, FINANCE, FORKS
 from .data_design import DESIGN
@@ -92,36 +92,15 @@ def paper_card(lang, p, compact=False):
                 % (esc(label_zh if lang == "zh" else label_en), t(p[key], lang)))
         body.append("</dl>")
         body.append('<div class="paper__result">%s</div>' % t(p["result"], lang))
-        body.append('<p class="small muted" style="margin-top:12px"><strong>%s</strong> %s</p>'
-                    % (esc("为什么值得关注" if lang == "zh" else "Why it matters"), t(p["why"], lang)))
     body.append('<div class="card__foot"><div class="links">%s</div></div>' % "".join(links))
     body.append("</article>")
     return "".join(body)
 
 
-def stat_strip(lang):
-    cells = "".join(
-        '<div class="stat"><b>%s</b><span>%s</span></div>' % (esc(s["value"]), esc(t(s["label"], lang)))
-        for s in STATS
-    )
-    return '<div class="stats" data-reveal>%s</div>' % cells
-
-
-def focus_cards(lang):
-    out = []
-    for i, f in enumerate(FOCUS):
-        out.append(
-            '<article class="card card--hover" data-reveal style="transition-delay:%dms">'
-            '<div class="sec-kicker" style="margin-bottom:8px">%s</div>'
-            "<h3>%s</h3><p style=\"margin-top:10px\">%s</p>"
-            '<div class="card__tags">%s</div></article>'
-            % (i * 60,
-               esc(t(f["kicker"], lang)),
-               esc(t(f["title"], lang)),
-               t(f["body"], lang),
-               "".join(tag(t(x, lang)) for x in f["tags"]))
-        )
-    return '<div class="grid grid--3">%s</div>' % "".join(out)
+def area_list(lang):
+    """Plain keyword list of research areas — no claims, no commentary."""
+    items = "".join('<span class="tag tag--area">%s</span>' % esc(t(a, lang)) for a in FOCUS_AREAS)
+    return '<div class="area-list">%s</div>' % items
 
 
 def career_timeline(lang, limit=None, show_bullets=True):
@@ -252,27 +231,22 @@ def render_home(lang, posts):
   <div class="wrap">
     <div class="hero-grid">
       <div>
-        <div class="eyebrow"><span class="dot"></span>{eyebrow}</div>
-        <h1>{headline}</h1>
+        <h1>{name}</h1>
+        <p class="hero-line">{headline}</p>
         <p class="hero-lede">{lede}</p>
         <div class="status-row">
-          <span class="pill pill--live"><span class="dot"></span>{status}</span>
+          <span class="pill">{role}</span>
           <span class="pill">{location}</span>
-          <span class="pill pill--accent">{role}</span>
+          <span class="pill pill--live"><span class="dot"></span>{status}</span>
         </div>
         <div class="cta-row">
           {cta_primary}
           {cta_github}
           <button class="btn btn--ghost" type="button" data-copy="{email}">{copy_icon}<span>{copy_label}</span></button>
         </div>
-        {stats}
       </div>
       <div class="hero-side">
         <div class="portrait"><img src="/assets/img/head.webp" alt="{name}" width="520" height="520" loading="eager"></div>
-        <div class="mini-list">
-          <dl class="mini-card"><dt>{now_label}</dt><dd>{now_value}</dd></dl>
-          <dl class="mini-card"><dt>{focus_label}</dt><dd>{focus_value}</dd></dl>
-        </div>
       </div>
     </div>
   </div>
@@ -331,8 +305,8 @@ def render_home(lang, posts):
   </div>
 </section>
 """.format(
-        eyebrow=esc(t({"zh": "自动驾驶算法负责人 · 求职中", "en": "Head of AD algorithms · open to work"}, lang)),
-        headline=t(PROFILE["headline"], lang),
+        name=esc(t(PROFILE["name"], lang)),
+        headline=esc(t(PROFILE["headline"], lang)),
         lede=t(PROFILE["lede"], lang),
         status=esc(t(PROFILE["status"], lang)),
         location=esc(t(PROFILE["location"], lang)),
@@ -344,14 +318,8 @@ def render_home(lang, posts):
         email=esc(PROFILE["email"]),
         copy_icon=icon("copy"),
         copy_label=esc(ui("copy_email", lang)),
-        stats=stat_strip(lang),
-        name=esc(t(PROFILE["name"], lang)),
-        now_label=esc("目前" if lang == "zh" else "Now"),
-        now_value=esc(t(PROFILE["org"], lang)),
-        focus_label=esc("关键词" if lang == "zh" else "Keywords"),
-        focus_value=esc("VLA · World Action Model"),
         focus_head=section_head(lang, "方向" if lang == "zh" else "Focus", level=2),
-        focus=focus_cards(lang),
+        focus=area_list(lang),
         career_head=section_head(lang, "经历" if lang == "zh" else "Experience", level=2),
         career=career_timeline(lang, limit=3, show_bullets=True),
         career_cta=btn(url(lang, "experience.html"),
@@ -437,7 +405,6 @@ def person_jsonld(lang):
         "name": t(PROFILE["name"], lang),
         "alternateName": "Lidong Yu",
         "jobTitle": t(PROFILE["title"], lang),
-        "worksFor": {"@type": "Organization", "name": t(PROFILE["org"], lang)},
         "url": L_.SITE_URL,
         "email": "mailto:" + PROFILE["email"],
         "sameAs": [PROFILE["github"], PROFILE["scholar"]],
@@ -614,10 +581,10 @@ def render_publications(lang):
         mcards="".join(mcards),
     )
     return page(lang, ("论文 · " if lang == "zh" else "Publications · ") + t(PROFILE["name"], lang),
-                "8 篇同行评审论文（ICCV 2025 Oral、AAAI 2018 spotlight、CVPR、NeurIPS），含问题、方法、指标与论文/代码链接。"
+                "发表论文列表，每篇写了问题、方法与结果，并附 arXiv / CVF / AAAI 论文与代码链接。"
                 if lang == "zh" else
-                "Eight peer-reviewed papers (ICCV 2025 Oral, AAAI 2018 spotlight, CVPR, NeurIPS) with problem, "
-                "method, metrics and paper/code links.",
+                "Publication list with the problem, method and results for each paper, plus arXiv / CVF / AAAI "
+                "and code links.",
                 "publications.html", body, active="publications")
 
 
@@ -995,26 +962,22 @@ def render_about(lang):
 </section>
 """.format(
         head=section_head(lang, "关于" if lang == "zh" else "About", level=1),
-        p1=esc("我是于立冬，自动驾驶算法负责人，现在在新石器负责 AD 算法团队（38 人、约 8,700 张 GPU）。"
-               "我的技术主线是「把视觉模型的表示能力落到车上的实时约束里」："
-               "从立体匹配与单目深度出发，经过跟踪、模仿学习，一路做到今天的端到端与世界模型。"
+        p1=esc("我是于立冬。2016–2019 年在北京理工大学读计算机视觉硕士，导师是贾云得教授和吴宇威教授，"
+               "做立体匹配与单目深度估计。2019 年起做自动驾驶算法，先后在驭势科技南京 AI 研究院、蔚来、"
+               "元戎启行、地平线、NVIDIA 和新石器慧通工作，做过感知、跟踪、数据闭环与端到端。"
                if lang == "zh" else
-               "I am Lidong Yu, head of autonomous-driving algorithms at Neolix, where I lead a 38-person AD "
-               "algorithm org with ~8,700 GPUs. My technical through-line is putting the representational power of "
-               "vision models inside the real-time budget of a car: starting from stereo matching and monocular depth, "
-               "through tracking and imitation learning, all the way to today's end-to-end driving and world models."),
-        p2=esc("我相信「落地」不是一句口号，而是一串可以被核对的东西：模型换代能不能进端到端、"
-               "数据闭环能不能把 issue 从 D+10 压到 D+3、世界模型能不能当评测装置而不只是渲染器。"
-               "过去几年我在不同公司反复验证这三件事，也都留下了可量化的结果。"
+               "I am Lidong Yu. I did my master's in computer vision at Beijing Institute of Technology "
+               "(2016–2019) with Prof. Yunde Jia and Prof. Yuwei Wu, working on stereo matching and monocular depth. "
+               "From 2019 I worked on autonomous-driving algorithms at UISEE's Nanjing AI Research Institute, NIO, "
+               "DeepRoute.ai, Horizon Robotics, NVIDIA and Neolix, across perception, tracking, data loops and "
+               "end-to-end driving."),
+        p2=esc("2026 年 11 月我从新石器离职，目前是独立研究者，关注 VLA（视觉-语言-动作模型）与世界模型"
+               "（World Action Model）的落地，以及端到端自动驾驶的评测与数据闭环。"
                if lang == "zh" else
-               "I believe deployment is not a slogan but a list of checkable things: whether a model generation can "
-               "enter the end-to-end stack, whether the data loop can move issue turnaround from D+10 to D+3, and "
-               "whether a world model can act as an evaluation harness rather than merely a renderer. I have verified "
-               "all three across several companies, each time with numbers attached."),
-        p3=esc("我正在寻找 VLA / 世界模型落地方向的机会：既愿意带团队，也愿意自己写代码。"
-               if lang == "zh" else
-               "I am looking for a role in landing VLA and world models — happy to lead a team, and happy to write "
-               "the code myself."),
+               "I left Neolix in November 2026 and am now an independent researcher, working on landing VLA "
+               "(vision-language-action) models and world models, and on evaluation and data loops for end-to-end "
+               "autonomous driving."),
+        p3=esc("开放全职与顾问机会。" if lang == "zh" else "Open to full-time and advisory roles."),
         contact_title=esc("联系方式" if lang == "zh" else "Contact"),
         lbl_email=esc("邮箱" if lang == "zh" else "Email"),
         lbl_phone=esc("电话" if lang == "zh" else "Phone"),
@@ -1032,9 +995,9 @@ def render_about(lang):
         timeline=career_timeline(lang, limit=6, show_bullets=False),
     )
     return page(lang, ("关于 · " if lang == "zh" else "About · ") + t(PROFILE["name"], lang),
-                "于立冬（Lidong Yu）：自动驾驶算法负责人，VLA 与世界模型落地。简历下载、联系方式与经历速览。"
+                "于立冬（Lidong Yu）：独立研究者，关注 VLA 与世界模型的落地。简历下载、联系方式与经历速览。"
                 if lang == "zh" else
-                "Lidong Yu: head of autonomous-driving algorithms, VLA and world-model deployment. Resume downloads, "
+                "Lidong Yu: independent researcher working on landing VLA and world models. Resume downloads, "
                 "contact details and a career overview.",
                 "about.html", body, active="about")
 

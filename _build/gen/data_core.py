@@ -14,22 +14,20 @@ PROFILE = {
     "name": L("于立冬", "Lidong Yu"),
     "name_en": "Lidong Yu",
     "handle": "lidongyv",
-    "title": L("自动驾驶算法负责人", "Head of Autonomous Driving Algorithms"),
-    "org": L("新石器慧通（北京）科技有限公司", "Neolix Technology (Beijing) Co., Ltd."),
+    "title": L("独立研究者", "Independent researcher"),
+    "org": L("独立研究", "Independent research"),
     "headline": L(
-        "把 <em>VLA</em> 与 <em>World&nbsp;Action&nbsp;Model</em> 从论文推进到量产车上",
-        "Taking <em>VLA</em> and <em>World&nbsp;Action&nbsp;Models</em> from papers to production vehicles",
+        "VLA · 世界模型 · 端到端自动驾驶",
+        "VLA · World models · End-to-end driving",
     ),
     "lede": L(
-        "自动驾驶算法负责人，带 38 人算法团队、约 8,700 张 GPU。"
-        "十年从立体匹配、单目深度、跟踪起步，经蔚来、元戎、地平线、NVIDIA 到新石器，"
-        "完整走完 <strong>感知模块 → 两阶段端到端 → 单阶段 VLA / 世界模型</strong> 这条技术路径，"
-        "并亲手把每一代方案送上车。",
-        "Head of autonomous-driving algorithms, leading 38 engineers and ~8,700 GPUs. "
-        "I started from stereo matching, monocular depth and tracking, then went through NIO, DeepRoute, "
-        "Horizon Robotics, NVIDIA and now Neolix — walking the full path from "
-        "<strong>modular perception → two-stage end-to-end → one-stage VLA / world models</strong>, "
-        "and shipping every generation onto real vehicles.",
+        "2019 年起做自动驾驶算法，先后在驭势科技（南京 AI 研究院）、蔚来、元戎启行、地平线、"
+        "NVIDIA 和新石器慧通工作，做过感知、跟踪、数据闭环与端到端。"
+        "2026 年 11 月从新石器离职，目前是独立研究者，关注 VLA 与世界模型的落地。",
+        "Autonomous-driving algorithms since 2019 — UISEE (Nanjing AI Research Institute), NIO, "
+        "DeepRoute.ai, Horizon Robotics, NVIDIA and Neolix, across perception, tracking, data loops and "
+        "end-to-end driving. Left Neolix in November 2026; now an independent researcher working on "
+        "landing VLA and world models.",
     ),
     "email": "yvlidong@gmail.com",
     "phone": "+86 151-6523-1608",
@@ -37,8 +35,8 @@ PROFILE = {
     "scholar": "https://scholar.google.com/citations?hl=en&user=cYLbx3AAAAAJ",
     "github": "https://github.com/lidongyv",
     "site": "https://lidongyv.github.io/",
-    "status": L("正在寻找 VLA / 世界模型落地方向的机会", "Open to roles on VLA / world-model deployment"),
-    "status_short": L("求职中", "Open to work"),
+    "status": L("开放全职与顾问机会", "Open to full-time and advisory roles"),
+    "status_short": L("开放机会", "Open to roles"),
     "focus_tags": [
         L("VLA", "VLA"),
         L("World Action Model", "World Action Model"),
@@ -48,65 +46,34 @@ PROFILE = {
     ],
 }
 
-STATS = [
-    {"value": "8", "label": L("同行评审论文（ICCV/CVPR/NeurIPS/AAAI）", "Peer-reviewed papers (ICCV/CVPR/NeurIPS/AAAI)")},
-    {"value": "5", "label": L("发明专利", "Invention patents")},
-    {"value": "6", "label": L("段量产级算法经历", "Production algorithm roles")},
-    {"value": "38 / 8.7k", "label": L("团队规模（人） / 算力（GPU）", "Team size (people) / compute (GPUs)")},
-]
-
-# --- What I work on: the VLA / WAM thesis -----------------------------------
-FOCUS = [
-    {
-        "kicker": L("01 · 建模", "01 · Modeling"),
-        "title": L("单阶段：感知后置，规划直接吃图像流", "One-stage: perception moves downstream, planning reads the image stream"),
-        "body": L(
-            "把 planning 从「基于感知结果」改成「基于图像流」，感知元素以自回归 token 形式进入策略，"
-            "去掉 perception tokenizer 并把它降级为 debugger 任务。多模态回归 → 自回归 → 扩散，"
-            "再叠加 RL post-training 与 Cosmos 世界模型闭环训练。",
-            "Planning moved from consuming perception outputs to consuming the raw image stream: "
-            "perception elements enter the policy as autoregressive tokens, the perception tokenizer is removed "
-            "and demoted to a debugger task. Regression → AR → diffusion, plus RL post-training and "
-            "closed-loop training against a Cosmos world model.",
-        ),
-        "tags": [L("One-stage E2E", "One-stage E2E"), L("AR + Diffusion", "AR + Diffusion"), L("RL post-training", "RL post-training")],
-    },
-    {
-        "kicker": L("02 · 数据", "02 · Data"),
-        "title": L("VLA 的瓶颈不在模型，在数据闭环", "The bottleneck of VLA is not the model — it is the data loop"),
-        "body": L(
-            "0→1 搭建数据闭环并用自动化标注把交付量从 1k 推到 30k 交叉口/月，"
-            "把 issue 解决周期从 D+10 压到 D+3，把数据冗余从 80% 降到 5%。"
-            "VLM 自动 triage、agent 驱动评测与仿真，是我现在做 VLA 落地的日常。",
-            "Built the data closed loop from 0 to 1, then pushed automated labelling throughput from "
-            "1k to 30k intersections per month, cut issue turnaround from D+10 to D+3 and redundancy from 80% to 5%. "
-            "VLM-based auto triage plus agent-driven evaluation and simulation is the daily work of shipping VLA.",
-        ),
-        "tags": [L("4D GT", "4D GT"), L("Auto mining", "Auto mining"), L("VLM triage", "VLM triage")],
-    },
-    {
-        "kicker": L("03 · 评测", "03 · Evaluation"),
-        "title": L("世界模型要能当「考场」，不只是「渲染器」", "A world model must be an exam hall, not just a renderer"),
-        "body": L(
-            "我把 render 的目标从「单场景重建」改成「泛化的生成」，DiT 与 3D-GS 只作为渲染手段；"
-            "用 Cosmos / VGGT / Qwen 蒸馏做 backbone 与 CoT inception，让世界模型同时支撑闭环评测、"
-            "失败 case 复现与 conditional inception（语言 / layout / 轨迹）。",
-            "I reframed rendering from single-scene reconstruction to generalized generation, with DiT and 3D-GS "
-            "as rendering tools only; backbones and CoT inception were distilled from Cosmos / VGGT / Qwen so the "
-            "world model simultaneously supports closed-loop evaluation, failure-case replay and conditional "
-            "inception (language / layout / trajectory).",
-        ),
-        "tags": [L("Cosmos", "Cosmos"), L("Closed-loop eval", "Closed-loop eval"), L("Conditional inception", "Conditional inception")],
-    },
+# --- Research areas (keywords only) ----------------------------------------
+FOCUS_AREAS = [
+    L("VLA / 视觉-语言-动作模型", "VLA / vision-language-action models"),
+    L("世界模型与 World Action Model", "World models and World Action Models"),
+    L("端到端自动驾驶", "End-to-end autonomous driving"),
+    L("数据闭环与自动标注", "Data closed loops and auto-labelling"),
+    L("感知：检测、跟踪、车道线", "Perception: detection, tracking, lanes"),
+    L("强化学习后训练", "Reinforcement-learning post-training"),
 ]
 
 # --- Career ------------------------------------------------------------------
 CAREER = [
     {
+        "company": L("独立研究", "Independent research"),
+        "company_short": "Independent",
+        "role": L("Free researcher", "Free researcher"),
+        "when": L("2026.11 — 至今", "2026.11 — present"),
+        "scope": L("", ""),
+        "summary": L("从新石器离职后独立做研究，方向是 VLA、世界模型（WAM）与端到端自动驾驶。",
+                     "Independent research since leaving Neolix: VLA, world models (WAM) and end-to-end driving."),
+        "bullets": [],
+        "tags": [],
+    },
+    {
         "company": L("新石器慧通（北京）科技有限公司", "Neolix Technology (Beijing) Co., Ltd."),
         "company_short": "Neolix",
         "role": L("AD 算法负责人 · AD 二部", "Head of AD Algorithms · AD Division II"),
-        "when": L("2025.08 — 至今", "2025.08 — present"),
+        "when": L("2025.08 — 2026.11", "2025.08 — 2026.11"),
         "scope": L("算法团队 38 人 · 约 8,700 张 GPU", "38-person algorithm org · ~8,700 GPUs"),
         "summary": L(
             "负责感知、端到端与世界模型的整体算法架构：用一个 group query-based 模型统一单任务与多任务，"

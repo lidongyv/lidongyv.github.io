@@ -74,8 +74,8 @@ The main page is assembled from four parts:
 
 ```
 src/head.html   → <head>, CSS, top bar, hero, TOC, opening <div class="lang-zh">
-src/zh.html     → Chinese article sections (00–14)
-src/en.html     → English article sections (00–14)
+src/zh.html     → Chinese article sections (00–13 + Appendix A)
+src/en.html     → English article sections (00–13 + Appendix A)
 src/foot.html   → rail, footer, lightbox, JavaScript, closing tags
 ```
 
@@ -86,7 +86,7 @@ python build_page.py      # rebuild index.html
 python export_wechat.py   # rebuild wechat-zh.html / wechat-en.html
 ```
 
-Each language has 15 sections with IDs `zh-*` / `en-*` and a shared `data-sec`. If you add a section, update:
+Each language has 14 numbered sections plus Appendix A (15 total) with IDs `zh-*` / `en-*` and a shared `data-sec`. If you add a section, update:
 - the TOC in `src/head.html`,
 - the mobile nav (generated from the TOC at runtime),
 - both `zh.html` and `en.html`,
