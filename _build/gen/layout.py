@@ -63,12 +63,12 @@ def icon_solid(name, cls=""):
 # Navigation + routes
 # --------------------------------------------------------------------------
 NAV = [
-    ("experience", L("经历", "Experience"), "experience.html"),
-    ("publications", L("论文", "Publications"), "publications.html"),
+    ("home", L("主页", "Home"), "index.html"),
+    ("experience", L("职业经历", "Experience"), "experience.html"),
     ("projects", L("项目", "Projects"), "projects.html"),
-    ("opensource", L("开源", "Open source"), "opensource.html"),
+    ("publications", L("论文", "Publications"), "publications.html"),
     ("blog", L("博客", "Blog"), "blog/index.html"),
-    ("about", L("关于", "About"), "about.html"),
+    ("opensource", L("开源", "Open source"), "opensource.html"),
 ]
 
 
@@ -233,6 +233,7 @@ def footer(lang):
         '<a href="%s">%s</a>' % (url(lang, path), t(label, lang))
         for _k, label, path in NAV
     )
+    explore += '<a href="%s">%s</a>' % (url(lang, "about.html"), t(L("关于", "About"), lang))
     return """
   <footer class="site-footer">
     <div class="wrap">

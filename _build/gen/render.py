@@ -18,18 +18,10 @@ GITHUB_REPO = "https://github.com/lidongyv/"
 # --------------------------------------------------------------------------
 # Small components
 # --------------------------------------------------------------------------
-def section_head(lang, kicker, title, desc="", link=None, level=2):
-    out = ['<div class="sec-head" data-reveal>', '<div class="sec-head__text">']
-    if kicker:
-        out.append('<div class="sec-kicker">%s</div>' % esc(kicker))
-    out.append("<h%d>%s</h%d>" % (level, title, level))
-    if desc:
-        out.append("<p>%s</p>" % desc)
-    out.append("</div>")
-    if link:
-        out.append('<a class="sec-head__link" href="%s">%s</a>' % (link[0], esc(link[1])))
-    out.append("</div>")
-    return "".join(out)
+def section_head(lang, title, level=2):
+    """A plain section label. No kicker, no commentary — the content speaks."""
+    return ('<div class="sec-head" data-reveal><div class="sec-head__text"><h%d>%s</h%d></div></div>'
+            % (level, esc(title), level))
 
 
 def tag(text, cls=""):
@@ -328,9 +320,7 @@ def render_home(lang, posts):
     <div class="card" style="padding:32px" data-reveal>
       <div class="grid grid--2" style="align-items:center;gap:28px">
         <div>
-          <div class="sec-kicker">{contact_kicker}</div>
           <h2 style="font-size:clamp(1.4rem,2.6vw,1.9rem)">{contact_title}</h2>
-          <p class="muted" style="margin-top:12px">{contact_desc}</p>
         </div>
         <div class="btn-row-inline" style="justify-content:flex-start;gap:10px">
           {contact_ctas}
@@ -357,61 +347,32 @@ def render_home(lang, posts):
         name=esc(t(PROFILE["name"], lang)),
         now_label=esc("目前" if lang == "zh" else "Now"),
         now_value=esc(t(PROFILE["org"], lang)),
-        focus_label=esc("方向" if lang == "zh" else "Focus"),
+        focus_label=esc("关键词" if lang == "zh" else "Keywords"),
         focus_value=esc("VLA · World Action Model"),
-        focus_head=section_head(lang, "Focus · 我在做什么" if lang == "zh" else "Focus",
-                                "VLA 与世界模型落地：三个真问题" if lang == "zh"
-                                else "Landing VLA and world models: three real problems",
-                                "不是把模型做大，而是让它进得了数据闭环、评测和量产预算。"
-                                if lang == "zh" else
-                                "Not about making the model bigger — about fitting it into the data loop, "
-                                "the eval harness and the production budget."),
+        focus_head=section_head(lang, "方向" if lang == "zh" else "Focus", level=2),
         focus=focus_cards(lang),
-        career_head=section_head(lang, "Experience · 经历" if lang == "zh" else "Experience",
-                                 "六段经历，每一段都把模型送上了车" if lang == "zh"
-                                 else "Six roles — every one put a model on a vehicle",
-                                 "从立体匹配到端到端，每一段都把模型送上了车。"
-                                 if lang == "zh" else
-                                 "From stereo matching to end-to-end — and every one of them shipped."),
+        career_head=section_head(lang, "经历" if lang == "zh" else "Experience", level=2),
         career=career_timeline(lang, limit=3, show_bullets=True),
         career_cta=btn(url(lang, "experience.html"),
-                       "完整经历与指标" if lang == "zh" else "Full experience & metrics", "btn btn--ghost"),
-        paper_head=section_head(lang, "Publications · 论文" if lang == "zh" else "Publications",
-                                "同行评审论文 8 篇" if lang == "zh" else "Eight peer-reviewed papers",
-                                "ICCV 2025 Oral、AAAI 2018 spotlight（第一作者）、CVPR / NeurIPS / ICCV。"
-                                if lang == "zh" else
-                                "ICCV 2025 Oral, AAAI 2018 spotlight as first author, plus CVPR / NeurIPS / ICCV."),
+                       "全部经历" if lang == "zh" else "All experience", "btn btn--ghost"),
+        paper_head=section_head(lang, "论文" if lang == "zh" else "Publications", level=2),
         papers="".join(paper_card(lang, p, compact=True) for p in fp),
         paper_cta=btn(url(lang, "publications.html"),
-                      "全部论文与详细解读" if lang == "zh" else "All papers with details", "btn"),
-        repo_head=section_head(lang, "Open source · 开源" if lang == "zh" else "Open source",
-                               "自己写的代码，按类型分类" if lang == "zh" else "My own code, by category",
-                               "全部 39 个自建仓库中精选；不含 fork。"
-                               if lang == "zh" else
-                               "Selected from all 39 repos I created; forks are excluded."),
+                      "全部论文" if lang == "zh" else "All publications", "btn"),
+        repo_head=section_head(lang, "开源" if lang == "zh" else "Open source", level=2),
         repos="".join(repo_card(lang, r) for r in featured_repos),
         repo_cta=btn(url(lang, "opensource.html"),
-                     "按类型浏览全部仓库" if lang == "zh" else "Browse all repos by category", "btn btn--ghost"),
-        blog_head=section_head(lang, "Notes · 研究笔记" if lang == "zh" else "Notes",
-                               "博客" if lang == "zh" else "Blog",
-                               "VLA、世界模型、数据闭环的一手工程笔记。"
-                               if lang == "zh" else
-                               "First-hand engineering notes on VLA, world models and data loops."),
+                     "全部仓库" if lang == "zh" else "All repositories", "btn btn--ghost"),
+        blog_head=section_head(lang, "笔记" if lang == "zh" else "Notes", level=2),
         blog_list=blog_list_html(lang, posts[:3], external_links=(lang != "zh")),
-        contact_kicker=esc("Contact"),
-        contact_title=esc("正在找 VLA / 世界模型落地方向的岗位" if lang == "zh"
-                          else "Looking for a role in VLA / world-model deployment"),
-        contact_desc=esc("如果你在招人，或者想聊端到端与世界模型的落地细节，直接发邮件给我。"
-                         if lang == "zh" else
-                         "If you are hiring, or want to dig into the details of deploying end-to-end driving "
-                         "and world models, email me directly."),
+        contact_title=esc("联系" if lang == "zh" else "Contact"),
         contact_ctas=(btn("mailto:" + PROFILE["email"], PROFILE["email"], "btn btn--primary", "mail")
                       + btn("/resume/Lidong-Yu-Resume-Detailed-EN.pdf", ui("resume", lang), "btn", "download")),
     )
 
     jsonld = person_jsonld(lang)
     return page(lang, "%s · %s" % (t(PROFILE["name"], lang), t(PROFILE["title"], lang)),
-                plain(t(PROFILE["lede"], lang)), "index.html", body, active="", jsonld=jsonld)
+                plain(t(PROFILE["lede"], lang)), "index.html", body, active="home", jsonld=jsonld)
 
 
 def blog_list_html(lang, posts, external_links=False):
@@ -531,18 +492,11 @@ def render_experience(lang):
   </div>
 </section>
 """.format(
-        head=section_head(lang, "Experience · 工作经历" if lang == "zh" else "Experience",
-                          "六段经历，每一段都落到量产" if lang == "zh" else "Six roles, every one shipped",
-                          "按时间倒序；每一段都写了职责范围、我做的事和可核对的指标。"
-                          if lang == "zh" else
-                          "Newest first. Each entry lists the scope, what I did, and the metrics that back it up.",
-                          level=1),
+        head=section_head(lang, "职业经历" if lang == "zh" else "Experience", level=1),
         rows="".join(rows),
-        edu_head=section_head(lang, "Education · 教育" if lang == "zh" else "Education",
-                              "教育背景" if lang == "zh" else "Education"),
+        edu_head=section_head(lang, "教育" if lang == "zh" else "Education", level=2),
         edu=edu,
-        pat_head=section_head(lang, "Patents · 专利" if lang == "zh" else "Patents",
-                              "发明专利 5 项" if lang == "zh" else "Five invention patents"),
+        pat_head=section_head(lang, "专利" if lang == "zh" else "Patents", level=2),
         pats=pats,
         pat_note=esc("均为中国发明专利，编号为申请号。" if lang == "zh"
                      else "All Chinese invention patents; numbers are application numbers."),
@@ -619,25 +573,14 @@ def render_publications(lang):
   </div>
 </section>
 """.format(
-        head=section_head(lang, "Publications · 发表论文" if lang == "zh" else "Publications",
-                          "8 篇同行评审论文，逐篇写了问题、方法与数字"
-                          if lang == "zh" else "Eight peer-reviewed papers, with problem, method and numbers",
-                          "链接全部指向 arXiv、CVF Open Access 或 AAAI 官方页；代码链接指向公开仓库。"
-                          if lang == "zh" else
-                          "Every link points to arXiv, CVF Open Access or the official AAAI page; code links go to "
-                          "public repositories.", level=1),
+        head=section_head(lang, "论文" if lang == "zh" else "Publications", level=1),
         cards=cards,
-        table_head=section_head(lang, "Index", "一览表" if lang == "zh" else "At a glance"),
+        table_head=section_head(lang, "一览表" if lang == "zh" else "At a glance", level=2),
         th_title=esc("标题" if lang == "zh" else "Title"),
         th_venue=esc("会议 / 年份" if lang == "zh" else "Venue / year"),
         th_link=esc("链接" if lang == "zh" else "Links"),
         rows="".join(rows),
-        ms_head=section_head(lang, "Archive · 投稿存档" if lang == "zh" else "Archive",
-                             "未发表手稿与投稿稿" if lang == "zh" else "Unpublished manuscripts & submission drafts",
-                             "这些是读研期间的投稿稿，稿本本身是匿名的，查不到任何录用记录，因此不列为发表论文。"
-                             if lang == "zh" else
-                             "These are submission drafts from my master's years. The manuscripts are anonymized and "
-                             "no acceptance record exists, so they are not listed as publications."),
+        ms_head=section_head(lang, "投稿存档" if lang == "zh" else "Manuscript archive", level=2),
         ms_notice_title=esc("关于诚实" if lang == "zh" else "A note on honesty"),
         ms_notice=esc("我把它们单独存档、明确标注「未发表」，而不是混进论文列表。"
                       if lang == "zh" else
@@ -729,7 +672,6 @@ def render_projects(lang):
 <section class="section">
   <div class="wrap">
     {head}
-    <p class="muted" style="max-width:66ch;margin-bottom:28px">{intro}</p>
     <div class="grid grid--3">{cards}</div>
   </div>
 </section>
@@ -740,17 +682,9 @@ def render_projects(lang):
   </div>
 </section>
 """.format(
-        head=section_head(lang, "Projects · 项目档案" if lang == "zh" else "Projects",
-                          "8 个项目页：论文、技术报告与内部方案"
-                          if lang == "zh" else "Eight project pages: papers, technical reports and internal designs",
-                          level=1),
-        intro=t(PROJECTS_INTRO, lang),
+        head=section_head(lang, "项目" if lang == "zh" else "Projects", level=1),
         cards=cards,
-        deliver_head=section_head(lang, "Delivered · 交付" if lang == "zh" else "Delivered",
-                                  "这些项目背后的量产交付" if lang == "zh" else "The production work behind the projects",
-                                  "每一段都写明了问题、动作与可核对的数字。"
-                                  if lang == "zh" else
-                                  "Each block states the problem, the action and the numbers that can be checked."),
+        deliver_head=section_head(lang, "量产交付" if lang == "zh" else "Shipped work", level=2),
         work="".join(work_blocks),
     )
     return page(lang, ("项目 · " if lang == "zh" else "Projects · ") + t(PROFILE["name"], lang),
@@ -826,12 +760,7 @@ def render_opensource(lang):
   </div>
 </section>
 """.format(
-        head=section_head(lang, "Open source · 开源" if lang == "zh" else "Open source",
-                          "39 个自建仓库，按类型归类" if lang == "zh" else "39 repos I created, grouped by type",
-                          "研究 11 · 工具 4 · 知识媒体 1 · 归档 23。全部链接指向 github.com/lidongyv。"
-                          if lang == "zh" else
-                          "Research 11 · Tools 4 · Knowledge 1 · Archive 23. Every link goes to github.com/lidongyv.",
-                          level=1),
+        head=section_head(lang, "开源" if lang == "zh" else "Open source", level=1),
         count_title=esc("口径说明" if lang == "zh" else "How this is counted"),
         count_body=esc("GitHub 上我有 134 个公开仓库，其中只有 39 个是我自己创建的，另外 95 个是 fork。"
                        "这里只展示我自己写的 39 个，按类型分类；fork 不列为作品。"
@@ -868,8 +797,7 @@ def render_blog_index(lang, posts):
   </div>
 </section>
 """.format(
-        head=section_head(lang, "Blog · 博客" if lang == "zh" else "Blog",
-                          ui("blog_title", lang), ui("blog_desc", lang), level=1),
+        head=section_head(lang, "博客" if lang == "zh" else "Blog", level=1),
         list=blog_list_html(lang, posts, external_links=(lang != "zh")),
         rss_note=esc("订阅：" if lang == "zh" else "Subscribe: "),
         feed=("/blog/feed.xml" if lang == "zh" else "/en/blog/feed.xml"),
@@ -1003,9 +931,7 @@ def render_about(lang):
   </div>
 </section>
 """.format(
-        head=section_head(lang, "About · 关于" if lang == "zh" else "About",
-                          "于立冬 / Lidong Yu" if lang == "zh" else "Lidong Yu",
-                          "", level=1),
+        head=section_head(lang, "关于" if lang == "zh" else "About", level=1),
         p1=esc("我是于立冬，自动驾驶算法负责人，现在在新石器负责 AD 算法团队（38 人、约 8,700 张 GPU）。"
                "我的技术主线是「把视觉模型的表示能力落到车上的实时约束里」："
                "从立体匹配与单目深度出发，经过跟踪、模仿学习，一路做到今天的端到端与世界模型。"
@@ -1039,9 +965,9 @@ def render_about(lang):
         resume_desc=esc("四个版本：简版 / 详细版 × 中英文。"
                         if lang == "zh" else "Four versions: short / detailed × Chinese / English."),
         rbuttons=rbuttons,
-        timeline_head=section_head(lang, "Timeline", "经历速览" if lang == "zh" else "Career at a glance"),
+        timeline_head=section_head(lang, "经历速览" if lang == "zh" else "Career at a glance", level=2),
         timeline=career_timeline(lang, limit=6, show_bullets=False),
-        build_head=section_head(lang, "Colophon", "关于这个站点" if lang == "zh" else "About this site"),
+        build_head=section_head(lang, "关于这个站点" if lang == "zh" else "About this site", level=2),
         build_p=esc("这是一个纯静态站点：生成脚本在 Python 标准库上运行，页面是预先渲染好的 HTML，"
                     "没有任何前端框架、外部字体或追踪脚本。旧版主页的内容全部保留在 archive 里。"
                     if lang == "zh" else
