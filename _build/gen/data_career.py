@@ -11,7 +11,7 @@ from .data_core import L
 CAREER = [
     {
         "company": L("新石器慧通（北京）科技有限公司", "Neolix Technology (Beijing) Co., Ltd."),
-        "company_short": "Neolix",
+        "company_short": L("新石器", "Neolix"),
         "role": L("AD 算法负责人 · AD 二部", "Head of AD Algorithms · AD Division II"),
         "when": L("2025.08 — 2026.11", "2025.08 — 2026.11"),
         "scope": L("算法团队 38 人 · 约 8,700 张 GPU", "38-person algorithm org · ~8,700 GPUs"),
@@ -82,7 +82,7 @@ CAREER = [
     },
     {
         "company": L("NVIDIA", "NVIDIA"),
-        "company_short": "NVIDIA",
+        "company_short": L("NVIDIA", "NVIDIA"),
         "role": L("Principal Engineer · 自动驾驶部门 Free IC",
                   "Principal Engineer · Free IC, Autonomous Vehicle Department"),
         "when": L("2024.07 — 2025.08", "2024.07 — 2025.08"),
@@ -156,7 +156,7 @@ CAREER = [
     },
     {
         "company": L("北京地平线机器人技术研发有限公司", "Horizon Robotics"),
-        "company_short": "Horizon",
+        "company_short": L("地平线", "Horizon"),
         "role": L("静态感知算法负责人 · 「土星五号」项目", "Head of Static Perception Algorithms · \"Saturn V\" Project"),
         "when": L("2023.06 — 2024.07", "2023.06 — 2024.07"),
         "scope": L("15 人模型团队 + 5 人后处理团队 · 约 1,200 张 GPU",
@@ -236,7 +236,7 @@ CAREER = [
     },
     {
         "company": L("深圳元戎启行科技有限公司", "DeepRoute.ai"),
-        "company_short": "DeepRoute",
+        "company_short": L("元戎启行", "DeepRoute"),
         "role": L("静态感知模型负责人", "Head of Static Perception Models"),
         "when": L("2022.04 — 2023.06", "2022.04 — 2023.06"),
         "scope": L("核心团队 4 人 · 600 张 GPU", "Core team of 4 · 600 GPUs"),
@@ -271,7 +271,7 @@ CAREER = [
     },
     {
         "company": L("上海蔚来汽车有限公司", "NIO"),
-        "company_short": "NIO",
+        "company_short": L("蔚来", "NIO"),
         "role": L("主任工程师 · 自动驾驶算法", "Principal Engineer · Autonomous Driving Algorithms"),
         "when": L("2021.03 — 2022.04", "2021.03 — 2022.04"),
         "scope": L("ET7 / ES8 量产项目", "ET7 / ES8 production programs"),
@@ -321,7 +321,7 @@ CAREER = [
     },
     {
         "company": L("驭势科技（北京）有限公司", "UISEE Technology (Beijing)"),
-        "company_short": "UISEE",
+        "company_short": L("驭势科技", "UISEE"),
         "role": L("高级研究员 · 南京 AI 研究院", "Senior Researcher · Nanjing AI Research Institute"),
         "when": L("2019.05 — 2020.04", "2019.05 — 2020.04"),
         "scope": L("2019 年国内首家 Shadow Mode 数据闭环 + IL-based E2E 上车",

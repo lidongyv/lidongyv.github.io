@@ -3,6 +3,7 @@
 
 import html
 import os
+import re
 
 from urllib.parse import quote
 
@@ -114,11 +115,24 @@ def career_flat(c):
     return out
 
 
+# "两阶段 pretrain —— 从 Cosmos / VGGT …"  ->  bold the lead-in, keep the rest plain
+_LEAD = re.compile(r"^([^：:—–]{2,34}?)\s*(——|—|–|：|:)\s*(\S.*)$", re.S)
+
+
+def emphasise_lead(text):
+    m = _LEAD.match(text)
+    if not m:
+        return esc(text)
+    return "<b>%s</b> %s %s" % (esc(m.group(1)), esc(m.group(2)), esc(m.group(3)))
+
+
 def career_sections_html(lang, c):
     parts = []
     for sec in c.get("sections", []):
-        parts.append('<h4 class="tl-sublabel">%s</h4>' % esc(t(sec["label"], lang)))
-        parts.append("<ul>%s</ul>" % "".join("<li>%s</li>" % t(b, lang) for b in sec["items"]))
+        items = "".join("<li>%s</li>" % emphasise_lead(t(b, lang)) for b in sec["items"])
+        parts.append('<div class="exp-sec"><h4 class="exp-sec__title">%s</h4>'
+                     '<ul class="exp-list">%s</ul></div>'
+                     % (esc(t(sec["label"], lang)), items))
     return "".join(parts)
 
 
@@ -516,28 +530,30 @@ def person_jsonld(lang):
 
 
 def render_experience(lang):
-    rows = []
-    for c in CAREER:
-        bullets = career_sections_html(lang, c)
+    rows, toc = [], []
+    for i, c in enumerate(CAREER):
+        anchor = "exp-%d" % (i + 1)
+        toc.append('<a href="#%s">%s</a>' % (anchor, esc(t(c["company_short"], lang))))
         rows.append("""
-      <article class="card" data-reveal style="margin-bottom:16px">
-        <div class="card__top">
-          <div class="links">{when}</div>
-          <div class="links">{tags}</div>
+      <article class="exp-card" id="{anchor}" data-reveal>
+        <div class="exp-head">
+          <div>
+            <h3>{company}</h3>
+            <div class="exp-role">{role}</div>
+          </div>
+          <div class="exp-when">{when}</div>
         </div>
-        <h3 style="font-size:1.15rem">{company}</h3>
-        <div class="tl-role" style="margin-top:6px">{role}</div>
-        <div class="tl-scope">{scope}</div>
-        <p style="margin-top:12px">{summary}</p>
+        <div class="exp-scope">{scope}</div>
+        <p class="exp-sum">{summary}</p>
         {bullets}
       </article>""".format(
+            anchor=anchor,
             when=tag(t(c["when"], lang) if isinstance(c["when"], dict) else c["when"], "tag--mono"),
-            tags="".join(tag(x, "tag--mono") for x in c.get("tags", [])[:4]),
             company=esc(t(c["company"], lang)),
             role=esc(t(c["role"], lang)),
             scope=esc(t(c["scope"], lang)),
-            summary=t(c["summary"], lang),
-            bullets=bullets,
+            summary=esc(t(c["summary"], lang)),
+            bullets=career_sections_html(lang, c),
         ))
 
     edu = "".join("""
@@ -565,6 +581,7 @@ def render_experience(lang):
 <section class="section">
   <div class="wrap">
     {head}
+    <nav class="exp-toc" aria-label="{toc_label}">{toc}</nav>
     {rows}
   </div>
 </section>
@@ -585,6 +602,8 @@ def render_experience(lang):
 </section>
 """.format(
         head=section_head(lang, "职业经历" if lang == "zh" else "Experience", level=1),
+        toc_label=esc("跳到某段经历" if lang == "zh" else "Jump to a role"),
+        toc="".join(toc),
         rows="".join(rows),
         edu_head=section_head(lang, "教育" if lang == "zh" else "Education", level=2),
         edu=edu,
