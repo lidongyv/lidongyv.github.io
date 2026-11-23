@@ -13,6 +13,9 @@ leads back to the new site.
 import io
 import os
 import re
+import urllib.parse
+
+from gen import releases
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -108,6 +111,16 @@ SHELL = """<!DOCTYPE html>
 """
 
 
+def _to_release(m):
+    """href|src="/assets/pdf/x.pdf" -> the GitHub Release download URL."""
+    attr, path = m.group(1), m.group(2)
+    name = urllib.parse.unquote(path[len("/assets/pdf/"):])
+    url = releases.url_for(name)
+    if not url:
+        return m.group(0)
+    return '%s="%s"' % (attr, url)
+
+
 def convert(n):
     src = os.path.join(ROOT, "_layouts", "project%d.html" % n)
     if not os.path.isfile(src):
@@ -130,6 +143,8 @@ def convert(n):
                   lambda mm: '%s="%s"' % (mm.group(1), mm.group(2).replace(" ", "%20")), body)
     for old, new in FIXUPS:
         body = body.replace(old, new)
+    # Archived PDFs moved to a GitHub Release; assets/pdf/ no longer exists
+    body = re.sub(r'(href|src)="(/assets/pdf/[^"]+)"', _to_release, body)
     body = re.sub(r"\n{3,}", "\n\n", body).strip()
 
     title, note_zh, note_en = TITLES[n]

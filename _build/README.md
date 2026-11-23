@@ -135,7 +135,10 @@ summary_en: One-line English summary.
 
 - 发布内容约 **193 MB**，GitHub Pages 上限 **1 GB**（约 19%），余量 5 倍；
 - 唯一风险是 `assets/pdf/` 里两个大 PDF（`sot.pdf` 62 MB、`mot.pdf` 56 MB）会吃流量（软上限 100 GB/月）；
-- **GitHub Free 就够用**，这个站点不需要付费；
+- 12 个 PDF 已经上传到 Release `papers-2026-11`，但**仓库是私有的，私有仓库的 Release 资产不能对公网下载**，
+  所以现在仍从 `assets/pdf/` 提供。仓库改为 public 后，把 `_build/gen/releases.py` 的 `ENABLED` 改成 `True`
+  并删掉 `assets/pdf/`，体积会降到约 60 MB；
+- **私有仓库发 Pages 需要 Pro**；改成 public 后这笔年费可以省掉；
 - 详细测算与优化方案见 [`_build/docs/github-pages-capacity.md`](_build/docs/github-pages-capacity.md)。
 
 ## 备份与回滚

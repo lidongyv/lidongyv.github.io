@@ -5,6 +5,7 @@ import html
 import os
 
 from . import layout as L_
+from . import releases
 from .blog import parse_front_matter, render_markdown, plain, word_count
 from .data_core import PROFILE, STATS, FOCUS, CAREER, EDUCATION
 from .data_works import PAPERS, MANUSCRIPTS, PATENTS, PROJECT_PAGES, PROJECTS_INTRO
@@ -565,7 +566,8 @@ def render_publications(lang):
     mcards = []
     for m in MANUSCRIPTS:
         pdfs = "".join(
-            link_chip("/assets/pdf/" + fn.replace(" ", "%20"), label if lang == "zh" else label_en, "doc", external=True)
+            link_chip(releases.url_for(fn) or ("/assets/pdf/" + fn.replace(" ", "%20")),
+                      label if lang == "zh" else label_en, "doc", external=True)
             for fn, label, label_en in m["pdfs"]
         )
         code = link_chip(m["code"], "Code", "github", external=True) if m["code"] else ""

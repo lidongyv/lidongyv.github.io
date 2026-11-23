@@ -35,20 +35,41 @@
 结论：**日常浏览完全不用担心；两个大 PDF 才是唯一风险点。**
 如果哪天这两个 PDF 被转发到群里，几千次下载就能吃掉一个月的额度。
 
-## 建议的三条优化（按性价比排序）
+## PDF 迁移到 Releases：已做完上传，但被「私有仓库」卡住
 
-1. **把两个大 PDF 移到 GitHub Releases**（最推荐，5 分钟）
-   Releases 走的是另一套存储，不计入 Pages 的 1 GB 与 100 GB 配额。
-   ```powershell
-   gh release create v1-reports assets/pdf/sot.pdf assets/pdf/mot.pdf -t "Tech reports"
-   ```
-   然后把 `_layouts/project5/6/7/8` 里的链接换成 Release 的下载地址，再重新构建。
-   收益：发布体积从 193 MB 降到约 **75 MB**，流量风险基本清零。
+实测过程（2026-11-23）：
+
+1. 12 个 `assets/pdf/*.pdf`（共 133 MB）已**全部上传成功**到 Release
+   [`papers-2026-11`](https://github.com/lidongyv/lidongyv.github.io/releases/tag/papers-2026-11)，
+   API 返回 12 个资产、`state=uploaded`。
+2. 但 `releases/download/<tag>/<file>` 这个**公网下载地址返回 404**，未登录 404，
+   带 token 也 404。原因是：**这个仓库是私有的，GitHub 不会把私有仓库的 Release 资产
+   对外公开提供**（网页端点无法用 Bearer 头认证）。
+3. 结论：**只要仓库还是 private，PDF 就只能留在仓库里**，否则线上论文页会出现死链。
+   因此已把 PDF 恢复到 `assets/pdf/`，链接全部指向本地。
+
+### 如果你想让这次迁移生效（顺带省掉年费）
+
+只需一步：**把仓库改成 public**（Settings → General → 最下面 Danger Zone → Change visibility）。
+之后执行：
+
+```powershell
+# 1. 打开开关：_build/gen/releases.py 里 ENABLED = False -> True
+python _build\build.py
+git rm -r assets/pdf
+git add -A
+git commit -m "site: serve archived PDFs from the release"
+git push
+```
+
+收益：发布体积从 **193 MB 降到约 60 MB**，100 GB/月的流量风险基本清零。
+上传脚本是 `_build/tools/upload_release.py`（已完成，重复运行会跳过已存在的资产）。
+
+## 其余两条优化
 
 2. **把 `project6/7/8` 的截图压成 WebP**（可选）
    这 3 个页面共 121 张 PNG、约 40 MB。压到 WebP q82 大约能到 4 MB，
    单页访问流量降到 1/10。旧页面按原样保留是为了「不删内容」，但体积可以优化。
-   `_build/` 下已预留 `tools/` 目录放这类脚本。
 
 3. **不要在仓库里放大视频 / 大模型权重**
    单文件 100 MiB 是硬墙，2 GB 是单次推送的硬墙。真要放就走 Releases 或外部对象存储。
@@ -62,7 +83,8 @@
    所以只要你保持仓库私有，这笔 Pro 年费是**必须的**，不是可选项。
    反过来说——**把仓库改成 public，这笔钱立刻就能省掉**，因为个人站点在公开仓库上用 Free 就能发。
 2. **`build_type: workflow` 意味着必须有一个 Actions 工作流才会真正发布。** 之前仓库里没有任何 workflow，
-   所以最后一次成功发布停在 **2022-10-29**，之后所有推送都没上线（包括 2026 年那几次 cvpr2022 提交）。
+   所以最后一次成功发布停在 **2022-10-29**（那次部署的正是最后一条 `cvpr2022` 提交 `6fb050b`）。
+   之后四年间的所有改动都没上线。现在 `.github/workflows/pages.yml` 已补上。
    现在 `.github/workflows/pages.yml` 已经补上，推 master 即自动发布。
 
 ### 1 GB / 100 GB 这两个额度与付费无关
