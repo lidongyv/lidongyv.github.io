@@ -282,6 +282,7 @@ def main():
         made.append(w(url(lang, "experience.html").lstrip("/"), R.render_experience(lang)))
         made.append(w(url(lang, "publications.html").lstrip("/"), R.render_publications(lang)))
         made.append(w(url(lang, "projects.html").lstrip("/"), R.render_projects(lang)))
+        made.append(w(url(lang, "project9.html").lstrip("/"), R.render_foggy(lang)))
         made.append(w(url(lang, "opensource.html").lstrip("/"), R.render_opensource(lang)))
         made.append(w(url(lang, "blog/index.html").lstrip("/"), R.render_blog_index(lang, posts)))
         made.append(w(url(lang, "about.html").lstrip("/"), R.render_about(lang)))

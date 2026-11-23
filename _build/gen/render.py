@@ -651,6 +651,59 @@ def render_publications(lang):
                 "publications.html", body, active="publications")
 
 
+def render_foggy(lang):
+    from .data_works import FOGGY
+    links = "".join(
+        link_chip(href, t(label, lang), icon_name, external=href.startswith("http"))
+        for href, label, icon_name in FOGGY["links"]
+    )
+    body = """
+<section class="section section--tight">
+  <div class="wrap wrap--narrow">
+    <a class="small" href="{projects}">← {back}</a>
+  </div>
+</section>
+<section class="section">
+  <div class="wrap wrap--narrow">
+    <div class="sec-kicker">{venue}</div>
+    <h1 style="font-size:clamp(1.7rem,4vw,2.5rem);letter-spacing:-.03em;max-width:26ch;margin-top:10px">{title}</h1>
+    <p class="muted" style="margin-top:12px">{authors}</p>
+    <div class="card__tags" style="margin-top:16px">{tags}</div>
+    <figure style="margin-top:28px">
+      <img src="{figure}" alt="{title}" loading="lazy"
+           style="border:1px solid var(--line);border-radius:var(--radius);background:var(--surface-2)">
+      <figcaption class="small muted" style="margin-top:10px">{cap}</figcaption>
+    </figure>
+    <div class="stack-lg" style="margin-top:36px">
+      <div><h2 style="font-size:1.15rem">{p_label}</h2><p class="muted" style="margin-top:8px">{problem}</p></div>
+      <div><h2 style="font-size:1.15rem">{m_label}</h2><p class="muted" style="margin-top:8px">{method}</p></div>
+      <div><h2 style="font-size:1.15rem">{r_label}</h2><p class="muted" style="margin-top:8px">{results}</p></div>
+    </div>
+    <div class="links" style="margin-top:32px">{links}</div>
+  </div>
+</section>
+""".format(
+        projects=url(lang, "projects.html"),
+        back=esc("返回项目" if lang == "zh" else "All projects"),
+        venue=esc(FOGGY["venue"] + (" · 已发表" if lang == "zh" else " · published")),
+        title=esc(FOGGY["title"] if lang == "zh" else FOGGY["title"]),
+        authors=esc(FOGGY["authors"]),
+        tags="".join(tag(x) for x in FOGGY["tags"]),
+        figure=esc(FOGGY["figure"]),
+        cap=esc(t(FOGGY["figure_cap"], lang)),
+        p_label=esc("问题" if lang == "zh" else "Problem"),
+        problem=t(FOGGY["problem"], lang),
+        m_label=esc("方法" if lang == "zh" else "Method"),
+        method=t(FOGGY["method"], lang),
+        r_label=esc("结果" if lang == "zh" else "Results"),
+        results=t(FOGGY["results"], lang),
+        links=links,
+    )
+    return page(lang, "%s · %s" % (FOGGY["title"], t(PROFILE["name"], lang)),
+                t(FOGGY["problem"], lang)[:150],
+                "project9.html", body, active="projects")
+
+
 def render_projects(lang):
     cards = "".join(project_card(lang, p) for p in PROJECT_PAGES)
     work_blocks = []

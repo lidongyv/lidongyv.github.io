@@ -445,6 +445,23 @@ PATENTS = [
 # ---------------------------------------------------------------------------
 PROJECT_PAGES = [
     {
+        "id": "project9",
+        "href": "/project9.html",
+        "kind": L("已发表 · CVPR 2022", "Published · CVPR 2022"),
+        "kind_cls": "tag--venue",
+        "title": L("雾体积表示的立体匹配", "Stereo matching with a fog volume representation"),
+        "desc": L(
+            "把雾从「噪声」变成「信息源」：逆向大气散射、按候选深度去雾重渲染，把渲染图堆成雾体积与代价体融合。"
+            "雾天场景较当时 SOTA 提升 10%–30%，清晰场景持平。",
+            "Turns fog from noise into a source of information: reverse the atmospheric scattering, re-render with the "
+            "fog removed at each candidate depth, and stack the renders into a fog volume fused with the cost volume. "
+            "10–30% better than the SOTA of the time on foggy scenes, comparable on clear ones.",
+        ),
+        "img": "/assets/img/project9/fig1.png",
+        "year": "2022",
+        "tags": ["Stereo matching", "Fog volume", "CVPR"],
+    },
+    {
         "id": "project1",
         "href": "/project1.html",
         "kind": L("已发表 · AAAI 2018", "Published · AAAI 2018"),
@@ -574,6 +591,56 @@ PROJECT_PAGES = [
         "tags": ["Monocular depth", "Region support", "Manuscript"],
     },
 ]
+
+# ---------------------------------------------------------------------------
+# FoggyStereo has its own (non-legacy) project page: the repo carried a card in
+# _includes/projects.html plus a figure, but no project9.html was ever created.
+# ---------------------------------------------------------------------------
+FOGGY = {
+    "title": "FoggyStereo: Stereo Matching With Fog Volume Representation",
+    "title_zh": "FoggyStereo：用雾体积表示做立体匹配",
+    "venue": "CVPR 2022",
+    "authors": "Chengtang Yao, Lidong Yu",
+    "figure": "/assets/img/project9/fig1.png",
+    "figure_cap": L(
+        "雾体积（fog volume）的构造：对每个视差候选对应的深度反向渲染去雾，再沿通道堆叠。",
+        "Building the fog volume: reverse-render each disparity candidate's depth with the fog removed, "
+        "then stack the results along the channel axis.",
+    ),
+    "problem": L(
+        "雾天场景的立体匹配很难：散射效应让图像变模糊，匹配因此产生歧义。以往的做法是把雾当成噪声、"
+        "在匹配前先丢掉。我们的出发点相反——雾里其实藏着深度线索。",
+        "Stereo matching in fog is hard: scattering blurs the image and makes matching ambiguous. Prior work treats "
+        "fog as noise and discards it before matching. We take the opposite view — the fog itself carries depth cues.",
+    ),
+    "method": L(
+        "从渲染视角挖这些线索：逆转大气散射过程，把选定深度范围内的雾去掉重新渲染。渲染图的质量反映所选深度的"
+        "正确性——越接近真实深度，渲染图越清晰。对这些渲染图做通道堆叠得到<strong>雾体积</strong>，"
+        "再与代价体融合，纠正雾导致的匹配歧义。",
+        "We mine those cues from the rendering viewpoint: reverse the atmospheric scattering process and re-render with "
+        "the fog inside a selected depth range removed. The quality of the rendered image reflects how correct the "
+        "selected depth is — the closer to the true depth, the clearer the render. Stacking these renders along the "
+        "channel axis gives a <strong>fog volume</strong>, which is fused with the cost volume to rectify the ambiguity "
+        "that fog introduces.",
+    ),
+    "results": L(
+        "雾天场景较当时 SOTA 提升 <strong>10%–30%</strong>，清晰场景性能基本持平。"
+        "只用一对双目图像、不需要额外的雾天监督。",
+        "Improves <strong>10–30%</strong> over the SOTA of the time on foggy scenes while staying comparable on clear "
+        "ones — using a single stereo pair and no extra foggy supervision.",
+    ),
+    "links": [
+        ("https://openaccess.thecvf.com/content/CVPR2022/html/"
+         "Yao_FoggyStereo_Stereo_Matching_With_Fog_Volume_Representation_CVPR_2022_paper.html",
+         L("CVF 论文页", "CVF Open Access"), "doc"),
+        ("https://yaochengtang.github.io/FoggyStereo-Stereo-Matching-with-Fog-Volume-Representation/",
+         L("项目主页", "Project page"), "link"),
+        ("https://github.com/YaoChengTang/FoggyStereo-Stereo-Matching-with-Fog-Volume-Representation",
+         L("代码", "Code"), "github"),
+        ("/publications.html", L("在论文列表中查看", "See in publications"), "arrow"),
+    ],
+    "tags": ["Stereo matching", "Fog volume", "Atmospheric scattering", "Robustness"],
+}
 
 # ---------------------------------------------------------------------------
 # The engineering projects behind the resume (used on /projects.html)
