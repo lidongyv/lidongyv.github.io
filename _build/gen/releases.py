@@ -15,22 +15,17 @@ RELEASE_TITLE = "Papers & technical reports"
 RELEASE_BASE = "https://github.com/%s/releases/download/%s/" % (REPO, RELEASE_TAG)
 
 # --- the switch -----------------------------------------------------------
-# The twelve PDFs are ALREADY uploaded to the release above (12 assets, 133 MB,
-# state=uploaded). But this repository is private, and GitHub does not serve
-# release assets publicly from a private repository: the
-# releases/download/<tag>/<file> URL answers 404 for anonymous visitors, even
-# with a valid token (the web endpoint cannot authenticate with a Bearer header).
+# The twelve PDFs live as assets of the release above (12 files, 133 MB).
+# This repository is now public, so those assets download anonymously and the
+# site can point at them instead of shipping the files itself.
 #
-# So while the repo stays private the site must keep serving the local copies in
-# assets/pdf/. Once the repository is public:
+# Verified 2026-11-23 after the repository was made public:
+#   curl -sI .../releases/download/papers-2026-11/sot.pdf  -> 200, 64864127 bytes
 #
-#   1. set ENABLED = True
-#   2. python _build/build.py
-#   3. git rm -r assets/pdf
-#   4. git add -A && git commit -m "site: serve archived PDFs from the release" && git push
-#
-# and the published site drops from ~193 MB to ~60 MB.
-ENABLED = False
+# If the repository ever goes private again, release assets stop being publicly
+# downloadable and these links break: set ENABLED back to False, restore
+# assets/pdf/ from git history, rebuild and push.
+ENABLED = True
 # --------------------------------------------------------------------------
 
 # original filename in assets/pdf/  ->  release asset name

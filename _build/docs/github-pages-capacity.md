@@ -5,8 +5,9 @@
 
 ## 一句话答案
 
-**公开发布出去的内容上限是 1 GB，不是「无限」。** 你现在的站点大约 193 MB，占了上限的 **19%**，还有约 **5 倍**的余量；
-真正最先撞到的不是容量，而是**每月 100 GB 的流量软上限**——因为站里有 132 MB 的论文与报告 PDF。
+**公开发布出去的内容上限是 1 GB，不是「无限」。** 站点现在约 **62 MB**，占上限的 **6%**，余量 15 倍以上。
+迁移前是 193 MB（19%），其中 133 MB 是论文与报告 PDF；这些 PDF 现在放在 Release 里，
+既不计入 1 GB 容量，也不再消耗每月 100 GB 的流量软额度。
 
 ## 官方硬指标（逐条对应你的问题）
 
@@ -35,41 +36,31 @@
 结论：**日常浏览完全不用担心；两个大 PDF 才是唯一风险点。**
 如果哪天这两个 PDF 被转发到群里，几千次下载就能吃掉一个月的额度。
 
-## PDF 迁移到 Releases：已做完上传，但被「私有仓库」卡住
+## PDF 迁移到 Releases：已完成
 
 实测过程（2026-11-23）：
 
-1. 12 个 `assets/pdf/*.pdf`（共 133 MB）已**全部上传成功**到 Release
+1. 12 个 `assets/pdf/*.pdf`（共 133 MB）上传到 Release
    [`papers-2026-11`](https://github.com/lidongyv/lidongyv.github.io/releases/tag/papers-2026-11)，
    API 返回 12 个资产、`state=uploaded`。
-2. 但 `releases/download/<tag>/<file>` 这个**公网下载地址返回 404**，未登录 404，
-   带 token 也 404。原因是：**这个仓库是私有的，GitHub 不会把私有仓库的 Release 资产
-   对外公开提供**（网页端点无法用 Bearer 头认证）。
-3. 结论：**只要仓库还是 private，PDF 就只能留在仓库里**，否则线上论文页会出现死链。
-   因此已把 PDF 恢复到 `assets/pdf/`，链接全部指向本地。
+2. 第一次尝试失败：`releases/download/<tag>/<file>` 返回 **404**（未登录 404，带 token 也 404）。
+   原因是当时**仓库是 private**——GitHub 不会把私有仓库的 Release 资产对外公开提供。
+3. 把仓库改为 **public** 后，同样的地址立刻返回 **200**（实测 `sot.pdf` = 64,864,127 B 完整下载）。
+4. 随后打开 `_build/gen/releases.py` 的 `ENABLED`，重新构建，`git rm -r assets/pdf`。
 
-### 如果你想让这次迁移生效（顺带省掉年费）
+结果：**发布体积从 193 MB 降到 61.9 MB**（1 GB 上限的 6%），
+100 GB/月的流量风险清零——因为 PDF 已经不走 Pages 了。
+上传脚本是 `_build/tools/upload_release.py`，重复运行会跳过已存在的资产。
 
-只需一步：**把仓库改成 public**（Settings → General → 最下面 Danger Zone → Change visibility）。
-之后执行：
-
-```powershell
-# 1. 打开开关：_build/gen/releases.py 里 ENABLED = False -> True
-python _build\build.py
-git rm -r assets/pdf
-git add -A
-git commit -m "site: serve archived PDFs from the release"
-git push
-```
-
-收益：发布体积从 **193 MB 降到约 60 MB**，100 GB/月的流量风险基本清零。
-上传脚本是 `_build/tools/upload_release.py`（已完成，重复运行会跳过已存在的资产）。
+> **回退条件**：如果以后把仓库改回 private，这些 Release 链接会重新变成 404。
+> 届时把 `ENABLED` 改回 `False`，从 git 历史恢复 `assets/pdf/`，重新构建推送即可。
 
 ## 其余两条优化
 
 2. **把 `project6/7/8` 的截图压成 WebP**（可选）
-   这 3 个页面共 121 张 PNG、约 40 MB。压到 WebP q82 大约能到 4 MB，
-   单页访问流量降到 1/10。旧页面按原样保留是为了「不删内容」，但体积可以优化。
+   这 3 个页面共 121 张 PNG、约 40 MB，是现在站点体积的主要构成（62 MB 里占 52 MB）。
+   压到 WebP q82 大约能到 4 MB，单页访问流量降到 1/10。
+   旧页面按原样保留是为了「不删内容」，但体积可以优化。
 
 3. **不要在仓库里放大视频 / 大模型权重**
    单文件 100 MiB 是硬墙，2 GB 是单次推送的硬墙。真要放就走 Releases 或外部对象存储。
@@ -94,16 +85,16 @@ Free 和 Pro 完全一样，加钱买不到更高配额。所以判断很简单�
 - 只是个人主页 + 博客 → **把仓库改成 public，年费可以省**；
 - 需要私有仓库也能发布（或用私有仓库放草稿）→ 保留付费。
 
-## 当前站点体积构成（实测）
+## 当前站点体积构成（实测，迁移后）
 
 | 目录 | 大小 | 占比 | 备注 |
 |---|---:|---:|---|
-| `assets/pdf` | 132.6 MB | 69% | 12 个 PDF，其中 `sot.pdf` 61.9 MB、`mot.pdf` 55.5 MB |
-| `assets/img` | 51.9 MB | 27% | 8 个旧项目页的截图 |
-| `resume` | 2.0 MB | 1% | 4 份简历 PDF |
-| `assets/site` + `assets/og` | 0.4 MB | 0.2% | 新版样式、脚本、分享图 |
-| 全部 HTML | 1.2 MB | 0.6% | 27 个页面 |
-| `_build`（源码） | 0.4 MB | 0.2% | 生成器与内容源 |
-| **合计（发布内容）** | **约 193 MB** | **19% of 1 GB** | |
+| `assets/img` | 51.9 MB | 84% | 8 个旧项目页的截图（现在体积的主要构成） |
+| `resume` | 2.0 MB | 3% | 4 份简历 PDF |
+| 全部 HTML | 2.9 MB | 5% | 29 个页面 |
+| `assets/site` + `assets/og` | 0.4 MB | 0.6% | 新版样式、脚本、分享图 |
+| `_build`（源码） | 0.4 MB | 0.6% | 生成器与内容源 |
+| ~~`assets/pdf`~~ | **0** | — | 133 MB 已迁到 Release `papers-2026-11` |
+| **合计（发布内容）** | **约 62 MB** | **6% of 1 GB** | |
 
-不含：本地备份 `_backup/`（约 183 MB，已在 `.gitignore` 里，不会推送）、`.git` 历史（385 MB，只在本地/远端仓库，不计入发布站点）。
+不含：本地备份 `_backup/`（约 183 MB，`.gitignore`，不会推送）、`.git` 历史（只在仓库里，不计入发布站点）。

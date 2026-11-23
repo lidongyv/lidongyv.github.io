@@ -133,13 +133,15 @@ summary_en: One-line English summary.
 
 ## 容量与成本
 
-- 发布内容约 **193 MB**，GitHub Pages 上限 **1 GB**（约 19%），余量 5 倍；
-- 唯一风险是 `assets/pdf/` 里两个大 PDF（`sot.pdf` 62 MB、`mot.pdf` 56 MB）会吃流量（软上限 100 GB/月）；
-- 12 个 PDF 已经上传到 Release `papers-2026-11`，但**仓库是私有的，私有仓库的 Release 资产不能对公网下载**，
-  所以现在仍从 `assets/pdf/` 提供。仓库改为 public 后，把 `_build/gen/releases.py` 的 `ENABLED` 改成 `True`
-  并删掉 `assets/pdf/`，体积会降到约 60 MB；
-- **私有仓库发 Pages 需要 Pro**；改成 public 后这笔年费可以省掉；
-- 详细测算与优化方案见 [`_build/docs/github-pages-capacity.md`](_build/docs/github-pages-capacity.md)。
+- 发布内容约 **62 MB**，GitHub Pages 上限 **1 GB**（约 6%），余量 15 倍以上；
+- 12 个论文 / 报告 PDF（共 133 MB）已迁到 Release
+  [`papers-2026-11`](https://github.com/lidongyv/lidongyv.github.io/releases/tag/papers-2026-11)，
+  页面链接直接指向 Release 下载地址，不再占用 Pages 配额，也不会再吃站点流量；
+- 仓库已改为 public，所以 **GitHub Pages 用 Free 就够了**，Pro 年费可以停掉；
+- 详细测算见 [`_build/docs/github-pages-capacity.md`](_build/docs/github-pages-capacity.md)。
+
+> 注意：**如果以后把仓库改回 private**，私有仓库的 Release 资产不能公网下载，这些链接会全部 404。
+> 届时把 `_build/gen/releases.py` 的 `ENABLED` 改回 `False`，从 git 历史恢复 `assets/pdf/`，重新构建推送。
 
 ## 备份与回滚
 
