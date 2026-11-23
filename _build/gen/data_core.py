@@ -14,8 +14,8 @@ PROFILE = {
     "name": L("于立冬", "Lidong Yu"),
     "name_en": "Lidong Yu",
     "handle": "lidongyv",
-    "title": L("独立研究者", "Independent researcher"),
-    "org": L("独立研究", "Independent research"),
+    "title": L("自动驾驶 · 世界模型", "Autonomous driving · world models"),
+    "org": L("新石器慧通（北京）科技有限公司", "Neolix Technology (Beijing) Co., Ltd."),
     "headline": L(
         "VLA · 世界模型 · 端到端自动驾驶",
         "VLA · World models · End-to-end driving",
@@ -23,11 +23,10 @@ PROFILE = {
     "lede": L(
         "2019 年起做自动驾驶算法，先后在驭势科技（南京 AI 研究院）、蔚来、元戎启行、地平线、"
         "NVIDIA 和新石器慧通工作，做过感知、跟踪、数据闭环与端到端。"
-        "2026 年 11 月从新石器离职，目前是独立研究者，关注 VLA 与世界模型的落地。",
+        "关注 VLA 与世界模型的落地。",
         "Autonomous-driving algorithms since 2019 — UISEE (Nanjing AI Research Institute), NIO, "
         "DeepRoute.ai, Horizon Robotics, NVIDIA and Neolix, across perception, tracking, data loops and "
-        "end-to-end driving. Left Neolix in November 2026; now an independent researcher working on "
-        "landing VLA and world models.",
+        "end-to-end driving. My current interest is landing VLA and world models.",
     ),
     "email": "yvlidong@gmail.com",
     "phone": "+86 151-6523-1608",
@@ -58,17 +57,6 @@ FOCUS_AREAS = [
 
 # --- Career ------------------------------------------------------------------
 CAREER = [
-    {
-        "company": L("独立研究", "Independent research"),
-        "company_short": "Independent",
-        "role": L("Free researcher", "Free researcher"),
-        "when": L("2026.11 — 至今", "2026.11 — present"),
-        "scope": L("", ""),
-        "summary": L("从新石器离职后独立做研究，方向是 VLA、世界模型（WAM）与端到端自动驾驶。",
-                     "Independent research since leaving Neolix: VLA, world models (WAM) and end-to-end driving."),
-        "bullets": [],
-        "tags": [],
-    },
     {
         "company": L("新石器慧通（北京）科技有限公司", "Neolix Technology (Beijing) Co., Ltd."),
         "company_short": "Neolix",

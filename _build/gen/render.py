@@ -927,12 +927,11 @@ def render_about(lang):
                "From 2019 I worked on autonomous-driving algorithms at UISEE's Nanjing AI Research Institute, NIO, "
                "DeepRoute.ai, Horizon Robotics, NVIDIA and Neolix, across perception, tracking, data loops and "
                "end-to-end driving."),
-        p2=esc("2026 年 11 月我从新石器离职，目前是独立研究者，关注 VLA（视觉-语言-动作模型）与世界模型"
+        p2=esc("在新石器负责到 2026 年 11 月。目前关注 VLA（视觉-语言-动作模型）与世界模型"
                "（World Action Model）的落地，以及端到端自动驾驶的评测与数据闭环。"
                if lang == "zh" else
-               "I left Neolix in November 2026 and am now an independent researcher, working on landing VLA "
-               "(vision-language-action) models and world models, and on evaluation and data loops for end-to-end "
-               "autonomous driving."),
+               "At Neolix until November 2026. Current interest: landing VLA (vision-language-action) models and "
+               "world models, and evaluation and data loops for end-to-end autonomous driving."),
         p3=esc("开放全职与顾问机会。" if lang == "zh" else "Open to full-time and advisory roles."),
         contact_title=esc("联系方式" if lang == "zh" else "Contact"),
         lbl_email=esc("邮箱" if lang == "zh" else "Email"),
@@ -951,10 +950,10 @@ def render_about(lang):
         timeline=career_timeline(lang, limit=6, show_bullets=False),
     )
     return page(lang, ("关于 · " if lang == "zh" else "About · ") + t(PROFILE["name"], lang),
-                "于立冬（Lidong Yu）：独立研究者，关注 VLA 与世界模型的落地。简历下载、联系方式与经历速览。"
+                "于立冬（Lidong Yu）：自动驾驶算法，关注 VLA 与世界模型的落地。简历下载、联系方式与经历速览。"
                 if lang == "zh" else
-                "Lidong Yu: independent researcher working on landing VLA and world models. Resume downloads, "
-                "contact details and a career overview.",
+                "Lidong Yu: autonomous-driving algorithms, working on landing VLA and world models. Resume "
+                "downloads, contact details and a career overview.",
                 "about.html", body, active="about")
 
 
