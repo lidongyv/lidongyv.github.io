@@ -275,6 +275,7 @@ def render_home(lang, posts):
         </div>
         <div class="cta-row">
           {cta_primary}
+          {cta_profile}
           {cta_github}
           <button class="btn btn--ghost" type="button" data-copy="{email}">{copy_icon}<span>{copy_label}</span></button>
         </div>
@@ -349,6 +350,9 @@ def render_home(lang, posts):
                     % (icon("spark"), esc("看论文与项目" if lang == "zh" else "See papers & projects")),
         cta_github='<a class="btn" href="%s" target="_blank" rel="noopener">%s<span>GitHub</span></a>'
                    % (esc(PROFILE["github"]), icon_solid("github")),
+        cta_profile='<a class="btn" href="%s">%s<span>%s</span></a>'
+                    % (url(lang, "about.html"), icon("person"),
+                       esc("个人资料" if lang == "zh" else "Profile")),
         email=esc(PROFILE["email"]),
         copy_icon=icon("copy"),
         copy_label=esc(ui("copy_email", lang)),

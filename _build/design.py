@@ -264,6 +264,48 @@ def _unlock(html, src_path=None):
     return html
 
 
+BACKBAR_CSS = """
+<style id="ldy-backbar-css">
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar{display:none}}
+</style>
+"""
+
+
+def _backbar_html(is_en):
+    if is_en:
+        home, prof, blog = "Home", "Profile", "Blog"
+    else:
+        home, prof, blog = "返回主页", "个人资料", "博客"
+    return (BACKBAR_CSS +
+            '<div class="ldy-backbar" role="navigation" aria-label="%s">'
+            '<a class="ldy-backbar__home" href="/">\u2190 %s</a>'
+            '<a href="/about.html">%s</a>'
+            '<a href="/blog/">%s</a></div>'
+            % ("site navigation" if is_en else "站点导航", home, prof, blog))
+
+
+def _inject_backbar(html, rel=""):
+    """Put a way back on every published page: these sites have their own chrome."""
+    if "ldy-backbar" in html:
+        return html
+    m = re.search(r"<body[^>]*>", html, re.I)
+    if not m:
+        return html
+    head = html[:m.start()]
+    is_en = bool(re.search(r'<html[^>]*\blang="en', head, re.I)) or \
+        bool(re.search(r"[-_]en\.[a-z]+$", rel or "", re.I))
+    return html[:m.end()] + "\n" + _backbar_html(is_en) + html[m.end():]
+
+
 def _inject_lang_note(index_path, entry):
     """English readers land on a Chinese page: tell them what it is, in English."""
     if not entry.get("summary_en") or not os.path.isfile(index_path):
@@ -368,6 +410,8 @@ def build(report=False):
                 if webp:
                     text = re.sub(r'(?<=["\'(])([^"\')]+)\.(?:png|jpg|jpeg)(?=["\')])',
                                   r"\1.webp", text, flags=re.I)
+                if ext in (".html", ".htm"):
+                    text = _inject_backbar(text, rel)
                 raw = text.encode("utf-8", "surrogateescape")
                 with io.open(dst, "wb") as fh:
                     fh.write(raw)
@@ -384,6 +428,7 @@ def build(report=False):
             items = "\n".join('    <li><a href="{h}">{t}</a></li>'.format(
                 h=n.replace("\\", "/"), t=n.replace("\\", "/")) for n in links[:200])
             html = INDEX_TEMPLATE.format(title=entry["title"], lead=entry["summary"], items=items)
+            html = _inject_backbar(html)
             p = os.path.join(dst_root, "index.html")
             os.makedirs(dst_root, exist_ok=True)
             with io.open(p, "w", encoding="utf-8", newline="\n") as fh:
