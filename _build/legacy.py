@@ -121,6 +121,17 @@ def _to_release(m):
     return '%s="%s"' % (attr, url)
 
 
+def _to_webp(m):
+    """href|src="/assets/img/x.png" -> same path with .webp when that exists."""
+    attr, path = m.group(1), m.group(2)
+    stem, ext = os.path.splitext(path)
+    if ext.lower() in (".png", ".jpg", ".jpeg"):
+        cand = os.path.join(ROOT, (stem + ".webp").lstrip("/").replace("/", os.sep))
+        if os.path.isfile(cand):
+            return '%s="%s.webp"' % (attr, stem)
+    return m.group(0)
+
+
 def convert(n):
     src = os.path.join(ROOT, "_layouts", "project%d.html" % n)
     if not os.path.isfile(src):
@@ -145,6 +156,8 @@ def convert(n):
         body = body.replace(old, new)
     # Archived PDFs moved to a GitHub Release; assets/pdf/ no longer exists
     body = re.sub(r'(href|src)="(/assets/pdf/[^"]+)"', _to_release, body)
+    # Screenshots were re-encoded to WebP next to the originals
+    body = re.sub(r'(href|src)="(/assets/img/[^"]+)"', _to_webp, body)
     body = re.sub(r"\n{3,}", "\n\n", body).strip()
 
     title, note_zh, note_en = TITLES[n]

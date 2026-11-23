@@ -275,7 +275,7 @@ def render_home(lang, posts):
         {stats}
       </div>
       <div class="hero-side">
-        <div class="portrait"><img src="/assets/img/head.jpg" alt="{name}" width="520" height="520" loading="eager"></div>
+        <div class="portrait"><img src="/assets/img/head.webp" alt="{name}" width="520" height="520" loading="eager"></div>
         <div class="mini-list">
           <dl class="mini-card"><dt>{now_label}</dt><dd>{now_value}</dd></dl>
           <dl class="mini-card"><dt>{focus_label}</dt><dd>{focus_value}</dd></dl>

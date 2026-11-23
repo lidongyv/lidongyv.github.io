@@ -601,7 +601,7 @@ FOGGY = {
     "title_zh": "FoggyStereo：用雾体积表示做立体匹配",
     "venue": "CVPR 2022",
     "authors": "Chengtang Yao, Lidong Yu",
-    "figure": "/assets/img/project9/fig1.png",
+    "figure": "/assets/img/project9/fig1.webp",
     "figure_cap": L(
         "雾体积（fog volume）的构造：对每个视差候选对应的深度反向渲染去雾，再沿通道堆叠。",
         "Building the fog volume: reverse-render each disparity candidate's depth with the fog removed, "

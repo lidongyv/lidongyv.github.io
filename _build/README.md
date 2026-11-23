@@ -133,10 +133,12 @@ summary_en: One-line English summary.
 
 ## 容量与成本
 
-- 发布内容约 **62 MB**，GitHub Pages 上限 **1 GB**（约 6%），余量 15 倍以上；
+- 发布内容约 **20.8 MB**，GitHub Pages 上限 **1 GB**（约 2%），余量 40 倍以上；
 - 12 个论文 / 报告 PDF（共 133 MB）已迁到 Release
   [`papers-2026-11`](https://github.com/lidongyv/lidongyv.github.io/releases/tag/papers-2026-11)，
   页面链接直接指向 Release 下载地址，不再占用 Pages 配额，也不会再吃站点流量；
+- 166 张旧项目截图已转成 WebP（53.4 MB → 12.3 MB）。原图由 tag `images-png-originals` 固定，
+  恢复命令：`git checkout images-png-originals -- assets/img`；
 - 仓库已改为 public，所以 **GitHub Pages 用 Free 就够了**，Pro 年费可以停掉；
 - 详细测算见 [`_build/docs/github-pages-capacity.md`](_build/docs/github-pages-capacity.md)。
 
