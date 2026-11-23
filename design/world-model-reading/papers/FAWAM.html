@@ -1,0 +1,286 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FAWAM 精读笔记（arXiv:2606.08555） · 世界模型调研与精读</title>
+<link rel="stylesheet" href="../style.css"></head><body>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次1 · T4 力学/触觉</div><h1>FAWAM 精读笔记（arXiv:2606.08555）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2606.08555</span> <a href="https://arxiv.org/abs/2606.08555">arXiv 页面</a> · <a href="txt/FAWAM.txt">提取正文 txt</a></div><blockquote>
+<p>引用约定：全部英文引文逐字复制自 <code>auto_docs/papers/txt/FAWAM.txt</code>，行号以 (txt Lxx) 标注。PDF 提取造成的换行连字符已按词合并；空格错位（如 "FA W AM"、"✓ ✓ ✓15/20"、"proposeFA W AM"）原样保留。「原文未写」= 论文中不存在该信息；【推断】= 本文的解读，非原文。</p>
+</blockquote>
+<h2>1. 原文信息</h2>
+<ul>
+<li>标题（逐字）："FA W AM: Force-Aware World Action Models for Closed-Loop Contact-Rich Manipulation" (txt L1–2)。全文混用 "FA W AM" 与 "FAWAM"（如 L12 "we proposeFA W AM"、L14 "FAW AM first encodes"），系提取空格错位。</li>
+<li>作者（逐字）："Haotian He∗,1, Zeyu Yan∗,2, Qipeng Liu 2, Ning Guo 2, Wenzhao Lian2,†" (txt L3)；"∗Equal Contribution; † Corresponding author" (txt L4)。</li>
+<li>机构线索（逐字）："1 School of Mathematical Sciences, Peking University" (txt L5)；"2 School of Artificial Intelligence, Shanghai Jiao Tong University." (txt L6)。即：一作 Haotian He 属北大数学科学学院，其余作者属上海交大人工智能学院。</li>
+<li>arXiv ID 与版本："arXiv:2606.08555v2 [cs.RO] 12 Jun 2026" (txt L46)。</li>
+<li>项目页："Project Page:https://fawam.github.io" (txt L7)。</li>
+<li>发表状态：原文未写（全文无会议/期刊录用信息，仅 arXiv v2）。</li>
+</ul>
+<h2>2. Abstract 原文全文（逐字，txt L8–22）</h2>
+<p>"Abstract:Force signals provide critical interaction cues for contact-rich robotic manipulation. However, existing methods mostly use force as an additional observation modality, without fully exploiting its role in modeling future interaction dynamics or guiding execution-time feedback correction. In this paper, we proposeFA W AM, a force-aware world action model that incorporates force information at three levels: perception, prediction, and closed-loop execution. FAW AM first encodes historical 6-axis force/torque signals to modulate action generation, then jointly predicts future actions and end-effector wrenches to explicitly model contact evolution. It further introduces a residual correction module that uses the predicted wrench trajectory as an execution-time reference to refine actions online based on real-time force feedback. Real-world experiments across multiple contact-rich tasks show that FAW AM improves the average success rate by 36.25% over vision-only baselines and21.25% over existing force-aware baselines, demonstrating the effectiveness of our force-aware framework for robust contact-rich manipulation."</p>
+<p>Keywords（逐字，txt L23–24）："Keywords:World Action Model, Force-Aware Policy, Contact-Rich Manipulation"</p>
+<h2>3. 问题与动机</h2>
+<p>论文论证链分四步：</p>
+<p>(1) 视觉不足以判断接触状态：任务定义与必要性："Contact-rich manipulation tasks, such as wiping, peeling and pushing, are ubiquitous in human activities and real-world robotic applications. These tasks require the robot to continuously regulate its interaction with the environment." (txt L26–27)；"However, relying solely on visual observations are often insufficient, since critical interaction states, such as weak contact, excessive pressure or jamming, are difficult to infer from images." (txt L28–30)；因此 "force and tactile feedback provide essential complementary signals for capturing contact states that are ambiguous from vision alone [1, 2, 3, 4, 5]." (txt L30–31)。</p>
+<p>(2) 现有力感知方法的两类不足：只当观察模态，或只做底层反应控制："these methods mainly use force as an additional observation modality for policy learning [4, 10], or introduce force feedback into low-level controllers for reactive control [11, 12]." (txt L34–35)；且不预测未来接触："they do not explicitly model the evolution of future contact states, such as contact forces. As a result, they lack predictive wrench references to guide execution-time corrections." (txt L37–38)。</p>
+<p>(3) 人的类比——主动预测而非纯反应："humans performing contact-rich tasks continuously anticipate the contact outcomes of their motions and adjust when sensed feedback deviates from expectation." (txt L39–40)；"contact-rich manipulation is not purely a reactive observation-to-action mapping, but also a proactive prediction paradigm: the robot needs to anticipate how visual and contact states evolve under its planned action sequence." (txt L41–43)。</p>
+<p>(4) 为什么必须是「世界动作模型 + 闭环」："World models [13, 14, 15, 16, 17], which capture future state evolution, provide a natural framework for contact prediction and contact-aware action generation. Yet, prediction alone does not ensure robust execution. Predicted contact signals should further serve as online references during execution, allowing the robot to detect contact deviations and correct its actions before failures occur." (txt L43–48)。即：世界模型负责「预见接触」，预测出的力轨迹在执行期充当「在线参考」闭环纠错。</p>
+<h2>4. 方法逐机制</h2>
+<h3>4.1 总体架构（三层力集成 + 双频闭环）</h3>
+<p>三层次由摘要界定："a force-aware world action model that incorporates force information at three levels: perception, prediction, and closed-loop execution." (txt L12–13)。具体实现是两个不同频率的组件："As illustrated in Figure 2, FAW AM consists of a Force-Envisioned Action Model running at 1 Hz and a Force-Guided Residual Corrector running at 10 Hz." (txt L115–116)。分工是："The Force-Envisioned Action Model encodes recent force/torque histories into compact contact features and injects them into action generation through AdaLN-Zero-style modulation. It also jointly predicts future action and force trajectories, encouraging the model to learn the coupling between robot motions and their contact consequences." (txt L116–119)。</p>
+<h3>4.2 力感知如何嵌入 WAM</h3>
+<ul>
+<li>接触特征编码："To provide the world action model with local contact-state awareness, we encode recent high-frequency end-effector wrench histories into a compact contact feature. Let w t ∈ R 6 denote the wrist force/torque measurement at time t, then the contact feature c t can be defined as c t = Encf (wt−Hf +1:t), (1) where Enc f is a lightweight MLP jointly trained with the action decoder." (txt L125–129)。</li>
+<li>传感器与滤波配置："An ATI Axia80-M8 6-axis force/torque sensor is mounted at the wrist to measure interaction wrenches." (txt L223–224)；"The ATI wrist force/torque sensor records 6-axis wrenches at 120 Hz. We apply a second-order Butterworth low-pass filter with a 10 Hz cutoff to suppress high-frequency sensor noise. For each policy query, the force encoder uses the most recent 0.5 s of wrench history, corresponding to 60 force/torque frames." (txt L527–530)。</li>
+<li>编码器规模："The force encoder is implemented as a three-layer MLP with a hidden width of 256 and is trained together with the force-aware action decoder." (txt L538–540)。</li>
+<li>注入方式（力条件 AdaLN-Zero 调制）："Building upon GE-Act [13], which decodes action trajectories from future visual latent representations, we inject c t into the action generation pathway through force-conditioned AdaLN-Zero modulation." (txt L130–132)；公式 (2)："We predict a force-conditioned offset and add it to the original AdaLN-Zero parameters: ¯u(i)t = u (i)t + MLP(i)f (ct). (2)" (txt L140–142)；零初始化保证平滑起步："The last layer of MLP (i) f is zero-initialized, so the model initially recovers the original action decoder and gradually learns force-adaptive refinements during training." (txt L144–145)。</li>
+<li>联合预测动作与力（不做孤立力头）："Instead of attaching an isolated force-prediction head, we replace the original action projection with a joint linear projection that outputs concatenated action and wrench trajectories. This encourages the decoder to learn a shared representation for action generation and contact prediction, capturing the coupling between robot motions and their physical contact consequences." (txt L146–150)。</li>
+</ul>
+<h3>4.3 世界模型与策略的耦合方式（两阶段训练）</h3>
+<ul>
+<li>阶段一（微调视频世界模型）："In the first stage, we fine-tune the video generation model based on GE-Base [13] with a latent-space flow-matching objective." (txt L151–152)。</li>
+<li>阶段二（冻结世界模型、训练力感知动作解码器）："In the second stage, we freeze the video world model and train the force-aware action decoder." (txt L158)；把未来动作与力轨迹拼成 Z t = [A t , W t ]，解码器输出联合速度 [ˆv A t , ˆv W t ]（txt L160–162），损失为 "Laction = E [∥ˆvAt − (At − ϵ A)∥2²], L f orce = E [∥ˆvWt − (Wt − ϵ W )∥2²]. (4)" (txt L163–164)；总目标："The final action-force training objective is L stage2 = L action + λ F L f orce, where λ F balances the action generation and force prediction." (txt L165)；权重设定："We use λ F = 1 to balance the action and future-wrench prediction losses." (txt L538)。</li>
+<li>训练资源："Training is performed on 8 NVIDIA A100 GPUs." (txt L531)。视频世界模型微调 30,000 步、学习率 3×10⁻⁵；动作解码器 30,000 步、学习率 1.5×10⁻⁴（txt L535–537）。</li>
+</ul>
+<h3>4.4 训练数据（真实/仿真、力传感器）</h3>
+<ul>
+<li>全部为真实世界实验："All real-world experiments are conducted on a Franka Research 3 (FR3), a 7-DoF robotic arm." (txt L222)；视觉："Visual observations are captured by three Intel RealSense D435i cameras, including one wrist-mounted camera and two static third-person cameras from the front and top views." (txt L224–226)。仿真数据：原文未写。</li>
+<li>演示与干预数据量："For each task, the base action model and all baseline policies are trained on the same 90 demonstrations. The residual corrector in FAW AM is trained with 20 additional human-intervention episodes that provide residual correction targets." (txt L235–237)；采集频率："Multi-view camera observations and proprioceptive states are recorded at 30 Hz, while 6-axis force/torque measurements are recorded at 120 Hz." (txt L237–239)。</li>
+<li>干预数据如何采集（FACTR 力反馈遥操作）："We collect correction data with FACTR [21], a force-feedback leader-follower teleoperation system. The follower arm remains under impedance control for safe and compliant contact, while the leader arm tracks the policy-generated command during autonomous execution rather than mirroring the follower feedback." (txt L201–204)；残差目标来源："When abnormal contact is observed, the operator corrects the remaining action chunk through the leader arm. Then, the difference between the corrected command and the base policy command is recorded as the residual target." (txt L205–207)。</li>
+</ul>
+<h3>4.5 残余校正器（执行期闭环）</h3>
+<ul>
+<li>动机（开环动作块的脆弱性）："The action chunk generated by the action decoder is executed open-loop within its horizon, making it difficult to react to unexpected contact variations, such as insufficient pressure, excessive force or sudden resistance. Therefore, we introduce a lightweight force-guided residual corrector that runs at 10 Hz and adjusts the remaining actions within the current chunk." (txt L170–173)。</li>
+<li>共享冻结力编码器与力跟踪误差："we use the same force encoder as the world action model to encode recent wrench histories into the contact feature c t, with the encoder frozen during residual training. To expose contact deviations explicitly, we compute the wrench tracking error ewt−He+1:t = w meas t−He+1:t − w pred t−He+1:t , (5) where w meas denotes the measured 6D force/torque feedback, w pred denotes the predicted wrench trajectory and H e denotes the history window used to compute the wrench tracking error." (txt L176–182)。</li>
+<li>输入构成（式 (6)）：接触误差 e w t−He+1:t、接触特征 c t、即将执行的基动作块 a base t+1:t+Hp、预测未来力块 w pred t+1:t+Hp、本体感受状态 q t（txt L191–196）。</li>
+<li>门控（何时才修正）："we introduce a gating head that predicts a scalar residual gate g rest . At inference time, the gate is converted into a binary activation mask κ t ∈ {0, 1}, where κ t = 1 if g rest &gt; τ and κ t = 0 otherwise. We manually set a conservative threshold τ = 0.8 to prevent the residual model from perturbing nominal executions." (txt L186–189)。</li>
+<li>修正公式与实现："a cort+1:t+Hr = a baset+1:t+Hr + κ t ∆a rest+1:t+Hr , (7) where a cort+1:t+Hr denotes the corrected action sequence and Res ϕ is implemented as a three-layer MLP for real-time inference." (txt L197–199)。</li>
+<li>训练目标与样本平衡："The residual corrector is trained with Lres = E [∥∆ares − ∆a gt∥2² + λ gate BCE (grest , yt)], (8) where ∆a gt is the ground-truth residual correction, y t ∈ {0, 1} indicates whether the sample comes from human intervention, and λ gate balances the residual regression and gate classification losses." (txt L213–216)；"Each training batch contains a balanced mix of intervention and non-intervention samples, encouraging the model to correct abnormal executions while preserving nominal base-policy behavior." (txt L210–212)；"We train it with a balanced batch of 128 samples containing 64 intervention and 64 non-intervention samples for 500 epochs." (txt L545–546)。</li>
+</ul>
+<h3>4.6 闭环评估怎么做</h3>
+<ul>
+<li>标准评估协议："For each method, we perform 20 evaluation trials per task, with a maximum duration of 60 seconds for each trial." (txt L246–247)。</li>
+<li>扰动测试（执行期干扰）："Specifically, we manually introduce perturbations in four tasks: tilting the board during erasing, changing the cucumber height during peeling, moving the sand-filled box during pivoting, and changing the tail height of the vase during wiping. For each perturbation setting, we conduct five real-world trials." (txt L318–320, L336–338)。</li>
+<li>「闭环」的定义性表述："the correction model closes the loop by turning force discrepancies into corrective behavior." (txt L346–347)。</li>
+</ul>
+<h2>5. 实验与主结果</h2>
+<ul>
+<li>任务与受控变化："We evaluate our method on four contact-rich manipulation tasks:Erase Whiteboard,Peel Cucumber,Pivot BoxandWipe Vase" (txt L230–231)；"To improve data diversity, we introduce controlled variations for each task: changing the inclination angles of the whiteboard and vase, varying the table height for cucumber peeling, and changing the position of the sand-filled box for box pivoting." (txt L233–235)。</li>
+<li>基线清单："For vision-only baselines, we evaluate π 0.5 [53] and GE-Act [13]. π 0.5 is a generalist vision-language-action model without force input, while GE-Act is the vision-only backbone of FAW AM, using the same action prediction pipeline but without any force-related components. For force-aware baselines, we compare against ForceVLA [4] and TA-VLA [8]. ForceVLA incorporates historical force signals as an additional observation modality, while TA-VLA further uses force prediction as an auxiliary objective." (txt L240–245)。</li>
+<li>指标定义：成功率 = 每任务 20 次试验中的成功次数（"we perform 20 evaluation trials per task"），"Avg. SR denotes average success rate." (Table 1 caption, txt L256)。单次试验的成功判据细节：原文未写。</li>
+</ul>
+<p><strong>Table 1（逐字抄录，txt L258–264）</strong>：caption "Table 1:Real-world evaluation results.Avg. SR denotes average success rate. FAW AM w/o Res denotes our base policy without residual correction." (txt L256–257)</p>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Erase Board</th>
+<th>Peel Cucumber</th>
+<th>Pivot Box</th>
+<th>Wipe Vase</th>
+<th>Avg. SR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>π0.5 [53]</td>
+<td>9/20</td>
+<td>8/20</td>
+<td>10/20</td>
+<td>11/20</td>
+<td>47.50%</td>
+</tr>
+<tr>
+<td>GE-Act [13]</td>
+<td>9/20</td>
+<td>10/20</td>
+<td>9/20</td>
+<td>11/20</td>
+<td>48.75%</td>
+</tr>
+<tr>
+<td>ForceVLA [4]</td>
+<td>11/20</td>
+<td>14/20</td>
+<td>13/20</td>
+<td>13/20</td>
+<td>63.75%</td>
+</tr>
+<tr>
+<td>TA-VLA [8]</td>
+<td>10/20</td>
+<td>17/20</td>
+<td>14/20</td>
+<td>10/20</td>
+<td>63.75%</td>
+</tr>
+<tr>
+<td>FAW AM w/o. Res</td>
+<td>14/20</td>
+<td>15/20</td>
+<td>16/20</td>
+<td>14/20</td>
+<td>73.75%</td>
+</tr>
+<tr>
+<td>FAW AM (ours)</td>
+<td>15/20</td>
+<td>19/20</td>
+<td>17/20</td>
+<td>17/20</td>
+<td>85.00%</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>正文结论（原文）："FAW AM consistently outperforms both vision-only and force-aware baselines across all tasks, achieving an average success rate of 85%." (txt L250–251)；"Without access to contact information, vision-only policies achieve average success rates below 50% across the four tasks. Force-aware baselines improve performance to 63.75% by incorporating force measurements or auxiliary force prediction." (txt L252–253)；"FAW AM without residual correction still achieves an average success rate of 73.75% without additional correction data, showing that the proposed force-envisioned action model already provides a strong base policy." (txt L254–255, L284–285)；结论节重申："Real-world experiments show that FAW AM achieves an 85.0% average success rate, improving over the strongest vision-only and force-aware baselines by 36.25% and 21.25%, respectively." (txt L353–354)。数值核对：85.00 − 48.75 = 36.25；85.00 − 63.75 = 21.25，与摘要一致。</li>
+<li>执行时间（图 4）：caption 见第 9 节。txt 中散落的柱状图 OCR 数值片段（txt L270–279）："47.9 / 37.9 38.7 42.6 35.2 / 59.0 / 40.0 38.5 38.2 45.4 42.6 37.2 39.6 / 56.3 / 37.8 34.7 / 29.3 / 36.3 / 23.2 / 31.8"，对应五个变体标签 "Base Obs Obs+Obj Res Full" (txt L281)；各数值与变体的对应关系原文未写，故不强行归表。结论句："The full model completes tasks faster than all ablated variants, suggesting that force-guided residual correction helps adjust actions in time according to sensed and predicted forces, leading to smoother task completion." (txt L313–316)。</li>
+</ul>
+<h2>6. 消融（全部抄录）</h2>
+<p><strong>Table 2（逐字抄录，txt L290–295）</strong>：caption "Table 2:Ablation study.Obs: force-conditioned observation. Pre: force-action joint prediction.Res: residual correction." (txt L288–289)</p>
+<table>
+<thead>
+<tr>
+<th>Obs</th>
+<th>Pre</th>
+<th>Res</th>
+<th>Erase Board</th>
+<th>Peel Cucumber</th>
+<th>Pivot Box</th>
+<th>Wipe Vase</th>
+<th>Avg. SR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>9/20</td>
+<td>10/20</td>
+<td>9/20</td>
+<td>11/20</td>
+<td>48.75%</td>
+</tr>
+<tr>
+<td>✓</td>
+<td></td>
+<td></td>
+<td>12/20</td>
+<td>12/20</td>
+<td>9/20</td>
+<td>12/20</td>
+<td>56.25%</td>
+</tr>
+<tr>
+<td>✓</td>
+<td>✓</td>
+<td></td>
+<td>14/20</td>
+<td>15/20</td>
+<td>16/20</td>
+<td>14/20</td>
+<td>73.75%</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td>✓</td>
+<td>12/20</td>
+<td>15/20</td>
+<td>12/20</td>
+<td>15/20</td>
+<td>67.50%</td>
+</tr>
+<tr>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>15/20</td>
+<td>19/20</td>
+<td>17/20</td>
+<td>17/20</td>
+<td>85.00%</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>变体定义："Here,Obsdenotes adding wrench histories to the observation,Predenotes the joint action-force prediction andResdenotes the residual correction module." (txt L299–303)；Res-only 特例："For the Res-only variant, no predicted wrench reference is available; therefore, the residual corrector only uses sensed force feedback as an additional input." (txt L304–305)。附录 A.2 给出其输入为 "only the contact feature c t, the upcoming base action chunk, and the current proprioceptive state"（式 (9)，txt L558–559）。</li>
+<li>数值解读（原文原句）："Simply adding force signals to the observation yields only a 7.5% improvement, suggesting that passive force conditioning is insufficient." (txt L306–307)；"Building on force-conditioned observations, joint action-force prediction brings a further 17.5% improvement, indicating that future wrench prediction encourages physically grounded action representations." (txt L307–309)；"Residual correction alone also improves performance by 18.75%, but remains below the full model without force-aware representation learning and predicted wrench guidance." (txt L309–311)；"these results show that joint prediction and residual correction provide complementary benefits beyond integrating force observation alone." (txt L311–312)。数值核对：56.25 − 48.75 = 7.5；73.75 − 56.25 = 17.5；67.50 − 48.75 = 18.75。</li>
+<li>门限 τ 分析（附录 A.6）："We test τ ∈ {0, 0.2, 0.5, 0.8, 0.99} on thePeel CucumberandWipe Vasetasks." (txt L627–628)；"overly small thresholds lead to lower success rates, suggesting that frequent residual activation may unnecessarily perturb nominal base-policy execution." (txt L629–631)；"τ = 0.8 achieves the best or near-best performance on both tasks, indicating that sparse residual activation is beneficial." (txt L633–635)；"when τ is too high, the residual branch becomes overly conservative and may fail to trigger necessary corrections, leading to a performance drop." (txt L636–637)。Figure 15 各 τ 的具体成功率数值：原文未写（柱状图数据未提取）。</li>
+</ul>
+<p><strong>Table 3（扰动结果，逐字抄录，txt L334–335）</strong>：caption "Table 3:Results under perturbations." (txt L324)</p>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Erase board</th>
+<th>Peel cucumber</th>
+<th>Slice cucumber</th>
+<th>Wipe vase</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>w/o. Correction model</td>
+<td>0/5</td>
+<td>2/5</td>
+<td>0/5</td>
+<td>1/5</td>
+</tr>
+<tr>
+<td>w/. Correction model</td>
+<td>3/5</td>
+<td>5/5</td>
+<td>4/5</td>
+<td>4/5</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>正文解读："As shown in the Table 3, adding the correction model consistently improves robustness under perturbations." (txt L339–340)；"Without the correction model, the policy executes action chunks largely open-loop and fails to adapt to contact changes, causing jamming in board erasing and toppling in box pivoting." (txt L341–342)；"the correction model uses discrepancies between predicted and sensed wrench to adjust subsequent actions, recover stable contact, and complete the task." (txt L343–344)；"force prediction alone is insufficient under execution-time disturbances, while the correction model closes the loop by turning force discrepancies into corrective behavior." (txt L345–347)。</li>
+<li>注意：Table 3 第三列标题为 "Slice cucumber"，而正文扰动描述是 "changing the cucumber height during peeling"（txt L336–337），二者关系原文未解释。</li>
+</ul>
+<h2>7. 局限 / 未来工作（原文逐字，txt L359–370）</h2>
+<p>"Despite the improved robustness, our method still has several limitations. First, due to the lack of large-scale video datasets with synchronized force/torque signals, our current framework does not integrate force into the video generation model, but instead couples actions and wrenches in the action branch. Second, the residual corrector is trained from a limited number of human intervention episodes, which may not cover diverse failure modes and limits recovery under large deviations. More diverse correction data under richer perturbations and failure scenarios may improve the correction performance. Finally, end-effector wrench prediction provides only indirect contact information. We plan to address this in future work by integrating explicit contact-state representations, such as local contact frames and dense tactile signals, to provide more direct and generalized action guidance."</p>
+<h2>8. 与叙事框架的关联【推断，共 5 条】</h2>
+<ol>
+<li>「闭环」在文中的定义与测量：闭环 = 以预测力轨迹为参考、由力偏差触发的 10 Hz 残余校正，非毫秒级在线。
+   - 支持原句："FAW AM consists of a Force-Envisioned Action Model running at 1 Hz and a Force-Guided Residual Corrector running at 10 Hz." (txt L115–116)；"By comparing the predicted force reference with real-time force feedback, it provides timely residual corrections and improves execution-time robustness." (txt L121–123)；"the correction model closes the loop by turning force discrepancies into corrective behavior." (txt L346–347)。
+   - 【推断】文中的闭环周期约 100 ms（10 Hz）；动作模型 1 Hz 为慢环，力传感 120 Hz 是快传感，但力信息经 0.5 s 历史窗口压缩成接触特征（txt L530）后才进入模型。原文未写毫秒级在线闭环；若叙事框架以毫秒级为闭环标准，本文只到 10 Hz，存在差距。</li>
+<li>力反馈对「滑落/过度按压」类失败的作用证据：存在明确的定性证据句，但无按失败类型统计的数值。
+   - 支持原句："the full model benefits from both sensed force histories and predicted wrench references to avoid prolonged slipping or over-pressing."（Wipe Vase 任务分析，txt L589–590）；"making it difficult to react to unexpected contact variations, such as insufficient pressure, excessive force or sudden resistance" (txt L171–172)；"causing jamming in board erasing and toppling in box pivoting" (txt L341–342)。
+   - 【推断】「捏碎」原文未写，最接近的表述是 excessive force / over-pressing；证据形式是任务成功率（Table 1/3）加定性 rollout 描述，不是针对「滑落/捏碎」单独统计的成功率。</li>
+<li>与「脊髓层」的对应与差距：残余校正器可类比快反射环（10 Hz、三层 MLP、冻结共享力编码器），但速度与输入滞后使其只能算「慢反射」。
+   - 支持原句："a cort+1:t+Hr denotes the corrected action sequence and Res ϕ is implemented as a three-layer MLP for real-time inference." (txt L197–199)；"we use the same force encoder as the world action model to encode recent wrench histories into the contact feature c t, with the encoder frozen during residual training." (txt L176–178)。
+   - 【推断】「1 Hz 慢认知（世界动作模型）→ 10 Hz 快反射（残余修正）」的双频结构可与皮层/脊髓分层类比；差距在于：10 Hz 远低于生物反射速度；接触特征来自 0.5 s 历史（txt L530），反射层输入本身滞后；门控 τ = 0.8（txt L188–189）使修正保守稀疏，并非持续在环。</li>
+<li>「预测参考 + 偏差触发纠错」符合预期—反馈偏差控制叙事。
+   - 支持原句："Predicted contact signals should further serve as online references during execution, allowing the robot to detect contact deviations and correct its actions before failures occur." (txt L46–48)；"the correction model uses discrepancies between predicted and sensed wrench to adjust subsequent actions, recover stable contact, and complete the task." (txt L343–344)。
+   - 【推断】该机制是「前向模型预测期望力 → 与实测力求差 → 残差动作」的显式闭环，与叙事中「预期对照反馈、偏差即纠错」一致。</li>
+<li>「反射层」由人类干预示范训练：执行期反应层靠人教数据塑造，而非自主学习。
+   - 支持原句："When abnormal contact is observed, the operator corrects the remaining action chunk through the leader arm. Then, the difference between the corrected command and the base policy command is recorded as the residual target." (txt L205–207)；"The residual corrector in FAW AM is trained with 20 additional human-intervention episodes that provide residual correction targets." (txt L236–237)。
+   - 【推断】若叙事将力反馈层类比脊髓反射，本文的对应物是「人示范出来的反射」；作者自认数据覆盖有限（局限第二条），与叙事中「反射层应覆盖多样失败模式」的要求有缺口。</li>
+</ol>
+<h2>9. 图注 / 表注（全部 caption 逐字抄录）</h2>
+<ul>
+<li>Figure 1 (txt L67–69): "Figure 1:Comparison between force-conditioned prediction and our method.(left)Adding force as additional observation alone fails to correct contact deviation while(right)systematic force integration in three levels restores proper contact for successful wiping."</li>
+<li>Figure 2 (txt L133–137): "Figure 2:Overview of FA W AM.FAW AM incorporates force signals through force-conditioned action generation, future force prediction, and online residual correction. (a) The Force-Envisioned Action Model conditions on visual, language and force inputs to jointly predict action chunks and future force trajectories. (b) The Force-Guided Residual Correction module learns from human interventions and corrects the base action online with a residual action and an intervention gate."</li>
+<li>Figure 3 (txt L218–219): "Figure 3:Contact-rich tasks.Each task is evaluated under diverse contact conditions induced by controlled changes in surface inclination, table height, or the position of the sand-filled box."</li>
+<li>Figure 4 (txt L282–283): "Figure 4:Execution time comparison.Lower values indicate faster completion with less inefficient contact adjustment."</li>
+<li>Figure 5 (txt L322–323): "Figure 5:Perturbation rollouts comparison.With perturbations, force-guided residual correction help FAW AM recover stable contact, while the model without correction fails to adapt."</li>
+<li>Figure 6 (txt L549–551): "Figure 6:Experimental environment.The setup consists of a Franka robot for task execution, a FACTR leader robot for force-feedback teleoperation, and multiple Intel RealSense cameras for multi-view visual observation."</li>
+<li>Figure 7 (txt L598): "Figure 7:Comparative Correction Experiments for Erase Board."</li>
+<li>Figure 8 (txt L601): "Figure 8:Comparative Correction Experiments for Peel Cucumber ."</li>
+<li>Figure 9 (txt L605): "Figure 9:Comparative Correction Experiments for Pivot Box."</li>
+<li>Figure 10 (txt L608): "Figure 10:Comparative Correction Experiments for Wipe Vase."</li>
+<li>Figure 11 (txt L615): "Figure 11:Ablation qualitative supplement forErase Board."</li>
+<li>Figure 12 (txt L616): "Figure 12:Ablation qualitative supplement forPeel Cucumber."</li>
+<li>Figure 13 (txt L618): "Figure 13:Ablation qualitative supplement forPivot Box."</li>
+<li>Figure 14 (txt L619): "Figure 14:Ablation qualitative supplement forWipe V ase."</li>
+<li>Figure 15 (txt L622): "Figure 15: Success rate under differentτ."</li>
+<li>Table 1 (txt L256–257): "Table 1:Real-world evaluation results.Avg. SR denotes average success rate. FAW AM w/o Res denotes our base policy without residual correction."</li>
+<li>Table 2 (txt L288–289): "Table 2:Ablation study.Obs: force-conditioned observation. Pre: force-action joint prediction.Res: residual correction."</li>
+<li>Table 3 (txt L324): "Table 3:Results under perturbations."</li>
+</ul>
+<hr />
+<p>数据源：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\FAWAM.txt</code>（640 行全文，已全部引用核查）。禁止联网与外部知识补写的要求已遵守。</p>
+<footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
+<a href="../index.html">返回首页</a></footer></div></main></body></html>

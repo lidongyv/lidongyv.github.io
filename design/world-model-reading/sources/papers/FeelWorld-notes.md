@@ -1,0 +1,268 @@
+# FeelWorld 精读笔记
+
+> 数据源：`auto_docs/papers/txt/FeelWorld.txt`（47,125 字符，共 1052 行）。所有英文引用逐字复制自该 txt，[L 行号] 标注；论文未写之处标「原文未写」；我方解读标【推断】。txt 内行尾换行连字符（如 "in-teractions"）按原词合并。
+
+---
+
+## 1. 原文信息
+
+- **标题**：FeelWorld: Visuo-Tactile World Model for Hierarchical Contact Prediction and Planning（L1-2）
+- **作者**：Wenxuan Ma¹ ², Chaofan Zhang¹ ², Chao Xue¹ ², Yinghao Cai¹, Guocai Yao³, Shaowei Cui¹ ² ³ ∗（通讯）, Shuo Wang¹（L3-4）；通讯邮箱 "shaowei.cui@ia.ac.cn"（L53）
+- **机构**：¹ Institute of Automation, Chinese Academy of Sciences（中科院自动化所）；² Imprintx Robotics；³ Beijing Academy of Artificial Intelligence（L5-7）
+- **ID / 发表状态**：L120 逐字为 "arXiv:2607.24267v1 [cs.RO] 27 Jul 2026"，即 arXiv 预印本 v1（cs.RO，2026-07-27）。是否已投稿/录用会议：**原文未写**。
+- **txt 体例说明**：图 1 区域为 OCR 碎片（L54-69，如 "ruit / Grasping / M Success Rate (%)"）；图 2 内有中文残留 "在此处键入公式。"（L274），均不影响正文引用。
+
+## 2. Abstract 全文逐字（L8-34）
+
+> "Humans plan physical interactions by imagining the possible outcomes of candidate actions. However, existing visual world models primarily capture appearance dynamics while overlooking the tactile states that govern contact-rich interactions, potentially producing imagined futures that appear visually plausible but violate physical dynamics. We introduce FeelWorld, a hierarchical visuo-tactile world model that jointly predicts future visual latents and three tactile states. FeelWorld organizes these states hierarchically as contact state, a 3D tactile latent that encodes force-related information, and slip state. These states are jointly predicted by a shared latent dynamics model with explicit supervision. To prevent irrelevant tactile signals during free-space motion from degrading visual prediction, we introduce a contact-gated asymmetric attention mechanism that maintains a visual-only prediction pathway before contact and enables joint visuo-tactile dynamics prediction during contact. The model is further trained with autoregressive rollouts and context noise injection to improve robustness to compounding errors. The predicted contact and slip states also support contact-aware CEM planning. Experiments on chip grasping, fruit grasping, and USB insertion show that FeelWorld reduces 10-step LPIPS from 0.084 to 0.058 and maintains an LPIPS that is 61% lower than that of the visual baseline after an 80-step autoregressive rollout. FeelWorld also achieves an average zero-shot planning success rate of 81.7%, providing an effective approach for incorporating tactile sensing into world models."
+
+## 3. 问题与动机
+
+### 3.1 为什么需要视触觉世界模型
+
+三个递进论据：
+
+1）**接触物理需要触觉直接测量**（L36-44）：
+> "Contact-rich manipulation requires robots to reason about physical interaction. Vision provides global scene context but offers only indirect evidence of contact physics. Tactile sensing directly measures force distribution, local deformation, and incipient slip, often capturing events that are occluded or produce negligible visual change [1], [2]. These two modalities are complementary yet asymmetric: vision supplies continuous scene information, whereas tactile signals carry physical meaning only during contact."
+
+2）**世界模型是规划基础，但现有视觉模型会"看起来对、物理上错"**（L8-13 摘要已述；正文 L45-51）：
+> "Action-conditioned world models enable planning through imagined rollouts. The Dreamer family [3], [4] learns compact latent dynamics for long-horizon imagination. Joint-embedding predictive architectures [5], [6] avoid pixel reconstruction by predicting in a learned representation space. Recent visuo-tactile world models [7]–[9] jointly predict visual and tactile futures, demonstrating that tactile grounding improves manipulation."
+
+3）**现有视触觉模型把触觉当作"整体"预测目标，缺乏物理结构**（L95-100）：
+> "However, these methods treat tactile signals as a monolithic prediction target without distinguishing the physical information encoded at different levels of interaction. Dense visual signals can overshadow sparse yet critical tactile information [10]. Without explicit physical structure, tactile signals provide weak supervision for latent dynamics."
+
+由此提出本文的 open question（L100-103）：
+> "The open question is how to integrate tactile information hierarchically and selectively, respecting the physical structure of contact and fusing tactile signals only when they carry meaningful evidence."
+
+### 3.2 层次化接触预测是什么
+
+核心观察（L104-106）：
+> "We introduce FeelWorld, a hierarchical visuo-tactile world model. Our central observation is that tactile interaction decomposes into three hierarchical tactile states."
+
+三状态定义（L106-111）：
+> "Contact state is binary and immediate, indicating whether the robot touches anything. The 3D tactile latent captures local surface deformation, encoding contact area, pressure distribution, and shear direction. Slip state assesses interaction stability, an inherently temporal judgment."
+
+预测顺序与分工（L111-115）：
+> "We predict these states in the order of contact state, 3D tactile latent, and slip state: the contact state controls visuo-tactile fusion, the 3D tactile latent represents local interaction geometry, and the slip state participates in the CEM planning cost."
+
+融合设计的第二动机（L116-126）：
+> "A second observation motivates our fusion design: tactile signals during free-space motion are sensor noise. We design a contact-gated asymmetric attention mechanism. Visual tokens retain a visual-only self-attention pathway, preserving an appearance-driven prediction path. Tactile tokens attend to visual tokens, grounding local contact geometry in global scene context. Predicted contact probability gates visuo-tactile cross-attention (visual tokens query tactile features), suppressing modulation when contact is absent and enabling it during contact."
+
+## 4. 方法逐机制
+
+### 4.1 问题形式化（Sec. III-A，L219-292）
+
+- 输入：V 视角图像（第三视角相机提供全局上下文 + 腕部相机提供交互反馈），3D 触觉点云；两个编码器均冻结（L222-226）：
+  > "The visual input consists of images It from V views, such as third-person cameras for global scene context and a wrist camera for interaction feedback. A frozen visual encoder produces the visual latent ot = Ev(It). A frozen tactile encoder produces the tactile latent ht = Eτ (Pt)."
+- 触觉状态元组（L227-229）："the tuple τt = (ct, ht, st), comprising the contact state, 3D tactile latent, and slip state."
+- 动力学模型（L284-288）：
+  > "zt = [zot ; zτt ] denotes the fused visuo-tactile latent. The contact gate gt controls tactile-to-visual modulation (Sec. III-C). Given robot proprioception qt and a 7-dimensional action at, the dynamics model predicts ˆzt+1 = [ˆzot+1; ˆzτt+1] = Wθ(zt, gt, qt, at). (1)"
+- 解码（L289-292）：
+  > "The visual component ˆzot+1 is decoded into the next visual latent ˆot+1, while the tactile component ˆzτt+1 is decoded into the three tactile states ˆτt+1 = (ˆct+1, ˆht+1, ˆst+1), where ˆct+1, ˆst+1 ∈ [0,1]."
+
+### 4.2 层次触觉建模（Sec. III-B，L293-368）
+
+- **触觉编码**（Eq. 2，L298-306）：
+  > "The 3D tactile point cloud Pt is encoded by a pretrained encoder [26] into a compact latent representation: ht = Eτ (Pt) ∈ R^{dτ} . (2) This latent encodes force-related contact information, including contact area, pressure distribution, and principal deformation direction. We omit LayerNorm for ht, as normalization may remove magnitude information associated with contact intensity."
+- **共享触觉预测头**（Eq. 3，L307-313）："ˆht+1 = Hτ (ˆzτt+1) (3)"，并称 "This readout grounds the tactile component of the fused dynamics in the geometry and deformation measured by the tactile sensor."
+- **Level 1 接触状态**（Eq. 4-5，L314-325）：
+  > "A two-layer MLP contact head Hc predicts binary contact probability from the predicted tactile component: ˆct+1 = Hc(ˆzτt+1) ∈ [0,1]. (4) Contact is supervised with binary cross-entropy loss: Lcontact = BCE(ˆct+1, ct+1), (5) where ct+1 ∈ {0,1} is the ground-truth contact label. The predicted contact probability ˆct+1 controls visuo-tactile fusion (Sec. III-C) and activates tactile objectives during planning (Sec. III-E)."
+- **Level 2 3D 触觉潜变量**（Eq. 6，L326-334）：
+  > "The decoded 3D tactile latent ˆht+1 encodes local contact geometry and surface deformation. It is directly supervised against the stop-gradient target from the tactile encoder: Ltis = ‖ˆht+1 − sg(Eτ (Pt+1))‖1, (6) where sg(·) denotes stop-gradient to prevent backpropagation through the frozen encoder. This L1 loss grounds the predicted dynamics in physically measured deformation patterns."
+- **Level 3 滑移状态**（Eq. 7-8，L335-358）：
+  > "Slip is inherently temporal; detecting incipient slip requires observing how the tactile component changes over time. A causal 1D convolutional head with kernel size K=3 aggregates a temporal window of predicted tactile features: ˆst+1 = Hs(ˆzτt−K+2:t+1) ∈ [0,1], (7) where Hs is the slip head. This architecture explicitly models the transition from the 3D tactile latent to the slip state. Slip labels are highly imbalanced (stable contact dominates), so we use binary focal loss [33]: Lslip = −αt(1 − pt)^γ log pt, (8) where pt is the probability assigned to the ground-truth class and αt is its class-balancing weight; we set α=0.95 for positive (slip) examples and γ=2.0 to down-weight easy negatives. Because slip is defined only during contact, we compute Lslip only at timesteps where ct+1=1. The predicted slip probability ˆst+1 enters the planning cost to penalize unstable interactions."
+- **教师强制目标**（Eq. 9-10，L359-369）：
+  > "The visual prediction head decodes ˆot+1 = Hv(ˆzot+1). Its next-state prediction is supervised against the stop-gradient target from the visual encoder Ev. Both Ev and Eτ are pretrained and frozen, so only the dynamics predictor and prediction heads are trained: Lt fvis = ‖ˆot+1 − sg(Ev(It+1))‖1, (9) The joint teacher-forcing objective combines this visual loss with the hierarchical tactile losses: Lt f = Lt fvis + λτ Ltis + λcLcontact + λsLslip, (10) where λτ =0.3, λc=0.03, and λs=0.03 balance the contribution of each tactile level."
+
+### 4.3 接触门控非对称注意力（Sec. III-C，L370-396）
+
+> "Tactile tokens first attend to visual tokens, grounding local tactile observations in global scene information, such as object pose, robot configuration, and task phase: ˆzτt = zτt + CrossAttn(zτt , zot , zot ). (11) Conversely, whether visual tokens attend to tactile features is determined by the binary contact gate gt, which is produced by the preceding contact prediction: ˆzot = zot + gt CrossAttn(zot , ˆzτt , ˆzτt ). (12) The complete fused feature is ˆzt = [ˆzot ; ˆzτt ]. Its visual component retains a visual prediction pathway while incorporating tactile evidence only during contact. At the initial timestep, the gate uses the ground-truth contact label from the first observation (g0 = c0). During teacher-forcing training, subsequent gates also use ground-truth contact labels (gt = ct), providing clean supervision for the fusion mechanism. During autoregressive rollout and inference, the gate is derived from the predicted contact probability (gt = I[ˆct ≥ 0.5]). Visuo-tactile cross-attention is then disabled when ˆct < 0.5 and enabled otherwise."
+
+### 4.4 自回归 rollout 训练 + 上下文噪声注入（Sec. III-D，L397-430）
+
+动机（L398-404）：
+> "At inference, however, the model operates autoregressively, receiving its own predicted latents as input. Prediction errors at each step become input errors at the next. This discrepancy causes errors to compound over long horizons, producing rollouts that diverge from physically plausible futures."
+
+机制（L405-417）：
+> "We mitigate this by training with multi-step autoregressive rollouts (R steps) alongside the teacher-forcing objective. Starting from a randomly sampled timestep t, the model predicts forward for R steps using its own fused outputs as context. Additionally, we inject small Gaussian noise into the visuo-tactile context before feeding it into the world model: ˜zt+r = ˆzt+r + εz, (13) with εz ∼ N(0, σ2I). The noise scale σ approximates the prediction error distribution encountered during inference-time autoregression. Training the model to predict from noisy contexts encourages it to generate high-quality outputs from perturbed inputs, thereby improving robustness during autoregressive rollout."
+
+损失（L418-430）：rollout 损失为 R 步四项损失（视觉 + 三个触觉层次，权重同 λτ/λc/λs）的平均（Eq. 14），"where the four terms at each step r denote the corresponding losses evaluated at t+r; Lrollslip,r is computed only when ct+r=1. The total objective is Ltotal = Lt f + λrollLrollout."（L428-430）
+
+### 4.5 接触感知 CEM 规划（Sec. III-E，L431-501）
+
+- 状态表示与滚动（L432-439）：
+  > "At control step t, the current observation is encoded as xt = (zt, gt, qt), where zt is the fused visuo-tactile latent. Given a candidate action sequence A = (at, at+1, . . . , at+Hp−1), FeelWorld rolls xt forward for Hp steps and predicts the fused latent together with its visual and tactile readouts, contact probability, and slip probability at every step."
+- CEM 流程（L440-448）：
+  > "In each of I iterations, it samples N candidates, evaluates each candidate through an autoregressive model rollout, retains the K sequences with the lowest cost, and refits the Gaussian to these elites. After the final iteration, the robot executes the first two actions of the lowest-cost sequence, observes the resulting state, and replans."
+- 规划代价（Eq. 15，L449-459）：
+  > "The planning cost retains visual task progress throughout the rollout and activates tactile interaction terms only after predicted contact: J(A) = Σ_{k=1}^{Hp} [Dv(ˆot+k, ogoal) + gk (wτ Dτ (ˆht+k, hgoal) + wsDslip(ˆst+k))], (15) where gk = I[ˆct+k ≥ 0.5] is the hard contact gate at future step k, and wτ , ws weight the tactile and slip costs. The visual distance Dv and tactile distance Dτ are both L1 distances in their respective latent spaces. Dslip(ˆst+k) = ˆst+k directly penalizes predicted slip probability."
+- 为何必须门控（L495-501）：
+  > "Tactile goals are physically unreachable before contact. Applying Dτ or Dslip during free-space approach would make CEM optimize an unrealizable physical state and create competing objectives. The contact gate removes this conflict while preserving visual progress throughout the horizon: tactile geometry and slip influence planning only after contact becomes reachable."
+
+**Algorithm 1 逐字（L460-483）**：
+```
+Algorithm 1 Contact-Aware CEM Planning
+Require: Wθ, xt, (ogoal, hgoal), Hp, N, K, I, wτ, ws
+Ensure: A⋆t:t+1
+1: Initialize q(A) = N(µ0, σ20 I)
+2: for i = 1 to I do
+3:   Sample {A(n)}Nn=1 ∼ q(A)
+4:   for n = 1 to N do
+5:     {[ˆzot+k; ˆzτt+k]}Hpk=1 ← Wθ(xt, A(n))
+6:     Decode {ˆot+k}Hpk=1 from {ˆzot+k}Hpk=1
+7:     Decode {ˆht+k, ˆct+k, ˆst+k}Hpk=1 from {ˆzτt+k}Hpk=1
+8:     Jn ← 0
+9:     for k = 1 to Hp do
+10:      if ˆct+k < 0.5 then
+11:        Jn ← Jn + Dv(ˆot+k, ogoal)
+12:      else
+13:        Jn ← Jn + Dv(ˆot+k, ogoal) + wτ Dτ (ˆht+k, hgoal) + wsDslip(ˆst+k)
+14:      end if
+15:    end for
+16:  end for
+17:  E ← top-K with lowest Jn
+18:  µ, σ2 ← Mean({A(n)}n∈E), Var({A(n)}n∈E)
+19: end for
+20: return first two actions of A(arg minn Jn)
+```
+
+## 5. 实验与主结果
+
+### 5.1 平台与数据（L510-533）
+
+> "Experiments are conducted on an Imeta-Y1 robot equipped with three RGB cameras and DM tactile sensors. We consider three contact-rich manipulation tasks: chip grasping, which involves fragile objects with varying sizes and thicknesses; fruit grasping, which involves objects with diverse geometries and compliance; and USB insertion, which requires precise contact reasoning under visual occlusion. For each task, we collect 200 training trajectories and 40 test trajectories. All trajectories are recorded at 30 Hz and downsampled to 6 fps for world model training. Contact and slip labels are obtained from the official sensor API. Contact states are approximately balanced, whereas slip events account for only 0.93% of the data, motivating the use of focal loss in Eq. (8)."
+
+### 5.2 实现细节（L534-562）
+
+> "FeelWorld adopts V-JEPA 2 [6] as the visual backbone and processes two RGB views at a resolution of 224×224. Features from the two views are independently encoded and concatenated along the sequence dimension before being passed to the dynamics predictor. For a fair comparison, DINO-WM and JEPA-WM are extended to the same multi-view setting using an identical encoding strategy. The 3D tactile point clouds are encoded by a frozen FG-CLTP encoder Eτ [26] without fine-tuning. The dynamics predictor is a spatio-temporal transformer conditioned on 7-dimensional robot actions, while contact state is predicted by a two-layer MLP head and slip state by a causal 1D convolutional head. DINO-WM and JEPA-WM use their official decoders; since V-JEPA 2 provides none, we train a ViT-based decoder for V-JEPA 2, FeelWorld, and its ablations for fair visual comparison and visualization. The pretrained FG-CLTP decoder reconstructs tactile deformation maps. All decoders are used only for evaluation and visualization, not training or planning."
+
+训练/规划超参（L553-562）：
+> "The model is trained on 8 H100 GPUs with a batch size of 64. We set λτ =0.3, λc=0.03, λs=0.03, λroll=0.5, R=4, and σ=0.007. During both training and evaluation, we use a 9-frame context window, corresponding to 1.5 s of observation history at 6 fps. Each zero-shot planning episode spans 50 control steps. At every replanning cycle, CEM samples N=400 candidate action sequences over a planning horizon of Hp=6, retains the top 8 candidates as elites, and performs 8 optimization iterations. The robot executes the first two actions before replanning. Planning performance is evaluated over 40 real-robot trials for each task."
+
+### 5.3 视觉预测评估（Sec. IV-B，L599-717）
+
+**Table I（10 步 rollout 质量，全部数值）**：
+
+| Method | Tac. | Hier. | Gate | PSNR↑ | SSIM↑ | LPIPS↓ | FID↓ | FVD↓ | Chamfer↓ | Contact F1↑ | Slip F1↑ |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| DINO-WM [34] | × | × | × | 23.22 | 0.770 | 0.138 | 229.4 | 843.3 | – | – | – |
+| JEPA-WM [5] | × | × | × | 23.78 | 0.781 | 0.132 | 204.3 | 792.1 | – | – | – |
+| V-JEPA 2 (visual-only) [6] | × | × | × | 24.37 | 0.819 | 0.084 | 106.7 | 473.5 | – | – | – |
+| FeelWorld (w/o hierarchical) | ✓ | × | × | 26.71 | 0.853 | 0.071 | 79.14 | 326.4 | 0.072 | – | – |
+| FeelWorld (w/o contact gate) | ✓ | ✓ | × | 27.52 | 0.876 | 0.067 | 78.03 | 307.2 | 0.067 | 0.973 | 0.803 |
+| FeelWorld (Ours) | ✓ | ✓ | ✓ | 28.89 | 0.884 | 0.058 | 76.45 | 289.9 | 0.063 | 0.981 | 0.834 |
+
+正文关键解读（L599-623）：
+> "Table I shows that the full model performs best across all five visual metrics. It is worth noting that approximately 30% of the trajectories in our dataset are failed episodes, including unsuccessful grasps, object slippage, and failed USB insertions caused by subtle differences. ... Compared with the visual-only V-JEPA 2 baseline, FeelWorld consistently improves visual quality and temporal consistency, increasing PSNR from 24.37 to 28.89 and SSIM from 0.819 to 0.884, while reducing LPIPS by 31.0% and FVD by 38.8%. The ablation results show that the basic naive visuo-tactile variant, which retains context noise injection and the rollout loss, already outperforms the visual-only model, reducing LPIPS from 0.084 to 0.071, as tactile observations provide complementary information for distinguishing interaction states and predicting the next frame around contact transitions. Explicit hierarchical tactile modeling further reduces LPIPS to 0.067, while asymmetric contact-gated attention achieves the best result of 0.058, with consistent improvements in PSNR and FVD."
+
+**Table II（接触转换附近的视觉预测）**：
+
+| Method | Phase | LPIPS↓ | Onset Error (frames)↓ |
+|---|---|---|---|
+| V-JEPA 2 | Free space | 0.089 | – |
+| V-JEPA 2 | Contact transition | 0.127 | 1.17 |
+| FeelWorld | Free space | 0.046 | – |
+| FeelWorld | Contact transition | 0.055 | 0.44 |
+
+正文解读（L644-650）：
+> "The LPIPS of V-JEPA 2 increases by 42.7%, from 0.089 to 0.127, indicating that vision alone cannot reliably infer grasp stability or impending slip. In contrast, the LPIPS of FeelWorld increases only from 0.046 to 0.055 and remains 56.7% lower than that of V-JEPA 2 during contact transitions, demonstrating that tactile modeling reduces contact-induced ambiguity and improves prediction consistency."
+
+冻结视觉骨干只训接触头的对照（L652-698）：
+> "we freeze the V-JEPA 2 visual backbone and train only a lightweight contact-prediction head. The resulting contact-onset error is 1.17 frames, compared with only 0.44 frames when tactile features from FeelWorld are used, further highlighting the importance of tactile information for accurately identifying contact transitions."
+
+**长时程自回归（L699-717）**：1/5/10/20/40/80 步，"where 80 steps correspond to approximately 13.3 s"（L701-702）。最终数值（L714-717）：
+> "FeelWorld's LPIPS increases from 0.055 at step 1 to 0.062 at step 80 and remains 61% lower than the visual-only baseline at the longest horizon."
+图 5 标注给出 80 步处四项增益：PSNR +6.70 dB、SSIM +0.115、LPIPS 低 61%、MAE 低 62%（L659-687）。
+
+### 5.4 触觉状态预测（Sec. IV-C，L718-793）
+
+**Table III（全部测试帧上的接触/滑移预测）**：
+
+| State | Acc.↑ | F1↑ | Prec.↑ | Rec.↑ | Onset↓ | Offset↓ |
+|---|---|---|---|---|---|---|
+| Contact | 98.6 | 98.1 | 98.5 | 97.8 | 0.44 | 0.69 |
+| Slip | 99.7 | 83.4 | 81.7 | 85.2 | 0.56 | – |
+
+正文解读（L719-730）：
+> "FeelWorld predicts contact with 98.6% accuracy and a contact-onset error of only 0.44 frames. ... Because slip-positive frames constitute only 0.93% of the data, the dominant non-slip class yields a high raw accuracy of 99.7%; F1, precision, and recall are therefore more informative. FeelWorld achieves 83.4% F1, 81.7% precision, and 85.2% recall, demonstrating reliable detection of these rare but critical events."
+
+### 5.5 零样本规划（Sec. IV-D，L847-881）
+
+**Table IV（零样本 CEM 规划成功率，%）**：
+
+| Planner | Chip | Fruit | USB |
+|---|---|---|---|
+| Visual-only CEM (w/o Tactile) | 40.0 | 70.0 | 37.5 |
+| Naive Visuo-Tactile CEM | 47.5 | 75.0 | 50.0 |
+| Contact-aware CEM | 82.5 | 87.5 | 75.0 |
+
+三方法定义（L854-859）：
+> "V-JEPA 2 is the visual world model baseline and optimizes only the visual latent distance to the goal. Naive Visuo-Tactile CEM jointly optimizes visual and tactile objectives throughout the planning horizon. Ours adopts the contact-gated planning objective in Eq. (15)."
+
+正文解读（L860-881）：
+> "Our method achieves success rates of 82.5%, 87.5%, and 75.0% on chip grasping, fruit grasping, and USB insertion, respectively. ... Vision-only CEM can guide the robot toward a visually plausible goal configuration, but visual similarity alone does not ensure stable contact or successful insertion. Naive visuo-tactile CEM improves contact-phase optimization, but optimizing an unreachable tactile goal before contact interferes with free-space approach. In contrast, our contact-gated CEM relies on visual guidance before contact and activates joint visuo-tactile optimization only after contact is predicted. ... Consequently, our method consistently achieves the highest success rate across all tasks and improves USB insertion from 37.5% to 75.0% under severe visual occlusion."
+
+平均成功率 81.7% 与领先幅度 32.5 pp 见绪论（L153-155）与结论（L898-899）："achieving an average success rate of 81.7% across three contact-rich tasks and outperforming the vision-only baseline by 32.5 percentage points."（三任务均值 (82.5+87.5+75.0)/3=81.7，视觉基线均值 49.2，差值 32.5）【推断：该均值由 Table IV 三列算得，与文中数值自洽】。
+
+## 6. 消融
+
+全部消融即在 Table I 的两行（数据已抄录于 5.3），正文解读（L614-623 见上）。另有两处对门控消融的定量陈述：
+
+- 绪论（L144-149）：
+  > "We introduce a Contact-gated Asymmetric Attention Mechanism, which allows tactile features to modulate visual dynamics only during contact, thus protecting the world model from free-space sensor noise. Removing the gate degrades SSIM from 0.884 to 0.876 and PSNR from 28.89 to 27.52."
+- 长时程部分（L702-714）：
+  > "V-JEPA 2 corresponds to Vision Only, while FeelWorld (w/o hierarchical) corresponds to Naive Visuo-Tactile Fusion. ... Naive visuo-tactile fusion also drifts over long rollouts because unfiltered tactile signals perturb the visual prediction stream during non-contact phases. By suppressing this pre-contact interference, FeelWorld consistently achieves the best prediction performance, indicating that contact-gated attention and joint visuo-tactile modeling enable the model to capture fine-grained physical dynamics while supporting stable long-horizon rollouts."
+
+消融结论：去掉层次化（仅朴素融合）→ LPIPS 0.084→0.071；加层次化、去门控 → 0.067；全模型 → 0.058（L617-622）。滑移/接触 F1 消融显示去门控后 Contact F1 0.973→0.981、Slip F1 0.803→0.834（Table I）。
+
+## 7. 局限 / 未来工作（L905-912，逐字）
+
+> "Despite these results, CEM-based planning remains computationally expensive and is not suitable for high-frequency real-time control. Future work could integrate FeelWorld with a policy network to efficiently evaluate candidate rollouts and iteratively refine the model using real-world interaction data, thereby providing physically consistent guidance for policy learning and optimization in contact-rich manipulation tasks."
+
+结论段核心数字复述（L893-899）："It reduces 10-step LPIPS from 0.084 to 0.058. Over an 80-step autoregressive rollout, LPIPS increases to 0.062 and remains 61% lower than that of the visual baseline. FeelWorld also achieves F1 scores of 98.1% and 83.4% for contact and slip prediction, respectively. Furthermore, contact-aware CEM planning achieves an average success rate of 81.7%, exceeding the visual-only baseline by 32.5 percentage points."
+
+## 8. 叙事关联【推断】
+
+（全部为推断，论文本身未做此叙事；支持句均注行号。）
+
+1. **与 DexTouch-WM / TouchWorld 的对比：原文未写。** 全文（含参考文献）检索不到 "DexTouch" 或 "TouchWorld"，无任何直接对比。【推断】可对比的论文谱系是：VT-WM [15]（L168-170："VT-WM [15] introduces touch into world models to improve the physical consistency and stability of long-horizon autoregressive rollouts."）、ContactWorld [16]（L170-173："ContactWorld [16] highlights the value of spatially structured and temporally continuous visuo-tactile representations for contact-rich planning."）、以及 Dream-Tac/VT-WAM/Tactile-WAM/DreamTacVLA/OmniVTA [7]–[10][32]。FeelWorld 对前作的自我定位是「弥补把触觉当整体目标、缺显式物理结构」的空白（L174-181："However, most existing world models prioritize visual fidelity or treat touch as an undifferentiated observation, without explicitly modeling the structured contact dynamics underlying physical interaction."）。与 DexTouch-WM/TouchWorld 的定位差异需另文比对，本笔记不补写。
+2. **层次化预测 ↔「慢脑/快脑/脊髓」对应（推断映射）**：接触状态是"binary and immediate"（L106-107）→ 类似最低延迟的反射级开关（≈脊髓/快通路），只管"是否接触"这一闸门；3D 触觉潜变量编码局部接触几何（L108-110："encoding contact area, pressure distribution, and shear direction"）→ 中等时延的局部形状/力信息（≈快脑/知觉级）；滑移状态"inherently temporal"、由时序窗口判断且进入规划代价（L110-111, L335-336, L357-358）→ 最慢的稳定性评估（≈慢脑/决策级）。支持论文确在此谱系中的旁证：参考文献 [28] 即 "Reactive diffusion policy: Slow-fast visual-tactile policy learning for contact-rich manipulation"（L1026-1027）。但注意：论文通篇未用任何神经科学词汇，此映射纯属我方解释。
+3. **"只在接触时融合触觉"是全文统一的 L1 设计**：同一接触门控复用于三处——注意力融合（Eq. 12）、规划代价（Eq. 15）、以及触觉监督的激活（L323-325）。支持句 L102-103："fusing tactile signals only when they carry meaningful evidence."【推断】这与"天然约束：触觉仅在接触时携带物理含义"（L42-44）一致，是本文区别于朴素融合的核心抽象。
+4. **失败轨迹占比 30% 的评估口径**：L603-609 明确说评估包含失败 episode，用于检验"captures fine-grained physical dynamics rather than overfitting to successful demonstrations"。【推断】该口径使 LPIPS 等指标比只测成功轨迹更苛刻，与 TouchWorld 类工作强调接触过渡期一致（Table II 专门报告 contact transition 阶段）。
+5. **滑移极不平衡（0.93%）的处理**：focal loss α=0.95/γ=2.0（L353-354），且仅在接触帧计算（L355-356）。【推断】这解释了为何滑移原始准确率 99.7% 但论文只主张 F1 83.4%（L726-729），读表时不应只看 Acc。
+
+## 9. 图注 / 表注逐字抄录
+
+**Fig. 1（L89-94）**：
+> "Fig. 1. Overview of FeelWorld. Left: multi-view visual observations, 3D tactile point clouds, and robot actions are encoded and fused to jointly predict future visual observations and hierarchical tactile states, including contact, 3D tactile latents, and slip. Right: contact-aware CEM planning consistently outperforms vision-only and naive visuo-tactile baselines across all tasks."
+
+**Fig. 2（L280-283）**：
+> "Fig. 2. Architecture of FeelWorld. Visual observations, tactile observations, and actions are encoded into latent tokens. Hierarchical tactile modeling decomposes touch into explicitly supervised contact states, 3D tactile latents, and slip states. Contact-gated asymmetric attention preserves visual prediction before contact and enables joint visuo-tactile prediction during contact. Autoregressive rollout training with context noise injection improves long-horizon robustness."
+
+**Fig. 3（L521-525）**：
+> "Fig. 3. Robot platform. The Imeta-Y1 robot is equipped with three RGB cameras and DM tactile sensors. FeelWorld uses the left external camera to observe the global state and the wrist-mounted camera to provide local observations. The DM tactile sensor captures 3D tactile point clouds and contact states."
+
+**Fig. 4（L596-597）**：
+> "Fig. 4. Qualitative visualizations of FeelWorld. The model predicts future visual observations together with three tactile states: contact state, 3D tactile latent, and slip state. These tactile states change according to the interaction context and robot action."
+
+**Fig. 5（L689-692）**：
+> "Fig. 5. Long-horizon autoregressive visual prediction. At step 80, FeelWorld improves PSNR and SSIM over Vision Only by 6.70 dB and 0.115, while reducing LPIPS and MAE by 61% and 62%. The shaded region marks the long-horizon regime."
+
+**Fig. 6（L786-790）**：
+> "Fig. 6. Visualization of contact-gated prediction during a USB insertion episode. (a) Multi-stage visual rollout. (b) Ground-truth and predicted contact states. (c) Ground-truth and predicted slip states. (d) Gated visuo-tactile cross-attention for the external and wrist camera views. (e) Hard contact-gate activation over time."
+
+**Fig. 7（L836-840）**：
+> "Fig. 7. CEM planning curves over a 50-step execution. The plots show total loss (left) and tactile loss (right). At each replanning cycle, CEM optimizes a 6-step imagined horizon and executes the first two actions. The dotted line and gray band mark the median and interquartile range of contact-gate activation."
+
+**Table I（L563-564）**："TABLE I — 10-STEP ROLLOUT QUALITY ACROSS VISUAL BASELINES AND FEELWORLD ABLATIONS."，表头行 L566："Method Tac. Hier. Gate PSNR↑ SSIM↑ LPIPS↓ FID↓ FVD↓ Chamfer↓ Contact F1↑ Slip F1↑"
+
+**Table II（L627-630）**："TABLE II — VISUAL PREDICTION AROUND CONTACT TRANSITIONS. CONTACT-ONSET ERROR MEASURES THE DEVIATION FROM GROUND-TRUTH ONSET TIME."
+
+**Table III（L731-733）**："TABLE III — CONTACT AND SLIP STATE PREDICTION OVER ALL TEST FRAMES. ONSET AND OFFSET ERRORS ARE IN FRAMES AT 6FPS."
+
+**Table IV（L841-842）**："TABLE IV — ZERO-SHOT CEM PLANNING SUCCESS RATES."
+
+**Algorithm 1** 全文见 4.5 节。
+
+---
+*笔记完成。数值全部照抄原文，未四舍五入。*

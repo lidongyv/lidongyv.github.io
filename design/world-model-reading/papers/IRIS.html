@@ -1,0 +1,568 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IRIS 精读笔记：Transformers are Sample-Efficient World Models · 世界模型调研与精读</title>
+<link rel="stylesheet" href="../style.css"></head><body>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次3 · T2 潜表征/离散token</div><h1>IRIS 精读笔记：Transformers are Sample-Efficient World Models</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2209.00588</span> <a href="https://arxiv.org/abs/2209.00588">arXiv 页面</a> · <a href="txt/IRIS.txt">提取正文 txt</a></div><blockquote>
+<p>数据源：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\IRIS.txt</code>（922 行，arXiv 2209.00588，ICLR 2023）
+引用格式：所有英文原句逐字复制自 txt 并标注行号 L 起始–结束；原文未写处明确标注「原文未写」；本人解读标注【推断】。该 txt 由 PDF 抽取，存在连字（ﬁ/ﬂ）、上下标丢失、单词粘连（如 "closestembedding"）等抽取伪影，抄录时保留原样并加注，不猜测补全。</p>
+</blockquote>
+<hr />
+<h2>1) 原文信息</h2>
+<ul>
+<li>标题（L2–3，小写体标题抽取后有伪影，原文应为 "Transformers are Sample-Efficient World Models"）：<blockquote>
+<p>L2–3: "TRANSFORMERS ARE SAMPLE -E FFICIENT / WORLD MODELS"</p>
+</blockquote>
+</li>
+<li>作者与机构（L4–9）：<blockquote>
+<p>L4: "Vincent Micheli∗"
+L5: "University of Geneva"
+L6: "Eloi Alonso∗"
+L7: "University of Geneva"
+L8: "François Fleuret"
+L9: "University of Geneva"</p>
+</blockquote>
+</li>
+<li>共同一作说明（L54）：<blockquote>
+<p>L54: "∗Equal contributions, order determined by a coin ﬂip. Correspondence: {first.last}@unige.ch"</p>
+</blockquote>
+</li>
+<li>ID（L56）：<blockquote>
+<p>L56: "arXiv:2209.00588v2  [cs.LG]  1 Mar 2023"</p>
+</blockquote>
+</li>
+<li>发表状态（L1、L57）：<blockquote>
+<p>L1: "Published as a conference paper at ICLR 2023"（同句亦见于 L57，为每页页眉）</p>
+</blockquote>
+</li>
+</ul>
+<h2>2) Abstract 全文逐字（L10–24）</h2>
+<blockquote>
+<p>"Deep reinforcement learning agents are notoriously sample inefﬁcient, which considerably limits their application to real-world problems. Recently, many model-based methods have been designed to address this issue, with learning in the imagination of a world model being one of the most prominent approaches. However, while virtually unlimited interaction with a simulated environment sounds appealing, the world model has to be accurate over extended periods of time. Motivated by the success of Transformers in sequence modeling tasks, we introduce IRIS , a data-efﬁcient agent that learns in a world model composed of a discrete autoencoder and an autoregressive Transformer. With the equivalent of only two hours of gameplay in the Atari 100k benchmark, IRIS achieves a mean human normalized score of 1.046, and outperforms humans on 10 out of 26 games, setting a new state of the art for methods without lookahead search. To foster future research on Transformers and world models for sample-efﬁcient reinforcement learning, we release our code and models at https://github.com/eloialonso/iris."</p>
+</blockquote>
+<p>说明：Abstract 全文可读，无乱码；仅 "IRIS ," 处逗号前空格为斜体抽取伪影，"inefﬁcient" 等含连字 ﬁ/ﬂ。</p>
+<h2>3) 问题与动机：为什么离散 token 世界模型样本高效</h2>
+<p>论文的样本效率论证分三层。第一层，深度 RL 天然低样本效率，而"在想象中学习"能摆脱该约束：</p>
+<blockquote>
+<p>L31–34: "However, a common drawback of these methods is their extremely low sample efﬁciency. Indeed, experience requirements range from months of gameplay for DreamerV2 (Hafner et al., 2021) in Atari 2600 games (Bellemare et al., 2013b) to thousands of years for OpenAI Five in Dota2 (Berner et al., 2019)."
+L41–44: "The latter approach is particularly appealing because training an agent inside a world model frees it from sample efﬁciency constraints. Nevertheless, this framework relies heavily on accurate world models since the policy is purely trained in imagination."</p>
+</blockquote>
+<p>第二层，为什么选 Transformer：它擅长序列建模，但直接以像素为 token 在计算上不可行，须先做离散压缩：</p>
+<blockquote>
+<p>L102–103: "Transformers particularly shine when they operate over sequences of discrete tokens (Devlin et al., 2019; Brown et al., 2020b)."
+L105–106: "A naive approach would consist in treating pixels as image tokens, but standard Transformer architectures scale quadratically with sequence length, making this idea computationally intractable."
+L107–110: "To address this issue, VQGAN (Esser et al., 2021) and DALL -E (Ramesh et al., 2021) employ a discrete autoencoder (Van Den Oord et al., 2017) as a mapping from raw pixels to a much smaller amount of image tokens. Combined with an autoregressive Transformer, these methods demonstrate strong unconditional and conditional image generation capabilities. Such results suggest a new approach to design world models."</p>
+</blockquote>
+<p>第三层，IRIS 的定位：把动力学学习当成序列建模问题（"token 语言 + 时序组合"）：</p>
+<blockquote>
+<p>L115–116: "Our approach casts dynamics learning as a sequence modeling problem, where an autoencoder builds a language of image tokens and a Transformer composes that language over time."</p>
+</blockquote>
+<p>需要说明：论文没有一句直接宣称"离散 token 本身带来样本效率"的因果句；其样本效率主张来自"在想象中训练"这一框架（L41–43）叠加"世界模型只需少量真实样本即可准确"（见 L18–22、L461–466 伦理段："we propose a world model architecture capable of accurately modeling environments with very few samples"）。离散 token 的动机是"适配 Transformer 的强项"（L102）而非样本效率本身。</p>
+<h2>4) 方法逐机制</h2>
+<p>问题形式化为 POMDP（L131–135，数学符号上下标有抽取丢失伪影，原文形如 "xt∈ Rh×w×3, discrete actionsat∈{ 1,...,A }, scalar rewardsrt∈ R, episode terminationdt∈{ 0, 1}, discount factorγ∈ (0, 1)..."）。训练三组件三步循环：</p>
+<blockquote>
+<p>L136–139: "Our method relies on the three standard components to learn in imagination (Sutton &amp; Barto, 2018): experience collection, world model learning, and behavior learning."
+L141–143: "• collect_experience: gather experience in the real environment with the current policy. / • update_world_model: improve rewards, episode ends and next observations predictions. / • update_behavior: in imagination, improve the policy and value functions."</p>
+</blockquote>
+<p><strong>① 离散自编码器（VQ-VAE 式 tokenizer，L152–174）</strong></p>
+<blockquote>
+<p>L153–154: "The discrete autoencoder (E,D ) learns a symbolic language of its own to represent high-dimensional images as a small number of tokens."</p>
+</blockquote>
+<p>编码器把图像变为 K 个 token，取最近邻嵌入（L165–169 含伪影，抄录可读部分）：</p>
+<blockquote>
+<p>L165: "More precisely, the encoder E : Rh×w×3 →{ 1,...,N }K converts an input image xt into K tokens from a vocabulary of size N."
+L167–169（有抽取伪影，标注如下）: "The input image xt is ﬁrst passed through a Convolutional Neural Network ( CNN) (LeCun et al., 1989) producing output yt ∈ RK×d. We then obtain the output tokenszt = (z1t,...,z Kt )∈{ 1,...,N }K aszkt = argmini‖‖ykt−ei‖‖2, the index of the closestembedding vector inE" —— "argmini"、"closestembedding" 为 PDF 抽取伪影/乱码（应为 argmin_i、closest embedding，系下标与空格丢失），公式其余部分不猜测补全。</p>
+</blockquote>
+<p>损失与训练：</p>
+<blockquote>
+<p>L171–174: "This discrete autoencoder is trained on previously collected frames, with an equally weighted combination of aL1 reconstruction loss, a commitment loss (Van Den Oord et al., 2017; Esser et al., 2021), and a perceptual loss (Esser et al., 2021; Johnson et al., 2016; Larsen et al., 2016). We use a straight-through estimator (Bengio et al., 2013) to enable backpropagation training."</p>
+</blockquote>
+<p>附录 A 给出精确损失（L661–665，公式中上标 2 被抽成 "22"，即 L2 范数，标注伪影不补全）：</p>
+<blockquote>
+<p>L661–665: "The training objective is the following: L(E,D,E) = ‖‖x−D(z)‖‖1 +‖‖sg(E(x))−E (z)‖‖22 +‖‖sg(E(z))−E(x)‖‖22 +Lperceptual(x,D (z)) Here, the ﬁrst term is the reconstruction loss, the next two terms constitute the commitment loss (where sg(·) is the stop-gradient operator), and the last term is the perceptual loss."
+L658–660: "Our discrete autoencoder is based on the implementation of VQGAN (Esser et al., 2021). We removed the discriminator, essentially turning the VQGAN into a vanilla VQVAE (Van Den Oord et al., 2017) with an additional perceptual loss (Johnson et al., 2016; Larsen et al., 2016)."</p>
+</blockquote>
+<p>关键超参（Table 2/3）：帧尺寸 64×64；词汇表 N=512；每帧 K=16 token；嵌入维度 d=512；自注意力层在分辨率 8/16（L666–678）。</p>
+<p><strong>② 自回归 Transformer 动力学模型 G（L175–198）</strong></p>
+<blockquote>
+<p>L176–177: "At a high level, the TransformerG captures the environment dynamics by modeling the language of the discrete autoencoder over time."
+L179–181: "Speciﬁcally, G operates over sequences of interleaved frame and action tokens. An input sequence (z10,...,z K0 ,a 0,z 11,...,z K1 ,a 1,...,z 1t,...,z Kt ,at) is obtained from the raw sequence (x0,a 0,x 1,a 1,...,x t,at) by encoding the frames withE, as described in Section 2.1."</p>
+</blockquote>
+<p>每个时间步预测三个分布（L182–193）：</p>
+<blockquote>
+<p>L182–195: "At each time stept, the Transformer models the three following distributions: / Transition: ˆzt+1∼pG(ˆzt+1|z≤t,a ≤t) with ˆzkt+1∼pG(ˆzkt+1|z≤t,a ≤t,z&lt;kt+1) (1) / Reward: ˆrt ∼pG(ˆrt |z≤t,a ≤t) (2) / Termination: ˆdt ∼pG( ˆdt |z≤t,a ≤t) (3) / Note that the conditioning for thek-th token also includesz&lt;kt+1 := (z1t+1,...,z k−1t+1 ), the tokens that were already predicted, i.e. the autoregressive process happens at the token level."
+L196–198: "We trainG in a self-supervised manner on segments ofL time steps, sampled from past experience. We use a cross-entropy loss for the transition and termination predictors, and a mean-squared error loss or a cross-entropy loss for the reward predictor, depending on the reward function."</p>
+</blockquote>
+<p>Transformer 基于 minGPT、GPT2 式 block（L682–688），超参（Table 4，L691–700）：时间步 L=20、嵌入维度 D=256、层数 M=10、注意力头 4、weight decay 0.01、三类 dropout 均 0.1。</p>
+<p><strong>③ Actor-Critic 在想象中学习（L199–227 + Appendix B）</strong></p>
+<blockquote>
+<p>L200–202: "Together, the discrete autoencoder (E,D ) and the Transformer G form a world model, capable of imagination. The policy π, depicted with purple arrows in Figure 1, exclusively learns in this imagination MDP."
+L213–216: "At time stept, the policy observes a reconstructed image observation ˆxt and samples actionat∼π(at|ˆx≤t). The world model then predicts the reward ˆrt, the episode end ˆdt, and the next observation ˆxt+1 =D(ˆzt+1), with ˆzt+1∼pG(ˆzt+1|z0,a 0, ˆz1,a 1,..., ˆzt,at). This imagination procedure is initialized with a real observationx0 sampled from past experience, and is rolled out for H steps, the imagination horizon hyperparameter."</p>
+</blockquote>
+<p>价值网络为有限想象视野做 bootstrap（L219–223，其中 "V (ˆxt)≃ Eπ[∑τ ≥tγτ −tˆrτ]" 上下标有抽取伪影）。RL 目标直接借用 DreamerV2：</p>
+<blockquote>
+<p>L224–227: "Many actor-critic methods could be employed to trainπ andV in imagination (Sutton &amp; Barto, 2018; Kaiser et al., 2020; Hafner et al., 2020). For the sake of simplicity, we opt for the learning objectives and hyperparameters of DreamerV2 (Hafner et al., 2021), that delivered strong performance in Atari games."</p>
+</blockquote>
+<p>Appendix B 细节：λ-return 作价值回归目标（L731–754，式(4)(5)），策略用带基线 V(ˆxt) 的 REINFORCE + 熵正则（L755–764，式(6)）：</p>
+<blockquote>
+<p>L755–758: "As large amounts of trajectories are generated in the imagination MDP, we can use a straightforward reinforcement learning objective for the policy, such as REINFORCE (Sutton &amp; Barto, 2018). To reduce the variance of REINFORCE gradients, we use the valueV (ˆxt) as a baseline (Sutton &amp; Barto, 2018). We also add a weighted entropy maximization objective to maintain a sufﬁcient exploration."</p>
+</blockquote>
+<p>Actor-Critic 网络：actor/critic 除最后一层外共享权重，CNN 块 + LSTM（隐层 512），burn-in 前 20 帧（L701–708）。RL 超参（Table 6，L766–771）：想象视野 H=20、γ=0.995、λ=0.95、η=0.001。共享超参（Table 5，L709–727）：Epochs 600、# Collection epochs 500、每 epoch 环境步 200、训练步 200、学习率 1e-4、Adam、grad norm 10.0、epsilon-greedy 0.01、eval 采样温度 0.5；自编码器/Transformer/Actor-Critic 分别从 epoch 5/25/50 开始训练。</p>
+<p><strong>与 Dreamer 类世界模型的差异</strong>：论文未作逐点显式对比（未出现 "continuous latent" 之类措辞，grep 确认）。原文仅陈述 DreamerV2 架构事实：</p>
+<blockquote>
+<p>L406–409: "Improving upon Dreamer (Hafner et al., 2020), DreamerV2 (Hafner et al., 2021) was the ﬁrst agent learning in imagination to achieve human-level performance in the Atari 50M benchmark. Its world model combines a convolutional autoencoder with a recurrent state-space model (RSSM) (Hafner et al., 2019) for latent dynamics learning."</p>
+</blockquote>
+<p>以及用 Transformer 替换 RSSM 中循环网络的同期工作：</p>
+<blockquote>
+<p>L410–412: "More recently, Chen et al. (2022) explored a variant of DreamerV2 where a Transformer replaces the recurrent network in the RSSM and Seo et al. (2022) enhance DreamerV2 in the setting where an ofﬂine dataset of videos is available for pretraining."</p>
+</blockquote>
+<p>【推断】IRIS 与 DreamerV2 的实质差异（据原文可推）：DreamerV2 用 RSSM 学潜动态、在潜空间想象；IRIS 把图像离散成 token 序列、用纯自回归 Transformer 在 token 级生成下一帧并同时预测 reward/termination（L182–195），二者都是"在想象中学习"，但世界模型表征形式不同。另注意 IRIS 的 Transformer 不需 Parisotto 等提出的门控改造（L419–420）：</p>
+<blockquote>
+<p>L419–420: "Our world model does not require such modiﬁcations, which is most likely due to its self-supervised learning objective."</p>
+</blockquote>
+<h2>5) 实验与主结果（Atari 100k）</h2>
+<p>基准与协议：</p>
+<blockquote>
+<p>L273–278: "Atari 100k consists of 26 Atari games (Bellemare et al., 2013a) with various mechanics, evaluating a wide range of agent capabilities. In this benchmark, an agent is only allowed 100k actions in each environment. This constraint is roughly equivalent to 2 hours of human gameplay. By way of comparison, unconstrained Atari agents are usually trained for 50 million steps, a 500 fold increase in experience."
+L338–341: "The human normalized score is the established measure of performance in Atari 100k. It is deﬁned as score_agent−score_random / score_human−score_random , where score_random comes from a random policy, and score_human is obtained from human players (Wang et al., 2016)."
+L342–346: "For MuZero and EfﬁcientZero, we report the averaged results published by Ye et al. (2021) (3 runs). We use results from the Atari 100k case study conducted by Agarwal et al. (2021) for the other baselines (100 new runs for CURL, DrQ, SPR, and 5 existing runs for SimPLe). Finally, we evaluate IRIS by computing an average over 100 episodes collected at the end of training for each game (5 runs)."</p>
+</blockquote>
+<p><strong>Table 1 全部抄录</strong>（L236–272；列序：Game | Random | Human | MuZero | EfﬁcientZero | SimPLe | CURL | DrQ | SPR | IRIS）：</p>
+<p>| Game | Random | Human | MuZero | EfﬁcientZero | SimPLe | CURL | DrQ | SPR | IRIS (ours) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Alien | 227.8 | 7127.7 | 530.0 | 808.5 | 616.9 | 711.0 | 865.2 | 841.9 | 420.0 |
+| Amidar | 5.8 | 1719.5 | 38.8 | 148.6 | 74.3 | 113.7 | 137.8 | 179.7 | 143.0 |
+| Assault | 222.4 | 742.0 | 500.1 | 1263.1 | 527.2 | 500.9 | 579.6 | 565.6 | 1524.4 |
+| Asterix | 210.0 | 8503.3 | 1734.0 | 25557.8 | 1128.3 | 567.2 | 763.6 | 962.5 | 853.6 |
+| BankHeist | 14.2 | 753.1 | 192.5 | 351.0 | 34.2 | 65.3 | 232.9 | 345.4 | 53.1 |
+| BattleZone | 2360.0 | 37187.5 | 7687.5 | 13871.2 | 4031.2 | 8997.8 | 10165.3 | 14834.1 | 13074.0 |
+| Boxing | 0.1 | 12.1 | 15.1 | 52.7 | 7.8 | 0.9 | 9.0 | 35.7 | 70.1 |
+| Breakout | 1.7 | 30.5 | 48.0 | 414.1 | 16.4 | 2.6 | 19.8 | 19.6 | 83.7 |
+| ChopperCommand | 811.0 | 7387.8 | 1350.0 | 1117.3 | 979.4 | 783.5 | 844.6 | 946.3 | 1565.0 |
+| CrazyClimber | 10780.5 | 35829.4 | 56937.0 | 83940.2 | 62583.6 | 9154.4 | 21539.0 | 36700.5 | 59324.2 |
+| DemonAttack | 152.1 | 1971.0 | 3527.0 | 13003.9 | 208.1 | 646.5 | 1321.5 | 517.6 | 2034.4 |
+| Freeway | 0.0 | 29.6 | 21.8 | 21.8 | 16.7 | 28.3 | 20.3 | 19.3 | 31.1 |
+| Frostbite | 65.2 | 4334.7 | 255.0 | 296.3 | 236.9 | 1226.5 | 1014.2 | 1170.7 | 259.1 |
+| Gopher | 257.6 | 2412.5 | 1256.0 | 3260.3 | 596.8 | 400.9 | 621.6 | 660.6 | 2236.1 |
+| Hero | 1027.0 | 30826.4 | 3095.0 | 9315.9 | 2656.6 | 4987.7 | 4167.9 | 5858.6 | 7037.4 |
+| Jamesbond | 29.0 | 302.8 | 87.5 | 517.0 | 100.5 | 331.0 | 349.1 | 366.5 | 462.7 |
+| Kangaroo | 52.0 | 3035.0 | 62.5 | 724.1 | 51.2 | 740.2 | 1088.4 | 3617.4 | 838.2 |
+| Krull | 1598.0 | 2665.5 | 4890.8 | 5663.3 | 2204.8 | 3049.2 | 4402.1 | 3681.6 | 6616.4 |
+| KungFuMaster | 258.5 | 22736.3 | 18813.0 | 30944.8 | 14862.5 | 8155.6 | 11467.4 | 14783.2 | 21759.8 |
+| MsPacman | 307.3 | 6951.6 | 1265.6 | 1281.2 | 1480.0 | 1064.0 | 1218.1 | 1318.4 | 999.1 |
+| Pong | -20.7 | 14.6 | -6.7 | 20.1 | 12.8 | -18.5 | -9.1 | -5.4 | 14.6 |
+| PrivateEye | 24.9 | 69571.3 | 56.3 | 96.7 | 35.0 | 81.9 | 3.5 | 86.0 | 100.0 |
+| Qbert | 163.9 | 13455.0 | 3952.0 | 13781.9 | 1288.8 | 727.0 | 1810.7 | 866.3 | 745.7 |
+| RoadRunner | 11.5 | 7845.0 | 2500.0 | 17751.3 | 5640.6 | 5006.1 | 11211.4 | 12213.1 | 9614.6 |
+| Seaquest | 68.4 | 42054.7 | 208.0 | 1100.2 | 683.3 | 315.2 | 352.3 | 558.1 | 661.3 |
+| UpNDown | 533.4 | 11693.2 | 2896.9 | 17264.2 | 3350.3 | 2646.4 | 4324.5 | 10859.2 | 3546.2 |
+| #Superhuman (↑) | 0 | N/A | 5 | 14 | 1 | 2 | 3 | 6 | 10 |
+| Mean (↑) | 0.000 | 1.000 | 0.562 | 1.943 | 0.332 | 0.261 | 0.465 | 0.616 | 1.046 |
+| Median (↑) | 0.000 | 1.000 | 0.227 | 1.090 | 0.134 | 0.092 | 0.313 | 0.396 | 0.289 |
+| IQM (↑) | 0.000 | 1.000 | N/A | N/A | 0.130 | 0.113 | 0.280 | 0.337 | 0.501 |
+| Optimality Gap (↓) | 1.000 | 0.000 | N/A | N/A | 0.729 | 0.768 | 0.631 | 0.577 | 0.512 |</p>
+<p>表题（L236–239）：</p>
+<blockquote>
+<p>"Table 1: Returns on the 26 games of Atari 100k after 2 hours of real-time experience, and human-normalized aggregate metrics. Bold numbers indicate the top methods without lookahead search while underlined numbers specify the overall best methods. IRIS outperforms learning-only methods in terms of number of superhuman games, mean, interquartile mean (IQM), and optimality gap."</p>
+</blockquote>
+<p>主结果（相对 SPR 的提升幅度）：</p>
+<blockquote>
+<p>L352–357: "With the equivalent of only two hours of gameplay, IRIS achieves a superhuman mean score of 1.046 (+70%), an IQM of 0.501 (+49%), an optimality gap of 0.512 (+11%), and outperforms human players on 10 out of 26 games (+67%), where the relative improvements are computed with respect to SPR (Schwarzer et al., 2021). These results constitute a new state of the art for methods without lookahead search in the Atari 100k benchmark. We also note that IRIS outperforms MuZero, although the latter was not designed for the sample-efﬁcient regime."</p>
+</blockquote>
+<p>统计稳健性（性能剖面与改进概率）：</p>
+<blockquote>
+<p>L368–371: "In addition, performance proﬁles (Figure 6a) reveal that IRIS is on par with the strongest baselines for its bottom 50% of games, at which point it stochastically dominates (Agarwal et al., 2021; Dror et al., 2019) the other methods. Similarly, the probability of improvement is greater than 0.5 for all baselines (Figure 6b)."
+L372–374: "In terms of median score, IRIS overlaps with other methods (Figure 5). Interestingly, Schwarzer et al. (2021) note that the median is only inﬂuenced by a few decisive games, as evidenced by the width of the conﬁdence intervals for median scores, even with 100 runs for DrQ, CURL and SPR."</p>
+</blockquote>
+<h2>6) 消融 / 变体实验（原文无 "ablation" 章节；grep 确认 "ablat" 零命中；以下为附录变体实验，全部抄录）</h2>
+<p><strong>Appendix E：每帧 token 数 16 → 64（L821–844）</strong></p>
+<blockquote>
+<p>L822–827: "The sequence length of the Transformer is determined by the number of tokens used to encode a single frame and the number of timesteps in memory. Increasing the number of tokens per frame results in better reconstructions, although it requires more compute and memory. This tradeoff is particularly important in visually challenging games with a high number of possible conﬁgurations, where the discrete autoencoder struggles to properly encode frames with only 16 tokens. For instance, Figure 9 shows that, when increasing the number of tokens per frame to 64 in Alien, the discrete autoencoder correctly reconstructs the player, its enemies, and rewards."
+L835–839: "Table 7 displays the ﬁnal performance of IRIS trained with 64 tokens per frame in three games. Interestingly, even though the world model is more accurate, the performance in Alien only increases marginally (+36%). This observation suggests that Alien poses a hard reinforcement learning problem, as evidenced by the low performance of other baselines in that game. On the contrary, IRIS greatly beneﬁts from having more tokens per frame for Asterix (+121%) and BankHeist (+432%)."</p>
+</blockquote>
+<p><strong>Table 7 全部抄录</strong>（L840–844）：</p>
+<table>
+<thead>
+<tr>
+<th>Game</th>
+<th>Random</th>
+<th>Human</th>
+<th>SimPLe</th>
+<th>CURL</th>
+<th>DrQ</th>
+<th>SPR</th>
+<th>IRIS (16 tokens)</th>
+<th>IRIS (64 tokens)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Alien</td>
+<td>227.8</td>
+<td>7127.7</td>
+<td>616.9</td>
+<td>711.0</td>
+<td>865.2</td>
+<td>841.9</td>
+<td>420.0</td>
+<td>570.0</td>
+</tr>
+<tr>
+<td>Asterix</td>
+<td>210.0</td>
+<td>8503.3</td>
+<td>1128.3</td>
+<td>567.2</td>
+<td>763.6</td>
+<td>962.5</td>
+<td>853.6</td>
+<td>1890.4</td>
+</tr>
+<tr>
+<td>BankHeist</td>
+<td>14.2</td>
+<td>753.1</td>
+<td>34.2</td>
+<td>65.3</td>
+<td>232.9</td>
+<td>345.4</td>
+<td>53.1</td>
+<td>282.5</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Appendix F：数据扩展 100k → 10M（L847–891）</strong></p>
+<blockquote>
+<p>L848–853: "In this experiment, we investigate data scaling properties by increasing the number of environment steps from 100k to 10M. However, to maintain a training time within our computational resources, we lower the ratio of optimization steps per environment steps from 1:1 to 1:50. As a consequence, the results of this experiment at 100k frames would be worse than those reported in the paper."</p>
+</blockquote>
+<p><strong>Table 8 全部抄录</strong>（L854–886）：</p>
+<table>
+<thead>
+<tr>
+<th>Game</th>
+<th>Random</th>
+<th>Human</th>
+<th>IRIS (100k)</th>
+<th>IRIS (10M)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Alien</td>
+<td>227.8</td>
+<td>7127.7</td>
+<td>420.0</td>
+<td>1003.1</td>
+</tr>
+<tr>
+<td>Amidar</td>
+<td>5.8</td>
+<td>1719.5</td>
+<td>143.0</td>
+<td>213.4</td>
+</tr>
+<tr>
+<td>Assault</td>
+<td>222.4</td>
+<td>742.0</td>
+<td>1524.4</td>
+<td>9355.6</td>
+</tr>
+<tr>
+<td>Asterix</td>
+<td>210.0</td>
+<td>8503.3</td>
+<td>853.6</td>
+<td>6861.0</td>
+</tr>
+<tr>
+<td>BankHeist</td>
+<td>14.2</td>
+<td>753.1</td>
+<td>53.1</td>
+<td>921.6</td>
+</tr>
+<tr>
+<td>BattleZone</td>
+<td>2360.0</td>
+<td>37187.5</td>
+<td>13074.0</td>
+<td>34562.5</td>
+</tr>
+<tr>
+<td>Boxing</td>
+<td>0.1</td>
+<td>12.1</td>
+<td>70.1</td>
+<td>98.0</td>
+</tr>
+<tr>
+<td>Breakout</td>
+<td>1.7</td>
+<td>30.5</td>
+<td>83.7</td>
+<td>493.9</td>
+</tr>
+<tr>
+<td>ChopperCommand</td>
+<td>811.0</td>
+<td>7387.8</td>
+<td>1565.0</td>
+<td>9814.0</td>
+</tr>
+<tr>
+<td>CrazyClimber</td>
+<td>10780.5</td>
+<td>35829.4</td>
+<td>59324.2</td>
+<td>111068.8</td>
+</tr>
+<tr>
+<td>DemonAttack</td>
+<td>152.1</td>
+<td>1971.0</td>
+<td>2034.4</td>
+<td>96218.6</td>
+</tr>
+<tr>
+<td>Freeway</td>
+<td>0.0</td>
+<td>29.6</td>
+<td>31.1</td>
+<td>34.0</td>
+</tr>
+<tr>
+<td>Frostbite</td>
+<td>65.2</td>
+<td>4334.7</td>
+<td>259.1</td>
+<td>290.3</td>
+</tr>
+<tr>
+<td>Gopher</td>
+<td>257.6</td>
+<td>2412.5</td>
+<td>2236.1</td>
+<td>97370.6</td>
+</tr>
+<tr>
+<td>Hero</td>
+<td>1027.0</td>
+<td>30826.4</td>
+<td>7037.4</td>
+<td>19212.0</td>
+</tr>
+<tr>
+<td>Jamesbond</td>
+<td>29.0</td>
+<td>302.8</td>
+<td>462.7</td>
+<td>5534.4</td>
+</tr>
+<tr>
+<td>Kangaroo</td>
+<td>52.0</td>
+<td>3035.0</td>
+<td>838.2</td>
+<td>1793.8</td>
+</tr>
+<tr>
+<td>Krull</td>
+<td>1598.0</td>
+<td>2665.5</td>
+<td>6616.4</td>
+<td>7344.0</td>
+</tr>
+<tr>
+<td>KungFuMaster</td>
+<td>258.5</td>
+<td>22736.3</td>
+<td>21759.8</td>
+<td>39643.8</td>
+</tr>
+<tr>
+<td>MsPacman</td>
+<td>307.3</td>
+<td>6951.6</td>
+<td>999.1</td>
+<td>1233.0</td>
+</tr>
+<tr>
+<td>Pong</td>
+<td>-20.7</td>
+<td>14.6</td>
+<td>14.6</td>
+<td>21.0</td>
+</tr>
+<tr>
+<td>PrivateEye</td>
+<td>24.9</td>
+<td>69571.3</td>
+<td>100.0</td>
+<td>100.0</td>
+</tr>
+<tr>
+<td>Qbert</td>
+<td>163.9</td>
+<td>13455.0</td>
+<td>745.7</td>
+<td>4012.1</td>
+</tr>
+<tr>
+<td>RoadRunner</td>
+<td>11.5</td>
+<td>7845.0</td>
+<td>9614.6</td>
+<td>30609.4</td>
+</tr>
+<tr>
+<td>Seaquest</td>
+<td>68.4</td>
+<td>42054.7</td>
+<td>661.3</td>
+<td>1815.0</td>
+</tr>
+<tr>
+<td>UpNDown</td>
+<td>533.4</td>
+<td>11693.2</td>
+<td>3546.2</td>
+<td>114690.1</td>
+</tr>
+<tr>
+<td>#Superhuman (↑)</td>
+<td>0</td>
+<td>N/A</td>
+<td>10</td>
+<td>15</td>
+</tr>
+<tr>
+<td>Mean (↑)</td>
+<td>0.000</td>
+<td>1.000</td>
+<td>1.046</td>
+<td>7.488</td>
+</tr>
+<tr>
+<td>Median (↑)</td>
+<td>0.000</td>
+<td>1.000</td>
+<td>0.289</td>
+<td>1.207</td>
+</tr>
+<tr>
+<td>IQM (↑)</td>
+<td>0.000</td>
+<td>1.000</td>
+<td>0.501</td>
+<td>2.239</td>
+</tr>
+<tr>
+<td>Optimality Gap (↓)</td>
+<td>1.000</td>
+<td>0.000</td>
+<td>0.512</td>
+<td>0.282</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>L887–891: "Table 8 illustrates that increasing the number of environment steps from 100k to 10M drastically improves performance for most games, providing evidence that IRIS could be scaled up beyond the sample-efﬁcient regime. On some games, more data only yields marginal improvements, most likely due to hard exploration problems or visually challenging domains that would beneﬁt from a higher number of tokens to encode frames (Appendix E)."</p>
+</blockquote>
+<p><strong>Appendix H：Freeway 的探索处理（L907–921）</strong></p>
+<blockquote>
+<p>L914–921: "The solution to this problem is actually straightforward and simply requires stretches of time when the UP action is oversampled. Most Atari 100k baselines ﬁx the issue with epsilon-greedy schedules and argmax action selection, where at some point the network conﬁguration will be such that the UP action is heavily favored. In this work, we opted for the simpler strategy of having a ﬁxed epsilon-greedy parameter and sampling from the policy. However, we lowered the sampling temperature from 1 to 0.01 for Freeway, in order to avoid random walks that would not be conducive to learning in the early stages of training. As a consequence, once it received its ﬁrst few rewards through exploration, IRIS was able to internalize the sparse reward function in its world model."</p>
+</blockquote>
+<h2>7) 局限与未来工作（原文逐字）</h2>
+<p>结论中的未来工作（L443–448）：</p>
+<blockquote>
+<p>"In the future, IRIS could be scaled up to computationally demanding and challenging tasks that would beneﬁt from the speed of its world model. Besides, its policy currently learns from reconstructed frames, but it could probably leverage the internal representations of the world model. Another exciting avenue of research would be to combine learning in imagination with MCTS. Indeed, both approaches deliver impressive results, and their contributions to agent performance might be complementary."</p>
+</blockquote>
+<p>结果分析中明确指出的局限——双重探索问题与视觉困难游戏（L375–385）：</p>
+<blockquote>
+<p>"We observe that IRIS is particularly strong in games that do not suffer from distributional shifts as the training progresses. Examples of such games include Pong, Breakout, and Boxing. On the contrary, the agent struggles when a new level or game mechanic is unlocked through an unlikely event. This sheds light on a double exploration problem. IRIS has to ﬁrst discover a new aspect of the game for its world model to internalize it. Only then may the policy rediscover and exploit it. Figure 7 details this phenomenon in Frostbite and Krull, two games with multiple levels. In summary, as long as transitions between levels do not depend on low-probability events, the double exploration problem does not hinder performance."
+L383–385: "Another kind of games difﬁcult to simulate are visually challenging environments where capturing small details is important. As discussed in Appendix E, increasing the number of tokens to encode frames improves performance, albeit at the cost of increased computation."</p>
+</blockquote>
+<p>Figure 7 图注补充（L360–367）：</p>
+<blockquote>
+<p>"Three consecutive levels in the games Frostbite (left) and Krull (right). In our experiments, the world model struggles to simulate subsequent levels in Frostbite, but not in Krull. Indeed, exiting the ﬁrst level in Frostbite requires a long and unlikely sequence of actions to ﬁrst build the igloo, and then go back to it from the bottom of the screen. Such rare events prevent the world model from internalizing new aspects of the game, which will therefore not be experienced by the policy in imagination. While Krull features more diverse levels, the world model successfully reﬂects this variety, and IRIS even sets a new state of the art in this environment. This is likely due to more frequent transitions from one stage to the next inKrull, resulting in a sufﬁcient coverage of each level."</p>
+</blockquote>
+<p>（计算资源说明见 Appendix G L894–906：8 张 Nvidia A100 40GB，单环境约 3.5 天；SimPLe 用 P100 单环境 3 周；SPR 用 P100 训练 4.6 小时。）</p>
+<h2>8) 叙事关联【推断，5 条】</h2>
+<ol>
+<li>
+<p>【推断】IRIS 是离散 token 世界模型路线的关键前作节点之一，且与 DIAMOND 存在作者连续性：DIAMOND 的第一作者 Eloi Alonso 即本文共同一作（L6 "Eloi Alonso∗"），IRIS 的代码仓库也托管在其名下（L24 "https://github.com/eloialonso/iris"）。但 DIAMOND 本身在原文中未被提及——「原文未写」；全文亦无 "diffusion" 一词（grep 确认零命中），DIAMOND 的扩散世界模型技术在此文中无任何对应表述。全文唯一的 "diamond" 出现于参考文献 L549–553 的 "Minerl diamond 2021 competition: Overview, results, and lessons learned"，指 MineRL Diamond 2021 竞赛，与 DIAMOND 世界模型无关。</p>
+</li>
+<li>
+<p>【推断】IRIS 提出的「图像 token 语言 + 自回归 Transformer」组合（L115–116）正是 DIAMOND 类 token 化世界模型的架构先例；IRIS 将其命名为 "Imagination with auto-Regression over an Inner Speech"（L112），「inner speech（内心语言）」的隐喻即把世界模型想象定义为符号序列的生成，后续 token 世界模型延续了这条叙事。支持原句：L112 "we introduce IRIS (Imagination with auto-Regression over an Inner Speech)"; L153–154 "The discrete autoencoder (E,D ) learns a symbolic language of its own to represent high-dimensional images as a small number of tokens."</p>
+</li>
+<li>
+<p>【推断】IRIS 预留的扩展方向（政策直接使用世界模型内部表征、增大 token 数、10M 数据扩展、与 MCTS 结合）预示了后续工作的规模与技术路线；其中「策略目前只从重建帧学习」这一点在后续工作中被改造（如 DIAMOND 在潜空间训练扩散与策略）。支持原句：L444–445 "its policy currently learns from reconstructed frames, but it could probably leverage the internal representations of the world model"; L848–849 "IRIS can be scaled up by increasing the number of tokens used to encode frames, adding capacity to the model, taking more optimization steps per environment steps, or using more data."</p>
+</li>
+<li>
+<p>【推断】IRIS 确立了「2 小时经验 = 人类水平（Mean 1.046）」的 Atari 100k 标杆，成为后续 token/扩散世界模型论文对标的核心数字。支持原句：L19–22 "With the equivalent of only two hours of gameplay in the Atari 100k benchmark, IRIS achieves a mean human normalized score of 1.046, and outperforms humans on 10 out of 26 games, setting a new state of the art for methods without lookahead search."</p>
+</li>
+<li>
+<p>【推断】IRIS 把「无 lookahead search」设为独立赛道（区别于 MuZero/EfficientZero），DIAMOND 继承的正是这条无搜索的想象路线；而 IRIS 把 MCTS 结合列为未来方向（L446–448），后续工作选择的是扩散替换 token 生成而非搜索，二者互补关系在原文已埋下。支持原句：L21–22 "setting a new state of the art for methods without lookahead search"; L446–448 "Another exciting avenue of research would be to combine learning in imagination with MCTS. Indeed, both approaches deliver impressive results, and their contributions to agent performance might be complementary."</p>
+</li>
+</ol>
+<h2>9) 图注 / 表注逐字抄录</h2>
+<p><strong>Figure 1</strong>（L83–96，其中数学符号上下标有抽取伪影，抄录保持原样）：</p>
+<blockquote>
+<p>"Unrolling imagination over time. This ﬁgure shows the policy π, depicted with purple arrows, taking a sequence of actions in imagination. The green arrows correspond to the encoder E and the decoder D of a discrete autoencoder, whose task is to represent frames in its learnt symbolic language. The backboneG of the world model is a GPT-like Transformer, illustrated with blue arrows. For each action that the policy π takes,G simulates the environment dynamics, by autoregressively unfolding new frame tokens that D can decode. G also predicts a reward and a potential episode termination. More speciﬁcally, an initial framex0 is encoded withE into tokens z0 = (z10,...,z K0 ) = E(x0). The decoder D reconstructs an image ˆx0 =D(z0), from which the policyπ predicts the action a0. From z0 anda0, G predicts the reward ˆr0, episode termination ˆd0∈{ 0, 1}, and in an autoregressive manner ˆz1 = (ˆz11,..., ˆzK1 ), the tokens for the next frame. A dashed box indicates image tokens for a given time step, whereas a solid box represents the input sequence ofG, i.e. (z0,a 0) att = 0, (z0,a 0, ˆz1,a 1) att = 1, etc. The policy π is purely trained with imagined trajectories, and is only deployed in the real environment to improve the world model (E,D,G )."</p>
+</blockquote>
+<p><strong>Figure 2</strong>（L124–129）：</p>
+<blockquote>
+<p>"Four imagined trajectories in KungFuMaster. We use the same conditioning frame across the four rows, in green, and let the world model imagine the rest. As the initial frame only contains the player, there is no information about the enemies that will come next. Consequently, the world model generates different types and numbers of opponents in each simulation. It is also able to reﬂect an essential game mechanic, highlighted in the blue box, where the ﬁrst enemy disappears after getting hit by the player."</p>
+</blockquote>
+<p><strong>Figure 3</strong>（L158–164）：</p>
+<blockquote>
+<p>"Pixel perfect predictions in Pong. The top row displays a test trajectory collected in the real environment. The bottom row depicts the reenactment of that trajectory inside the world model. More precisely, we condition the world model with the ﬁrst two frames of the true sequence, in green. We then sequentially feed it the true actions and let it imagine the subsequent frames. After only 120 games of training, the world model perfectly simulates the ball’s trajectory and players’ movements. Notably, it also captures the game mechanic of updating the scoreboard after winning an exchange, as shown in the blue box."</p>
+</blockquote>
+<p><strong>Figure 4</strong>（L205–212）：</p>
+<blockquote>
+<p>"Imagining rewards and episode ends in Breakout (top) and Gopher (bottom). Each row depicts an imagined trajectory initialized with a single frame from the real environment. Yellow boxes indicate frames where the world model predicts a positive reward. In Breakout, it captures that breaking a brick yields rewards, and the brick is correctly removed from the following frames. In Gopher, the player has to protect the carrots from rodents. The world model successfully internalizes that plugging a hole or killing an enemy leads to rewards. Predicted episode terminations are highlighted with red boxes. The world model accurately reﬂects that missing the ball in Breakout, or letting an enemy reach the carrots in Gopher, will result in the end of an episode."</p>
+</blockquote>
+<p><strong>Figure 5</strong>（L310–312）：</p>
+<blockquote>
+<p>"Mean, median, and interquartile mean human normalized scores, computed with stratiﬁed bootstrap conﬁdence intervals. 5 runs for IRIS and SimPLe, 100 runs for SPR, CURL, and DrQ (Agarwal et al., 2021)."</p>
+</blockquote>
+<p><strong>Figure 6</strong>（L325–336）：</p>
+<blockquote>
+<p>"(a) Performance proﬁles, i.e. fraction of runs above a given human normalized score." / "(b) Probabilities of improvement, i.e. how likely it is for IRIS to outperform baselines on any game." / "Figure 6: Performance proﬁles (left) and probabilities of improvement (right) (Agarwal et al., 2021)."</p>
+</blockquote>
+<p><strong>Figure 7</strong>（L360–367，全文见第 7 节）。</p>
+<p><strong>Figure 8</strong>（L783–784）：</p>
+<blockquote>
+<p>"Optimality gap, lower is better. The amount by which the algorithm fails to reach a human-level score (Agarwal et al., 2021)."</p>
+</blockquote>
+<p><strong>Figure 9</strong>（L829–834）：</p>
+<blockquote>
+<p>"Tradeoff between the number of tokens per frame and reconstructions quality in Alien. Each column displays a 64× 64 frame from the real environment (top), its reconstruction with a discrete encoding of 16 tokens (center), and its reconstruction with a discrete encoding of 64 tokens (bottom). In Alien, the player is the dark blue character, and the enemies are the large colored sprites. With 16 tokens per frame, the autoencoder often erases the player, switches colors, and misplaces rewards. When increasing the amount of tokens, it properly reconstructs the frame."</p>
+</blockquote>
+<p><strong>Figure 10</strong>（L912–913）：</p>
+<blockquote>
+<p>"A game of Freeway. Cars will bump the player down, making it very unlikely to cross the road and be rewarded for random policies."</p>
+</blockquote>
+<p><strong>Table 2</strong>（L666）："Encoder / Decoder hyperparameters. We list the hyperparameters for the encoder, the same ones apply for the decoder."
+<strong>Table 3</strong>（L674）："Embedding table hyperparameters."
+<strong>Table 4</strong>（L691）："Transformer hyperparameters"
+<strong>Table 5</strong>（L709）："Training loop &amp; Shared hyperparameters"
+<strong>Table 6</strong>（L766）："RL training hyperparameters"
+<strong>Table 7</strong>（L840）："Returns on Alien, Asterix, and BankHeist with 64 tokens per frame instead of 16."
+<strong>Table 8</strong>（L854）："Increasing the number of environment steps from 100k to 10M."
+Table 1 表注见第 5 节（L236–239）。</p>
+<hr />
+<h2>附：抽取乱码 / 伪影清单（如实标注）</h2>
+<ol>
+<li>L2–3 标题："SAMPLE -E FFICIENT"（小体大写标题的字符间距伪影）。</li>
+<li>L112 等："IRIS ," 逗号前空格（斜体伪影）；L117 "IRIS outperforms" 正常。</li>
+<li>L131–135 POMDP 公式：at/rt/dt/xt 等下标全部丢失（"actionsat∈{ 1,...,A }" 应为 actions a_t ∈ {1,...,A} 之类，不猜测补全）。</li>
+<li>L169："argmini‖‖ykt−ei‖‖2" 与 "closestembedding"（下标丢失+单词粘连，标记原文乱码）。</li>
+<li>L172："aL1"、L683 "ofL" 等单词粘连。</li>
+<li>L221–223 价值网络公式上下标丢失（"V (ˆxt)≃ Eπ[∑τ ≥tγτ −tˆrτ]"）。</li>
+<li>L662–663 损失公式中范数上标 2 抽为 "22"（‖·‖22 应为 ‖·‖2²）。</li>
+<li>L175 节标题 "M ODELING DYNAMICS"、L130 "M ETHOD" 为小型大写字母抽取伪影。</li>
+<li>全文多处连字：ﬁ（inefﬁcient/ﬁrst/ﬁeld）、ﬂ（coin ﬂip/ﬂavored）等，均按 txt 原样保留。</li>
+</ol>
+<footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
+<a href="../index.html">返回首页</a></footer></div></main></body></html>

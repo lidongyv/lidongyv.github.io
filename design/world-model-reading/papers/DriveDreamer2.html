@@ -1,0 +1,309 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DriveDreamer-2 精读笔记 · 世界模型调研与精读</title>
+<link rel="stylesheet" href="../style.css"></head><body>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T1 视频/LLM增强</div><h1>DriveDreamer-2 精读笔记</h1><div class="meta"><span class="badge b-warn">🔶 笔记完整·引文抽查待讨论时</span><span class="badge">arXiv:2403.06845</span> <a href="https://arxiv.org/abs/2403.06845">arXiv 页面</a> · <a href="txt/DriveDreamer2.txt">提取正文 txt</a></div><blockquote>
+<p>数据源：<code>auto_docs/papers/txt/DriveDreamer2.txt</code>（arXiv 2403.06845v2，24 页，1042 行）。所有英文引用逐字复制自该 txt，行号指 txt 行号；<code>（原文如此）</code>标注 txt 中的拼写/缺空格现象；本笔记未引用任何论文之外的信息。</p>
+</blockquote>
+<h2>1. 原文信息</h2>
+<ul>
+<li>标题：DriveDreamer-2: LLM-Enhanced World Models for Diverse Driving Video Generation（L1–2）</li>
+<li>作者：Guosheng Zhao1∗, Xiaofeng Wang1∗, Zheng Zhu2∗B, Xinze Chen2, Guan Huang2, Xiaoyi Bao1, and Xingang Wang1B（L3–4）</li>
+<li>机构："1 Institute of Automation, Chinese Academy of Sciences2 GigaAI"（L5，即中国科学院自动化研究所、GigaAI；∗ 为共同一作，B 为通讯作者——脚注标记原文如此）</li>
+<li>项目页：Project Page: https://drivedreamer2.github.io（L6）</li>
+<li>ID/发表状态：页眉标注 "arXiv:2403.06845v2 [cs.CV] 11 Apr 2024"（L28）。会议/期刊发表信息原文未写（txt 中未出现任何出版载体信息）。</li>
+<li>关键词（L45）："World models · Autonomous driving · Video generation"</li>
+</ul>
+<h2>2. Abstract 全文逐字（L25–44）</h2>
+<p>"Abstract. World models have demonstrated superiority in autonomous driving, particularly in the generation of multi-view driving videos. However, significant challenges still exist in generating customized driving videos. In this paper, we propose DriveDreamer-2, which builds upon the framework of DriveDreamer and incorporates a Large Language Model (LLM) to generate user-defined driving videos. Specifically, an LLM interface is initially incorporated to convert a user's query into agent trajectories. Subsequently, a HDMap, adhering to traffic regulations, is generated based on the trajectories. Ultimately, we propose the Unified Multi-View Model to enhance temporal and spatial coherence in the generated driving videos. DriveDreamer-2 is the first world model to generate customized driving videos, it can generate uncommon driving videos (e.g., vehicles abruptly cut in) in a user-friendly manner. Besides, experimental results demonstrate that the generated videos enhance the training of driving perception methods (e.g., 3D detection and tracking). Furthermore, video generation quality of DriveDreamer-2 surpasses other state-of-the-art methods, showcasing FID and FVD scores of 11.2 and 55.7, representing relative improvements of ∼30% and ∼50%."</p>
+<h2>3. 问题与动机：LLM 在世界模型中的角色</h2>
+<p><strong>痛点</strong>（L67–70）："However, it is important to note that a majority of these methods rely heavily on structured information (e.g., 3D boxes, HDMaps, and optical flow) or real-world image frames as conditions. This dependence not only constrains interactivity but also limits the diversity of generated videos."</p>
+<p><strong>解法定位</strong>（L71–77）："To tackle the aforementioned challenges, we proposeDriveDreamer-2, which is the first world model to generate diverse driving videos in a user-friendly manner. In contrast to previous methods [7,59,62] that rely on structured conditions either from specific datasets or sophisticated annotations,DriveDreamer-2 emphasizes generating customized driving videos by simulating various traffic conditions with user-friendly text prompts."</p>
+<p><strong>LLM 的角色</strong>（L80–87）："For foreground generation, a functional library is constructed to finetune a Large Language Model (LLM), enabling it to generate agent trajectories based on user text input. For background conditions, we propose the HDMap generator that employs a diffusion model to simulate road structures. In this process, the previously generated agent trajectories are involved as conditional inputs, which allows the HDMap generator to learn the associations between foreground and background conditions in driving scenes. Building upon the generated traffic structured conditions, we employ the DriveDreamer [59] framework to generate multi-view driving videos."</p>
+<p><strong>与先前 traffic simulation 方法的区别</strong>（L192–194）："In DriveDreamer-2, we construct a functional library to finetune the LLM to achieve a user-friendly text-to-traffic simulation, which eliminates intricate loss design or complex text prompt inputs."</p>
+<h2>4. 方法逐机制</h2>
+<h3>4.1 LLM 接口：文本→Python 脚本→轨迹数组</h3>
+<p>L33–34："an LLM interface is initially incorporated to convert a user's query into agent trajectories"。具体实现（L293–298）："the constructed function library encompasses 18 functions, including agent functions (steering, constant speed, acceleration, and braking), pedestrian functions (walking direction and speed), and other utility functions such as saving trajectories. Building upon these functions, Text-to-Python-Scripts pairs are manually curated for finetuning LLM (GPT-3.5)." 脚本覆盖场景（L298–301）："The scripts include a range of fundamental scenarios such as lane-changing, overtaking, following other vehicles, and executing U-turns. Additionally, we encompass more uncommon scenarios like pedestrians abruptly crossing, and vehicles cutting into the lane." 推理阶段（L307–308）："In the inference phase, we follow [37] to expand prompt inputs to a pre-defined template, and the finetuned LLM can directly output the trajectory array."</p>
+<h3>4.2 结构化交通信息：HDMap 生成器</h3>
+<p>L318–323："Therefore, the HDMap generator is proposed to ensure the background elements do not conflict with the foreground trajectories. In the HDMap generator, we formulate the background elements generation as a conditional image generation problem, where the conditional input is the BEV trajectory mapTb ∈ R3×Hb×Wb, and the target is the BEV HDMapHb ∈ R3×Hb×Wb." 实现（L327–334）："the HDMap generator is constructed upon an image-generation diffusion model. To train the generator, we curate a trajectory-to-HDMap datasetD = {Tb, Hb}. In the trajectory map, distinct colors are assigned to represent different agent categories. Meanwhile, the target HDMap comprises three channels, representing lane boundaries, lane dividers, and pedestrian crossings, respectively. Within the HDMap generator, we employ stacks of 2D convolution layers to incorporate the trajectory map condition. The resulting feature maps CT are then seamlessly integrated into the diffusion model using [68]"。训练目标 Eq. (1)（L339–343）：min φ L = E_{Z0,ϵ∼N(0,I),t,c} ∥ϵ − ϵθ(Zt, t, c)∥2²，其中（L344）"where time step t is uniformly sampled from[1, Tb]"。合规性（L346–349）："the generated HDMaps not only adhere to traffic constraints (lane boundaries positioned on either side of lane dividers, and pedestrian crossings at intersections) but also seamlessly integrate with trajectories."</p>
+<h3>4.3 UniMVM：多视图统一生成</h3>
+<p>动机（L383–387）："InDriveDreamer-2, we introduce the UniMVM within the DriveDreamer framework. The UniMVM is designed to unify the generation of multi-view driving videos both with and without adjacent view conditions, which ensures temporal and spatial coherence without compromising generation speed and diversity." 公式（L392，Eq. 2）：p(x1, ...,xK) = p(x1)p(x2|x1)...p(xK|x1, x2..., xK−1)。核心操作（L394–399）："In the proposed UniMVM, we draw inspiration fromtheEq.2toexpandtheview. However, unlikeDrive-WM[62]whichrequires the independent generation of views, UniMVM unifies multiple views as a complete patch. Specifically,weconcatenatethe multi-view video in the order of{FL, F, FR, BR, B, BL}1 to obtain the spatially unified imagex′ ∈ RT ×3×H×KW."（脚注 L401：F:Front, L:Left, R:Right, B:Back）。Eq. (3)（L400）：p(x′) =p(x′ · (1 − m), x′ · m) =p(x′ · m)p(x′ · (1 − m)|x′ · m)。掩码实现三种任务（L403–413）："UniMVM unifies multiple views into a complete patch for video generation without introducing cross-view parameters. Furthermore, various driving video generation tasks can be accomplished via adjusting the mask m. Specifically, when m is set to mask future T − 1 frames, UniMVM enables future video prediction based on the input of the first frame. Configuring m to mask {FL, FR, BR, B, BL} views empowers UniMVM to achieve multi-view video outpainting, leveraging a front-view video input. Furthermore, UniMVM can generate multi-view videos whenm is set to mask all video frames"。</p>
+<h3>4.4 动作条件：轨迹→3D box→直接投影控制</h3>
+<p>L418–425："Specifically, our approach firstunifythetrafficstructuredconditions,whichresultsinsequencesofHDMaps {Hi}N−1i=0 ∈ RN×3×H×KW and 3D boxes {Bi}N−1i=0 ∈ RN×C×H×KW (N is the frame number of video clip, andC is the category number). Note that sequences of 3D boxes can be derived from agent trajectories, and the sizes of 3D boxes are determined based on the respective agent category. Unlike DriveDreamer, the 3D box conditions inDriveDreamer-2 no longer rely on position embedding and category embedding. Instead, the boxes are directly projected onto the image plane, functioning as a control condition. This approach eliminates introducing additional control parameters as in [59]." 融合（L426–431）："We adopt three encoders to embed HDMaps, 3D boxes, and image frames into latent space featuresyH, yB, andyI. Then we concatenate the spatially aligned conditionsyH, yB with Zt to obtain the feature input Zin, where Zt is the noisy latent feature generated fromyI by the forward diffusion process. For the training of the video generator, all parameters are optimized via denoising score matching [27]"。</p>
+<h2>5. 实验与主结果</h2>
+<p><strong>数据/训练</strong>（L435–461）："The training dataset is derived from the nuScenes dataset [2], consisting of 700 training videos and 150 validation videos. Each video encompasses approximately 20 seconds of recorded footage, captured by six surround-view cameras. With a frame rate of 12Hz, this accumulates to around 1 million video frames available for training."；"For agent trajectory generation, we employ GPT-3.5 as the LLM."；"The proposed HDMap generator is built upon SD2.1 [46] with the ControlNet parameters [68] being trainable. The HDMap generator undergoes 55K training iterations with a batch size of 24 and a resolution of512×512."；"we harness the powerful video generation capabilities of SVD [1], and all the parameters are finetuned. During the training of the video generator, the mode is trained for 200K iterations with a batch size of 1, a video frame length ofN = 8, a view number of K = 6, and a spatial size of 256 × 448. All the experiments are conducted on NVIDIA A800 (80GB) GPUs, and we use the AdamW optimizer [30] with a learning rate5 × 10−5." 评测（L468–472）：FID/FVD + StreamPETR（ResNet-50，256×448）验证 3D 检测与跟踪。</p>
+<p><strong>Table 1</strong>（L486–496，表注逐字）："Comparison of the generation quality on nuScenes validation set.† denotes that the corresponding conditions are generated."</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Conditions</th>
+<th>FID ↓</th>
+<th>FVD ↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DriveDreamer [59]</td>
+<td>-</td>
+<td>26.8</td>
+<td>353.2</td>
+</tr>
+<tr>
+<td>DriveDreamer-2</td>
+<td>-</td>
+<td>25.0</td>
+<td>105.1</td>
+</tr>
+<tr>
+<td>Drive-WM [62]</td>
+<td>3-view videos †</td>
+<td>15.8</td>
+<td>122.7</td>
+</tr>
+<tr>
+<td>DriveDreamer-2</td>
+<td>1-view video</td>
+<td>18.4</td>
+<td>74.9</td>
+</tr>
+<tr>
+<td>DriveDreamer [59]</td>
+<td>1st-frame multi-view image</td>
+<td>14.9</td>
+<td>340.8</td>
+</tr>
+<tr>
+<td>Drivingdiffusion [34]</td>
+<td>1st-frame multi-view image †</td>
+<td>15.8</td>
+<td>332.0</td>
+</tr>
+<tr>
+<td>Panacea [64]</td>
+<td>1st-frame multi-view image †</td>
+<td>16.9</td>
+<td>139.0</td>
+</tr>
+<tr>
+<td>DriveDreamer-2</td>
+<td>1st-frame multi-view image</td>
+<td>11.2</td>
+<td>55.7</td>
+</tr>
+</tbody>
+</table>
+<p>配套原文（L509–513）："despite being limited to a single-view video condition,DriveDreamer-2 exhibits a 39% relative improvement in FVD compared to DriveWM [62], which utilizes a three-view video condition. Furthermore, when provided with the first-frame multi-view image condition, DriveDreamer-2 achieves an FID of11.2 and an FVD of55.7, surpassing all previous methods by a considerable margin."</p>
+<p><strong>Table 2</strong>（L514–520，3D 检测数据增广）：</p>
+<table>
+<thead>
+<tr>
+<th>图像尺寸</th>
+<th>首帧条件</th>
+<th>真实数据</th>
+<th>生成数据</th>
+<th>mAP ↑</th>
+<th>mAOE ↓</th>
+<th>mAVE ↓</th>
+<th>NDS ↑</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>256×448</td>
+<td>-</td>
+<td>✓</td>
+<td>-</td>
+<td>31.7</td>
+<td>67.9</td>
+<td>33.0</td>
+<td>43.5</td>
+</tr>
+<tr>
+<td>256×448</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>32.6</td>
+<td>61.7</td>
+<td>29.7</td>
+<td>45.2</td>
+</tr>
+<tr>
+<td>256×448</td>
+<td>-</td>
+<td>✓</td>
+<td>✓</td>
+<td>32.9</td>
+<td>61.5</td>
+<td>30.4</td>
+<td>45.4</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Table 3</strong>（L522–528，多目标跟踪数据增广）：</p>
+<table>
+<thead>
+<tr>
+<th>图像尺寸</th>
+<th>首帧条件</th>
+<th>真实数据</th>
+<th>生成数据</th>
+<th>AMOTA ↑</th>
+<th>AMOTP ↓</th>
+<th>IDS ↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>256×448</td>
+<td>-</td>
+<td>✓</td>
+<td>-</td>
+<td>28.9</td>
+<td>1.419</td>
+<td>687</td>
+</tr>
+<tr>
+<td>256×448</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>31.2</td>
+<td>1.396</td>
+<td>542</td>
+</tr>
+<tr>
+<td>256×448</td>
+<td>-</td>
+<td>✓</td>
+<td>✓</td>
+<td>31.3</td>
+<td>1.387</td>
+<td>593</td>
+</tr>
+</tbody>
+</table>
+<p>配套原文（L535–544）："When the initial frame is used as a condition, the generated videos prove to be effective in enhancing the performance of downstream tasks. The 3D detection metrics, mAP and NDS, show a relative improvement of 2.8% and 3.9%, respectively. Besides, the tracking metrics, AMOTA and AMOTP, exhibit a relative enhancement of 8.0% and 1.6%."；"Removing the image condition leads to increased diversity in the generated content, consequently further improving performance metrics for downstream tasks. Specifically, the mAP and NDS for 3D detection show a relative improvement of 3.8% and 4.4%, respectively, while the AMOTA and AMOTP for tracking tasks exhibit enhancements of 8.3% and 2.3%, compared to the baseline."（图 1b 亦标注 "relative +8.3%" 与 "relative +4.4%"，L17–18。）</p>
+<h2>6. 消融</h2>
+<p><strong>Table 4</strong>（L592–596，表注："The ablation study on the backbone and UniMVM. Cross-view module denotes the cross-view attention used in previous methods [34,59,62,64]."）：</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Backbone</th>
+<th>Cross-view module</th>
+<th>UniMVM</th>
+<th>FID ↓</th>
+<th>FVD ↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DriveDreamer [59]</td>
+<td>SD1.4</td>
+<td>✓</td>
+<td>-</td>
+<td>14.9</td>
+<td>340.8</td>
+</tr>
+<tr>
+<td>DriveDreamer-2</td>
+<td>SVD</td>
+<td>✓</td>
+<td>-</td>
+<td>17.2</td>
+<td>94.6</td>
+</tr>
+<tr>
+<td>DriveDreamer-2</td>
+<td>SVD</td>
+<td>-</td>
+<td>✓</td>
+<td>11.2</td>
+<td>55.7</td>
+</tr>
+</tbody>
+</table>
+<p>配套原文（L574–584）："Compared to SD1.4 [46] used in DriveDreamer, SVD [1] provides richer prior knowledge of videos, resulting in 17.2 FID and 94.6 FVD. The introduction of SVD results in an almost 70% improvement in FVD. Additionally, we also note that a slight decrease in FID, which we hypothesize is attributed to the introduction of the cross-view module, disrupting the SVD's ability to learn spatial features. To fully unleash the potential of SVD in multi-view video generation, we propose UniMVM, which unifies constraints on intra- and cross-view, achieving remarkable FID and FVD scores of 11.2 and 55.7, respectively. These represent relative improvements of ∼30% and ∼80% compared to DriveDreamer." 【推断】原文 "a slight decrease in FID" 与表内数值（FID 从 14.9 变差到 17.2）方向相反，疑为原文笔误，应为 "increase"；此处仅照录原文。</p>
+<p><strong>Table 5</strong>（L597–603，条件消融）：</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Conditions</th>
+<th>FID ↓</th>
+<th>FVD ↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DriveDreamer [59]</td>
+<td>-</td>
+<td>26.8</td>
+<td>353.2</td>
+</tr>
+<tr>
+<td>DriveDreamer [59]</td>
+<td>1st-frame multi-view image</td>
+<td>14.9</td>
+<td>340.8</td>
+</tr>
+<tr>
+<td>DriveDreamer-2</td>
+<td>-</td>
+<td>25.0</td>
+<td>105.1</td>
+</tr>
+<tr>
+<td>DriveDreamer-2</td>
+<td>1-view video</td>
+<td>18.4</td>
+<td>74.9</td>
+</tr>
+<tr>
+<td>DriveDreamer-2</td>
+<td>1-st frame multi-view image</td>
+<td>11.2</td>
+<td>55.7</td>
+</tr>
+</tbody>
+</table>
+<p>配套原文（L610–619）："DriveDreamer-2 with the initial frame can generate results that are highly similar to the GT video, achieving optimal results in terms of FID and FVD, with scores of 11.2 and 55.7, respectively. The video generated byDriveDreamer-2 with the front-view video retains some aspects of the GT scene while also introducing some diversity, resulting in 17.2 FID and 94.6 FVD. DriveDreamer-2 can also generate extremely competitive results even without any image conditioning, achieving FID and FVD scores of 25.0 and 105.1, respectively. Notably,DriveDreamer-2 exhibits the highest diversity in this setting, where the generated appearance of cars and the street backgrounds differ significantly from the ground truth." 【推断】此处 "front-view video … 17.2 FID and 94.6 FVD" 与 Table 1/5 中 1-view video 的 18.4/74.9 不一致，疑为原文笔误；仅照录。</p>
+<p><strong>定性消融</strong>（Fig. 7，L585–590）："In the absence of UniMVM,DriveDreamer-2 generates inconsistent results between views, including foreground vehicles and background structures. The introduction of UniMVM leads to significant improvements in generating multi-view videos, both in foreground and background aspects."</p>
+<h2>7. 局限 / 未来工作</h2>
+<p>论文无显式 "Limitations" 小节。可视为未来工作的原文仅补充材料两处：L825–826 "Moreover, this function library can be further expanded to meet users' demands for generating scenes."；L826–827 "More details about the function library can be found in the code that we will release later." 其余局限均原文未写。结论段（L621–637）为贡献复述，无局限陈述。</p>
+<h2>8. 叙事关联【推断】：LLM 语义条件化与「慢脑」</h2>
+<ol>
+<li><strong>LLM 承担高层语义规划（慢脑候选角色）</strong>：LLM 不生成像素，而把自然语言转化为全局交通场景的结构化描述。支持句：L33–34 "an LLM interface is initially incorporated to convert a user's query into agent trajectories"；L623–624 "Leveraging a Large Language Model,DriveDreamer-2 first transfers user queries into foreground agent trajectories."</li>
+<li><strong>语义→符号→几何→像素的多级降维链</strong>：慢脑输出不是直接控制快脑的像素，而是经过可执行脚本、轨迹数组、HDMap、3D box 逐级落地，每一级都是可检查的中间表征。支持句：L307–308 "the finetuned LLM can directly output the trajectory array"；L421 "sequences of 3D boxes can be derived from agent trajectories"；L426–428 "We adopt three encoders to embed HDMaps, 3D boxes, and image frames into latent space featuresyH, yB, andyI."</li>
+<li><strong>规划与执行的时间解耦</strong>：LLM 一次性生成整段场景的条件序列（N 帧轨迹+地图），扩散模型随后逐帧渲染——对应慢脑低频全局规划、快脑高频执行的分工。支持句：L418–419 "we firstunifythetrafficstructuredconditions,whichresultsinsequencesofHDMaps … and 3D boxes … (N is the frame number of video clip)"。</li>
+<li><strong>高层语义贯通到细粒度物理表现</strong>：天气类宏观语义条件联动雨刷摆动、夜间行人等细粒度行为，说明语义层可以"命令"低层视觉动力学。支持句：L1018–1024 "the windshield wipers of the truck are continuously clearing the windshield. This showcases the powerful scene understanding capabilities of our DriveDreamer-2. It can not only manipulate macroscopic weather conditions but also adjust the behaviors of generated agents within the scene according to the weather."</li>
+<li><strong>慢脑能力受原语库边界约束</strong>：LLM 的语义只能映射到 18 个预定义函数构成的动作原语空间，语义表达能力 = 原语库覆盖度；库可扩展意味着慢脑的"词汇表"是开放的。支持句：L293–296 "the constructed function library encompasses 18 functions, including agent functions … pedestrian functions … and other utility functions"；L825–826 "this function library can be further expanded to meet users' demands for generating scenes."</li>
+</ol>
+<h2>9. 图注/表注逐字抄录（主要部分）</h2>
+<ul>
+<li><strong>Fig. 1</strong>（L20–24）："Fig. 1: DriveDreamer-2 demonstrates powerful capabilities in generating multi-view driving videos.DriveDreamer-2 can produce driving videos based on user descriptions, which improves the diversity of the synthetic data. Besides, the generation quality of DriveDreamer-2 surpasses other state-of-the-art methods and effectively enhances downstream tasks."</li>
+<li><strong>Fig. 2</strong>（L184–186）："Fig. 2: The overall framework ofDriveDreamer-2 involves initially generating agent trajectories according to the user query, followed by producing a realistic HDMap, and finally generating multi-view driving videos."</li>
+<li><strong>Fig. 3</strong>（L280–283）："Fig. 3: The overview of customized trajectory generation. Initially, we leverage the established function library to assemble Text-to-Python-Script pairs. Subsequently, the constructed dataset is employed to finetune LLM. Finally, the customized trajectories is generated by LLM based on user query."</li>
+<li><strong>Fig. 4</strong>（L313–317）："Fig. 4: The proposed HDMap generator can generate diverse BEV HDMaps based on the same BEV trajectory input. The orange and yellow colors represent the motion trajectories of the ego car and other vehicles, respectively. The red color indicates road boundaries, the blue color represents lane dividers, and the green color signifies pedestrian crossings."</li>
+<li><strong>Fig. 5</strong>（L372–375）："Fig. 5: The comparison of multi-view video generation paradigms. All structural conditions and text prompts are omitted here to emphasize the distinctions between our UniMVM and previous methods. By adjusting the mask, UniMVM can generate videos conditioned on the initial frame, front view video, and without image input."</li>
+<li><strong>Fig. 6</strong>（L450–452）："Fig. 6: User-customized driving videos generated by DriveDreamer-2. The top row depicts a scene where the ego car changes lanes, while the bottom row shows an unexpected pedestrian crossing the road at night."</li>
+<li><strong>Fig. 7</strong>（L551–554）："Fig. 7: Visualization comparison betweenDriveDreamer-2 generation with and without UniMVM. The upper part depicts generation without UniMVM, while the lower part illustrates generation with UniMVM. It is evident that the inclusion of UniMVM results in higher multi-view consistency in the generated content."</li>
+<li><strong>Fig. 8</strong>（L564–572）："Fig. 8: Visualization comparison with different conditions. Under different image conditions, DriveDreamer-2 produces videos with a high level of multi-view consistency. Using the 1st frame image (row 1) as a condition, the diversity of the generated second frame (row 3) is constrained, which closely resembles the ground truth second frame (row 2). Employing the front-view video as a condition results in increased generation diversity (row 4), only the front-view image aligns closely with the ground truth (row 2). Strikingly, in the absence of image as a condition,DriveDreamer-2 produces the highest diversity (row 5). The generated colors of the cars and the street backgrounds differ significantly from the ground truth (row 2)."</li>
+<li><strong>Fig. 9</strong>（L942–944）："Fig. 9: Our prompt template designed for finetuning LLM. It contains information aboutfunctions,andinstruction.Theuserqueryisinsertedintotheplaceholder{USER QUERY}."</li>
+<li><strong>Fig. 10</strong>（L965–966）："Fig. 10: Visualization of the generated multi-view video. Regions highlighted by yellow rectangles indicate thatDriveDreamer-2 exhibits strong temporal consistency."</li>
+<li><strong>Fig. 11</strong>（L969–971）："Fig. 11: Ageneratedvideoofarainydayscene.Themovementofthewindshieldwipers (highlighted by yellow rectangles) demonstrates thatas DriveDreamer-2 possesses a high level of scene understanding."</li>
+<li><strong>Fig. 12</strong>（L999–1000）："Fig. 12: A long video generated by the prompta person crosses the road on a rainy day. Regions highlighted by yellow rectangles indicate the movement of the pedestrian."</li>
+<li><strong>Fig. 13</strong>（L1011–1012）："Fig. 13: A long video generated by the promptthe ego car changes lane during the daytime."</li>
+<li><strong>Fig. 14</strong>（L1030）："Fig. 14: A long video generated by the prompton a rainy day, a car cuts in ."</li>
+<li>表注：Table 1（L486–487）、Table 2（L514–515）、Table 3（L522–523）、Table 4（L592–593）已在第 5、6 节逐字抄录。</li>
+</ul>
+<h2>附：原文内部不一致点（照录不改）</h2>
+<ol>
+<li>L578–580 称 FID "a slight decrease"，而 Table 4 显示换 SVD 后 FID 14.9→17.2（变差）。【推断】疑为笔误。</li>
+<li>L613–615 称 front-view video 条件下 "17.2 FID and 94.6 FVD"，而 Table 1/5 中 1-view video 为 18.4/74.9。【推断】疑为笔误。</li>
+<li>结论段（L633–636）"achieving FID and FVD scores of 11.2 and 55.7, respectively. These scores represent remarkable relative improvements of approximately 30% and 50%"——其中 55.7 相对最优方法（Panacea 139.0）的改进量，原文语境为相对 previous best-performing methods（L96–97 同述），与 L584 "compared to DriveDreamer" 的 ∼80% 基准不同，非矛盾但需注意基准口径。</li>
+</ol>
+<footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
+<a href="../index.html">返回首页</a></footer></div></main></body></html>

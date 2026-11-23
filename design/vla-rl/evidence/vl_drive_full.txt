@@ -1,0 +1,754 @@
+
+VLDrive: Vision-Augmented Lightweight MLLMs for Efficient Language-grounded Autonomous Driving
+Report GitHub Issue
+×
+Title:
+Content selection saved. Describe the issue below:
+Description:
+Submit without GitHub
+Submit in GitHub
+arXiv is now an independent nonprofit!
+Learn more
+×
+Back to arXiv
+Why HTML?
+Report Issue
+Back to Abstract
+Download PDF
+Abstract
+1 Introduction
+2 Related Work
+2.1 End-to-End Autonomous Driving
+2.2 LLMs in Autonomous Driving
+2.3 Token Reduction
+3 Method
+3.1 Overview
+3.2 CCDP: Token Sparsification
+3.3 Memory-enhanced Feature Aggregation
+3.4 CCDP: Token Reconstruction
+3.5 Distance-decoupled Instruction Attention
+3.6 Objective Function
+4 Experiments
+4.1 Experiment Settings
+Datasets.
+Implementation Details.
+Evaluation Metrics.
+4.2 Comparisons with LLM-based Agents
+4.3 Ablation Study
+Effectiveness of Each Individual Component.
+Effectiveness of CCDP.
+Analysis of Token Sparsification.
+Effectiveness of MEFA.
+Effectiveness of DDIA.
+5 Conclusion
+References
+License: arXiv.org perpetual non-exclusive license
+arXiv:2511.06256v1 [cs.CV] 09 Nov 2025
+VLDrive: Vision-Augmented Lightweight MLLMs for Efficient Language-grounded Autonomous Driving
+Ruifei Zhang
+Affiliation:  The Chinese University of Hong Kong, Shenzhen
+Affiliation:  Shenzhen Research Institute of Big Data
+Wei Zhang
+Affiliation:  Baidu Inc.
+Xiao Tan
+Affiliation:  Baidu Inc.
+Sibei Yang
+Affiliation:  Sun Yat-sen University
+Xiang Wan
+Affiliation:  Shenzhen Research Institute of Big Data
+Xiaonan Luo
+Affiliation:  Guilin University of Electronic Technology
+Guanbin Li
+††thanks: Corresponding author: liguanbin@mail.sysu.edu.cn
+Affiliation:  Sun Yat-sen University
+Affiliation:  Guangdong Key Laboratory of Big Data Analysis and Processing
+Abstract
+Recent advancements in language-grounded autonomous driving have been significantly promoted by the sophisticated cognition and reasoning capabilities of large language models (LLMs). However, current LLM-based approaches encounter critical challenges: (1) Failure analysis reveals that frequent collisions and obstructions, stemming from limitations in visual representations, remain primary obstacles to robust driving performance. (2) The substantial parameters of LLMs pose considerable deployment hurdles. To address these limitations, we introduce VLDrive, a novel approach featuring a lightweight MLLM architecture with enhanced vision components. VLDrive achieves compact visual tokens through innovative strategies, including cycle-consistent dynamic visual pruning and memory-enhanced feature aggregation. Furthermore, we propose a distance-decoupled instruction attention mechanism to improve joint visual-linguistic feature learning, particularly for long-range visual tokens. Extensive experiments conducted in the CARLA simulator demonstrate VLDrive’s effectiveness. Notably, VLDrive achieves state-of-the-art driving performance while reducing parameters by 81% (from 7B to 1.3B), yielding substantial driving score improvements of 15.4%, 16.8%, and 7.6% at tiny, short, and long distances, respectively, in closed-loop evaluations. Code is available at https://github.com/ReaFly/VLDrive.
+1 Introduction
+Autonomous driving has experienced significant development in recent years, evolving from modular and segregated design to integrated end-to-end networks [15, 46, 26, 10, 29]. However, these networks still rely on specific inputs such as target points or action commands to guide their driving behaviors, significantly constraining the interaction with humans and applicability in real-world scenarios.
+Figure 1: (a) Existing methods for language-grounded driving. (b) Our proposed VLDrive: a novel framework featuring a lightweight MLLM architecture with enhanced vision components. (c) Driving failure analysis of existing methods based on three evaluation runs. (d) Performance comparison between VLDrive and both versions of LMDrive, highlighting our method’s superior driving performance with fewer parameters.
+The emergence of large language models (LLMs) [33, 48, 50, 18] has catalyzed a revolution in autonomous driving. Impressed by their advanced cognition and logical reasoning capabilities, a multitude of studies have integrated LLMs into autonomous driving systems and achieved noteworthy results [41, 28, 38, 37]. Among them, LMDrive [28] successfully achieves human-friendly language-grounded autonomous driving, where vehicle behaviors are solely guided by natural language instructions (see Fig. 1(a)), significantly enhancing human-vehicle interaction.
+However, despite remarkable advancements, these approaches encounter significant practical deployment challenges, characterized by suboptimal driving performance and excessive computational parameters. To address these issues, we conduct a thorough investigation of driving failure cases in current approaches, coupled with performance analysis across different LLM scales, yielding two critical insights: 1) Deficiencies in visual comprehension are the predominant cause of driving failures. We analyze the failure cases of existing language-grounded autonomous driving models and identify two primary causes: instruction misunderstanding, manifested as the agent deviating from the route; and visual misunderstanding, characterized by failures due to collisions or blocks involving vehicles or layouts. The results in Fig. 1(c) reveal that limitations in visual comprehension frequently emerge as a critical factor contributing to driving task failures.
+2) Driving performance does not scale linearly with LLM’s parameter count. Through comprehensive evaluations across three benchmarks, we compare the full-scale LMDrive (7B parameters) with its lightweight counterpart, LMDrive-LiteLM (1.3B trainable parameters). As demonstrated in Fig. 1(d), LMDrive-LiteLM achieves comparable driving performance despite its significantly reduced parameter count. These findings strongly suggest that massive parameter scales in LLMs may not be a critical prerequisite for achieving superior driving performance. The insights derived from these analyses illuminate the path toward developing a parameter-efficient yet high-performing alternative for language-grounded driving applications.
+Building on these considerations, in our work, we propose VLDrive, a vision-augmented lightweight language model for efficient language-grounded autonomous driving, as showcased in Fig. 1(b). We enhance the model’s visual comprehension by drawing inspiration from human driving competencies, focusing on two key aspects: prioritized attention allocation to sparse but critical agents and objects, and temporal trajectory memory for behavioral sequence prediction. These enhancements are achieved through our proposed Cycle-consistent Dynamic Visual Pruning (CCDP) and Memory-enhanced Feature Aggregation (MEFA) mechanisms. Specifically,
+CCDP framework consists of token sparsification and training-only token reconstruction. The sparsification mechanism enables adaptive selection of critical visual tokens and dynamic adjustment of token count based on driving scenario complexity. The reconstruction process preserves information integrity by explicitly recovering features of pruned tokens, enabling robust visual perception while minimizing computational overhead. Additionally, MEFA incorporates a memory bank of adjacent frames to capture temporal dependencies, providing critical temporal cues for visual feature enhancement.
+Furthermore, we introduce a Distance-decoupled Instruction Attention (DDIA) mechanism to enhance instruction comprehension capabilities of lightweight language models. This design stems from our observation that increasing numbers of long-range visual tokens may dilute instruction attention (see Fig. 6), potentially leading to instruction misunderstanding. DDIA alleviates this issue and enhances joint visual-linguistic feature learning and alignment, resulting in more accurate trajectory planning.
+Extensive closed-loop experiments conducted on the CARLA [6] simulation platform demonstrate the effectiveness of our proposed method, surpassing state-of-the-art approaches by 15.4%, 16.8% and 7.6% in driving scores at tiny, short and long distances, respectively.
+To summarize, our contributions are as follows:
+•
+We identify that visual comprehension deficiencies constitute the primary bottleneck in language-grounded driving, with performance scaling non-linearly with language model size. This observation motivates our proposed paradigm: a lightweight language model enhanced by vision-augmented strategies, which simultaneously reduces computational overhead and improves driving performance, facilitating practical deployment.
+•
+We propose VLDrive, a lightweight architecture enhanced with vision-centric strategies for language-grounded driving. The framework incorporates CCDP for adaptive visual signal extraction and MEFA for temporal information integration. Additionally, DDIA facilitates visual-language alignment for robust navigation instruction following. These complementary strategies collectively enable more reliable autonomous driving.
+•
+We evaluate our approach through closed-loop simulation experiments on standard language-grounded driving benchmarks using the CARLA platform. VLDrive achieves state-of-the-art performance while using significantly fewer parameters.
+2 Related Work
+2.1 End-to-End Autonomous Driving
+Early end-to-end autonomous driving methods can be mainly divided into two categories: imitation learning [4, 42, 8] and reinforcement learning [16, 32, 2, 47]. Subsequently, benefiting from the robust feature modeling capabilities of the Transformer [36],
+researchers introduced additional modalities to provide complementary information for autonomous driving [24, 29, 45]. For example, Transfuse [24] uses Transformer to merge features from RGB and LiDAR bird’s eye view (BEV) images to enhance the global comprehension of 3D scenes. InterFuse [29] improves the security and interpretability of the model by directly presenting its intermediate features and limiting actions to specified safe sets. In recent years, modular end-to-end planning approaches [10, 26, 1] have gained increased attention, where all components are connected and jointly optimized towards the ultimate goal, further improving the driving performance.
+2.2 LLMs in Autonomous Driving
+As LLMs continue to evolve and flourish, an increasing number of researchers are incorporating them into autonomous driving tasks, broadening the scope and capabilities of these systems. Among them, a notable strand of research [22, 23, 30] employs LLMs for driving-related visual question answering, providing enhanced interpretability for driving decisions. Another line of work seeks to fully exploit the powerful logical reasoning capabilities of LLMs to fundamentally transform the research paradigm in autonomous driving tasks [20, 21, 7, 5]. Specifically, GPT-Driver [20] feeds LLM with observations and ego-states as language prompts and generates a planned trajectory and corresponding decision-making process in a natural language format. Agent-Driver [21] builds an LLM-powered agent, capitalizing on a tool library, a cognitive memory, and a reasoning engine for human-like autonomous driving. Recently, LLMs have been extended to visual modality successfully, making it possible for LLMs to understand the visual information of autonomous driving. Chen et al. [3] introduces a multimodal LLM to process vectorized numeric modalities data and produce driving-related question answers as well as action decisions.
+DriveGPT4 [41] curates a visual instruction tuning dataset for interpretable autonomous driving, taming LLM to generate text responses and low-level control signals. Further, based on the CARLA simulation platform, many studies [28, 38, 37] delve deeper and perform closed-loop evaluation driven by LLMs directly. For instance, LMDrive [28] takes multi-modality data and navigation instructions as input, achieving language-grounded driving and enhanced interaction with humans. Despite the impressive performance powered by LLMs, their considerably heavy parameters pose significant deployment challenges. In this work, we demonstrate that a lightweight language model can effectively respond to instructions and execute driving tasks through efficient visual representation extraction and strengthened vision-language alignment.
+Figure 2: An overview of our proposed VLDrive framework. Given a sequence of visual data, our connector transforms each frame’s raw visual features \mathbf{F}_{i} into sparse yet informative representations \mathbf{F}_{i}^{v} through two key components: CCDP: Token Sparsification and Memory-enhanced Feature Aggregation (MEFA). Subsequently, a lite language model augmented with Distance-decoupled Instruction Attention (DDIA) jointly processes tokenized navigation instructions \mathbf{F}_{t} and temporal visual features \mathbf{F}_{v}=\{\mathbf{F}_{i}^{v}\mid i=1,\ldots,T\} . The resulting hidden representations are fed into an MLP for trajectory prediction, followed by PID controllers that translate these predictions into concrete driving actions. Additionally, we incorporate CCDP: Token Reconstruction as a training-only auxiliary task to further strengthen visual information integrity of \mathbf{F}_{i}^{v} via explicit token reconstruction.
+2.3 Token Reduction
+Transformer has achieved substantial performance improvements across a range of tasks, yet it faces criticism for its quadratic computational costs relative to the number of input tokens. To tackle this issue, numerous studies focus on reducing token counts [25, 12, 40, 39]. For instance, DynamicViT [25] adaptively prunes redundant tokens at different Transformer layers to achieve token sparsification. SPVit [12] introduces an attention-based multi-head token selector with a soft pruning strategy. Unlike direct pruning methods, this approach consolidates selected redundant tokens into a single package token, enhancing efficiency while preserving essential information.
+In the LLM era, token reduction is also a crucial strategy to reduce the heavy computation costs [13, 50, 14, 27]. Most existing works utilize Q-former [13] to aggregate visual features into a fixed number of tokens [13, 50, 43]. LLaMa-VID [14] leverages average pooling followed by a learnable projector to compress the video frame representation. LLaVA-PruMerge [27] proposes an adaptive token selection via outlier detection, paired with a cluster-based merging strategy to supplement the information of pruned tokens to kept ones. Distinct from prior approaches, we present a cycle-consistent dynamic pruning strategy that integrates token reconstruction with token sparsification at the training phase. This design not only enables more representative token selection but also ensures that the retained tokens aggregate fine-grained global visual information.
+3 Method
+3.1 Overview
+This task aims to predict driving actions by leveraging sequences of multi-sensor data and corresponding human navigation instructions. As shown in Fig. 2, our method follows the common framework of a multi-modal large language model (MLLM) and comprises three main components:
+Visual Encoder: Given a sequence of visual data \{\mathbf{X}_{i},i=1,2,...,T\} , where each frame \mathbf{X}_{i} includes multi-view camera images and corresponding LiDAR data. A visual encoder processes these multi-modal inputs to produce a unified feature representation \mathbf{F}_{i}\in\mathbb{R}^{N\times C} for each frame, with N representing the total number of tokens.
+Connector: As a bridge to align visual features with the language space, the connector plays a remarkable role in MLLM. To endow our model with adaptive visual perception and long-context modeling capability, as illustrated in Fig. 3, we tailor cycle-consistent dynamic visual pruning (CCDP), consisting of token sparsification and reconstruction, and memory-enhanced feature aggregation (MEFA) for the connector, significantly enhancing the visual representation. We denote the improved features of each frame by the connector as \mathbf{F}_{i}^{v}\in\mathbb{R}^{N_{v}\times C_{t}} , where C_{t} is the language model’s hidden dimension.
+Lite Language Model: A lightweight language model, enhanced by our proposed distance-decoupled instruction attention (DDIA), is utilized to process the combination of visual tokens of all frames, \mathbf{F}_{v}\in\mathbb{R}^{N_{v}T\times C_{t}} and corresponding text embedding \mathbf{F}_{t}\in\mathbb{R}^{N_{t}\times C_{t}} tokenized from navigation instructions. A following MLP leverages features from the language model and predicts the future trajectory, which is subsequently converted by PID controllers to produce the lateral steering action and the longitudinal acceleration action. We detail each component in the following subsections.
+3.2 CCDP: Token Sparsification
+Given the i -th frame’s multi-modal features \mathbf{F}_{i} , as in DynamicViT [25], we predict the probabilities for pruning and retaining each token. Specifically, the probabilities are calculated based on the combined global and local features [\mathbf{G}_{i};\mathbf{L}_{i}] , which are obtained by MLP( \cdot) operations:
+\mathbf{L}_{i}=\text{MLP}(\mathbf{F}_{i})\in\mathbb{R}^{N\times\frac{C}{2}}
+(1)
+\mathbf{G}_{i}=\text{Avg}(\mathbf{L}_{i})\in\mathbb{R}^{1\times\frac{C}{2}}
+(2)
+where Avg( \cdot ) is average operation. Another MLP is utilized to predict the probability \mathbf{S}_{i} , and [ \cdot ; \cdot ] denotes concatenation with broadcast mechanism:
+\mathbf{S}_{i}=\text{Softmax}(\text{MLP}([\mathbf{G}_{i};\mathbf{L}_{i}]))\in\mathbb{R}^{N\times 2}
+(3)
+In our implementation, we leverage Gumbel-Softmax to obtain the binary mask:
+\mathbf{M}_{i}=\text{Gumbel-Softmax}(\mathbf{S}_{i})_{*,1}\in\{0,1\}^{N}
+(4)
+where \mathbf{M}_{i} denotes the token retention masks. As shown in Fig. 3, the kept tokens \mathbf{F}_{i}^{k} selected based on \mathbf{M}_{i} are delivered to the Memory-enhanced Feature Aggregation module, which is detailed in the next subsection.
+Figure 3: A detailed illustration of our proposed connector. CCDP: Token Sparsification and Memory-enhanced Feature Aggregation are proposed to reduce token count while enhancing information density. CCDP: Token Reconstruction serves as a training-only task that further ensures the information integrity of the retained tokens. Red arrows ( \rightarrow ) indicate the input and output paths of our connector.
+3.3 Memory-enhanced Feature Aggregation
+Temporal reasoning is integral to our everyday driving scenarios. Human drivers can deduce the likely future direction or intentions of an approaching vehicle by analyzing its historical trajectory, and subsequently tailor their driving actions. To attain autonomous driving that matches the safety and reliability of human driving, we explicitly inject the temporal context into the current visual tokens. Specifically, for the current time step i , we introduce a memory bank storing the adjacent Z frames from the current one, denoted as \mathbf{B}_{i}=[\mathbf{F}_{i-Z},\mathbf{F}_{i-Z+1},...,\mathbf{F}_{i-1}] , \mathbf{B}_{i}\in\mathbb{R}^{Z\times N\times C} . Temporal encoding \mathbf{TE}_{i} is derived by an MLP utilizing the historical average data and current frame information:
+\mathbf{B}_{i}^{avg}=\text{Avg}(\mathbf{B}_{i})\in\mathbb{R}^{N\times C}
+(5)
+\mathbf{TE}_{i}=\text{MLP}([\mathbf{F}_{i};\mathbf{B}_{i}^{avg}])
+(6)
+Afterwards, a query transformer (Q-former) [13] is introduced to aggregate the features of current frames enhanced by temporary encoding:
+\mathbf{F}_{i}^{v}=\text{Q-Former}(\mathbf{F}_{i}^{k},\mathbf{F}_{i}+\mathbf{TE}_{i})
+(7)
+In contrast to the original Q-former, we implement two key modifications: 1) Instead of using learnable queries, we utilize the retained visual tokens \mathbf{F}_{i}^{k} as queries to probe and aggregate features. These retained tokens serve as significant anchors within the current frame, allowing for more effective feature aggregation. 2) We introduce a temporary embedding \mathbf{TE}_{i} to the original visual features \mathbf{F}_{i} , which enhances the model’s ability to focus on temporary-salient moving objects.
+Finally, the generated \mathbf{F}_{i}^{v} serves as part of the aggregated visual tokens across all frames, \mathbf{F}_{v} , which is then fed into the subsequent language model for trajectory prediction based on the corresponding navigation instructions. Additionally, we incorporate CCDP: Token Reconstruction as a training-only auxiliary task to further strengthen visual information integrity via explicit token reconstruction.
+3.4 CCDP: Token Reconstruction
+Through memory-enhanced feature aggregation, the generated \mathbf{F}_{i}^{v} ideally encapsulates all visual features of the current frame. To further enhance the connector’s ability to select critical visual tokens and aggregate complete information, we expect to reconstruct features of those pruned tokens based on \mathbf{F}_{i}^{v} . Firstly, we add the enhanced tokens \mathbf{F}_{i}^{v} into the original features \mathbf{F}_{i} according to their original token positions, forming a new feature vector denoted as \langle\text{MLP}(\mathbf{F}_{i}^{v}),\mathbf{F}_{i}\rangle , where an MLP function is used to align the dimensions of \mathbf{F}_{i}^{v} and \mathbf{F}_{i} . Secondly, drawing inspiration from the Masked Autoencoder [9], a learnable embedding \mathbf{e}\in\mathbb{R}^{N\times C} is introduced as a foundation for reconstructing the pruned tokens. Finally, we construct the input feature vector to be reconstructed through the following formula:
+\mathbf{F}^{rec}_{i}=\langle\text{MLP}(\mathbf{F}_{i}^{v}),\mathbf{F}_{i}\rangle\cdot\mathbf{M}_{i}+\mathbf{e}\cdot(1-\mathbf{M}_{i})
+(8)
+In this way, we incorporate the decision \mathbf{M}_{i} into the computational graph of feature reconstruction, enabling the reconstruction loss to influence pruning decisions and compelling the model to retain the most critical tokens. Afterwards, a 4-layer Transformer block takes as input \mathbf{F}_{i}^{rec} and predicts the reconstructed results \mathbf{\hat{F}}_{i}^{rec} . A cycle consistency constraint (Eq. 11) is imposed to ensure that the retained tokens \mathbf{F}_{i}^{v} preserve the integral information of the current video frame.
+3.5 Distance-decoupled Instruction Attention
+We introduce a lightweight language model for efficient autonomous driving, reducing both the number of parameters and computational resource requirements.
+Furthermore, distance-decoupled instruction attention (DDIA) is tailored for our lite language model, significantly alleviating the attention dilution for navigation instructions in the long-context driving scenarios. Specifically, as shown in Fig. 4, our proposed DDIA diverges from the traditional vanilla attention in two key aspects:
+1): Causal-attention \boldsymbol{\rightarrow} Self-attention: Rather than adhering to the original causal setting, our self-attention within instructional segments allows each text token to access ample contextual information, thereby producing a more comprehensive representation of text features.
+2): Distance-dependent \boldsymbol{\rightarrow} Distance-decoupled:
+In contemporary research on LLM, position encoding (e.g. RoPE [31]) is recognized as a critical ingredient to explicitly inject positional information into input tokens and enhance the model’s contextual modeling capabilities.
+However, position encodings may introduce challenges, particularly in long-range driving scenarios. As historical visual data accumulates, the distance between current visual tokens and instructional tokens increases. The feature disparity introduced by position encoding may negatively impact the attention sensitivity of visual tokens to instruction ones, resulting in trajectory predictions that deviate from the specified instructions. To address this problem, inspired by [19], we maintain the distance-dependent attention within the unimodal text or visual tokens, but make the cross-modal attention between instructions and visual tokens unaffected by the position encoding.
+Specifically, with \mathcal{V} and \mathcal{I} denoting the sets of visual and instruction tokens, taking the j -th position as an example, our DDIA is defined as:
+\scriptsize\begin{split}\text{DDIA}(\mathbf{Q},\mathbf{K},\mathbf{V})_{j}=\frac{\sum\limits_{k_{i}\in\mathcal{I}}sim(R({\mathbf{q}}_{j}),R({\mathbf{k}}_{i}))\mathbf{v}_{i}}{\sum\limits_{k_{i}\in\mathcal{I}}sim(R({\mathbf{q}}_{j}),R({\mathbf{k}}_{i}))},\text{if~}\mathbf{q}_{j}\in\mathcal{I},\\
+=\frac{\sum\limits_{k_{i}\in\mathcal{I}}sim({\mathbf{q}}_{j},{\mathbf{k}}_{i})\mathbf{v}_{i}+\sum\limits_{k_{i}\in\{\mathcal{V}\mid<j\}}sim(R(\mathbf{q}_{j}),R(\mathbf{k}_{i}))\mathbf{v}_{i}}{\sum\limits_{k_{i}\in\mathcal{I}}sim({\mathbf{q}}_{j},{\mathbf{k}}_{i})+\sum\limits_{k_{i}\in\{\mathcal{V}\mid<j\}}sim(R(\mathbf{q}_{j}),R(\mathbf{k}_{i}))},\text{if~}\mathbf{q}_{j}\in\mathcal{V}\end{split}
+(9)
+where R(\cdot) denotes RoPE position embedding, sim(\mathbf{q}_{j},\mathbf{k}_{i})=exp(\mathbf{q}_{j}^{T}\mathbf{k}_{i}/\sqrt{d}) and \{\mathcal{V}\mid<j\} represents the causal subset within visual tokens.
+Figure 4: A detailed illustration of our proposed Distance-decoupled Instruction Attention (DDIA).
+3.6 Objective Function
+The full training objective for i -th frame consists of two parts, formulated as follows:
+\mathcal{L}={\mathcal{L}_{way}}+{\mathcal{L}_{cyc}},
+(10)
+here, \mathcal{L}_{way} supervises trajectory prediction by minimizing the L_{1} norm between predicted and ground-truth paths [28], while {\mathcal{L}_{cyc}} facilitates our model to select the most discriminative tokens and aggregate more representative visual features, which is composed of two adversarial losses:
+\mathcal{L}_{cyc}=\lambda_{1}{\mathcal{L}_{prun}}+\lambda_{2}{\mathcal{L}_{rec}}
+(11)
+\mathcal{L}_{prun}=(R-\frac{1}{N}\sum_{j=1}^{N}\mathbf{M}_{ij})^{2}
+(12)
+\mathcal{L}_{rec}=\sum_{j=1}^{N}(1-\mathbf{M}_{ij})(\mathbf{F}_{ij}-\mathbf{\hat{F}}_{ij}^{rec})^{2}
+(13)
+{\mathcal{L}_{prun}} restricts the ratio of kept tokens to our pre-defined value R , and {\mathcal{L}_{rec}} reconstructs pruned tokens from kept ones after memory-enhanced feature aggregation. \lambda_{1} and \lambda_{2} balance the weights of two loss items.
+\mathbf{M}_{ij} , \mathbf{F}_{ij} and \mathbf{\hat{F}}_{ij}^{rec} denote the j -th element of \mathbf{M}_{i} , \mathbf{F}_{i} and \mathbf{\hat{F}}_{i}^{rec} , respectively.
+Table 1: Performance comparison of our method with LMDrive incorporated various LLM backbones on the LangAuto benchmark. We present the metrics from 3 evaluation runs.
+Method
+LLM
+Params
+LangAuto
+(Total)
+DS \uparrow
+RC \uparrow
+IS \uparrow
+LMDrive
+Large Language Model
+LLaMA [34]
+7B
+31.3 \pm 1.5
+37.1 \pm 1.6
+0.82 \pm 0.01
+LLaMA2 [35]
+7B
+32.8 \pm 2.1
+40.1 \pm 2.2
+0.81 \pm 0.02
+Vicuna [49]
+7B
+33.5 \pm 1.9
+39.3 \pm 1.9
+0.83 \pm 0.02
+Vicuna-v1.5 [49]
+7B
+34.0 \pm 3.8
+39.0 \pm 3.3
+0.85 \pm 0.06
+LLaVA-v1.5 [17]
+7B
+36.2 \pm 2.3
+46.5 \pm 4.3
+0.81 \pm 0.03
+Lightweight Language Model
+Phi-2 [11]
+3B
+22.3 \pm 0.1
+28.9 \pm 1.0
+0.82 \pm 0.02
+TinyLLaMA [44]
+1.3B
+25.2 \pm 2.3
+38.6 \pm 3.7
+0.71 \pm 0.02
+Ours
+LLaMA*
+1.3B
+41.7 \pm 1.8
+52.6 \pm 2.5
+0.81 \pm 0.02
+TinyLLaMA [44]
+1.3B
+43.8 \pm 2.4
+54.5 \pm 3.0
+0.84 \pm 0.02
+Table 2: Performance comparison of our method with LMDrive incorporated various LLM backbones on the LangAuto-Short and LangAuto-Tiny benchmarks. We present the metrics from 3 evaluation runs.
+Method
+LLM
+Params
+LangAuto-Short
+LangAuto-Tiny
+(Total)
+DS \uparrow
+RC \uparrow
+IS \uparrow
+DS \uparrow
+RC \uparrow
+IS \uparrow
+LMDrive
+Large Language Model
+LLaMA [34]
+7B
+42.8 \pm 7.2
+49.1 \pm 8.5
+0.87 \pm 0.03
+52.2 \pm 5.3
+57.8 \pm 8.0
+0.91 \pm 0.05
+LLaMA2 [35]
+7B
+44.8 \pm 6.2
+53.5 \pm 5.5
+0.84 \pm 0.02
+56.1 \pm 4.1
+64.2 \pm 4.7
+0.87 \pm 0.04
+Vicuna [49]
+7B
+45.3 \pm 4.9
+54.3 \pm 3.9
+0.83 \pm 0.03
+55.5 \pm 3.9
+63.1 \pm 4.2
+0.88 \pm 0.04
+Vicuna-v1.5 [49]
+7B
+47.0 \pm 4.3
+56.5 \pm 2.4
+0.83 \pm 0.04
+59.0 \pm 2.6
+69.9 \pm 2.3
+0.84 \pm 0.02
+LLaVA-v1.5 [17]
+7B
+50.6 \pm 1.7
+60.0 \pm 3.4
+0.84 \pm 0.04
+66.5 \pm 3.6
+77.9 \pm 2.3
+0.85 \pm 0.02
+Lightweight Language Model
+Phi-2 [11]
+3B
+48.0 \pm 3.6
+55.2 \pm 4.1
+0.87 \pm 0.01
+56.3 \pm 4.9
+68.2 \pm 3.9
+0.82 \pm 0.04
+TinyLLaMA [44]
+1.3B
+46.2 \pm 3.4
+59.7 \pm 3.4
+0.79 \pm 0.02
+64.1 \pm 1.2
+75.0 \pm 1.4
+0.86 \pm 0.01
+Ours
+LLaMA*
+1.3B
+63.6 \pm 4.1
+77.6 \pm 4.1
+0.81 \pm 0.06
+78.4 \pm 4.6
+85.6 \pm 2.4
+0.91 \pm 0.04
+TinyLLaMA [44]
+1.3B
+67.4 \pm 2.0
+78.1 \pm 2.3
+0.85 \pm 0.02
+81.9 \pm 0.9
+85.5 \pm 0.6
+0.94 \pm 0.02
+4 Experiments
+4.1 Experiment Settings
+Datasets.
+We train our model on the official language-driven autonomous driving dataset [28], which includes 64K instruction-following data clips collected across 8 towns on CARLA [6] simulation environment. Each clip not only equips multi-sensor input data (multi-view camera images and LiDAR data), but also introduces aligned navigation instructions in the natural language format.
+Implementation Details.
+We adopt the visual encoder in LMDrive [28], producing 106 visual tokens ( N =106) and kept it fixed during training. Two configurations of lightweight language models are integrated into our framework: LLaMA* (a 4-layer lite version of LLaMA [34]) and TinyLLaMA [44].
+The hype parameters R determining the ratio of kept tokens and Z denoting the number of stored adjacent frames in the memory bank are set to 0.3 and 10 , respectively. \lambda_{1} and \lambda_{2} in the loss function (Eq. 11) are configured to 10 and 1. More details are provided in the Supplementary Material.
+Evaluation Metrics.
+As in LMDrive [28], we evaluate our model on three benchmarks, categorized by route length: LangAuto ( > 500m), LangAuto-Short (150m – 500m) and LangAuto-Tiny ( < 150m) and employ route completion (RC), infraction score (IS), and driving score (DS) to assess close-looped driving performance. Specifically, route completion measures the extent to which a specified route is completed. Infraction score quantifies driving safety, starting from an ideal 1.0 base score and decrementing proportionally in the event of collisions or traffic rule violations. Driving Score is calculated as the product of RC and IS, offering a comprehensive evaluation of overall performance.
+4.2 Comparisons with LLM-based Agents
+We compare our VLDrive with LMDrive, a pioneering LLM-driven, closed-loop autonomous driving method, across several distance benchmarks. Table 1 presents the comparison results on the LangAuto benchmark. VLDrive has approximately 81% fewer parameters yet demonstrates superior driving performance compared to LMDrive, which is equipped with various LLM configurations. Specifically, VLDrive-LLaMA* achieves driving scores of 41.7% and route completion rates of 52.6%, outperforming LMDrive with LLaVA-v1.5 by 5.5% and 6.1%. This trend continues on the LangAuto-Short and LangAuto-Tiny benchmarks, as shown in Table 2, where VLDrive-LLaMA* attains driving scores of 63.6% and 78.4%, surpassing LMDrive by 13% and 11.9%. VLDrive-TinyLLaMA achieves new state-of-the-art performance, boosting the DS score to 43.8%, 67.4%, and 81.9% on the LangAuto, LangAuto-Short, and LangAuto-Tiny benchmarks, respectively.
+4.3 Ablation Study
+To investigate the impact of various components of our method, we conduct comprehensive ablation studies on the standard LangAuto benchmark. To reduce time costs and enhance training efficiency, we randomly extract approximately 25% of the training data from each town, forming a mini-training set for all ablation experiments. We present the metrics from 3 evaluation runs.
+Effectiveness of Each Individual Component.
+As shown in Table 3, we begin our ablation study from the baseline, which utilizes LLaMA* as the trainable language model and Q-Former [13] with learnable queries as the connector. Our method improves the baseline by: (1) introducing CCDP to extract critical sparse tokens, (2) replacing the vanilla Q-Former with our proposed MEFA module, and (3) substituting the causal attention mechanism with our DDIA module. The results in Table 3 validate the contribution of each component, with their synergistic integration leading to substantial improvements in driving performance.
+Effectiveness of CCDP.
+We compare our CCDP approach with other token reduction strategies, including: 1) Structural pooling, a token reduction technique based on average pooling operations. 2) Dynamic pruning without token reconstruction. We maintain a consistent token retention ratio across all methods.
+As shown in Table 4, benefiting from the cycle-consistency constraints, CCDP is able to extract the most critical visual information and consequently achieves the highest driving scores. Fig. 5 further illustrates the positive correlation between reconstruction loss and trajectory prediction loss on the open-looped validation set, with a pearson correlation coefficient of 0.65.
+Analysis of Token Sparsification.
+Table 5 demonstrates that, retaining 30% of the visual tokens captures critical clues for autonomous driving. Further increment in the number of tokens produces no significant performance gains in driving scores.
+Table 3: Ablation studies of each individual component.
+Method
+DS \uparrow
+RC \uparrow
+IS \uparrow
+Baseline
+30.0 \pm 0.8
+46.2 \pm 3.5
+0.69 \pm 0.03
+Ours
+39.8 \pm 1.7
+49.1 \pm 1.8
+0.83 \pm 0.02
+w/o CCDP
+35.5 \pm 3.8
+45.3 \pm 3.5
+0.78 \pm 0.02
+w/o MEFA
+35.9 \pm 0.8
+46.9 \pm 1.3
+0.81 \pm 0.02
+w/o DDIA
+36.3 \pm 1.3
+47.0 \pm 1.0
+0.81 \pm 0.02
+Table 4: Ablation studies of various token reduction strategies.
+Method
+DS \uparrow
+RC \uparrow
+IS \uparrow
+Structural Pooling
+33.6 \pm 2.4
+45.8 \pm 4.3
+0.78 \pm 0.06
+Dynamic Pruning
+36.3 \pm 2.6
+48.0 \pm 2.3
+0.76 \pm 0.03
+CCDP (Ours)
+39.8 \pm 1.7
+49.1 \pm 1.8
+0.83 \pm 0.02
+Table 5: Ablation studies of different token retention ratios.
+Retention Ratio ( R )
+DS \uparrow
+RC \uparrow
+IS \uparrow
+5%
+33.4 \pm 0.4
+45.1 \pm 3.2
+0.77 \pm 0.03
+10%
+35.6 \pm 1.7
+47.3 \pm 1.0
+0.79 \pm 0.02
+30%
+39.8 \pm 1.7
+49.1 \pm 1.8
+0.83 \pm 0.02
+50%
+39.8 \pm 1.2
+51.4 \pm 3.7
+0.79 \pm 0.04
+Table 6: Ablation of memory bank with different capacity.
+Capacity ( Z )
+DS \uparrow
+RC \uparrow
+IS \uparrow
+5
+37.1 \pm 1.9
+49.1 \pm 0.5
+0.80 \pm 0.01
+10
+39.8 \pm 1.7
+49.1 \pm 1.8
+0.83 \pm 0.02
+20
+38.3 \pm 3.0
+49.9 \pm 2.6
+0.81 \pm 0.02
+Effectiveness of MEFA.
+As illustrated in Table 6, incorporating a memory bank provides essential temporal information that aids in predicting the future trajectories and behaviors of the ego-car and other objects, thereby enhancing the reliability of autonomous driving. Furthermore, our experiments indicate that a capacity of 10 adjacent frames yields the most significant performance improvements.
+Effectiveness of DDIA.
+Fig. 6 shows the visual comparison of attention maps generated by vanilla causal attention and DDIA, where brighter colors indicate higher values. As highlighted in the red dashed box, DDIA enhances attention to instruction tokens, enabling visual tokens to better integrate instructional information and thus make more accurate driving decisions.
+Figure 5: Correlation analysis between reconstruction and trajectory prediction losses, revealing a significant positive relationship (Pearson’s r = 0.65).
+Figure 6: Visual comparison of attention maps generated by the language model equipped with vanilla causal attention and DDIA. We aggregate the attention weights within the instruction segment into the first four tokens for clearer visualization.
+5 Conclusion
+In this work, we introduce VLDrive, a vision-enhanced, lightweight model for language-grounded autonomous driving. To facilitate the practical deployment of autonomous vehicles, we streamline the heavy LLM into a more compact form while augmenting its visual modeling and vision-language alignment. Specifically, we employ cycle-consistent visual dynamic pruning to efficiently capture the most salient visual information for each frame, and incorporate a memory-enhanced feature aggregation that enriches critical temporal information to help the model comprehend historical trajectories and infer future movements. Additionally, a distance-decoupled instruction attention strategy is tailored for our lightweight language model, alleviating the attention dilution to navigation instructions and boosting the model’s instruction-following capability. Extensive experiments demonstrate that our model, despite having significantly fewer parameters, achieves superior and robust driving performance across various benchmarks.
+Acknowledgments
+This work is supported in part by the National Key R&D Program of China (2024YFB3908503), in part by the National Natural Science Foundation of China (62322608), in part by the Shenzhen Longgang District Science and Technology Innovation Special Fund (No. LGKCYLWS2023018), in part by the Futian Healthcare Research Project (No.FTWS002), and in part by the Shenzhen Medical Research Fund (No. C2401036). This work is also sponsored by CIE-Tencent Robotics X Rhino-Bird Focused Research Program.
+References
+[1]
+S. Casas, A. Sadat, and R. Urtasun (2021)
+Mp3: a unified model to map, perceive, predict and plan.
+In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition,
+pp. 14403–14412.
+Cited by: §2.1.
+[2]
+R. Chekroun, M. Toromanoff, S. Hornauer, and F. Moutarde (2023)
+Gri: general reinforced imitation and its application to vision-based autonomous driving.
+Robotics 12 (5), pp. 127.
+Cited by: §2.1.
+[3]
+L. Chen, O. Sinavski, J. Hünermann, A. Karnsund, A. J. Willmott, D. Birch, D. Maund, and J. Shotton (2023)
+Driving with llms: fusing object-level vector modality for explainable autonomous driving.
+arXiv preprint arXiv:2310.01957.
+Cited by: §2.2.
+[4]
+F. Codevilla, E. Santana, A. M. López, and A. Gaidon (2019)
+Exploring the limitations of behavior cloning for autonomous driving.
+In Proceedings of the IEEE/CVF international conference on computer vision,
+pp. 9329–9338.
+Cited by: §2.1.
+[5]
+C. Cui, Y. Ma, X. Cao, W. Ye, and Z. Wang (2024)
+Drive as you speak: enabling human-like interaction with large language models in autonomous vehicles.
+In Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision,
+pp. 902–909.
+Cited by: §2.2.
+[6]
+A. Dosovitskiy, G. Ros, F. Codevilla, A. Lopez, and V. Koltun (2017)
+CARLA: an open urban driving simulator.
+In Conference on robot learning,
+pp. 1–16.
+Cited by: §1,
+§4.1.
+[7]
+D. Fu, X. Li, L. Wen, M. Dou, P. Cai, B. Shi, and Y. Qiao (2024)
+Drive like a human: rethinking autonomous driving with large language models.
+In Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision,
+pp. 910–919.
+Cited by: §2.2.
+[8]
+J. Hawke, R. Shen, C. Gurau, S. Sharma, D. Reda, N. Nikolov, P. Mazur, S. Micklethwaite, N. Griffiths, A. Shah, et al. (2020)
+Urban driving with conditional imitation learning.
+In 2020 IEEE International Conference on Robotics and Automation (ICRA),
+pp. 251–257.
+Cited by: §2.1.
+[9]
+K. He, X. Chen, S. Xie, Y. Li, P. Dollár, and R. Girshick (2022)
+Masked autoencoders are scalable vision learners.
+In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition,
+pp. 16000–16009.
+Cited by: §3.4.
+[10]
+Y. Hu, J. Yang, L. Chen, K. Li, C. Sima, X. Zhu, S. Chai, S. Du, T. Lin, W. Wang, et al. (2023)
+Planning-oriented autonomous driving.
+In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition,
+pp. 17853–17862.
+Cited by: §1,
+§2.1.
+[11]
+M. Javaheripi, S. Bubeck, M. Abdin, J. Aneja, S. Bubeck, C. C. T. Mendes, W. Chen, A. Del Giorno, R. Eldan, S. Gopi, et al. (2023)
+Phi-2: the surprising power of small language models.
+Microsoft Research Blog.
+Cited by: Table 1,
+Table 2.
+[12]
+Z. Kong, P. Dong, X. Ma, X. Meng, W. Niu, M. Sun, X. Shen, G. Yuan, B. Ren, H. Tang, et al. (2022)
+Spvit: enabling faster vision transformers via latency-aware soft token pruning.
+In European conference on computer vision,
+pp. 620–640.
+Cited by: §2.3.
+[13]
+J. Li, D. Li, S. Savarese, and S. Hoi (2023)
+Blip-2: bootstrapping language-image pre-training with frozen image encoders and large language models.
+In International conference on machine learning,
+pp. 19730–19742.
+Cited by: §2.3,
+§3.3,
+§4.3.
+[14]
+Y. Li, C. Wang, and J. Jia (2023)
+LLaMA-vid: an image is worth 2 tokens in large language models.
+arXiv preprint arXiv:2311.17043.
+Cited by: §2.3.
+[15]
+M. Liang, B. Yang, W. Zeng, Y. Chen, R. Hu, S. Casas, and R. Urtasun (2020)
+Pnpnet: end-to-end perception and prediction with tracking in the loop.
+In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition,
+pp. 11553–11562.
+Cited by: §1.
+[16]
+X. Liang, T. Wang, L. Yang, and E. Xing (2018)
+Cirl: controllable imitative reinforcement learning for vision-based self-driving.
+In Proceedings of the European conference on computer vision (ECCV),
+pp. 584–599.
+Cited by: §2.1.
+[17]
+H. Liu, C. Li, Y. Li, and Y. J. Lee (2023)
+Improved baselines with visual instruction tuning.
+arXiv preprint arXiv:2310.03744.
+Cited by: Table 1,
+Table 2.
+[18]
+H. Liu, C. Li, Q. Wu, and Y. J. Lee (2024)
+Visual instruction tuning.
+Advances in neural information processing systems 36.
+Cited by: §1.
+[19]
+F. Ma, X. Jin, H. Wang, Y. Xian, J. Feng, and Y. Yang (2023)
+Vista-llama: reliable video narrator via equal distance to visual tokens.
+arXiv preprint arXiv:2312.08870.
+Cited by: §3.5.
+[20]
+J. Mao, Y. Qian, H. Zhao, and Y. Wang (2023)
+Gpt-driver: learning to drive with gpt.
+arXiv preprint arXiv:2310.01415.
+Cited by: §2.2.
+[21]
+J. Mao, J. Ye, Y. Qian, M. Pavone, and Y. Wang (2023)
+A language agent for autonomous driving.
+arXiv preprint arXiv:2311.10813.
+Cited by: §2.2.
+[22]
+A. Marcu, L. Chen, J. Hünermann, A. Karnsund, B. Hanotte, P. Chidananda, S. Nair, V. Badrinarayanan, A. Kendall, J. Shotton, et al. (2023)
+Lingoqa: video question answering for autonomous driving.
+arXiv preprint arXiv:2312.14115.
+Cited by: §2.2.
+[23]
+M. Nie, R. Peng, C. Wang, X. Cai, J. Han, H. Xu, and L. Zhang (2023)
+Reason2drive: towards interpretable and chain-based reasoning for autonomous driving.
+arXiv preprint arXiv:2312.03661.
+Cited by: §2.2.
+[24]
+A. Prakash, K. Chitta, and A. Geiger (2021)
+Multi-modal fusion transformer for end-to-end autonomous driving.
+In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition,
+pp. 7077–7087.
+Cited by: §2.1.
+[25]
+Y. Rao, W. Zhao, B. Liu, J. Lu, J. Zhou, and C. Hsieh (2021)
+Dynamicvit: efficient vision transformers with dynamic token sparsification.
+Advances in neural information processing systems 34, pp. 13937–13949.
+Cited by: §2.3,
+§3.2.
+[26]
+A. Sadat, S. Casas, M. Ren, X. Wu, P. Dhawan, and R. Urtasun (2020)
+Perceive, predict, and plan: safe motion planning through interpretable semantic representations.
+In Computer Vision–ECCV 2020: 16th European Conference, Glasgow, UK, August 23–28, 2020, Proceedings, Part XXIII 16,
+pp. 414–430.
+Cited by: §1,
+§2.1.
+[27]
+Y. Shang, M. Cai, B. Xu, Y. J. Lee, and Y. Yan (2024)
+Llava-prumerge: adaptive token reduction for efficient large multimodal models.
+arXiv preprint arXiv:2403.15388.
+Cited by: §2.3.
+[28]
+H. Shao, Y. Hu, L. Wang, S. L. Waslander, Y. Liu, and H. Li (2023)
+Lmdrive: closed-loop end-to-end driving with large language models.
+arXiv preprint arXiv:2312.07488.
+Cited by: §1,
+§2.2,
+§3.6,
+§4.1,
+§4.1,
+§4.1.
+[29]
+H. Shao, L. Wang, R. Chen, H. Li, and Y. Liu (2023)
+Safety-enhanced autonomous driving using interpretable sensor fusion transformer.
+In Conference on Robot Learning,
+pp. 726–737.
+Cited by: §1,
+§2.1.
+[30]
+C. Sima, K. Renz, K. Chitta, L. Chen, H. Zhang, C. Xie, P. Luo, A. Geiger, and H. Li (2023)
+Drivelm: driving with graph visual question answering.
+arXiv preprint arXiv:2312.14150.
+Cited by: §2.2.
+[31]
+J. Su, M. Ahmed, Y. Lu, S. Pan, W. Bo, and Y. Liu (2024)
+Roformer: enhanced transformer with rotary position embedding.
+Neurocomputing 568, pp. 127063.
+Cited by: §3.5.
+[32]
+M. Toromanoff, E. Wirbel, and F. Moutarde (2020)
+End-to-end model-free reinforcement learning for urban driving using implicit affordances.
+In Proceedings of the IEEE/CVF conference on computer vision and pattern recognition,
+pp. 7153–7162.
+Cited by: §2.1.
+[33]
+H. Touvron, T. Lavril, G. Izacard, X. Martinet, M. Lachaux, T. Lacroix, B. Rozière, N. Goyal, E. Hambro, F. Azhar, et al. (2023)
+Llama: open and efficient foundation language models.
+arXiv preprint arXiv:2302.13971.
+Cited by: §1.
+[34]
+H. Touvron, T. Lavril, G. Izacard, X. Martinet, M. Lachaux, T. Lacroix, B. Rozière, N. Goyal, E. Hambro, F. Azhar, et al. (2023)
+Llama: open and efficient foundation language models.
+arXiv preprint arXiv:2302.13971.
+Cited by: Table 1,
+Table 2,
+§4.1.
+[35]
+H. Touvron, L. Martin, K. Stone, P. Albert, A. Almahairi, Y. Babaei, N. Bashlykov, S. Batra, P. Bhargava, S. Bhosale, et al. (2023)
+Llama 2: open foundation and fine-tuned chat models.
+arXiv preprint arXiv:2307.09288.
+Cited by: Table 1,
+Table 2.
+[36]
+A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, Ł. Kaiser, and I. Polosukhin (2017)
+Attention is all you need.
+Advances in neural information processing systems 30.
+Cited by: §2.1.
+[37]
+T. Wang, E. Xie, R. Chu, Z. Li, and P. Luo (2024)
+DriveCoT: integrating chain-of-thought reasoning with end-to-end driving.
+arXiv preprint arXiv:2403.16996.
+Cited by: §1,
+§2.2.
+[38]
+W. Wang, J. Xie, C. Hu, H. Zou, J. Fan, W. Tong, Y. Wen, S. Wu, H. Deng, Z. Li, et al. (2023)
+Drivemlm: aligning multi-modal large language models with behavioral planning states for autonomous driving.
+arXiv preprint arXiv:2312.09245.
+Cited by: §1,
+§2.2.
+[39]
+S. Wei, T. Ye, S. Zhang, Y. Tang, and J. Liang (2023)
+Joint token pruning and squeezing towards more aggressive compression of vision transformers.
+In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition,
+pp. 2092–2101.
+Cited by: §2.3.
+[40]
+Y. Xu, Z. Zhang, M. Zhang, K. Sheng, K. Li, W. Dong, L. Zhang, C. Xu, and X. Sun (2022)
+Evo-vit: slow-fast token evolution for dynamic vision transformer.
+In Proceedings of the AAAI Conference on Artificial Intelligence,
+Vol. 36, pp. 2964–2972.
+Cited by: §2.3.
+[41]
+Z. Xu, Y. Zhang, E. Xie, Z. Zhao, Y. Guo, K. K. Wong, Z. Li, and H. Zhao (2023)
+Drivegpt4: interpretable end-to-end autonomous driving via large language model.
+arXiv preprint arXiv:2310.01412.
+Cited by: §1,
+§2.2.
+[42]
+J. Zhang and K. Cho (2017)
+Query-efficient imitation learning for end-to-end simulated driving.
+In Proceedings of the AAAI conference on artificial intelligence,
+Vol. 31.
+Cited by: §2.1.
+[43]
+P. Zhang, X. D. B. Wang, Y. Cao, C. Xu, L. Ouyang, Z. Zhao, S. Ding, S. Zhang, H. Duan, H. Yan, et al. (2023)
+Internlm-xcomposer: a vision-language large model for advanced text-image comprehension and composition.
+arXiv preprint arXiv:2309.15112.
+Cited by: §2.3.
+[44]
+P. Zhang, G. Zeng, T. Wang, and W. Lu (2024)
+Tinyllama: an open-source small language model.
+arXiv preprint arXiv:2401.02385.
+Cited by: Table 1,
+Table 1,
+Table 2,
+Table 2,
+§4.1.
+[45]
+R. Zhang, X. Lin, W. Zhang, J. Lu, X. Wang, X. Tan, Y. Li, E. Ding, J. Wang, and G. Li (2024)
+Interactive 3d object detection with prompts.
+In European Conference on Computer Vision,
+pp. 140–157.
+Cited by: §2.1.
+[46]
+W. Zhang, J. Li, M. Xia, X. Gao, X. Tan, Y. Shi, Z. Huang, and G. Li (2024)
+OffsetNet: towards efficient multiple object tracking, detection, and segmentation.
+IEEE Transactions on Pattern Analysis and Machine Intelligence.
+Cited by: §1.
+[47]
+Z. Zhang, A. Liniger, D. Dai, F. Yu, and L. Van Gool (2021)
+End-to-end urban driving by imitating a reinforcement learning coach.
+In Proceedings of the IEEE/CVF international conference on computer vision,
+pp. 15222–15232.
+Cited by: §2.1.
+[48]
+L. Zheng, W. Chiang, Y. Sheng, S. Zhuang, Z. Wu, Y. Zhuang, Z. Lin, Z. Li, D. Li, E. Xing, et al. (2024)
+Judging llm-as-a-judge with mt-bench and chatbot arena.
+Advances in Neural Information Processing Systems 36.
+Cited by: §1.
+[49]
+L. Zheng, W. Chiang, Y. Sheng, S. Zhuang, Z. Wu, Y. Zhuang, Z. Lin, Z. Li, D. Li, Eric. P. Xing, H. Zhang, J. E. Gonzalez, and I. Stoica (2023)
+Judging llm-as-a-judge with mt-bench and chatbot arena.
+External Links: 2306.05685
+Cited by: Table 1,
+Table 1,
+Table 2,
+Table 2.
+[50]
+D. Zhu, J. Chen, X. Shen, X. Li, and M. Elhoseiny (2023)
+Minigpt-4: enhancing vision-language understanding with advanced large language models.
+arXiv preprint arXiv:2304.10592.
+Cited by: §1,
+§2.3.
+Experimental support, please
+view the build logs
+for errors. Generated by
+L
+A
+T
+E
+xml
+.
+Instructions for reporting errors
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+methods listed below:
+Click the "Report Issue" (
+) button, located in the page header.
+Tip: You can select the relevant text first, to include it in your report.
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we
+may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+all.
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.
+We gratefully acknowledge support from
+our major funders,
+member institutions, ,
+and all contributors.
+About
+·
+Help
+·
+Contact
+·
+Subscribe
+·
+Copyright
+·
+Privacy
+·
+Accessibility
+·
+Operational Status (opens in new tab)
+Major funding support from

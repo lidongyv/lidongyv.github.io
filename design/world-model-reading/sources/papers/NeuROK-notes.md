@@ -1,0 +1,164 @@
+# NeuROK 论文精读笔记
+
+> 数据源：`auto_docs/papers/txt/NeuROK.txt`（62,768 字符，1,258 行）。所有引文逐字复制自该 txt，括号内为行号。txt 为 LaTeX 转纯文本产物，存在排版痕迹：下标被平铺（如 "M 0" 即 M₀、"R 3n" 即 R³ⁿ、"V kint" 即 V_kint）、斜体词粘连（如 "NeuralObjectKinematics" 即 *Neural Object Kinematics*、"NEUROK" 即 *NeuROK*、参数名粘连如 "E cond" 即 E_cond）、换行断词（如 "parameteri-zation"）。以下引文均保持 txt 原样，仅在必要时以〔〕注明。
+
+## 1. 原文信息
+
+- 标题（L1）："NEUROK: Generative 4D Neural Object Kinematics"
+- 作者（L2–3）："Chen Geng1,∗ Guangzhao He3,∗ Yue Gao1,∗" / "Yunzhi Zhang1 Shangzhe Wu2 Jiajun Wu1"（前三人带 ∗，共同一作标记，原文如此）
+- 机构（L4）："1Stanford University 2University of Cambridge 3Cornell University"
+- ID 与发表状态（L39）："arXiv:2605.30347v1  [cs.CV]  28 May 2026"；为 arXiv v1 预印本。是否被会议/期刊录用：原文未写。
+- 项目页（L16）："Project page:https://chen-geng.com/neurok"
+
+## 2. Abstract 全文逐字
+
+（L18–38、40–45；txt 中 L39 为 arXiv 页脚戳，插在 "dy-"（L38 末）与 "namics"（L40 首）之间，抄录如下：）
+
+"Data-driven approaches have revolutionized 3D vision, enabling transformers to effectively reconstruct and gen-erate static 3D objects. However, generating simulative 4D dynamics—realistic temporal deformations of static ob-jects under various physical conditions—remains challeng-ing and often ad hoc, despite its importance in building comprehensive 3D world models. Most existing methods assume a predefined physical model and use system identi-fication to estimate parameters, restricting these methods to specific categories and small-scale datasets.
+
+We propose that these restrictions can be overcome by learning a data-driven kinematic state parameterization for object-centric physical systems. Specifically, we learn both a latent space representing all possible states of the object and a decoder that maps any sampled latent to a plausibly deformed shape of the object. We refer to this parameteri-zation asNeuralObjectKinematics (NEUROK), and learn a transformer-based encoder-decoder model on a curated large-scale 4D dataset. This formulation and the learned model significantly simplify the generation of simulative dy-namics since we only need to consider the dynamics within a low-dimensional latent space from the Lagrangian me-chanics' perspective in classical physics. We demonstrate the effectiveness and generality of this neural simulation framework across diverse dynamic object types, showing clear advantages over prior works."
+
+## 3. 问题与动机
+
+**为什么 4D 动力学生成卡在「预定义物理模型 + 系统辨识」。** 论文的开篇判断（L60–65）：
+
+"A long-standing view holds that generating such 4D sim-ulative dynamics demands a comprehensive physical under-standing of the object. This is epitomized by most exist-ing works [105, 114] that generate 4D dynamics by adopt-ing predefined category-specific physical models and esti-mating their parameters with system identification."
+
+其后果（L65–70）："While this paradigm is effective for target object categories (e.g., articulated objects, continuum bodies, and cloth), it strug-gles to generalize beyond these predefined categories, and, more importantly, offers limited scalability to large-scale 4D datasets comprising diverse dynamic structures."
+
+Abstract 中同一判断更凝练（L24–27）："Most existing methods assume a predefined physical model and use system identi-fication to estimate parameters, restricting these methods to specific categories and small-scale datasets."
+
+**更深一层的根因：几何继承来的状态参数化导致过参数化。**（L78–84）："Most existing approaches [69, 105, 114] adopt a kinematic state parameterization natu-rally inherited from the object's shape representation,e.g., a dense particle set derived from mesh discretizations. While effective, this choice leads to an over-parameterized system, and thus necessitates category-specific physical constraints to prevent the system from being under-determined."
+
+**3D 世界模型需要什么。**（L55–59）："However, in the community of generative AI, generating such 4D re-active behaviors with no reliance on any category-specific physical priors is far from trivial, despite the importance of this capability in constructing 3D world models for embodied AI or robotics [52, 80]."
+
+Abstract 亦点明（L20–24）："However, generating simulative 4D dynamics—realistic temporal deformations of static ob-jects under various physical conditions—remains challeng-ing and often ad hoc, despite its importance in building comprehensive 3D world models."
+
+**论文的核心设问**（L71–73）："Is it possible to build a general-purpose simulator that generates such 4D motions without any category-specific inductive bias?"
+
+出发点是人本身的直觉（L51–54）："Given a 3D geometric snapshot of a dynamic object, hu-mans can intuitively imagine how the object would react under different physical conditions, even without precise knowledge of the governing physical equations."
+
+## 4. 方法逐机制
+
+**问题设定（L203–215）。**"Our pipeline takes a static snapshot of a 3D dynamic object and a set of physical con-ditions (e.g.,actions, forces, initial velocities) as inputs, and generates a sequence of temporally evolving 3D shapes. As a single 3D snapshot of an object cannot fully determine its physical parameters, our goal is togenerateone plausible 4D sequence that satisfies one valid physical configuration and conforms to human physical intuition [4]. We assume no kinematic or physical priors on the dynamic structure of the modeled object."
+
+**运动学潜空间（低维形变流形）。**（L223–232）："While the vertices of the meshM0 can theoretically take arbitrary positions inR 3n, only a small subset of these con-figurations correspond to plausibly re-posed shapes. In fact, a randomly sampled deformation vector fromR 3n will al-most certainly yield a deformed mesh far outside the distri-bution of valid object poses. Empirically, the set of plau-sible vertex position vectors of a dynamic object forms a low-dimensional configuration manifoldV kint embedded in R3n, wherek int denotes the intrinsic degrees of freedom of the deformation space andk int ≪3n."
+
+**定义 1（L260–265）：**"Ak-dimensionalkinematic state parameterizationfor a dynamic object is a pair(Z,F), whereZ ⊆R k is the state space of the parameterization, andF:Z → R3n maps any state vectorz∈ Zto a vertex configu-ration ofM 0 withnvertices."
+
+**定义 2（L288–291）：**"If ak-dimensional kinematic state parameterization (Z,F)uses a neural network to representF, and the range ofFisV kint, we refer to this pair as aNeural ObjectKinematics (NEUROK) of a dynamic object."
+
+**编码器-解码器（三模型 cVAE）。** 学习目标被表述为一个代理任务（L343–348）："We model the latent state spaceZ(M 0)associated withM 0 by studying a surrogate task: learning a generative distributionp M0 (ϕ) over all plausible deformation fields 2 ϕ(x) :R 3 →R 3 ofM 0. Concretely, we train a conditional variational auto-encoder [46] to learn three models to approximate the instance-specific prior distributionp M0 (ϕ):"
+
+三个模型（L349–358）："1. Akinematic prior encoderE cond(M0)that takes in the conditioning input mesh and outputs the parameters for a prior distributionp M0 (z)over the latent spaceR k. 2. Avariational deformation encoderE V AE(ϕ,M 0)that takes in a deformation fieldϕand a conditional mesh M0 and produces the parameters of a posterior distribu-tionq M0 (z|ϕ). 3. Adeformation decoderD(z,M 0)that takes in a sam-pled latentzfrom the conditional prior distribution pM0 (z)and decodes it into a deformed meshM z."
+
+学成后（L359–363）："After learning these three models, we extract the high-density region of the latent probability distributionp M0 (z) as the NEUROK kinematic state spaceZ(M 0), and use the probabilistic decoderD(z,M 0)as the NEUROK mapping F(·;M 0)."
+
+**Transformer 架构。**（L370–371）："As a general principle, we use transformers [98] as back-bones to ensure that they scale well to large-scale datasets."
+
+- 先验编码器：点云采样 + 3DShape2Vecset 位置嵌入（L377–381）："To encodeM 0, we evenly samplen sample points from the surface of the input mesh to form a point cloud Vsample. We then use the position embedding layer fol-lowing 3DShape2Vecset [113] to obtain point-wise features Fcond ∈R nsample×Fpos"；perceiver 式可学习 token（L383–388）："we adopt a perceiver-based architecture [37, 116] and store a series of learnable tokens{e i}Ki=1, whereKis the number of tokens. With the learnable tokens, we apply mul-tiple blocks of cross-attention and self-attention layers to obtainKencoded features{f i}Ki=1."；先验分布（L390–391）："We use the normal distributionN(µ cond,I)as the instance-specific prior distributionp M0 (z)."
+- 变分形变编码器：以双四元数参数化形变（L427 脚注 3）："Practically, we parameterize the deformation of each point with dual quaternions. See the Supp. Mat. for more discussion."；后验（L413）："The output posterior distributionq M0 (z|ϕ) is modeled as a Gaussian distributionN(µ V AE, σV AE)."
+- 形变解码器：将 z 重塑为 K 个 latent token 与查询点云做注意力（L417–426）："As the latent space has a dimensionality ofK×F token, we reshape zintoKlatent tokens{e i}Ki=1, each withF token dimensions. We then pass the query point cloud and the latent tokens to several blocks of self-attention and cross-attention layers, and predictn sample features{f i}nsamplei=1 . We further pass the features into an MLP to get the final deformation vectors δpred ={δ i}nsamplei=1 . We deformV query using the predicted de-formation vectors, and drive the mesh verticesV 0 by aver-aging the deformations overK drive nearest sampled points."
+
+**训练损失（L436–446）。** 每次迭代随机取同实例两帧：第一帧作 M₀、两帧之差为形变场；损失为
+
+"L=||δ sample−δpred||22+λDKL (qM0 (z|ϕ)||p M0 (z)),(1)
+
+whereλis a hyper-parameter and we setλ= 0.01."（L445–446；λ 之外的超参细节主文未写，详见 Supp. Mat.。）
+
+**数据集（L432–435）。**"All three models are trained simultaneously on a large-scale 4D dataset of deforming meshes of dynamic objects. We construct this dataset by curating instances from existing works [25, 104] and physical simulation. The details of the dataset can be found in the Supp. Mat."（数据集规模、类别构成等细节：原文未写，指向 Supp. Mat.。）
+
+**维度约简（L447–461）。**（L447–452）："The raw latent space of the learned V AE can be high-dimensional. To obtain a reduced-order latent space, we further perform a dimension reduction process to compress Z ⊆R k to a lower-dimensional latent spaceQ ⊆R kq, wherek q ≪k." 方法（L453–461）："We perform the dimension reduction through the Active Subspace Method [22] that reduces the dimensionality of a high-dimensional spaceZby considering a surrogate func-tionG(z) =g(Az+ϵ(z)), whereG:R k →R,A∈R kq×k, andg:R kq →R. In this way, the span of the rows ofA identifies the directions that matter forG[7]. We defineGin a way that identifies the influence ofz∈ Zon the predicted deformation. Therefore, we formalizeGas the 2-norm of δpred predicted from a set of sampled points onM 0."
+
+**拉格朗日力学视角。**（L477–481）："From this perspective,Z(M 0)effectively forms a con-figuration space of the studied object-centric physical sys-tem, and anyz∈ Z(M0)is a vector of generalized coordi-nates of the system. Therefore, we can generate the dynam-ics ofzby using principles in Lagrangian mechanics."
+
+欧拉-拉格朗日方程（L482–488）："Lagrangian mechanics solves the dynamics of general-ized coordinates by defining a smooth functionLover the latent space and solving the Euler-Lagrange equation: d/dt ∂L/∂ ˙z = ∂L∂z .(2)"
+
+能量函数（L489–491）："For most physical systems we study in this paper, we define Lagrangian functionL(z, ˙z) =T(z, ˙z)−V(z)using the kinetic energyTand potential energyVof the system."（T、V 的具体形式：主文原文未写，见 Supp. Mat.。）
+
+NEUROK 版的运动方程（L494–497）："With the defined Lagrangian functions and the learned NEUROK, we solve the dynamics ofz∈ Z(M 0)with:
+
+mG(z)¨z+C(z, ˙z) +∇ zV= 0,(3)
+
+whereG(z) =J Tz Jz,J z is the Jacobian ofF,C i = m Pj,k Γijk (z) ˙zj ˙zk,Γ ijk is the Christoffel symbol. Its derivation can be found in the Supp. Mat."
+
+**边界条件（L501–506）。**"Our system takes in conditions such as actions to generate 4D dynamics. They are incorporated by optimizing(z 0, ˙z0) to minimize||x 0 − F(z0)||22 +|| ˙x0 −J z ˙z0||22, wherex 0, ˙x0 are input positions and velocities of selected particles of the system. After solving(z 0, ˙z0), they serve as the initial con-dition for solving Eq. (3). See the Supp. Mat. for details."
+
+**为什么这套设计能简化问题**（L90–99，即 Introduction 的"摆"类比）："With this learned parameterization, the physical system can be greatly simplified: we only need to model the transition be-tween low-dimensional latent vectors, similar to how a pen-dulum system can be simplified through a symbolic param-eterization (Fig. 2(a)). This data-driven parameterization leads to a universal framework that simulates system dy-namics from the perspective of Lagrangian mechanics [47], where category-agnostic energy functions are defined over the latent states and dynamics are directly derived using Euler-Lagrange equations."
+
+以及（L298–307）："A successfully learned NEUROK greatly simplifies the solution space of the physical system, since we only need to model the dynamics between latent vectorzin a low-dimensional space. It also eliminates the need for inter-particle physical equations employed in mainstream simula-tion approaches to keep the deformed shape intact and plau-sible, as any sampled latent can be mapped into a validly deformed mesh. This allows us to study the system as a whole by considering the energy landscape over different kinematic states of an entire system."
+
+## 5. 实验与主结果
+
+**6.1 运动学学习（逆运动学，PartNet-Mobility 测试集）。**（L509–516）："We evaluate the effectiveness of NEUROK for learning kinematic state parameterization. Given an object and a tar-get pose of the same object, we estimate an initial kinematic state and identify the optimal latent state vector that deforms the input shape to match the target. For quantitative assess-ment, we use the test dataset of PartNet-Mobility [104], and evaluate reconstruction accuracy using Chamfer dis-tances [28] and a volumetric consistency metric (IoU)."
+
+（注：正文此处写 "PartNet-Mobility [104]"，但参考文献 [104]（L1168–1173）条目为 SAPIEN（"Sapien: A simulated part-based inter-active environment"），引用指代不一致，原文如此。〔推断〕PartNet-Mobility 数据集随 SAPIEN 项目发布，此处应为引用标注误差。）
+
+**表 1 全部数值**（L577–588）：
+
+| 方法 | Chamfer (L1)↓ | Chamfer (L2)↓ | IoU↑ |
+|---|---|---|---|
+| NeuralDeformationGraphs [11] | 0.670 | 0.724 | 0.289 |
+| SINGAPO [71] | 0.313 | 0.200 | 0.091 |
+| FreeArt3D [17] | 0.169 | 0.139 | 0.354 |
+| CANOR [34] | 0.082 | 0.067 | 0.568 |
+| KeyPointDeformer [38] | 0.067 | 0.067 | 0.570 |
+| NEUROK (ours) | 0.028 | 0.028 | 0.764 |
+| NEUROK w/o Model Reduction | 0.045 | 0.059 | 0.711 |
+| NEUROK w/o Data Augmentation | 0.036 | 0.041 | 0.724 |
+| NEUROK w/o Dual-Quaternion | 0.033 | 0.037 | 0.728 |
+
+**6.2 生成式 4D 仿真。** 规模与评测方式（L571–572、L610–614）："We show that our pipeline generates 4D simulative dynam-ics for diverse objects, evaluated across eight objects." / "Predicting 4D dynamics from 3D shapes is in-herently ambiguous, so we evaluate plausibility and visual quality of the generated motions. A user study with105 users assesses action alignment and realism. We also report metrics from VBench [36] and WorldScore [27]."
+
+基线定位（L604–609）："PhysDreamer [114] distills physical parameters from video models, Pixie [49] predicts simulation parameters us-ing amortized-inference networks, and OmniPhysGS [69] represents each asset with material-aware Constitutive Gaussians for general physics-based dynamics. Ani-mateAnyMesh [102] is an end-to-end 4D generator trained on large-scale 4D data."
+
+**表 2 全部数值**（L594–600）：
+
+| 方法 | User Study Alignment↑ | User Study Realism↑ | AQ↑ | DD↑ | IQ↑ | CLIP↑ | MM↑ |
+|---|---|---|---|---|---|---|---|
+| PhysDreamer [114] | 5.95% | 5.36% | 0.362 | 0.500 | 48.432 | 0.716 | 0.783 |
+| OmniPhysGS [69] | 1.67% | 0.48% | 0.380 | 0.625 | 48.937 | 0.690 | 0.544 |
+| Pixie [49] | 5.12% | 4.17% | 0.392 | 0.625 | 46.177 | 0.659 | 0.857 |
+| AnimateAnyMesh [102] | 5.83% | 6.67% | 0.450 | 0.625 | 48.370 | 0.730 | 0.889 |
+| NEUROK (ours) | 81.43% | 83.33% | 0.483 | 0.750 | 51.100 | 0.761 | 2.343 |
+
+结果结论（L615–625）："Quantitative and qualitative comparisons in Tab. 2 and Fig. 6 show that existing baselines perform well only within their specialized domains. Physically based meth-ods (PhysDreamer [114], OmniPhysGS [69], Pixie [49]) can handle certain material categories but generalize poorly, while end-to-end methods (AnimateAnyMesh [102]) lack fine-grained conditioning and struggle on rarely encoun-tered object types. Across all settings, our method consis-tently generates the most physically plausible and visually realistic 4D dynamics, demonstrating strong generalization to diverse object categories."
+
+**真实物体（L653–657）：**"Our pipeline can also simulate and manipulate real scenes. We scan a real scene and apply our approach to simulate the dynamics of the objects within it. As shown in Fig. 7, our method successfully simulates the closing motion of the laptop on the desk."
+
+## 6. 消融
+
+全部消融即表 1 末三行（L586–588），文字总结（L670–674）："Ablation Studies.We evaluate the impact of key design choices in Tab. 1. The results show that model reduction, training data augmentation, and our deformation parame-terization each contribute significantly to the overall perfor-mance of the proposed framework."
+
+（表 1 中无 "w/o Dimension Reduction" 以外的消融行；是否有更多消融：原文未写。）
+
+## 7. 局限 / 未来工作
+
+**论文没有独立的 Limitations 节（原文未写）。** 唯一接近局限陈述的是两处"内在歧义"表述：
+
+- （L208–211）："As a single 3D snapshot of an object cannot fully determine its physical parameters, our goal is togenerateone plausible 4D sequence that satisfies one valid physical configuration and conforms to human physical intuition [4]."
+- （L610–612）："Predicting 4D dynamics from 3D shapes is in-herently ambiguous, so we evaluate plausibility and visual quality of the generated motions."
+
+结论节（L675–681）全文："We have introduced a novel framework, NEUROK, for generating 4D simulative dynamics from static 3D shapes, bridging physical principles and learned latent spaces through a physically inspired formulation. Our work opens up promising future research directions and introduces a new research paradigm in 4D visual generation."——未来工作的具体方向：原文未写。
+
+## 8. 叙事关联〔推断，≤5 条〕
+
+1. **「从物体本身推断可动方式」与「向视频模型借一个世界」是替代关系，而非互补。** 论文把 PhysDreamer 定位为「从视频模型蒸馏物理参数」的旧范式代表（L604："PhysDreamer [114] distills physical parameters from video models"），而 NeuROK 的训练监督只有 4D 几何轨迹（L106–108）："The model can be trained solely on 4D geometric trajectories of 3D objects, eliminat-ing any need for physical or action annotations." 并自我宣称（L117–120）："To the best of our knowledge, this is the first data-driven framework capable of simulating object-centric physical systems without any reliance on heuristic priors or physical annotations."——即可动方式不再"借"，而是从物体自身的形变统计中长出来。
+2. **「运动学（几何）vs 力学」缺口是论文自己承认并正面回答的核心问题。** 它明确把旧范式的病根归为几何继承的参数化（L81–84）："While effective, this choice leads to an over-parameterized system, and thus necessitates category-specific physical constraints to prevent the system from being under-determined." 其回答是：运动学表示用数据学（Def. 1/2），学成后力学方程可以"被消除"（L301–304）："It also eliminates the need for inter-particle physical equations employed in mainstream simula-tion approaches to keep the deformed shape intact and plau-sible, as any sampled latent can be mapped into a validly deformed mesh."
+3. **但缺口只补了一半：动力学仍由解析力学先验给定，而非学出。** 拉格朗日函数的动能 T、势能 V 需要"定义"（L489–491）："For most physical systems we study in this paper, we define Lagrangian functionL(z, ˙z) =T(z, ˙z)−V(z)using the kinetic energyTand potential energyVof the system."，且主文未给出其具体形式（指向 Supp. Mat.）。〔推断〕论文承认表示（运动学）可以数据驱动，但能量函数形式仍依赖给定先验——"category-agnostic energy functions"（L97）指的是对类别不可知的形式，而非从数据学出；它没有声称学出力学本身。
+4. **世界模型接口：静态快照 + 物理条件 → 一条合理 4D 轨迹，是显式的生成式世界模型组件。** 论文把该能力直接挂在 3D 世界模型叙事上（L55–59、L23–24），且目标定成"生成一条可信序列"（L208–211），与视频模型/世界模型的采样式生成目标同构；区别仅在条件空间（forces/actions/velocities 经边界条件优化进入，L501–506）而不是文本。动作条件被折算成 (z₀, ż₀) 的优化（L502–503）："They are incorporated by optimizing(z 0, ˙z0) to minimize||x 0 − F(z0)||22 +|| ˙x0 −J z ˙z0||22"。〔推断〕这为「从物体本身推断可动方式」提供了比视频模型更省标注（无需 action 标注，L107–108）的世界模型实现路径。
+5. **NeuROK 的整个论证建立在唯一一条最小归纳偏置上。**（L109–111）："Moreover, this framework relies on a minimal inductive bias — that the object's deformation space is low-dimensional — making it broadly applicable to diverse dynamic objects."〔推断〕"从物体本身推断可动方式"的合法性即来自这条偏置：可动方式＝低维形变流形，可被 4D 几何数据自动发现；论文没有论证该偏置何时失效（如拓扑变化的断裂、流体），此为叙事上的悬空点。
+
+## 9. 图注 / 表注逐字抄录
+
+- **Figure 1**（L13–16）："Figure 1. We present a versatile and scalable framework for generating simulative 4D dynamics of static 3D objects under physical conditions (e.g., forces, actions, velocities). Trained on a large-scale 4D shape dataset without any explicit physical annotations, our method does not rely on any inductive bias of the object's dynamic structure and therefore can be applied to various types of dynamic objects, ranging from elastic bodies, cloth, and continuum bodies, to multi-body objects. Project page:https://chen-geng.com/neurok"
+- **Figure 2**（L154–159）："Figure 2.Kinematic state parameterization. (a)Several kinematic state parameterizations can be used to describe a physical system. The symbolic parameterizations used in classical mechanics are concise yet not accessible in inverse problems. Traditional inverse simulation approaches use geometry-derived parameterizations, yet require dense physical constraints to solve the over-parameterized system. We instead learn low-dimensional parameterizations that are both compact and learnable from data.(b)As formally defined in Def. 1, a kinematic state parameterization studied in this paper is a pair(Z,F)which contains a latent manifoldZand a decoderFthat maps a sampled latent to a vertex configuration. This definition explicitly includes those kinematic state parameterizations that are not compact."
+- **Figure 3**（L251–254）："Figure 3.Overview of our framework.Given a static 3D shape, NEUROK uses a transformer-based encoder to predict an instance-specific latent space to represent different kinematic states of this object. Each sampled latent on the learned manifold can be decoded to a corresponding state of the input object. Under different physical conditions (e.g., forces, actions, velocities), our method generates dynamic trajectories of latents by solving a physically-inspired ODE."
+- **Figure 4**（L336–342）："Figure 4.Generative learning of NEUROK.During training, we randomly sample an instance mesh and one of its possible deformation fields from the training set, and supervise all three models with KL and reconstruction targets. During inference, we only use Econd to obtain the prior distributionp M0 (z)for the instanceM 0 and sample from this distribution a latent, which is further decoded to a predicted deformation field with decoderD."
+- **Figure 5**（L528–530）："Figure 5.Qualitative comparison on learning object kinematics.We evaluate different methods on learning compact and smooth kinematic spaces. Given an input object and the shape of a target pose, we perform inverse kinematics and find the best-matching kinematic state. We compare how well the reconstructed shape decoded from the obtained state vectors matches the target."
+- **Figure 6**（L568–569）："Figure 6.Qualitative comparison on physically-inspired 4D generation.We compare against baselines on the task of generating physically-plausible 4D motion given a single shape and conditioning actions."
+- **Figure 7**（L602–603）："Figure 7.Simulating real objects.Our model can be used to simulate real-captured objects. See the Supp. Mat. for more results."
+- **Figure 8**（L645–648）："Figure 8.Analysis of energy conservation.Our approach maintains physical consistency in the generated trajectories through Euler–Lagrangian modeling. Under this formulation, the total energy of the simulated motion remains approximately constant."
+- **Figure 9**（L650–652）："Figure 9.Generalization on unseen categories.Our model can generalize to novel object categories that are completely not present in the training data."
+- **Table 1**（L577–578）："Table 1.Quantitative comparison on inverse-kinematics optimization."
+- **Table 2**（L589–593）："Table 2.Quantitative comparison on physically-inspired gen-eration.We report user study preferences along with metrics from VBench [36] and WorldScore [27]. AQ: Aesthetic Quality, DD: Dynamic Degrees, IQ: Imaging Quality, CLIP: CLIP score [89], MM: Motion Magnitude."

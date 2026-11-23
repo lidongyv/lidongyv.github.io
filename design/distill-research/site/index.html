@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大模型 → VLA/WAM 蒸馏研究</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="topnav"><div class="inner">
+<a class="active" href="index.html">首页</a>
+<a href="00-evidence.html">00 · 证据与核实</a><a href="01-taxonomy.html">01 · 分类框架</a><a href="02-vla-distill.html">02 · VLA 蒸馏</a><a href="03-wam-distill.html">03 · WAM 蒸馏</a><a href="04-step-distill.html">04 · 步数蒸馏</a><a href="05-feature-latent.html">05 · 特征与 latent</a><a href="06-on-policy.html">06 · On-policy 蒸馏</a><a href="07-data-distill.html">07 · 数据蒸馏</a><a href="08-tricks.html">08 · Trick 总谱</a><a href="09-benchmarks.html">09 · 教师 vs 学生</a><a href="10-recent.html">10 · 最近三个月</a><a href="11-pitfalls.html">11 · 陷阱与复现</a><a href="12-implementation.html">12 · 实现手册</a>
+</div></nav>
+<main>
+<h1>大模型 → VLA / WAM 蒸馏研究</h1>
+<p class="meta">独立工程 · 2026-11-21 · 覆盖 2026-08-15 → 11-21 的最新进展，向前追溯到 2015 经典 KD 与 2022 扩散蒸馏</p>
+
+<div class="goodbox">
+<strong>三条最重要的结论：</strong>
+<ol>
+<li><strong>蒸馏可以反超教师</strong>：Orion-Lite 闭环 DS 80.6 &gt; 教师 77.7；SnapFlow 1-NFE 98.75% &gt; 10-NFE 教师 97.75%。原因是蒸馏顺带修掉了教师推理路径上的误差累积（多步积分、长 CoT、测试时搜索方差）。</li>
+<li><strong>主战场从"蒸输出"转向"蒸过程"</strong>：on-policy（学生自己跑、教师对学生到达的状态打分）与步数蒸馏（蒸去噪轨迹/端点）是 2026 下半年两条主线；纯 logit KD 在 VLA 上几乎消失。</li>
+<li><strong>部署时"教师必须消失"是硬约束</strong>：离线缓存（THAW-VLA）、蒸进权重后丢掉模块（CKT-WAM/Orion-Lite）、教师只在训练期存在（VLP）——推理还要带教师的方案在车端不成立。</li>
+</ol>
+</div>
+
+<h2>章节</h2>
+<div class="grid">
+<div class="card"><h3>00 · 证据与核实</h3><p>证据分级（L3/L2/L1）、ID 核实方法与纠错记录：哪些数字进过正文表格，哪些只有摘要级。</p><a href="00-evidence.html">进入阅读 →</a></div><div class="card"><h3>01 · 分类框架</h3><p>6 类转移对象 × 5 种教师生命周期；先建立坐标系，避免把数据蒸馏/推理加速/on-policy RL 混为一谈。</p><a href="01-taxonomy.html">进入阅读 →</a></div><div class="card"><h3>02 · VLA 蒸馏</h3><p>驾驶与操作两条线；Orion-Lite、DRIFT、FastOPD、VLA-MOPD、REPAIR、TAD、TILDE、剪枝+离线隐层蒸馏。</p><a href="02-vla-distill.html">进入阅读 →</a></div><div class="card"><h3>03 · WAM 蒸馏</h3><p>五条路线：隐状态→上下文 token、去噪端点→少步、未来表征→编码器、自蒸馏、数据蒸馏。</p><a href="03-wam-distill.html">进入阅读 →</a></div><div class="card"><h3>04 · 步数蒸馏</h3><p>Progressive / Consistency / DMD / Shortcut / MeanFlow / SnapFlow / VLA-SSD，10 步压 1 步的全部做法。</p><a href="04-step-distill.html">进入阅读 →</a></div><div class="card"><h3>05 · 特征与 latent</h3><p>Orion-Lite 的 L1 latent token、CKT-WAM 的 LQCA、THAW-VLA 的离线缓存、W2A/DreamFree 的未来表征。</p><a href="05-feature-latent.html">进入阅读 →</a></div><div class="card"><h3>06 · On-policy 蒸馏</h3><p>2026 下半年主战场：VLA-MOPD、FastOPD、REPAIR、TAD、TILDE、WAM-Policy、OPTED、Reflect-VLA。</p><a href="06-on-policy.html">进入阅读 →</a></div><div class="card"><h3>07 · 数据蒸馏</h3><p>AutoVLA 72B→3B、Senna/DriveGPT4、GR00T N1 神经轨迹、LAPA 潜动作、DreamGen/Veo-Act。</p><a href="07-data-distill.html">进入阅读 →</a></div><div class="card"><h3>08 · Trick 总谱</h3><p>40+ 个可开关零件：温度/DKD/DIST、hint layer、attention transfer、on-policy、DAgger、verifier 蒸馏、闭式权重编辑。</p><a href="08-tricks.html">进入阅读 →</a></div><div class="card"><h3>09 · 教师 vs 学生</h3><p>一张表：教师参数/效果/速度 vs 学生效果/速度/显存/加速比，标注 benchmark 与证据级别。</p><a href="09-benchmarks.html">进入阅读 →</a></div><div class="card"><h3>10 · 最近三个月</h3><p>2026-08-15 → 11-21 的 30+ 篇，按机制归类，标出趋势、空白与只有摘要级证据的条目。</p><a href="10-recent.html">进入阅读 →</a></div><div class="card"><h3>11 · 陷阱与复现</h3><p>15 条最容易骗人的地方 + 可勾选的复现清单。</p><a href="11-pitfalls.html">进入阅读 →</a></div><div class="card"><h3>12 · 实现手册</h3><p>公式 ↔ 代码逐项对照：每条论文公式给「公式项 ↔ 代码 ↔ 说明」映射表，再给模块表（输入/输出/作用）、主伪代码、子模块、训练/推理调用；15 个方法。</p><a href="12-implementation.html">进入阅读 →</a></div>
+</div>
+
+<h2>怎么用这个工程</h2>
+<ul>
+<li><strong>选型</strong>：先看 01 分类框架定位你的场景（蒸什么 × 教师何时在），再看 09 总表比数字。</li>
+<li><strong>实现</strong>：直接跳到 <strong>12 实现手册</strong>——15 个方法的完整伪代码、张量形状、超参、显存账、数据 schema 与配置模板；02–06 是这些方法的论文依据，08 是零件库。</li>
+<li><strong>避坑</strong>：11 的 15 条 + 复现清单，读完再动手。</li>
+</ul>
+
+<h2>证据分级</h2>
+<div class="warnbox">
+L3 = 读过全文、数字来自正文表格、公式逐字核对；L2 = 正文部分章节或官方代码/博客；L1 = 只有摘要或项目页。全站每条结论后标级别；未标的默认 L1。最近三个月的条目大多是 L1（摘要级），已在 10 章逐条标注。
+</div>
+
+<footer>大模型 → VLA/WAM 蒸馏研究 · 生成于 2026-11-21 · 源文件 docs/*.md</footer>
+</main>
+</body>
+</html>

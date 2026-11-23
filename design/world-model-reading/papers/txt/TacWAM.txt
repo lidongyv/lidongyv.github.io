@@ -1,0 +1,870 @@
+August 6, 2026
+TacWAM: Anchor-Guided World Action Model with
+Mechanics-Aware Tactile Prediction
+Lei Jin*1, Yiding Ma*1, Xin Zhang2, Chen Gao1†, Wei Wu1,2, Yong Li1†
+1Tsinghua University 2Manifold AI
+*Equal contribution †Co-corresponding authors: liyong07@tsinghua.edu.cn, chgao96@gmail.com
+Abstract.World Action Models (WAMs) combine future-state prediction with robot action generation, but
+existing approaches largely rely on visual futures. Visual prediction captures scene structure and object motion,
+yet provides limited supervision for force, deformation, shear, and slip during contact-rich manipulation. This
+creates two design requirements: tactile futures should carry meaningful physical information, and they should
+not become privileged cues for action generation. We presentTacWAM, a mechanics-aware tactile WAM that
+addresses this challenge in three steps. First, a Spatially Aligned Fusion (SAF) Tactile Encoder maps tactile
+appearance, dense force fields, and deformation flow into a shared latent prediction space, with bilateral force
+and torque reconstruction preserving global contact information. Second, a tactile history encoder provides
+temporal context so future tactile prediction reflects how force and deformation change beyond the current
+tactile observation. Third, Anchor-Guided Tri-Modal (AGT) Attention separates current visual and tactile
+anchors, future prediction tokens, and action tokens, allowing future tactile states to supervise training without
+being directly read by the action branch. We evaluate TacWAM on four real-world contact-rich manipulation
+tasks covering fragile grasping, sustained surface contact, and dynamic in-hand manipulation. TacWAM
+achieves an average success rate of 75.0%, exceeding the strongest evaluated baseline by 37.5 percentage
+points. Staged ablations show consistent degradation when tactile history is removed and access to future
+prediction targets is relaxed. These results indicate that future tactile supervision can improve contact-aware
+action learning when combined with informative tactile representations and deployment-consistent information
+constraints.
+Date:August 6, 2026
+1 Introduction
+Worldmodelsenablerobotstolearnpredictiverepresentationsofhowtheenvironmentevolves,andrecentWorldAction
+Models (WAMs) combine such predictive learning with action generation for robot control [1–4]. However, most
+WAMs still model the future primarily through visual state transitions. Visual prediction captures scene layout, object
+appearance, and visible motion, but physical manipulation also depends on local mechanics that are only indirectly
+expressed in images. For contact-rich tasks, learning how the scene looks is therefore not sufficient; the model should
+also capture how tactile signals such as force and deformation change during interaction.
+Tactile sensing provides direct evidence about this interaction process. Visually similar states can correspond to
+substantiallydifferenttactileconditions. Forexample,a stable-looking grasp may be close to slip, an apparently aligned
+insertion may already be mechanically constrained, and a brittle object may look unchanged while force becomes unsafe.
+Thesedistinctionsarereflectedinforcebuildup,deformation,shear,pressureasymmetry,andincipientslip[ 5–8]. Touch
+is therefore useful not only for detecting contact, but also for supervising force- and deformation-related changes that
+visual futures alone cannot fully capture.
+Priorvisuo-tactilemethodshaveusedtouchforobservationfusion,representationlearning,policyrefinement,andfuture
+tactile prediction [9–13]. These works show that touch can improve manipulation and that future tactile prediction can
+be useful. Building on this direction, we focus on a complementary requirement for tactile WAMs: future tactile states
+should provide physically informative supervision while action generation remains restricted to information available at
+1
+arXiv:2607.28391v2  [cs.RO]  24 Aug 2026
+deployment. This lets tactile futures enrich world-model training without serving as direct action inputs.
+Following this principle, we introduceTacWAM, a tactile-augmented World Action Model that uses tactile prediction
+to strengthen WAM training without exposing future tactile targets to the action branch. TacWAM realizes this idea
+through four connected design choices. First, it maps heterogeneous gripper-side tactile observations into a shared
+tactile representation using aSpatially Aligned Fusion Tactile Encoder (SAF Tactile Encoder), which fuses tactile
+appearance, dense force fields, and deformation flow, while reconstructing bilateral resultant force and torque as global
+wrench supervision. Second, a tactile history context summarizes recent interaction changes before the current action
+chunk. Third, future tactile states provide an additional predictive target for force- and deformation-aware training,
+serving as supervision for contact representations that visual prediction alone does not capture rather than as direct
+action inputs. Finally,Anchor-Guided Tri-Modal Attention (AGT Attention)organizes visual, tactile, and action
+streams around the current visual frame and current observed tactile state: future visual and tactile tokens serve as
+prediction targets, while action tokens can access only deployment-available anchors and action tokens. Together, these
+designs allow TacWAM to learn richer contact-related predictive representations during training while maintaining
+deployment-consistent action generation.
+Our contributions can be summarized as follows:
+• We introduce TacWAM, which extends visual WAM training with recent tactile history and future tactile prediction,
+enabling the model to learn from changes in touch beyond the current tactile observation.
+• We develop a Spatially Aligned Fusion Tactile Encoder that maps tactile appearance, force, and deformation into a
+shared latent representation while preserving local contact patterns and global force/torque information.
+• We propose Anchor-Guided Tri-Modal Attention, which prevents the action branch from accessing future visual or
+tactile targets during training, ensuring that action generation uses only information available at deployment.
+• We evaluate TacWAM on four real-world contact-rich manipulation tasks. TacWAM consistently outperforms
+representative vision-only and visuo-tactile baselines, while staged ablations support the importance of tactile history
+and restricted future-target visibility in the complete framework.
+2 Related Work
+2.1 World Action Models
+World models learn predictive representations of environment dynamics to support planning and policy learning [1].
+World Action Models (WAMs) extend this idea by combining future-state prediction with robot action generation.
+Recent WAMs jointly learn actions and future visual observations or latent visual states, using visual prediction to
+improve the representations learned for control [2–4]. Such prediction captures scene structure, object motion, and
+other visible state changes. However, visually similar states can involve different contact conditions, such as stable
+contact, increasing force, or incipient slip. Visual futures therefore provide limited supervision for force, deformation,
+and other local contact changes. TacWAM extends the predictive learning of WAMs by introducing future tactile states
+as additional training targets.
+2.2 Visuo-Tactile and Predictive Tactile Learning
+Tactile sensing provides direct observations of contact states that are difficult to infer from images. Prior work has
+learned visuo-tactile representations for dexterous manipulation and tactile-informed control of articulated objects
+[7, 9, 14]. Tactile information has also been incorporated into vision-language-action policies through multimodal
+features, tactile feedback pathways, and contact-aware policy adaptation [10, 11, 15]. Reactive tactile policies further
+use high-frequency feedback to correct actions during contact-rich manipulation [16, 17]. These methods demonstrate
+that current tactile observations improve contact perception and action control. Vision-based tactile sensors further
+show that local contact geometry, shear, and force-related information can be recovered from deformable sensing
+surfaces [18, 19], motivating tactile representations that preserve more than binary contact state.
+2
+Action ChunkHead/Wrist Camera Tactile Information
+Video Encoder Action Encoder Tactile Encoder
+Video DiT Action DiT Tactile DiT
+Tactile History 
+Encoder
+Text/State 
+Tokens
+𝑉0 𝑉1 𝑉𝑖 𝑇0 𝑇1 𝑇𝑗 𝐴0 𝐴𝑘
+𝑉0
+𝑉1
+𝑉𝑖
+𝑇0
+𝑇1
+𝑇𝑗
+𝐴0
+𝐴𝑘
+𝑉0 𝑇0 𝑇1 𝑇𝑗 𝐴0 𝐴𝑘
+𝑉0
+𝑇0
+𝑇1
+𝑇𝑗
+𝐴0
+𝐴𝑘
+Wan 
+VAE
+Force 
+CNN
+Flow 
+CNN
+Modal 
+Interaction Block
+Bilateral Fusion 
++ Pooling
+Spatial 
+Alignment
+Rec 
+Head
+Contact 
+State
+Loss
+Training Mask
+Inference Mask
+a. TacWAMArchitecture b. SAF Tactile Encoder
+c. AGT Attention Mask
+Figure 1:Overview of TacWAM. (a) TacWAM jointly predicts visual futures, future tactile states, and action chunks from
+deployment-available context. (b) The Spatially Aligned Fusion (SAF) Tactile Encoder constructs the tactile latent prediction
+space from tactile appearance, dense force fields, and mesh deformation flow, with global wrench supervision. (c) Anchor-Guided
+Tri-Modal (AGT) Attention separates observable anchors, future prediction targets, and action tokens.
+A closely related line of work uses tactile prediction as a learning signal. TacForeSight predicts short-horizon tactile
+dynamics from tactile observations and wrist force/torque signals, and uses the predicted states as anticipatory contact
+information [12]. DreamTacVLA predicts future tactile signals to improve contact-aware action learning, while
+N0-VTLA introduces a predictive tactile pathway into a large-scale vision-tactile-language-action model [20, 21]. In a
+relateddirection, 𝜏usesfuturevisualobservationstosupervisethelearningofaspatiotemporaltactilerepresentation[ 22].
+Other methods develop tactile or visuo-tactile world models for future-state prediction, rollout generation, policy
+learning, and closed-loop control [13,23–27]. Together, these studies show that both current tactile conditioning and
+predictive tactile learning can benefit contact-rich manipulation.
+TacWAMbuildsonthisbroadervisuo-tactilelearningdirectionratherthantreatingtactilepredictionitselfastheprimary
+novelty. It focuses on how tactile futures are represented and how they are used inside WAM training: the SAF Encoder
+and tactile history support prediction of force and deformation changes, while AGT Attention keeps future sensory
+targets from becoming direct inputs to action generation.
+3 Method
+3.1 Problem Formulation
+TacWAM extends a visual World Action Model with predictive tactile state modeling. At time𝑡, the robot observes
+𝑜𝑡 =(𝑜 𝑣𝑡,𝑜 tac𝑡 ,𝑞𝑡,𝑙),(1)
+where𝑜𝑣𝑡 isthevisualobservation, 𝑜tac𝑡 isthetactileobservation, 𝑞𝑡 isproprioception, and𝑙 denotesthetaskorlanguage
+condition. Raw tactile readings are first mapped into a learned tactile representation,
+𝑧tac𝑡 =𝐸 SAF(𝑜tac𝑡 ).(2)
+Note that we do not assume that𝑧tac𝑡 is the full physical state. It is a tactile-observable representation of force- and
+deformation-related signals, used as the prediction space for future tactile modeling.
+3
+At the beginning of an action chunk𝑡0, TacWAM predicts visual futures, future tactile states, and an action sequence
+from stream-specific information. Here𝑐tac𝑡0 denotes a compact tactile history context summarized from recent tactile
+latents; its construction is detailed in the Tactile History-Modulated Prediction subsection.
+ˆv𝑡0+1:𝑡0+𝐻 =𝐹𝑉(𝑜𝑣𝑡0,𝑞𝑡0,𝑙),
+ˆztac𝑡0+1:𝑡0+𝐻 =𝐹𝑇(𝑜𝑣𝑡0,𝑧 tac𝑡0 ,𝑐 tac𝑡0 ,𝑞𝑡0,𝑙),
+ˆa𝑡0:𝑡0+𝐻−1 =𝐹 𝐴(𝑜𝑣𝑡0,𝑧 tac𝑡0 ,𝑞𝑡0,𝑙).
+(3)
+These equations summarize the intended conditioning rather than separate networks; noised prediction tokens and the
+flow-matching timestep are omitted for clarity. Following the underlying WAM, each action token is represented as the
+target robot state for the next transition,𝑎𝑡 :=𝑞 target𝑡+1 , rather than as a low-level instantaneous command.
+3.2 TacWAM Overview
+Figure1(a)providesanoverviewoftheoverallarchitecture. TacWAMisbuiltaroundasingletri-modalWAMgenerator
+with visual, tactile, and action streams. On top of this generator, TacWAM introduces three tactile-specific designs.
+First, the SAF Tactile Encoder maps synchronized tactile appearance, force, and deformation-flow signals into a shared
+tactile latent space, which defines the future tactile prediction target. Second, the tactile history encoder summarizes
+recent tactile changes before the current chunk and conditions the tactile prediction branch on contact-phase context.
+Third, AGT Attention specifies the information topology among visual, tactile, and action streams, preventing future
+sensory prediction targets from being directly accessed by action tokens.
+The three streams are jointly implemented in a Mixture-of-Transformers backbone, where visual, tactile, and action
+streamsareprocessedbymodality-specificexpertsandcommunicatethroughmaskedmixedself-attention. AGTgoverns
+this mixed self-attention among visual, tactile, and action tokens; task language and current proprioception are supplied
+separately as deployment-available context through expert cross-attention. Under the finalized AGT mask, future tactile
+prediction is a parallel predictive objective rather than an action-conditioned consequence model: the action stream uses
+deployment-available visual and tactile anchors, task/proprioceptive context, and action-token interactions, while future
+tactile states provide predictive supervision for force and deformation changes during training.
+3.3 Spatially Aligned Fusion (SAF) Tactile Encoder
+TacWAMdefinesatactilelatentpredictionspaceusing 𝐸SAF andatactilereconstructor 𝑅tac, asillustratedinFigure1(b).
+Each tactile observation contains synchronized signals from the two gripper-side tactile sensors:
+𝑜tac𝑡 =(𝐼 rect𝑡 ,𝐹𝑡,𝑀 flow𝑡 ),(4)
+where𝐼rect𝑡 is the rectified tactile image,𝐹𝑡 is the dense local force field, and𝑀flow𝑡 is the mesh deformation flow. These
+three inputs are spatially registered on the tactile sensor surface and are fused into a step-level tactile representation:
+𝑧tac𝑡 =𝐸 SAF(𝐼 rect𝑡 ,𝐹𝑡,𝑀 flow𝑡 ).(5)
+For each sensor side, tactile appearance, force, and deformation-flow features are encoded with corresponding branches,
+and the two sides are fused bilaterally. The encoder is single-frame so that both observed tactile states and predicted
+per-step tactile states share the same latent space. To preserve force- and deformation-related structure,𝑅tac reconstructs
+dense force fields, mesh deformation flow, and a bilateral resultant wrench from𝑧tac𝑡 . The resultant wrench contains a
+3D force and a 3D torque for each gripper-side tactile sensor:
+𝑅tac(𝑧 tac𝑡 )=( ˆ𝐹𝑡,ˆ𝑟wrench𝑡 , ˆ𝑀flow𝑡 ).(6)
+The resultant wrench is therefore treated as global mechanics supervision rather than a fourth spatial input. TacWAM
+predicts future𝑧tac states instead of directly generating heterogeneous tactile sensor streams. The reconstruction
+objectives encourage the latent state to preserve local force, deformation, and bilateral wrench information.
+4
+Table 1:AGT visibility. Rows denote query streams and entries list permitted key/value streams.
+Query stream Permitted key/value streams
+Visual𝑉 0 and𝑉 1:𝐻 under the video first-frame-causal mask
+Tactile future𝑉 0,𝑇 0, and𝑇1:𝐻 under a tactile first-frame-causal mask
+Action𝑉 0,𝑇 0, and action tokens
+3.4 Anchor-Guided Tri-Modal (AGT) Attention
+TacWAM uses AGT to specify which information each stream may read during mixed self-attention, as shown in
+Figure 1(c). At chunk start𝑡0, the current tactile state is used as a clean anchor,
+𝑇0 =𝑧 tac𝑡0 ,(7)
+and the supervised future tactile sequence is
+T1:𝐻 =[𝑧 tac𝑡0+1,...,𝑧 tac𝑡0+𝐻].(8)
+The WAM generator arranges tokens as
+[𝑉0,𝑉 1:𝐻|𝑇 0,𝑇 1:𝐻|𝐴],(9)
+where𝑉0 is the current visual anchor,𝑉1:𝐻 denotes future visual prediction tokens,𝑇0 is the clean, i.e., unnoised, tactile
+anchor,𝑇1:𝐻 denotes future tactile prediction tokens, and𝐴 denotes action tokens. Future visual and tactile tokens
+are noised prediction variables during flow matching, while their clean counterparts provide supervision. We use the
+notation “query reads key/value” to describe visibility. Table 1 summarizes the AGT rules.
+The central constraint is that action tokens cannot read future visual or tactile prediction tokens. Moreover, video tokens
+cannotread 𝑇1:𝐻,andfuturetactiletokensdonotreadactiontokens. Futurevisualandtactilestatescanthereforeserveas
+predictiontargetsduringtraining,whileactiongenerationremainsconditionedonlyondeployment-availableinformation.
+AGT is thus an information-isolation mechanism for predictive co-training, not a claim of action-conditioned tactile
+dynamics.
+3.5 Tactile History-Modulated Prediction
+Single-frame touch is often ambiguous: the same force magnitude can correspond to stable contact, growing pressure,
+sliprecovery,orimpendingobjectdamagedependingontherecentinteractiontrajectory. TacWAMthereforesummarizes
+recent tactile history before the current chunk:
+𝑐tac𝑡0 =𝐸 hist(𝑧 tac𝑡0−𝑇hist+1:𝑡0).(10)
+The output𝑐tac𝑡0 is a compact chunk-level tactile context. It is not inserted as additional memory tokens. Instead, it
+modulates the tactile expert through adaptive normalization, helping future tactile prediction disambiguate the current
+interaction phase and tactile evolution trend. The history context is not a direct privileged input to the action stream.
+The history window and the tactile generation sequence share the current state: the former uses it as the endpoint of
+recent tactile evolution, while the latter uses it as the clean initial anchor𝑇0 for future prediction. During flow-matching
+training, future tactile tokens are noised while𝑇0 remains clean. The tactile expert predictsˆztac𝑡0+1:𝑡0+𝐻 from the currentvisual anchor, the clean tactile anchor, tactile history context, and its own tactile prediction sequence. It does not attend
+to action tokens under the finalized AGT mask.
+This design changes the role of tactile prediction. TacWAM does not attach tactile forecasting as an isolated post-hoc
+head. Instead, future tactile states are integrated into the multimodal generative objective, encouraging the jointly
+trained WAM to encode contact-relevant tactile evolution beyond visual supervision alone.
+3.6 Training and Inference
+Training first learns the tactile latent prediction space by optimizing𝐸SAF and𝑅tac. The tactile reconstruction loss
+combines force-field, bilateral resultant wrench, and mesh-flow reconstruction. After this tactile representation
+5
+pretraining, the tactile encoder and decoder are frozen.
+LSAF =𝜆 𝐹L𝐹+𝜆𝑅Lwrench+𝜆 𝑀Lflow.(11)
+TacWAM is then trained with the frozen tactile representation model. The frozen tactile encoder provides𝑧tac for tactile
+history and future tactile targets. The WAM generator is trained to jointly predict visual futures, action chunks, and
+tactile futures with scheduler-weighted flow-matching objectives. Tactile latent prediction is supervised onT1:𝐻, and
+the frozen but differentiable𝑅tac decodes predicted tactile states to force fields, bilateral resultant wrench, and mesh
+flow as a semantic consistency regularizer. The decoder parameters remain fixed, while gradients through the decoder
+supervise the predicted tactile latents. The tactile history encoder is trained jointly with the WAM generator. Here,
+Lcontact is a lightweight contact-event auxiliary loss applied to the tactile history encoder. Its labels are derived from the
+binary contact sequence in the tactile history window, including contact onset, release, and stable-contact states.
+LTacWAM =𝜆 𝑣Lvideo+𝜆𝑎Laction+𝜆𝑧Ltac-latent
++𝜆 semLtac-decoded+𝜆𝑐Lcontact. (12)
+During deployment, the model runs at chunk level and outputs the action sequence from current visual/tactile anchors
+and task/proprioceptive context. After executing one action chunk, the robot receives new observations and infers the
+next chunk, yielding a closed-loop receding-horizon execution process. Future tactile predictions can also be decoded
+through𝑅tac for analyzing force and deformation evolution, but they are not used as online correction signals in this
+paper. The main experiments evaluate whether learning these predictive tactile states improves tactile forecasting and
+action generation under the AGT information constraints.
+4 Experiments
+We evaluate TacWAM through the following research questions:
+•RQ1: How does TacWAM compare with vision-only and visuo-tactile baselines on contact-rich manipulation?
+• RQ2: Doestactilehistoryimprovefutureforcepredictionandphase-dependentcontactmanipulationwithinTacWAM?
+• RQ3: How do AGT information constraints affect deployment performance compared with relaxed attention masks?
+4.1 Experimental Setup
+We evaluate TacWAM on a real-world manipulation platform with synchronized visual, tactile, proprioceptive, and
+action streams.
+Platform.The robot platform uses an Agilex Piper manipulator equipped with two Xense G1-WS tactile sensors
+mounted on the gripper sides. Visual observations are captured from an overhead camera and a wrist-mounted camera,
+providing complementary scene-level and hand-centric views. The robot state and action are both represented by joint
+positions, and each action token corresponds to a target joint-position state for the next control step. All sensing and
+control streams are synchronized at 30 Hz.
+Data.The dataset contains demonstrations collected on the real platform, with synchronized visual observations,
+joint-position states and actions, and tactile streams from the two gripper-side sensors. For each task, we collect 300
+episodes, and each episode contains about 500 frames on average. Each tactile frame contains the three spatially aligned
+inputs used by SAF: rectified tactile appearance, dense force fields, and mesh deformation flow. All sensor streams are
+temporally aligned at the frame level.
+Tasks.We evaluate on four real-world contact-rich manipulation tasks, which cover fragile grasping, small-object
+contact localization, sustained contact, and dynamic in-hand manipulation, as shown in Figure 2:
+• Potato-chip grasping:grasp a thin, fragile chip and place it onto a target plate, requiring precise force regulation to
+avoid slip or breakage.
+6
+Pick up the cherry 
+and place it 
+on the plate.
+Pick up the eraser 
+and wipe the 
+whiteboard clean.
+Pick up the pen, use 
+the box edge to rotate 
+it upright and place it 
+into the pen holder.
+Pick up the potato 
+chip and place it 
+on the plate.
+Figure 2:Real-world evaluation tasks. The figure shows the text prompts and overhead-camera observations for the four contact-rich
+manipulation tasks used in our experiments.
+•Cherry grasping:grasp an object of variable size, where tactile feedback is needed to confirm stable contact.
+• Whiteboard wiping:maintain sustained surface contact while moving along the board, stressing pressure control,
+shear, and contact continuity.
+• Two-pen twirling:manipulate two pens through dynamic bilateral contact changes, requiring the model to represent
+evolving force distribution and rotation dynamics.
+A trial is counted as successful if the task goal is completed without violating the task-specific physical constraint: the
+chip must be placed without breaking or dropping, the cherry must be stably grasped and placed, the whiteboard must
+be wiped with sustained contact, and the pens must complete the required twirling motion without falling.
+Baselines.We compare TacWAM with four representative baselines covering vision-only VLA, vision-only WAM,
+tactile policy learning, and tactile WAM modeling. All methods are trained and evaluated on the same task data and use
+the same joint-position action representation when applicable. Vision-only baselines use the overhead and wrist camera
+views together with proprioception and task conditioning, while tactile baselines additionally receive the synchronized
+tactile observations.
+•𝜋 0.5 is a vision-language-action baseline built on the open-world generalization VLA model from Physical Intelli-
+gence[28]. Itrepresentstheclassofend-to-endvisualVLApoliciesthatmapvisualobservationsandtaskinstructions
+7
+Table 2:Main real-world manipulation results. Entries are task success rates over 20 real-world trials.
+Method Chip Cherry Wiping Twirling Avg.
+𝜋0.5 10.0% 60.0% 35.0% 20.0% 31.3%
+Fast-WAM 15.0% 40.0% 20.0% 5.0% 20.0%
+RDP 50.0% 45.0% 0.0% 35.0% 32.5%
+VT-WAM 45.0% 45.0% 30.0% 30.0% 37.5%
+TacWAM90.0% 70.0% 75.0% 65.0% 75.0%
+directly to robot actions, without explicit visual or tactile future prediction.
+• Fast-WAMis a vision-only World Action Model baseline [29]. It retains visual predictive co-training during training
+but removes explicit future generation at inference, providing a visual-predictive WAM comparison for evaluating
+TacWAM.
+• RDPisavisual-tactilepolicybaselinebasedonReactiveDiffusionPolicy[ 17]. Itusestactilefeedbackforcontact-rich
+manipulation through a slow-fast policy structure, but it is not a tactile world-action model that predicts future tactile
+states as WAM training targets.
+• VT-WAMis a visual-tactile WAM baseline that jointly models visual futures, tactile futures, and actions for
+contact-rich manipulation [27]. Since no official implementation is publicly available, we reimplement VT-WAM
+following the paper design and train it under the same data and action-space setting.
+Evaluation protocol.All methods are trained on the same demonstrations for the same number of epochs under their
+respective input settings. We evaluate each trained model under the same task definitions, success criteria, and sequence
+of real-world test conditions, with object poses and initial robot configurations varied within predefined ranges. For
+each method and task, we run 20 trials and report the success rate as the percentage of successful executions.
+4.2 Main Results
+To answer RQ1, the main evaluation measures whether TacWAM improves closed-loop manipulation success over the
+four baseline families. Table 2 reports per-task and average success rates. The main comparison focuses on task-level
+execution performance; diagnostic analyses of tactile prediction quality and architectural components are presented in
+the next subsection.
+Quantitative analysis.TacWAM outperforms all baselines on every task. Compared with the strongest baseline for
+eachtask, TacWAMimprovessuccessratesby 40.0 pointsonpotato-chipgrasping, 10.0 pointsoncherrygrasping, 40.0
+points on whiteboard wiping, and30.0 points on two-pen twirling. On average, TacWAM achieves a success rate of
+75.0%, exceeding the best-performing baseline (VT-WAM,37.5%) by37.5 percentage points. The gains are especially
+pronounced on whiteboard wiping and two-pen twirling, the two tasks that most strongly require sustained contact and
+dynamic bilateral contact reasoning, where purely visual or reactive tactile baselines struggle most.
+The overall trend matches our expectation: visual-only baselines are competitive when contact is visually simple, while
+tactile baselines improve on tasks requiring force regulation, sustained contact, or bilateral contact reasoning. TacWAM
+further improves over both reactive tactile policies and existing tactile WAMs, supporting the value of mechanics-aware
+tactile predictive training in the complete framework.
+Qualitative analysis.The incorporation of tactile sensing and predictive tactile training mainly addresses two problems.
+First, precise grasping of irregular small objects: on potato-chip and cherry grasping, where the objects are fragile or of
+variable size, vision-only baselines frequently miss the object entirely or over-squeeze it; in contrast, tactile feedback
+provides direct evidence of contact and force, leading to substantially higher success than vision-only policies. Second,
+under visual occlusion the robot cannot reliably determine whether contact is established or whether the pens are
+actually rotating. Vision-only models often produce motions that appear visually plausible but are physically ineffective,
+for example when the wiper glides over the whiteboard without maintaining contact. Tactile observations provide
+information that is unavailable from vision, allowing TacWAM to maintain sustained contact and handle dynamic
+8
+𝑉0 𝑉1 𝑉𝑖 𝑇0 𝑇1 𝑇𝑗 𝐴0 𝐴𝑘
+𝑉0
+𝑉1
+𝑉𝑖
+𝑇0
+𝑇1
+𝑇𝑗
+𝐴0
+𝐴𝑘
+Attn-AT: Action-
+to-Tactile Access
+𝑉0 𝑉1 𝑉𝑖 𝑇0 𝑇1 𝑇𝑗 𝐴0 𝐴𝑘
+𝑉0
+𝑉1
+𝑉𝑖
+𝑇0
+𝑇1
+𝑇𝑗
+𝐴0
+𝐴𝑘
+Attn-VT: Bidirectional 
+Visual-Tactile Access
+Figure 3:Attention-mask variants used in the joint-training ablations. Attn-AT allows action tokens to read the full tactile prediction
+sequence𝑇0:𝐻. Attn-VT includes Attn-AT and further enables bidirectional interaction between visual future tokens and tactile future
+tokens.
+Table 3:Ablation results on selected contact-rich tasks. Entries are task success rates over 20 real-world trials.
+Variant Chip Wiping Avg.
+TacWAM90.0% 75.0% 82.5%
+w/o History 50.0% 60.0% 55.0%
+w/o History + Attn-AT 30.0% 45.0% 37.5%
+w/o History + Attn-VT 10.0% 5.0% 7.5%
+bilateral interaction more reliably. The force-rollout analysis below further shows that the predicted resultant force
+magnitude follows the ground-truth trend over complete contact-rich episodes.
+4.3 Ablation Results
+To answer RQ2 and RQ3, we use three joint-training ablations to analyze the roles of tactile history and AGT visibility.
+These ablations form a nested sequence that progressively removes history and relaxes cross-stream restrictions, while
+keeping the same task data, action representation, and tactile future prediction objective. This staged design tests
+whether performance degrades consistently as the proposed temporal context and information constraints are weakened.
+Figure 3 illustrates the two relaxed attention masks used after removing tactile history. Table 3 reports success rates on
+two representative contact-rich tasks.
+Without tactile history.This ablation removes the tactile history pathway to test whether𝐸hist and the resulting history
+context are useful for contact-rich manipulation. The history encoder is not used, the tactile history context is replaced
+by zeros, and the auxiliary contact-event lossLcontact is disabled. All other joint-training objectives remain unchanged,
+including future tactile prediction, decoded tactile targets, visual prediction, and action prediction. Removing tactile
+history reduces the average success rate from82.5% to 55.0% (−27.5 points), with a particularly large drop on chip
+grasping (90.0%→50.0% ), where the force buildup preceding stable grasping is difficult to infer reliably from the
+current tactile anchor alone. This result suggests that temporal tactile context provides information beyond the current
+tactile anchor and is an important part of TacWAM.
+Without tactile history + Attn-AT.This ablation starts from the history-free variant and relaxes only the action-stream
+9
+tactile visibility. Instead of allowing action tokens to read only the clean tactile anchor𝑇0, action tokens can read the full
+tactile prediction sequence𝑇0:𝐻 together with𝑉0 and other action tokens. The video mask, tactile first-frame-causal
+mask, and tactile access to the visual anchor are otherwise unchanged. Performance drops further to37.5% on average.
+Rather than helping, exposing action tokens to future tactile prediction tokens creates an unreliable shortcut: during
+training, action tokens can exploit target-derived future prediction variables, whereas deployment relies on generated
+counterparts under the inference process. This train–test mismatch degrades deployment behavior, suggesting that the
+restriction𝐴←𝑇 0 is important for TacWAM.
+Withouttactilehistory+Attn-VT.Thisablationfurtherrelaxestheinformationstructurebyenablingdirectbidirectional
+interaction between visual prediction tokens and tactile future tokens, while preserving the clean-anchor semantics.
+Specifically, the current visual anchor can read the tactile anchor, future visual tokens can read tactile prediction tokens,
+the tactile anchor can read the current visual anchor, and future tactile tokens can read visual prediction tokens. The
+tactile stream still keeps its first-frame-causal internal structure. This variant nearly collapses, reaching only7.5% on
+average (−30.0 points from Attn-AT) and5.0% on whiteboard wiping. Fully bidirectional video–tactile future exchange
+appears to destabilize multimodal co-training and severely degrades action generation. This result supports AGT’s
+stricter separation for deployment-consistent learning.
+Overall,thethreeablationsformaconsistenttrend: performancedecreasesastactilehistoryisremovedandtheattention
+structure is progressively relaxed. These staged results provide consistent evidence that tactile history and restricted
+future-token visibility are important to the complete TacWAM design.
+Futuretactilestateprediction.ForRQ2,wefurtherevaluatewhethertactilehistoryimprovespredictedforceevolution
+over complete episodes. For whiteboard wiping and two-pen twirling, we decode predicted tactile states to reconstruct
+the bilateral resultant wrench and compute the resultant force magnitude. Figure 4 compares the resulting curves from
+TacWAM and the history-free variant against ground truth. TacWAM tracks both the magnitude and temporal trend of
+theground-truthforcemorecloselythanw/oHistory, illustratingthattactilehistorycanimprovefuturetactileprediction
+rather than only improving downstream action success.
+The difference is especially clear on whiteboard wiping, where the w/o History prediction lags behind the ground-truth
+force changes. This temporal delay suggests that, without recent tactile context, the model needs additional incoming
+tactile evidence before updating its estimate of the current contact phase. By contrast, tactile history provides recent
+interaction evolution before the current chunk, allowing TacWAM to infer the current contact state more promptly and
+predict force changes with less delay. This analysis explains why removing history substantially reduces manipulation
+success in the ablation results.
+5 Conclusion
+WepresentedTacWAM,atactile-augmentedWorldActionModelthatextendsvisualWAMswithpredictivetactilestates
+for contact-rich manipulation. The SAF Encoder constructs a mechanics-aware tactile representation from spatially
+aligned tactile appearance, dense force fields, and deformation flow with global wrench supervision; tactile history
+summarizes recent force and deformation changes; and AGT Attention enables tri-modal co-training with explicit
+future-target isolation. On four contact-rich manipulation tasks, TacWAM outperforms vision-only VLA/WAM and
+visuo-tactile baselines on every task, improving the average success rate by37.5 percentage points over the strongest
+baseline. Staged ablations show consistent degradation when tactile history is removed and attention restrictions are
+progressivelyrelaxed,supportingtheimportanceoftactilehistoryandcontrolledinformationflow. Theseresultssuggest
+that predictive tactile states are a useful training signal for contact-rich world action modeling.
+References
+[1] Danijar Hafner, Timothy Lillicrap, Mohammad Norouzi, and Jimmy Ba. Mastering atari with discrete world
+models. InInternational Conference on Learning Representations, 2021. URL https://openreview.net/
+forum?id=0oabwyZbOu.
+[2] Yuci Han and Alper Yilmaz. Enhancing policy learning with world-action model, 2026. URLhttps://arxiv.
+10
+0 100 200 300 400 500
+Frame
+0
+5
+10
+15
+20
+25ForceResultant strength
+Whiteboard Wiping
+GT
+T acWAM Pred
+w/o History Pred
+0 100 200 300 400 500 600 700 800
+Frame
+0
+5
+10
+15
+20
+25ForceResultant strength
+T wo-Pen T wirling
+GT
+T acWAM Pred
+w/o History Pred
+Figure 4:Representative episode-level tactile prediction rollouts on whiteboard wiping and two-pen twirling. We reconstruct the
+bilateral resultant wrench from predicted tactile states, compute the resultant force magnitude, and compare TacWAM and w/o
+History predictions with ground truth over complete episodes.
+org/abs/2603.28955.
+[3] YushanLiu,PeiboSun,ShoujieLi,YifanXie,LingfengZhang,XintaoChao,ShiyuanDong,FangChen,Xiao-Ping
+Zhang, and Wenbo Ding. OA-WAM: Object-addressable world action model for robust robot manipulation, 2026.
+URLhttps://arxiv.org/abs/2605.06481.
+[4] Jisong Cai, Long Ling, Shiwei Chu, Zhongshan Liu, Jiayue Kang, Zhixuan Liang, Wenjie Xu, Yinan Mao, Weinan
+Zhang, Xiaokang Yang, Ru Ying, Ran Zheng, and Yao Mu. AHA-WAM: Asynchronous horizon-adaptive world-
+action modeling with observation-guided context routing, 2026. URLhttps://arxiv.org/abs/2606.09811.
+[5] Nathan F. Lepora. Tactile robotics: Past and future.The International Journal of Robotics Research, 2026. doi:
+10.1177/02783649261421615. URLhttps://doi.org/10.1177/02783649261421615.
+[6] Bo Ai, Stephen Tian, Haochen Shi, Yixuan Wang, Cheston Tan, Yunzhu Li, and Jiajun Wu. RoboPack: Learning
+tactile-informed dynamics models for dense packing, 2024. URLhttps://arxiv.org/abs/2407.01418.
+[7] Zihang Zhao, Yuyang Li, Wanlin Li, Zhenghao Qi, Lecheng Ruan, Yixin Zhu, and Kaspar Althoefer. Tac-Man:
+Tactile-informed prior-free manipulation of articulated objects, 2024. URLhttps://arxiv.org/abs/2403.
+01694.
+[8] Zhixiang Cao, Di Tian, Runwei Guan, Yanzhou Mu, Xiaolou Sun, Shaofeng Liang, Daizong Liu, Tao Huang,
+Yutao Yue, Henghui Ding, Bin Fang, Alex Zhou, Qing-Long Han, and Hui Xiong. Tactile-based multimodal
+fusion in embodied intelligence: A survey of vision, language, and contact-driven paradigms, 2026. URL
+https://arxiv.org/abs/2605.17336.
+[9] LiangHeng,HaoranGeng,KaifengZhang,PieterAbbeel,andJitendraMalik. ViTacFormer: Learningcross-modal
+representation for visuo-tactile dexterous manipulation, 2025. URLhttps://arxiv.org/abs/2506.15953.
+11
+[10] Chaofan Zhang, Peng Hao, Xiaoge Cao, Xiaoshuai Hao, Shaowei Cui, and Shuo Wang. VTLA: Vision-tactile-
+language-action model with preference learning for insertion manipulation, 2025. URLhttps://arxiv.org/
+abs/2505.09577.
+[11] Jianxin Bi, Kevin Yuchen Ma, Ce Hao, Mike Zheng Shou, and Harold Soh. VLA-Touch: Enhancing vision-
+language-action models with dual-level tactile feedback, 2025. URLhttps://arxiv.org/abs/2507.17294.
+[12] YujieZang,YuhangZheng,XianNie,YupengZheng,ShuaiTian,SongenGu,ChenGao,ZiningWang,Shuicheng
+Yan, and Wenchao Ding. TacForeSight: Force-guided tactile world model for contact-rich manipulation, 2026.
+URLhttps://arxiv.org/abs/2606.11184.
+[13] Siyu Wu, Linjing You, Junjie Zhu, Yaozu Liu, Changhao Zhang, Jian Liu, Weiqiang Wang, Qi Li, Jituo Li, and
+Hengshuang Zhao. Tactile-wam: Touch-aware world action model with tactile asymmetric attention, 2026. URL
+https://arxiv.org/abs/2606.26663.
+[14] Michelle A. Lee, Yuke Zhu, Peter Zachares, Matthew Tan, Krishnan Srinivasan, Silvio Savarese, Li Fei-Fei,
+Animesh Garg, and Jeannette Bohg. Making sense of vision and touch: Learning multimodal representations for
+contact-rich tasks, 2019. URLhttps://arxiv.org/abs/1907.13098.
+[15] Jialei Huang, Shuo Wang, Fanqi Lin, Yihang Hu, Chuan Wen, and Yang Gao. Tactile-vla: Unlocking vision-
+language-action model’s physical knowledge for tactile generalization, 2025. URLhttps://arxiv.org/abs/
+2507.09160.
+[16] Roberto Calandra, Andrew Owens, Dinesh Jayaraman, Justin Lin, Wenzhen Yuan, Jitendra Malik, Edward H.
+Adelson, and Sergey Levine. More than a feeling: Learning to grasp and regrasp using vision and touch.IEEE
+Robotics and Automation Letters, 3(4):3300–3307, 2018. doi: 10.1109/LRA.2018.2852779.
+[17] Han Xue, Jieji Ren, Wendi Chen, Gu Zhang, Yuan Fang, Guoying Gu, Huazhe Xu, and Cewu Lu. Reactive
+diffusion policy: Slow-fast visual-tactile policy learning for contact-rich manipulation, 2025. URLhttps:
+//arxiv.org/abs/2503.02881.
+[18] Wenzhen Yuan, Siyuan Dong, and Edward H. Adelson. Gelsight: High-resolution robot tactile sensors for
+estimating geometry and force.Sensors, 17(12):2762, 2017. doi: 10.3390/s17122762.
+[19] Daolin Ma, Elliott Donlon, Siyuan Dong, and Alberto Rodriguez. Dense tactile force estimation using gelslim and
+inverse fem. In2019 International Conference on Robotics and Automation (ICRA), pages 5418–5424, 2019. doi:
+10.1109/ICRA.2019.8794113.
+[20] Guo Ye, Zexi Zhang, Xu Zhao, Shang Wu, Haoran Lu, Shihan Lu, and Han Liu. Learning to feel the future:
+Dreamtacvla for contact-rich manipulation, 2025. URLhttps://arxiv.org/abs/2512.23864.
+[21] NeoteAI Team and Fudan TEAI Team.N0-VTLA: Scaling vision-tactile-language-action model with latent tactile
+tokens, 2026. URLhttps://arxiv.org/abs/2607.23782.
+[22] Ning Cheng, Jinan Xu, Wanlin Li, Yangzhi Chen, Jing Gao, Yiqun Wang, Kelan Peng, and Wenjuan Han.
+𝜏: Learning touch-augmented vision-language-action models from future visual supervision, 2026. URL
+https://arxiv.org/abs/2607.24485.
+[23] Carolina Higuera, Sergio Arnaud, Byron Boots, Mustafa Mukadam, Francois Robert Hogan, and Franziska Meier.
+Visuo-tactile world models, 2026. URLhttps://arxiv.org/abs/2602.06001.
+[24] Yunao Huang, Shiyu Sang, Haotao Lu, Suting Ni, Shijie Wu, Ziyang Guo, Ye Shi, and Jingya Wang. Vitacworld:
+Scaling visuo-tactile world models for contact-rich robot manipulation, 2026. URLhttps://arxiv.org/abs/
+2607.22530.
+[25] Yuhang Zheng, Songen Gu, Weize Li, Yupeng Zheng, Yujie Zang, Shuai Tian, Xiang Li, Ce Hao, Chen Gao,
+Si Liu, Haoran Li, Yilun Chen, Shuicheng Yan, and Wenchao Ding. Omnivta: Visuo-tactile world modeling for
+contact-rich robotic manipulation, 2026. URLhttps://arxiv.org/abs/2603.19201.
+12
+[26] Jianyi Zhou, Feiyang Hong, Yunhao Li, Yicheng Zhao, Yongjue Cen, Zirui Liu, Jiakang Huang, Zirui Chen,
+Ruiyang Zhang, Weizhuo Zhu, Xuhua Song, and Shuo Yang. Touchworld: A predictive and reactive tactile
+foundation model for dexterous manipulation, 2026. URLhttps://arxiv.org/abs/2607.07287.
+[27] Shuai Tian, Yupeng Zheng, Yuhang Zheng, Songen Gu, Yujie Zang, Yuxing Qin, Weize Li, Haoran Li, Wenchao
+Ding, and Dongbin Zhao. VT-WAM: Visual-tactile world action model for contact-rich manipulation, 2026. URL
+https://arxiv.org/abs/2607.02503.
+[28] Physical Intelligence, Kevin Black, Noah Brown, James Darpinian, Karan Dhabalia, Danny Driess, Adnan
+Esmail, Michael Equi, Chelsea Finn, Niccolo Fusai, Manuel Y. Galliker, Dibya Ghosh, Lachy Groom, Karol
+Hausman, Brian Ichter, Szymon Jakubczak, Tim Jones, Liyiming Ke, Devin LeBlanc, Sergey Levine, Adrian
+Li-Bell, Mohith Mothukuri, Suraj Nair, Karl Pertsch, Allen Z. Ren, Lucy Xiaoyang Shi, Laura Smith, Jost Tobias
+Springenberg, Kyle Stachowicz, James Tanner, Quan Vuong, Homer Walke, Anna Walling, Haohuan Wang,
+Lili Yu, and Ury Zhilinsky.𝜋0.5: A vision-language-action model with open-world generalization, 2025. URL
+https://arxiv.org/abs/2504.16054.
+[29] Tianyuan Yuan, Zibin Dong, Yicheng Liu, and Hang Zhao. Fast-WAM: Do world action models need test-time
+future imagination?, 2026. URLhttps://arxiv.org/abs/2603.16666.
+This supplementary material provides implementation, training, hardware, data-collection, evaluation, ablation, and
+baseline details for TacWAM. It is intended to support reproducibility and reviewer inspection of design choices that are
+summarized in the main paper. Future tactile states are treated as predictive training targets rather than direct action
+inputs; decoded future tactile predictions are used for analysis only and are not online correction signals at deployment.
+A Implementation Details
+A.1 Overview of TacWAM Implementation
+Figure1summarizesthemainTacWAMcomponents. TacWAMisimplementedasatri-modalMixture-of-Transformers
+(MoT) World Action Model with visual, tactile, and action experts. The experts communicate through masked mixed
+self-attention governed by Anchor-Guided Tri-Modal (AGT) Attention. Task language and current proprioception are
+provided as deployment-available context through expert cross-attention.
+At the start of an action chunk𝑡0, TacWAM jointly predicts:
+•visual futures ˆv𝑡0+1:𝑡0+𝐻𝑣,
+•future tactile latents ˆztac𝑡0+1:𝑡0+𝐻,
+•an action chunk ˆa𝑡0:𝑡0+𝐻−1.
+Future visual and tactile tokens are noised prediction variables under flow matching. Under the finalized AGT mask,
+future tactile prediction is a parallel predictive objective rather than an action-conditioned consequence model: the
+action stream uses only deployment-available anchors, task/proprioceptive context, and action-token interactions.
+Table 4 lists the main architectural dimensions used in our implementation.
+A.2 SAF Tactile Encoder and Decoder
+The Spatially Aligned Fusion (SAF) tactile encoder𝐸SAF is a strictly single-frame encoder. Each tactile observation
+contains synchronized signals from the two gripper-side sensors,
+𝑜tac𝑡 =  𝐼rect𝑡 ,𝐹𝑡,𝑀 flow𝑡 ,(13)
+with the following tensor shapes used in our implementation:
+13
+Table 4:Architectural dimensions used by TacWAM.
+Component Value
+Tactile latent dimension𝐷ctrl 128
+History context dimension256
+History length𝑇hist 32
+Action / tactile horizon𝐻32
+Video frames per chunk (after subsampling)9
+Action / proprioception dimension7
+Video expert hidden dim / layers / heads3072/30/24
+Action expert hidden dim / layers / heads1024/30/24
+Tactile expert hidden dim / layers / heads1024/30/24
+Text context length128
+•rectified tactile appearance𝐼 rect𝑡 ∈R 2×3×𝐻×𝑊 ,
+•dense force field𝐹𝑡∈R 2×35×20×3,
+•mesh deformation flow𝑀 flow𝑡 ∈R 2×35×20×3.
+The second dimension indexes the left and right tactile sensors. In our real-robot pipeline, rectified tactile images are
+resized to𝐻×𝑊=224×128.
+For each sensor side, three branches encode appearance, force, and deformation flow:
+• AppearanceusesafrozenWanvideoVAEencoder,producinga 48-channelspatiallatentgridthatdefinesthecommon
+spatial reference.
+• Dense force and mesh flow are encoded by shared convolutional grid encoders (output channel widths32 each) and
+bilinearly aligned to the appearance latent grid.
+• Per-side fused features are obtained by concatenating the three branch latents (48+32+32) and applying convolutional
+fusion (fused channel width64).
+Left and right fused maps are then concatenated and passed through a bilateral fusion block, followed by global spatial
+pooling and an MLP control readout that yields a128-dimensional tactile latent𝑧tac𝑡 . Left/right branch encoders share
+weights so that both sensors map into a common latent space.
+The tactile reconstructor𝑅tac is a single-step multi-head decoder with a shared MLP trunk (128→256→256 ) and three
+reconstruction heads:
+• dense force fieldˆ𝐹𝑡∈R 2×35×20×3, recovered by projecting to a64×7×5 feature map, bilinearly upsampling to
+35×20, and applying convolutions;
+•mesh deformation flow ˆ𝑀flow𝑡 ∈R 2×35×20×3, using the same spatial-head structure;
+• bilateral resultant wrenchˆ𝑟wrench𝑡 ∈R 12, consisting of a3D force and a3D torque for each of the two gripper-side
+sensors.
+The bilateral resultant wrench is used only as global mechanics supervision; it is not a fourth spatial encoder input.
+Reconstruction targets are normalized with training-set statistics (per-channel / per-dimension𝑧-score, with clipping
+for wrench and flow targets) before SmoothL1 supervision. TacWAM predicts future𝑧tac states rather than directly
+generating heterogeneous raw tactile streams.
+14
+A.3 Tactile History Encoder
+Single-frame touch can be ambiguous across contact phases. TacWAM therefore summarizes a fixed recent window of
+teacher tactile latents before the current chunk:
+𝑐tac𝑡0 =𝐸 hist  𝑧tac𝑡0−𝑇hist+1:𝑡0 .(14)
+Implementation defaults are listed in Table 4. The encoder is a lightweight temporal residual Conv1d network:
+•input projection128→256→256with SiLU,
+•3 residual temporal blocks (LayerNorm, depthwise Conv1d with kernel size3, SiLU, pointwise linear, residual add),
+•last / mean / max / std pooling over the32-step hidden sequence, concatenated to a1024-D vector,
+•global MLP readout1024→512→256.
+The output is a compact chunk-level vector𝑐tac𝑡0 ; history is not inserted as additional attention tokens. The history
+window and the tactile generation sequence share the current state: history uses it as the endpoint of recent tactile
+evolution, while generation uses it as the clean initial anchor𝑇0.
+A.4 Adaptive Normalization for History Modulation
+The history context modulates only the tactile expert. Concretely,𝑐tac𝑡0 is projected by an MLP (256→1024→6×1024 )
+to a modulation vector and added to the tactile expert’s flow-matching timestep modulation before DiT blocks
+(𝐷hidden =1024 ). This adaptive-normalization pathway conditions future tactile prediction on recent interaction
+evolution without exposing history tokens to the action stream as privileged inputs.
+A.5 Contact-Event Auxiliary Loss
+A lightweight contact-event head is attached to the history encoder and trained with binary contact labels derived
+from the history window. From a32-step binary contact sequence, we construct a6-dimensional target covering:
+(1) current contact, (2) any contact in the window, (3) contact onset, (4) contact release, (5) stable contact (current
+contact with recent contact duration≥8 ), and (6) stable no-contact (current no-contact with recent no-contact duration
+≥8 ). The auxiliary loss is BCE-with-logits with weight𝜆𝑐 =0.1 . Contact labels are derived offline from thresholded
+resultant-force magnitude computed from the tactile streams. The history head predicts only these binary contact-event
+labels; raw force and wrench vectors are supervised through SAF reconstruction and decoded tactile consistency, not
+throughLcontact. In the history-ablated variant, the history encoder is disabled,𝑐tac𝑡0 is replaced by zeros, andLcontact is
+removed.
+A.6 Action/State Representation and Chunked Inference
+Robot state and action are both represented by7-DoF joint positions. Following the underlying WAM formulation, each
+action token denotes the target robot state for the next transition,𝑎𝑡 :=𝑞 target𝑡+1 , rather than an instantaneous low-level
+command. Actions and proprioceptive states are normalized with dataset𝑧-score statistics.
+Chunk geometry used in training and deployment:
+•action / tactile prediction horizon𝐻=32,
+• video sampling uses33temporally aligned frames with an action–video frequency ratio of4, yielding9video frames
+per chunk (current frame plus8future visual prediction frames),
+• tactile future tokens are aligned to the action horizon, with the first tactile token kept as a clean current anchor during
+training (TI2V-style tactile anchoring: noisy future tokens are overwritten at index0by the clean teacher latent).
+15
+Table 5:Stream-level AGT visibility matrix. Entries indicate whether the query stream may read the key/value stream under the
+within-stream causal rules described above.
+Query\KV𝑉 0 𝑉1:𝐻𝑣 𝑇0 𝑇1:𝐻 𝐴
+Visual Y Y – – –
+Tactile Y – Y Y –
+Action Y – Y – Y
+Cameraimagesarecapturedat 480×640 andresizedto 224×224 perview;thetwoviewsareconcatenatedhorizontally
+for the video expert. At deployment, TacWAM runs in a receding-horizon loop: it executes one action chunk, receives
+new observations, and infers the next chunk. Default inference uses20flow-matching denoising steps. Future tactile
+predictions may be decoded through𝑅tac for force/deformation analysis, but they are not used as online correction
+signals in this work.
+B Attention Mask Details
+Tokens are arranged as
+[𝑉0,𝑉 1:𝐻𝑣|𝑇 0,𝑇 1:𝐻|𝐴],(15)
+where𝑉0 is the current visual anchor,𝑉1:𝐻𝑣 denotes future visual prediction tokens,𝑇0 is the clean tactile anchor,𝑇1:𝐻
+denotes future tactile prediction tokens, and𝐴 denotes action tokens. We use “query reads key/value” to describe
+visibility. Boolean attention entries are True when the query may attend to the corresponding key/value. Figure 3
+illustrates the AGT mask and the two relaxed ablation masks.
+B.1 Full AGT Mask Definition
+Under the finalized AGT mask:
+• Visual→Visual.Video tokens follow a first-frame-causal mask within the visual stream: the current visual frame is
+an anchor, and future visual tokens attend under the video expert’s first-frame-causal rule. Visual tokens do not read
+tactile tokens.
+• Tactile→ Visual / Tactile.Future tactile tokens may read the current visual anchor𝑉0 (first-frame visual tokens
+only). Within the tactile stream, a first-frame-causal mask is applied:𝑇0 attends only to itself, while later tactile
+tokens may attend to the full tactile sequence𝑇0:𝐻. Future tactile tokens do not read action tokens.
+• Action→ Visual / Tactile / Action.Action tokens may read𝑉0,𝑇0, and all action tokens (full action-to-action
+visibility). Action tokens cannot read future visual tokens or future tactile prediction tokens𝑇1:𝐻.
+Table 1 summarizes the AGT visibility rules. Table 5 gives a compact stream-level visibility matrix (“Y” = permitted
+under the corresponding within-stream causal rule; “–” = blocked).
+B.2 Attn-AT Mask
+The Attn-AT ablation starts from the history-free variant and relaxes only action-stream tactile visibility. Action tokens
+may read the full tactile prediction sequence𝑇0:𝐻 together with𝑉0 and other action tokens. The video mask, tactile
+first-frame-causal mask, and tactile access to𝑉0 remain unchanged.
+B.3 Attn-VT Mask
+The Attn-VT ablation further enables bidirectional interaction between visual prediction tokens and tactile future tokens
+while preserving clean-anchor semantics:
+16
+Table 6:Stage 1 SAF reconstruction loss weights.
+Term Weight
+Dense force field𝜆𝐹 1.0
+Bilateral resultant wrench𝜆𝑅 1.5
+Mesh deformation flow𝜆𝑀 1.0
+•the current visual anchor may read the tactile anchor,
+•future visual tokens may read tactile prediction tokens,
+•the tactile anchor may read the current visual anchor,
+•future tactile tokens may read visual prediction tokens.
+The tactile stream still keeps its first-frame-causal internal structure, and action tokens retain Attn-AT visibility (𝑉0,
+𝑇0:𝐻, and action tokens).
+B.4 Query/Key-Value Visibility Clarification
+AGTisaninformation-isolationmechanismforpredictiveco-training,notaclaimofaction-conditionedtactiledynamics.
+In particular:
+•future tactile states supervise the tactile prediction branch;
+•action generation remains conditioned only on deployment-available information under AGT;
+• futuretactiletokensdonotattendtoactiontokens,sotactilefuturesarenotmodeledasaction-conditionedconsequences
+in the finalized design.
+B.5 Train–Test Mismatch for Attn-AT
+Allowing action tokens to read𝑇0:𝐻 creates an unreliable training shortcut. During training, action tokens can exploit
+target-derived future prediction variables (noised teacher tactile futures whose clean counterparts provide supervision),
+whereas deployment-time generation must rely on model-generated counterparts under the inference process. This
+target-derived shortcut is absent under deployment-time generation, creating a train–test mismatch that degrades
+closed-loop behavior. This is why AGT restricts action visibility to𝐴←𝑇0.
+C Training Details
+Training proceeds in two stages. We report final hyperparameters only (no search ranges).
+C.1 Tactile Representation Pretraining
+Stage 1 jointly trains𝐸SAF and𝑅 tac with
+LSAF =𝜆 𝐹L𝐹+𝜆𝑅Lwrench+𝜆 𝑀Lflow,(16)
+where each term is SmoothL1 on normalized targets. Table 6 lists the final Stage 1 loss weights. The Wan VAE
+appearance encoder remains frozen. Final Stage 1 optimization settings are given in Table 8. After Stage 1, the tactile
+encoder and decoder are frozen for TacWAM training.
+17
+Table 7:Stage 2 TacWAM loss weights.
+Term Weight
+Video flow matching𝜆𝑣 1.0
+Action flow matching𝜆𝑎 1.0
+Tactile latent flow matching𝜆𝑧 1.0
+Decoded tactile consistency𝜆sem 0.5
+Contact-event auxiliary𝜆𝑐 0.1
+Table 8:Final training hyperparameters for Stage 1 and Stage 2.
+Setting Stage 1 Stage 2
+Optimizer AdamW AdamW
+Learning rate1×10 −4 1×10 −4
+LR schedule cosine cosine
+Weight decay1×10 −2 1×10 −2
+Batch size (per GPU)32 8
+Gradient accumulation1 2
+Epochs20 20
+Mixed precision bfloat16 bfloat16
+Max gradient norm1.0 1.0
+Flow-matching timesteps –1000/ stream
+Scheduler shift (train/infer) –5.0
+Inference denoising steps –20
+Fixed random seed42 42
+C.2 TacWAM Training with Frozen Tactile Representation
+Stage 2 freezes𝐸SAF and𝑅tac, then trains the tri-modal WAM generator and the tactile history encoder. Frozen𝐸SAF
+provides𝑧tac forhistorywindowsandfuturetactiletargets. Frozenbutdifferentiable 𝑅tac decodespredictedtactilelatents
+to force fields, bilateral resultant wrench, and mesh flow as a semantic consistency regularizer; decoder parameters
+remain fixed while gradients through the decoder supervise predicted latents.
+The joint objective is
+LTacWAM =𝜆 𝑣Lvideo+𝜆𝑎Laction+𝜆𝑧Ltac-latent
++𝜆 semLtac-decoded+𝜆𝑐Lcontact, (17)
+with final weights in Table 7. Video, action, and tactile-latent terms follow scheduler-weighted MSE under flow
+matching; decoded tactile consistency uses MSE on normalized Stage 1 targets and excludes the clean tactile anchor
+frame. Tactile-latent and decoded-tactile losses are likewise computed only on future indices1:𝐻, not on the clean
+anchor.
+Backbone initialization follows the Wan2.2-TI2V-5B MoT setup. Action and tactile experts are initialized from an
+ActionDiT checkpoint aligned to the Wan2.2 backbone (hidden size1024). Each method uses one final checkpoint. We
+do not report training-seed variance; real-robot variation comes from20evaluation trials per task.
+C.3 Ablation Training Protocol
+The staged ablations in the main paper are trained under the same Stage 2 data, action representation, horizons, and
+future-tactile prediction objective, with the following controlled changes:
+•w/o History:disable the tactile history encoder; replace𝑐tac𝑡0 by zeros; disableLcontact; keep AGT.
+•w/o History + Attn-AT:start from the history-free setting and set action visibility to𝐴←{𝑉0,𝑇 0:𝐻,𝐴}.
+18
+• w/o History + Attn-VT:start from Attn-AT and enable bidirectional video–tactile future visibility while preserving
+first-frame-causal anchor semantics.
+All ablation variants use the same optimization hyperparameters as full TacWAM Stage 2 (Table 8).
+D Hardware and Software Environment
+D.1 Robot Platform and Sensors
+•Robot platform: Agilex Piper manipulator.
+•Tactile sensors: two Xense G1-WS sensors mounted on the gripper sides.
+•Cameras: one overhead camera and one wrist-mounted camera (raw resolution480×640, resized to224×224).
+•Synchronization: visual, tactile, proprioceptive, and action streams are temporally aligned at30Hz.
+•Action/state interface:7-DoF joint-position targets.
+D.2 Compute and Software
+Training and inference use the following software stack (from the project dependency specification):
+•Python≥3.10,
+•PyTorch2.7.1(+CUDA12.8wheels),
+•torchvision0.22.1(+CUDA12.8wheels),
+•accelerate1.12.0,
+•DeepSpeed0.18.5(ZeRO stage used for multi-GPU TacWAM training),
+•transformers4.49.0,
+•hydra-core1.3.2,
+•numpy1.26.4.
+Hardware details for the machines used in the reported experiments:
+•GPU model: NVIDIA A800-SXM4-80GB (80GB),
+•number of GPUs used for TacWAM Stage 2 training:8,
+•CPU model: Intel Xeon Platinum 8374C @2.70GHz (2sockets,124logical CPUs),
+•system RAM:1.8TB,
+•operating system: Ubuntu22.04.5LTS,
+•NVIDIA driver:535.129.03,
+•CUDA toolkit:12.8(matching the PyTorch CUDA12.8build).
+19
+E Data Collection Details
+We collect real-robot demonstrations on the platform above for four contact-rich tasks: potato-chip grasping, cherry
+grasping, whiteboard wiping, and two-pen twirling. For each task:
+•number of demonstrations:300episodes,
+•average episode length: about500frames,
+• streams: synchronizedvisualobservations(overheadandwrist),dualgripper-sidetactilereadings(rectifiedappearance,
+dense force fields, and mesh deformation flow), proprioception, and joint-position actions,
+•sampling rate:30Hz frame-level alignment,
+•action/state representation: joint positions.
+Rawdataarenotpubliclyreleasedduetocustomhardwarecalibration, platform-specificsynchronization, andreal-robot
+data management constraints. Publicly available alternatives do not provide the same synchronized dual tactile sensing,
+visual observations, joint-state/action representation, and contact-rich task setup used in this study.
+E.1 Code and Artifact Release
+Upon publication, TacWAM training and inference code, including model definitions, losses, and attention-mask
+configurations, will be released under a research-use license. Raw data, preprocessing scripts, analysis scripts, trained
+checkpoints, and baseline reimplementation code are not released.
+F Evaluation Protocol
+All methods are trained on the same demonstrations for the same number of epochs under their respective input settings
+and evaluated under the same protocol:
+•20real-robot trials per method per task,
+•identical task definitions, success criteria, and test-condition sequence across methods,
+•object poses and robot initial configurations varied within predefined ranges,
+• receding-horizon execution: execute one predicted action chunk, receive a new observation, then infer the next action
+chunk,
+•reported metric: success rate=(number of successful executions) /20.
+We do not report confidence intervals or statistical significance tests in this work. Each compared method uses one final
+checkpoint; observed variation reflects real-robot trial outcomes rather than multi-seed retraining.
+G Task-Specific Success Criteria
+Atrialiscountedassuccessfulonlyifthetaskgoaliscompletedwithoutviolatingthecorrespondingphysicalconstraint:
+•Potato-chip grasping:the chip is grasped and placed onto the target plate without breaking or dropping.
+•Cherry grasping:the cherry is stably grasped and placed without dropping or visible crushing.
+• Whiteboard wiping:the eraser maintains sustained contact with the board and the target region is wiped to a
+predefined cleanliness standard.
+•Two-pen twirling:the required twirling motion is completed without the pens falling.
+20
+H Baseline Details
+All baselines are trained and evaluated on the same task data and use the same joint-position action representation
+when applicable. Vision-only baselines receive overhead and wrist views with proprioception and task conditioning;
+tactile baselines additionally receive synchronized tactile observations. Each baseline uses one final checkpoint and is
+evaluated with20trials per task under the protocol in Section 6.
+•𝜋 0.5 [28]: a vision-language-action baseline that maps visual observations and task instructions directly to robot
+actions, without explicit visual or tactile future prediction. We fine-tune the𝜋0.5 model family on each task using
+AdamW, cosine decay with peak learning rate1×10 −4, batch size64, action horizon33, EMA decay0.999, mixed
+precision bfloat16, and20training epochs.
+• Fast-WAM[29]: a vision-only World Action Model baseline that retains visual predictive co-training during training
+but removes explicit future generation at inference. We train Fast-WAM with the same MoT backbone family and
+chunk geometry as TacWAM, without tactile streams, using AdamW, learning rate1×10 −4, cosine schedule, weight
+decay 1×10 −2, batch size4, gradient accumulation2, 20 epochs, and bfloat16. One final checkpoint is used for
+evaluation.
+• RDP[ 17]: a visual-tactile Reactive Diffusion Policy baseline with a slow–fast structure that uses tactile feedback
+for contact-rich control, but does not predict future tactile states as WAM training targets. We reimplement RDP
+following the paper design under our shared data and joint-position action setting, using the same synchronized visual,
+tactile, proprioceptive, and task-conditioning inputs available to tactile policy baselines.
+• VT-WAM[27]: a visual-tactile WAM baseline that jointly models visual futures, tactile futures, and actions. No
+officialpublicimplementationisavailable;wereimplementVT-WAMfollowingthepaperdesignandtrainitunderthe
+same data and action-space setting. The reimplementation uses the same synchronized visual, tactile, proprioceptive,
+and task-conditioning inputs as TacWAM, while following VT-WAM’s visual-tactile-action prediction design rather
+than TacWAM’s history-modulated AGT formulation.
+I Additional Qualitative Results
+Figure4providesadditionalepisode-levelforce-rolloutvisualizationsconsistentwiththemain-paperanalysis. Predicted
+tactile states are decoded to bilateral resultant wrench and summarized by resultant force magnitude. These curves are
+diagnostic analyses of predictive tactile training; they are not used as online action-correction signals.
+Noadditionalinventedquantitativeresultsarereportedbeyondthemain-papersuccessratesandthequalitativeprediction
+comparisons above.
+21

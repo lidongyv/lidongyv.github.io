@@ -1,0 +1,172 @@
+# DexTouch-WM 精读笔记
+
+> 数据源：`auto_docs/papers/txt/DexTouch-WM.txt`（arXiv 2609.20649，8 页）。所有英文均为逐字摘录，行号标注于引文后。
+
+## 1. 原文信息
+
+- 标题（逐字）：`DexTouch-WM: Learning Action-Conditioned Tactile World Models from Human Touch for Dexterous Robot Manipulation`
+- 作者行（逐字）：`Yan Qin1,2,∗, Yue Chen 2,3,∗, Wenwei Lin 2,5,∗, Shujia Liu 5,∗, Chuqiao Lyu 2,5, Kailun Su 2,5, Weiyang Jin4, Chenze Yu 2,5, Ping Luo 4, Wenbo Ding 2,5,†, Tianxing Chen 2,4,† and Renjing Xu 1,†`
+- 机构线索（逐字）：`1HKUST (GZ); 2Xspark AI; 3PKU; 4HKU; 5THU.`；脚注：`∗Equal contribution and shared first authorship.`、`†Corresponding author: Renjing Xu.`
+- arXiv 标识（逐字）：`arXiv:2609.20649v2  [cs.RO]  18 Sep 2026`（L78）
+- 投稿/发表状态：原文未写（正文与脚注均无会议/期刊收录信息）。
+
+## 2. Abstract 原文全文（L32–53、L57–59，跳过其中三行脚注）
+
+> Abstract— Learning predictive models of contact-rich dexterous manipulation requires dense tactile interaction, but such data are costly to scale on real robots and are tied to embodiment-specific sensors. We introduce DexTouch-WM, an action-conditioned world model that learns from scalable human touch to jointly predict future RGB observations and bilateral tactile dynamics. Our insight is that human and robot manipulation share transferable contact dynamics when their tactile observations and action spaces are made compatible. We deploy flexible piezoresistive arrays with a shared sensing layout on both human and dexterous robot hands, and retarget human motion into the robot action space so that human interaction can supervise the same dynamics model used for real-robot prediction. DexTouch-WM couples a pretrained video expert with a lightweight tactile expert using anatomy-aware tactile tokens and aligned action conditioning. In human-to-robot scaling experiments, we keep real-robot supervision fixed while increasing human interaction from 0 to 100 h, and observe substantial improvements in held-out robot-domain visual, geometric, and contact prediction despite disjoint human and robot task sets. Beyond prediction, we evaluate the world models as surrogate environments for policy evaluation and as generators of synthetic trajectories for real-robot policy learning, showing that scalable human interaction provides a complementary data axis for learning dexterous robot world models.
+
+## 3. 问题与动机
+
+**核心问题（原句）**：
+- `Contact-rich dexterous manipulation is governed by physical interaction states that are not directly observable from images.`（L61–62）
+- `Learning predictive models of contact-rich dexterous manipulation requires dense tactile interaction, but such data are costly to scale on real robots and are tied to embodiment-specific sensors.`（Abstract，L32–34）
+- `Data collection remains a major obstacle to extending these models to dexterous manipulation. Most existing approaches collect tactile trajectories through robot teleoperation, coupling each dataset to a specific embodiment and sensor configuration. Acquiring additional data therefore requires continued operation of the same platform, so available tactile datasets remain small and are often limited to parallel-jaw grippers or isolated fingertip sensors.`（L76–84）
+- `Our central idea is to decouple tactile data collection from the robot embodiment through wearable sensing.`（L85–86）
+
+**他们为什么认为人手与机械手的触觉观测/动力学可共享？原文给出的理由逐条**：
+1. 同一传感布局 → 共同触觉表征：`Lightweight piezoresistive gloves capture dense bilateral full-hand pressure during natural human interaction, and the same sensing layout can be deployed on robotic dexterous hands [24], [15], giving human and robot observations a common tactile representation.`（L86–91）
+2. 人动作重定向进机器人动作空间 → 可监督同一动力学模型：`we retarget human motion into the robot action space so that human interaction can supervise the same dynamics model used for real-robot prediction`（Abstract，L41–44）
+3. 条件性主张（仅在观测与动作空间兼容时共享）：`Our insight is that human and robot manipulation share transferable contact dynamics when their tactile observations and action spaces are made compatible.`（L38–40）
+4. 实验假设句：`We thereby test a central hypothesis: shared contact dynamics allow scalable human physical interaction to scale dexterous-hand world models.`（L169–171）
+5. 硬件对应不够，还需建模层对齐：`Hardware correspondence alone, however, does not resolve the modeling challenges.`（L91–92），即全文其余设计（anatomy-aware 分词、双速率条件、共享位姿表征）都是在为这条"共享"补齐条件。
+- 【推断】原文未给出"接触动力学为何跨本体可迁移"的物理/理论论证，只以"同布局传感 + 重定向动作"作为操作性构造；可迁移性是靠实验（Sec. IV-C）验证的，而非先验证明。
+
+## 4. 方法逐机制
+
+**整体架构**：`As shown in Fig. 2, DexTouch-WM combines a visual expert initialized from Wan2.2-TI2V-5B and its video V AE [20] with a lightweight tactile expert. Following Mixture-of-Transformers [10], the streams exchange context through masked joint self-attention at each transformer layer and retain modality-specific feed-forward pathways.`（L185–190、L233）；`The initial RGB frame is encoded by the frozen video V AE and retained as a clean latent at temporal index zero, while subsequent video latents are noised and predicted.`（L233–236）；`Frozen decoders reconstruct future RGB frames and pressure maps from the predicted latent sequences.`（L238–240）
+
+**Anatomy-aware tactile tokens 是什么**：`The model uses 320 taxels per hand: five 4×4 fingertip pads and one 15×16 palm pad (Fig. 3). A dense image layout introduces artificial neighborhoods between these disconnected regions. We instead align both hands in a common anatomical coordinate system and use a shared encoder for the ten fingertips and another for the two palms. Pad identity embeddings preserve anatomical correspondence while sharing local pressure features. The resulting Split-Hands tokenizer is pretrained with contact-weighted reconstruction, then frozen during world-model training. Weighting contact regions prevents the numerous inactive taxels from dominating the representation.`（L241–252）
+
+**Anchored residual tactile latents**：`Let Ex and Dx be the tactile encoder and decoder, and zt = Ex(xt). We predict changes relative to the initial tactile state: rt = zt − z0, ˆxt = Dx(z0 + ˆrt).`（L253–256）；`Residual prediction focuses the model on interaction-induced changes while preserving the initial pressure background.`（L258–259）
+
+**Dual-rate action conditioning**：`The causal video V AE preserves a separate initial latent and compresses future frames by a factor of four; tactile tokenization retains the observation rate. We therefore condition each stream at its own latent resolution: cvj = ϕv(a4j−3:4j ), cxt = ϕx(at)`（L260–265）；`Four-frame pose chunks condition video latents, while frame-level poses preserve fine temporal cues for tactile prediction. The camera component provides egocentric motion context alongside bilateral hand motion.`（L271–274）；`The pose sequence uses the first-frame-relative wrist and camera representations defined in Sec. III-D, together with absolute hand joint angles. AdaLN-based pose conditioning injects these signals into each expert's timestep modulation.`（L267–270）
+
+**动作对齐/重定向**：`Shared tactile sensing does not by itself align human and robot kinematics. We transform tracked human motion into the robot reference frame using calibrated camera–world alignment, normalize hand geometry for morphology differences, and retarget it to WujiHand2 with an inverse-kinematics mapping: (eht ,J ht ) A− →(ert ,q rt ), where eht and J ht denote the human wrist pose and hand geometry; the outputs are the robot end-effector pose and 20-DoF hand configuration. This removes human-specific action coordinates while retaining the demonstrated hand motion.`（L320–330）；共享动作表示：`at = [eLt ,e Rt ,q Lt ,q Rt ,e ct ]∈R 67. where e denotes first-frame-relative wrist motion and q∈R20 denotes the hand configuration.`（L333–335）；`Together with the shared tactile layout, this alignment makes human trajectories compatible with robot-world-model supervision without requiring a learned tactile-domain mapping.`（L336–339）
+
+**训练损失**：`We train both experts with conditional flow matching [11]: L = LFM video + λtac LFM tactile. The initial visual latent is excluded from the prediction loss. The tactile term predicts the residuals in Eq. 2 and is evaluated on contact or temporally changing tokens, reducing the influence of static non-contact regions. Joint attention couples the modalities without an alignment loss.`（L275–282）
+
+**数据配置**：`We train DexTouch-WM on 100 hours of egocentric human interaction spanning 50 tasks, together with 5 hours of real-robot interaction.`（L115–117）；`For world-model pretraining, we collect approximately 100 hours of egocentric interaction across 50 everyday bimanual tasks. We additionally collect human demonstrations for four downstream tasks, forming a separate dataset for task-specific world-model adaptation.`（L353–357）；`The tasks cover transport, grasping and regrasping, impact, insertion, articulated and deformable objects, and sustained multi-region contact.`（L362–364）；`We collect real-robot interaction on 10 dexterous manipulation tasks using a Tianji robotic arm equipped with a 20-DoF Wuji dexterous hand. Six tasks provide 5 hours of world-model pretraining data. The remaining four tasks are disjoint from the pretraining tasks and are used for downstream adaptation and evaluation.`（L367–372）；采集硬件：`Collectors wear Moxian tactile gloves beneath Manus MetaGloves for pressure and finger tracking. HTC Vive trackers recover 6-DoF wrist poses; two wrist cameras and a head camera record complementary views.`（L302–305）；`The gloves record 360 taxels per hand at 60 Hz; training retains the 320 sensing taxels shown in Fig. 3.`（L314–316）；`The same full-hand piezoresistive glove used for human collection is mounted on the Wuji hand, so human and robot tactile observations share one sensing interface.`（L373–375）
+
+## 5. 实验与主结果
+
+**指标定义（原句）**：`For visual prediction, we build on the multidimensional benchmarking protocol of WorldArena [17] and the evaluator-oriented analysis of GigaWorld [2]. We report Aesthetic Quality and Image Quality for perceptual appearance; JEPA Similarity, Semantic Alignment, and Subject Consistency for representation and semantic consistency; and Trajectory Accuracy for action-conditioned motion fidelity. We additionally report Geometry Error to assess geometric consistency. For tactile prediction, we evaluate continuous signal reconstruction using PSNR taxel, SSIM taxel, LPIPS heatmap, MSE, and MAE. Since average reconstruction errors can be dominated by the large non-contact regions and therefore obscure sparse but task-critical contacts, we additionally evaluate contact dynamics using Contact-MAE, Contact-IoU and Contact-F1.`（L378–394）
+
+**表注 I（逐字）**：`TABLE I — MODEL DESIGN AND HUMAN-TO-ROBOT SCALING. ALL COLUMNS USE 5H OF ROBOT DATA. Robot-only IS SPLIT-HANDS+ADALN WITH 0H HUMAN DATA AND IS THE ORIGIN OF THE SCALING COLUMNS. +100h Human IS DEXTOUCH-WM. ↑ AND ↓ INDICATE HIGHER AND LOWER IS BETTER, RESPECTIVELY.`（L396–398）
+
+**Table I 全量数值（原文照抄，未合并/未舍入；V-only 无触觉输出记为 –）**：
+
+| Metric | V-only | Cross-Attn | Robot-only | +10h Human | +50h Human | +100h Human |
+|---|---|---|---|---|---|---|
+| PSNR↑ | 22.099 | 22.130 | 23.473 | 24.032 | 26.874 | 27.096 |
+| SSIM↑ | 0.799 | 0.801 | 0.824 | 0.838 | 0.886 | 0.890 |
+| LPIPS↓ | 0.117 | 0.118 | 0.098 | 0.084 | 0.048 | 0.048 |
+| Aesthetic Quality↑ | 0.406 | 0.405 | 0.400 | 0.404 | 0.414 | 0.414 |
+| Image Quality↑ | 0.718 | 0.717 | 0.718 | 0.717 | 0.723 | 0.724 |
+| JEPA Similarity↑ | 0.870 | 0.860 | 0.864 | 0.894 | 0.917 | 0.924 |
+| Subject Consistency↑ | 0.689 | 0.681 | 0.751 | 0.740 | 0.748 | 0.751 |
+| Semantic Alignment↑ | 0.829 | 0.788 | 0.813 | 0.835 | 0.866 | 0.860 |
+| Trajectory Accuracy↑ | 0.884 | 0.850 | 0.891 | 0.900 | 0.962 | 0.962 |
+| Geometry Error↓ | 0.128 | 0.130 | 0.131 | 0.112 | 0.102 | 0.100 |
+| PSNRtaxel↑ | – | 24.132 | 24.813 | 24.349 | 28.401 | 29.179 |
+| SSIMtaxel↑ | – | 0.795 | 0.810 | 0.823 | 0.876 | 0.896 |
+| LPIPSheatmap↓ | – | 0.009 | 0.008 | 0.008 | 0.003 | 0.002 |
+| MSE↓ | – | 0.105 | 0.093 | 0.108 | 0.038 | 0.029 |
+| MAE↓ | – | 0.075 | 0.069 | 0.069 | 0.040 | 0.035 |
+| Contact-MAE↓ | – | 0.880 | 0.806 | 0.819 | 0.580 | 0.516 |
+| Contact-IoU↑ | – | 0.388 | 0.415 | 0.417 | 0.534 | 0.588 |
+| Contact-F1↑ | – | 0.523 | 0.551 | 0.554 | 0.659 | 0.706 |
+
+**主结论句**：`Table I shows a clear scaling trend. From Robot-only to +100h Human, visual PSNR improves from 23.47 to 27.10, Trajectory Accuracy from 0.89 to 0.96, and Geometry Error from 0.13 to 0.10.`（L509–512）；`Contact transfer is stronger. At +100h Human, tactile PSNR improves from 24.81 to 29.18, Contact-IoU from 0.42 to 0.59, and Contact-F1 from 0.55 to 0.71. +10h Human is almost flat on tactile metrics; the main gains appear at 50–100h. Visual metrics saturate between +50h and +100h Human, while contact prediction continues to improve. Aligned human interaction is therefore a complementary scaling axis: DexTouch-WM improves held-out robot visual and contact prediction without collecting more robot data.`（L516–524）；`All variants are evaluated on the same held-out robot episodes from six manipulation tasks. Human and robot task sets are disjoint, so improvements indicate cross-task transfer rather than task-specific augmentation.`（L505–508）
+
+**下游：世界模型作策略评测（Sec. IV-D）**。协议：`Each task contains 300 robot trajectories split into disjoint subsets A, B, and C (100 each). From the same DexTouch-WM checkpoint, WM-Robot adapts on 200 robot trajectories from B and C, whereas WM-Mix uses 100 robot trajectories from B and 100 task-specific human demonstrations disjoint from the HumanTouch scaling corpus (Sec. IV-C).`（L528–533）；`World-model rollouts are closed-loop, with predicted observations conditioning subsequent policy actions.`（L536–538）。表注 II（逐字）：`TABLE II — POLICY EVALUATION IN THE REAL WORLD AND IN TWO IMAGINED ENVIRONMENTS. THE SAME POLICIES ARE ROLLED OUT IN THE REAL WORLD, IN WM-Robot (DEXTOUCH-WM ADAPTED ON 200 ROBOT TRAJECTORIES), AND IN WM-Mix (ADAPTED ON 100 ROBOT + 100 HUMAN TRAJECTORIES).`（L462–466）
+
+**Table II 全量数值**：
+
+| Policy | Env | Place Shoes | Place Phone | Stack Bowls | Stand Bottle |
+|---|---|---|---|---|---|
+| FTP-1 | Real world | 0.725 | 0.800 | 0.500 | 0.900 |
+| FTP-1 | WM-Robot | 0.975 | 0.975 | 0.750 | 0.900 |
+| FTP-1 | WM-Mix | 0.963 | 0.975 | 0.800 | 1.000 |
+| π0.5 | Real world | 0.450 | 0.700 | 0.850 | 0.500 |
+| π0.5 | WM-Robot | 0.950 | 0.925 | 0.950 | 0.850 |
+| π0.5 | WM-Mix | 0.900 | 0.925 | 0.950 | 0.800 |
+| X-VLA | Real world | 0.500 | 0.600 | 0.300 | 0.600 |
+| X-VLA | WM-Robot | 0.600 | 0.725 | 0.150 | 0.150 |
+| X-VLA | WM-Mix | 0.925 | 0.700 | 0.250 | 0.400 |
+
+**Table III 全量数值**（表注：`PEARSON CORRELATION (↑) AND MMRV (↓) BETWEEN WORLD-MODEL AND REAL-WORLD EVALUATION.`，L480–482）：
+
+| Model | Metric | Place Shoes | Place Phone | Stack Bowls | Stand Bottle |
+|---|---|---|---|---|---|
+| WM-Robot | Pearson | 0.400 | 0.945 | 0.906 | 0.334 |
+| WM-Robot | MMRV | 0.033 | 0 | 0 | 0.067 |
+| WM-Mix | Pearson | 0.972 | 0.939 | 0.889 | 0.577 |
+| WM-Mix | MMRV | 0 | 0 | 0 | 0.067 |
+
+结论句：`WM-Mix achieves higher mean Pearson correlation than WM-Robot (0.844 versus 0.646) and lower mean MMRV (0.017 versus 0.025).`（L568–570）；`The 12 paired scores in Table II give a pooled Pearson correlation of r = 0.925 between WM-Robot and WM-Mix.`（L616–617）；`Together, the results support replacing half of the task-specific robot adaptation demonstrations with human demonstrations while retaining evaluator consistency and improving average alignment with real-world evaluation.`（L619–623）
+
+**下游：世界模型作数据生成器（Sec. IV-E）**。`The +WM-Robot and +WM-Mix settings each use 100 real trajectories from B and 100 synthetic trajectories generated by the corresponding world model. Each synthetic trajectory retains the initial observations and recorded action sequence of a trajectory in A, while its future RGB and tactile observations are predicted by the world model.`（L628–633）。表注 IV（逐字）：`TABLE IV — POLICY LEARNING ON REAL VERSUS HALF-IMAGINED DATA. Real TRAINS THE POLICY ON 200 REAL TRAJECTORIES. +WM-Robot AND +WM-Mix TRAIN IT ON 100 REAL TRAJECTORIES PLUS 100 IMAGINED TRAJECTORIES FROM THAT WORLD MODEL.`（L585–589）
+
+**Table IV 全量数值**：
+
+| Policy | Train Data | Place Shoes | Place Phone | Stack Bowls | Stand Bottle |
+|---|---|---|---|---|---|
+| FTP-1 | Real | 0.725 | 0.800 | 0.500 | 0.900 |
+| FTP-1 | +WM-Robot | 0.750 | 0.850 | 0.350 | 0.800 |
+| FTP-1 | +WM-Mix | 0.775 | 0.700 | 0.500 | 0.800 |
+| π0.5 | Real | 0.450 | 0.700 | 0.850 | 0.500 |
+| π0.5 | +WM-Robot | 0.400 | 0.550 | 0.800 | 0.500 |
+| π0.5 | +WM-Mix | 0.375 | 0.350 | 0.850 | 0.400 |
+| X-VLA | Real | 0.500 | 0.600 | 0.300 | 0.600 |
+| X-VLA | +WM-Robot | 0.675 | 0.300 | 0.450 | 0.600 |
+| X-VLA | +WM-Mix | 0.550 | 0.600 | 0.450 | 0.000 |
+
+**Table V 全量数值**（表注：`PEARSON CORRELATION (↑) AND MMRV (↓) BETWEEN POLICIES TRAINED WITH WORLD-MODEL-GENERATED DATA AND POLICIES TRAINED WITH REAL DATA ACROSS TASKS.`，L603–606）：
+
+| Data | Metric | Place Shoes | Place Phone | Stack Bowls | Stand Bottle |
+|---|---|---|---|---|---|
+| +WM-Robot | Pearson↑ | 0.783 | 0.999 | 0.836 | 0.996 |
+| +WM-Robot | MMRV↓ | 0 | 0 | 0.133 | 0 |
+| +WM-Mix | Pearson↑ | 0.961 | 0.277 | 0.968 | 0.721 |
+| +WM-Mix | MMRV↓ | 0 | 0.067 | 0 | 0.067 |
+
+数据生成结论句：`FTP-1 trained with +WM-Mix achieves a four-task mean of 0.694 versus 0.731 for all-real training. For π0.5, the mean decreases from 0.625 to 0.494; for X-VLA, it falls from 0.500 to 0.400, including a zero score on Stand Bottle. +WM-Robot yields means of 0.688, 0.563, and 0.506, respectively. Human-adapted world models can therefore supply useful demonstrations, but their evaluator consistency does not ensure equivalent policy-training utility. The usefulness of synthetic data therefore depends on the policy and task, even when the generated rollouts resemble real episodes and the source models behave similarly as evaluators.`（L641–652）
+
+## 6. 消融（全部）
+
+**A. 触觉表征消融（Grid vs Split-Hands）**：`The Grid baseline treats the tactile map as a single spatial canvas, where the palm and fingertips are jointly encoded by a shared CNN. Although simple, this representation introduces artificial spatial neighborhoods between anatomically disconnected regions.`（L427–431）；结论句：`As shown in Fig. 4, Split-Hands consistently achieves lower reconstruction error and substantially faster convergence in Contact-IoU than the Grid baseline. These results indicate that preserving anatomical structure provides a more effective inductive bias for modeling sparse and localized contact patterns. We therefore use Split-Hands in all subsequent experiments.`（L435–441）。图 4 本身不给出数值（`Validation reconstruction loss and Contact-IoU for Grid and Split-Hands`）。
+
+**B. 动作注入方式消融（V-only / Cross-Attn / Robot-only=AdaLN）**：`V-only predicts video alone and conditions on actions by cross-attention. Cross-Attn is a joint visual–tactile model with the same cross-attention injection. Robot-only replaces that injection with AdaLN and is the architecture used in the remainder of the paper.`（L444–450）。Cross-Attn 结论句：`Introducing tactile prediction with cross-attention largely preserves low-level visual fidelity: compared with V-only, PSNR and SSIM remain nearly unchanged and LPIPS is comparable. However, the evaluator-oriented metrics reveal a different trend. Cross-Attn reduces semantic and trajectory consistency, with Trajectory Accuracy dropping from approximately 0.88 to 0.85. This suggests that simply coupling the additional tactile stream through cross-attention does not harm pixel reconstruction, but can introduce cross-modal interference in higher-level action-conditioned dynamics.`（L451–460）。AdaLN 结论句：`AdaLN substantially alleviates this interference. Relative to Cross-Attn, Robot-only improves visual PSNR from 22.1 to 23.5 and LPIPS from 0.12 to 0.10, while recovering and slightly surpassing V-only in Trajectory Accuracy (0.89 vs. 0.88). The improvement is even more consistent in the tactile domain: Contact-IoU increases from 0.39 to 0.42 and Contact-F1 from 0.52 to 0.55. Together, these results indicate that AdaLN provides a more effective action-conditioning mechanism for jointly modeling visual motion and contact dynamics. We therefore use the Robot-only architecture (Split-Hands + AdaLN) for all subsequent experiments.`（L486–496）
+
+**C. 人类数据规模消融（0/10/50/100h，机器人数据固定 5h）**：数值见 Table I 缩放列；结论句：`Holding robot supervision fixed while scaling human data improves held-out robot-domain visual, geometric, and contact prediction.`（L117–119）；`+10h Human is almost flat on tactile metrics; the main gains appear at 50–100h. Visual metrics saturate between +50h and +100h Human, while contact prediction continues to improve.`（L518–521）
+
+**D. 适配数据构成消融（WM-Robot vs WM-Mix）**：数值见 Table II/III；结论句：`WM-Mix achieves higher mean Pearson correlation than WM-Robot (0.844 versus 0.646) and lower mean MMRV (0.017 versus 0.025).`（L568–570）；`Stand Bottle remains challenging: Pearson increases from 0.334 to 0.577, but both models reverse the order of π0.5 and X-VLA, yielding the same MMRV of 0.0667. Thus, the gains improve average evaluation fidelity without resolving every task's ranking errors.`（L610–614）
+
+## 7. 局限 / 未来工作
+
+原文未写：没有独立的 Limitations / Future Work 章节。最接近"局限"的两处原句：
+
+- `Stand Bottle remains challenging: Pearson increases from 0.334 to 0.577, but both models reverse the order of π0.5 and X-VLA, yielding the same MMRV of 0.0667. Thus, the gains improve average evaluation fidelity without resolving every task's ranking errors.`（L610–614）
+- `Human-adapted world models can therefore supply useful demonstrations, but their evaluator consistency does not ensure equivalent policy-training utility. The usefulness of synthetic data therefore depends on the policy and task, even when the generated rollouts resemble real episodes and the source models behave similarly as evaluators.`（L646–652）
+
+结论章（L654–663）只做总结，无未来工作句。
+
+## 8. 与叙事框架的关联【推断】
+
+1. **三层架构（慢脑/快脑/脊髓）**：DexTouch-WM 扮演"慢脑"角色——对未来视频与触觉的想象预测用于策略评测与数据生成：`Action-conditioned world models predict how observations evolve under candidate action sequences and are increasingly used for policy evaluation [16], [2], learned simulation [21], and synthetic data generation [27].`（L66–70）。触觉通道以原速率运行（`tactile tokenization retains the observation rate`，L262–263；`frame-level poses preserve fine temporal cues for tactile prediction`，L271–272），暗示"快回路/脊髓"触觉通道，但论文只做离线预测，未讨论实时控制——原文未写三层说法，纯属【推断】。
+2. **「力学的 free demonstrations 从哪来」**：论文的答案是人手采集：`These human trajectories provide a scalable contact-dynamics prior for subsequent robot-domain adaptation.`（Fig. 1 图注，L31）；"free"的依据是机器人侧采集贵（`Acquiring additional data therefore requires continued operation of the same platform`，L81–82）而穿戴式人手采集可解耦（`Our central idea is to decouple tactile data collection from the robot embodiment through wearable sensing.`，L85–86）。
+3. **世界模型作为策略评测代理环境**：`we evaluate the world models as surrogate environments for policy evaluation`（L52–53、L120–121）；闭环评测协议：`World-model rollouts are closed-loop, with predicted observations conditioning subsequent policy actions.`（L536–538）；代理环境质量用 Pearson 与 MMRV 对照真实世界打分衡量（Table III）。
+4. **世界模型作为合成轨迹生成器**：`as generators of synthetic trajectories for real-robot policy learning`（L53、L121–122）；具体用法：`Each synthetic trajectory retains the initial observations and recorded action sequence of a trajectory in A, while its future RGB and tactile observations are predicted by the world model.`（L630–633）；且论文警告合成数据效用依赖策略与任务（L649–652）。
+5. **共享接触动力学作为跨本体"对齐层"**：人手数据能监督机器人模型，前提是传感布局与动作空间双重对齐：`Shared tactile sensing does not by itself align human and robot kinematics.`（L320–321）；`Together with the shared tactile layout, this alignment makes human trajectories compatible with robot-world-model supervision without requiring a learned tactile-domain mapping.`（L336–339）——即用硬件与重定向替代学习的域映射，这是把"人的 free demonstration"变成"机器人可用监督信号"的关键设计【推断】。
+
+## 9. 图注与表注原文（逐字）
+
+- **Fig. 1**（L30–31）：`Fig. 1. Overview of DexTouch-WM. Given initial observations and an action sequence, DexTouch-WM jointly predicts future video and tactile maps. These human trajectories provide a scalable contact-dynamics prior for subsequent robot-domain adaptation.`（图内大标题字：`Scalable Human Experience Transfer to Dexterous Hands`，L5）
+- **Fig. 2**（L229–232）：`Fig. 2. DexTouch-WM architecture. Left: shared fingertip and palm encoders tokenize bilateral tactile maps while pad identity embeddings preserve anatomy. Right: a pretrained video expert and a tactile expert exchange information through bi-modal joint attention, retaining modality-specific AdaLN and feed-forward pathways. Instruction features and pose AdaLN condition generation. Frozen visual and tactile codecs encode observations and decode future RGB and pressure maps.`
+- **Fig. 3**（L298–301）：`Fig. 3. Wearable tactile sensing layout used in training. Each glove records 360 taxels. The model keeps 320 of them: five fingertip pads (4×4) and one palm pad (15×16). The same 320-taxel layout is mounted on the robot hand, so both domains share a tactile observation space.`
+- **Fig. 4**（L446–447）：`Fig. 4. Tactile representation ablation. Validation reconstruction loss and Contact-IoU for Grid and Split-Hands.`
+- **Fig. 5**（L582–584）：`Fig. 5. Generated visuo-tactile demonstrations. Columns are the four downstream tasks. Rows compare a held-out real episode (GT) with action-conditioned rollouts from WM-Robot and WM-Mix. Each cell shows synchronized RGB frames and tactile maps from one trajectory. These clips are the synthetic demonstrations used for policy training, not in-model policy evaluation.`
+- **Table I–V 表注**：已逐字抄录于第 5 节各处（L396–398、L462–466、L480–482、L585–589、L603–606）。
+
+## 附：一句话 Takeaway
+
+人手穿戴式触觉 + 重定向到机器人动作空间 → 同一世界模型可由 100h 人手数据与 5h 机器人数据共同训练；在机器人域 held-out 上视觉/几何/接触预测随人手数据单调改善，且该模型可作策略评测代理环境与合成轨迹生成器，但合成数据的训练效用因策略/任务而异。

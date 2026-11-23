@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>11 · 陷阱与复现 · 大模型→VLA/WAM 蒸馏研究</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="topnav"><div class="inner"><a href="index.html">首页</a><a class="" href="00-evidence.html">00 · 证据与核实</a><a class="" href="01-taxonomy.html">01 · 分类框架</a><a class="" href="02-vla-distill.html">02 · VLA 蒸馏</a><a class="" href="03-wam-distill.html">03 · WAM 蒸馏</a><a class="" href="04-step-distill.html">04 · 步数蒸馏</a><a class="" href="05-feature-latent.html">05 · 特征与 latent</a><a class="" href="06-on-policy.html">06 · On-policy 蒸馏</a><a class="" href="07-data-distill.html">07 · 数据蒸馏</a><a class="" href="08-tricks.html">08 · Trick 总谱</a><a class="" href="09-benchmarks.html">09 · 教师 vs 学生</a><a class="" href="10-recent.html">10 · 最近三个月</a><a class="" href="11-pitfalls.html">11 · 陷阱与复现</a><a class="" href="12-implementation.html">12 · 实现手册</a></div></nav>
+<main>
+<h1>11 · 陷阱与复现清单：蒸馏论文里最容易骗人的 15 件事</h1>
+<p class="meta">来源 docs/11-pitfalls.md · 生成于 2026-11-21</p>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 拿 open-loop 指标证明蒸馏成功</a></li><li class=""><a href="#sec-2">2. 把&quot;模块加速 150×&quot;当成&quot;端到端加速 150×&quot;</a></li><li class=""><a href="#sec-3">3. 教师没有被放在同一评测协议下重跑</a></li><li class=""><a href="#sec-4">4. 把&quot;蒸馏&quot;和&quot;压缩/加速&quot;混为一谈</a></li><li class=""><a href="#sec-5">5. 蒸馏数据里混进了评测分布</a></li><li class=""><a href="#sec-6">6. 只报成功率，不报方差与种子数</a></li><li class=""><a href="#sec-7">7. 蒸馏成本不计入总账</a></li><li class=""><a href="#sec-8">8. 学生的速度是在不同精度/批大小下测的</a></li><li class=""><a href="#sec-9">9. &quot;学生反超教师&quot;其实是测试时计算不同</a></li><li class=""><a href="#sec-10">10. 动作 chunk 长度不一致导致 MSE 虚高/虚低</a></li><li class=""><a href="#sec-11">11. 一步蒸馏后的模式塌缩没人提</a></li><li class=""><a href="#sec-12">12. 教师特权信息在部署时消失，但论文没说</a></li><li class=""><a href="#sec-13">13. 蒸馏后遗症：遗忘与能力窄化</a></li><li class=""><a href="#sec-14">14. on-policy 蒸馏的教师查询成本被隐藏</a></li><li class=""><a href="#sec-15">15. 把&quot;自蒸馏&quot;当成&quot;免费午餐&quot;</a></li><li class=""><a href="#sec-16">复现清单（做自己的蒸馏实验时逐项打勾）</a></li></ol></details>
+<h1>11 · 陷阱与复现清单：蒸馏论文里最容易骗人的 15 件事</h1>
+<blockquote>这一页是&quot;审稿人视角&quot;。每一条都给：<strong>现象 → 为什么错 → 怎么查</strong>。<br>用法：读别人的蒸馏论文时逐条对照；自己做实验时当作 checklist。</blockquote>
+<hr>
+<h2 id="sec-1">1. 拿 open-loop 指标证明蒸馏成功</h2>
+<p><strong>现象</strong>：动作 L2 / 轨迹 ADE 降了 20%，就宣称蒸馏有效。</p>
+<p><strong>为什么错</strong>：驾驶 VLA 的 open-loop 与 closed-loop 排序经常相反。Orion-Lite 在相关工作里点名 DiMA：*&quot;distilling VLM features via KL-divergence but limits its evaluation to open-loop metrics&quot;*——open-loop 好的学生，闭环可能更差（因为学生一旦偏离就回不来，而 open-loop 永远不会偏离）。</p>
+<p><strong>怎么查</strong>：要求闭环指标（Bench2Drive DS、NAVSIM PDMS、LIBERO 成功率）；至少要有 on-policy rollout 的曲线。</p>
+<h2 id="sec-2">2. 把&quot;模块加速 150×&quot;当成&quot;端到端加速 150×&quot;</h2>
+<p><strong>现象</strong>：摘要写 &quot;accelerates the reasoning module&#x27;s inference by 150×&quot;。</p>
+<p><strong>为什么错</strong>：150× 只针对被替换的 reasoning 模块；端到端还有视觉编码、tokenizer、动作头。Orion-Lite 自己给了全链路数字：<strong>806ms → 267ms（约 3×）</strong>。</p>
+<p><strong>怎么查</strong>：找端到端 batch=1 的延迟；看是否包含预处理与后处理。</p>
+<h2 id="sec-3">3. 教师没有被放在同一评测协议下重跑</h2>
+<p><strong>现象</strong>：&quot;学生 80.6 &gt; 教师 77.7&quot;。</p>
+<p><strong>为什么错</strong>：教师的 77.7 可能来自原论文（不同 checkpoint、不同评测脚本、不同帧率），学生的 80.6 是作者自己复现的。跨协议比较没有意义。</p>
+<p><strong>怎么查</strong>：看有没有&quot;我们复现的教师&quot;这一行；没有就标 L1。</p>
+<h2 id="sec-4">4. 把&quot;蒸馏&quot;和&quot;压缩/加速&quot;混为一谈</h2>
+<p><strong>现象</strong>：Fast-WAM、Rift、LAWA 被列进&quot;蒸馏综述&quot;。</p>
+<p><strong>为什么错</strong>：它们没有教师被拟合，只是训练-推理路径不同（训练用未来帧、推理删分支；或一次前向预填 KV）。把它们算作蒸馏，会让&quot;蒸馏到底有没有用&quot;的结论失真。</p>
+<p><strong>怎么查</strong>：问一句&quot;有没有一个教师模型的输出/特征被学生显式拟合？&quot;没有就不是 KD。</p>
+<h2 id="sec-5">5. 蒸馏数据里混进了评测分布</h2>
+<p><strong>现象</strong>：用大模型在 nuPlan 全量上造 CoT，然后在 nuPlan 上评测。</p>
+<p><strong>为什么错</strong>：教师见过评测场景（或评测场景的近似），学生等于间接见过测试集。</p>
+<p><strong>怎么查</strong>：看数据划分是否按场景/城市/时间切分；看教师训练集与学生评测集是否重叠。</p>
+<h2 id="sec-6">6. 只报成功率，不报方差与种子数</h2>
+<p><strong>现象</strong>：&quot;LIBERO 98.75%&quot;。</p>
+<p><strong>为什么错</strong>：LIBERO 已接近饱和（97–99%），1 个点的差异在 3 个种子下可能不显著；不同论文的评测协议（每任务 50 次 vs 500 次）差别巨大。</p>
+<p><strong>怎么查</strong>：要求 mean±std、种子数、每任务 rollout 数；饱和基准要看 LIBERO-Plus / RoboCasa / 真机。</p>
+<h2 id="sec-7">7. 蒸馏成本不计入总账</h2>
+<p><strong>现象</strong>：只报学生推理便宜，不报蒸馏花了多少 GPU 小时。</p>
+<p><strong>为什么错</strong>：CKT-WAM 用 8×A800 训 CKT 模块；S-VAM 自蒸馏 50k 步单卡 H100；GR00T N1 预训练 5 万 H100 小时。如果蒸馏成本 &gt; 重新训一个小模型，那蒸馏就不划算。</p>
+<p><strong>怎么查</strong>：找 &quot;training cost / GPU hours&quot; 一节；没有就自己按 batch×steps×卡数估。</p>
+<h2 id="sec-8">8. 学生的速度是在不同精度/批大小下测的</h2>
+<p><strong>现象</strong>：教师 fp16 batch=8，学生 int8 batch=1。</p>
+<p><strong>为什么错</strong>：延迟对比必须同精度、同批大小、同硬件、同 warmup。</p>
+<p><strong>怎么查</strong>：看 latency 表的脚注；没有就假设不可比。</p>
+<h2 id="sec-9">9. &quot;学生反超教师&quot;其实是测试时计算不同</h2>
+<p><strong>现象</strong>：学生单次前向 &gt; 教师单次前向。</p>
+<p><strong>为什么错</strong>：可能学生用了更多 test-time 采样（Best-of-N），或教师被限制了输出长度。</p>
+<p><strong>怎么查</strong>：对齐 NFE / 采样次数 / token 预算再比。</p>
+<h2 id="sec-10">10. 动作 chunk 长度不一致导致 MSE 虚高/虚低</h2>
+<p><strong>现象</strong>：教师 H=50，学生 H=10，直接 MSE。</p>
+<p><strong>为什么错</strong>：时间网格错位，学生学的是&quot;被平均后的动作&quot;。</p>
+<p><strong>怎么查</strong>：看论文有没有写重采样/只对齐前 k 步；没有就是隐藏 bug。</p>
+<h2 id="sec-11">11. 一步蒸馏后的模式塌缩没人提</h2>
+<p><strong>现象</strong>：1-NFE 学生在多峰任务（绕障、抓取多解）上成功率掉很多，但平均值看不出来。</p>
+<p><strong>为什么错</strong>：端点 MSE 会把多个模态平均成&quot;中间动作&quot;（比如撞向障碍物中心）。</p>
+<p><strong>怎么查</strong>：看有没有 per-task 的最差任务；看可视化轨迹是否&quot;平均化&quot;。</p>
+<h2 id="sec-12">12. 教师特权信息在部署时消失，但论文没说</h2>
+<p><strong>现象</strong>：教师用真值感知/未来帧/仿真状态训练，学生只用相机。</p>
+<p><strong>为什么错</strong>：这是&quot;学习作弊&quot;（Learning by Cheating），不是纯蒸馏；部署时学生拿不到特权信息，性能边界不同。</p>
+<p><strong>怎么查</strong>：看 §3 的输入表；看有没有&quot;privileged information&quot;字样。</p>
+<h2 id="sec-13">13. 蒸馏后遗症：遗忘与能力窄化</h2>
+<p><strong>现象</strong>：蒸馏后在目标任务上很好，但通用指令跟随/其他任务崩了。</p>
+<p><strong>为什么错</strong>：小学生在拟合教师分布时丢掉了预训练能力（灾难性遗忘）。</p>
+<p><strong>怎么查</strong>：看有没有&quot;蒸馏前后在其他 benchmark 上的对照&quot;；没有就自己补一个零样本测试。</p>
+<h2 id="sec-14">14. on-policy 蒸馏的教师查询成本被隐藏</h2>
+<p><strong>现象</strong>：&quot;on-policy 比离线好 5 个点&quot;。</p>
+<p><strong>为什么错</strong>：on-policy 每步要一次教师前向，教师 7B 时训练成本可能 10×；如果教师查询降采样到 1/10，增益可能消失。</p>
+<p><strong>怎么查</strong>：看教师查询频率、是否有 cache、是否用 LoRA 教师。</p>
+<h2 id="sec-15">15. 把&quot;自蒸馏&quot;当成&quot;免费午餐&quot;</h2>
+<p><strong>现象</strong>：教师=自己多步输出，宣称&quot;不需要教师&quot;。</p>
+<p><strong>为什么错</strong>：自蒸馏的目标来自模型自身，无法引入新知识；它压缩的是<strong>推理路径</strong>，不是<strong>知识容量</strong>。S-VAM/SnapFlow 属于这一类——它们能提速、甚至小涨，但不能让 0.5B 学生学会 7B 教师的世界知识。</p>
+<p><strong>怎么查</strong>：问&quot;教师的知识从哪来？&quot;如果答案是&quot;模型自己&quot;，那它是加速方法，不是知识迁移。</p>
+<hr>
+<h2 id="sec-16">复现清单（做自己的蒸馏实验时逐项打勾）</h2>
+<ul>
+<li>[ ] 教师 checkpoint 固定，记录 hash / 日期
+</li><li>[ ] 教师在同一评测脚本下重跑，得到 baseline
+</li><li>[ ] 学生同架构、同数据、无蒸馏的对照（ablation 的 anchor）
+</li><li>[ ] 蒸馏数据与评测数据按场景切分，记录重叠检查
+</li><li>[ ] 延迟：batch=1、同精度、同卡、warmup 100 次、报 p50/p95
+</li><li>[ ] 成功率：≥3 seeds、每任务 ≥50 rollouts、报 mean±std
+</li><li>[ ] 蒸馏成本：GPU 小时、教师前向次数
+</li><li>[ ] 部署形态：推理时是否还加载教师/蒸馏模块（必须是&quot;否&quot;）
+</li><li>[ ] 能力保持：蒸馏前后在 2 个无关 benchmark 上的零样本对照
+</li><li>[ ] 失败案例：至少 5 条可视化，标注失败模式（平均化/抖动/卡死）
+</li></ul>
+<hr>
+<p>更新时间: 2026-11-21</p>
+<footer>大模型 → VLA/WAM 蒸馏研究 · 2026-11 · 数字均标证据级别（L3 全文 / L2 部分 / L1 摘要）</footer>
+</main>
+</body>
+</html>

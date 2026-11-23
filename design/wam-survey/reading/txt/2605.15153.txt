@@ -1,0 +1,616 @@
+Content selection saved. Describe the issue below:
+1 Introduction Our contributions.
+Our contributions.
+2 Pelican-Unify 1.0 2.1 Unified Modeling 2.2 Unified Understanding 2.3 Unified Reasoning 2.4 Unified Future Generation Shared input embedders. Shared denoising backbone. 2.5 Conditional Diffusion over Future Video and Action Action: plain flow matching. Video: condition on observed frames. Joint training objective.
+2.1 Unified Modeling
+2.2 Unified Understanding
+2.3 Unified Reasoning
+2.4 Unified Future Generation Shared input embedders. Shared denoising backbone.
+Shared input embedders.
+Shared denoising backbone.
+2.5 Conditional Diffusion over Future Video and Action Action: plain flow matching. Video: condition on observed frames. Joint training objective.
+Action: plain flow matching.
+Video: condition on observed frames.
+Joint training objective.
+3 Evaluating the Unified Model as Three Specialists 3.1 Understanding Capability. 3.2 Action Capability. 3.3 Imagination Capability.
+3.1 Understanding Capability.
+3.2 Action Capability.
+3.3 Imagination Capability.
+4 Real-World Robot Evaluation 4.1 Compositional Generalisation 4.2 Zero Shot Generalization
+4.1 Compositional Generalisation
+4.2 Zero Shot Generalization
+5 Discussion 5.1 What this means for the field 5.2 Coda
+5.1 What this means for the field
+5.2 Coda
+References
+6 Contributions 6.1 Core Contributors 6.2 Contributors 6.3 Supports 6.4 Tech Lead 6.5 Corresponding Authors 6.6 Acknowledgments
+6.1 Core Contributors
+6.2 Contributors
+6.3 Supports
+6.4 Tech Lead
+6.5 Corresponding Authors
+6.6 Acknowledgments
+Pelican-Unify 1.0: A Unified Embodied Intelligence Model (UEI) for Understanding, Reasoning, Imagination and Action
+Abstract
+“The soul never thinks without an image.” — Aristotle “My thinking is first and last and always for the sake of my doing.” — William James
+博学之，审问之，慎思之，明辨之，笃行之。 —《礼记·中庸》
+We argue that foundation models for embodied intelligence should not be built upon fragmented capabilities. Rather, understanding, reasoning, imagination, and action should be regarded as interdependent dimensions in a single adaptive intelligence loop. The advancement of an embodied agent in the physical world does not arise from possessing independent vision model, language model, world model, and action policy, but from its capability to integrate world understanding, task reasoning, future imagination, and action execution within a latent world space that can be aligned, abstracted, planned, and refined. We therefore advocate a unified paradigm for building embodied intelligence models of physical intelligence.
+By “unified,” we do not refer to simple concatenation of multiple expert networks at their outputs, nor to the assembly of independently optimized modules into a sequential pipeline. We mean structurally shared representations, mutually constrained conditions, and co-evolution through a common training process. Concretely, a truly unified model should exhibit three key properties: unified understanding, which embeds scenes, instructions, action histories, and visual contexts into a shared semantic space for a holistic understanding of what the agent sees, what it needs to accomplish, what it has done, and what state the world is in; unified reasoning, which turns reasoning into a language-grounded, supervisable process over task intent, action choices, and future consequences, rather than a linguistic monologue detached from action and imagination; and unified generation, which jointly reads out future imagination and low-level action from the same diffusion decoding process conditioned on the same reasoning latent, so actions are shaped by imagined consequences, imagination is framed by task reasoning, and reasoning is constrained by what can be imagined and executed. In this way, understanding, reasoning, imagination, and action become a collaborative system that exchanges gradients, corrects itself, and strengthens itself within a single training loop, rather than separate stages in a pipeline.
+Based on this paradigm, we present Pelican-Unify 1.0, the first embodied foundation model trained according to the principle of unification. Pelican-Unify 1.0 uses a single VLM as a unified understanding module, mapping scenes, instructions, visual contexts, and action histories into a shared semantic space. The same VLM also serves as a unified reasoning module, autoregressively producing task-, action-, and future-oriented chains of thought in a single forward pass and projecting the final hidden state into a dense latent variable. A Unified Future Generator (UFG) then conditions on this latent variable and jointly generates future videos and future actions through two modality-specific output heads within the same denoising process. The language, video, and action losses are all backpropagated into the shared representation, enabling the model to jointly optimize understanding, reasoning, imagination, and action during training, rather than training three isolated expert systems.
+Experiments demonstrate that unification does not imply compromise. With a single checkpoint, Pelican-Unify 1.0 achieves strong performance across all three capabilities: 64.7 on eight VLM benchmarks, the best among comparable-scale models; 66.03 on WorldArena, ranking first; and 93.5 on RoboTwin, the second-best average among compared action methods. These results show that the unified paradigm succeeds in preserving specialist strength while bringing understanding, reasoning, imagination, and action into one model.
+1. Introduction
+The progress of general intelligence is reshaping embodied intelligence. Modern AI has moved from task-specific automation toward foundation models that can generalize across domains, follow language instructions, and reuse shared representations across many tasks. Embodied AI is undergoing a similar transition. Early robotic systems were largely built as scripted automation pipelines: perception detected predefined states, planners selected predefined routines, and controllers executed predefined motions. Recent embodied systems have become increasingly intelligent, replacing hand-designed pipelines with learned policies, vision–language grounding, large-scale imitation, and generative prediction. This shift has brought the field closer to the goal of physical intelligence: agents that can understand the world, reason about tasks, imagine what may happen, and act to change the world. Yet this progress also exposes a central question. Should physical intelligence be built by scaling separate specialists for understanding, reasoning, imagination, and action, or should these capabilities be learned as parts of one adaptive loop?
+Embodied intelligence models have advanced rapidly, but along fragmented paths. Vision language models such as Gemini Robotics ER (Team et al., 2025) and Pelican-VL Zhang et al. (2025) bring strong semantic understanding and spatial-temporal reasoning to embodied settings, but they are not executable policies: they cannot directly act, cannot test their reasoning through physical consequences, and cannot ground their conclusions in the outcomes of their own behavior. Vision–language–action models such as RT-2 (Zitkovich et al., 2023), π0\pi_{0} (Black et al., 2024), π0.5\pi_{0.5} (Intelligence et al., 2025), OpenVLA (Kim et al., 2024), and Helix (Figure, 2024) connect language and perception to motor commands, but they typically lack explicit future imagination; as a result, their actions are often learned as imitation mappings, which limits generalization to unseen compositions, long-horizon tasks, and contact-rich interactions. World models and video generators such as Cosmos-Predict (Ali et al., 2025), LeWorldModel (Maes et al., 2026), and other recent generators (Shang et al., 2026; Bi et al., 2025; Chi et al., 2025) can imagine future visual states, but their imagination often remains implicit in pixels, difficult to steer with task logic, human knowledge, or language-grounded reasoning. World Action Models (Ye et al., 2026) further connect imagined futures to actions, but without unified reasoning, they remain hard to interpret, hard to correct during rollout, and vulnerable to long-horizon error accumulation. The field is therefore not short of powerful components. What remains missing is a model in which understanding, reasoning, imagination, and action are learned as mutually conditioning parts of the same physical intelligence loop.
+We argue that the path forward is unification rather than modular accumulation. By “unified,” we do not mean concatenating the outputs of multiple expert networks or wiring separately trained modules into a longer pipeline. We mean that understanding, reasoning, imagination, and action should share internal representations, condition one another, and co-evolve through a common training process. This view is also consistent with embodied cognition: reasoning, imagination, and action do not operate as separable capabilities (Kandel et al., 2021; Clark, 2016); motor planning recruits systems involved in simulating movement (Jeannerod, 2001; Hesslow, 2002); perception is organized around what the body can do (Dennett, 1993); and future imagination supports action selection (Clark, 2013; Friston, 2010). For embodied intelligence foundation models, this principle leads to three requirements. First, understanding should be unified: scenes, instructions, visual context, action history, and world state should be represented in a shared semantic space, reducing the semantic breaks that appear when perception, language, and action are encoded separately. Second, reasoning should be unified: reasoning should not be a detached language trace, but a language-grounded, supervisable process whose final state directly conditions what the model imagines and executes, allowing task logic and human knowledge to guide generation. Third, generation should be unified: future imagination and low-level action should be produced by the same conditional generative process, so actions become consequence-aware, imagination becomes task-directed, and reasoning becomes constrained by what can be simulated and executed. Under this view, the missing capability in each specialist is not an optional add-on; it is the ceiling of the other capabilities.
+We instantiate this paradigm in Pelican-Unify 1.0. Pelican-Unify is designed to make the understanding–reasoning–imagination–action loop a single trainable object. VLM serves as both the unified understanding engine and the unified reasoning engine: it maps scenes, instructions, visual context, and action history into a shared semantic representation, autoregressively produces a task-, action-, and future-oriented chain of thought, and projects the final hidden state into a dense latent variable zz. A unified Future Generator (UFG) then conditions on zz and jointly generates the future video and the next chunk of low-level actions through two modality-specific output heads within the same denoising process. Language, video, and action losses all backpropagate through the shared representation. Thus, zz is not a bridge between independently optimized modules; it is the learned internal state where reasoning, imagination, and action become mutually conditioning aspects of the same generative process.
+Our experiments test whether unification preserves specialist competence and improves integrated physical behavior. Taken apart, a single Pelican-Unify checkpoint reaches the frontiers normally occupied by separate specialists: it achieves 64.7 average on eight VLM benchmarks, among the strongest performers within models of similar scale; reaches 93.5% average success on RoboTwin as a competitive visuomotor policy, achieving the second-best average among compared action methods; and obtains EWM Score 66.03 on WorldArena as a world model, ahead of dedicated world models. Taken as a whole, on a real UR5e robot and a Tienkung humanoid robot operating industrial control panels, the model achieves significant improvements on both zero-shot and compositional tasks, demonstrating the generalization and practical value of the unified architecture across different embodiments.
+Our contributions.
+1. A unified paradigm for embodied intelligence models. We formulate physical intelligence as a coupled loop of understanding, reasoning, imagination, and action, and argue that the relevant unit of modeling is not an isolated specialist or a pairwise fusion, but the closed loop itself.
+A unified paradigm for embodied intelligence models. We formulate physical intelligence as a coupled loop of understanding, reasoning, imagination, and action, and argue that the relevant unit of modeling is not an isolated specialist or a pairwise fusion, but the closed loop itself.
+2. A concrete realization of three forms of unification. Pelican-Unify 1.0 realizes unified understanding by building an action-oriented task state from scenes, instructions, visual context, and action history; unified reasoning by turning chain-of-thought into a dense loop state zz that specifies what future should happen; and unified generation by jointly denoising future video and low-level actions from the same zz, with the final action read refined against the imagined future before execution.
+A concrete realization of three forms of unification. Pelican-Unify 1.0 realizes unified understanding by building an action-oriented task state from scenes, instructions, visual context, and action history; unified reasoning by turning chain-of-thought into a dense loop state zz that specifies what future should happen; and unified generation by jointly denoising future video and low-level actions from the same zz, with the final action read refined against the imagined future before execution.
+3. An end-to-end objective that makes the loop learnable. Language, video, and action supervision are trained jointly, and all three losses backpropagate through the shared latent representation. This turns reasoning, imagination, and action from inter-module messages into mutually shaping gradients within a single model.
+An end-to-end objective that makes the loop learnable. Language, video, and action supervision are trained jointly, and all three losses backpropagate through the shared latent representation. This turns reasoning, imagination, and action from inter-module messages into mutually shaping gradients within a single model.
+4. Empirical evidence that unification preserves specialist competence and improves integrated physical behavior. Pelican-Unified matches or exceeds dedicated models on VLM reasoning, visuomotor policy learning, and world modeling benchmarks, while achieving substantially stronger zero-shot, compositional, and long-horizon performance on real UR5e industrial control-panel manipulation tasks than the strongest modular baseline.
+Empirical evidence that unification preserves specialist competence and improves integrated physical behavior. Pelican-Unified matches or exceeds dedicated models on VLM reasoning, visuomotor policy learning, and world modeling benchmarks, while achieving substantially stronger zero-shot, compositional, and long-horizon performance on real UR5e industrial control-panel manipulation tasks than the strongest modular baseline.
+2. Pelican-Unify 1.0
+2.1. Unified Modeling
+Pelican-Unify 1.0 fuses understanding, reasoning, and future generation into one end-to-end trainable model. A VLM backbone initialized from Qwen3-VL Bai and others (2025) encodes all input modalities and decodes a chain-of-thought trace, while a Unified Future Generator initialized from Wan2.2 Wan et al. (2025) jointly denoises the future video and the future action chunk.
+Formally, Pelican-Unify is a single composite map
+(τt,v^t:t+H,a^t:t+H)=ℳΘ(a<t,l,o≤t,s≤t),(\tau_{t},\,\hat{v}_{t:t+H},\,\hat{a}_{t:t+H})=\mathcal{M}_{\Theta}(a_{<t},\,l,\,o_{\leq t},\,s_{\leq t}),
+(1)
+where τt\tau_{t} is the chain-of-thought trace, v^t:t+H\hat{v}_{t:t+H} the imagined future video, and a^t:t+H\hat{a}_{t:t+H} the executable action chunk. Three training signals—language, video, and action—are optimized jointly, so the shared representation is simultaneously semantic, predictive, and actionable.
+2.2. Unified Understanding
+The first stage produces a single representation of what is currently happening. The multimodal context at control step tt is
+ct=(a<t,l,o≤t,s≤t),c_{t}=(a_{<t},\,l,\,o_{\leq t},\,s_{\leq t}),
+(2)
+which bundles the action history, language instruction, environment observations, and robot proprioceptive state. Each modality is first lifted into the VLM token space by its own embedder:
+• video frames o≤to_{\leq t} are encoded by a 3D video VAE ℰv\mathcal{E}_{v};
+video frames o≤to_{\leq t} are encoded by a 3D video VAE ℰv\mathcal{E}_{v};
+• the action history a<ta_{<t} is embedded by a lightweight MLP ℰa\mathcal{E}_{a};
+the action history a<ta_{<t} is embedded by a lightweight MLP ℰa\mathcal{E}_{a};
+• the language instruction ll is processed by the text tokenizer;
+the language instruction ll is processed by the text tokenizer;
+• the robot state s≤ts_{\leq t} is mapped by a small linear projection.
+the robot state s≤ts_{\leq t} is mapped by a small linear projection.
+We name ℰv\mathcal{E}_{v} and ℰa\mathcal{E}_{a} explicitly because the Unified Future Generator (Sec. 2.4) will reuse the same two modules to embed its diffusion inputs; understanding and generation therefore share one modality embedding space.
+All tokens are concatenated and processed by the VLM to produce a unified hidden representation,
+Ht=VLMϕ​(ct).H_{t}=\mathrm{VLM}_{\phi}(c_{t}).
+(3)
+HtH_{t} is the encoder-side state from which the VLM autoregressively decodes the chain-of-thought trace τt\tau_{t} (developed in Sec. 2.3); the actual bridge to downstream generation will be a loop state zz extracted at the end of τt\tau_{t}. Because all modalities share one transformer, perception is grounded in the instruction, language is anchored in physical context, and the action/state history is interpreted by its effect on task progress.
+2.3. Unified Reasoning
+The second stage exposes the model’s reasoning in natural language. Conditioned on HtH_{t}, the VLM autoregressively decodes the chain-of-thought trace
+pϕ​(τt∣ct)=∏i=1|τt|pϕ​(τt,i∣ct,τt,<i).p_{\phi}(\tau_{t}\mid c_{t})=\prod_{i=1}^{|\tau_{t}|}p_{\phi}(\tau_{t,i}\mid c_{t},\,\tau_{t,<i}).
+(4)
+The trace interleaves two complementary kinds of language:
+• Video CoT — a description and explanation of how the scene is expected to evolve, e.g. which objects move, how contacts form, and how the workspace re-organizes.
+Video CoT — a description and explanation of how the scene is expected to evolve, e.g. which objects move, how contacts form, and how the workspace re-organizes.
+• Action CoT — an explanation and decomposition of the motor program that should realize that future, e.g. which sub-skill to invoke and which end-effector waypoints to target.
+Action CoT — an explanation and decomposition of the motor program that should realize that future, e.g. which sub-skill to invoke and which end-effector waypoints to target.
+By putting both kinds into one sequence, the model is forced to think about “what should happen” and “what should be done” under a single causal pass.
+We then summarize the trace into a dense loop state
+z=Pϕ​(hτt),z=P_{\phi}(h_{\tau_{t}}),
+(5)
+where hτth_{\tau_{t}} is the VLM hidden state at the end of τt\tau_{t} and PϕP_{\phi} is a learned projection. zz is the only interface through which downstream future generation accesses the model’s understanding and reasoning. Because it is shaped jointly by the language-modeling loss on τt\tau_{t} and by the downstream video- and action-generation losses, zz must encode information that is simultaneously semantic, predictive, and actionable.
+2.4. Unified Future Generation
+The third stage turns the loop state zz into a concrete future: the future video vt:t+Hv_{t:t+H} and the future action chunk at:t+Ha_{t:t+H}. We train the generator with continuous-time flow matching under a shared denoising backbone.
+Shared input embedders.
+The two targets are first lifted into the generator’s token space by the same embedders used by the VLM in Sec. 2.2:
+xv=ℰv(vt:t+H),xa=ℰa(at:t+H).x^{v}=\mathcal{E}_{v}(v_{t:t+H}),\qquad x^{a}=\mathcal{E}_{a}(a_{t:t+H}).
+(6)
+At a shared diffusion time s∼𝒰⁡(0,1)s\sim\mathcal{U}(0,1), these clean latents are mixed with Gaussian noise ϵv,ϵa∼𝒩⁡(0,I)\epsilon^{v},\epsilon^{a}\sim\mathcal{N}(0,I) to produce noisy states xsv,xsax^{v}_{s},x^{a}_{s}; the exact mixing on the video side accommodates a prefix-conditioning mask and is detailed in Sec. 2.5. Because ℰv\mathcal{E}_{v} and ℰa\mathcal{E}_{a} are tied to the VLM’s input embedders, the coordinates that the generator must denoise are exactly the coordinates that the VLM has learned to read; no extra alignment module is needed between understanding and generation.
+Shared denoising backbone.
+The two noisy streams together with the condition zz enter a single diffusion transformer DiTθ\mathrm{DiT}_{\theta} initialized from Wan2.2, and two lightweight heads dv,dad_{v},d_{a} read its hidden states out as per-modality velocity predictions. Writing fθf_{\theta} for the DiT plus heads,
+(u^sv,u^sa)=fθ​(xsv,xsa,z,s).\bigl(\hat{u}^{v}_{s},\,\hat{u}^{a}_{s}\bigr)=f_{\theta}(x^{v}_{s},\,x^{a}_{s},\,z,\,s).
+(7)
+Inside fθf_{\theta}, video and action tokens interact through shared self-attention, while zz is injected via cross-attention so that the reasoning summary continuously shapes the denoising trajectory. Modality-specific parameters appear only at the input and output boundaries—ℰv,ℰa\mathcal{E}_{v},\mathcal{E}_{a} on input and dv,dad_{v},d_{a} on output; the heavy computation in between is shared across modalities.
+2.5. Conditional Diffusion over Future Video and Action
+Sec. 2.4 introduced the architecture and the loop-state condition zz that both streams share. We now specify the one extra condition added on the video side—the observed video prefix—and state the joint training objective. The action stream takes no further condition beyond zz.
+Action: plain flow matching.
+The action latent is mixed with noise in the standard way and yields the standard flow-matching target velocity,
+xsa=(1−s)​xa+s​ϵa,usa=ϵa−xa.x^{a}_{s}=(1-s)\,x^{a}+s\,\epsilon^{a},\qquad u^{a}_{s}=\epsilon^{a}-x^{a}.
+(8)
+Video: condition on observed frames.
+We extend the video stream so that the DiT sees, alongside the noisy future latent, the observed prefix o≤to_{\leq t} encoded by the same shared ℰv\mathcal{E}_{v}. Let McondM_{\mathrm{cond}} and MfutM_{\mathrm{fut}} be binary masks selecting the prefix and the future positions of the combined video latent, denoted xvx^{v} (now covering both regions). The prefix is kept clean and only the future region is noised:
+xsv=Mcond⊙xv+Mfut⊙((1−s)​xv+s​ϵv),x^{v}_{s}=M_{\mathrm{cond}}\odot x^{v}\;+\;M_{\mathrm{fut}}\odot\bigl((1-s)\,x^{v}+s\,\epsilon^{v}\bigr),
+(9)
+with the future-only target velocity
+usv=Mfut⊙(ϵv−xv).u^{v}_{s}=M_{\mathrm{fut}}\odot(\epsilon^{v}-x^{v}).
+(10)
+Because the prefix is encoded by the same ℰv\mathcal{E}_{v}, the observed-frame condition lives natively in the generator’s token space; no separate condition encoder is required.
+Joint training objective.
+The video loss is computed only on the future region,
+ℒvideo=𝔼s,ϵv​[‖Mfut⊙(u^sv−usv)‖22];\mathcal{L}_{\mathrm{video}}=\mathbb{E}_{s,\epsilon^{v}}\!\left[\bigl\|M_{\mathrm{fut}}\odot(\hat{u}^{v}_{s}-u^{v}_{s})\bigr\|_{2}^{2}\right];
+(11)
+the action loss uses a robust regression over valid action dimensions MaM_{a},
+ℒaction=𝔼s,ϵa​[Ma⊙SmoothL1⁡(u^sa,usa)];\mathcal{L}_{\mathrm{action}}=\mathbb{E}_{s,\epsilon^{a}}\!\left[M_{a}\odot\mathrm{SmoothL1}\!\left(\hat{u}^{a}_{s},\,u^{a}_{s}\right)\right];
+(12)
+and the language reasoning loss is the standard autoregressive negative log-likelihood,
+ℒtext=−∑i=1|τt|logpϕ(τt,i∣ct,τt,<i).\mathcal{L}_{\mathrm{text}}=-\sum_{i=1}^{|\tau_{t}|}\log p_{\phi}(\tau_{t,i}\mid c_{t},\,\tau_{t,<i}).
+(13)
+The final objective is a weighted sum,
+ℒ=λtext​ℒtext+λvideo​ℒvideo+λaction​ℒaction.\mathcal{L}=\lambda_{\mathrm{text}}\,\mathcal{L}_{\mathrm{text}}+\lambda_{\mathrm{video}}\,\mathcal{L}_{\mathrm{video}}+\lambda_{\mathrm{action}}\,\mathcal{L}_{\mathrm{action}}.
+(14)
+All three losses flow back through the loop state zz and through the shared embedders ℰv,ℰa\mathcal{E}_{v},\mathcal{E}_{a}, so understanding, reasoning, imagining, and acting are optimized as one closed loop rather than four stitched modules.
+3. Evaluating the Unified Model as Three Specialists
+The first question for a unified model is whether unification comes at the cost of specialist competence. If the shared loop is genuinely useful, then training understanding, reasoning, imagination, and action together should not weaken the model when each capability is evaluated on its own. We therefore evaluate Pelican-Unify 1.0 in three deliberately separated regimes: as a vision–language model on eight multimodal benchmarks, as a visuomotor policy on the RoboTwin dual-arm simulator, and as an action-conditioned world model on WorldArena.
+Figure 1: Starting from a base VLM, standard VLA policy training weakens grounding and attention, while Pelican-Unify 1.0 retains them and still predicts actions. Base VLM learns what and where; standard VLA weakens perception, while Pelican-Unify 1.0 preserves it and still learns what action to output.
+3.1. Understanding Capability.
+As shown in Tab. 1, Pelican-Unify consistently achieves the highest overall performance across multimodal benchmarks for both general reasoning and embodied evaluation. Specifically, our model achieves an average score of 64.7, outperforming all compared VLA and VLM baselines. Pelican-Unify improves the overall average from 58.2, achieved by Qwen3-VL-4B-Instruct (the 4B base model we build upon) to 64.7. Furthermore, it substantially outperforms prior VLA architectures, surpassing MolmoAct (27.5) by a large margin.
+A detailed breakdown of these results reveals that these gains are attained without sacrificing general multimodal capabilities. On traditional general reasoning benchmarks, Pelican-Unify matches or marginally exceeds the baseline set by Qwen3-VL-4B-Instruct. By contrast, the improvements are largest in embodied evaluation, where spatial grounding and physical understanding are critical. On embodied-oriented benchmarks such as Where2Place and PhyX, our model outperforms Qwen3-VL-4B-Instruct by +28.2+28.2 and +20.6+20.6 points, respectively. This breakdown shows that our model transfers effectively to embodied tasks without losing general reasoning: it retains strong perception while substantially improving action-aware understanding. Consequently, our unified model learns richly physically grounded representations, which provide stronger features for downstream action and video prediction.
+Table 1: Comparison on general and embodied benchmarks. Bold indicates best results, underline indicates second-best results, - indicates that the model does not possess this capability (score of 0.0).
+Method
+General Benchmark
+Embodied Benchmark
+Avg.
+MMMU Yue et al. (2024)
+MMBench Liu et al. (2024)
+MMStar Chen et al. (2024)
+InfoVQA Mathew et al. (2021)
+ChartQA Masry et al. (2022)
+Where2Place Yuan et al. (2024)
+PhyX Shen et al. (2025)
+RefSpatial Zhou et al. (2026)
+Vision-Language-Action Models
+OpenVLA Kim et al. (2024)
+26.3
+-
+-
+-
+-
+-
+-
+-
+3.3
+ECoT Zawalski et al. (2025)
+26.6
+3.7
+-
+-
+-
+-
+10.1
+-
+5.0
+MolmoAct Lee et al. (2025)
+28.4
+55.1
+1.2
+41.9
+55.9
+8.2
+29.7
+-
+27.5
+π0.5\pi_{0.5} Intelligence et al. (2025)
+24.0
+6.8
+21.7
+7.7
+5.1
+-
+16.2
+-
+10.2
+Vision-Language Models
+Gemma3-4B-IT Kamath et al. (2025)
+39.3
+68.6
+37.1
+40.9
+50.3
+7.5
+17.2
+2.2
+32.9
+Qwen3-VL-4B-Instruct Bai and others (2025)
+52.6
+84.5
+62.9
+78.4
+81.1
+17.0
+41.1
+48.0
+58.2
+Our Unified Model
+Pelican-Unify 1.0
+53.0
+84.9
+63.3
+78.4
+81.5
+45.2
+61.7
+49.3
+64.7
+3.2. Action Capability.
+We evaluate Pelican-Unify on the RoboTwin 50-task dual-arm benchmark (Tab. 2), our model achieves an average success rate of 93.5%. It outperforms most specialized VLA and world-model baselines, including AIM (93.1%), LingBot-VA (92.3%), and starVLA (88.3%). This result demonstrates the strong manipulation capability of our model on complex tasks.
+Under clean and randomized conditions, Pelican-Unify achieves 93.6% and 93.3% success, respectively. Per-task results show that the improvements are broad: 31 out of 50 tasks reach at least 95% success, 39 tasks reach 90%, and 15 tasks are solved perfectly (100%). High-success tasks span clicking, shaking, stacking, handover, and articulated-object manipulation, indicating reliable performance across both precise contact and multi-object coordination. Failures are concentrated in the hardest long-horizon or geometry-sensitive tasks, such as hanging mugs and dustbin insertion, which require tight alignment or sustained contact. These patterns indicate that Unify training does not degrade low-level control. Rather, shared reasoning and predictive representations improve both generalizability and robustness across diverse manipulation regimes.
+Table 2: Benchmark Results on Seen Tasks. We compare Pelican-Unify 1.0 with state-of-the-art VLA and world-model-based methods. Pelican-Unify 1.0 achieves the second-best average result while using a unified understanding–reasoning–imagination–action model. ∗Results for X-VLA are adopted from Motus Bi et al. (2025). Unless otherwise specified, best results are highlighted in bold, and second-best results are underlined. †Second-best average success rate among compared methods.
+Type
+Model
+Clean
+Randomized
+Avg
+VLA
+π0\pi_{0} Black et al. (2024)
+65.9
+58.4
+62.2
+X-VLA∗ Zheng et al. (2026)
+72.9
+72.8
+72.9
+π0.5\pi_{0.5} Intelligence et al. (2025)
+82.7
+76.8
+79.8
+starVLA Community (2026)
+88.2
+88.3
+88.3
+ABot-M0 Yang et al. (2026)
+81.2
+80.4
+80.8
+LingBot-VLA Wu et al. (2026)
+86.5
+85.3
+85.9
+World Model
+JEPA-VLA Miao et al. (2026)
+73.5
+–
+–
+Motus Bi et al. (2025)
+88.7
+87.0
+87.9
+LingBot-VA Li et al. (2026)
+92.9
+91.6
+92.3
+Fast-WAM Yuan et al. (2026)
+91.9
+91.8
+91.9
+Being-H0.7 Luo et al. (2026)
+90.2
+89.6
+89.9
+AIM Fan et al. (2026)
+94.0
+92.1
+93.1
+MotuBrain Team et al. (2026)
+95.8
+96.1
+95.9
+Unified Model
+Pelican-Unify 1.0†
+93.6
+93.3
+93.5
+3.3. Imagination Capability.
+As shown in Tab. 3, on the WorldArena benchmark, Pelican-Unify’s imagination component achieves an EWM Score of 66.03, ranking first. It also ranks first in 3D Accuracy (98.13) and Motion Quality (62.69), two dimensions where spatial coherence and physical plausibility are critical. On other metrics—Visual Quality (63.43), Content Consistency (60.33), Physics Adherence (61.51), Controllability (59.28)—the model performs competitively.
+Automated WorldArena metrics can reward visually clean but task-irrelevant rollouts. We therefore conduct a blind human study to assess whether generated rollouts are usable for downstream control. Trained annotators rate each rollout on a {0,1,2}\{0,1,2\} scale across four axes: Controllability (preserving first-frame conditions), Task Success (achieving manipulation goals), Temporal Consistency (stable shapes without flicker), and Physical Plausibility (coherent contact and gravity). This design separates conditioning fidelity from execution quality.
+As shown in Tab. 4, Pelican-Unify 1.0 achieves the highest overall score (mean 1.76) and outperforms existing baselines. It excels on Task Success (1.81) and Controllability (2.00). The system treats first-frame conditions as manipulation goals and commits to completing them. Several video-diffusion models score near zero on Task Success despite high Temporal Consistency (e.g., Happyhorse, EnerVerse-AC), showing that visually fluent rollouts can abandon the task.
+This performance comes from the unified architecture. Unlike pure video generation models that focus on pixel-level fidelity, Pelican-Unify is pretrained on large-scale real-world robot interaction data, which encodes spatial structure and physical dynamics. The model learns 3D geometry cues—depth, object permanence, viewpoint consistency—without explicit reconstruction or physics engines. This is reflected in the 3D Accuracy. The competitive Motion Quality confirms that the model generates temporally coherent motions consistent with kinematic constraints, as these constraints are present in the pretraining action sequences. Additionally, the model supports action-conditioned video generation, improving generation quality and ensuring action-frame alignment (Fig. 2).
+Table 3: Performance comparison on the World Arena Benchmark (0–100 scale). Pelican-Unify achieves the best overall EWM Score (66.03, rank #1) and demonstrates strong spatiotemporal reasoning, ranking first in both 3D Accuracy (98.13) and Motion Quality (62.69). It also delivers balanced performance across all other dimensions.
+Model
+EWM Score
+EWM
+Score
+Rank
+Visual Quality
+Visual
+Quality
+Motion Quality
+Motion
+Quality
+Content Consistency
+Content
+Consistency
+Physics Adherence
+Physics
+Adherence
+3D Accuracy
+3D
+Accuracy
+Controllability
+Pelican-Unify
+66.03
+1
+63.43
+62.69
+60.33
+61.51
+98.13
+59.28
+WorldScape v0.2
+64.24
+2
+62.65
+42.34
+65.18
+73.29
+96.28
+59.38
+FlowWAM-FiveAges
+64.12
+3
+63.29
+41.05
+66.92
+67.82
+97.84
+60.28
+MotuBrain Team et al. (2026)
+64.07
+4
+60.69
+62.21
+59.57
+61.18
+91.64
+57.35
+FAW
+63.28
+5
+62.37
+40.17
+65.42
+69.28
+96.85
+58.79
+Goose_Egg
+62.96
+6
+58.86
+53.97
+62.12
+61.43
+92.14
+58.45
+ABot-PhysWorld (text) Chen et al. (2026)
+62.63
+7
+64.41
+48.34
+63.37
+56.73
+85.46
+63.11
+Z-WM
+62.47
+8
+64.20
+37.43
+64.84
+63.88
+96.48
+59.80
+GigaWorld-1
+62.34
+9
+63.04
+39.16
+65.17
+64.68
+97.02
+57.28
+HeroF1
+60.38
+10
+57.40
+49.10
+64.30
+53.97
+87.46
+56.97
+Ctrl-World Guo et al. (2026)
+59.98
+11
+57.42
+50.91
+62.25
+55.41
+88.46
+53.42
+Wan2.6 Team (2026b)
+59.80
+12
+61.44
+45.92
+64.00
+42.67
+84.68
+62.66
+RunWorld
+59.24
+13
+48.34
+60.87
+60.54
+43.88
+89.52
+57.28
+CogvideoX Yang et al. (2025)
+58.79
+14
+55.79
+42.18
+67.71
+50.88
+88.28
+55.09
+Veo3.1 DeepMind (2026)
+57.77
+15
+57.44
+30.26
+68.34
+46.43
+86.96
+63.15
+Table 4: Human evaluation on WorldArena rollouts (0–2 scale per axis). Each rollout is independently rated along Task Success, Controllability, Temporal Consistency and Physical Plausibility; the Average column is the unweighted mean of the four. Pelican-Unify 1.0 attains the best overall mean (1.76, rank #1), driven by the highest Task Success (1.81) and a perfect Controllability score (2.00).
+Model
+Task Success
+Task
+Success
+Controllability
+Temporal Consistency
+Temporal
+Consistency
+Physical Plausibility
+Physical
+Plausibility
+Average
+Pelican-Unify 1.0
+1.81
+2.00
+2.00
+1.23
+1.76
+Seedance2.0 Seedance et al. (2026) (API)
+1.21
+1.87
+1.98
+1.15
+1.55
+Happyhorse-1.0 Team (2026a) (API)
+1.65
+1.81
+2.00
+0.13
+1.40
+EnerVerse-AC Jiang et al. (2025)
+0.00
+1.84
+2.00
+1.64
+1.37
+Wan2.7 Team (2026c) (API)
+1.19
+1.68
+2.00
+0.29
+1.29
+Cosmos-Predict2 Agarwal et al. (2025)
+0.63
+1.85
+1.79
+0.35
+1.16
+GigaWorld-0 GigaAI (2025)
+0.33
+1.94
+1.98
+0.13
+1.09
+UnifoLM-WMA-0 Unitree (2025)
+0.05
+1.48
+2.00
+0.11
+0.91
+Figure 2: Pelican-Unify 1.0 can take actions as conditional inputs, enabling action-conditioned video prediction. Left: The overview of the action-conditioned video prediction model. Right: Comparison of videos generated by our method with ground truth. Our action-conditioned video prediction model achieves fine-grained alignment between input action commands and the generated video frames, given historical observations.
+4. Real-World Robot Evaluation
+We ground our evaluation in real-world scenarios, as the inherent difficulty of physical manipulation exposes whether a system possesses a genuine reason–imagine–act closed loop or merely a chain of cooperating modules. Our experimental platform comprises a UR5e robotic arm and a Tienkung humanoid robot. The evaluation is organized around two core capabilities that a closed-loop system should satisfy:
+Compositional generalisation. Atomic skills AA and BB compose into A+BA{+}B without any combined demonstrations.
+Zero-shot transfer. Generalisation learned during the imagination phase transfers directly to the unified video–action model without additional training.
+4.1. Compositional Generalisation
+We design a compositional generalisation test on the UR5e robotic arm to jointly validate two capabilities: the ability to compose unseen task combinations, and the capacity for fine-grained manipulation guided by the imagination-based world model. Specifically, the atomic tasks 𝒜\mathcal{A} (plug RJ45) and ℬ\mathcal{B} (waterproof) are trained individually, with no complete demonstration of the two chained together appearing in the training data. At test time, the robot receives a single natural-language instruction (e.g. “plug the RJ45 cable into port 3 and apply waterproofing”) and must complete phase 𝒜\mathcal{A} followed by phase ℬ\mathcal{B} within one continuous episode, as shown in Fig. 3.
+Failures are concentrated at the transition—the moment where the just-completed AA-state must be re-perceived as the new initial condition for BB. VLA baselines fail at this transition not because they cannot re-perceive the environment, but because their action distributions carry no representation of “what should happen after AA is done”. The imagination face, having seen each atomic verb ground out into a future-frame distribution during training, can render the post-AA scene state and re-condition on it; the action face follows. That this succeeds without the model ever having seen a complete chained demonstration is the strongest single piece of evidence that it has learned the perception–action loop, rather than merely memorizing a richer action policy.
+As shown in Fig. 4, we further compare the real execution videos with the corresponding generated imagination videos during rollout. The results demonstrate that our model is able to produce physically consistent imagination and future-state predictions that closely align with the real-world observations. This indicates that the model does not merely hallucinate plausible scenes, but instead conditions its predictions on the actual environment dynamics, enabling grounded and physically coherent reasoning during execution.
+Figure 3: Compositional generalization evaluation. During training, the model is optimized only on atomic manipulation tasks individually, without exposure to their composed counterparts. At test time, we evaluate the model on unseen compositional tasks that require combining multiple learned skills, demonstrating strong compositional generalization ability in long-horizon embodied manipulation.
+Figure 4: Fine-grained manipulation and physical imagination capability. Our model demonstrates strong fine-grained embodied manipulation skills in challenging connector insertion tasks, including waterproof, RJ45, and USB insertion, while also exhibiting powerful physical imagination ability to predict plausible future interactions and object dynamics under real-world constraints.
+Figure 5: Execution timelines of seen and unseen robotic manipulation tasks. For each task, we visualize synchronized side-view and top-view observations at five representative execution steps. The upper block shows two seen tasks, including sweeping debris into a dustpan and pouring into a cup, while the lower block shows an unseen cup-wiping task for evaluating cross-task generalization.
+4.2. Zero Shot Generalization
+We posit that achieving robust zero shot generalization is fundamentally predicated on the broad adaptability of the underlying embodied intelligence foundation model. To verify this, we first conduct an exhaustive suite of evaluations across diverse cases within the Tienkung environment to establish a baseline for the model’s fundamental generalization capabilities. Building upon this foundation, we designed a rigorous OOD benchmark within our Unified framework. Specifically, we performed joint training on five seen tasks, each containing an average of 300300 video-action episodes, and three unseen tasks, which were provided with only 5050 video sequences per task. By evaluating the task success rates in these novel scenarios, we systematically demonstrate the efficacy of our framework in bridging the domain gap and generalizing to unfamiliar environments.
+As demonstrated in Tab. 4, Pelican-Unify 1.0 attains the best overall mean score of 1.76 (rank #1) in human evaluation, driven by the highest Task Success score of 1.81 and a perfect Controllability score of 2.00. Our unified approach significantly outperforms dedicated baselines: 0.21 ahead of the strongest video-diffusion specialist (Seedance2.0, 1.55). Notably, Pelican-Unify 1.0 is the only model to excel simultaneously in controllability, task success, temporal consistency, and physical plausibility under blind expert scrutiny, providing empirical evidence of robust generalization capabilities in embodied scenarios and establishing a solid prerequisite for subsequent experiments.
+Building upon the robust generalization of our embodied intelligence model, the Unified framework further enhances performance through joint training. As shown in Fig. 5, the unified model achieves strong performance across seen tasks, demonstrating the synergy between our base model and the joint training paradigm in maintaining high-fidelity execution while extending capabilities to out-of-distribution scenarios.
+5. Discussion
+5.1. What this means for the field
+Integrated physical behavior depends on coupling, not only on component strength. Zero-shot transfer, compositional skill use, and long-horizon coherence are precisely the behaviors modular pipelines have tried to engineer at the interfaces between planner, world model, and policy. Our results suggest that these behaviors are difficult to obtain by strengthening any one component in isolation. A policy without future imagination remains weakly consequence-aware; a world model without unified reasoning remains difficult to steer with task semantics and human knowledge; and reasoning without action and imagination remains detached from physical outcomes. What is missing in modular systems is therefore not only more capacity, but also a training process that forces the components to become mutually informative.
+This changes what progress in embodied AI should measure. Once understanding, reasoning, imagination, and action are trained as one loop, improvement is not only a matter of making each specialist larger. It also depends on how tightly the model shares representations across modalities, how directly reasoning conditions generation, how jointly future video and action are decoded, and how much the data itself contains aligned observation, instruction, reasoning, action, and future outcomes. In our ablations, the most valuable data is not merely more data of the old form, but loop-closed data in which these signals are annotated on the same example. Such data is valuable because a unified model can absorb it as a coupled training signal, and because a coupled model is precisely the kind of system that asks for it.
+5.2. Coda
+We began from a simple claim: physical intelligence should not be built from fragmented capabilities. An agent that must keep improving in the physical world needs to understand the current situation, reason about the task, imagine possible futures, and act in ways whose consequences feed back into the next round of understanding. Pelican-Unify 1.0 is a concrete attempt to make this loop a single trainable object. Its empirical signature matches the claim: the model preserves specialist competence when evaluated one face at a time, and exhibits stronger integrated behavior when evaluated as a whole.
+We do not claim general embodied intelligence. We claim something more specific: a foundation model for embodied intelligence should allow understanding, reasoning, imagination, and action to co-evolve through a shared representation, rather than refine them as isolated systems and connect them only after training. Pelican-Unify 1.0 shows that this unification is not merely an engineering simplification. It is a practical modeling direction that preserves the strengths of specialists while enabling behaviors that depend on the loop itself. The next stage of embodied AI may therefore be shaped less by assembling larger specialists, and more by learning the shared process through which understanding, reasoning, imagination, and action become one adaptive system.
+References
+Agarwal et al. (2025) N. Agarwal, A. Ali, M. Bala, Y. Balaji, E. Barker, T. Cai, P. Chattopadhyay, Y. Chen, Y. Cui, Y. Ding, et al. Cosmos world foundation model platform for physical ai. Cited by: Table 4.
+Ali et al. (2025) A. Ali, J. Bai, M. Bala, Y. Balaji, A. Blakeman, T. Cai, J. Cao, T. Cao, E. Cha, Y. Chao, et al. World simulation with video foundation models for physical ai. arXiv preprint arXiv:2511.00062. Cited by: §1.
+Bai et al. (2025) S. Bai et al. Qwen3-vl technical report. arXiv preprint arXiv:2511.21631. Cited by: §2.1, Table 1.
+Bi et al. (2025) H. Bi, H. Tan, S. Xie, Z. Wang, S. Huang, H. Liu, R. Zhao, Y. Feng, C. Xiang, Y. Rong, H. Zhao, H. Liu, Z. Su, L. Ma, H. Su, and J. Zhu Motus: a unified latent action world model. External Links: 2512.13030, Link Cited by: §1, Table 2, Table 2.
+Black et al. (2024) K. Black, N. Brown, D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai, L. Groom, K. Hausman, B. Ichter, et al. π0\pi_{0}: a vision-language-action flow model for general robot control. arXiv preprint arXiv:2410.24164. Cited by: §1, Table 2.
+Chen et al. (2024) L. Chen, J. Li, X. Dong, P. Zhang, Y. Zang, Z. Chen, H. Duan, J. Wang, Y. Qiao, D. Lin, et al. Are we on the right way for evaluating large vision-language models?. arXiv preprint arXiv:2403.20330. Cited by: Table 1.
+Chen et al. (2026) Y. Chen, R. Chen, D. Huo, Y. Yang, D. Qi, H. Liu, T. Lin, S. Zeng, J. Xiao, X. Chang, F. Xiong, X. Wei, Z. Ma, and M. Xu ABot-physworld: interactive world foundation model for robotic manipulation with physics alignment. External Links: 2603.23376, Link Cited by: Table 3.
+Chi et al. (2025) X. Chi, P. Jia, C. Fan, X. Ju, W. Mi, K. Zhang, Z. Qin, W. Tian, K. Ge, H. Li, et al. Wow: towards a world omniscient world model through embodied interaction. arXiv preprint arXiv:2509.22642. Cited by: §1.
+Clark (2013) A. Clark Whatever next? predictive brains, situated agents, and the future of cognitive science. Behavioral and brain sciences 36 (3), pp. 181–204. Cited by: §1.
+Clark (2016) A. Clark Surfing uncertainty: prediction, action, and the embodied mind. Oxford University Press, Oxford. Cited by: §1.
+Community (2026) S. Community StarVLA: a lego-like codebase for vision-language-action model developing. arXiv preprint arXiv:2604.05014. Cited by: Table 2.
+DeepMind (2026) G. DeepMind Veo 3.1: our most capable generative video model. Note: https://deepmind.google/technologies/veo/Accessed: 2026-05-14 Cited by: Table 3.
+Dennett (1993) D. C. Dennett The embodied mind: cognitive science and human experience. JSTOR. Cited by: §1.
+Fan et al. (2026) L. Fan, Z. Xu, C. Cao, W. Zhang, M. Yuan, and J. Chen AIM: intent-aware unified world action modeling with spatial value maps. arXiv preprint arXiv:2604.11135. Cited by: Table 2.
+Figure (2024) A. Figure Helix: a vision-language-action model for generalist humanoid control. Cited by: §1.
+Friston (2010) K. Friston The free-energy principle: a unified brain theory?. Nature Reviews Neuroscience 11 (2), pp. 127–138. Cited by: §1.
+GigaAI (2025) GigaAI GigaWorld-0: world models as data engine to empower embodied ai. External Links: 2511.19861, Link Cited by: Table 4.
+Guo et al. (2026) Y. Guo, L. X. Shi, J. Chen, and C. Finn Ctrl-world: a controllable generative world model for robot manipulation. In The Fourteenth International Conference on Learning Representations (ICLR), External Links: Link Cited by: Table 3.
+Hesslow (2002) G. Hesslow Conscious thought as simulation of behaviour and perception. Trends in Cognitive Sciences 6 (6), pp. 242–247. Cited by: §1.
+Intelligence et al. (2025) P. Intelligence, K. Black, N. Brown, J. Darpinian, K. Dhabalia, D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai, et al. π0.5\pi_{0.5}: a vision-language-action model with open-world generalization. arXiv preprint arXiv:2504.16054. Cited by: §1, Table 1, Table 2.
+Jeannerod (2001) M. Jeannerod Neural simulation of action: a unifying mechanism for motor cognition. NeuroImage 14 (1), pp. S103–S109. Cited by: §1.
+Jiang et al. (2025) Y. Jiang, S. Chen, S. Huang, L. Chen, P. Zhou, Y. Liao, X. He, C. Liu, H. Li, M. Yao, and G. Ren EnerVerse-ac: envisioning embodied environments with action condition. External Links: 2505.09723, Link Cited by: Table 4.
+Kamath et al. (2025) A. Kamath, J. Ferret, S. Pathak, N. Vieillard, R. Merhej, S. Perrin, T. Matejovicova, A. Ramé, M. Rivière, L. Rouillard, et al. Gemma 3 technical report. Vol. 4, ArXiv. Cited by: Table 1.
+Kandel et al. (2021) E. R. Kandel, J. D. Koester, S. H. Mack, and S. A. Siegelbaum Principles of neural science. 6 edition, McGraw-Hill Education, New York. Cited by: §1.
+Kim et al. (2024) M. J. Kim, K. Pertsch, S. Karamcheti, T. Xiao, A. Balakrishna, S. Nair, R. Rafailov, E. Foster, G. Lam, P. Sanketi, et al. Openvla: an open-source vision-language-action model. arXiv preprint arXiv:2406.09246. Cited by: §1, Table 1.
+Lee et al. (2025) J. Lee, J. Duan, H. Fang, Y. Deng, S. Liu, B. Li, B. Fang, J. Zhang, Y. R. Wang, S. Lee, W. Han, W. Pumacay, A. Wu, R. Hendrix, K. Farley, E. VanderBilt, A. Farhadi, D. Fox, and R. Krishna MolmoAct: action reasoning models that can reason in space. External Links: 2508.07917, Link Cited by: Table 1.
+Li et al. (2026) L. Li, Q. Zhang, Y. Luo, S. Yang, R. Wang, F. Han, M. Yu, Z. Gao, N. Xue, X. Zhu, Y. Shen, and Y. Xu Causal world modeling for robot control. arXiv preprint arXiv:2601.21998. Cited by: Table 2.
+Liu et al. (2024) Y. Liu, H. Duan, Y. Zhang, B. Li, S. Zhang, W. Zhao, Y. Yuan, J. Wang, C. He, Z. Liu, et al. Mmbench: is your multi-modal model an all-around player?. In European conference on computer vision, pp. 216–233. Cited by: Table 1.
+Luo et al. (2026) H. Luo, W. Zhang, Y. Feng, S. Zheng, H. Xu, C. Xu, Z. Xi, Y. Fu, and Z. Lu Being-h0.7: a latent world-action model from egocentric videos. arXiv preprint arXiv:2605.00078. Cited by: Table 2.
+Maes et al. (2026) L. Maes, Q. L. Lidec, D. Scieur, Y. LeCun, and R. Balestriero Leworldmodel: stable end-to-end joint-embedding predictive architecture from pixels. arXiv preprint arXiv:2603.19312. Cited by: §1.
+Masry et al. (2022) A. Masry, D. Long, J. Q. Tan, S. Joty, and E. Hoque ChartQA: a benchmark for question answering about charts with visual and logical reasoning. In Findings of the Association for Computational Linguistics: ACL 2022, Dublin, Ireland, pp. 2263–2279. External Links: Link, Document Cited by: Table 1.
+Mathew et al. (2021) M. Mathew, V. Bagal, R. P. Tito, D. Karatzas, E. Valveny, and C. V. Jawahar InfographicVQA. External Links: 2104.12756, Link Cited by: Table 1.
+Miao et al. (2026) S. Miao, N. Feng, J. Wu, Y. Lin, X. He, D. Li, and M. Long JEPA-vla: video predictive embedding is needed for vla models. External Links: 2602.11832, Link Cited by: Table 2.
+Seedance et al. (2026) T. Seedance, D. Chen, L. Chen, X. Chen, Y. Chen, Z. Chen, Z. Chen, F. Cheng, T. Cheng, Y. Cheng, et al. Seedance 2.0: advancing video generation for world complexity. Cited by: Table 4.
+Shang et al. (2026) Y. Shang, Z. Li, Y. Ma, W. Su, X. Jin, Z. Wang, L. Jin, X. Zhang, Y. Tang, H. Su, et al. WorldArena: a unified benchmark for evaluating perception and functional utility of embodied world models. arXiv preprint arXiv:2602.08971. Cited by: §1.
+Shen et al. (2025) H. Shen, T. Wu, Q. Han, Y. Hsieh, J. Wang, Y. Zhang, Y. Cheng, Z. Hao, Y. Ni, X. Wang, Z. Wan, K. Zhang, W. Xu, J. Xiong, P. Luo, W. Chen, C. Tao, Z. Mao, and N. Wong PhyX: does your model have the ”wits” for physical reasoning?. External Links: 2505.15929, Link Cited by: Table 1.
+Team et al. (2025) G. R. Team, S. Abeyruwan, J. Ainslie, J. Alayrac, M. G. Arenas, T. Armstrong, A. Balakrishna, R. Baruch, M. Bauza, M. Blokzijl, et al. Gemini robotics: bringing ai into the physical world. arXiv preprint arXiv:2503.20020. Cited by: §1.
+Team (2026a) H. TeamHappyhorse-1.0(Website) Happyhorse. External Links: Link Cited by: Table 4.
+Team et al. (2026) M. Team, C. Xiang, F. Bao, H. Liu, H. Tan, H. Bi, J. Li, J. Liu, J. Pang, K. Jing, L. Liu, M. Cai, R. Cui, R. Zhao, R. Wang, S. Huang, Y. Feng, Y. Rong, Z. Wang, and J. Zhu MotuBrain: an advanced world action model for robot control. External Links: 2604.27792, Link Cited by: Table 2, Table 3.
+Team (2026b) W. Team Wan2.6: a state-of-the-art video generation model. Note: WanAI:LeadingAIVideoGenerationModelAccessed: 2026-05-14 Cited by: Table 3.
+Team (2026c) W. TeamWan2.7(Website) Wan. External Links: Link Cited by: Table 4.
+Unitree (2025) Unitree UnifoLM-wma-0: a world-model-action (wma) framework under unifolm family. Cited by: Table 4.
+Wan et al. (2025) T. Wan, A. Wang, B. Ai, B. Wen, C. Mao, C. Xie, D. Chen, F. Yu, H. Zhao, J. Yang, et al. Wan: open and advanced large-scale video generative models. arXiv preprint arXiv:2503.20314. Cited by: §2.1.
+Wu et al. (2026) W. Wu, F. Lu, Y. Wang, S. Yang, S. Liu, F. Wang, Q. Zhu, H. Sun, Y. Wang, S. Ma, et al. A pragmatic vla foundation model. arXiv preprint arXiv:2601.18692. Cited by: Table 2.
+Yang et al. (2026) Y. Yang, S. Zeng, T. Lin, X. Chang, D. Qi, J. Xiao, H. Liu, R. Chen, Y. Chen, D. Huo, et al. Abot-m0: vla foundation model for robotic manipulation with action manifold learning. arXiv preprint arXiv:2602.11236. Cited by: Table 2.
+Yang et al. (2025) Z. Yang, J. Teng, W. Zheng, M. Ding, S. Huang, J. Xu, Y. Yang, W. Hong, X. Zhang, G. Feng, D. Yin, Y. Zhang, W. Wang, Y. Cheng, B. Xu, X. Gu, Y. Dong, and J. Tang CogVideoX: text-to-video diffusion models with an expert transformer. External Links: 2408.06072, Link Cited by: Table 3.
+Ye et al. (2026) S. Ye, Y. Ge, K. Zheng, S. Gao, S. Yu, G. Kurian, S. Indupuru, Y. L. Tan, C. Zhu, J. Xiang, et al. World action models are zero-shot policies. arXiv preprint arXiv:2602.15922. Cited by: §1.
+Yuan et al. (2026) T. Yuan, Z. Dong, Y. Liu, and H. Zhao Fast-wam: do world action models need test-time future imagination?. arXiv preprint arXiv:2603.16666. External Links: Link Cited by: Table 2.
+Yuan et al. (2024) W. Yuan, J. Duan, V. Blukis, W. Pumacay, R. Krishna, A. Murali, A. Mousavian, and D. Fox RoboPoint: a vision-language model for spatial affordance prediction for robotics. External Links: 2406.10721, Link Cited by: Table 1.
+Yue et al. (2024) X. Yue, Y. Ni, K. Zhang, T. Zheng, R. Liu, G. Zhang, S. Stevens, D. Jiang, W. Ren, Y. Sun, C. Wei, B. Yu, R. Yuan, R. Sun, M. Yin, B. Zheng, Z. Yang, Y. Liu, W. Huang, H. Sun, Y. Su, and W. Chen MMMU: a massive multi-discipline multimodal understanding and reasoning benchmark for expert agi. In Proceedings of CVPR, Cited by: Table 1.
+Zawalski et al. (2025) M. Zawalski, W. Chen, K. Pertsch, O. Mees, C. Finn, and S. Levine Robotic control via embodied chain-of-thought reasoning. External Links: 2407.08693, Link Cited by: Table 1.
+Zhang et al. (2025) Y. Zhang, C. Liu, X. Ren, H. Ni, S. Zhang, Z. Ding, J. Hu, H. Shan, Z. Niu, Z. Liu, et al. Pelican-vl 1.0: a foundation brain model for embodied intelligence. arXiv preprint arXiv:2511.00108. Cited by: §1.
+Zheng et al. (2026) J. Zheng, J. Li, Z. Wang, D. Liu, X. Kang, Y. Feng, Y. Zheng, J. Zou, Y. Chen, J. Zeng, T. Wang, Y. Zhang, J. Liu, and X. Zhan X-vla: soft-prompted transformer as scalable cross-embodiment vision-language-action model. In The Fourteenth International Conference on Learning Representations (ICLR), External Links: Link Cited by: Table 2.
+Zhou et al. (2026) E. Zhou, J. An, C. Chi, Y. Han, S. Rong, C. Zhang, P. Wang, Z. Wang, T. Huang, L. Sheng, and S. Zhang RoboRefer: towards spatial referring with reasoning in vision-language models for robotics. External Links: 2506.04308, Link Cited by: Table 1.
+Zitkovich et al. (2023) B. Zitkovich, T. Yu, S. Xu, P. Xu, T. Xiao, F. Xia, J. Wu, P. Wohlhart, S. Welker, A. Wahid, et al. Rt-2: vision-language-action models transfer web knowledge to robotic control. In Conference on Robot Learning, pp. 2165–2183. Cited by: §1.
+6. Contributions
+Our contributors are organized based on their roles and magnitude of contribution. The final public release will replace the group-level placeholders below with individual names after internal approval.
+6.1. Core Contributors
+Unified VLM and Action capability: Yi Zhang, Yinda Chen, Che Liu, Zeyuan Ding Unified World-model capability: Jin Xu, Shilong Zou Evaluation and Assets: Junwei Liao, Jiayu Hu
+6.2. Contributors
+Xiancong Ren, Xiaopeng Zhang, Yechi Liu, Haoyuan Shi, Zecong Tang, Haosong Sun, Renwen Cui, Kuishu Wu, Wenhai Liu, Yang Xu, Yingji Zhang, Yidong Wang, Senkang Hu, Jinpeng Lu,Nga Teng Chan, Yechen Wu, Zeting Liu, Xianzhou Hou
+6.3. Supports
+Bokai Ji, Jian Li, Yuliang Zhan
+6.4. Tech Lead
+Yong Dai
+6.5. Corresponding Authors
+Jian Tang, Xiaozhu Ju
+6.6. Acknowledgments
+We thank our families, friends, and colleagues for their patience, understanding, and unwavering support throughout this work. The pursuit of a scientific vision is never carried by the researchers alone; it is sustained by the generosity, sacrifice, and trust of those closest to us. We dedicate this paper to the memory of Jin Xu’s mother, whose encouragement, even in the final moments of her life, gave strength to this work and to the people who carried it forward.
+Instructions for reporting errors
+We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the methods listed below:
+Click the "Report Issue" ( ) button, located in the page header.
+Tip: You can select the relevant text first, to include it in your report.
+Our team has already identified the following issues. We appreciate your time reviewing and reporting rendering errors we may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability should not be a barrier to accessing research. Thank you for your continued support in championing open access for all.
+Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion, and welcome developer contributions.

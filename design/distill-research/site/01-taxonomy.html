@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 · 分类框架 · 大模型→VLA/WAM 蒸馏研究</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="topnav"><div class="inner"><a href="index.html">首页</a><a class="" href="00-evidence.html">00 · 证据与核实</a><a class="" href="01-taxonomy.html">01 · 分类框架</a><a class="" href="02-vla-distill.html">02 · VLA 蒸馏</a><a class="" href="03-wam-distill.html">03 · WAM 蒸馏</a><a class="" href="04-step-distill.html">04 · 步数蒸馏</a><a class="" href="05-feature-latent.html">05 · 特征与 latent</a><a class="" href="06-on-policy.html">06 · On-policy 蒸馏</a><a class="" href="07-data-distill.html">07 · 数据蒸馏</a><a class="" href="08-tricks.html">08 · Trick 总谱</a><a class="" href="09-benchmarks.html">09 · 教师 vs 学生</a><a class="" href="10-recent.html">10 · 最近三个月</a><a class="" href="11-pitfalls.html">11 · 陷阱与复现</a><a class="" href="12-implementation.html">12 · 实现手册</a></div></nav>
+<main>
+<h1>01 · 蒸馏分类框架：先分清"蒸什么"和"教师何时存在"</h1>
+<p class="meta">来源 docs/01-taxonomy.md · 生成于 2026-11-21</p>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 一句话结论</a></li><li class=""><a href="#sec-2">2. 轴一：蒸什么（6 类转移对象）</a></li><li class=""><a href="#sec-3">3. 轴二：教师何时存在（5 种）</a></li><li class=""><a href="#sec-4">4. 交叉矩阵：哪些格子真的有工作</a></li><li class=""><a href="#sec-5">5. 速度账：蒸馏到底省在哪一段</a></li><li class=""><a href="#sec-6">6. 三条最容易踩的误判</a></li></ol></details>
+<h1>01 · 蒸馏分类框架：先分清&quot;蒸什么&quot;和&quot;教师何时存在&quot;</h1>
+<blockquote>本文是整站的坐标系。后面每一篇论文都放到这两个轴上定位，避免把「数据蒸馏」「推理加速」「on-policy RL」混为一谈。<br>纪律：分类是<strong>基于机制的归纳</strong>，不是任何论文的官方分类；每个数字都标来源级别（L3 全文 / L2 正文部分 / L1 摘要或官方页）。</blockquote>
+<hr>
+<h2 id="sec-1">1. 一句话结论</h2>
+<p>VLA/WAM 的&quot;蒸馏大模型&quot;实际包含 <strong>6 种被转移的对象</strong> × <strong>5 种教师存在方式</strong>，共 30 个格子；过去一年真正有论文落地的只有 <strong>14 个格子</strong>，其中最近三个月的新增几乎全部集中在 <strong>on-policy（学生自己跑、教师来打分）</strong> 和 <strong>步数蒸馏（多步 ODE → 1 步）</strong> 两条线上。</p>
+<hr>
+<h2 id="sec-2">2. 轴一：蒸什么（6 类转移对象）</h2>
+<table><tr><th>代号</th><th>转移对象</th><th>典型信号</th><th>学生需要什么</th><th>代表工作</th></tr><tr><td><strong>S1 输出</strong></td><td>教师的动作/logits/速度场/端点</td><td>KL、交叉熵、MSE、flow-matching loss</td><td>同构或可对齐的输出头</td><td>经典 KD、SnapFlow、VLA-SSD</td></tr><tr><td><strong>S2 表示</strong></td><td>中间隐层、attention、latent planning token、世界模型特征</td><td>L1/L2 回归、cosine、CKA、KL on features</td><td>有可对齐的层 + 投影器</td><td>Orion-Lite、THAW-VLA、CKT-WAM、FitNets</td></tr><tr><td><strong>S3 行为</strong></td><td>轨迹、动作 chunk、成功 episode、on-policy 状态-动作对</td><td>行为克隆 / DAgger / 加权回归</td><td>能复现教师行为的策略</td><td>H2E、TAD、Beyond Policy Patches</td></tr><tr><td><strong>S4 数据</strong></td><td>CoT/QA 标注、生成视频、伪动作、潜动作</td><td>监督学习（数据即知识）</td><td>只要数据，架构不限</td><td>AutoVLA、GR00T N1、LAPA、DreamGen</td></tr><tr><td><strong>S5 计算结构</strong></td><td>步数、层数、token 数、搜索预算</td><td>一致性/短路径/蒸馏损失</td><td>精简后的同一模型</td><td>π0-FAST、SnapFlow、DMD 系、token 剪枝</td></tr><tr><td><strong>S6 训练信号</strong></td><td>verifier / reward / critic / 特权信息</td><td>加权、重排、RL 目标</td><td>训练期可查询教师</td><td>Verify-Act-Distill、VLP、RL 专家蒸馏</td></tr></table>
+<p><strong>关键区分</strong>：S5 里的&quot;自蒸馏&quot;经常<strong>没有独立教师</strong>（教师=模型自己的多步输出或 EMA），这在工程上意味着不需要额外显存，但对齐目标更弱、更容易塌缩。</p>
+<hr>
+<h2 id="sec-3">3. 轴二：教师何时存在（5 种）</h2>
+<table><tr><th>代号</th><th>教师生命周期</th><th>学生看到的状态分布</th><th>成本</th><th>风险</th></tr><tr><td><strong>T1 离线 teacher-forced</strong></td><td>只在造数据/提特征时</td><td>教师轨迹的分布（off-policy）</td><td>一次性前向</td><td>复合误差、exposure bias</td></tr><tr><td><strong>T2 on-policy</strong></td><td>训练中持续可查</td><td>学生自己跑出来的状态</td><td>每步一次教师前向</td><td>教师查询成本高、需并行</td></tr><tr><td><strong>T3 训练期教师</strong></td><td>训练时在，推理时消失</td><td>混合</td><td>训练期显存</td><td>部署零开销，但容量上限受学生限制</td></tr><tr><td><strong>T4 自蒸馏</strong></td><td>教师=自身（多步/EMA/早停）</td><td>自身分布</td><td>低（同一模型）</td><td>目标可能退化、模式塌缩</td></tr><tr><td><strong>T5 无教师（数据合成）</strong></td><td>只有生成模型，无对齐损失</td><td>生成数据分布</td><td>生成成本</td><td>分布偏移、幻觉进入数据</td></tr></table>
+<blockquote>判断标准（本站采用）：<strong>有教师权重/特征/输出被学生显式拟合 → 蒸馏</strong>；只有同一模型训练-推理路径不同、或调度优化 → <strong>加速</strong>，单列辨析（见 03 章 E 节）。</blockquote>
+<hr>
+<h2 id="sec-4">4. 交叉矩阵：哪些格子真的有工作</h2>
+<table><tr><th></th><th>T1 离线</th><th>T2 on-policy</th><th>T3 训练期</th><th>T4 自蒸馏</th><th>T5 数据合成</th></tr><tr><td><strong>S1 输出</strong></td><td>经典 KD、π0-FAST</td><td>FastOPD、VLA-MOPD、WAM-Policy</td><td>—</td><td>SnapFlow、VLA-SSD</td><td>—</td></tr><tr><td><strong>S2 表示</strong></td><td>Orion-Lite、THAW-VLA、CKT-WAM、DiMA</td><td>少数（需要在线上提特征）</td><td>VLP、feature cache</td><td>S-VAM</td><td>—</td></tr><tr><td><strong>S3 行为</strong></td><td>TAD、H2E</td><td>DAgger 系、Reflect-VLA</td><td>—</td><td>—</td><td>—</td></tr><tr><td><strong>S4 数据</strong></td><td>AutoVLA、Senna、DriveGPT4</td><td>—</td><td>—</td><td>—</td><td>GR00T N1、LAPA、DreamGen</td></tr><tr><td><strong>S5 结构</strong></td><td>π0-FAST、token 剪枝</td><td>—</td><td>训练共训、推理删分支</td><td>DMD/consistency/shortcut</td><td>—</td></tr><tr><td><strong>S6 信号</strong></td><td>Verify-Act-Distill</td><td>RL 专家 → VLA（Beyond Policy Patches）</td><td>VLP</td><td>—</td><td>—</td></tr></table>
+<p><strong>读法</strong>：行是&quot;蒸什么&quot;，列是&quot;教师何时在&quot;。同一篇论文可能占多个格子（例如 SnapFlow 既是 S1 也是 S5，且是 T4）。</p>
+<hr>
+<h2 id="sec-5">5. 速度账：蒸馏到底省在哪一段</h2>
+<p>VLA 推理延迟不是一块铁板，拆开看才知道蒸馏该打哪里：</p>
+<table><tr><th>阶段</th><th>典型占比（7B 级 VLA）</th><th>蒸馏手段</th><th>可省</th></tr><tr><td>视觉编码</td><td>10–20%</td><td>换小 backbone / token 剪枝 / 特征缓存</td><td>中</td></tr><tr><td>LLM prefill</td><td>30–50%</td><td>隐层蒸馏换小 LLM（Orion-Lite 150× 仅指 reasoning 模块）</td><td>大</td></tr><tr><td>自回归 decode</td><td>10–30%</td><td>FAST tokenizer、并行解码、层跳过</td><td>中</td></tr><tr><td>动作头（flow/diffusion）</td><td>20–50%（NFE=10 时）</td><td>步数蒸馏 10→1（SnapFlow、DMD）</td><td>大</td></tr><tr><td>测试时计算（Best-of-N/verifier）</td><td>0–N×</td><td>把 verifier 增益蒸进权重（Verify-Act-Distill）</td><td>大</td></tr></table>
+<blockquote>注意：论文里的&quot;快 150×&quot;通常只指<strong>被替换的那个模块</strong>，不是端到端。端到端要看 806ms→267ms 这种全链路数字（Orion-Lite）。</blockquote>
+<hr>
+<h2 id="sec-6">6. 三条最容易踩的误判</h2>
+<ol>
+<li><strong>把&quot;小模型直接训练&quot;叫蒸馏</strong>：SmolVLA、TinyVLA 是从零/微调小模型，没有教师拟合（SmolVLA §2 原文把 TinyVLA 描述为 &quot;trained a lightweight sub-1B model from scratch&quot;）。
+</li><li><strong>把&quot;训练时用未来信息、推理删掉&quot;叫蒸馏</strong>：Fast-WAM、Rift、GIGAWorld-Policy 是训练-推理解耦或 KV 预填，没有教师被拟合。
+</li><li><strong>把&quot;用大模型造数据&quot;当成 KD</strong>：数据蒸馏里学生从没对齐过教师分布，教师只是标注器；这类方法的上限由<strong>数据覆盖度</strong>决定，不由教师容量决定。
+</li></ol>
+<hr>
+<p>更新时间: 2026-11-21</p>
+<footer>大模型 → VLA/WAM 蒸馏研究 · 2026-11 · 数字均标证据级别（L3 全文 / L2 部分 / L1 摘要）</footer>
+</main>
+</body>
+</html>

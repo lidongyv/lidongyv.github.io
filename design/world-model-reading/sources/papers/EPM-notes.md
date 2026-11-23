@@ -1,0 +1,314 @@
+# EPM 精读笔记
+
+> **数据源（唯一）**: `C:\Users\Admin\Desktop\design\auto_docs\papers\txt\EPM.txt`（73,301 字符，18 页，1472 行）。
+> 行号均指该 txt 文件行号。禁止联网、禁止外部知识补写。
+> **格式说明**: 所有事实性陈述附论文原句（英文逐字 + 行号）；论文未写的标「原文未写」；解读/引申一律标【推断】。
+> **txt 提取瑕疵**: 行内数学符号周围的空格在提取中丢失（如 "Memory Maze13×13"、"on9×9and"、"gain is7.00"），下标被展平（"m t−1" 即 m_{t−1}，"δt" 即 δ_t）。**引文按 txt 逐字保留**，公式另给规范化写法并注明。
+
+---
+
+## 1. 原文信息
+
+- **标题** (L1-2): "Perception into Imagination: Executable Memory for World Models"
+- **作者** (L3): "Xianyao Li, Ruitong Tian, Rui Min, Fang Xu, Jing Du"
+- **作者机构**: 原文未写。
+- **arXiv ID / 版本 / 分类 / 日期** (L86): "arXiv:2611.22294v1  [cs.LG]  17 Nov 2026"（v1，2026-11-17，cs.LG）
+- **发表状态**: 是否被会议/期刊接收——原文未写（全文无 venue 信息；仅 arXiv preprint v1）。
+- **页数**: 18 页（L1472 页标 "18"）。正文 Sec.1–7 + Appendix A–J。
+
+---
+
+## 2. Abstract 全文逐字（L4-27）
+
+> Physical agents must use what they previously saw or
+> touched after visibility or contact is lost. Their actions
+> change the implications of these remembered facts. We
+> introduce executable perceptual memory (EPM), a world-
+> model framework that advances explicit perceptual state
+> alongside neural latent dynamics during imagination. Its
+> evolving read-out informs reward prediction, value estima-
+> tion and policy learning. We align reward inputs with the
+> transitions that produced them and supervise the reward
+> head on open-loop rollouts of recorded actions. On Memory
+> Maze13×13, EPM reaches 30.37 return at 1M interactions,
+> compared with 23.37 when the same evolving read-out in-
+> forms only policy and value on a common perceptual front
+> end: a gain of 7.00 [3.80, 10.21]. The complete method
+> also improves control on9×9and in MiniWorld. Probes of
+> remembered, out-of-view arrivals show stronger reward an-
+> ticipation in both visual implementations. Concentration,
+> tactile recovery and real tactile frames demonstrate com-
+> plementary roles of remembered facts in imagined-policy
+> training, motion-dependent decisions and sensory-content
+> retention. EPM connects persistent perception to the pre-
+> dicted consequences and learning signals of a world model
+> for Physical AI.
+
+（原文行 14 处 "Memory Maze13×13"、行 19 处 "on9×9and" 为 txt 提取丢空格，逐字保留如上。）
+
+---
+
+## 3. 问题与动机（简）
+
+**问题**（L29-33）: "A robot can lose sight of a landmark when it turns, or lose tactile contact with an object when it withdraws. What it previously perceived remains useful, but the implications change with its actions: the landmark acquires a new bearing, and the remembered contact a new relative position."
+
+**总要求**（L34-36）: "For Physical AI, using perception therefore requires both preserving facts and reasoning about their consequences in possible futures."
+
+**落在 world model 上的缺口**（L37-44）: "World models provide a setting for this reasoning: they predict action consequences and train behaviors on imagined trajectories [17–19, 21, 23]. Recurrent states encode history, while spatial memories and maps maintain explicit structure [8, 29, 36]. A further question is how maintained facts enter the futures used for learning: their relations to the agent change along a rollout, and these changes must inform predicted rewards and values as well as actions."
+
+**核心创新一句话**（L45-53）: "We introduce executable perceptual memory (EPM). A perceptual writer maintains explicit state during real interaction. At an imagination anchor, a local state is initialized from that history and advanced using candidate actions and predicted motion. Its read-out complements the neural latent state in reward prediction, value estimation and policy learning (Fig. 1). A remembered fact can thus affect both the action under consideration and the return target used to learn that action."
+
+---
+
+## 4. 实现细节（重点）
+
+### 4.1 显式知觉状态如何在想象中随神经潜动力学推进
+
+**双重历史表示**（L199-206）: "Consider a partially observed process with observations o_t, actions a_t, rewards y_t and an optional goal g_t. We represent history by a neural state z_t and explicit perceptual state m_t. The latter stores quantities with defined persistence and update rules: landmark estimates, object-relative poses or observed card identities. At interaction time, their values are estimated from the agent's observation stream. Privileged simulator state is not supplied to the policy."
+
+**真实交互 = 传播 + 知觉写**（L207-212, Eq.(1)）:
+> mt = W(C(m t−1, δt), E(ot)),  u t = R(m t, gt).   (1)
+
+（规范化：m_t = W(C(m_{t−1}, δ_t), E(o_t)), u_t = R(m_t, g_t)）"Here E extracts sensory evidence, δ_t is measured motion, C carries the stored state, and W incorporates new evidence. The query R gives a task-relevant read-out u_t."
+
+**关键设计区分（事实世界系静止、读出动作系变化）**（L213-216）: "A landmark may remain fixed in world coordinates while its bearing changes with the agent's pose. This distinction lets the model preserve a fact while executing its consequences under movement."
+
+**联合想象 rollout（Eq.(2)）**（L218-225）:
+> At a real anchor t, the posterior initializes ˜z0, and a projection of history initializes local state ˜m0 = P(m t, gt). The policy acts on their joint read-out. Each imagined step advances both components:
+> ˜ah ∼ πψ(· | ˜zh, uh),
+> ˜zh+1 ∼ pθ(· | ˜zh, ˜ah),
+> bδh = Gθ(˜zh, ˜ah),
+> ˜mh+1 = F(˜mh, bδh, ˜ah),   u h+1 = R(˜mh+1, gt).   (2)
+
+（规范化：ã_h∼π_ψ(·|ž_h,u_h)；ž_{h+1}∼p_θ(·|ž_h,ã_h)；δ̂_h=G_θ(ž_h,ã_h)；m̃_{h+1}=F(m̃_h,δ̂_h,ã_h)；u_{h+1}=R(m̃_{h+1},g_t)）
+
+**两条路径的耦合方式**（L227-231）: "The neural model learns dynamics from experience; the executable update applies candidate actions to selected history. The paths interact through policy actions and predicted motion. The neural transition is conditioned on the latent state and action."
+
+**导航实例的具体执行结构**（L232-238）: "In navigation, P extracts the current target's relative geometry and age. Predicted translation and rotation advance this local relation; new observations and target switches are outside that short-rollout update. A shared motion head learns the subsequent odometry measurement from the pre-action neural feature and action with a squared-error objective. Motion predictions used by F are stopped-gradient."
+
+**局部运动学更新（App. A, Eq.(6)-(8), L897-907）**: 对局部位置 p_h、yaw ψ_h、目标向量 v，预测平移与旋转产生
+> ph+1 = p h + Rot(ψh) bdh,   (6)
+> ψh+1 = ψ h + bωh,   (7)
+> vrelh+1 = Rot(−ψh+1)(v − p h+1).   (8)
+
+（规范化：p_{h+1}=p_h+Rot(ψ_h)·δ̂d_h；ψ_{h+1}=ψ_h+δ̂ω_h；vrel_{h+1}=Rot(−ψ_{h+1})(v−p_{h+1})）"The known flag is retained, age advances, and bearing/distance are read from v_rel. The neural model continues to handle dynamics not represented by this local state. The motion head predicts displacement and yaw change from the pre-action latent feature and candidate action; its supervision is the subsequent measured motion." (L902-907)
+
+**感知实现与标定**（L290-300）: "A landmark detector and visual odometry maintain sparse target positions and agent pose. The read-out contains a known flag, sine/cosine bearing, log-distance and log-age. These perception networks are trained on separate calibration trajectories with simulator labels, then frozen; deployment uses images and actions. Memory Maze adds image-based heading correction, and MiniWorld models lateral motion. Every arm encodes and reconstructs the same memory observation and shares the same front end within an experiment."
+
+- 标定细节（App. A, L908-930）: "The detector, odometry and heading networks are fitted offline using simulator-derived labels on calibration trajectories, and frozen before policy training. At deployment they read images and actions."（Memory Maze 六色检测器用 pooled 9×9/11×11/13×13 标定数据、可见半角 0.75 rad；heading 网络从单帧 64×64 学 (cos 4θ, sin 4θ)，利用轴对齐墙；87,000 训练帧 / 15,000 验证帧、30 epochs、batch 256、Adam lr 1e-3 余弦衰减；odometry 后把 yaw 校正到最近 90° 分支。）"No heading correction is applied inside imagination, where no images are available." (L922-923) MiniWorld 用独立标定的检测器与三输出 odometry（forward/lateral/angular），无 heading correction。
+- 输入规模与参数量（App. A, L931-948）: "Memory Maze uses a 31-value memory observation: six target slots, eighteen detector-stream slots, five read-out slots and two motion slots. MiniWorld adds lateral motion, giving 32 values and a three-output motion head. Every arm encodes and reconstructs the complete observation; absent direct channels are zero-filled. Reward receives five additional slots, continuation retains neural input, and actor, critic, slow critic and replay value consume their assigned read-outs. The trainable runtime groups contain 12,222,441 parameters for Memory Maze and 12,223,211 for MiniWorld, identical across arms within an implementation and excluding fixed perception networks. The five reward-input slots account for 1,280 weights, present in every arm. Batches contain 16 sequences of length 64, the training ratio is 32, the imagination horizon is 15, and the return horizon is 333."
+- 存储开销（App. A, L949-956）: "The sparse visual state's serialized payload occupies 48 bytes. The neural recurrent state separately occupies 8,224 bytes (8,192 for deterministic float32 state and 32 stochastic indices), while visual odometry retains the previous 64×64×3 image, or 12,288 bytes."
+
+### 4.2 read-out 如何参与 reward / value / policy（Eq.(3)）
+
+（L245-253）: "The navigation method supplies [˜zh, uh] to both the reward head qω and actor–critic. Continuation cθ reads neural features alone:
+> ˆyh = qω(˜zh, uh),  ˆc h = cθ(˜zh),  ˆv h = vξ(˜zh, uh).   (3)
+
+（规范化：ŷ_h=q_ω(ž_h,u_h)；ĉ_h=c_θ(ž_h)；v̂_h=v_ξ(ž_h,u_h)）"Predicted rewards, continuation and bootstrapped values form the usual Dreamer returns. The explicit state therefore informs the learning target as well as the behavior being optimized. Policy, critic, slow critic and replay value computation all retain direct read-out access."
+
+### 4.3 奖励对齐：对齐「产生它的转移」（Eq.(4)）
+
+（L254-264）: "Reward y t+1 is produced by action a t. Its replay-side read-out must refer to that transition, before the new observation writes evidence or switches the target. We obtain it by advancing the preceding memory with measured motion:
+> ¯ut+1 = R(F(P(m t, gt), δt+1, at), gt).   (4)
+
+（规范化：ū_{t+1}=R(F(P(m_t,g_t),δ_{t+1},a_t),g_t)）"The posterior reward loss pairs (z t+1, ¯ut+1) with y t+1. At episode starts and at the first replay-sequence position, the additional slots are zeroed. In imagination, the head instead uses the read-out advanced with predicted motion along the imagined trajectory."
+
+要点：replay 侧用**实测运动** δ_{t+1} 推进前一步记忆得到 ū_{t+1}（而非用写入后的 m_{t+1}）；想象侧用**预测运动**推进。图 6 caption（L1029-1032）: "(a) Posterior reward training pairs each reward with the read-out advanced from the preceding memory, not with the state stored after the next write or target switch."
+
+### 4.4 开环记录动作 rollout 监督 reward head（Eq.(5)）
+
+（L265-278）: "From replay posterior anchors t∈S, we roll the prior along the recorded actions for H steps without further observations, and propagate the local memory in the same way. Let b t,h indicate that no episode reset has occurred between the anchor and step h. The added loss is
+> LOL = 1/|S| Σ_{t∈S} ( Σ^H_{h=1} b t,h ℓω(y t+h; sg[˜zh, uh]) ) / max(1, Σ^H_{h=1} b t,h).   (5)
+
+（规范化：L_OL = (1/|S|) Σ_{t∈S} Σ^H_{h=1} b_{t,h}·ℓ_ω(y_{t+h}; sg[ž_h,u_h]) / max(1, Σ^H_{h=1} b_{t,h})）"Here ℓω is the backbone reward-prediction loss. We use H = 15, anchors every four replay steps and weight 1. The stop-gradient boundary makes this term train only the reward head, leaving representation, dynamics and motion learning under their existing objectives. The posterior reward loss is retained; Appendix A illustrates both training paths."
+
+### 4.5 触觉 / 符号实验（Concentration / tactile recovery / real tactile frames）
+
+**框架定位**（L239-243）: "In the tactile instance, the carried quantity is object-relative pose; in Concentration, known identities constrain a simulator of the public rules. The framework specifies where executable structure enters, while each instance defines the structure it can propagate."
+
+**(a) Concentration（Sec. 6.1, 符号实例）**（L536-543）: "Concentration Hard [34] gives a discrete instance of the same question. A key–value memory stores observed card identities. During imagination, a simulator executes the public game rules while retaining those identities and sampling unknown cards. A matched control uses the same rules but resamples all identities. The policy is optimized entirely on imagined rollouts from public-observation prefixes, then deployed in the real game."
+结果（L576-584）: "Retaining remembered facts yields deployed returns of 0.475, 0.367 and 0.490 over three training seeds, compared with 0.147, 0.181 and 0.027 when all identities are resampled. Real-environment training gives 0.541, 0.520 and 0.542 (256 evaluation episodes per policy). The supplied rule simulator differs from the neural navigation model, but the comparison isolates a shared methodological point: the futures used for training should respect the facts already acquired by the agent."
+
+**(b) 触觉恢复（Sec. 6.2, Tactile Gym 2.0）**（L587-593）: "In Tactile Gym 2.0 [33], an estimator writes object-relative state from tactile observations while contact is available. Kinematic updates carry this state after contact is lost and advance it along candidate actions. On twelve previously unexposed worlds, explicit evolution reduces pre-contact prediction error by 0.51 mm [0.28, 0.73] and raises agreement with the best executed branch from 0.02 to 0.64."
+恢复决策（L594-609）: "We next test recovery choices after a retreat and sideways excursion. A chooser evaluates 128 fixed open-loop paths using an evolved state and a fitted outcome model, then hands over to a feedback law at re-contact. On 48 new worlds with varying excursion lengths, it achieves 34.80 mm of progress per recovery window, versus 24.33 mm for a state-free command selected by excursion side. The primary difference is 10.47 [8.65, 12.29] mm, positive on 46/48 worlds. It also exceeds a held-action reference by 10.32 [8.64, 12.00] mm and a command table indexed by side and excursion length by 6.04 [4.43, 7.66] mm (Fig. 4). A constant-start dead-reckoning reference reaches 35.46 mm; evolved minus this reference is −0.65 [−2.02, 0.71] mm and remains unresolved. The results support motion-carried state for candidate-path selection; this comparison does not isolate tactile initialization. Appendix I gives protocols, splits and additional comparisons."
+补充（App. I, Table 13, L1391-1403）: 分支评估 12 个 held-out 世界，每锚点 10 条固定 8 步分支；Evolving(object held after contact): pre-error 2.44 mm, post-error 4.36, Top-1 0.64, Regret 0.0070；Frozen state: 2.95 / 3.90 / 0.02 / 0.0658；Evolving−Frozen: pre-error −0.51[−0.73,−0.28] 10/12, Top-1 +0.62[+0.43,+0.79] 11/12, Regret −0.0588 12/12。（另「object follows tip」变体 post-error 更低但 Top-1 更差，L1289-1292。）固定偏移评估历史：evolved 12.2 mm vs held 6.1 mm vs feedback-law 4.8 mm（初始协议，+6.2[2.3,10.0] 8/12 未达 9/12 预设）；开发世界选定 forward-motion-conditioned write 后，12 新世界 27.3 vs 3.4 mm（vs held 23.8[21.4,26.3]）；随后 state-free command 达 18.8 mm（exploratory +8.5[4.8,12.7]），varying-excursion 协议从一开始就纳入更强 state-free 参照（L1293-1346）。模拟确定性：PyBullet 分支重复执行最大偏差 4.75 mm，通常 <0.4 mm（L1404-1406）。
+
+**(c) 真实触觉帧（Sec. 6.3, Real Tactile MNIST）**（L613-621）: "Real Tactile MNIST contains GelSight Mini images collected with a robot manipulator [41]. We encode contact frames and their positions into eight slots with 48 bytes of payload plus up to 9 bytes of validity and age metadata. A late query asks for digit identity or material at a held-out position. Evaluation uses 100 held-out objects; background subtraction uses a per-round offline background computed from all 256 touches."
+结果（L622-631）: "After 32 touches, the byte memory achieves mean identity accuracy 0.417, compared with 0.187 without history and 0.152 with proprioception and the shared image-derived write gate; individual-seed values appear in Fig. 5. Removing content bytes returns accuracy to chance, and larger payloads improve retention. A 128-dimensional, non-quantized GRU reference reaches 0.485. For material queries, the byte memory exceeds this control on two of three seeds, with the third unresolved. Compact memory thus retains useful real sensory content."
+编码细节（App. I, L1410-1427）: 数据集 600 printed objects × 256 touches，500/100 train/test split，50-round validation split；"Each slot stores two position bytes and four learned content bytes. A three-layer convolutional encoder with channels 16/32/64 and a 128-unit projection produces the code; normalized codes are quantized with a straight-through estimator and trained with the query heads. Writes merge within 4 mm, otherwise fill an empty slot or replace the oldest." proprioception 对照保留位置与同源写门但清零内容字节。"Consequently, 'after 32 touches' describes the query sequence length, not a strictly causal preprocessing pipeline." (L1417-1419)
+完整数值（Table 14, L1428-1441）: 身份查询 Q1：byte(B=48) T=8/16/32 → 0.290/0.354/0.417；128-dim GRU → 0.356/0.456/0.485；no history → 0.194/0.192/0.187；proprioception only → 0.142/0.152/0.152；B=16 → 0.271/0.292/0.305；B=128 → 0.311/0.389/0.452。材料查询 Q2：byte → 0.656/0.694/0.700；GRU → 0.700/0.719/0.710；no history → 0.667/0.671/0.659；proprioception → 0.636/0.673/0.683。
+合成预训练补充实验（App. J, Table 15, L1457-1471）: 预算 25 轮，synthetic pretraining − none = +2.06[0.70,3.43] 个百分点（17/20, 主对比）；synthetic − Taxim = +0.45[−0.74,1.64]（11/20）；Taxim − none = +1.61[0.01,3.22]（13/20）；预算 450：+1.35[−0.54,3.24]（12/20）。
+
+---
+
+## 5. 伪代码
+
+**规则检查**: 原文（1472 行全文）**没有 Algorithm 环境**——形式化仅以编号方程 (1)–(8) 与 Fig. 1 / Fig. 6 流程示意给出。故按下述规则重建：
+
+⚠ **依据原文重建（非原文伪代码）**。逐步标注原文行号；只使用原文出现的训练细节/超参（H=15、anchors every four replay steps、weight 1，L273；imagination horizon 15、return horizon 333、batch 16×64、training ratio 32，L946）。
+
+```
+Algorithm 1  EPM：可执行知觉记忆与世界模型（重建）
+输入: 观测流 o_t、动作 a_t、奖励 y_t、可选目标 g_t               [L199-200]
+输出: 在想象 rollout 上学得的策略（DreamerV3 实现）              [L55]
+
+真实交互（写器）:
+ 1  m_t = W(C(m_{t-1}, δ_t), E(o_t));  u_t = R(m_t, g_t)       [L207-212, Eq.(1)]
+    # E 提取感官证据；δ_t 实测运动；C 携行存量；W 并入新证据；
+    # 特权模拟器状态不喂给策略                                  [L205-206]
+
+想象锚点初始化:
+ 2  ž0 ← 后验状态;  m̃0 = P(m_t, g_t)                          [L218-219]
+
+想象 rollout（每步同时推进神经潜状态与显式局部状态）:
+ 3  for h = 0 .. H-1:                                          # H=15 [L273, L946]
+ 4      ã_h ~ πψ(· | žh, uh)                                  [L222]
+ 5      ž_{h+1} ~ pθ(· | žh, ã_h)                             [L223]
+ 6      δ̂_h = Gθ(žh, ã_h)                                     [L224]  # motion head
+ 7      m̃_{h+1} = F(m̃h, δ̂_h, ã_h);  u_{h+1} = R(m̃_{h+1}, g_t)  [L225]
+ 8      ŷ_h = qω(žh, uh);  ĉ_h = cθ(žh);  v̂_h = vξ(žh, uh)      [L245-248, Eq.(3)]
+    # 导航实例中 F 为 Eq.(6)-(8)（p/ψ/vrel 更新）；motion head 的预测
+    # 进入 F 前 stop-gradient                                     [L232-238, L899-907]
+    # continuation 只读神经特征；policy/critic/slow critic/replay value 均有直接读出 [L246-253]
+ 9  由 ŷ_h、ĉ_h、v̂_h 组成 Dreamer 式回报目标 → actor-critic 学习     [L249-253]
+
+奖励对齐（replay 侧，对齐"产生该奖励的转移"）:
+10  ū_{t+1} = R(F(P(m_t, g_t), δ_{t+1}, a_t), g_t)             [L254-259, Eq.(4)]
+11  posterior reward loss 将 (z_{t+1}, ū_{t+1}) 与 y_{t+1} 配对；episode 起始与
+    replay 序列首位的附加槽置零                                     [L260-262]
+    # 想象侧 reward head 改用预测运动推进的 read-out                  [L262-264]
+
+开环监督（只训 reward head）:
+12  从后验锚点 t∈S 沿记录动作 prior 前滚 H 步、无观测、同步推进局部记忆   [L265-268]
+13  L_OL = (1/|S|) Σ_t Σ_h b_{t,h}·ℓω(y_{t+h}; sg[žh, uh]) /
+           max(1, Σ_h b_{t,h})                                  [L269-271, Eq.(5)]
+    # b_{t,h}: 锚点与第 h 步之间无 episode reset；sg 阻断特征梯度，
+    # 该 loss 只更新 reward head（H=15, anchors every 4 replay steps, weight 1）[L268-276]
+14  posterior reward loss 保留（两路并存，见 Fig. 6）              [L276-277]
+```
+
+**原文训练细节汇总（只转述原文已有者）**: DreamerV3 12M-parameter 配置、16 环境、2M-transition replay（L305-307）；Memory Maze 1M 交互终点、9×9 十二个初始化标签 / 13×13 六个；MiniWorld 十二标签、2M 终点；评估 48 个公共 layout/target/spawn 身份；episode 预算 9×9 1000 动作、13×13 3000（L308-313）；每次评估 return 平均 48 身份（L969-970）；全策略从零训练（L306-307）。
+
+---
+
+## 6. 主结果数值表
+
+### 表 2 复刻（L402-417）
+
+| Arm | Memory Maze 9×9（1M, 12 labels） | Memory Maze 13×13（1M, 6 labels） | MiniWorld 9×9（2M, 12 labels） |
+|---|---|---|---|
+| Observation+OL | 17.32 | 14.18 | 20.74 |
+| Held+OL | 17.18 | – | 18.52 |
+| Held+R+OL | 12.08 | – | 3.37 |
+| Evolved | 19.12 | 23.37 | 18.09 |
+| Evolved+OL | 19.69 | 18.98 | 20.83 |
+| **EPM** | **25.20** | **30.37** | **21.83** |
+
+**配对差值 Δ（95% CI，n+）**（L410-417）:
+
+| 对比 | 9×9 | 13×13 | MiniWorld |
+|---|---|---|---|
+| EPM − Evolved | +6.08 [4.46,7.71] 12/12 | **+7.00 [3.80,10.21] 6/6** | +3.74 [2.51,4.97] 12/12 |
+| EPM − Evolved+OL | +5.51 [4.46,6.57] 12/12 | +11.39 [7.89,14.89] 6/6 | +1.00 [−0.04,2.03] 10/12 |
+| EPM − Observation+OL | +7.89 [6.17,9.60] 12/12 | +16.19 [12.67,19.72] 6/6 | +1.09 [0.02,2.17] 9/12 |
+| Evolved+OL − Evolved | +0.57 [−1.55,2.70] 7/12 | −4.39 [−8.16,−0.61] 0/6 | +2.74 [1.16,4.33] 11/12 |
+| Evolved+OL − Held+OL | +2.51 [1.36,3.66] 11/12 | – | +2.31 [1.10,3.52] 11/12 |
+| Held+R+OL − Held+OL | −5.10 [−6.34,−3.86] 0/12 | – | −15.15 [−17.95,−12.36] 0/12 |
+| Reward access × evolution | +10.61 [9.35,11.86] 12/12 | – | +16.15 [13.05,19.25] 12/12 |
+
+正文陈述（Sec. 5.1, L351-359）: "On the larger 13×13 task, EPM reaches 30.37 return at 1M interactions, compared with 23.37 for the policy/value-only interface (Evolved) on the same front end. The gain is 7.00 [3.80, 10.21], positive on all six initialization labels. Against observation-only memory access, the gain is 16.19 [12.67, 19.72]: the same perceptual information is more useful when it participates directly in imagined prediction and learning. The 9×9 experiment independently gives 6.08 [4.46, 7.71] over Evolved, positive on all twelve labels."
+MiniWorld（L361-367）: "The second visual implementation tests the learning design with different rendering and planar motion. In MiniWorld at 2M, EPM reaches 21.83 versus 18.09 for Evolved: +3.74 [2.51, 4.97], positive on all twelve labels. The complete method also exceeds observation-only access in each experiment."
+
+### 与 DreamerV3 / R2I 对比（表 3，L514-528）
+
+| Method | Interactions | Return（13×13） |
+|---|---|---|
+| Native DreamerV3 | 1M | 2.90 |
+| Native R2I | 3M | 6.74 |
+| R2I + front end | 3M | 6.08 |
+| R2I + front end + state | 3M | 9.36 |
+| Policy/value-only interface | 1M | 11.17 |
+| *With heading correction* | | |
+| Policy/value-only interface (Evolved) | 1M | 23.37 |
+| **EPM** | **1M** | **30.37** |
+
+正文（L500-513）: "It reaches 11.17 at 1M, versus 5.93 with memory accessed only through observation encoding: +5.24 [1.05, 9.43]. Appendix E gives all checkpoints. Table 3 separates this setting from the heading-corrected experiments. This direct-interface agent has higher mean return than native DreamerV3 at 1M (2.90) and native R2I at 3M (6.74). R2I with the front end and maintained state reaches 9.36 at 3M; the training-seed difference from 11.17 is unresolved. With the shared heading-corrected front end, Evolved reaches 23.37 and EPM 30.37."
+App. H（L1231-1271）: R2I returns at 1M/2M/3M = 0.778/3.326/6.743（无感知流）、0.951/4.312/6.076（有前端）、0.840/3.472/9.361（前端+维持状态）；"The six-label policy/value-only agent at 1M exceeds R2I with the front end at 3M by 5.09 [0.92, 9.27] under a training-seed Welch interval. Against the stronger state-equipped variant, the difference is 1.81 [−6.50, 10.12]. These cross-method comparisons are descriptive; the EPM component effects use the matched controls in Table 2."
+
+### 奖励预期探针（Sec. 5.3 + 表 8）
+
+9×9（L483-490）: "For Memory Maze 9×9, reward access raises remembered-arrival anticipation from 0.154 to 0.587. The paired increment is 0.434 [0.376, 0.491], positive on 12/12 labels. Visible anticipation also increases, from 0.482 to 0.679; the memory deficit decreases from 0.329 to 0.092, a paired reduction of 0.237 [0.211, 0.264]. The larger increase on remembered arrivals narrows the deficit beyond the overall rise in anticipation."
+MiniWorld（L491-498）: "In MiniWorld, remembered-arrival anticipation rises from 0.447 to 0.787: +0.341 [0.283, 0.398], again positive on 12/12 labels. Visible anticipation rises from 0.582 to 0.860, and the deficit falls by 0.063 [0.024, 0.102]. Across both visual implementations, the interface increases predicted reward at remembered arrivals and narrows the gap to visible arrivals, consistent with remembered facts reaching reward prediction."
+表 8 全部臂（L1233-1249）: 9×9 A_VIS / A_MEM∩RA / D：Obs+OL 0.351/0.055/0.295；Held+OL 0.390/0.063/0.328；Held+R+OL 0.439/0.146/0.293；Evolved 0.454/0.053/0.401；Evolved+OL 0.482/0.154/0.329；EPM 0.679/0.587/0.092。MiniWorld：0.461/0.265/0.196；0.423/0.222/0.201；0.454/0.290/0.164；0.556/0.277/0.279；0.582/0.447/0.136；EPM 0.860/0.787/0.073。
+探针定义（L337-347）: "Every arm is tested on common histories from EPM and Evolved+OL policies, with equal source-policy weight. We compare visible targets (VIS) with remembered, out-of-view targets whose arrival is anticipated by explicit state (MEM and RA). RA is evaluated per model, so the retained event subsets can differ. Net reward anticipation A subtracts predicted mass in non-arrival windows from mass around first arrivals, weighting eligible horizon bins equally. It is not an accuracy or probability. The memory deficit is D = A VIS − A MEM∩RA; Appendix C gives the full definitions."
+
+---
+
+## 7. 消融（全部）
+
+**六臂设计（表 1, L280-289）**: "Table 1. Navigation arms. All encode the same perceptual memory. Entries specify direct imagined read-outs. R = reward access; OL = open-loop reward loss. Reward access is tested with OL."
+- Observation+OL：直接读出无（仅观测编码）；OL=Yes
+- Held+OL：policy/value 用「保持不动」的读出；OL=Yes
+- Held+R+OL：policy/value + reward 都用 held 读出；OL=Yes
+- Evolved：policy/value 用演化读出；无 reward 直读、无 OL
+- Evolved+OL：同上 + OL
+- EPM：Evolved + reward 直读 + OL
+
+对比定义（L326-336）: "The full-method contrast is EPM minus Evolved; reward access is EPM minus Evolved+OL; OL alone is Evolved+OL minus Evolved. The held arms measure reward access under holding. Return differences use paired two-sided 95% t intervals over initialization labels, with positive-label counts and sign-flip sensitivity analyses in the appendix. Each task is inferred separately; secondary contrasts are not multiplicity-adjusted. Budgets and primary endpoints are fixed before evaluation."
+
+**(1) Reward access（奖励直读效应）**（L369-373）: "Under common open-loop training, EPM exceeds Evolved+OL by 5.51 [4.46, 6.57] on 9×9 and 11.39 [7.89, 14.89] on 13×13, positive on every label. In MiniWorld, this increment is 1.00 [−0.04, 2.03] at 2M and remains unresolved. Thus the complete method improves control across all three tasks, with the reward-access contribution established in both Memory Maze sizes."
+
+**(2) Action-dependent evolution（演化 vs 保持）**（L420-431）: "With common OL and no direct reward access, evolution improves return over holding by 2.51 [1.36, 3.66] on 9×9 and 2.31 [1.10, 3.52] in MiniWorld. Reward access under holding lowers return by 5.10 [3.86, 6.34] and 15.15 [12.36, 17.95], respectively; Held+R+OL reaches 3.37 in MiniWorld. Both reward-access arms use transition-aligned replay inputs; holding changes the rollout-side read-out. Access-by-evolution interactions are 10.61 and 16.15; the latter mainly reflects the held arm's degradation. These controls distinguish executing remembered relations from repeatedly supplying an unchanged read-out."
+
+**(3) Open-loop supervision（OL 单独效应）**（L432-437）: "Without direct reward access, OL gives +0.57 [−1.55, 2.70] on 9×9, −4.39 [−8.16, −0.61] on 13×13, and +2.74 [1.16, 4.33] in MiniWorld. The large 13×13 reward-access gain occurs where OL alone lowers return. Appendix B provides full contrast tables."
+
+**(4) Observation-only（观测编码 vs 直读）**: EPM − Observation+OL = +7.89 / +16.19 / +1.09（表 2）；Evolved − Obs+OL 9×9 1M +1.80[−0.38,3.98] 11/12（表 4, L1097）；MiniWorld 2M −2.65[−4.26,−1.04] 3/12（表 6, L1169）。
+
+**(5) 完整分检查点对比表**（表 4/5/6, L1083-1170）——原文完整复制：
+- 表 4（9×9, 0.25M/0.5M/1M, L1087-1098）: EPM−Evolved+OL +5.85/+5.90/+5.51；EPM−Obs+OL +8.81/+12.63/+7.89；EPM−Held+R+OL +8.20/+12.07/+13.12；Evolved+OL−Held+OL +1.99/+4.61/+2.51；Held+R+OL−Held+OL −0.36/−1.55/−5.10；Evolved+OL−Obs+OL +2.95/+6.73/+2.37；Held+OL−Obs+OL +0.96/+2.12/−0.14；Held+R+OL−Obs+OL +0.60/+0.56/−5.24；EPM−Evolved +3.52/+4.32/+6.08；Evolved+OL−Evolved −2.34/−1.58/+0.57；Evolved−Obs+OL +5.29/+8.31/+1.80；Reward access×evolution +6.21/+7.45/+10.61（p 值见原表）。
+- 表 5（13×13, 0.25M/0.5M/1M, L1103-1108）: EPM−Evolved+OL +1.76/+9.13/+11.39；EPM−Evolved +1.37/+0.83/+7.00；EPM−Obs+OL +3.71/+14.92/+16.19；Evolved+OL−Evolved −0.39/−8.30/−4.39；Evolved+OL−Obs+OL +1.95/+5.80/+4.81；Evolved−Obs+OL +2.34/+14.10/+9.19。
+- 表 6（MiniWorld, 1M/2M, L1159-1170）: EPM−Evolved+OL +2.18/+1.00；EPM−Obs+OL +4.30/+1.09；EPM−Held+R+OL +16.89/+18.46；Evolved+OL−Held+OL +3.90/+2.31；Held+R+OL−Held+OL −10.82/−15.15；Evolved+OL−Obs+OL +2.12/+0.09；Held+OL−Obs+OL −1.78/−2.22；Held+R+OL−Obs+OL −12.60/−17.37；EPM−Evolved +7.68/+3.74；Evolved+OL−Evolved +5.50/+2.74；Evolved−Obs+OL −3.38/−2.65；Reward access×evolution +13.00/+16.15。
+- 标签级端点均值（表 7, L1171-1210）: 已按原文收录（EPM 在 9×9 12 标签为 24.06–26.56；13×13 6 标签为 26.92–32.29；MiniWorld 12 标签为 19.52–23.60）。
+
+**(6) Masking 依赖分析（App. E, 表 9/10）**: policy/value-only 对比（无 heading correction）中，"Masking removes the target read-out from the observation vector and its direct path while retaining the remaining observation history and neural state."（L1134-1136）1M：Evolved−observation-only +5.24[+1.05,+9.43] 6/6（主对比, L1257）；dependence 差 Evolved−observation-only 1M +2.59[+0.52,+4.67] 6/6（L1304）；"Its dependence contrast against held remains unresolved by the t interval (Table 10)."（L1139-1140）
+
+**(7) Clock-only 控制（App. F, 表 12, L1141-1153）**: "A clock-only comparison, on the front end without heading correction, increments memory age during imagination while holding bearing and distance at the anchor. Table 12 reports evolved, held and clock-only arms at all three budgets on six initialization labels and 48 common evaluation mazes. At 1M, evolved geometry exceeds clock-only on all six labels. The evolved–held difference is positive on five labels, with a seed-level bootstrap interval crossing zero. Thus this comparison distinguishes spatial updates from merely advancing the clock, while the main six-arm experiments evaluate evolution under the reward-learning design."（表 12 各标签 E−C 1M: +5.27/+2.81/+11.81/+12.33/+8.83/+10.33。）
+
+**(8) 共享历史分支诊断（App. G, L1211-1220）**: "At 1M, median current-bearing errors are 0.325, 0.339 and 0.309 radians (evolved, held, observation-only). Explicit branch-ranking agreement is 0.534, 0.521 and 0.529, compared with 0.221, 0.174 and 0.251 for decoded read-outs; the tie reference is 0.170. The explicit state thus ranks branch consequences well above the decoded read-outs."
+
+**(9) 触觉分支状态更新消融（表 13, L1391-1403）**: Evolving(object held after contact) vs Frozen vs Evolving(object follows tip)——数值见 §4.5(b)；"Both pre-specified outcomes, pre-contact prediction and branch selection, favor the evolving state."（L1288-1290）
+
+**(10) 真实触觉记忆容量消融（表 14, L1439-1441）**: B=16/48/128 → 身份准确率 0.305/0.417/0.452（T=32）；"Removing content bytes returns accuracy to chance, and larger payloads improve retention."（L626-627）；proprioception-only 对照（清零内容字节）0.152。
+
+**(11) 合成预训练消融（App. J, 表 15）**: 见 §4.5(c) 末段。
+
+---
+
+## 8. 局限（逐字）
+
+**说明**: 论文**没有独立的 Limitations 节**。局限以 Sec. 7 展望句与「remains unresolved」型结论散落出现，逐字摘录如下：
+
+1. （Sec. 7, L664-671）"The component experiments identify where this connection matters. Action-dependent evolution improves on held read-outs, while open-loop supervision depends on the task and the information supplied to the reward head. The current local navigation state follows a remembered target during short rollouts. Extending it to anticipated observations, target changes and richer contact transitions is a natural direction for the framework."
+2. （Sec. 5.2, L372-373）"In MiniWorld, this increment is 1.00 [−0.04, 2.03] at 2M and remains unresolved."（reward access 效应在 MiniWorld 未决）
+3. （App. B, L1041-1045）"The pre-specified joint criterion, which requires EPM to exceed both Evolved+OL and Observation+OL with resolved intervals, is not met in MiniWorld because the first difference is unresolved; the difference from Observation+OL is 1.09 [0.02, 2.17]."
+4. （Sec. 6.2, L604-609）"A constant-start dead-reckoning reference reaches 35.46 mm; evolved minus this reference is −0.65 [−2.02, 0.71] mm and remains unresolved. The results support motion-carried state for candidate-path selection; this comparison does not isolate tactile initialization."
+5. （Sec. 6.3, L628-630）"For material queries, the byte memory exceeds this control on two of three seeds, with the third unresolved."
+6. 设计范围声明（Sec. 3.2, L233-234）"new observations and target switches are outside that short-rollout update"；以及（Sec. 6.1, L581-582）"The supplied rule simulator differs from the neural navigation model, but the comparison isolates a shared methodological point"（Concentration 用规则模拟器而非神经导航模型）。
+
+---
+
+## 9. 叙事关联【推断】
+
+> 本节为对「慢脑/快脑世界状态设计」叙事的引申解读，非论文原句；每条附论文锚点原文。
+
+1. **「事实存储」与「动作相对执行」可分离为慢/快两层**。锚点（L213-216）: "A landmark may remain fixed in world coordinates while its bearing changes with the agent's pose. This distinction lets the model preserve a fact while executing its consequences under movement." 且想象初始化只取「局部投影」而非整图（L218-219 的 P(m_t, g_t)；App. A L894-897 "It does not initialize an entire map rollout."）。【推断】慢脑负责持久事实库（世界系：landmark 位置、目标、接触状态），快脑每次候选动作只推进动作相对的局部投影（Eq.(2) 的 F，Eq.(6)-(8) 的平移/旋转/相对向量）——这正是「慢存快算」的接口位置，可为双脑状态分层提供参照架构。
+
+2. **学习信号必须绑定「转移时刻的事实快照」，否则时序错位会毒化训练**。锚点（L254-257）: "Reward y t+1 is produced by action a t. Its replay-side read-out must refer to that transition, before the new observation writes evidence or switches the target." 反证：held 读出配 reward 直读使回报恶化 −5.10 / −15.15（L423-425）。【推断】若快脑世界状态更新与慢脑事实写入在时序上错位（拿「写后」状态解释「写前」转移产生的奖励），reward/value 训练信号即被污染——双脑之间需要「转移对齐快照」接口（Eq.(4) 正是该接口的最小实现），这一点比 reward head 的输入拼接方式更本质。
+
+3. **触觉恢复实验的证据价值有明确边界**。它证明「运动推进的显式状态」在失触后能支撑 128 条开环候选路径择优（+10.47 mm vs 状态无关指令，L598-601），分支评估也支持演化状态（pre-contact error −0.51 mm、Top-1 0.02→0.64，L590-593）。但论文自陈（L607-609）"this comparison does not isolate tactile initialization"，且 vs 常起点航位推算 −0.65[−2.02,0.71] 未决（L605-607）。【推断】该实验可作为「快脑失接触期间姿态递推 + 候选路径评估」的证据，但**不能**作为「触觉写入优于纯本体感觉递推」的证据；要支撑慢脑触觉记忆价值，应引用分支评估（Table 13）而非恢复协议。
+
+4. **想象引擎必须以慢脑事实为约束，否则想象训练的策略部署失效**。锚点（L576-584）: 保留事实 0.475/0.367/0.490 vs 重采样 0.147/0.181/0.027 vs 真实训练 0.541/0.520/0.542；"the futures used for training should respect the facts already acquired by the agent."（L583-584）【推断】快脑想象 rollout 若不对慢脑事实库保持引用一致性（重采样即「遗忘」），学到的策略在真实世界失效——支持「世界状态作为想象约束层」的设计主张；同时 EPM 主结果显示「同信息、直读进入想象预测与学习」比仅观测编码高 +7.89/+16.19/+1.09（表 2），即**同一事实的接入方式（编码 vs 可执行直读）本身就决定其价值**，呼应「状态设计不只是存储问题，而是执行接口问题」。
+
+---
+
+*笔记完。所有引用为 EPM.txt 原文逐字（含 txt 提取丢空格瑕疵），行号为 txt 行号。*

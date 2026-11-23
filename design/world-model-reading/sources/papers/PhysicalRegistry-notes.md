@@ -1,0 +1,285 @@
+# Physical Registry 精读笔记
+
+- 来源文件：`C:\Users\Admin\Desktop\design\auto_docs\papers\txt\PhysicalRegistry.txt`（85,543 字符，36 页，1351 行）
+- arXiv ID：arXiv:2610.16365v1 [cs.AI] 12 Oct 2026
+- 引用格式：`（L行号）`；原文英文逐字引用保留 txt 提取原样（两栏 PDF 提取造成个别空格异常，如 `W AN`=WAN、`live?Standard`）；解读一律标注【推断】；论文未写处标注「原文未写」。
+
+---
+
+## 1 原文信息
+
+| 项目 | 内容 | 行号 |
+|---|---|---|
+| 标题 | "WORLD MODELS NEED A PHYSICAL REGISTRY: LEARNING INTERNAL PREDICTIVE STATES FOR PHYSICALLY PLAUSIBLE WORLD MODELS"（提取时粘连为 `WORLDMODELSNEED APHYSICALREGISTRY`，规范拼写为 World Models Need a Physical Registry: Learning Internal Predictive States for Physically Plausible World Models） | L2-4 |
+| 作者 | "Shinseong Kim1,2,* Jaeseok Jeong1 Jianlong Fu2 Youngjung Uh1,‡"；"∗First author. ‡Corresponding author." | L5-6, L47 |
+| 机构 | "1Yonsei University 2Microsoft Research Asia" | L7 |
+| 通讯邮箱 | "tltydl2@yonsei.ac.kr jete_jeong@yonsei.ac.kr jianf@microsoft.com yj.uh@yonsei.ac.kr" | L6 |
+| ID / 发表状态 | "arXiv:2610.16365v1 [cs.AI] 12 Oct 2026"；"Preprint" | L49, L1 |
+| 项目页 | "Project page: https://grainsack.github.io/physical-registry/." | L31-32 |
+
+会议/期刊接受信息：原文未写（仅标 Preprint）。AI 使用声明见 L506-518（撰写润色、检索、实验执行、草稿起草用过 GenAI，作者复核）。
+
+## 2 Abstract 全文逐字
+
+> ABSTRACT
+> Video world models must generate physically plausible futures, not just realistic
+> frames. Existing approaches typically use semantic, physical, or predictive in-
+> formation to guide the visual generation stream, leaving a fundamental question:
+> where inside the generator should predictions of scene evolution live?Standard
+> video tokens jointly encode appearance and dynamics, but provide no distinct state
+> for learning and reading predictive dynamics. We answer this question with the
+> Physical Registry: temporally grounded registry slots inside a video DiT that are
+> initialized from an observation-conditioned forecast, co-evolve with video tokens,
+> and receive future-representation supervision, making predictive dynamics an ex-
+> plicit, readable state of the generator. In a controlled comparison of predictive-state
+> interfaces on Physics-IQ Verified, Physical Registry improves vanilla fine-tuning
+> by 9.9/8.7 points on I2V/V2V , the largest gain among the interfaces we compare.
+> Across all Cosmos and W AN backbones, Physical Registry improves Physics-IQ
+> Verified scores. With only 0.45% additional parameters, it enables Cosmos 3 Nano
+> 16B to surpass the published I2V score of Cosmos 3 Super 64B (43.56 vs. 42.7).
+> On WorldModelBench, it also improves physical adherence and the total score
+> for all four evaluated backbones. Because the registry becomes candidate-specific
+> while remaining readable, thePhysical Registry Selector (PRS)ranks emerging fu-
+> tures by how far their intermediate registry readouts depart from the shared forecast
+> before full denoising is complete. Across four backbones, this selection improves
+> I2V scores by 5.6–15.9% without completed-video external scoring. Together,
+> these results support a broader principle:dynamics prediction should live as an
+> explicit model state that co-evolves with the video representation.Project page:
+> https://grainsack.github.io/physical-registry/.
+
+（L8-32 逐字；空格粘连如 `live?Standard`、`thePhysical`、`representation.Project` 为提取伪影）
+
+## 3 问题与动机（简）
+
+核心主张一句话：**预测动力学应作为生成器内显式、可读的状态，与视频表征共演化**。问题链条（全部逐字）：
+
+- 世界模型需要物理合理性："a generated video should contain not only high-quality visuals, but also physically plausible phenomena such as solid mechanics, fluid dynamics, optics, thermodynamics, and magnetism (Motamed et al., 2026). However, recent video models still often fail to follow them"（L36-38）
+- 两种现有路线的不足：
+  1. 外部物理信号（motion/force/control）："it depends on availability of the controls and corresponding supervision"（L41-42）
+  2. 表征对齐："supervision for aligning the intermediate features in the video models to pre-trained representations is readily available ... However, their appearance and dynamics can remain entangled (Bhowmik et al., 2026)."（L42-45）
+- 由此提出更基本的问题："This context motivates us to ask a more basic question: How and where can we internalize scene evolution using representation alignment?"（L45-46）
+- 立论："Standard video tokens jointly encode appearance and dynamics, but provide no distinct state for learning and reading predictive dynamics."（L12-14）
+- 核心答案："We answer this question with the Physical Registry: temporally grounded registry slots inside a video DiT that are initialized from an observation-conditioned forecast, co-evolve with video tokens, and receive future-representation supervision, making predictive dynamics an explicit, readable state of the generator."（L14-18）
+
+三大贡献（L69-73 逐字）：
+- "The Physical Registry conveys future dynamics from the initial frames in a video generator."
+- "The Physical Registry provides an internal selection signal across different initial noises before fully generating videos."
+- "The Physical Registry outperforms other interfaces for predictive representations."
+
+## 4 实现细节（重点）
+
+### 4.1 Registry slots：定义 / 数量 / 初始化（observation-conditioned forecast）
+
+- **定义**："Physical Registry represents the forecast in a fixed set of dedicated registry slots that carry predictive features alongside the video latent rather than within it."（L163-164）
+- **JEPA 来源**："We use the frozen JEPA encoder E and predictor P. The encoder receives a full video and produces JEPA features for individual frames. The predictor receives the JEPA feature of the first frame and produces future representations in the shared representation space (Bardes et al., 2024; Assran et al., 2025)."（L165-168）
+- **forecast 构造**（Eq. 3，L170-171）：
+  > Henc = E(x),
+  > Jcond = [Henc; P(Henc; ncontext = 1)] ∈ J^{Tr}.
+- **数量**："We define Jcond to be the forecast, with Tr = 8: one encoder-derived feature for the observed context and seven predictor-generated features for the subsequent future temporal positions. The forecast occupies Tr positions, called registry slots, placed after the video tokens. Each slot is a spatial grid of registry tokens which are the units for attention, whereas slots correspond to frames."（L172-175）
+- **具体配置**："The frozen JEPA encoder is V-JEPA 2.1 (Mur-Labadia et al., 2026) ViT-g at 384 px, loaded from the pretrained target-encoder branch. The registry uses eight slots, one context feature and seven predictor rollout steps, each with 196 spatial tokens of 5,632 channels."（L739-741）
+- **初始化与拼接**（Eq. 4，L176-181）：
+  > "A learned spatio-temporal adapter Gϕ (Appendix A) maps the forecast into the video latent's shape and coordinates. At each denoising step t, the same forecast initializes the registry, which is concatenated with the noisy video latent along the temporal dimension:
+  > R(0)t = Gϕ(Jcond) ∈ R^{B×C×Tr×H×W}, Z(0)t = [Xt; R(0)t] ∈ R^{B×C×(Tv+Tr)×H×W}."
+  - 注意："At each denoising step t, the same forecast initializes the registry"——每个去噪步都从同一 forecast 重新初始化（L177-178）。
+- **RoPE 时间对齐**（Eq. 5，L182-186）："To place the registry on the same temporal axis as the video, each registry slot is assigned the RoPE coordinate of its corresponding video time. Let us ∈ [0,1) denote the normalized clip time of registry slots, and let ρv map normalized time to the corresponding video-latent RoPE coordinate. We use τreg^s = ρv(us), s ∈ {1, . . . , Tr}, with us = (s−1)/Tr for uniformly spaced registry slots."
+  - 实例（Cosmos v2.5 2B）："Registry slot i receives the video-latent RoPE coordinate 3i"（L774-775）
+- **适配器 Gϕ 结构**："The adapter Gϕ of Equation (4) combines established video-modeling components: local spatio-temporal convolutions (Tran et al., 2015) and per-position temporal attention, a factorization used in video diffusion architectures (Ho et al., 2022). The convolutions mix neighboring locations and adjacent forecast features. Temporal attention then integrates the slot sequence at each spatial position. Spatial resizing and channel projection match the backbone's latent geometry while retaining the forecast's temporal indexing."（L755-761）；"The adapter is initialized randomly and trained jointly with the backbone."（L769-770）
+  - Figure 6 形状（Cosmos v2.5 2B，L783-817 图内文字）：输入 Jcond (B,8,196,5632) → Conv3D 3→3 5632→96 → Trilinear resize 14×14→88×160（仅空间轴，T 固定）→ Residual 2×(GN32–SiLU–3 3)（一对外一个 skip）→ (B,96,8,88,160) → Temporal Transformer ×8（d=96, 8 heads, FFN 384, post-norm, ReLU, dropout 0.1，8 个 slot 为序列，每个空间位置独立应用）→ Conv3D 1→3 96→16 → R(0)t (B,16,8,88,160) → Tokenizer 归一化（"normalized with the tokenizer's own per-frame statistics for the registry slots"，L771-773）→ 时间维拼接 "Tv+Tr = 24+8 = 32 latent frames"（L773-774）；"With 2×2 spatial patchification, each registry slot contains 44×80 tokens, giving 8×44×80 = 28,160 registry tokens in this configuration."（L775-777）
+
+### 4.2 与视频 token 共演化机制
+
+- "After patchification, video and registry tokens remain distinct but are jointly processed by the same bidirectional self-attention blocks."（L187-188）
+- "Video and registry tokens share dense self-attention, while text remains a separate cross-attention condition."（L743-744）
+- 候选特异性的来源："Although the registry is initialized from the same observation-conditioned forecast at each denoising step, interaction with the evolving video tokens makes its hidden state candidate-specific as it propagates through the DiT."（L188-190）
+- 设计意图（Intro）："As a whole, the registries and video tokens are designed to co-evolve through the transformer blocks such that the registries can estimate the original representations from the predicted representations."（L61-63）
+
+### 4.3 Future-representation 监督目标
+
+- **目标定义**："We supervise the registry toward representations of the realized future. Conditioning and target features play complementary roles: Jcond is an observation-conditioned forecast that initializes R(0)t, while Ztgt is the target encoding of the corresponding full training video v: Ztgt = Etgt(v) = (Ztgt1, . . . , ZtgtTr), Ztgts ∈ J."（Eq. 6，L192-195）
+- **目标实现**："Full-video JEPA features provide the alignment targets, mean-pooled over the 196 spatial tokens."（L742）
+- **监督位置**："We apply the supervision at an intermediate DiT block so that the registry is shaped toward the realized future and can subsequently interact with the video states throughout the remaining DiT blocks."（L199-200）；"Following prior representation-alignment work (Yu et al., 2025; Zhang et al., 2025), we supervise an early-to-middle generation block."（L747-748）
+  - 各 backbone 监督块索引（L750-754）：Cosmos 3 Nano 16B（36 块→第 10 块）；Cosmos v2.5 2B（28→14）；WAN 2.2 I2V-A14B（40→11，"the block count and alignment index apply to each noise expert"）；WAN 2.2 TI2V-5B（30→15）
+- **读头与损失**（Eq. 7-8，L201-209）：
+  > "Let Hreg,t,s denote the hidden state of registry slot s at the supervised layer and denoising step t. A readout qψ maps each registry state to a slot-level vector in the JEPA feature space: Ẑt,s = qψ(Hreg,t,s). Writing Ztgt^s for the corresponding slot-level target, we optimize
+  > Lalign = −(1/Tr) Σs cos(Ẑt,s, Ztgt^s).
+  > Appendix A specifies the readout and target construction. After training, the same readout qψ is frozen and reused for selection in Sec. 3.5."
+- **读头结构**："For training, qψ uses a three-layer MLP with output widths 2048, 2048, and 5632, and SILU activations (19.9M parameters). It maps the spatially averaged registry hidden state to the encoder feature dimension."（L820-822）；"The slot-level target Ztgt^s and reference Jcond^s are spatial means of the frozen encoder's target grid and the unprojected shared-forecast grid, respectively."（L823-825）；"The alignment loss trains a single readout, which the selection policy reuses frozen. No additional module is trained for selection."（L829-830）
+- **总训练目标**（Eq. 9-10，L211-220）：
+  > "Given the augmented sequence Z(0)t = [Xt; R(0)t], the DiT jointly processes the video and registry tokens. We denote by VXθ(Z(0)t, t, ctxt) the velocity prediction from the video tokens. The flow-matching objective is
+  > LFM = E_{X0,ϵ,t}[||VXθ(Z(0)t, t, ctxt) − V⋆||₂²].
+  > Both terms optimize the shared DiT:
+  > L = LFM + λalign Lalign.
+  > The video tokens receive the generation objective and the registry slots receive predictive supervision through the same DiT blocks, so the registry carries future-referenced information while the backbone continues to learn generation."
+- **λalign**："We use λalign = 0.5 in Equation (10), following the default REPA projection-loss weight (Yu et al., 2025)."（L745-746）
+
+### 4.4 PRS 选择器（中间 registry readout 偏离度排序、完全去噪前）
+
+- **动机**："Through joint interaction with the video tokens and predictive supervision, the Physical Registry becomes a readable internal state that reflects the future dynamics represented by each generation trajectory. This makes it possible to compare candidate trajectories before generation is complete using the registry states themselves."（L222-225）
+- **定位（对比外部打分）**："PRS instead ranks candidates from the generator's own intermediate registry states, without an external reward model or verifier."（L96-98）；"It works in the middle of denoising processes instead of completely generated videos (Yuan et al., 2026; Intern`o et al., 2026)."（L67-68）
+- **机制**："For a fixed observation, all candidates start from the same observation-conditioned forecast, but their registry states become candidate-specific as they interact with different video trajectories during denoising. We therefore interpret the departure of each registry from the shared forecast as the trajectory-specific update to the predicted future. The Physical Registry Selector (PRS) ranks candidates by this departure and continues denoising only the selected trajectory for the remaining steps."（L228-232）；"After K denoising steps, PRS compares each candidate's registry readouts with Jcond, selects the trajectory whose registry reflects the largest candidate-specific update to the shared forecast, and continues denoising it from its current latent for the remaining D−K steps, where D is the total number of denoising steps (Figure 2)."（L234-240）
+- **评分公式**（Eq. 11，L292-315 逐字）：
+  > "The readout qψ maps the registry hidden state H(n)k,s into the JEPA feature space. The forecast-departure score for candidate n, accumulated over K denoising steps and a registry subset S, is
+  > r(n) = 1 − 1/(K|S|) Σ_{k=1}^{K} Σ_{s∈S} cos(qψ(H(n)k,s), Jcond^s),
+  > b̂ = arg max_{n∈{1,...,N}} r(n).
+  > The score measures angular departure from the shared forecast and is invariant to positive rescaling of the registry readouts. Appendix F.2 empirically supports this ranking direction and its robustness."
+- **协议细节**（F.1）："Each cosine is evaluated before slot–step averaging. Prefix selection follows the PRS settings in Table 12. The registry subset S is the contiguous range of registry slot positions with the largest departure from the shared forecast. Nano† averages over the latest min(K,10) evaluations."（L1098-1102）；成本："With N candidates and a full trajectory of D steps, continuing one candidate after K prefix steps gives a serial denoising budget of NK + (D−K) candidate-steps, compared with ND for completing all candidates."（L1104-1106）
+- **排序方向验证**（F.2）："The terminal readout has a higher mean cosine similarity to the generated-video reference than the shared forecast (0.974 versus 0.764)."（L1156-1157）；"PRS outperforms both the reversed ranking (Inverse) and uniform selection (Random) in every configuration (Figure 10(c)), supporting the direction in Equation (11)."（L1166-1167）；"Within inputs, departure is also positively rank-correlated with Verified quality (e.g., Spearman 0.297 [0.209,0.383] for Cosmos v2.5 I2V at pool size four)."（L1171-1172）
+
+## 5 伪代码
+
+原文无 Algorithm 环境（全文 1351 行无 "Algorithm" 环境标记），以下两段为**依据正文逐字重建**，每步附行号。
+
+### 5.1 训练（⚠ 依据原文重建（非原文伪代码））
+
+```
+输入：训练视频 v（干净 latent X0）、条件 c（文本 + 观测帧 x）、冻结 JEPA 编码器 E / 目标编码器 Etgt / 预测器 P、适配器 Gϕ、读头 qψ
+ 1. 采样 ϵ ~ N(0,I)，t ~ U(0,1)                                          (L153)
+ 2. Xt ← (1−t)X0 + tϵ；V⋆ ← ϵ − X0                                        (L155, Eq.1)
+ 3. Henc ← E(x)；Jcond ← [Henc; P(Henc; ncontext=1)] ∈ J^{Tr}            (L170-171, Eq.3)
+    （Tr=8：1 个编码器上下文特征 + 7 个预测器 rollout 特征）                 (L172-173, L740-741)
+ 4. R(0)t ← Gϕ(Jcond)；Z(0)t ← [Xt; R(0)t]                               (L181, Eq.4)
+    registry slot s 赋 RoPE 坐标 τreg^s = ρv(us)，us=(s−1)/Tr              (L182-186, Eq.5)
+ 5. Ztgt ← Etgt(v) = (Ztgt1,…,Ztgt^{Tr})，各 slot 目标 = 196 空间 token 均值  (L194-195, Eq.6; L742)
+ 6. Z(0)t 过共享 DiT 双向自注意力块；视频与 registry token 保持 distinct      (L187-188, L743-744)
+ 7. 在中间监督块（块索引：Nano 36→10；v2.5 28→14；WAN14B 40→11；WAN5B 30→15）(L747-754)
+    读头输出 Ẑt,s ← qψ(Hreg,t,s)                                          (L201-203, Eq.7)
+ 8. Lalign ← −(1/Tr) Σs cos(Ẑt,s, Ztgt^s)                                 (L207, Eq.8)
+ 9. LFM ← E_{X0,ϵ,t}[ ||VXθ(Z(0)t, t, ctxt) − V⋆||₂² ]                    (L214-216, Eq.9)
+10. L ← LFM + λalign·Lalign（λalign = 0.5）                                (L217, Eq.10; L745-746)
+11. 用 L 更新共享 DiT 与 Gϕ、qψ（Gϕ 随机初始化、与 backbone 联合训练；       (L218-219, L769-770,
+    qψ 由 alignment loss 训练；选择阶段复用同一 qψ 且冻结）                    L829-830)
+```
+注：优化器/学习率/批大小不属伪代码步骤，原文在 Table 6（L854-865），未纳入本段（不发明）。
+
+### 5.2 推理 / PRS（⚠ 依据原文重建（非原文伪代码））
+
+```
+输入：观测帧 x、条件 c、候选数 N、总去噪步 D、前缀步数 K、registry 子集 S、冻结 qψ
+ 1. Henc ← E(x)；Jcond ← [Henc; P(Henc; ncontext=1)]   // 所有候选共享的 forecast
+                                                         (L170-171, Eq.3; L233-234)
+ 2. for n = 1…N:   // 候选来自不同初始噪声                      (L66-67)
+ 3.   for k = 1…K:
+ 4.     R(0) ← Gϕ(Jcond)   // 每个去噪步 t 用同一 forecast 重新初始化 registry
+                                                         (L177-178)
+ 5.     去噪一步；收集监督层 registry 隐状态 H(n)k,s          (L234-236, L292)
+ 6.   for k∈1..K, s∈S: a(n)k,s ← cos(qψ(H(n)k,s), Jcond^s)    (Eq.11, L294-309)
+ 7.   r(n) ← 1 − (1/(K|S|)) Σk Σs∈S a(n)k,s                  (Eq.11, L293-296)
+ 8. b̂ ← arg max_{n∈{1..N}} r(n)                             (Eq.11, L310-312)
+ 9. 从中选候选 b̂ 的当前 latent X(n)K 继续去噪剩余 D−K 步        (L238-240)
+10. 解码选中视频（单次 decode）                               (L1208-1209)
+```
+补充（原文，非伪代码步骤）：S 取 "the contiguous range of registry slot positions with the largest departure from the shared forecast"（L1100-1101）；Nano† 平均 "the latest min(K,10) evaluations"（L1101-1102）。各 backbone 的 K 值：原文仅对 Cosmos v2.5 写明 "PRS selects after 10 of 35 denoising steps"（L447），其余 backbone 的 K 具体值「原文未写」（F.4 称 K=10 为 "an illustrative prefix length"，L1199-1200）。
+
+## 6 主结果数值表
+
+### 6.1 受控接口对比（Table 1，L346-356）
+
+设定："Each variant is adapted on the 66 center-view Physics-IQ videos and evaluated on the 132 held-out left and right views using Physics-IQ Verified, with the same pretrained backbone, training budget, and frozen JEPA source."（L342-344）"std over three generation seeds and ∆ relative to vanilla fine-tuning. Registry only sets λalign = 0 in Eq. (10)."（L347-348）
+
+| Variant | I2V | Δ | V2V | Δ |
+|---|---|---|---|---|
+| Vanilla fine-tuning | 41.3±2.1 | – | 46.4±1.0 | – |
+| REPA | 41.8±1.7 | +0.5 | 46.9±0.9 | +0.5 |
+| Cross-attention | 43.1±1.9 | +1.8 | 49.2±1.2 | +2.8 |
+| AdaLN | 45.1±0.8 | +3.8 | 48.3±0.5 | +1.9 |
+| Joint generation | 45.1±1.8 | +3.8 | 48.0±0.4 | +1.6 |
+| Registry only（λalign=0） | 45.0±1.3 | +3.7 | 50.3±0.9 | +3.9 |
+| **Physical Registry** | **51.2±1.5** | **+9.9** | **55.1±1.1** | **+8.7** |
+
+结论（L357-364 逐字）："Dedicated predictive states benefit most from predictive supervision. Table 1 shows that a dedicated registry state is already beneficial without predictive supervision: Registry only improves vanilla fine-tuning by +3.7/+3.9 on I2V/V2V. In contrast, applying representation alignment directly to the video stream with REPA yields only +0.5/+0.5. Adding predictive supervision to the registry further raises the scores to 51.2/55.1, the best among the compared interfaces."
+
+### 6.2 Physics-IQ Verified（Table 2，L382-406，主干数字）
+
+- Cosmos 3 Nano 16B + PR：36.01（+5.83）/ 45.12（+6.34）；PRS 40.27 / 46.78（L388）
+- Cosmos 3 Nano 16B† + PR（expanded prompt）：**43.56**（+6.26）/ 49.54（+3.09）；PRS 45.81 / 52.06（L390）
+- Cosmos 3 Super 64B† 参考：42.7 / 48.02（L397）
+- Cosmos v2.5 2B + PR：33.71（+3.06）/ 42.33（+4.93）；PRS 39.08 / 47.67（L392）
+- WAN 2.2 I2V-A14B + PR：38.44（+6.24）；PRS 40.58（L394）
+- WAN 2.2 TI2V-5B + PR：29.24（+1.54）；PRS 32.03（L396）
+
+关键原文："it raises Cosmos 3 Nano 16B from 37.3/46.45 to 43.56/49.54 on I2V/V2V, surpassing the Cosmos 3 Super 64B reference (42.7/48.02) with only 0.45% additional parameters (Table 6)."（L368-369）；参数增量："Cosmos 3 Nano 16B | 16B | 72.63M" registry modules（Table 6，L856-857）。
+
+### 6.3 WorldModelBench（Table 3，L416-434）
+
+| Model | IF (0–3) | PA (0–5) | CS (0–2) | Total (0–10) |
+|---|---|---|---|---|
+| Cosmos 3 Nano 16B → +PR | 2.20 → 2.20 (–) | 4.50 → 4.82 (+0.32) | 1.43 → 1.81 (+0.38) | 8.13 → 8.83 (+0.69) |
+| Cosmos v2.5 2B → +PR | 2.14 → 2.07 (−0.07) | 4.43 → 4.54 (+0.11) | 1.55 → 1.58 (+0.03) | 8.12 → 8.19 (+0.07) |
+| WAN I2V-A14B → +PR | 2.23 → 2.30 (+0.07) | 4.45 → 4.53 (+0.07) | 1.60 → 1.60 (+0.004) | 8.28 → 8.43 (+0.15) |
+| WAN TI2V-5B → +PR | 2.33 → 2.24 (−0.09) | 4.35 → 4.50 (+0.14) | 1.57 → 1.68 (+0.11) | 8.24 → 8.41 (+0.17) |
+
+结论："Physical Registry improves physical adherence and the total score across all four backbones. Common sense is maintained or improved, while instruction following decreases on Cosmos v2.5 and WAN TI2V-5B"（L374-377）
+
+### 6.4 PRS（Sec. 4.4 与 Table 12）
+
+- "PRS improves I2V over Plain by 5.6%–15.9% across the four default backbone configurations, using only intermediate registry readouts without completed-video external scoring."（L445-446）
+- "On Cosmos v2.5, PRS selects after 10 of 35 denoising steps and reaches 38.36/46.68 on I2V/V2V, slightly exceeding WMReward's 37.74/46.59. Continuing only the selected trajectory requires 125 candidate-steps instead of 350, reducing the serial denoising budget by 64%."（L447-449）
+- ⚠ 数值不一致备注：Table 12（PRS 设定）中 Cosmos v2.5 + PR 为 **39.08/47.67**（L1125, L1136），与主文 4.4 的 38.36/46.68（K=10 前缀）不同；F.1 称 "Prefix selection follows the PRS settings in Table 12"（L1099-1100）。两者设定差异原文未解释，均照录。
+- F.3："Cosmos v2.5 first exceeds WMReward after 8/10 steps on I2V/V2V. At ten steps, Cosmos v2.5 selection already slightly exceeds completed-video WMReward on both tasks. It agrees with the full-schedule PRS decision on 72.7%/56.1% of I2V/V2V inputs"（L1186-1189）
+- 端到端成本（F.4, Table 13）：wall-clock speedup 2.84×–4.06×（L1201-1205）；例如 Cosmos v2.5：Complete BoN+WMReward 350 candidate-steps/10 decodes/4,031 s vs PRS(K=10) 125/1/1,420 s，2.84×（L1212-1213）
+
+### 6.5 附带基准
+
+- EWMBench（Table 11，L1079-1081）：Scene Consist. 0.855→0.895 (+0.040)、HSD 0.328→0.351 (+0.023)、NDTW 0.305→0.378 (+0.073)、DYN 0.383→0.459 (+0.076)、Semantics ≤+0.013、Diversity 0.029→0.018 (−0.011)。"The largest gains are in trajectory agreement, where NDTW rises by 0.073 and DYN by 0.076."（L1092-1093）
+
+## 7 消融（与其他 predictive-state 接口对比）
+
+### 7.1 接口对比（即 Table 1，见 6.1）
+
+原文机制列（L346-349）："Table 1 compares conditioning and modulation, video-stream alignment, joint generation, and dedicated registry states (Appendix A)." 各接口定义（A.3, L962-966）："REPA aligns ordinary denoising hidden states to JEPA features; joint generation adapts ReDi (Kouzelis et al., 2025) to denoise video and future JEPA tokens in one sequence; Registry only keeps the forecast-initialized registry but removes its alignment loss."
+
+### 7.2 Forecast 内容 vs 扰动（Table 4(a)，L464-475）
+
+| Registry content | Nano 16B I2V | Nano 16B V2V | WAN A14B I2V |
+|---|---|---|---|
+| Physical Registry | 36.01±0.95 | 45.12±0.94 | 38.44±1.06 |
+| Zero mask | 16.78±0.01 | 24.15±0.32 | 35.88±0.22 |
+| Perturbed mask（σ=0.5） | 35.84±0.11 | 44.35±0.75 | 36.40±0.39 |
+
+结论："In Table 4(a), removing the projected forecast drops Nano from 36.01 to 16.78 on I2V, whereas moderate Gaussian perturbation (σ = 0.5) has only a small effect; WAN 14B shows the same trend. The registry therefore depends strongly on the forecast content while remaining robust to moderate perturbation."（L456-459）
+
+### 7.3 容量 / 初始化 / 监督解耦（Table 4(b)，L476-482）
+
+| Variant | I2V | Δ | V2V | Δ |
+|---|---|---|---|---|
+| Vanilla fine-tuning | 41.3±2.1 | – | 46.4±1.0 | – |
+| ViT Needs Registers（可学习 register） | 39.0±1.1 | −2.3 | 44.6±0.9 | −1.8 |
+| Joint generation | 45.1±1.8 | +3.8 | 48.0±0.4 | +1.6 |
+| Registry only | 45.0±1.3 | +3.7 | 50.3±0.9 | +3.9 |
+| Physical Registry | 51.2±1.5 | +9.9 | 55.1±1.1 | +8.7 |
+
+结论："In Table 4(b), input-independent learnable registers underperform vanilla fine-tuning, while forecast initialization improves over them and predictive supervision improves further. The gains therefore do not come from additional registry capacity alone: forecast content in the registry helps, and predictive supervision further strengthens its role in representing future dynamics."（L487-491）
+
+### 7.4 与微调本身的解耦（Appendix B，WAN TI2V-5B 匹配预算控制）
+
+"Vanilla fine-tuning on the Enlarge dataset uses the same data, schedule, and optimizer as Physical Registry, differing only in the absence of registry tokens and predictive alignment."（L990-991）；"The vanilla fine-tuning stays within 1.3 points of the pretrained score throughout and ends at +0.15 after 8,000 iterations. Physical Registry exceeds vanilla at all eight evaluation points. Even our smallest gain (+1.98) exceeds vanilla's largest (+1.25)."（L994-996）
+
+### 7.5 因果探针：运动迁移（Appendix G）
+
+"replacing the forecast with JEPA features from a source video shifts the generated motion toward that source while keeping the initial frame, prompt, and noise fixed."（L459-461）；"the maximum upward return drops from 80.1 to 3.6 pixels (Table 14)"（L1257-1258）；"Changing only the registry content changes the generated motion, indicating that the generator uses the registry's predicted dynamics when producing motion."（L1275-1276）
+
+### 7.6 机制诊断（Sec. 4.6 / App. H）
+
+"While these attention maps broadly follow the balloon and its interaction region, attention to the aligned registry slots and registry activation concentrate near the expanding boundary, where the dominant physical change occurs. This suggests that the registry provides a more localized representation of regions where the intended scene dynamics unfold."（L494-497）；层分析："Layers 7, 21, and 27 retain broad scene-level activation, while the alignment-supervised layer 14 exhibits a response around the balloon and expanding contour. At this layer, foreground enrichment is 1.13× and change-region enrichment is 1.05×."（L1289-1292）
+
+## 8 局限
+
+**原文未写**：全文没有独立的 Limitations 小节；"5 DISCUSSION AND CONCLUSION" 仅一段正面总结（L498-503）。以下为正文中可检索到的全部代价性/负面事实（逐字，是否构成局限为【推断】）：
+
+1. 采样成本（【推断】可视为局限）："The registry increases per-step cost to 1.67× on Cosmos v2.5 2B and 1.55× on Cosmos 3 Nano 16B."（L882-883）；Table 8：Cosmos v2.5 每 sampler 步 6.514 s→10.909 s，峰值 6.20→7.00 GiB；Nano 1.384→2.148 s，11.44→11.94 GiB（L888-892）
+2. 指令跟随下降："instruction following decreases on Cosmos v2.5 and WAN TI2V-5B"（L376-377；数值见 Table 3：−0.07 / −0.09，L430, L434）
+3. WAN 无 V2V："Since WAN does not provide a V2V setting, we evaluate it on I2V only."（L331-332）
+4. 输出多样性下降（EWMBench）："Diversity, the spread across the three seeds, decreases from 0.029 to 0.018."（L1094-1095）
+5. EWMBench 域适配未做："EnerVerse-FT and LTX-FT are adapted to the benchmark's robot domain; our models are not."（L1090-1091）
+6. 训练数据排除评测集："The Enlarge dataset excludes Physics-IQ videos."（L837）——（这是防泄漏设计，非局限；仅作事实记录）
+7. 无任何失败案例（failure cases）讨论：原文未写。
+
+## 9 叙事关联【推断】
+
+1. 【推断】接口层级论点：论文的核心命题是「问题不在用什么预测特征，而在预测状态放在哪里」——"dynamics prediction should live as an explicit model state that co-evolves with the video representation"（L30-31）。证据：同一 JEPA 特征，直接对齐到视频流（REPA +0.5/+0.5）远不如放进专用 registry（+9.9/+8.7）（L351, L356）。可作「世界模型需显式动力学状态」叙事的直接论据。
+2. 【推断】JEPA 谱系：方法建立在 V-JEPA 2.1（L739）的 forecast（预测器分支）与 target（目标编码器分支）双表征上（L53-57），且"Prior works have also shown that JEPA representations capture physical properties (Garrido et al., 2025; Joseph et al., 2026)."（L57-58）——把 JEPA 预测表征从「评估/奖励」角色（WMReward、REPA）提升为生成器的第一性内部状态。
+3. 【推断】PRS 代表「生成器自证」路线：用生成器自身中间状态做候选选择，无外部打分器（L96-98, L445-446），与依赖外部 reward/verifier 的 WMReward/GeoPhys 正交且可叠加；早期选择（K=10/35）即可达到或超过完成视频的 WMReward（L447-449），暗示物理合理性信号在生成中途已可读。
+4. 【推断】参数效率信号：仅 +0.45% 参数（72.63M，L856-857, L369）让 Cosmos 3 Nano 16B 的 I2V 43.56 超过 Cosmos 3 Super 64B 的 42.7（L390, L397）——物理合理性的短板在「状态/接口设计」而非模型规模，与「显式可读动力学状态」的叙事一致。
+
+---
+*笔记完。所有事实性陈述均附 L 行号原文；「原文未写」与【推断】已分别标注。*

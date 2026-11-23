@@ -1,0 +1,550 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>世界模型主要参考工作与实现方式 · 世界模型调研与精读</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="index.html">首页</a><a href="world-model-survey.html">调研总览</a><a href="world-model-capability-taxonomy.html">输出任务×能力</a><a href="recent3m.html">最近三个月·实现细节</a><a href="narrative.html">叙事线资料</a><a href="progress.html">进度与纠偏</a><a href="papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">文档</div><h1>世界模型主要参考工作与实现方式</h1><blockquote>
+<p>整理日期：2026-10-26 ｜ 用途：支撑《一只手，和一个厨房》叙事线中「世界表示 / 世界模型」章节的文献底座。
+姊妹篇：<a href="world-model-capability-taxonomy.html">world-model-capability-taxonomy.md</a> —— 按「输出任务 × 能力」的功能视角（Marr L1）分类。
+核实纪律：所有 arXiv ID 均经 arXiv API / abs 页面逐条核对；未核实的 ID 一律不写，只标注「ID 未核实」。来源见文末。</p>
+</blockquote>
+<hr />
+<h2>TL;DR</h2>
+<ol>
+<li><strong>定义</strong>：世界模型 = 预测「环境在动作/时间作用下如何演化」的模型。当前主流实现分三条路线：<strong>潜动力学世界模型</strong>（Dreamer/TD-MPC 系，闭环 MBRL）、<strong>视频生成式世界模型</strong>（自回归 token：Genie/GAIA；扩散 DiT：Sora/DIAMOND/Vista）、<strong>结构化 3D/4D 世界模型</strong>（3DGS/occupancy/对象运动学：UniWorld/OccWorld/NeuROK）。</li>
+<li><strong>2024→2026 的演化方向</strong>：从「像素级视频预测」走向「交互式、可控、结构化」（Genie 3、Cosmos、VerseCrafter、LaLa-World），并开始正面处理物理一致性与闭环长时程（PerpetualWonder、Matrix-Game 4.0）。</li>
+<li><strong>与本叙事线的直接接口</strong>：
+   - 吴佳俊「向视频模型借一个世界」= <strong>SDS 式 4D 蒸馏</strong>（其组内 CHORD / NeuROK / ZeroHSI 一脉；视频扩散模型只贡献分数当先验，不当真值）。
+   - 「world action models 比 Dreamer 令人印象深刻」→ GAIA-2 / DriveWAM / Genie 3 线 vs DreamerV3 / TD-MPC2 线。
+   - 「运动学 vs 力学」缺口在文献上成立：主流世界模型的输出本体止于 RGB / occupancy / 点云（几何与外观）；<strong>力/触觉输出在 2026 下半年已形成独立子领域</strong>（DexTouch-WM、TouchWorld、FeelWorld、ViTacWorld、TacWAM、FAWAM、ForceWAM、CW-WAM 等 8+ 篇，详见姊妹篇 §1-T4），但规模远小于视频世界模型，且力学数据仍需真实采集——「力学数据互联网上不存在」依然成立。</li>
+</ol>
+<hr />
+<h2>1. 技术路线分类总表</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>路线</th>
+<th>核心机制</th>
+<th>代表工作</th>
+<th>典型用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>潜动力学世界模型</td>
+<td>VAE 编码观测 → RSSM/Transformer 预测潜状态 → 隐空间「想象」中训练策略</td>
+<td>DreamerV3、TD-MPC2、IRIS、DayDreamer</td>
+<td>MBRL、真机策略、导航</td>
+</tr>
+<tr>
+<td>2</td>
+<td>自回归 token 视频模型</td>
+<td>视频 VQ tokenizer + 因果 Transformer，动作/语言/文本 token 交织预测</td>
+<td>Genie 系列、GAIA-1、GenAD</td>
+<td>交互环境、驾驶生成</td>
+</tr>
+<tr>
+<td>3</td>
+<td>扩散视频世界模型</td>
+<td>DiT/flow matching，动作条件化去噪生成未来帧</td>
+<td>Sora、DIAMOND、Vista、DriveDreamer-2、Cosmos</td>
+<td>视频生成、仿真数据</td>
+</tr>
+<tr>
+<td>4</td>
+<td>JEPA / 潜空间预测</td>
+<td>只预测潜表征（不重建像素），从预训练视觉特征上学习</td>
+<td>V-JEPA、DINO-WM、LaLa-World、GLAM</td>
+<td>表征、零样本规划、导航</td>
+</tr>
+<tr>
+<td>5</td>
+<td>结构化 3D/4D 世界模型</td>
+<td>occupancy / 3DGS / 对象运动学潜空间 + 可微渲染 / SDS 蒸馏</td>
+<td>OccWorld、UniWorld、MUVO、ManiGaussian++、NeuROK、CHORD、PerpetualWonder</td>
+<td>几何一致、闭环物理</td>
+</tr>
+<tr>
+<td>6</td>
+<td>VLM/LLM 中心的世界建模</td>
+<td>语言状态推理 + 奖励/记忆，把「状态估计+转移预测」装进 LLM</td>
+<td>VAGEN、PhysMem、LaLa-World</td>
+<td>Agent、慢脑侧规划</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>2. 实现方式详解</h2>
+<h3>2.1 潜动力学世界模型（MBRL 线）</h3>
+<ul>
+<li><strong>原理</strong>：图像经编码器 → 低维隐状态；循环网络（Dreamer 系 RSSM）预测隐状态转移与奖励；策略在「隐空间想象」中优化，即 <em>imagination-based MBRL</em>。</li>
+<li><strong>代表</strong>：DreamerV3（<a href="https://arxiv.org/abs/2301.04104">2301.04104</a>，150+ 任务单一配置、Minecraft 钻石）、TD-MPC2（<a href="https://arxiv.org/abs/2310.16828">2310.16828</a>，隐式模型预测控制）、IRIS（<a href="https://arxiv.org/abs/2209.00588">2209.00588</a>，离散潜 token + Transformer）、DayDreamer（Dreamer 上真机四足/机械臂）。</li>
+<li><strong>优点</strong>：样本效率高、真机可用、闭环自洽。<strong>缺点</strong>：隐状态难跨域泛化，视觉保真度低，难扩展互联网数据。</li>
+<li><strong>开源</strong>：DreamerV3 / TD-MPC2 / IRIS 均有官方代码。</li>
+</ul>
+<h3>2.2 自回归 token 视频世界模型</h3>
+<ul>
+<li><strong>原理</strong>：VQ 编码器把视频帧离散化为 token，因果 Transformer 逐 token 预测；动作（潜动作/文本/连续动作）作为条件 token 交织。</li>
+<li><strong>代表</strong>：Genie（<a href="https://arxiv.org/abs/2402.15391">2402.15391</a>，2D 平台游戏、从视频学潜动作）、GAIA-1（<a href="https://arxiv.org/abs/2309.17080">2309.17080</a>，视频+文本+动作统一 token）、GenAD（<a href="https://arxiv.org/abs/2402.11502">2402.11502</a>）。</li>
+<li><strong>优点</strong>：训练稳定、长序列、天然兼容语言。<strong>缺点</strong>：token 化损失细节，推理逐 token 慢。</li>
+<li><strong>开源</strong>：Genie 有官方开源实现；GAIA 系列未开源。</li>
+</ul>
+<h3>2.3 扩散视频世界模型</h3>
+<ul>
+<li><strong>原理</strong>：DiT（Sora）或 latent flow matching，以过去帧+动作/语言/轨迹为条件去噪生成未来帧；保真度最高。</li>
+<li><strong>代表</strong>：Sora（<a href="https://openai.com/index/video-generation-models-as-world-simulators/">OpenAI 官方博客</a>，2024.02，DiT 扩展；技术报告未发 arXiv 版）、DIAMOND（<a href="https://arxiv.org/abs/2405.12399">2405.12399</a>，NeurIPS 2024 Spotlight，Atari/CS:GO 扩散世界模型）、Vista（<a href="https://arxiv.org/abs/2405.17398">2405.17398</a>，NeurIPS 2024，驾驶多动作条件扩散）、DriveDreamer-2（<a href="https://arxiv.org/abs/2403.06845">2403.06845</a>，AAAI 2025，LLM 增强结构化条件）。</li>
+<li><strong>优点</strong>：视觉保真、条件灵活。<strong>缺点</strong>：推理慢、物理一致性差、长时程漂移。</li>
+<li><strong>开源</strong>：DIAMOND、Vista、DriveDreamer-2 开源；Sora 闭源。</li>
+</ul>
+<h3>2.4 JEPA / 潜空间预测</h3>
+<ul>
+<li><strong>原理</strong>：不重建像素，只预测未来潜表征（V-JEPA：自监督视频特征预测；DINO-WM/Odin：在冻结 DINOv2 特征上建世界模型）。</li>
+<li><strong>代表</strong>：V-JEPA（<a href="https://arxiv.org/abs/2404.08471">2404.08471</a>，CVPR 2024）、DINO-WM（<a href="https://arxiv.org/abs/2411.04983">2411.04983</a>，零样本规划）、LaLa-World（<a href="https://arxiv.org/abs/2610.27851">2610.27851</a>，2026，语言条件化潜世界模型，规划成本仅为视频生成路线 1/6 训练、13.9× 快推理）、GLAM（<a href="https://arxiv.org/abs/2609.14561">2609.14561</a>，导航）。</li>
+<li><strong>优点</strong>：训练/推理便宜、表示可迁移。<strong>缺点</strong>：不能直接出视觉，需下游解码。</li>
+<li><strong>开源</strong>：V-JEPA、DINO-WM、LaLa-World 开源。</li>
+</ul>
+<h3>2.5 结构化 3D/4D 世界模型</h3>
+<ul>
+<li><strong>原理</strong>：世界状态用 occupancy / 3D Gaussian / 对象运动学潜空间显式表示，动力学在 3D 中演化，再用渲染/蒸馏与视觉对齐。分两类：</li>
+<li><strong>几何驱动生成</strong>：OccWorld（<a href="https://arxiv.org/abs/2311.16038">2311.16038</a>，occupancy 演化）、UniWorld（<a href="https://arxiv.org/abs/2308.07234">2308.07234</a>，世界模型预训练）、MUVO（<a href="https://arxiv.org/abs/2311.11762">2311.11762</a>，3D 几何多模态）、ManiGaussian++（<a href="https://arxiv.org/abs/2506.19842">2506.19842</a>，层次化 3DGS 双手操控）、VerseCrafter（<a href="https://arxiv.org/abs/2601.05138">2601.05138</a>，CVPR 2026，4D 几何控制图喂视频扩散）。</li>
+<li><strong>从视频蒸馏物理</strong>（吴佳俊组一脉）：CHORD（<a href="https://arxiv.org/abs/2601.04194">2601.04194</a>，从 2D 视频提取拉格朗日运动，生成多体 4D 动力学）、NeuROK（<a href="https://arxiv.org/abs/2605.30347">2605.30347</a>，对象运动学潜空间，即演讲中的「Neural Kinematics」）、PerpetualWonder（<a href="https://arxiv.org/abs/2602.04876">2602.04876</a>，物理状态↔视觉表示双向链接的闭环生成）、ZeroHSI（<a href="https://arxiv.org/abs/2412.18600">2412.18600</a>，零样本人-场景交互）。</li>
+<li><strong>优点</strong>：几何/物理一致、可控、可交互。<strong>缺点</strong>：依赖 3D/4D 数据，渲染与动力学解耦难。</li>
+<li><strong>开源</strong>：OccWorld、UniWorld、ManiGaussian++ 开源。</li>
+</ul>
+<h3>2.6 VLM/LLM 中心的世界建模</h3>
+<ul>
+<li><strong>原理</strong>：把 POMDP 的「状态估计 + 转移建模」装进 VLM，用 RL 奖励显式世界建模推理（VAGEN），或在推理期用「先验证后应用」的记忆框架学习物理规律（PhysMem）。</li>
+<li><strong>代表</strong>：VAGEN（<a href="https://arxiv.org/abs/2510.16907">2510.16907</a>，World Modeling Reward + Bi-Level GAE）、PhysMem（<a href="https://arxiv.org/abs/2602.20323">2602.20323</a>，测试期物理记忆，砖块插入 76% vs 直接检索 23%）。</li>
+<li><strong>优点</strong>：语义泛化、免训练扩展。<strong>缺点</strong>：非毫秒级、接触力学仍靠语言近似。</li>
+</ul>
+<hr />
+<h2>3. 分域主要参考工作清单</h2>
+<h3>3.1 通用 / 视频世界模型</h3>
+<table>
+<thead>
+<tr>
+<th>工作</th>
+<th>年份</th>
+<th>机构</th>
+<th>ID / 出处</th>
+<th>实现方式一句话</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>World Models（奠基）</td>
+<td>2018</td>
+<td>NeurIPS</td>
+<td>—（经典论文，直接搜标题）</td>
+<td>VAE + MDN-RNN，隐空间做梦训练</td>
+</tr>
+<tr>
+<td>Genie</td>
+<td>2024</td>
+<td>DeepMind</td>
+<td><a href="https://arxiv.org/abs/2402.15391">2402.15391</a></td>
+<td>视频 token 自回归 + 潜动作，开源</td>
+</tr>
+<tr>
+<td>Genie 2</td>
+<td>2024.12</td>
+<td>DeepMind</td>
+<td><a href="https://deepmind.google/blog/genie-2-a-large-scale-foundation-world-model/">官方博客</a>（arXiv ID 未核实）</td>
+<td>长时程交互世界模型，闭源</td>
+</tr>
+<tr>
+<td>Genie 3</td>
+<td>2025.08</td>
+<td>DeepMind</td>
+<td><a href="https://deepmind.google/blog/genie-3-a-new-frontier-for-world-models/">官方博客</a>（arXiv ID 未核实）</td>
+<td>语言+动作交互式世界模型，NeurIPS 2025 演示</td>
+</tr>
+<tr>
+<td>Sora</td>
+<td>2024.02</td>
+<td>OpenAI</td>
+<td><a href="https://openai.com/index/video-generation-models-as-world-simulators/">官方博客</a>（技术报告无 arXiv 版）</td>
+<td>DiT 视频扩散，闭源</td>
+</tr>
+<tr>
+<td>Cosmos WFMs</td>
+<td>2025.01</td>
+<td>NVIDIA</td>
+<td><a href="https://arxiv.org/abs/2501.03575">2501.03575</a></td>
+<td>自回归+扩散双路线世界基础模型，权重开源</td>
+</tr>
+<tr>
+<td>V-JEPA</td>
+<td>2024</td>
+<td>Meta</td>
+<td><a href="https://arxiv.org/abs/2404.08471">2404.08471</a></td>
+<td>JEPA 潜空间预测，开源</td>
+</tr>
+<tr>
+<td>DIAMOND</td>
+<td>2024</td>
+<td>NeurIPS Spotlight</td>
+<td><a href="https://arxiv.org/abs/2405.12399">2405.12399</a></td>
+<td>扩散世界模型跑 Atari 100K（HNS 1.46）、CS:GO 可玩引擎，开源</td>
+</tr>
+<tr>
+<td>WorldDreamer</td>
+<td>2024</td>
+<td>ECCV</td>
+<td><a href="https://arxiv.org/abs/2401.09985">2401.09985</a></td>
+<td>masked token 预测的通用世界模型，开源</td>
+</tr>
+<tr>
+<td>VerseCrafter</td>
+<td>2026</td>
+<td>CVPR</td>
+<td><a href="https://arxiv.org/abs/2601.05138">2601.05138</a></td>
+<td>静态点云背景+逐物体 3DGS 轨迹的 4D 几何控制</td>
+</tr>
+<tr>
+<td>Matrix-Game 4.0</td>
+<td>2026</td>
+<td>—</td>
+<td><a href="https://arxiv.org/abs/2610.27999">2610.27999</a></td>
+<td>游戏引擎管状态 + 自回归视频渲染，480p/60FPS 实时可玩，开源</td>
+</tr>
+</tbody>
+</table>
+<h3>3.2 自动驾驶世界模型</h3>
+<table>
+<thead>
+<tr>
+<th>工作</th>
+<th>年份</th>
+<th>机构</th>
+<th>ID / 出处</th>
+<th>实现方式一句话</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GAIA-1</td>
+<td>2023</td>
+<td>Wayve</td>
+<td><a href="https://arxiv.org/abs/2309.17080">2309.17080</a></td>
+<td>视频+文本+动作 token 自回归</td>
+</tr>
+<tr>
+<td>GAIA-2</td>
+<td>2025</td>
+<td>Wayve</td>
+<td><a href="https://arxiv.org/abs/2503.20523">2503.20523</a></td>
+<td>多视角可控生成世界模型（<a href="https://wayve.ai/thinking/gaia-2/">官方博客</a>）</td>
+</tr>
+<tr>
+<td>UniSim</td>
+<td>2023</td>
+<td>Berkeley/DeepMind</td>
+<td><a href="https://arxiv.org/abs/2310.06114">2310.06114</a></td>
+<td>多数据集编排的通用交互模拟器，仿真训的策略零样本上真机</td>
+</tr>
+<tr>
+<td>DriveDreamer-2</td>
+<td>2024</td>
+<td>AAAI 2025</td>
+<td><a href="https://arxiv.org/abs/2403.06845">2403.06845</a></td>
+<td>LLM 结构化条件 + 动作条件视频扩散</td>
+</tr>
+<tr>
+<td>GenAD</td>
+<td>2024</td>
+<td>—</td>
+<td><a href="https://arxiv.org/abs/2402.11502">2402.11502</a></td>
+<td>自回归生成式端到端驾驶</td>
+</tr>
+<tr>
+<td>Drive-WM</td>
+<td>2023</td>
+<td>—</td>
+<td><a href="https://arxiv.org/abs/2311.17918">2311.17918</a></td>
+<td>多视角视频预测 + 规划闭环</td>
+</tr>
+<tr>
+<td>Vista</td>
+<td>2024</td>
+<td>NeurIPS</td>
+<td><a href="https://arxiv.org/abs/2405.17398">2405.17398</a></td>
+<td>高保真多动作条件扩散世界模型</td>
+</tr>
+<tr>
+<td>MUVO</td>
+<td>2023</td>
+<td>Wayve</td>
+<td><a href="https://arxiv.org/abs/2311.11762">2311.11762</a></td>
+<td>3D 几何表示的多模态世界模型</td>
+</tr>
+<tr>
+<td>OccWorld</td>
+<td>2023</td>
+<td>—</td>
+<td><a href="https://arxiv.org/abs/2311.16038">2311.16038</a></td>
+<td>3D occupancy 上预测世界演化</td>
+</tr>
+<tr>
+<td>UniWorld</td>
+<td>2023</td>
+<td>—</td>
+<td><a href="https://arxiv.org/abs/2308.07234">2308.07234</a></td>
+<td>世界模型预训练（重建免标注）</td>
+</tr>
+<tr>
+<td>World on Rails</td>
+<td>2024</td>
+<td>NeurIPS</td>
+<td><a href="https://github.com/dotchen/WorldOnRails">GitHub</a>（arXiv ID 未核实）</td>
+<td>车辆沿「轨」前进的分解式世界模型</td>
+</tr>
+<tr>
+<td>DriveWAM</td>
+<td>2026</td>
+<td>—</td>
+<td><a href="https://arxiv.org/abs/2605.28544">2605.28544</a></td>
+<td>视频生成先验的世界-动作联合建模</td>
+</tr>
+</tbody>
+</table>
+<h3>3.3 机器人 / 具身世界模型</h3>
+<table>
+<thead>
+<tr>
+<th>工作</th>
+<th>年份</th>
+<th>机构</th>
+<th>ID / 出处</th>
+<th>实现方式一句话</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DreamerV3</td>
+<td>2023</td>
+<td>DeepMind</td>
+<td><a href="https://arxiv.org/abs/2301.04104">2301.04104</a></td>
+<td>RSSM 隐想象，150+ 任务单配置</td>
+</tr>
+<tr>
+<td>DayDreamer</td>
+<td>2023</td>
+<td>—</td>
+<td>项目页（RLJ 发表）</td>
+<td>Dreamer 真机四足/机械臂</td>
+</tr>
+<tr>
+<td>TD-MPC2</td>
+<td>2023</td>
+<td>—</td>
+<td><a href="https://arxiv.org/abs/2310.16828">2310.16828</a></td>
+<td>隐式模型预测控制，单超参跨域</td>
+</tr>
+<tr>
+<td>IRIS</td>
+<td>2023</td>
+<td>ICML</td>
+<td><a href="https://arxiv.org/abs/2209.00588">2209.00588</a></td>
+<td>离散潜 token + Transformer 世界模型</td>
+</tr>
+<tr>
+<td>UniPi</td>
+<td>2023</td>
+<td>NeurIPS</td>
+<td><a href="https://arxiv.org/abs/2302.00111">2302.00111</a></td>
+<td>文本条件视频生成 = 通用策略</td>
+</tr>
+<tr>
+<td>SuSIE</td>
+<td>2023</td>
+<td>RSS</td>
+<td>项目页（无 arXiv）</td>
+<td>图像编辑扩散实现子目标合成</td>
+</tr>
+<tr>
+<td>DINO-WM</td>
+<td>2024</td>
+<td>—</td>
+<td><a href="https://arxiv.org/abs/2411.04983">2411.04983</a></td>
+<td>冻结 DINOv2 特征上的零样本规划世界模型</td>
+</tr>
+<tr>
+<td>Odin</td>
+<td>2025</td>
+<td>NYU（LeCun 线）</td>
+<td>ID 未核实</td>
+<td>DINO-WM 升级版（连续域/机器人）</td>
+</tr>
+<tr>
+<td>Humanoid World Models</td>
+<td>2025</td>
+<td>NYU 等</td>
+<td><a href="https://arxiv.org/abs/2506.01182">2506.01182</a></td>
+<td>人形机器人开源世界基础模型</td>
+</tr>
+<tr>
+<td>GR00T-N1-2B</td>
+<td>2025.08</td>
+<td>NVIDIA</td>
+<td>官方博客发布（arXiv ID 未核实，不附链接）</td>
+<td>基于 GR00T N1（<a href="https://arxiv.org/abs/2503.14734">2503.14734</a>）的 2B 数据驱动世界模型</td>
+</tr>
+<tr>
+<td>ManiGaussian++</td>
+<td>2025</td>
+<td>—</td>
+<td><a href="https://arxiv.org/abs/2506.19842">2506.19842</a></td>
+<td>主从臂层次化 3DGS 世界模型，真机 60% 成功率，开源</td>
+</tr>
+<tr>
+<td><strong>DexTouch-WM</strong></td>
+<td>2026</td>
+<td>丁文伯组</td>
+<td><a href="https://arxiv.org/abs/2609.20649">2609.20649</a></td>
+<td><strong>动作条件触觉世界模型</strong>：人手+机械手同构触觉阵列，人手 0→100h 数据提升机器人域视觉/几何/接触预测；可作策略评测代理环境与合成轨迹生成器</td>
+</tr>
+<tr>
+<td>GLAM</td>
+<td>2026</td>
+<td>丁文伯组</td>
+<td><a href="https://arxiv.org/abs/2609.14561">2609.14561</a></td>
+<td>JEPA 式全局时空记忆潜世界模型（导航）</td>
+</tr>
+</tbody>
+</table>
+<h3>3.4 综述与评测基准</h3>
+<table>
+<thead>
+<tr>
+<th>工作</th>
+<th>年份</th>
+<th>ID / 出处</th>
+<th>要点</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>World Model for Robot Learning: A Comprehensive Survey</td>
+<td>2026</td>
+<td><a href="https://arxiv.org/abs/2605.00080">2605.00080</a></td>
+<td>机器人视角最全面综述（吴佳俊等参与）</td>
+</tr>
+<tr>
+<td>A Comprehensive Survey on World Models for Embodied AI</td>
+<td>2025</td>
+<td><a href="https://huggingface.co/papers/2510.16732">2510.16732</a></td>
+<td>具身 AI 世界模型综述</td>
+</tr>
+<tr>
+<td>The Role of World Models in Shaping Autonomous Driving</td>
+<td>2025</td>
+<td><a href="https://arxiv.org/abs/2502.10498">2502.10498</a></td>
+<td>AD 世界模型综述</td>
+</tr>
+<tr>
+<td>A Step Toward World Models: A Survey on Robotic Manipulation</td>
+<td>2025</td>
+<td><a href="https://arxiv.org/abs/2511.02097">2511.02097</a></td>
+<td>操作方向综述</td>
+</tr>
+<tr>
+<td>Beyond Simulation: Benchmarking World Models for Planning and Causality in AD</td>
+<td>2025</td>
+<td><a href="https://huggingface.co/papers/2508.01922">2508.01922</a></td>
+<td>闭环规划/因果基准（FVD 之外）</td>
+</tr>
+<tr>
+<td>WorldScore</td>
+<td>2025</td>
+<td><a href="https://arxiv.org/abs/2504.00983">2504.00983</a></td>
+<td>世界生成统一评测（可控性/质量/动力学，19 模型）</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>4. 与本地材料的映射（《一只手，和一个厨房》叙事线）</h2>
+<p><strong>本地已抓取的论文（papers/ 目录）可直接引用：</strong></p>
+<p>吴佳俊组（斯坦福）：
+- <strong>NeuROK</strong>（2605.30347）= 演讲中的「Neural Kinematics」：对象运动学潜空间，从静态网格零样本生成可动性/形变 —— 「从物体本身推断可动方式」的论文载体。
+- <strong>CHORD</strong>（2601.04194）：从 2D 视频蒸馏拉格朗日运动生成多体 4D 动力学 —— 「向视频模型借一个世界」的具名实现（distillation-based）。
+- <strong>PerpetualWonder</strong>（2602.04876）：物理状态与视觉原语双向链接的闭环 4D 生成（「我们并没有真的生成视频……视频扩散模型只被用来计算分数」的严格版）。
+- <strong>TrAct</strong>（2608.24101）与 <strong>Masked Visual Actions</strong>（2607.19343）：动作接口问题——「视觉轨迹/像素空间接口优于裸动作条件化」，即「运动学轨迹如何与视觉预测对齐」。
+- <strong>WorldScore</strong>（2504.00983）：世界生成评测基准（对应演讲中「三个基准均评预测对不对/任务完成没完成」）。
+- 另有 VAGEN（2510.16907）、ENACT（2511.20937）支撑「慢脑 VLM 世界建模」侧。</p>
+<p>丁文伯组（清华/Xspark）：
+- <strong>DexTouch-WM</strong>（2609.20649）：<strong>触觉世界模型</strong>——人手触觉数据 + 动作重定向监督同一动力学模型。对叙事线的三个直接意义：
+  1. 它是「力学的 free demonstrations 从哪来」的<strong>现有最强回答</strong>：人手交互 100 小时是可扩展数据轴（但仍需真实采集，印证「力学数据互联网上不存在」）；
+  2. 它把世界模型当「策略评测代理环境 + 合成轨迹生成器」用——即触觉侧也可以做「验证器」；
+  3. 其机制（视频专家 + 轻量触觉专家、anatomy-aware 触觉 token）正好与「快脑 VTLA+TWAM」架构同构。
+- GLAM（2609.14561）、ManiGaussian++（2506.19842）：组内在导航/几何侧的世界模型工作。</p>
+<p><strong>叙事主张 ↔ 文献证据对照：</strong></p>
+<table>
+<thead>
+<tr>
+<th>叙事主张</th>
+<th>文献坐标</th>
+<th>缺口</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>「向视频模型借一个世界，只取分数不当真值」</td>
+<td>CHORD / NeuROK / ZeroHSI（SDS 蒸馏线）</td>
+<td>无</td>
+</tr>
+<tr>
+<td>「world action models 比 Dreamer 令人印象深刻」</td>
+<td>Genie 3 / GAIA-2 / DriveWAM vs DreamerV3 / TD-MPC2</td>
+<td>无</td>
+</tr>
+<tr>
+<td>「运动学 vs 力学是正交缺口」</td>
+<td>全部 RGB/occupancy/点云世界模型只有几何量；力/接触输出仅 2026 触觉簇（DexTouch-WM、TouchWorld、FAWAM 等）触及</td>
+<td>力学预测仍无与视觉同规模的预训练</td>
+</tr>
+<tr>
+<td>「力学的 free demonstrations 不存在」</td>
+<td>DexTouch-WM 仍需真实触觉采集（人手数据是新轴，非免费）</td>
+<td>无「Neural Dynamics」式零样本力学推断</td>
+</tr>
+<tr>
+<td>「脊髓级原子技能」</td>
+<td>文献中无对应概念（最近的是 PhysMem 的测试期物理记忆，非毫秒级）</td>
+<td>空白</td>
+</tr>
+<tr>
+<td>「hold 是需连续维持的前置条件」</td>
+<td>PhysMem「先验证后应用」触及接触物理推理（76% vs 23%），但非实时</td>
+<td>空白</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>5. 趋势与开放问题</h2>
+<ol>
+<li><strong>控制接口的再设计</strong>：动作如何喂给世界模型成为 2025-2026 热点——语言（LaLa-World）、视觉轨迹（TrAct）、像素掩码（Masked Visual Actions）、4D 几何控制图（VerseCrafter）。结论趋同：<strong>与视觉空间对齐的接口优于裸动作向量</strong>。</li>
+<li><strong>交互式与实时化</strong>：Genie 3 的交互记忆、Matrix-Game 4.0 的 60FPS 实时可玩（引擎管状态、视频管外观的混合架构）。</li>
+<li><strong>评测重心迁移</strong>：从 FID/FVD 迁移到闭环规划收益、因果一致性（2508.01922）、可控性/动力学分解（WorldScore）。</li>
+<li><strong>物理一致性仍是公认短板</strong>：闭环漂移、物体穿透、接触错误（PerpetualWonder 的动机即物理-视觉解耦）。</li>
+<li><strong>触觉/力世界模型从「空白」变为「新兴子领域」</strong>：2026 下半年出现 8+ 篇触觉/力世界模型（含 4 篇 WAM 命名），但主流通用世界模型的观测仍止于视觉——「接触层一直没被写进任何一张图」修正为「接触层刚开始被写进图里，且只有触觉社区自己在写」。能力矩阵与误差非对称性分析见姊妹篇。</li>
+</ol>
+<hr />
+<h2>6. 核实说明</h2>
+<ul>
+<li><strong>已核实 ID</strong>（arXiv API/abs 页）：Genie 2402.15391、GAIA-1 2309.17080、GAIA-2 2503.20523、DIAMOND 2405.12399、DreamerV3 2301.04104、TD-MPC2 2310.16828、IRIS 2209.00588、UniPi 2302.00111、UniSim 2310.06114、V-JEPA 2404.08471、Cosmos 2501.03575、Vista 2405.17398、WorldDreamer 2401.09985、OccWorld 2311.16038、UniWorld 2308.07234、MUVO 2311.11762、Drive-WM 2311.17918、DriveDreamer-2 2403.06845、GenAD 2402.11502、DINO-WM 2411.04983、Humanoid World Models 2506.01182、ManiGaussian++ 2506.19842、VerseCrafter 2601.05138、LaLa-World 2610.27851、Matrix-Game 4.0 2610.27999、PhysMem 2602.20323、DriveWAM 2605.28544，及全部本地抓取条目（来自 papers/index.csv）。</li>
+<li><strong>ID 未核实、仅官方出处</strong>：Genie 2/3（DeepMind 博客）、Sora（OpenAI 博客）、GR00T-N1-2B（NVIDIA 博客）、Odin、World on Rails（GitHub）、SuSIE（项目页）。</li>
+<li><strong>排除项</strong>：搜索中出现的同名工作（如「Odin: Primitive-Level Synchronization」分布式渲染论文）已剔除，防止误引。</li>
+<li>本页所有「本地」ID 均可在 <code>papers/index.csv</code> 中复现核查。</li>
+</ul>
+<p>更新时间: 2026-10-26 19:30（本次：修正触觉簇判断，链接姊妹篇）</p>
+<hr />
+<h2>2026-11 补记：最近三个月进展</h2>
+<ul>
+<li><strong>Genie 4</strong>（DeepMind 官方博客，2026-11）：「A new generation of world simulation」，无 arXiv 论文（与 Genie 2/3 同口径）。</li>
+<li><strong>新晋 10 篇精读</strong>（实现细节+伪代码见 <a href="recent3m.html">最近三个月进展与实现细节</a>）：TacForeSight、DTWM、Physical Registry、Roz、DiffWAM、FlipTest、SAFER、EPM、InertialWorld、AgentWorld。</li>
+<li><strong>对本稿两条判断的更新</strong>：①「T4 力学是新兴子领域」继续兑现（DTWM 手套触觉注入、TacForeSight 20Hz 力引导预测）；②「世界模型学的是外观而非状态」从推断升级为<strong>有评测证据</strong>（FlipTest 18.3%&lt;25% 随机；Roz 物理记忆全员崩溃、重建 MSE 减半而分数不变）。</li>
+</ul>
+<footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
+<a href="index.html">返回首页</a></footer></div></main></body></html>

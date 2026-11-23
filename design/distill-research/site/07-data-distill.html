@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 · 数据蒸馏 · 大模型→VLA/WAM 蒸馏研究</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="topnav"><div class="inner"><a href="index.html">首页</a><a class="" href="00-evidence.html">00 · 证据与核实</a><a class="" href="01-taxonomy.html">01 · 分类框架</a><a class="" href="02-vla-distill.html">02 · VLA 蒸馏</a><a class="" href="03-wam-distill.html">03 · WAM 蒸馏</a><a class="" href="04-step-distill.html">04 · 步数蒸馏</a><a class="" href="05-feature-latent.html">05 · 特征与 latent</a><a class="" href="06-on-policy.html">06 · On-policy 蒸馏</a><a class="" href="07-data-distill.html">07 · 数据蒸馏</a><a class="" href="08-tricks.html">08 · Trick 总谱</a><a class="" href="09-benchmarks.html">09 · 教师 vs 学生</a><a class="" href="10-recent.html">10 · 最近三个月</a><a class="" href="11-pitfalls.html">11 · 陷阱与复现</a><a class="" href="12-implementation.html">12 · 实现手册</a></div></nav>
+<main>
+<h1>07 · 数据蒸馏：用大模型造监督信号（教师只当标注器）</h1>
+<p class="meta">来源 docs/07-data-distill.md · 生成于 2026-11-21</p>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 什么时候该用数据蒸馏</a></li><li class=""><a href="#sec-2">2. CoT / 标注蒸馏（驾驶为主）</a></li><li class=""><a href="#sec-3">3. 视频 → 伪动作（无动作标签时）</a></li><li class="toc-h3"><a href="#sec-4">LAPA（2410.11758）</a></li><li class="toc-h3"><a href="#sec-5">GR00T N1（2503.14734）</a></li><li class="toc-h3"><a href="#sec-6">DreamGen（GR00T N1.5 官方页，L1）</a></li><li class="toc-h3"><a href="#sec-7">Veo-Act / NovaFlow / RIGVid（均 L1，清单级）</a></li><li class=""><a href="#sec-8">4. 经验蒸馏：教师&quot;陪着跑&quot;，只留成功片段</a></li><li class=""><a href="#sec-9">5. 数据蒸馏的四个工程要点</a></li><li class=""><a href="#sec-10">6. 与 KD 的边界（一句话）</a></li></ol></details>
+<h1>07 · 数据蒸馏：用大模型造监督信号（教师只当标注器）</h1>
+<blockquote>定义：学生<strong>从不拟合教师的分布</strong>，只吃教师生成的标注/数据。教师是&quot;标注器&quot;，不是&quot;被模仿的对象&quot;。<br>这一类的上限由<strong>数据覆盖度</strong>决定，不由教师容量决定——这是它与 KD 最本质的区别。</blockquote>
+<hr>
+<h2 id="sec-1">1. 什么时候该用数据蒸馏</h2>
+<table><tr><th>场景</th><th>为什么</th></tr><tr><td>遥操数据没有语言/CoT 标注</td><td>用大 VLM 生成指令、理由、场景描述</td></tr><tr><td>没有动作标签，只有视频</td><td>用潜动作模型（LAPA/VQ-VAE）造伪动作</td></tr><tr><td>长尾任务缺数据</td><td>用视频生成模型造轨迹（DreamGen/Veo-Act）</td></tr><tr><td>动作空间/机器人形态不一致</td><td>用 IDM 把&quot;别人的动作&quot;映射到自己的 embodiment</td></tr></table>
+<p><strong>判断标准</strong>：如果你把教师换成一个规则系统/人工标注员，方法是否照样成立？成立 → 数据蒸馏。</p>
+<hr>
+<h2 id="sec-2">2. CoT / 标注蒸馏（驾驶为主）</h2>
+<table><tr><th>工作</th><th>教师 → 学生</th><th>生成什么</th><th>原文依据</th></tr><tr><td><strong>AutoVLA</strong> (2506.13757)</td><td>Qwen2.5-VL-<strong>72B</strong> → 3B</td><td>45.6k(nuPlan) + 7.2k(Waymo) CoT 驾驶推理</td><td>&quot;This pipeline enables automatic generation of high-accuracy reasoning annotations and supports knowledge distillation from a large capable model to a more compact target model&quot;（§3.2）；GT 动作作 hint 抑制幻觉</td></tr><tr><td><strong>DriveGPT4</strong> (2310.01412)</td><td>ChatGPT（+YOLOv8 特权信息）</td><td>40K 驾驶 QA（动作/理由/控制）</td><td>&quot;ChatGPT is leveraged as a teacher to generate more conversations about the ego vehicle&quot;（§3）</td></tr><tr><td><strong>Senna</strong> (2410.22313)</td><td>GPT-4o</td><td>planning-oriented QA（红绿灯/VRU/意图/场景）</td><td>§III-A：QA 监督 VLM，meta-action 由 GT 轨迹规则化生成</td></tr><tr><td><strong>OmniDrive</strong> (2405.01533)</td><td>GPT-4（+规则 checklist）</td><td>反事实 3D 驾驶 QA</td><td>§2：模拟/专家轨迹入 prompt</td></tr><tr><td><strong>LMDrive</strong> (2312.07488)</td><td>ChatGPT</td><td>指令改写变体（8 种）</td><td>&quot;we utilized ChatGPT API to generate eight different variants&quot;（§3）</td></tr><tr><td><strong>SmolVLA</strong> (2506.01844)</td><td>Qwen2.5-VL-3B-Instruct</td><td>社区数据集任务描述重写</td><td>&quot;we used an off-the-shelf VLM (Qwen2.5-VL-3B-Instruct) to auto-generate concise task descriptions&quot;（§3.2）——<strong>只是标注清洗，不算蒸馏训练</strong></td></tr></table>
+<p><strong>实现模板</strong>（以 AutoVLA 为例）：</p>
+<pre class="code"><code># 1) 用教师模型生成 CoT，输入 = 前视图 + 自车状态 + GT 动作 hint
+prompt = build_prompt(front_img, ego_state, gt_action_hint)
+cot = teacher.generate(prompt, temperature=0.7, max_tokens=512)
+
+# 2) 过滤：动作合法性 + 格式 + 与 GT 轨迹的一致性
+if not check_action_consistency(cot, gt_traj):
+    cot = teacher.regenerate(prompt, temperature=0.3)
+
+# 3) 学生 SFT：输入不含 hint，只含图像+状态+指令
+loss = CE(student(front_img, ego_state, instruction), cot)</code></pre>
+<p><strong>关键 trick</strong>：</p>
+<ul>
+<li><strong>GT 动作作 hint</strong>：不给 hint 教师会编造动作；给 hint 后 CoT 与动作一致（AutoVLA §3.2）。
+</li><li><strong>温度调度</strong>：先高温采样多样性，再低温重生成保证质量。
+</li><li><strong>一致性过滤</strong>：CoT 里描述的动作必须和 GT 轨迹对得上，否则丢。
+</li></ul>
+<hr>
+<h2 id="sec-3">3. 视频 → 伪动作（无动作标签时）</h2>
+<h3 id="sec-4">LAPA（2410.11758）</h3>
+<ul>
+<li><strong>做法</strong>：VQ-VAE 学帧间<strong>离散潜动作</strong>（8⁴ 码本），潜 VLA 预测潜动作，小数据微调映射到真实动作。
+</li><li><strong>价值</strong>：把&quot;无动作视频&quot;变成可训练标签；256⁷ ΔEE 微调（渲染还原）。
+</li><li><strong>坑</strong>：潜动作没有物理含义，跨 embodiment 迁移需要重新学映射。
+</li></ul>
+<h3 id="sec-5">GR00T N1（2503.14734）</h3>
+<ul>
+<li><strong>神经轨迹</strong>：在 88h 遥操作上微调图生视频模型 → <strong>827h</strong> 生成视频（≈10×）；与真机动作<strong>1:1</strong> 混合做 flow-matching 目标。
+</li><li><strong>潜动作</strong>：VQ-VAE 帧间潜动作，encoder 当 IDM；IDM 伪动作混进训练。
+</li><li><strong>规模</strong>：预训练 5 万 H100 小时；DexMimicGen 仿真 78 万条 ≈ 6500h。
+</li><li><strong>启示</strong>：数据蒸馏在工业级落地时，<strong>比例</strong>（真机:合成 = 1:1）比方法本身更关键。
+</li></ul>
+<h3 id="sec-6">DreamGen（GR00T N1.5 官方页，L1）</h3>
+<ul>
+<li>生成机器人轨迹做新任务数据；12 个新动词：N1.5 <strong>38.3%</strong> vs N1 13.1%。
+</li></ul>
+<h3 id="sec-7">Veo-Act / NovaFlow / RIGVid（均 L1，清单级）</h3>
+<table><tr><th>工作</th><th>生成什么</th><th>怎么变成动作</th></tr><tr><td>Veo-Act (2604.04502)</td><td>Veo-3 生成未来图像序列</td><td>IDM 在 random play 上训练，生成计划→IDM→VLA 执行</td></tr><tr><td>NovaFlow (2510.08568)</td><td>视频 → 3D object flow</td><td>流 → IK/规划/抓取</td></tr><tr><td>RIGVid (2507.00990)</td><td>现成视频扩散生成演示</td><td>VLM 过滤 + 6D 跟踪 → 机器人轨迹</td></tr></table>
+<hr>
+<h2 id="sec-8">4. 经验蒸馏：教师&quot;陪着跑&quot;，只留成功片段</h2>
+<p>这一类介于&quot;数据蒸馏&quot;与&quot;on-policy&quot;之间，单独拆出来看更清楚（详见 06 章）：</p>
+<ul>
+<li><strong>H2E</strong>（2611.16246）：LLM planner + 冻结 VLA 组队跑任务，只保留到达目标的 session，再单独训 VLA；测试期零 LLM token，快 3.7×，成功率 +15.6%。
+</li><li><strong>Verify-Act-Distill</strong>（2610.14885）：verifier 选候选，成功 episode 的观测+聚合动作蒸进 LoRA。
+</li><li><strong>Beyond Policy Patches</strong>（2611.02777）：把 RL 专家蒸进 VLA。
+</li></ul>
+<hr>
+<h2 id="sec-9">5. 数据蒸馏的四个工程要点</h2>
+<ol>
+<li><strong>教师看到的输入必须和部署时一致</strong>（除了故意的 hint）。否则学生学到&quot;只有教师能用的线索&quot;。
+</li><li><strong>合成数据的比例要调</strong>：GR00T N1 用 1:1；比例过高会&quot;学飞&quot;（生成视频的物理不真实被学生当真）。
+</li><li><strong>过滤比生成重要</strong>：一致性检查、物理可行性检查、格式检查，三道过滤后能用的可能只有 40–60%。
+</li><li><strong>别用合成数据做评测</strong>：教师生成的分布和真实评测分布不同，会高估。
+</li></ol>
+<hr>
+<h2 id="sec-10">6. 与 KD 的边界（一句话）</h2>
+<blockquote>数据蒸馏改的是<strong>训练集</strong>，KD 改的是<strong>损失函数</strong>。前者换教师不用改学生代码，后者换教师要对齐接口。</blockquote>
+<hr>
+<p>更新时间: 2026-11-21</p>
+<footer>大模型 → VLA/WAM 蒸馏研究 · 2026-11 · 数字均标证据级别（L3 全文 / L2 部分 / L1 摘要）</footer>
+</main>
+</body>
+</html>

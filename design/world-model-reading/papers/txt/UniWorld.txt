@@ -1,0 +1,766 @@
+UniWorld: Autonomous Driving Pre-training via
+World Models
+Chen Min
+Peking University
+minchen@stu.pku.edu.cn
+Abstract: In this paper, we draw inspiration from Alberto Elfes’ pioneering work
+in 1989, where he introduced the concept of the occupancy grid as World Mod-
+els for robots [1]. We imbue the robot with a spatial-temporal world model,
+termed UniWorld, to perceive its surroundings and predict the future behavior
+of other participants. UniWorld involves initially predicting 4D geometric occu-
+pancy as the World Models for foundational stage and subsequently fine-tuning
+on downstream tasks. UniWorld can estimate missing information concerning the
+world state and predict plausible future states of the world. Besides, UniWorld’s
+pre-training process is label-free, enabling the utilization of massive amounts of
+image-LiDAR pairs to build a Foundational Model. The proposed unified pre-
+training framework demonstrates promising results in key tasks such as motion
+prediction, multi-camera 3D object detection, and surrounding semantic scene
+completion. When compared to monocular pre-training methods on the nuScenes
+dataset, UniWorld shows a significant improvement of about 1.5% in IoU for mo-
+tion prediction, 2.0% in mAP and 2.0% in NDS for multi-camera 3D object de-
+tection, as well as a 3% increase in mIoU for surrounding semantic scene comple-
+tion. By adopting our unified pre-training method, a 25% reduction in 3D training
+annotation costs can be achieved, offering significant practical value for the im-
+plementation of real-world autonomous driving. Codes are publicly available at
+https://github.com/chaytonmin/UniWorld.
+1 Introduction
+The multi-camera 3D perception systems in autonomous driving offer a cost-effective solution
+to gather 360◦ environmental information around vehicles, making it a hot research area re-
+cently [2, 3, 4, 5, 6]. However, current multi-camera 3D perception models [7, 8, 9, 10, 11, 12]
+usually rely on pre-trained ImageNet models [13] or depth estimation models [7] on monocular
+images. These models fail to take into account the inherent spatial and temporal correlations pre-
+sented in multi-camera systems. Additionally, while monocular pre-training enhances the capability
+of image feature extraction, it does not address the pre-training requirements of subsequent tasks.
+Autonomous driving vehicles collect vast amounts of image-LiDAR pairs, which contain valuable
+spatial and temporal information. Thus, effectively utilizing these unlabeled image-LiDAR pairs
+can be beneficial for enhancing the pre-training performance of autonomous driving systems.
+Recent studies, such as BEVDepth [10] and DD3D [14], have underscored the significance of depth
+estimation in visual-based perception algorithms. Monocular depth estimation plays a crucial role
+in acquiring spatial position information for objects. However, depth estimation methods typically
+focus on estimating the depth of object surfaces, neglecting the holistic 3D structure of objects and
+occluded elements. For robot systems, geometric occupancy gird provides a unified and consis-
+tent world model for robotic tasks, such as obstacle avoidance, path planning, and navigation [1].
+Achieving precise geometric occupancy prediction is instrumental in enhancing the overall 4D per-
+ception accuracy within multi-camera perception systems [15]. Hence, in the field of autonomous
+driving, as illustrated in Figure 1, the pre-training of models would yield greater benefits by priori-
+arXiv:2308.07234v1  [cs.CV]  14 Aug 2023
+Feature 
+extraction
+Feature 
+extraction
+View 
+Transformer
+BEV
+Encoder
+Downstream 
+Head
+Feature 
+extraction
+View 
+Transformer
+BEV
+Encoder
+World Model
+Head
+Monocular 
+Pre-training
+Unified Spatial-temporal Multi-Camera Pre-training
+Multi-View Interaction Multi-frame Fusion
+T-n Frame
+…….
+T Frame
+Figure 1: Comparison between monocular pre-training and our unified multi-camera pre-training.
+Monocular pre-training only enhances the capability of the feature extraction from a single view,
+whereas our proposed multi-view unified pre-training enables the incorporation of temporal and
+spatial information from multi-view images through World Models for pre-training.
+tizing the reconstruction of the 4D geometric occupancy of the surrounding scene, rather than solely
+emphasizing depth prediction.
+With an inherent World Model, humans possess the remarkable ability to mentally reconstruct the
+complete 3D geometry of occluded scenes and anticipate the future motion trajectories of objects in
+the surrounding scene, which is crucial for recognition and understanding. To imbue the perception
+system of autonomous vehicles with similar spatial-temporal world models, we propose a multi-
+camera unified pre-training method, called UniWorld. Our approach leverages the intuitive concept
+of using the multi-camera system to learn a compressed spatial and temporal representation of the
+environment (i.e., World models) as the foundational stage, followed by fine-tuning downstream
+tasks. In the case of multi-camera BEV perception, the input multi-camera images are transformed
+to the BEV space using advanced techniques like LSS [16] or Transformer [7], and then a geometric
+occupancy prediction head is incorporated to learn the 4D occupancy distribution, thereby enhancing
+the model’s understanding of the 4D surrounding scene. Due to the sparsity of single-frame point
+clouds, we employed multi-frame point cloud fusion as the ground truth for 4D occupancy label
+generation. The decoder was solely used for pre-training, while the well-trained model was utilized
+to initialize the multi-camera perception models. By designing an effective multi-camera unified pre-
+training method, we enable the pre-trained model to exploit the rich spatial and temporal information
+inherent in the unlabeled data. This not only improves the model’s ability to understand complex
+4D scenes but also reduces reliance on costly and time-consuming manual 3D annotation.
+To evaluate the effectiveness of our approach, we conducted extensive experiments using the widely
+used autonomous driving dataset nuScenes [17]. The experimental results demonstrate the supe-
+riority of our multi-camera unified pre-trained model compared to existing monocular pre-training
+methods across various 3D perception tasks, including motion prediction, 3D object detection and
+semantic scene completion. For the motion prediction task, our multi-camera unified pre-training
+algorithm exhibits a 1.8% increase in IoU and a 1.7% improvement in VPQ compared to monocular
+approaches. This indicates that our algorithm is capable of learning future information by construct-
+ing World models. In the 3D object detection task, the proposed UniWorld-3D achieves a significant
+improvement of 2.0% in mAP and 2.0% in NDS when compared to monocular pre-training meth-
+ods. This indicates that our model is better equipped to accurately detect and localize objects in a
+3D environment. For the semantic scene completion task, UniWorld-3D demonstrates a noteworthy
+improvement of approximately 3% in mIoU, indicating that our model is more effective in recon-
+structing and predicting the semantic labels of the surrounding environment. Besides, through the
+implementation of our integrated pre-training approach, a noteworthy 25% reduction in costs related
+to 3D training annotations can be realized. This achievement holds considerable practical signifi-
+cance for the seamless integration of autonomous driving technology into real-world scenarios. The
+2
+2D to 3D 
+View Transform
+Multi-view Images
+Evenly Spaced
+V oxelization
+LiDAR Frames
+Binary 
+Occupancy 
+Prediction Loss
+Pre-training
+Decoder
+Downstream
+Decoder
+Downstream Tasks
+World ModelsOccupancy Labels
+BEV Features
+BEV
+Encoder
+Pre-trainingFine-tuning
+T-n Frame       T Frame
+...
+LSS 
+Transformer
+ 2D Convs
+3D Convs
+2D Convs
+Focal LossMulti-frame Fusion
+T Frame       T + m Frame
+Figure 2: The overall architecture of the proposed multi-camera unified pre-training method Uni-
+World. We first transform the multi-frame large-scale irregular LiDAR point clouds into volumetric
+representations as the 4D geometric occupancy labels, then add an occupancy decoder with some
+layers of 3D convolutions to the BEV encoder. We apply binary occupancy classification as the
+pretext task to distinguish whether the 4D voxel contains points. After pre-training, the lightweight
+decoder is discarded, and the encoder is used to warm up the backbones of downstream tasks.
+superior performance of our model can be attributed to its ability to effectively leverage unlabeled
+data, as well as its consideration of spatial and temporal correlations. By incorporating informa-
+tion from multiple camera views, our model can better capture the rich contextual and temporal
+information present in the scene, leading to enhanced perception capabilities in autonomous driving
+scenarios.
+The main contributions of this work are listed below:
+• We propose to learn spatial-temporal World Models for unified autonomous driving pre-
+training, which involves initially reconstructing the 4D surrounding scene as the founda-
+mental stage and subsequently fine-tunes on downstream tasks.
+• UniWorld has the capability to estimate missing information concerning the 3D world state
+and predict plausible future states of the 4D world.
+• UniWorld’s pre-training process is label-free, enabling the utilization of massive amounts
+of image-LiDAR pairs collected by autonomous vehicles to build a Fundational Model.
+• By adopting our unified pre-training method, a 25% reduction in costly 3D annotation costs
+can be achieved, offering significant practical value for the implementation of real-world
+autonomous driving.
+2 Related Work
+2.1 Multi-Camera 3D Perception
+In the field of autonomous driving, vision-based 3D perception conducted in bird’s eye view has
+gained significant attention in recent years [18, 19, 20, 21, 22]. Learning-based BEV perception
+methods, based on 2D-to-3D view transformation, can be broadly categorized into geometry-based
+and Transformer-based approaches [23, 24, 25, 26, 27]. One of the early geometry-based methods is
+LSS [16], which lifts each individual image into a frustum of features for each camera and then com-
+bines them into a rasterized BEV grid. Building upon LSS, BEVDet [9] introduces image-view and
+BEV space data augmentation techniques. BEVDepth [10] demonstrates the significance of depth
+and improves the quality of BEV features by incorporating explicit depth supervision from LiDAR.
+BEVStereo [28] and STS [29] leverage temporal multi-view stereo methods to enhance depth pre-
+cision. SOLOFusion [30] and VideoBEV [31] explore long-term temporal fusion for multi-view
+3D perception. DETR3D [7] is the first Transformer-based BEV method, which defines object
+3
+queries in 3D space and learns from multi-view image features using a transformer decoder. Build-
+ing upon DETR3D, PETR [32] enhances the approach with position embedding transformations,
+while BEVFormer [8] introduces temporal self-attention to fuse historical BEV features. UniAD
+[33] extends BEVFormer to enable multi-task learning in BEV space. Although the existing BEV
+perception methods have shown promising performance, they are typically initialized with ImageNet
+pre-trained models [13] or depth pre-trained models [14] trained on monocular images. However,
+there is a lack of unified pre-training methods that effectively leverage the geometric structure of
+multi-camera inputs.
+2.2 Label-free Pre-training
+Label-free Pre-training has gained significant popularity in recent years as it eliminates the need
+for expensive data annotation. For instance, the method presented in [34] focuses on predicting the
+relative location of image patches as the pretext task. Another approach, as described in [35], tackles
+a jigsaw puzzle prediction task, which demonstrates strong generalization capabilities for domain
+adaptation in object recognition. DeepCluster [36] and SwA V [37] leverage k-means clustering to
+obtain pseudo-labels, which are then used to train the network. Moco [38] and BYOL [39] construct
+contrastive views for self-supervised learning. Additionally, methods like MAE [40] and BEiT [41]
+employ a random patch masking approach where missing pixels or features are reconstructed using
+a simple autoencoder framework. In the context of automated vehicle perception, DD3D utilizes
+monocular depth estimation for pre-training. V oxel-MAE [42] and ALSO [43] propose predicting
+occupancy for LiDAR perception as the pretext task. Our previous work Occ-BEV [44] defines the
+task of multi-camera unified pre-training and reconstructes the 3D static surrounding scene as the
+fundamental stage. In this work, we extend Occ-BEV to utilize 4D geometric occupancy prediction
+to learn spatial-temporal world models for vision-based perception.
+2.3 World Models
+The concept of employing world models by humans, animals, and intelligent systems has a historical
+foundation in psychology, dating back to the work of Craik in 1943 [45]. Alberto Elfes proposed
+the geometric occupancy grid as a world model for robot perception and navigation in 1989 [1].
+David Ha proposed that world model can be trained quickly in an unsupervised manner to learn a
+compressed spatial and temporal representation of the environment [46]. Methods in [47, 48, 49]
+presuppose access to rewards and online interaction with the environment from predictions in the
+compact latent space of a world model in reinforcement learning. [50, 51, 52] learned the latent
+dynamics of a world model from image observations via video prediction. MILE [53] proposed to
+build the world model by predicting the future BEV segmentation from high-resolution videos of
+expert demonstrations for autonomous driving. In this paper, we follow the concept of the occupancy
+grid as a robot’s world model introduced in 1989 [1], and propose a label-free spatiotemporal fused
+world model for autonomous driving by integrating future prediction techniques inspired by methods
+in reinforcement learning [46] and MILE [53].
+3 Methodology
+This section provides a detailed description of the network architecture employed by UniWorld, de-
+picted in Figure 2. We commence by examining the vision-based bird’s eye view (BEV) perception
+methods in Section 3.1. Following that, in Section 3.1.2, we present the proposed 4D world model
+utilized for pre-training. Additionally, we compare this model to existing monocular pre-training,
+knowledge distillation, and 3D static pre-training methods in Section 3.2.
+3.1 Review of BEV Perception
+As discussed in the related works, there are two primary learning-based approaches for transforming
+2D images into 3D space: LSS-based [16] and Transformer-based [7] view transformations. How-
+4
+ever, our method is not restricted to any specific view transformation technique. In the subsequent
+sections, we will provide a comprehensive outline of the workflow for multi-camera perception al-
+gorithms based on the bird’s eye view.
+The input images from multiple cameras, denoted as I = {Ii, i= 1, 2, ..., Nview}, are initially
+processed by an image backbone network, such as ResNet-101 [54], which generates feature maps
+F2d = {F i2d}Nviewi=1 for each camera view. These features are then passed through a 2D-to-3D view
+transformation operation, projecting them onto a unified bird’s eye view representation denoted as
+Fbev ∈ RC×H×W . By incorporating specific heads, various autonomous driving perception tasks
+can be performed on the bird’s eye view, including 3D object detection, map segmentation, object
+tracking, and more [33].
+Current bird’s eye view perception algorithms [8, 7, 9] often rely on feature extraction models (e.g.,
+ImageNet [13]) or depth estimation models (e.g., V2-99 [14]) trained on monocular images. How-
+ever, these approaches do not consider the interplay and correlation between images captured from
+different camera views and frames, leading to a lack of a unified pre-training model that utilizes the
+spatial and temporal relationships between different camera views. In order to fully exploit these
+relationships, we propose a multi-camera unified pre-training model.
+Methods such as BEVDepth [10] and DD3D [14] demonstrate the importance of depth estimation
+for visual-based perception algorithms. However, depth estimation can only estimate the position
+of the object’s surface, ignoring the occlusions of objects. For multi-camera systems, precision
+occupancy prediction is beneficial to the accuracy of perception. To enable the model to possess
+the capabilities of occupancy scene completion and future prediction simultaneously, we propose to
+build world models for multi-camera unified pre-training via 4D geometric occupancy prediction.
+3.1.1 4D Geometric Occupancy Decoder
+In order to predict 4D geometric occupancy using the BEV features Fbev, we begin by transforming
+the BEV features into F
+′
+bev ∈ RC
+′
+×D×H×W , where D represents the number of height channels,
+and C = C
+′
+× D. Subsequently, we utilize a 3D decoder specifically designed to generate 4D
+geometric occupancy. This decoder consists of lightweight 3D convolution layers, with the final
+layer providing the probability of each voxel containing points. The output of the decoder is denoted
+as P = {P i ∈ RD×H×W ×1, i= 1, 2, ..., m}. During the pre-training phase, the main objective of
+the decoder is to reconstruct occupied voxels.
+3.1.2 Pre-training Target
+Considering the sparsity of single-frame LiDAR point clouds and the potential inaccuracies that
+arise from fusing a large number of frames due to dynamic objects, we adopt a strategy of fusing
+LiDAR point clouds from selected keyframes to generate occupancy labels. Following the standard
+practice in 3D perception models [55, 56, 57, 58], the LiDAR point clouds are divided into evenly
+spaced voxels. For the dimensions of the LiDAR point clouds along Z × Y × X (denoted as
+D × H × W ), the voxel size is determined as vZ × vH × vW respectively. The 4D ground truth
+T = {T i ∈ {0, 1}D×H×W ×1, i= 1, 2, ..., m} is generated based on the occupancy of the voxels,
+indicating whether each voxel contains points or not. A value of 1 represents an occupied voxel,
+while a value of 0 indicates a free voxel.
+We propose the binary geometric occupancy classification task as part of the pre-training process for
+multi-camera perception models. The goal of this task is to train the network to accurately predict
+the distribution of geometric occupancy in a 4D scene based on multi-view images. However, due to
+the significant number of empty voxels, predicting occupancy grids presents an imbalanced binary
+classification challenge. To address this, we employ focal loss for binary occupancy classification,
+leveraging the predicted 4D occupied values P and the 4D ground truth occupied voxels T :
+5
+loss = − 1m 1n
+mX
+i=1
+nX
+j=1
+αt
+
+1 − P ijt
+γ
+log(P ijt ), (1)
+where P ij is the predicted probability of voxel j in the i-th occupancy. n = D × H × W is
+the total number of voxels and batch is the number of batch sizes. The weighting factor α for
+positive/negative examples is set as 2 and the weighting factor γ for easy/hard examples is 0.25.
+αt = α and P ijt = P ij for class 1. αt = 1− α and P ijt = 1− P ij for class 0.
+Currently, the 4D geometry occupancy labels used in the algorithm are obtained from multi-frame
+LiDAR point clouds. In the future, it is also feasible to utilize point clouds generated from 3D scene
+reconstructions using techniques such as NeRF [59, 60, 61, 62] or MVS [63, 64, 65, 66].
+3.1.3 Pre-training for Surrounding Semantic Occupancy Prediction
+Recently, several algorithms, such as TPVFormer [67], OpenOccupancy [68], and Occ3D [69], have
+expanded the scope of multi-camera BEV perception to include the task of surrounding semantic
+scene completion [70, 71, 72, 73, 74]. However, directly predicting the 3D semantics of multi-view
+images requires a significant amount of 3D semantic annotations for training, which can be ex-
+pensive and time-consuming. To overcome this challenge, we propose to extend our multi-camera
+unified pre-training algorithm to include the surrounding semantic scene completion task. This in-
+volves initially performing geometric occupancy prediction and subsequently fine-tuning the model
+on the semantic scene completion task.
+3.2 Comparision with Existing Methods
+3.2.1 Comparision with Monocular Pre-training
+Currently, multi-camera perception algorithms predominantly utilize either monocular image pre-
+training on ImageNet [13] or depth estimation pre-training [14]. In Figure 1, we highlight several
+advantages of our proposed multi-camera unified pre-training model over monocular pre-training:
+(1) Spatial-Temporal Integration: By leveraging spatial and temporal information from multiple
+camera views, the model gains a better understanding of the dynamic nature of the environment,
+leading to more accurate predictions. (2) Unified Representation: The unified pre-training ap-
+proach enables the model to learn a shared representation across different camera views, facilitating
+improved knowledge transfer and reducing the necessity for task-specific pre-training. (3) Percep-
+tion of Occluded Areas: Monocular depth estimation can only predict surface positions of objects,
+while our proposed multi-camera unified pre-training method enables comprehensive 3D reconstruc-
+tion of occluded objects.
+3.2.2 Comparision with Knowledge Distillation
+Recently, there have been advancements in knowledge distillation algorithms such as BEVDis-
+till [75], TiG-BEV [76] and GeoMIM [77], which aim to transfer knowledge from well-established
+3D LiDAR models like CenterPoint [57] to multi-camera object detection algorithms. Similarly, our
+approach aims to leverage the rich spatial information presented in 3D point clouds and transfer it
+to multi-camera algorithms. Our unique pre-training algorithm eliminates the need for annotations
+or pre-trained LiDAR detection models, significantly reducing the 3D annotation requirements.
+4 Experiments
+4.1 Experimental Setup
+We conducted extensive experiments on the nuScenes dataset [17]. We adopted the training settings
+from the existing methods: DETR3D [7] and BEVFormer [8], which are two Transformer-based
+methods, and BEVerse [78], BEVDet [9], BEVDepth [10], and BEVStereo [28], which are four
+6
+Table 1: Quantitative multi-task learning performance on the nuScenes validation set.
+Method Pre-train Detection Semantic map Motion
+NDS↑ MAP↑ Divider↑ Ped Cross↑ Boundary↑ mIoU↑ IoU↑ VPQ↑
+BEVerse [78]
+ImageNet [13] 0.466 0.321 53.2 39.0 53.9 48.7 38.7 33.3
+ImageNet + UniWorld-3D 0.483+1.7% 0.334+1.3% 54.8+1.6 40.4+1.4 55.0+1.1 50.0+1.3 39.4+0.7 34.1+0.8
+ImageNet + UniWorld-4D 0.484+1.8% 0.331+1.0% 54.7+1.5 40.1+1.1 54.9+1.0 49.9+1.2 40.5+1.8 35.0+1.7
+Table 2: Quantitative multi-camera 3D object detection performance on the nuScenes validation set.
+Type Method Pre-train Backbone Image Size CBGS mAP↑ NDS↑ mATE↓ mASE↓ mAOE↓ mA VE↓ mAAE↓
+Transformer [7]
+DETR3D [7] FCOS3D [79] R101-DCN 900×1600 ✓ 0.349 0.434 0.716 0.268 0.379 0.842 0.200
+FCOS3D + UniWorld-3D R101-DCN 900×1600 ✓ 0.360+1.1% 0.461+2.7% 0.701 0.260 0.372 0.730 0.188
+BEVFormer [8]
+ImageNet [13] R101-DCN 900×1600 × 0.371 0.479 0.688 0.275 0.441 0.382 0.195
+ImageNe+UniWorld-3D R101-DCN 900×1600 × 0.397+2.6% 0.500+2.1% 0.680 0.272 0.392 0.380 0.193
+ImageNe+UniWorld-4D R101-DCN 900×1600 × 0.390+1.9% 0.501+2.2% 0.683 0.280 0.394 0.374 0.192
+FCOS3D [79] R101-DCN 900×1600 × 0.416 0.517 0.673 0.274 0.372 0.394 0.198
+FCOS3D + UniWorld-3D R101-DCN 900×1600 × 0.438+2.2% 0.534+1.7% 0.656 0.271 0.371 0.348 0.183
+FCOS3D + UniWorld-4D R101-DCN 900×1600 × 0.432+1.6% 0.530+1.3% 0.659 0.274 0.375 0.344 0.188
+LSS-based methods. We performed pre-training for a total of 24 epochs. The occupancy decoder
+consists of two layers of 3D convolutional layers. For more detailed information about the parameter
+setups, please refer to the papers of DETR3D, BEVFormer, BEVerse, BEVDet, BEVDepth and
+BEVStereo. All experiments were conducted using 8 Nvidia Tesla A40 GPU cards.
+4.2 Results on Downstream Tasks
+4.2.1 Multi-Camera 3D Object Detection
+We first comprehensively validate the performance of the proposed multi-camera unified pretraining
+algorithm on a multi-task model, i.e., BEVerse [78]. As shown in Table 1, compared to the baseline,
+both Occ-BEV [44] and UniWorld significantly enhance the performance of 3D object detection,
+semantic map construction, and motion prediction. In comparison to Occ-BEV’s 3D reconstruction
+pre-training, UniWorld introduces a 4D occupancy prediction auxiliary task, enabling the model to
+learn 4D motion information and construct a more comprehensive 4D world model. In the motion
+prediction task, UniWorld’s improvement over Occ-BEV results in a 1% increase in IoU and VPQ.
+We subsequently performed an assessment of the performance of multi-camera unified pre-training
+models in the 3D object detection task using the validation set of nuScenes. As shown in Table 2,
+our multi-camera unified pre-training methods Occ-BEV and UniWorld exhibited significant im-
+provements over monocular FCOS3D [79]. Occ-BEV surpassed FCOS3D [79] on DETR3D [7] by
+achieving a 2.7% increase in NDS and 1.1% in mAP. Additionally, it outperformed BEVFormer [8]
+with a 2.6% improvement in NDS and 2.1% in mAP for ImageNet baseline, a 1.7% improvement in
+NDS and 2.2% in mAP for FCOS3D baseline. We present the convergence curve of BEVFormer [8]
+in Figure 3 for FCOS3D baseline. Our unified pre-training Occ-BEV significantly enhances BEV-
+Former [8] at the initial epoch, achieving a 4% increase in NDS. This demonstrates that our unified
+pre-training method delivers accurate object position information from a global perspective.
+Compared to the 3D reconstruction pretraining of Occ-BEV [44], the introduction of 4D occupancy
+prediction in UniWorld resulted in slightly inferior performance in the 3D object detection task.
+This discrepancy is likely attributed to the fact that 4D prediction allows the model to learn future
+information but introduces uncertainty in the object’s position. Further resolution of this issue is
+required.
+For further validation, we conducted additional experiments on the nuScenes test set to validate
+the effectiveness of our proposed multi-camera unified pre-training method Occ-BEV via 3D scene
+reconstruction compared to pre-training based on monocular depth estimation. As presented in
+Table 3, our multi-camera unified pre-training method demonstrated a significant improvement of
+about 1.8% in both mAP and NDS compared to the DETR3D [7] pre-trained on DD3D [14] for depth
+7
+Table 3: Quantitative multi-camera 3D object detection performance on the nuScenes test set.
+Method Pre-train Backbone Image Size CBGS mAP↑ NDS↑ mATE↓ mASE↓ mAOE↓ mA VE↓ mAAE↓
+DETR3D [7] DD3D [14] v2-99 900×1600 ✓ 0.412 0.479 0.641 0.255 0.394 0.845 0.133
+DD3D + UniWorld-3D v2-99 900×1600 ✓ 0.431+1.9% 0.496+1.7% 0.621 0.257 0.407 0.783 0.123
+Table 4: Quantitative segmentation performance on the 3D occupancy prediction challenge [80].
+Methods Pre-train Backbone Image Size mIoU↑
+others
+barrier
+bicycle
+bus
+car
+construction
+motorcycle
+pedestrian
+traffic-cone
+trailer
+truck
+driveable
+others
+sidewalk
+terrain
+manmade
+vegetation
+BEVFormer [8] FCOS3D [79] R101-DCN [54] 900×1600 23.70 10.24 36.77 11.70 29.87 38.92 10.29 22.05 16.21 14.69 27.44 23.13 48.19 33.10 29.80 17.64 19.01 13.75
+BEVStereo [28] BEVDet4D [9] Swin-B [81] 512×1408 42.78 22.45 47.95 28.13 40.29 53.79 27.60 35.18 29.64 31.69 45.49 37.71 81.88 49.16 55.03 51.00 50.87 39.44
+BEVStereo [28] UniWorld-3D Swin-B [81] 512×1408 45.92+3.14% 26.21 53.06 33.41 42.77 56.57 28.99 39.92 32.31 34.89 49.59 40.28 82.88 52.29 57.77 53.58 53.94 42.25
+estimation. This highlights the effectiveness and superiority of our pre-training approach in enhanc-
+ing the performance of 3D perception tasks. Compared to the monocular depth estimation approach
+of DD3D [14], our pre-training method considers the complete 3D structure of objects, beyond the
+partial surfaces captured by LiDAR. Moreover, it incorporates the learning of multi-view and tem-
+poral information, allowing for a more comprehensive understanding of the scene. The above results
+indicated that our proposed Occ-BEV model has a promising application in autonomous driving. As
+UniWorld’s performance in the 3D object detection task is slightly inferior to Occ-BEV , we do not
+present its results on the test set here.
+We also compared our proposed multi-camera unified pre-training method Occ-BEV with the knowl-
+edge distillation approach BEVDistill [75]. As shown in Table 6, our method demonstrates compa-
+rable performance to the knowledge distillation method trained on annotated LiDAR point clouds
+data. It is worth noting that our approach offers higher efficiency and broader applicability since it
+does not rely on data annotation or training of LiDAR point clouds models as BEVDistill [75].
+4.2.2 Multi-Camera Semantic Occupancy Prediction
+We also evaluated the performance of our proposed multi-camera unified pre-training method Occ-
+BEV on the task of multi-camera semantic scene completion. Compared to BEV perception, the
+task of predicting semantic labels for each voxel in 3D space, known as surrounding semantic scene
+completion, is more challenging. To tackle this challenge, we decomposed the task into two steps:
+first reconstructing the 3D scene as the fundamental model and then simultaneously reconstructing
+and predicting semantics. As shown in Table 4, on the 3D occupancy prediction challenge [80],
+our algorithm achieved a 3% improvement in mIoU compared to BEVStereo [28], highlighting the
+effectiveness of our approach in addressing the complexities of surrounding semantic occupancy
+prediction.
+2 6 10 14 18 22 26
+Training epoch
+28
+32
+36
+40
+44
+48mAP
+FCOS3D
+UniWorld-3D
+Figure 3: Performance curves.
+0.25 0.50 0.75 1.00
+Percentage of labeled data
+42
+44
+46
+48
+50
+52
+54
+56
+58NDS
+FCOS3D
+UniWorld-3D Figure 4: Label-efficiency.
+Frames mAP↑ NDS↑ mATE↓
+0 0.416 0.517 0.673
+1 0.417 0.523 0.661
+3 0.438 0.534 0.656
+5 0.429 0.525 0.659
+Table 5: Impacts of multi-frame
+fusion. The occupancy labels
+were obtained by merging Li-
+DAR point clouds from the cur-
+rent frame, preceding keyframes,
+succeeding keyframes, and their
+corresponding non-keyframes.
+8
+Methods mAP↑ NDS↑
+BEVFormer [8] 0.352 0.423
+BEVDistill [75] 0.386 0.457
+UniWorld-3D 0.389 0.459
+Table 6: Comparison with BEVDistill [75].
+Methods mAP↑ NDS↑ mATE↓
+BEVFormer [8] 0.416 0.517 0.673
+UniWorld-3D 0.438 0.534 0.656
+Supervision 0.445 0.544 0.648
+Table 7: Semantic occupancy supervision.
+4.3 Ablation Studies
+In this section, we perform thorough ablation experiments to investigate the individual compo-
+nents of our unified pre-training method UniWorld-3D with multi-camera 3D object detector BEV-
+Former [8] on nuScenes val set.
+4.3.1 Data-efficient Learner
+Fine-tuning models using limited labeled data is made possible through pre-training. In order to
+evaluate the data efficiency of UniWorld-3D, we conducted experiments using varying amounts of
+labeled data for fine-tuning. BEVFormer [8] was utilized as the backbone and assessed the detection
+performance of the model on the nuScenes validation set. The results, as depicted in Figure 4,
+demonstrate that when BEVFormer is trained with 75% of the labeled data, it achieves the same
+performance as it trained on the complete dataset. Moreover, even with only 25% of the samples
+available for fine-tuning, our UniWorld model outperforms BEVFormer by 1% in mAP, highlighting
+its remarkable data efficiency and its potential to reduce the reliance on expensive human-annotated
+3D data.
+4.3.2 Multi-frame Fusion
+We conducted an analysis of the influence of the number of fused LiDAR frames on the pre-trained
+model. As more frames were fused, the density of the point clouds increased. Our comparison
+included single-frame fusion, 3-frame fusion and 5-frame fusion (including the corresponding non-
+key frames) and the results are presented in Table 5. It is clear that the model’s accuracy initially
+improved with an increasing number of fused point clouds but started to decline afterwards. This
+finding suggests that fusing multiple frames of point clouds can enhance the effectiveness of the pre-
+trained model. However, it is important to note that excessive fusion of frames introduces uncertainty
+due to the presence of dynamic objects. This uncertainty can lead to errors in the fusion process and
+subsequently lower the accuracy of the model.
+4.3.3 Explicit Semantic Supervision
+Labeled 3D data can be utilized to handle dynamic objects separately during the point cloud fusion
+process, resulting in more precise occupancy grid ground truth for multi-frame fusion. Subsequently,
+we examined the impact of explicit occupancy grid prediction on the model’s performance. The
+results in Table 7 demonstrate that incorporating explicit supervision leads to a notable improvement
+of 3% in mAP and NDS compared to BEVFormer [8]. Furthermore, when compared to unlabeled
+multi-frame fused point cloud pre-training, there is a 1% increase in mAP. These findings highlight
+the potential of leveraging labeled data for explicit occupancy prediction supervision. Moreover,
+they further support the proposition that occupancy prediction enables the model to learn the data
+distribution of the entire 3D scene, thereby enhancing the accuracy of downstream tasks.
+4.4 Qualitative Evaluation
+As shown in Figure 5, we present several reconstructed scenes. It can be observed that using single-
+frame point clouds as the supervision for occupancy grid generation results in incomplete recon-
+structions due to the sparse nature of the LiDAR point clouds. On the other hand, using three
+9
+Front left Front Front right
+Back left Back Back right Binary geometry occupancy prediction
+Sparse Supervision Desne Supervision
+Example 1Example 2
+Figure 5: Visualization of scene reconstruction via occupancy prediction.
+keyframes and their corresponding non-key frames as the supervision information allows for more
+complete reconstructions of scenes.
+Limitations. Although our multi-camera unified pre-training approach has demonstrated promising
+results, there are several limitations to consider: (1) Currently, UniWorld-4D’s performance in the
+3D object detection task is slightly inferior to UniWorld-3D. It is necessary to address the issue
+of decreased 3D static detection performance caused by temporal information prediction. (2) The
+3D convolutions in the decoder limit its applicability to tasks requiring high-resolution occupancy
+reconstruction. We will explore the cascade refine strategy. (3) We rely on LiDAR to obtain ground
+truth occupancy grids. In the future, we will explore the NeRF [59, 60, 61, 62] and MVS [63, 64,
+65, 66] algorithms to reconstruct 3D scenes solely from multi-view images and obtain ground truth
+data.
+5 Conclusion
+We introduce a unified pre-training algorithm founded on 4D occupancy prediction to estimate miss-
+ing information concerning the 3D world state and predict plausible future states of the 4D world.
+This approach has showcased remarkable efficacy across diverse autonomous driving tasks, such as
+motion prediction, multi-camera 3D object detection and surrounding semantic scene completion.
+Pre-training via World Model with unlabeled image-LiDAR pairs offers promising opportunities for
+reducing the 25% dependency on annotated 3D data and establishing a Foundational Model for au-
+tonomous driving and robotics. Future work should focus on addressing the limitations mentioned
+and further improving the performance and applicability of our approach in real-world autonomous
+driving scenarios.
+References
+[1] A. Elfes. Using occupancy grids for mobile robot perception and navigation. Computer, 22
+(6):46–57, 1989.
+[2] Y . Ma, T. Wang, X. Bai, H. Yang, Y . Hou, Y . Wang, Y . Qiao, R. Yang, D. Manocha, and X. Zhu.
+Vision-centric bev perception: A survey. arXiv preprint arXiv:2208.02797, 2022.
+[3] H. Li, C. Sima, J. Dai, W. Wang, L. Lu, H. Wang, E. Xie, Z. Li, H. Deng, H. Tian, et al.
+Delving into the devils of bird’s-eye-view perception: A review, evaluation and recipe. arXiv
+preprint arXiv:2209.05324, 2022.
+[4] T. Liang, H. Xie, K. Yu, Z. Xia, Z. Lin, Y . Wang, T. Tang, B. Wang, and Z. Tang. Bevfusion:
+A simple and robust lidar-camera fusion framework. arXiv preprint arXiv:2205.13790, 2022.
+10
+[5] X. Chen, T. Zhang, Y . Wang, Y . Wang, and H. Zhao. Futr3d: A unified sensor fusion framework
+for 3d detection. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 172–181, 2023.
+[6] Y . Li, Y . Chen, X. Qi, Z. Li, J. Sun, and J. Jia. Unifying voxel-based representation with
+transformer for 3d object detection. arXiv preprint arXiv:2206.00630, 2022.
+[7] Y . Wang, V . C. Guizilini, T. Zhang, Y . Wang, H. Zhao, and J. Solomon. Detr3d: 3d object
+detection from multi-view images via 3d-to-2d queries. In Conference on Robot Learning ,
+pages 180–191. PMLR, 2022.
+[8] Z. Li, W. Wang, H. Li, E. Xie, C. Sima, T. Lu, Q. Yu, and J. Dai. Bevformer: Learning bird’s-
+eye-view representation from multi-camera images via spatiotemporal transformers. arXiv
+preprint arXiv:2203.17270, 2022.
+[9] J. Huang, G. Huang, Z. Zhu, and D. Du. Bevdet: High-performance multi-camera 3d object
+detection in bird-eye-view. arXiv preprint arXiv:2112.11790, 2021.
+[10] Y . Li, Z. Ge, G. Yu, J. Yang, Z. Wang, Y . Shi, J. Sun, and Z. Li. Bevdepth: Acquisition of
+reliable depth for multi-view 3d object detection. arXiv preprint arXiv:2206.10092, 2022.
+[11] E. Xie, Z. Yu, D. Zhou, J. Philion, A. Anandkumar, S. Fidler, P. Luo, and J. M. Alvarez. Mˆ
+2bev: Multi-camera joint 3d detection and segmentation with unified birds-eye view represen-
+tation. arXiv preprint arXiv:2204.05088, 2022.
+[12] C. Yang, Y . Chen, H. Tian, C. Tao, X. Zhu, Z. Zhang, G. Huang, H. Li, Y . Qiao, L. Lu,
+et al. Bevformer v2: Adapting modern image backbones to bird’s-eye-view recognition via
+perspective supervision. In Proceedings of the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, pages 17830–17839, 2023.
+[13] J. Deng, W. Dong, R. Socher, L.-J. Li, K. Li, and L. Fei-Fei. Imagenet: A large-scale hierar-
+chical image database. In 2009 IEEE conference on computer vision and pattern recognition ,
+pages 248–255. Ieee, 2009.
+[14] D. Park, R. Ambrus, V . Guizilini, J. Li, and A. Gaidon. Is pseudo-lidar needed for monocular
+3d object detection? In Proceedings of the IEEE/CVF International Conference on Computer
+Vision, pages 3142–3152, 2021.
+[15] Y . Shi, K. Jiang, J. Li, J. Wen, Z. Qian, M. Yang, K. Wang, and D. Yang. Grid-centric
+traffic scenario perception for autonomous driving: A comprehensive review. arXiv preprint
+arXiv:2303.01212, 2023.
+[16] J. Philion and S. Fidler. Lift, splat, shoot: Encoding images from arbitrary camera rigs by
+implicitly unprojecting to 3d. In European Conference on Computer Vision , pages 194–210.
+Springer, 2020.
+[17] H. Caesar, V . Bankiti, A. H. Lang, S. V ora, V . E. Liong, Q. Xu, A. Krishnan, Y . Pan, G. Baldan,
+and O. Beijbom. nuscenes: A multimodal dataset for autonomous driving. In Proceedings of
+the IEEE/CVF conference on computer vision and pattern recognition , pages 11621–11631,
+2020.
+[18] Y . Zhang, Z. Zhu, W. Zheng, J. Huang, G. Huang, J. Zhou, and J. Lu. Beverse: Unified per-
+ception and prediction in birds-eye-view for vision-centric autonomous driving.arXiv preprint
+arXiv:2205.09743, 2022.
+[19] Y . Jiang, L. Zhang, Z. Miao, X. Zhu, J. Gao, W. Hu, and Y .-G. Jiang. Polarformer: Multi-
+camera 3d object detection with polar transformers. arXiv preprint arXiv:2206.15398, 2022.
+11
+[20] S. Hu, L. Chen, P. Wu, H. Li, J. Yan, and D. Tao. St-p3: End-to-end vision-based autonomous
+driving via spatial-temporal feature learning. InComputer Vision–ECCV 2022: 17th European
+Conference, Tel Aviv, Israel, October 23–27, 2022, Proceedings, Part XXXVIII, pages 533–549.
+Springer, 2022.
+[21] S. Xie, L. Kong, W. Zhang, J. Ren, L. Pan, K. Chen, and Z. Liu. Robobev: Towards robust
+bird’s eye view perception under corruptions. arXiv preprint arXiv:2304.06719, 2023.
+[22] Z. Chen, Z. Li, S. Zhang, L. Fang, Q. Jiang, and F. Zhao. Graph-detr3d: rethinking overlapping
+regions for multi-view 3d object detection. In Proceedings of the 30th ACM International
+Conference on Multimedia, pages 5999–6008, 2022.
+[23] Y . Li, B. Huang, Z. Chen, Y . Cui, F. Liang, M. Shen, F. Liu, E. Xie, L. Sheng, W. Ouyang,
+et al. Fast-bev: A fast and strong bird’s-eye view perception baseline. arXiv preprint
+arXiv:2301.12511, 2023.
+[24] Q. Li, Y . Wang, Y . Wang, and H. Zhao. Hdmapnet: An online hd map construction and
+evaluation framework. In 2022 International Conference on Robotics and Automation (ICRA) ,
+pages 4628–4634. IEEE, 2022.
+[25] B. Liao, S. Chen, X. Wang, T. Cheng, Q. Zhang, W. Liu, and C. Huang. Maptr: Struc-
+tured modeling and learning for online vectorized hd map construction. arXiv preprint
+arXiv:2208.14437, 2022.
+[26] S. Doll, R. Schulz, L. Schneider, V . Benzin, M. Enzweiler, and H. P. Lensch. Spatialdetr:
+Robust scalable transformer-based 3d object detection from multi-view camera images with
+global cross-sensor attention. In Computer Vision–ECCV 2022: 17th European Conference,
+Tel Aviv, Israel, October 23–27, 2022, Proceedings, Part XXXIX , pages 230–245. Springer,
+2022.
+[27] H. Zhou, Z. Ge, Z. Li, and X. Zhang. Matrixvt: Efficient multi-camera to bev transformation
+for 3d perception. arXiv preprint arXiv:2211.10593, 2022.
+[28] Y . Li, H. Bao, Z. Ge, J. Yang, J. Sun, and Z. Li. Bevstereo: Enhancing depth esti-
+mation in multi-view 3d object detection with dynamic temporal stereo. arXiv preprint
+arXiv:2209.10248, 2022.
+[29] Z. Wang, C. Min, Z. Ge, Y . Li, Z. Li, H. Yang, and D. Huang. Sts: Surround-view temporal
+stereo for multi-view 3d detection. arXiv preprint arXiv:2208.10145, 2022.
+[30] J. Park, C. Xu, S. Yang, K. Keutzer, K. Kitani, M. Tomizuka, and W. Zhan. Time will tell:
+New outlooks and a baseline for temporal multi-view 3d object detection. arXiv preprint
+arXiv:2210.02443, 2022.
+[31] C. Han, J. Sun, Z. Ge, J. Yang, R. Dong, H. Zhou, W. Mao, Y . Peng, and X. Zhang. Ex-
+ploring recurrent long-term temporal fusion for multi-view 3d perception. arXiv preprint
+arXiv:2303.05970, 2023.
+[32] Y . Liu, T. Wang, X. Zhang, and J. Sun. Petr: Position embedding transformation for multi-view
+3d object detection. arXiv preprint arXiv:2203.05625, 2022.
+[33] Y . Hu, J. Yang, L. Chen, K. Li, C. Sima, X. Zhu, S. Chai, S. Du, T. Lin, W. Wang, L. Lu, X. Jia,
+Q. Liu, J. Dai, Y . Qiao, and H. Li. Planning-oriented autonomous driving. In Proceedings of
+the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 2023.
+[34] C. Doersch, A. Gupta, and A. A. Efros. Unsupervised visual representation learning by context
+prediction. In Proceedings of the IEEE international conference on computer vision , pages
+1422–1430, 2015.
+12
+[35] F. M. Carlucci, A. D’Innocente, S. Bucci, B. Caputo, and T. Tommasi. Domain generalization
+by solving jigsaw puzzles. In Proceedings of the IEEE/CVF Conference on Computer Vision
+and Pattern Recognition, pages 2229–2238, 2019.
+[36] M. Caron, P. Bojanowski, A. Joulin, and M. Douze. Deep clustering for unsupervised learning
+of visual features. In Proceedings of the European conference on computer vision (ECCV) ,
+pages 132–149, 2018.
+[37] M. Caron, I. Misra, J. Mairal, P. Goyal, P. Bojanowski, and A. Joulin. Unsupervised learning of
+visual features by contrasting cluster assignments. Advances in Neural Information Processing
+Systems, 33:9912–9924, 2020.
+[38] K. He, H. Fan, Y . Wu, S. Xie, and R. Girshick. Momentum contrast for unsupervised visual
+representation learning. In Proceedings of the IEEE/CVF conference on computer vision and
+pattern recognition, pages 9729–9738, 2020.
+[39] J.-B. Grill, F. Strub, F. Altch ´e, C. Tallec, P. Richemond, E. Buchatskaya, C. Doersch,
+B. Avila Pires, Z. Guo, M. Gheshlaghi Azar, et al. Bootstrap your own latent-a new ap-
+proach to self-supervised learning. Advances in neural information processing systems , 33:
+21271–21284, 2020.
+[40] K. He, X. Chen, S. Xie, Y . Li, P. Doll ´ar, and R. Girshick. Masked autoencoders are scalable
+vision learners. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern
+Recognition, pages 16000–16009, 2022.
+[41] H. Bao, L. Dong, S. Piao, and F. Wei. Beit: Bert pre-training of image transformers. arXiv
+preprint arXiv:2106.08254, 2021.
+[42] C. Min, D. Zhao, L. Xiao, Y . Nie, and B. Dai. V oxel-mae: Masked autoencoders for pre-
+training large-scale point clouds. arXiv preprint arXiv:2206.09900, 2022.
+[43] A. Boulch, C. Sautier, B. Michele, G. Puy, and R. Marlet. Also: Automotive lidar self-
+supervision by occupancy estimation. arXiv preprint arXiv:2212.05867, 2022.
+[44] C. Min, X. Xu, D. Zhao, L. Xiao, Y . Nie, and B. Dai. Occ-bev: Multi-camera unified pre-
+training via 3d scene reconstruction. arXiv preprint arXiv:2305.18829, 2023.
+[45] P. Achinstein. The nature of explanation. Oxford University Press, USA, 1983.
+[46] D. Ha and J. Schmidhuber. World models. arXiv preprint arXiv:1803.10122, 2018.
+[47] D. Ha and J. Schmidhuber. Recurrent world models facilitate policy evolution. Advances in
+neural information processing systems, 31, 2018.
+[48] D. Hafner, T. Lillicrap, M. Norouzi, and J. Ba. Mastering atari with discrete world models.
+arXiv preprint arXiv:2010.02193, 2020.
+[49] J. Schrittwieser, I. Antonoglou, T. Hubert, K. Simonyan, L. Sifre, S. Schmitt, A. Guez, E. Lock-
+hart, D. Hassabis, T. Graepel, et al. Mastering atari, go, chess and shogi by planning with a
+learned model. Nature, 588(7839):604–609, 2020.
+[50] M. Babaeizadeh, C. Finn, D. Erhan, R. H. Campbell, and S. Levine. Stochastic variational
+video prediction. arXiv preprint arXiv:1710.11252, 2017.
+[51] E. Denton and R. Fergus. Stochastic video generation with a learned prior. In International
+conference on machine learning, pages 1174–1183. PMLR, 2018.
+[52] J.-Y . Franceschi, E. Delasalles, M. Chen, S. Lamprier, and P. Gallinari. Stochastic latent resid-
+ual video prediction. In International Conference on Machine Learning , pages 3233–3246.
+PMLR, 2020.
+13
+[53] A. Hu, G. Corrado, N. Griffiths, Z. Murez, C. Gurau, H. Yeo, A. Kendall, R. Cipolla, and
+J. Shotton. Model-based imitation learning for urban driving. Advances in Neural Information
+Processing Systems, 35:20703–20716, 2022.
+[54] K. He, X. Zhang, S. Ren, and J. Sun. Deep residual learning for image recognition. In Pro-
+ceedings of the IEEE conference on computer vision and pattern recognition , pages 770–778,
+2016.
+[55] Y . Yan, Y . Mao, and B. Li. Second: Sparsely embedded convolutional detection. Sensors, 18
+(10):3337, 2018.
+[56] S. Shi, C. Guo, L. Jiang, Z. Wang, J. Shi, X. Wang, and H. Li. Pv-rcnn: Point-voxel feature set
+abstraction for 3d object detection. In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pages 10529–10538, 2020.
+[57] T. Yin, X. Zhou, and P. Krahenbuhl. Center-based 3d object detection and tracking. InProceed-
+ings of the IEEE/CVF conference on computer vision and pattern recognition , pages 11784–
+11793, 2021.
+[58] X. Zhu, H. Zhou, T. Wang, F. Hong, Y . Ma, W. Li, H. Li, and D. Lin. Cylindrical and asym-
+metrical 3d convolution networks for lidar segmentation. In Proceedings of the IEEE/CVF
+conference on computer vision and pattern recognition , pages 9939–9948, 2021.
+[59] B. Mildenhall, P. P. Srinivasan, M. Tancik, J. T. Barron, R. Ramamoorthi, and R. Ng. Nerf:
+Representing scenes as neural radiance fields for view synthesis.Communications of the ACM,
+65(1):99–106, 2021.
+[60] J. T. Barron, B. Mildenhall, M. Tancik, P. Hedman, R. Martin-Brualla, and P. P. Srinivasan.
+Mip-nerf: A multiscale representation for anti-aliasing neural radiance fields. In Proceedings
+of the IEEE/CVF International Conference on Computer Vision , pages 5855–5864, 2021.
+[61] M. Tancik, V . Casser, X. Yan, S. Pradhan, B. Mildenhall, P. P. Srinivasan, J. T. Barron, and
+H. Kretzschmar. Block-nerf: Scalable large scene neural view synthesis. In Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recognition, pages 8248–8258, 2022.
+[62] A. Pumarola, E. Corona, G. Pons-Moll, and F. Moreno-Noguer. D-nerf: Neural radiance fields
+for dynamic scenes. In Proceedings of the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, pages 10318–10327, 2021.
+[63] Q. Zhu, C. Min, Z. Wei, Y . Chen, and G. Wang. Deep learning for multi-view stereo via plane
+sweep: A survey. arXiv preprint arXiv:2106.15328, 2021.
+[64] Y . Yao, Z. Luo, S. Li, T. Fang, and L. Quan. Mvsnet: Depth inference for unstructured multi-
+view stereo. In Proceedings of the European conference on computer vision (ECCV) , pages
+767–783, 2018.
+[65] Z. Wei, Q. Zhu, C. Min, Y . Chen, and G. Wang. Aa-rmvsnet: Adaptive aggregation recurrent
+multi-view stereo network. In Proceedings of the IEEE/CVF International Conference on
+Computer Vision, pages 6187–6196, 2021.
+[66] Z. Wei, Q. Zhu, C. Min, Y . Chen, and G. Wang. Bidirectional hybrid lstm based recurrent neu-
+ral network for multi-view stereo. IEEE Transactions on Visualization and Computer Graph-
+ics, 2022.
+[67] Y . Huang, W. Zheng, Y . Zhang, J. Zhou, and J. Lu. Tri-perspective view for vision-based 3d
+semantic occupancy prediction. arXiv preprint arXiv:2302.07817, 2023.
+[68] X. Wang, Z. Zhu, W. Xu, Y . Zhang, Y . Wei, X. Chi, Y . Ye, D. Du, J. Lu, and X. Wang.
+Openoccupancy: A large scale benchmark for surrounding semantic occupancy perception.
+arXiv preprint arXiv:2303.03991, 2023.
+14
+[69] X. Tian, T. Jiang, L. Yun, Y . Wang, Y . Wang, and H. Zhao. Occ3d: A large-scale 3d occupancy
+prediction benchmark for autonomous driving. arXiv preprint arXiv:2304.14365, 2023.
+[70] Y . Li, Z. Yu, C. Choy, C. Xiao, J. M. Alvarez, S. Fidler, C. Feng, and A. Anandkumar. V ox-
+former: Sparse voxel transformer for camera-based 3d semantic scene completion. In Pro-
+ceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages
+9087–9098, 2023.
+[71] Y . Wei, L. Zhao, W. Zheng, Z. Zhu, J. Zhou, and J. Lu. Surroundocc: Multi-camera 3d
+occupancy prediction for autonomous driving. arXiv preprint arXiv:2303.09551, 2023.
+[72] Y . Zhang, Z. Zhu, and D. Du. Occformer: Dual-path transformer for vision-based 3d semantic
+occupancy prediction. arXiv preprint arXiv:2304.05316, 2023.
+[73] R. Miao, W. Liu, M. Chen, Z. Gong, W. Xu, C. Hu, and S. Zhou. Occdepth: A depth-aware
+method for 3d semantic scene completion. arXiv preprint arXiv:2302.13540, 2023.
+[74] W. Gan, N. Mo, H. Xu, and N. Yokoya. A simple attempt for 3d occupancy estimation in
+autonomous driving. arXiv preprint arXiv:2303.10076, 2023.
+[75] Z. Chen, Z. Li, S. Zhang, L. Fang, Q. Jiang, and F. Zhao. Bevdistill: Cross-modal bev distilla-
+tion for multi-view 3d object detection. arXiv preprint arXiv:2211.09386, 2022.
+[76] P. Huang, L. Liu, R. Zhang, S. Zhang, X. Xu, B. Wang, and G. Liu. Tig-bev: Multi-view
+bev 3d object detection via target inner-geometry learning. arXiv preprint arXiv:2212.13979,
+2022.
+[77] J. Liu, T. Wang, B. Liu, Q. Zhang, Y . Liu, and H. Li. Towards better 3d knowledge transfer via
+masked image modeling for multi-view 3d understanding. arXiv preprint arXiv:2303.11325 ,
+2023.
+[78] Y . Zhang, Z. Zhu, W. Zheng, J. Huang, G. Huang, J. Zhou, and J. Lu. Beverse: Unified per-
+ception and prediction in birds-eye-view for vision-centric autonomous driving.arXiv preprint
+arXiv:2205.09743, 2022.
+[79] T. Wang, X. Zhu, J. Pang, and D. Lin. FCOS3D: Fully convolutional one-stage monocular
+3d object detection. In Proceedings of the IEEE/CVF International Conference on Computer
+Vision (ICCV) Workshops, 2021.
+[80] Cvpr 2023 occupancy prediction challenge, 2023. URL https:
+//github.com/CVPR2023-3D-Occupancy-Prediction/
+CVPR2023-3D-Occupancy-Prediction .
+[81] Z. Liu, Y . Lin, Y . Cao, H. Hu, Y . Wei, Z. Zhang, S. Lin, and B. Guo. Swin transformer:
+Hierarchical vision transformer using shifted windows. In Proceedings of the IEEE/CVF in-
+ternational conference on computer vision , pages 10012–10022, 2021.
+15

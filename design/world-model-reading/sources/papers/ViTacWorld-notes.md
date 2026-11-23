@@ -1,0 +1,116 @@
+# ViTacWorld 精读笔记
+
+> 数据源：auto_docs/papers/txt/ViTacWorld.txt（arXiv:2607.22530v2）。所有英文引用逐字取自 txt 并注明行号；引用时仅合并了跨行断词连字符（如 sim-to-\nreal）。论文未写的内容一律标注「原文未写」。
+
+## 1) 原文信息
+
+- 标题：ViTacWorld: Scaling Visuo-Tactile World Models for Contact-Rich Robot Manipulation（L1-2）
+- 作者：Yunao Huang1,2, Shiyu Sang1,2, Suting Ni1, Haotao Lu1, Shijie Wu1, Rui Lv1, Ziyang Guo1, Ye Shi1,2, Jingya Wang1,∗（L3-4）；通讯作者 "∗Corresponding author: Jingya Wang (wangjingya@shanghaitech.edu.cn)"（L52-53）
+- 机构：1ShanghaiTech University；2InstAdapt（L51）
+- ID 与状态："arXiv:2607.22530v2 [cs.RO] 28 Sep 2026"（L91）；是否被会议录用/发表：原文未写。项目主页："Project page: https://vitacworld.github.io/"（L33）
+- 资助（原文）："This work was supported by the National Natural Science Foundation of China (62406195), the HPC Platform of ShanghaiTech University, the Key Laboratory of Intelligent Perception and Human-Machine Collaboration (Shanghaitech University), Ministry of Education, and the Shanghai Engineering Research Center of Intelligent Vision and Imaging. This work was also supported in part by computational resources provided by Fcloud CO., LTD."（L682-689）
+
+## 2) Abstract 全文逐字（L5-32）
+
+"Contact-rich robot manipulation requires physical interaction cues that are often invisible to cameras, making tactile sensing essential for robust control. However, scaling visuo-tactile robot learning remains difficult because real tactile interaction data are expensive to collect, hardware-dependent, and limited in task and scene diversity. We present ViTacWorld, an action-conditioned visuo-tactile world model for scalable contact-rich robot manipulation. ViTacWorld leverages public real tactile datasets and a constructed simulation environment to scale visuo-tactile-action data, exploiting the fact that tactile signals are directly grounded in physical contact and can exhibit a smaller simulation-to-real gap than purely visual observations. The model is first pretrained with large-scale real and simulated visuo-tactile trajectories, and then finetuned with real-world policy rollouts to better match downstream manipulation behaviors. Given robot actions, ViTacWorld predicts temporally aligned visual observations and tactile feedback, enabling visuo-tactile-action rollout generation. To the best of our knowledge, ViTacWorld is the first framework that uses a world model for robot visuo-tactile-action trajectory generation and policy evaluation. It serves two roles: synthesizing rollouts to improve downstream tactile policies, and evaluating policies by predicting action-conditioned visuo-tactile outcomes under controlled action sequences. Experiments on contact-rich manipulation tasks show that ViTacWorld generates physically meaningful rollouts, improves policy performance through scalable data augmentation, and enables action-conditioned policy evaluation."
+
+## 3) 问题与动机：scaling 指什么
+
+**scaling 的核心维度是数据维度**（真实视触觉-动作轨迹难以规模化获取），并以模型维度（继承大视频先验）支撑：
+
+- 数据维度的困难："However, scaling visuo-tactile robot learning remains difficult because real tactile interaction data are expensive to collect, hardware-dependent, and limited in task and scene diversity."（L7-9）；"scaling visuo-tactile robot learning remains challenging because task-relevant visuo-tactile-action trajectories are difficult to obtain at scale."（L41-43）
+- 硬件成本细节："vision-based tactile sensors such as GelSight-style devices [1], [2] are costly, have limited lifetime under repeated contact, and contact-rich demonstrations are often hard to collect reliably."（L45-48）
+- 论文把 scaling 明确定义为三类数据源组合："can we scale visuo-tactile robot learning by combining public tactile data, simulation-generated interaction data, and real-world policy rollouts within a unified action-conditioned world model?"（L84-87）
+- 为什么仿真路线对触觉可行："Compared with purely visual observations, tactile signals are more directly grounded in local contact geometry and force response, which makes simulated tactile feedback a particularly promising source for scaling visuo-tactile data."（L69-72）
+- 模型维度的 scaling 策略（继承先验、只学触觉动力学）："Rather than learning motion and tactile dynamics jointly from scratch, ViTacWorld inherits strong motion priors and focuses its capacity on acquiring tactile dynamics at low adaptation cost."（L112-115）
+- 定位差异："We instead study visuo-tactile world models as reusable data generators for downstream tactile policies."（L106-108）
+
+## 4) 方法逐机制
+
+1. **问题形式**：观测 "the multimodal observation as o t = {I_v^t}_{v∈V}, where V = {main, wrist, tactile} denotes the external camera, wrist camera, and image-like tactile stream, respectively"（L219-222）；动作 "each action is represented as relative end-effector motion with a gripper command"（L224-225）；"m ∈ {0,1}^{|V|} is a view-presence mask for heterogeneous training data"（L228）。预测目标（Eq.1，L227）：ŝo_{t+1:t+H} = f_θ(o_t, u_{t:t+H−1}, m)。
+2. **总体架构**："ViTacWorld extends a pretrained action-conditioned robot video world model to visuo-tactile generation while preserving its backbone and action-conditioning pathway."（L231-233）；"the main camera, wrist camera, and tactile observations are separately encoded by the V AE [46] encoder into latent tokens and assembled as a unified visuo-tactile sequence. We then adapt the action-conditioned DiT [47] with stream-aware modulation and explicit cross-stream exchange"（L234-240）。
+3. **触觉＝额外视图**："Architecturally, we model tactile sensing as an additional generated view and align the visual and tactile streams via view-aware conditioning and cross-view attention, which ensures cross-view consistency between the two modalities."（L116-119）
+4. **流内自注意力 + 跨视图注意力**：引入 stream identity embeddings（L241-242），"stream-aware self-attention is first applied within each stream"（Eq.2，L246-248），随后 "an explicit cross-view attention module exchanges information across streams"（Eq.3，L252-255）。动机："This design avoids uncontrolled mixing between camera and tactile tokens during ordinary self-attention, while still allowing the tactile stream to exchange contact information with the visual streams."（L256-259）
+5. **动作条件注入**："The action sequence is embedded through the inherited action-conditioning pathway and injected into the DiT through the original timestep/AdaLN [48] modulation path. To support multi-view visuo-tactile generation, we simply repeat the action conditioning across visual and tactile streams at the corresponding latent timestep."（L263-269）
+6. **训练目标**：latent denoising（Eq.4，L277-281）；"The loss is applied only to future prediction frames and valid streams."（L282）
+7. **训练数据规模与来源（两阶段）**："Stage-I pretraining mixes over 16K public real trajectories with over 5K task-aligned simulated trajectories at an approximately 2:1 sampling ratio. We train on 13-frame windows sampled at 15 Hz for 30K steps with a global batch size of 256 and learning rate 3×10−5. Stage-II target-domain fine-tuning uses a global batch size of 128, learning rate 1×10−5, and 7K steps."（L379-385）
+8. **仿真数据来源**："The simulation is built in Isaac Sim, with tactile observations synthesized through the Xense tactile rendering pipeline. To align simulation with the real setup, we reconstruct target scenes and objects with 3D Gaussian scanning, calibrate the real camera extrinsics, and reproduce the camera-robot spatial layout in simulation."（L309-314）；"we also vary task assets and interaction instances under the same robot-sensor setup"（L315-316）
+9. **真实 rollout 微调**："Expert trajectories align the model with real task executions, while policy rollouts expose it to states induced by downstream policies, including both successful and failed contact-rich interactions."（L389-392）
+10. **下游用途**：receding-horizon 自回归（L418-420）；筛选 "We filter generated rollouts according to task success and visual-tactile plausibility, convert selected rollouts into policy-training trajectories, and merge them with expert demonstrations: Daug = D_expert ∪ D_dream."（L422-426）
+
+## 5) 实验与主结果
+
+**平台**："All real-robot experiments are conducted on a Franka Panda robot equipped with a Robotiq 2F-85 parallel gripper. Xense optical tactile sensors are mounted on the gripper fingers to capture image-like tactile observations"（L438-441）；"Visual observations are captured by an Intel RealSense D435 camera as the external third-person view and a ZED Mini camera as the wrist-mounted view."（L442-444）；示教 "Expert demonstrations are collected through FACTR teleoperation [49]."（L448）。任务四类：Charger Plugging、Cucumber Peeling、U-Block Insertion、Cuboid Insertion（L450-451）。
+
+**数据规模**："We collect 300 real expert demonstrations for policy warm-up, including 120 charger plugging, 50 cucumber peeling, 62 U-block insertion, and 68 cuboid insertion demonstrations."（L457-459）；"we further collect 50 real policy rollouts per task, including both successful and failed executions"（L461-462）；"We select 200 successful rollouts across the four tasks and merge them with the expert demonstrations."（L468-469）；"Round 2 adds another 200 selected rollouts generated by the round-1 tactile π0.5 policy, retaining the 200 round-1 rollouts and 300 expert demonstrations for a total of 700 training trajectories."（L480-488）
+
+**评估协议**："We report real-robot success rates over 50 trials for each policy, training stage, and task"（L493-494）。
+
+**Table I 全部数值（成功率 %，L543-556）**：
+
+| 数据源 | 方法 | Charger Plugging | Cucumber Peeling | U-Block Insertion | Cuboid Insertion | Avg. |
+|---|---|---|---|---|---|---|
+| Expert only | ACT + tactile | 4 | 8 | 32 | 24 | 17.0 |
+| Expert only | π0.5 | 18 | 28 | 48 | 28 | 30.5 |
+| Expert only | π0.5 + tactile | 20 | 44 | 72 | 36 | 43.0 |
+| Expert + Round-1 rollouts | ACT + tactile | 14 | 22 | 36 | 32 | 26.0 |
+| Expert + Round-1 rollouts | π0.5 | 34 | 60 | 68 | 42 | 51.0 |
+| Expert + Round-1 rollouts | π0.5 + tactile | 44 | 82 | 80 | 64 | 67.5 |
+| Expert + Round-2 rollouts | ACT + tactile | 26 | 44 | 68 | 50 | 47.0 |
+| Expert + Round-2 rollouts | π0.5 | 44 | 72 | 82 | 62 | 65.0 |
+| Expert + Round-2 rollouts | π0.5 + tactile | 64 | 86 | 94 | 74 | 79.5 |
+
+正文结论："The mean success rate of tactile π0.5 rises from 43.0% with expert demonstrations to 67.5% and 79.5% after successive augmentation rounds. ACT + tactile also benefits, improving from 17.0% to 47.0%."（L502-506）
+生成触觉流的增量价值："the tactile policy achieves a larger four-task gain over its own expert-only baseline: 24.5 versus 20.5 percentage points after round 1, and 36.5 versus 34.5 after round 2."（L514-517）
+
+**策略评估（想象 rollout）**："This gives 50 real–imagined pairs per combination and 600 pairs in total."（L585-586）；"Real and imagined performance are positively associated (Pearson r = 0.863; Spearman ρ = 0.790), with a mean absolute error of 12.33 percentage points."（L597-599）；拟合线（图中标注）"y = 0.845x + 0.008"（L566）；"ViTacWorld underestimates success by 9.0 points on average, with a 26-point error for round-2 Cucumber Peeling."（L602-603）；"Within every task, both evaluations rank the checkpoints in the order expert-only < round 1 < round 2."（L600-601）
+
+**scaling 曲线数值**：原文未写——论文没有绘制「数据量 vs 性能」的 scaling 曲线，也未做幂律拟合；Fig. 4 的线性拟合是真实成功率 vs 想象成功率的校准线，不是 scaling law。与 scaling 最接近的定量素材是：预训练数据量（over 16K public real + over 5K task-aligned simulated trajectories，L379-380）、训练步数/批次（30K steps、batch 256，L382-383），以及 Table II 中 w/o pretraining 的消融差距（见第 6 节）。
+
+## 6) 消融（Table II 全部数值，L655-668；PSNR↑ / SSIM↑ / LPIPS↓）
+
+| 视图 | 变体 | PSNR | SSIM | LPIPS |
+|---|---|---|---|---|
+| Main | w/o pretraining | 22.718 | 0.7859 | 0.0781 |
+| Main | w/o task-aligned sim | 23.128 | 0.8011 | 0.0687 |
+| Main | w/o cross-view attn. | 23.653 | 0.8290 | 0.0611 |
+| Main | Full ViTacWorld | 24.258 | 0.8286 | 0.0513 |
+| Wrist | w/o pretraining | 21.080 | 0.6649 | 0.1084 |
+| Wrist | w/o task-aligned sim | 21.434 | 0.6869 | 0.0901 |
+| Wrist | w/o cross-view attn. | 21.853 | 0.6913 | 0.0854 |
+| Wrist | Full ViTacWorld | 21.925 | 0.6962 | 0.0725 |
+| Tactile | w/o pretraining | 34.967 | 0.9204 | 0.0211 |
+| Tactile | w/o task-aligned sim | 35.127 | 0.9296 | 0.0179 |
+| Tactile | w/o cross-view attn. | 35.220 | 0.9310 | 0.0163 |
+| Tactile | Full ViTacWorld | 35.225 | 0.9318 | 0.0157 |
+
+正文补充："Replacing cross-view attention with self-attention throughout the model increases LPIPS from 0.0513 to 0.0611 in the main view, from 0.0725 to 0.0854 in the wrist view, and from 0.0157 to 0.0163 in the tactile stream. Main-view SSIM is nearly unchanged (0.8286 versus 0.8290)."（L635-639）
+消融解读原文："pretraining substantially improves generation quality over direct real-data tuning, indicating that large-scale visuo-tactile data helps the world model learn more stable action-conditioned dynamics beyond the limited real tuning set."（L626-629）；"Adding task-aligned simulated tactile trajectories further improves the model over real-data pretraining alone, suggesting that simulation aligned with our real scenes and tasks helps adapt the world model to the target robot domain."（L630-634）
+
+## 7) 局限 / 未来工作
+
+论文没有独立的 Limitations 或 Future Work 章节。与局限最接近的原文陈述：
+
+- 评估局限："These results support relative comparison among the evaluated checkpoints, but do not establish exact success-rate calibration or trial-level outcome agreement from the aggregate rates alone."（L603-605）
+- 生成轨迹不要求帧级一致："The generated trajectories need not be frame-identical to the real rollout; the relevant signal is agreement on the task-level outcome under the matched policy and initial condition."（L610-613）
+- 生成数据依赖人工筛选："Candidate rollouts are retained only when a human annotator verifies fixed task-completion criteria and visual–tactile plausibility"（L470-472）。
+- 未来工作：原文未写（Conclusion 仅作总结，未提 future work）。
+
+## 8) 叙事关联【推断，≤5 条，均附支持原句】
+
+1. **触觉世界模型的 scaling-law 证据薄弱**【推断】。论文没有幂律 scaling 曲线；仅有「大规模预训练 > 直接真实数据微调」的单点消融证据："pretraining substantially improves generation quality over direct real-data tuning, indicating that large-scale visuo-tactile data helps the world model learn more stable action-conditioned dynamics beyond the limited real tuning set."（L626-629）【推断：这是二元消融（有/无预训练），不构成 scaling law；数据量刻度只有 16K+5K 一档。】
+2. **数据来源仍以真实采集为主，仿真为辅**【推断】。预训练主体是 "over 16K public real trajectories with over 5K task-aligned simulated trajectories"（L379-380，约 2:1 采样）；且任务对齐仿真本身依赖真实世界重建（3D 高斯扫描、外参标定）"we reconstruct target scenes and objects with 3D Gaussian scanning"（L312）。dream 数据的起点也是真实观测与真实策略动作："Given real initial observations and action chunks proposed by a downstream tactile policy, ViTacWorld autoregressively generates contact-rich visual-tactile rollouts."（L402-405）
+3. **触觉 sim-to-real gap 小于视觉**：这是本文用仿真扩展触觉数据的理论依据——"tactile signals are directly grounded in physical contact and can exhibit a smaller simulation-to-real gap than purely visual observations"（L14-17）；"the visual appearance of image-like tactile observations can be rendered with relatively smaller modality gap when the sensor geometry and rendering pipeline are well aligned"（L304-307）。
+4. **「world model 作为数据引擎与评估器」叙事**：不把 world model 用于规划或内部组件，而是可复用数据生成器——"We instead study visuo-tactile world models as reusable data generators for downstream tactile policies."（L106-108）；"It serves two roles: synthesizing rollouts to improve downstream tactile policies, and evaluating policies by predicting action-conditioned visuo-tactile outcomes under controlled action sequences."（L25-28）
+5. **「大视觉先验 + 低成本模态对齐」叙事**：触觉作为额外生成视图接入既有动作条件视频世界模型——"ViTacWorld inherits strong motion priors and focuses its capacity on acquiring tactile dynamics at low adaptation cost."（L113-115）【推断：与 vision foundation model + 模态适配的主流路线一致，触觉被当作第三路 view 而非独立动力学头。】
+
+## 9) 图注 / 表注逐字抄录
+
+- **Fig. 1**（L62-66）："Fig. 1. ViTacWorld generates action-conditioned visual and tactile observations for tactile policy improvement and evaluation. Top: generated rollouts improve charger plugging compared with expert-only training. Bottom: real and imagined U-Block insertion examples exhibit the same failure outcome."
+- **Fig. 2**（L373-376）："Fig. 2. Overview of ViTacWorld. Right side shows scaling training pipeline, where real visuo-tactile data and task-aligned simulation data are used for pretraining, followed by real robot task data and policy rollout data for target-domain tuning. Left side illustrates the action-conditioned visuo-tactile world model and its rollout generation process. Visual and tactile streams are encoded into latent tokens and modeled with a view-aware DiT to produce policy-conditioned rollouts, which support both dataset augmentation and policy evaluation."
+- **Fig. 3**（L482-487）："Fig. 3. Qualitative comparison of real-robot rollouts using the same π0.5 + tactile policy architecture. The top row shows the policy trained only with expert demonstrations, while the bottom row shows the policy trained with the same expert demonstrations augmented by ViTacWorld-generated rollouts."
+- **Fig. 4**（L573-578）："Fig. 4. Real-versus-imagined success rates for three tactile π0.5 checkpoints on four tasks (12 points), each based on 50 matched initial states. Colors and marker shapes denote tasks; open, light-filled, and solid markers denote the expert-only, round-1, and round-2 stages. Bars are marginal 95% Wilson confidence intervals for each success rate. The dashed line is y=x and the solid line is the least-squares fit."
+- **Fig. 5**（L590-594）："Fig. 5. Matched qualitative policy-evaluation example on U-Block insertion. The shared initial observation is shown at left. The top row is the failed real-robot execution; the following three rows are independent ViTacWorld rollouts, all of which also predict failure. This example illustrates outcome agreement and is separate from the 50-trial quantitative evaluation."
+- **Fig. 6**（L620-621）："Fig. 6. Qualitative world-model predictions on held-out validation clips. The model receives the first observation frame and the logged action sequence, then predicts future visual and tactile observations."
+- **TABLE I**（L531-533）："TABLE I REAL-ROBOT SUCCESS RATES (%) OVER 50 TRIALS PER TASK, POLICY, AND TRAINING STAGE. AVG. IS THE FOUR-TASK MEAN; BOLD MARKS THE BEST RESULT PER COLUMN."
+- **TABLE II**（L649-652）："TABLE II WORLD-MODEL PREDICTION QUALITY ON HELD-OUT CONTACT-TRANSITION CLIPS. BOLD MARKS THE BEST RESULT PER VIEW AND METRIC."

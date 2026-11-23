@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>具身智能 WAM（世界-动作模型）调研与精读合集</title>
+<style>
+  :root{
+    --ink:#1c2733; --dim:#5c6b7a; --line:#dbe2ea; --bg:#fbfcfe; --card:#ffffff;
+    --accent:#0b6bcb; --accent-soft:#e8f2fc; --warn:#8a5a00; --warn-bg:#fdf3e0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.65}
+  .wrap{max-width:1020px;margin:0 auto;padding:24px 20px 80px}
+  header.hero{background:linear-gradient(135deg,#0b2a4a,#0b6bcb);color:#fff;border-radius:14px;padding:28px 32px;margin-bottom:20px}
+  header.hero h1{margin:0 0 8px;font-size:26px}
+  header.hero p{margin:4px 0;color:#d7e6f7;font-size:14px}
+  nav.toc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin-bottom:24px;font-size:14px}
+  nav.toc b{display:block;margin-bottom:6px;color:var(--accent)}
+  nav.toc a{color:var(--ink);text-decoration:none;margin-right:14px;line-height:2}
+  nav.toc a:hover{color:var(--accent);text-decoration:underline}
+  section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:22px 26px;margin-bottom:20px}
+  h2{font-size:21px;margin:4px 0 14px;color:#0b2a4a;border-left:4px solid var(--accent);padding-left:10px}
+  h3{font-size:17px;margin:20px 0 8px;color:#123c66}
+  h4{font-size:15px;margin:14px 0 6px;color:#123c66}
+  p{margin:8px 0}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px;background:#fff}
+  th{background:#eef4fa;color:#123c66;font-weight:600}
+  th,td{border:1px solid var(--line);padding:6px 9px;vertical-align:top;text-align:left}
+  tr:nth-child(even) td{background:#fafcfe}
+  code, .c{font-family:Consolas,"Cascadia Mono",monospace;font-size:13px;background:#f1f5f9;border:1px solid #e2e9f1;border-radius:4px;padding:1px 5px}
+  blockquote{margin:10px 0;padding:10px 14px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;font-size:14px}
+  blockquote .src{display:block;color:var(--dim);font-size:12.5px;margin-top:4px}
+  .warn{background:var(--warn-bg);border:1px solid #ecd9ae;border-radius:8px;padding:12px 16px;font-size:14px;color:var(--warn)}
+  .ok{background:#eaf7ee;border:1px solid #c4e5cc;border-radius:8px;padding:12px 16px;font-size:14px;color:#1d6b38}
+  .tag{display:inline-block;font-size:12px;border-radius:20px;padding:1px 9px;margin-right:4px;border:1px solid var(--line);color:var(--dim);background:#f4f7fa}
+  .l3{background:#eaf7ee;border-color:#9fd4ad;color:#1d6b38}
+  .l2{background:#fdf3e0;border-color:#ecd9ae;color:#8a5a00}
+  .l1{background:#fdeeee;border-color:#ecc6c6;color:#9c2b2b}
+  a{color:var(--accent)}
+  .foot{color:var(--dim);font-size:13px;margin-top:6px}
+  .kbd{background:#f1f5f9;border:1px solid #d7e0ea;border-bottom-width:2px;border-radius:5px;padding:0 7px;font-size:12px}
+  ul,ol{margin:6px 0;padding-left:22px}
+  li{margin:4px 0}
+  @media print{ nav.toc{display:none} section{border:none;page-break-inside:avoid} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>具身智能 WAM（World Action Model）调研与精读合集</h1>
+  <p>世界-动作模型：联合建模「未来状态与动作」的具身基础模型范式 p(o′, a | o, l)</p>
+  <p>整理截止：2026-10-27 ｜ 覆盖：两波精读共 68 篇次 · 7 项官方仓库代码取证 · 5 条分问精读线</p>
+</header>
+
+<nav class="toc">
+  <b>目录</b>
+  <a href="#tldr">0. TL;DR</a>
+  <a href="#def">1. 定义与边界</a>
+  <a href="#entry">2. 必读入口（综述/教程）</a>
+  <a href="#lineage">3. 源头谱系（JEPA → Meta WAM）</a>
+  <a href="#q1">4. ①输入表征</a>
+  <a href="#q2">5. ②目标表征</a>
+  <a href="#q3">6. ③动作表征</a>
+  <a href="#q4">7. ④决策表征</a>
+  <a href="#q5">8. ⑤实机/仿真验证</a>
+  <a href="#matrix">9. 论文 × 五轴总表</a>
+  <a href="#wave2">10. 第二波要点</a>
+  <a href="#code">11. 代码对质结论</a>
+  <a href="#rl">11b. RL post-training</a>
+  <a href="#gaps">12. 诚实缺口与来源分级</a>
+  <a href="#nav">13. 阅读导航</a>
+</nav>
+
+<section id="tldr">
+  <h2>0. TL;DR</h2>
+  <ul>
+    <li><b>WAM = 把「未来状态预测」与「动作生成」耦合在同一个具身基础模型里</b>，建模目标是未来与动作的<strong>联合分布 p(o′, a | o, l)</strong>，而不是 VLA 的 p(a | o, l)。预测的未来必须进入动作路径（产生/打分/训练动作），否则不算 WAM。</li>
+    <li>最权威入口 = 两篇 2026 综述（OpenMOSS <a href="https://arxiv.org/abs/2605.12090">2605.12090</a> 的 Cascaded/Joint 分类；NUS <a href="https://arxiv.org/abs/2606.20781">2606.20781</a> 的三大族 + <a href="https://world-action-models.github.io/">109 篇官方清单</a>）。</li>
+    <li>实现路线两条：<b>视频生成骨干</b>（Wan2.2/Cosmos-Predict DiT + 动作专家）与 <b>JEPA/潜空间骨干</b>（冻结 V-JEPA 2/DINOv3 特征 + 未来潜预测器）。</li>
+    <li>2026 共识趋势：<b>「Dream less, Act more」</b>——训练时联合预测未来，推理时尽量少生成未来（Fast-WAM 4× 加速、Rift 一次前向写未来 K/V、THAW-VLA 蒸馏到 32ms/0.8B）。</li>
+    <li>动作生成已收敛为 <b>连续 action chunk + flow matching</b>（第二波 10/10 篇全部如此）。</li>
+  </ul>
+  <div class="warn">⚠️ 本合集内几乎所有榜单数字为<b>提出方自评</b>；仅 Cosmos Policy 有 ICLR 2026 同行评审版本。引用前请核对各表标注的来源级别与「评测坑」一章。</div>
+</section>
+
+<section id="def">
+  <h2>1. 定义与边界</h2>
+  <table>
+    <tr><th>范式</th><th>建模对象</th><th>一句话</th></tr>
+    <tr><td>VLA</td><td>p(a | o, l)</td><td>反应式「观测→动作」映射，不显式建模干预下的世界演化</td></tr>
+    <tr><td>世界模型 WM</td><td>p(o′ | o, a)</td><td>what-if 模拟器：动作进、未来出，但不输出动作</td></tr>
+    <tr><td><b>WAM</b></td><td><b>p(o′, a | o, l)</b></td><td><b>预测的未来必须进入动作路径</b>（产生 / 打分 / 训练动作）</td></tr>
+  </table>
+  <p><b>边界规则</b>（NUS 综述原文）：预测的未来必须被用来 produce / score / train / check 动作。以下<b>不算</b> WAM：带辅助 future loss 的 VLA；只在 RL 训练中用的模拟器；推理前就丢弃的未来头。</p>
+  <p><b>合法形态三选一</b>：①先预测后动作（predict-then-act）②用预测后果给候选动作打分（score actions）③未来与动作联合生成（joint prediction）。</p>
+  <p><b>术语来源</b>：Meta 于 2025-11 发布 WAM 智能体（V-JEPA 2 世界模型 + 潜空间 CoT 搜索，<a href="https://ai.meta.com/blog/wam-world-action-model/">官方博客</a>）；学术奠基视频-WAM 为 <a href="https://arxiv.org/abs/2302.00111">UniPi (2023)</a>。</p>
+</section>
+
+<section id="entry">
+  <h2>2. 必读入口：综述与教程（5 篇）</h2>
+  <table>
+    <tr><th>论文</th><th>arXiv</th><th>核心价值</th></tr>
+    <tr><td><b>World Action Models: The Next Frontier in Embodied AI</b>（复旦 OpenMOSS，首个系统梳理）</td><td><a href="https://arxiv.org/abs/2605.12090">2605.12090</a></td><td>WAM 正式定义 + <b>Cascaded / Joint 两族 taxonomy</b> + 数据生态 + 评测协议</td></tr>
+    <tr><td><b>World Action Models: A Survey</b>（NUS，"Dream Less, Act More"）</td><td><a href="https://arxiv.org/abs/2606.20781">2606.20781</a></td><td><b>109 篇论文清单</b>、三大设计族 + 组件解剖四轴；配套<a href="https://world-action-models.github.io/">交互式论文站</a></td></tr>
+    <tr><td>WAM 机器人向综述（RCL/MBZUAI）</td><td><a href="https://github.com/rcl-robotics/Awesome-World-Action-Models">2609.16074</a></td><td>2×2 象限 + 数据金字塔 + control utility 四准则</td></tr>
+    <tr><td>From World Models to WAMs: A Concise Tutorial</td><td><a href="https://arxiv.org/abs/2607.00836">2607.00836</a></td><td>统一比较 World Labs / JEPA / NVIDIA Cosmos 三系</td></tr>
+    <tr><td>世界模型定义与路线图（上海 AI Lab）</td><td>2607.06401</td><td>WAM 是跨架构功能范式，不是第四实现列</td></tr>
+  </table>
+  <h3>三大实现族（NUS 109 篇清单的组织方式）</h3>
+  <ul>
+    <li><b>Render-and-Decode（58 篇）</b>：生成可见未来（RGB/RGB-D/多视角），动作模块从中读出/跟踪/反解动作。奠基：UniPi、GR-1、GR-2。</li>
+    <li><b>Latent-Only（38 篇）</b>：不解码整段视频，动作读中间隐藏态/特征/流/价值图。代表：VPP、UVA、Cosmos Policy、DiT4DiT、<b>Fast-WAM</b>。</li>
+    <li><b>Video-Generation-Free（13 篇）</b>：预测信号来自 JEPA/DINO 预测器、扩散策略、音频、几何预测器。代表：FLARE、LDA-1B、LaWAM、PointWorld。</li>
+  </ul>
+</section>
+
+<section id="lineage">
+  <h2>3. 源头谱系：JEPA → Meta WAM</h2>
+  <table>
+    <tr><th>论文</th><th>arXiv</th><th>要点（原文摘要依据）</th></tr>
+    <tr><td><b>V-JEPA</b>（Revisiting Feature Prediction…）</td><td><a href="https://arxiv.org/abs/2404.08471">2404.08471</a></td><td>纯特征预测目标学视频表征：无重建/负样本/文本；ViT-H 冻结评测 K400 81.9%</td></tr>
+    <tr><td><b>V-JEPA 2</b></td><td><a href="https://arxiv.org/abs/2506.09985">2506.09985</a></td><td>&gt;100 万小时互联网视频自监督；<b>V-JEPA 2-AC</b> 用 &lt;62 小时无标注机器人视频后训练潜动作世界模型，零样本在两实验室 Franka 上抓放（无该环境任何数据/奖励）</td></tr>
+    <tr><td><b>Meta WAM 发布</b>（2025-11）</td><td><a href="https://ai.meta.com/blog/wam-world-action-model/">官方博客</a></td><td>V-JEPA 2 + 潜空间 CoT 搜索。⚠️ 论文版 arXiv 编号与博客正文均未能取到，<b>其 CoT 潜轨迹搜索细节未获一手证实，本合集不引用</b></td></tr>
+    <tr><td>V-JEPA Policy</td><td><a href="https://arxiv.org/abs/2609.37250">2609.37250</a></td><td>冻结 V-JEPA 2.1 + 未来潜预测器 + flow-matching 动作专家（0.9B 总参/0.6B 可训）</td></tr>
+    <tr><td>JEPA-WAM</td><td><a href="https://arxiv.org/abs/2609.20277">2609.20277</a></td><td>文生图生成视觉指令 bank → V-JEPA 2.1 编码 64 个 goal tokens</td></tr>
+    <tr><td>DAWN（驾驶域）/ LeWAM</td><td><a href="https://arxiv.org/abs/2605.11550">2605.11550</a> / <a href="https://arxiv.org/abs/2610.12818">2610.12818</a></td><td>JEPA 潜 + 动作预测器；端到端 JEPA 控制</td></tr>
+  </table>
+</section>
+
+<section id="q1">
+  <h2>4. ① 输入表征：三条路线</h2>
+  <h3>路线一：离散 VQ token（全模态共享词表）</h3>
+  <blockquote>"The compression ratio of the image tokenizer is 16 and the codebook size is 8192. The image tokenizer generates 256 tokens for 256×256 images and 1024 tokens for 512×512 images."<span class="src">— WorldVLA §3.2（L2）</span></blockquote>
+  <p>WorldVLA：图像 VQ-GAN token；文本 BPE；动作离散 7 tokens（3 相对位置+3 相对角度+1 夹爪，每维 256 bins）；总词表 65,536；Chameleon 初始化；序列 <code>[BOS]{text}[BOI]{image}…[EOI]×M [BOA]{action}…[EOA]×K</code>。</p>
+  <h3>路线二：连续 VAE latent + 视频 DiT（2025–2026 主流）</h3>
+  <ul>
+    <li><b>Fast-WAM</b>：多相机拼单图 → Wan2.2 video VAE latent；T5 文本 cross-attention 注入所有 token；训练三组 token（首帧 clean 锚点 / 未来帧 noisy / 动作），结构化掩码禁止动作分支看未来帧。</li>
+    <li><b>Motus</b>：Wan 2.2 5B 生成专家 + Qwen3-VL-2B 理解专家（文本经其进入）+ 动作专家，Tri-model Joint Attention；视频帧率为动作 1/6。</li>
+    <li><b>NavWAM</b>：Cosmos Predict2 因果 VAE 编码进「9 帧 latent canvas」。</li>
+  </ul>
+  <h3>路线三：冻结自监督/预测特征 token（2024 早期与 2026 回归阵营）</h3>
+  <p>GR-1（MAE ViT + CLIP + 6D 位姿状态线性层）；V-JEPA Policy（冻结 V-JEPA 2.1 ViT-L tubelet token + T5 + 1 个 proprio token）；LaWAM（DINOv3 冻结特征）；PALM（CLIP+MAE+MLP）。</p>
+  <h3>proprio 三档处理</h3>
+  <ul>
+    <li>显式 token 注入：GR-1（线性层）、V-JEPA Policy（1 状态 token）、JEPA-WAM（1 token）、PALM（MLP）；</li>
+    <li>latent frame 化：NavWAM（broadcast 到 latent 网格）；</li>
+    <li>仅训练辅助或原文未写：LaWAM（辅助头）、WorldVLA、UniPi。</li>
+  </ul>
+  <div class="ok"><b>代码对质案例（Fast-WAM proprio）</b>：论文方法节只描述了「三组 token」、通篇未提 proprio——但官方代码实锤：<code>self.proprio_encoder = nn.Linear(self.proprio_dim, self.text_dim)</code>，proprio 投影为 <b>1 个 token 追加到 T5 文本条件序列</b>（<code>torch.cat([context, proprio_token], dim=1)</code>）经 cross-attention 喂两个专家。论文表述不全 ≠ 模型没有。</div>
+</section>
+
+<section id="q2">
+  <h2>5. ② 目标表征：四种选项与迁移链</h2>
+  <table>
+    <tr><th>选项</th><th>代表论文</th><th>做法（原文依据）</th></tr>
+    <tr><td><b>纯文本指令</b></td><td>WorldVLA、GR-1、Motus、Fast-WAM、UniPi</td><td>仅语言条件，无 goal image</td></tr>
+    <tr><td><b>文本→生成 goal image→再编码</b></td><td>GR-MG、JEPA-WAM</td><td>GR-MG：InstructPix2Pix + 进度文本（"…60% of the instruction has been completed."）10 档离散；JEPA-WAM：DreamLite 生成 bank（K=1024）→ V-JEPA 2.1 → 8×8 池化 → <b>64 goal tokens</b></td></tr>
+    <tr><td><b>原生 image-goal 进 latent</b></td><td>NavWAM、Act2Goal</td><td>NavWAM：goal frame 进 latent canvas（唯一无语言设置）；Act2Goal：z_t 与 z_g 拼接 + MSTH 远端对数稀疏采样</td></tr>
+    <tr><td><b>latent subgoal / 未来 latent</b></td><td>LaWAM、V-JEPA Policy、PALM</td><td>LaWAM：潜动作解码 latent visual subgoal û_T；V-JEPA Policy：目标=未来 V-JEPA latent（L1 回归）；PALM：4 类 affordance + 连续进度 p∈[0,1]</td></tr>
+  </table>
+  <h3>第二波观察到的迁移链（10 篇全 L3）</h3>
+  <p>语言指令（GR-2/VPP）→ joint latent（UVA）→ 推理期生成未来观测（LingBot-VA，部分去噪 s=0.6）→ <b>未来 K/V cache 本身就是目标</b>（Rift）→ CoT 压缩为 loop state z（Pelican-Unify）→ 事件级目标（WALL-WM）。</p>
+  <blockquote>"One fixed final-clean K/V cache nearly preserves execution"<span class="src">— Rift §3.5：目标=未来的一次性表征，延迟从 rollout 法 780–2270ms 降至 248–420ms</span></blockquote>
+  <h3>已核实的利弊线索</h3>
+  <ul>
+    <li>JEPA-WAM：文本-动作标注稀疏重复诱发 shortcut（指令接地差）；goal image 可消歧但外观/布局与当前场景不符 → 需 JEPA 编码「去外观、保语义」。</li>
+    <li>Act2Goal：语言粒度不足、视觉 goal 无歧义且长程需中间视觉状态。</li>
+    <li>Fast-WAM：实证「推理时想象未来」非必需——训练期视频共训才是主要收益。</li>
+    <li>WAM-TTT / HOST：人类视频开始作为<b>目标载体</b>（fast-weight 记忆吸收；HOST 唯一做跨具身目标翻译）。</li>
+  </ul>
+  <div class="warn">共同缺口（原文均未覆盖）：除 Rift 的 cache 干预外，<b>无一篇做「语言目标 vs 未来视觉目标」的贡献剥离实验</b>。</div>
+</section>
+
+<section id="q3">
+  <h2>6. ③ 动作表征：四类选项（含代码对质）</h2>
+  <h3>四类选项</h3>
+  <table>
+    <tr><th>类别</th><th>代表</th><th>要点</th></tr>
+    <tr><td><b>连续低维控制量</b>（最主流）</td><td>GR-1、DiT4DiT、τ0-WM、Fast-WAM</td><td>ΔEE/关节位姿 + 夹爪；action chunk（16–48 步）+ flow matching；GR-1 例外：horizon=1 无 chunk、线性头 Smooth-L1+BCE 直接回归</td></tr>
+    <tr><td><b>离散/潜动作</b>（桥接无标签视频）</td><td>LAPA、V-JEPA 2-AC、Motus、WAV</td><td>LAPA 潜动作码 8^4→微调 256^7 ΔEE；V-JEPA 2-AC 7 维 ΔEE@4fps×15 步；Motus 光流潜动作 14 维（rectified flow）</td></tr>
+    <tr><td><b>像素/几何锚定</b>（跨 viewpoint/embodiment）</td><td>Action Images、PointWorld</td><td>Action Images：7-DoF→3 通道多视角热力图视频+几何解码；PointWorld：3D 点流 H=10@0.1s，MPC-MPPI 转回 EE</td></tr>
+    <tr><td><b>其他</b></td><td>UVA、UWM、DreamZero</td><td>UVA 联合潜+解耦双头；UWM 时间步切换四模式；DreamZero 48 步@30Hz chunk</td></tr>
+  </table>
+  <h3>代码对质：论文正文没写的动作空间（2026-10-26 官方仓库取证）</h3>
+  <table>
+    <tr><th>论文</th><th>代码实锤</th><th>证据</th></tr>
+    <tr><td>DiT4DiT</td><td>绝对<b>关节位置</b>；LIBERO <code>action_dim: 8, action_horizon: 8</code>；G1 真机 32 维/chunk 16</td><td><code>config/libero/dit4dit_libero.yaml</code></td></tr>
+    <tr><td>τ0-WM</td><td>预训练=相对 EEF-6d 双臂 20 通道；后训练=绝对关节 7 维；<code>action_chunk: 33</code>、视频 chunk 9</td><td>siiresearch/tau-0-wm README「Action Space」</td></tr>
+    <tr><td>UWM</td><td>chunk 16；RoboMimic 7 维 / DROID 10 维；切换=DualTimestepEncoder 边缘采样</td><td><code>configs/model/uwm.yaml</code></td></tr>
+    <tr><td>DreamZero</td><td>48 步 chunk；joint_position+gripper_position；pad 到 32（DROID 7/AGIBOT 22/YAM 14）</td><td><code>base_48_wan_fine_aug_relative.yaml</code></td></tr>
+    <tr><td>Motus</td><td>14 维潜动作 ↔ 14 维 <b>qpos</b> 真实执行（min/max→[0,1]）</td><td>thu-ml/Motus</td></tr>
+    <tr><td>GR-1（补充）</td><td>7 维相对末端位姿（6 臂 + 1 夹爪 ±1）；归一化数值与 Δt 官方仓未发布</td><td>bytedance/GR-1</td></tr>
+    <tr><td>Fast-WAM（补充）</td><td>RoboTwin=14 维原始 qpos（无 EEF 拆分）</td><td><code>robotwin.yaml</code> + deploy_policy</td></tr>
+  </table>
+  <div class="ok">第二波结论：<b>连续 action chunk + flow matching 已是绝对主流（10/10）</b>；「动作高频、视频低频」成显式共识（X-WAM K/H=4×、FACT H=48 动作 vs 4 未来帧、Rolling-WAM chunk 级错峰）。</div>
+</section>
+
+<section id="q4">
+  <h2>7. ④ 决策表征：五种结构</h2>
+  <table>
+    <tr><th>结构</th><th>论文</th><th>机制（原文依据）</th></tr>
+    <tr><td><b>直接回归/联合去噪</b>（多数）</td><td>GR-1、DiT4DiT、UVA、UWM、DreamZero、Fast-WAM</td><td>单次前向直出动作；Fast-WAM 明确省略外层 AR rollout</td></tr>
+    <tr><td><b>潜空间迭代推断（MPPI 风格）</b></td><td>WAV（NeurIPS 2026）</td><td>价值模块 flow matching 回归累积折扣回报；每轮 M×N 采样、top-K 精英更新高斯噪声分布、K 轮后解码动作；Lemma 4.1/Prop 4.2/Cor 4.3 全文在案</td></tr>
+    <tr><td><b>best-of-N 评分 + 修正</b></td><td>τ0-WM</td><td>propose-evaluate-revise：RCS 重去噪一致性分数 → ACVS 任务进度轨迹 → LAR 局部重查询</td></tr>
+    <tr><td><b>beam/树搜索</b></td><td>VLP、3D-ALP</td><td>VLP：VLM policy+value 双模型 beam 爬山；3D-ALP：MCTS D=2,B=4,2s 预算（MuJoCo 0.650 vs greedy 0.006，无真机）</td></tr>
+    <tr><td><b>触发式测试时评估</b></td><td>DreamAvoid</td><td>Trigger（β=5,γ=0.5,1Hz）→ SDE Proposer → Dream Evaluator（8 候选/40ms，混合成功-失败-边界数据训练）</td></tr>
+    <tr><td><b>MPC 集成</b></td><td>PointWorld</td><td>MPPI：K 扰动/三次样条/指数权重/H=10/0.1s</td></tr>
+    <tr><td><b>外环规划（VLM+WM）</b></td><td>WAP、Cosmos 3</td><td>WAP：Algorithm 1 + Theorem 1-3；Cosmos 3 Reasoner 正文未取到（L2+）</td></tr>
+  </table>
+  <p><b>第二波趋势</b>：重心从「是否生成未来」转向「<b>信息流方向</b>」——GigaWorld/FACT/LAWA 因果掩码禁止未来视频→动作泄漏，OpenWAM 把四种掩码模式（mutual / action-sees-video / video-sees-action / isolated）做成受控变量；「坏动作的后果」进入决策（FACT 进度值头打分、Kairos regret 准则）。</p>
+  <div class="warn"><b>未获证实项</b>：Meta WAM 的 CoT 潜轨迹搜索（博客四路取文均失败），本合集不引用其细节。</div>
+</section>
+
+<section id="q5">
+  <h2>8. ⑤ 实机与仿真验证</h2>
+  <h3>仿真基准清单（含协议细节）</h3>
+  <table>
+    <tr><th>基准</th><th>协议要点</th><th>已核实结果</th></tr>
+    <tr><td><b>LIBERO</b></td><td>4 套件×10 任务×500 demos；标准监督训练（非 zero-shot）</td><td>Fast-WAM 97.6 / Cosmos Policy 98.5 / DiT4DiT 98.6 —— <b>已近饱和</b></td></tr>
+    <tr><td><b>LIBERO-Plus</b></td><td>7 受控偏移轴（viewpoint/initial state/language/lighting/texture/noise/layout）</td><td>V-JEPA Policy 79.25→91.50（DROID 预训练后）</td></tr>
+    <tr><td><b>RoboTwin 2.0</b></td><td>50+ 双臂任务；clean + randomized 两档；100 trials/任务；训练 2500 clean+25k rand demos</td><td>Fast-WAM 91.8 / WSA₁ 93.3 / MotuBrain 95.8-96.1</td></tr>
+    <tr><td><b>RoboCasa</b></td><td>24 厨房任务；demos 数量差异大（50–3000/任务），跨论文须对齐</td><td>Cosmos 67.1（3600 trials）/ V-JEPA Policy 50.92 / DiT4DiT 50.8</td></tr>
+    <tr><td><b>PolaRiS / Genie Sim 3.0</b></td><td>DreamZero 零样本（~500h 真机数据训练，不用 10k h 仿真数据）</td><td>task progress 指标，2× VLA</td></tr>
+    <tr><td><b>MuJoCo 自建</b></td><td>3D-ALP：5 步顺序 reach，MCTS</td><td>0.650 vs greedy 0.006；无真机</td></tr>
+  </table>
+  <h3>真机平台与指标惯例</h3>
+  <ul>
+    <li><b>平台</b>：Galaxea R1 Lite、AgiBot G1、Franka、ALOHA、Unitree G1、IRON-R01、TianJi Marvin、Piper 双臂等。</li>
+    <li><b>指标四类</b>：成功率（XPACE 20 trials/任务）；平均任务进度（DreamZero，与 SR 不可混比）；平均完成时间（Fast-WAM："completion time is therefore as important as success rate"）；延迟/频率（190ms、7Hz、11Hz）。</li>
+    <li><b>关键已验证数字</b>：XPACE IRON 68.3 vs DreamZero 40.0/GR00T 6.7（官方项目页一手；recovery 61.7→86.7 为<b>不同任务套件</b>）；MotionWAM G1 九任务 76.1 vs 43.9（+32.2pp）；DreamZero 项目页 62.2/27.4/39.5/49/81%；V-JEPA Policy 真机 45%→80%（2 任务×20 trials）。</li>
+  </ul>
+  <h3>评测坑（第二波 10 条，节选 5 条）</h3>
+  <ol>
+    <li><b>同一数字不同舍入</b>：π0 的 LIBERO 平均 94.15，Rolling-WAM 记 94.1、WLA 记 94.2——跨论文对比必须回溯组件分数。</li>
+    <li><b>同词不同意</b>："nearly doubling"（乘法 1.98×）vs "over 30%"（加法 +32.2pp）。</li>
+    <li><b>正文与表格打架</b>：WLA 正文 17.25% vs Table 2 的 17.3%。</li>
+    <li><b>效率口径互不兼容</b>：215ms=A100 稳态 replan；4.9Hz=A100 chunk 率；0.6s=GB200 带 cache；40ms=RTX 5090——跨论文延迟对比必须逐项拆 GPU/模式/warm-up。</li>
+    <li><b>「未报告」本身是结论</b>：MotionWAM 全文无仿真评测（原文自认）；Kairos 目录无真机节。</li>
+  </ol>
+</section>
+
+<section id="matrix">
+  <h2>9. 论文 × 五轴总表（26 篇代表）</h2>
+  <table>
+    <tr><th>论文</th><th>①输入</th><th>②验证</th><th>③动作</th><th>④决策</th><th>⑤目标</th></tr>
+    <tr><td><b>Fast-WAM</b></td><td>多相机拼单图→Wan2.2 VAE latent + T5 + 1 proprio token（代码实锤）</td><td>LIBERO 97.6 / RoboTwin 91.8 / 真机毛巾折叠 190ms</td><td>7D ΔEE+夹爪（LIBERO）/14D（RoboTwin），h=32，FM</td><td>单次前向直出（无测试时想象）</td><td>纯文本</td></tr>
+    <tr><td>WorldVLA</td><td>VQ-GAN 离散 token（codebook 8192）</td><td>LIBERO 81.8(512)</td><td>7 tokens×256 bins，AR chunk K=5/10</td><td>并行 action 掩码 AR</td><td>纯文本</td></tr>
+    <tr><td>GR-1</td><td>MAE ViT + CLIP + 6D 位姿状态</td><td>CALVIN 94.9%</td><td>ΔXYZ+Δ欧拉+夹爪，horizon=1，线性回归</td><td>因果 AR 直出</td><td>纯文本</td></tr>
+    <tr><td>Motus</td><td>Wan2.2 latent + Qwen3-VL</td><td>RoboTwin 87.8 / LIBERO 97.7</td><td>14 维光流潜动作→14 维 qpos，rectified flow</td><td>联合去噪（UniDiffuser）</td><td>纯文本</td></tr>
+    <tr><td>V-JEPA Policy</td><td>冻结 V-JEPA 2.1 ViT-L + T5 + 1 状态 token</td><td>LIBERO 97.25 / Plus 79.25 / 真机 45→80%</td><td>0.1B DiT FM 动作块</td><td>predictor K/V → 动作专家</td><td>未来 V-JEPA latent 回归</td></tr>
+    <tr><td>JEPA-WAM</td><td>Fast-WAM 骨架 + V-JEPA 2.1 goal tokens</td><td>真机三设定 87.3/74.5/80.9</td><td>继承 Fast-WAM</td><td>继承 Fast-WAM 方向掩码</td><td>生成图 bank→64 tokens</td></tr>
+    <tr><td>NavWAM</td><td>Cosmos causal VAE 9 帧 canvas</td><td>go stanford / Diablo 真机</td><td>动作块+状态+价值帧联合</td><td>policy-only 推理（无 CEM）</td><td>image-goal frame（无语言）</td></tr>
+    <tr><td>LaWAM</td><td>冻结 DINOv3 特征</td><td>LIBERO 98.6 / 187ms</td><td>Alternate-DiT FM</td><td>prior→LaWM→expert 三段</td><td>latent subgoal û_T</td></tr>
+    <tr><td>PALM（VLA, CVPR26）</td><td>CLIP+MAE+MLP 状态</td><td>LIBERO-LONG 91.8</td><td>DiT 动作头</td><td>GPT-2 联合解码</td><td>affordance 4 类 + progress</td></tr>
+    <tr><td>UniPi</td><td>首帧 + T5</td><td>组合任务/CLIPort</td><td>逆动力学从生成视频反解</td><td>视频扩散规划（open-loop）</td><td>文本（层级规划）</td></tr>
+    <tr><td>Act2Goal</td><td>视频 VAE latent</td><td>Genie Envisioner 系</td><td>WM 同构窄 DiT</td><td>flow matching</td><td>image-goal + MSTH 稀疏采样</td></tr>
+    <tr><td>GR-MG</td><td>MAE goal tokens 前置 + CLIP</td><td>GR-1 基座</td><td>cVAE 轨迹头</td><td>—</td><td>生成 subgoal + 进度文本</td></tr>
+    <tr><td>CoT-VLA</td><td>VILA-U</td><td>LIBERO</td><td>短动作序列 AR</td><td>视觉 CoT 两步</td><td>自回归未来帧作视觉目标</td></tr>
+    <tr><td>SWEET</td><td>FLUX Kontext 关键帧</td><td>40× 快于 Wan2.2 rollout</td><td>goal-conditioned DDPM 策略</td><td>相邻帧对条件</td><td>图像编辑稀疏视觉计划</td></tr>
+    <tr><td>DiT4DiT</td><td>Cosmos-Predict2.5-2B</td><td>LIBERO 98.6 / G1 真机</td><td><b>绝对关节位置</b> 8 维/chunk 8（代码）</td><td>视频潜→动作去噪（τf 钩子）</td><td>文本</td></tr>
+    <tr><td>τ0-WM</td><td>Wan2.2-TI2V-5B + 0.5B Action DiT</td><td>真机四任务</td><td>预训练相对 EEF-6d 20 通道/后训练绝对关节 7 维（代码）</td><td>propose-evaluate-revise</td><td>文本</td></tr>
+    <tr><td>V-JEPA 2-AC</td><td>V-JEPA 2 潜空间</td><td>两实验室 Franka 零样本（数值未核实）</td><td>7D ΔEE@4fps×15 潜动作</td><td>block-causal 潜预测 + image-goal 规划（§4 未取到）</td><td>image goal</td></tr>
+    <tr><td>Action Images</td><td>视频骨干原生像素</td><td>—</td><td>3 通道热力图视频+几何解码</td><td>zero-shot 直出</td><td>—</td></tr>
+    <tr><td>PointWorld</td><td>RGB-D 点云 + DINOv3</td><td>Dex 任务</td><td>3D 点流 H=10</td><td>MPC-MPPI（0.1s/rollout）</td><td>点流目标</td></tr>
+    <tr><td>UWM</td><td>单 DiT</td><td>RoboMIND 等</td><td>chunk 16，RoboMimic 7/DROID 10（代码）</td><td>时间步 T/0 切四模式</td><td>—</td></tr>
+    <tr><td>DreamZero</td><td>14B 视频扩散</td><td>PolaRiS/Genie Sim 零样本 + 真机 2× VLA</td><td>48 步@30Hz，joint+gripper pad 32（代码）</td><td>联合去噪 7Hz 闭环</td><td>文本</td></tr>
+    <tr><td>XPACE</td><td>共享因果视频 Transformer</td><td>IRON 真机 68.3→86.7</td><td>动作 chunk（摘要级）</td><td>联合预测 + simulator 自改进</td><td>文本</td></tr>
+    <tr><td>WAV（NeurIPS26）</td><td>Genie Envisioner 特征</td><td>仿真+真机</td><td>潜动作 token</td><td>MPPI 式潜空间迭代推断</td><td>—</td></tr>
+    <tr><td>Cosmos Policy</td><td>Cosmos-Predict2-2B</td><td>LIBERO 98.5 / ALOHA 93.6</td><td>动作=潜帧</td><td>单模型多 I/O</td><td>文本</td></tr>
+    <tr><td>3D-ALP</td><td>3D 世界模型</td><td>MuJoCo 0.650 vs 0.006（无真机）</td><td>—</td><td>MCTS D=2 B=4</td><td>—</td></tr>
+    <tr><td>Cosmos 3</td><td>MoT Generator</td><td>—</td><td>policy/FDM/IDM 同 checkpoint</td><td>Reasoner CoT+2D 轨迹（正文未取到）</td><td>文本</td></tr>
+  </table>
+</section>
+
+<section id="wave2">
+  <h2>10. 第二波要点（20 篇，详见 01b/02b/03b 笔记）</h2>
+  <ul>
+    <li><b>输入/目标</b>：UVA 历史 VAE latent + 动作块重复；LingBot-VA causal VAE N=192/帧 + 动作 token 交织 τ=4；WALL-WM 多视角 + 事件 caption + Staircase 潜 CoT；Pelican 四模态共享嵌入器 + 双轨 CoT。</li>
+    <li><b>动作空间新实锤</b>：MotuBrain 10-D、OpenWAM 统一 80-D、Rolling-WAM G1 78-D（64 维 SONIC+每手 7）、THAW-VLA 29-D、Kairos 代码侧 RoboTwin 32×14 / LIBERO-Plus 32×7。</li>
+    <li><b>决策新趋势</b>：「压缩未来表征」（LAWA 潜意图、THAW 蒸馏、DreamWAM 四视图 RGB/光流/几何/语义、Rolling-WAM 215ms）；「坏动作后果进决策」（FACT 进度值头、Kairos regret）。</li>
+    <li><b>验证补充</b>：MotionWAM 全文无仿真评测；WSA₁ README 93.1/真机 80.52（与摘要 93.3 口径漂移）；WLA 90.02=Rand 确认；GE-Act 2.0 零样本 OOD G1-OP 44.1/G2-90D 31.1。</li>
+  </ul>
+</section>
+
+<section id="code">
+  <h2>11. 代码对质结论（06-code-forensics）</h2>
+  <p>7 项官方仓库取证全部完成，证据链 = 仓库 URL + 文件路径 + verbatim 关键行（详见 <a href="notes/06-code-forensics.md">06-code-forensics.md</a>）。</p>
+  <table>
+    <tr><th>论文</th><th>动作空间（代码事实）</th></tr>
+    <tr><td>DiT4DiT</td><td>绝对关节位置；LIBERO 8 维/chunk 8；G1 32 维/chunk 16</td></tr>
+    <tr><td>τ0-WM</td><td>预训练相对 EEF-6d 20 通道 / 后训练绝对关节 7 维；chunk 33</td></tr>
+    <tr><td>UWM</td><td>chunk 16；RoboMimic 7 / DROID 10；DualTimestepEncoder 切换</td></tr>
+    <tr><td>DreamZero</td><td>48 步；joint+gripper；pad 32（DROID 7/AGIBOT 22/YAM 14）</td></tr>
+    <tr><td>Motus</td><td>14 维 qpos（min/max→[0,1]）</td></tr>
+    <tr><td>GR-1</td><td>7 维相对位姿（6+1 ±1）；归一化/Δt 未发布 → 未能获取</td></tr>
+    <tr><td>Fast-WAM</td><td>LIBERO 7 维 Δxyz+Δrpy+gripper；RoboTwin 14 维原始 qpos</td></tr>
+  </table>
+</section>
+
+<section id="rl">
+  <h2>11b. RL post-training（6 篇专项精读 + VAMPO 代码取证）</h2>
+  <p>来源：<a href="notes/07-rl-posttraining.md">07-rl-posttraining.md</a>（6 篇全 L2，verbatim 引文）与 <a href="notes/08-rl-code-forensics.md">08-rl-code-forensics.md</a>（VAMPO 官方仓库 RL 全链路，代码 verbatim）。</p>
+  <table>
+    <tr><th>论文</th><th>奖励来源/定义</th><th>优化算法</th><th>训练组件 / 冻结</th><th>KL/正则</th></tr>
+    <tr><td>GigaBrain</td><td>稀疏 episode 奖励（成功 0/失败 −C_fail/步 −1）→ 世界模型价值 n-step TD 优势 → <b>二值化 I=𝟙[A&gt;ε]</b></td><td>KL-RL 闭式解改写为<b>加权 NLL</b>（L=−log π(a|o,z,l) − α log π(a|I,o,z,l)）</td><td>policy + 世界模型（Stage 4 联合）；冻结范围未写</td><td>世界模型 token 随机注意力掩码 p=0.2</td></tr>
+    <tr><td>VAMPO</td><td><b>expert-latent 一致性</b>：r = −L1(pred,true) + cos_sim（潜空间，离线）</td><td><b>GRPO</b>（G=8 组采样、组归一化优势、PPO 式截断目标）</td><td>仅 VPM 去噪器（UNet）；VAE/文本编码器冻结</td><td>无 KL；<b>仅首步 SDE</b>（Euler Hybrid）</td></tr>
+    <tr><td>CreFlow</td><td><b>LTL 监视器</b>二值 r + 违例 witness + SAM3 图集</td><td>credit-aware DiffusionNFT + corrective reflow（失败样本拉向组内正均值）</td><td>仅视频生成器；IDM/监视器冻结</td><td>KL 到冻结预训练 Vidar</td></tr>
+    <tr><td>EVA</td><td><b>IDM 解码动作</b>：jerk/acc Huber + 速度/加速度限幅惩罚，R=−加权和</td><td><b>Flow-GRPO</b>（组优势+clip+−βD_KL）</td><td>仅生成器 LoRA；IDM 全程冻结</td><td>KL 到参考（LVP→SFT→RL 三级管线）</td></tr>
+    <tr><td>WorldVLN</td><td>段级三奖励：轨迹 1/(1+‖a−a*‖) + 任务 1/(1+终点距目标) + 参考 log π_ref，γ^{j−1} 时间衰减</td><td><b>Action-aware GRPO</b>（段级组优势+clip）——唯一对自回归 WAM 整体做在线 RL</td><td>自回归 backbone+动作解码器（拆分未写）</td><td>无 KL；λ_ref·log π_ref 奖励替代</td></tr>
+    <tr><td>DreamGen【对照】</td><td>无奖励</td><td>无 RL：生成→伪标注→行为克隆（DP/π0/GR00T N1）</td><td>—</td><td>—</td></tr>
+  </table>
+  <h3>VAMPO 实操三步（代码级，可直接抄）</h3>
+  <ol>
+    <li><b>准备</b>：专家视频经 SVD VAE 预编码 latent（<code>step0_prepare_latent.py</code>）+ SFT 视频预测模型（<code>step1_train_svd.py</code>）得 checkpoint。</li>
+    <li><b>采样</b>：<code>sde_start=0, sde_end=1</code> 只首步 SDE；G=8 条 rollout 共享初始噪声（<code>num_videos_per_prompt=8</code>）；奖励在潜空间算（<code>latent_reward_fn</code>：负 MAE + cosine）。</li>
+    <li><b>更新</b>：优势组归一化 <code>(r − mean)/ (std + 1e-8)</code>；<code>loss = mean(minimum(−A·ratio, −A·clip(ratio, 0.8, 1.2)))</code>；lr=1e-6、I=20 步、guidance 7.5、grad norm 0.5、10k 步、8 GPU。</li>
+  </ol>
+  <h3>共性模式（仅基于原文）</h3>
+  <ol>
+    <li><b>奖励全是「免执行」的代理信号</b>：无一篇在训练内环执行真机动作（价值 TD / latent 距离 / LTL 逻辑验证 / IDM 平滑度 / 模拟器 rollout）。</li>
+    <li><b>被优化的是「视频/世界生成器」，不是下游动作策略</b>：VAMPO 训 VPM、CreFlow 训 TI2V、EVA 训视频模型 LoRA、WorldVLN 训自回归 WAM。</li>
+    <li><b>优势/奖励几乎总被归一化或二值化</b>：GigaBrain 二值化、GRPO 系组归一化、CreFlow 组共享掩码（组全成功掩码归零）。</li>
+    <li><b>KL/参考锚定是标配</b>：显式 KL（CreFlow/EVA）、理论起点即 KL-RL（GigaBrain）、log π_ref 奖励（WorldVLN）、结构级锚定（VAMPO 仅首步随机）。</li>
+    <li><b>一律以 SFT checkpoint 起步</b>，语义上都是「post-training」。</li>
+  </ol>
+  <div class="warn">诚实缺口：五篇 RL 论文中仅 VAMPO 有官方代码（已 L3 取证）；GigaBrain/CreFlow/EVA/WorldVLN 的 G/β/γ/λ 等超参与实验数值在正文或附录未取到（07 文件已逐项标注）。</div>
+</section>
+
+<section id="gaps">
+  <h2>12. 诚实缺口与来源分级</h2>
+  <h3>来源分级约定</h3>
+  <p><span class="tag l3">L3</span> 全文核实（verbatim 引文+小节号）　<span class="tag l2">L2</span> 部分正文　<span class="tag l1">L1</span> 仅摘要。各精读笔记中每篇都标注了级别与 HTML 截断位置；「原文未写（已获取范围）」= 论文确实没写；「未取到」= 工具截断没拿到——两者都不是结论。</p>
+  <h3>仍在档的缺口清单</h3>
+  <ol>
+    <li>Meta WAM 博客不可达 → CoT 潜轨迹搜索未获一手证实（本合集不引用）。</li>
+    <li>V-JEPA 2 §4 image-goal 规划的动作采样机制（48 页长文截断）。</li>
+    <li>NavWAM goal-progress value 标签公式（附录 A.2）与 PALM progress 真值来源（Eq.10 之后）。</li>
+    <li>Cosmos 3 Reasoner 具身 CoT 与 2D 轨迹规划正文。</li>
+    <li>GR-1 动作归一化数值与视频 Δt（官方仓未发布）。</li>
+    <li>部分附录数值（WAV 的 M/N/K、τ0-WM 的 N/γ/K、DreamAvoid 的 σ 等）。</li>
+    <li>8 篇 A 线论文的代码仓逐文件取证（待办）。</li>
+  </ol>
+  <div class="warn"><b>环境限制记录</b>：沙箱禁止 shell 出网与 pip 安装 → 本地 PDF 下载与抠图管线不可用，图以「编号+caption+URL」引用；论文全文以 arXiv/ar5iv HTML 为证据源（部分长文被工具字节截断）。</div>
+</section>
+
+<section id="nav">
+  <h2>13. 阅读导航（精读笔记文件）</h2>
+  <table>
+    <tr><th>文件</th><th>内容</th></tr>
+    <tr><td><a href="notes/README.md">reading/README.md</a></td><td>总索引 + 全局待核实清单</td></tr>
+    <tr><td><a href="notes/01-input-representation.md">01-input-representation.md</a></td><td>① 输入表征 10 篇（含 Fast-WAM proprio 代码对质）</td></tr>
+    <tr><td><a href="notes/02-sim-real-validation.md">02-sim-real-validation.md</a></td><td>② 实机/仿真验证 10 篇</td></tr>
+    <tr><td><a href="notes/03-action-representation.md">03-action-representation.md</a></td><td>③ 动作表征 10 篇</td></tr>
+    <tr><td><a href="notes/04-decision-representation.md">04-decision-representation.md</a></td><td>④ 决策表征 9 篇</td></tr>
+    <tr><td><a href="notes/05-goal-representation.md">05-goal-representation.md</a></td><td>⑤ 目标表征 9 篇</td></tr>
+    <tr><td><a href="notes/01b-input-goal-wave2.md">01b-input-goal-wave2.md</a></td><td>第二波：输入/目标 10 篇（全文已本地化，可离线逐句引用）</td></tr>
+    <tr><td><a href="notes/02b-validation-wave2.md">02b-validation-wave2.md</a></td><td>第二波：验证 10 篇（含 10 条评测坑）</td></tr>
+    <tr><td><a href="notes/03b-action-decision-wave2.md">03b-action-decision-wave2.md</a></td><td>第二波：动作/决策 10 篇（含 6 条趋势）</td></tr>
+    <tr><td><a href="notes/06-code-forensics.md">06-code-forensics.md</a></td><td>7 项官方仓库代码取证</td></tr>
+    <tr><td><a href="notes/fast-wam.md">fast-wam.md</a></td><td>Fast-WAM 单篇全精读（Abstract→全表→why 追问→代码实锤）</td></tr>
+  </table>
+  <p class="foot">建议阅读顺序：本页 0→2→4→9 章先建立框架，再按五问逐章深入；每章细节以对应精读笔记为准（引文带小节号，可直接定位原文核对）。<br>
+  本页生成于 2026-10-27 ｜ 数据来源：arXiv 原文（L1/L2/L3 分级）+ 官方代码仓库 + 两篇 2026 综述官方清单 ｜ 更新：wam-survey.md v0.2+</p>
+</section>
+
+</div>
+</body>
+</html>

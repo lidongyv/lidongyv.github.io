@@ -1,0 +1,254 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>最近三个月进展与实现细节 · 世界模型调研与精读</title>
+<link rel="stylesheet" href="style.css"></head><body>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="index.html">首页</a><a href="world-model-survey.html">调研总览</a><a href="world-model-capability-taxonomy.html">输出任务×能力</a><a href="recent3m.html">最近三个月·实现细节</a><a href="narrative.html">叙事线资料</a><a href="progress.html">进度与纠偏</a><a href="papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">文档</div><h1>最近三个月进展与实现细节</h1><blockquote>
+<p>本页覆盖 10 篇新发布工作（全部已精读、关键引文已 grep 原文验证；笔记与伪代码在 <code>papers/&lt;篇名&gt;-notes.md</code> 第 4/5 节）。
+伪代码纪律：<strong>原文有 Algorithm 环境 → 逐字提取；无 → 依据正文重建并标注「⚠ 依据原文重建（非原文伪代码）」</strong>，每步附原文行号，不发明原文没有的细节。</p>
+</blockquote>
+<h2>TL;DR</h2>
+<ol>
+<li><strong>两条主线</strong>：①「世界模型必须显式建模状态」——Physical Registry（可读的动力学寄存器）、InertialWorld（惯性记忆）、EPM（可执行知觉记忆）、AgentWorld（agent 离散 token）四篇从不同角度做同一件事：把「预测动力学」从隐式视频 token 里拿出来变成显式状态；②「评测开始审判」——FlipTest 证明 11 个视频世界模型学不会因果状态（18.3% &lt; 随机 25%），Roz 证明潜动力学模型不编码质量/形变/摩擦/弹性。</li>
+<li><strong>T4 力学线继续壮大</strong>：DTWM（手套触觉条件视频世界模型）、TacForeSight（力引导触觉预测，20Hz 实时）。</li>
+<li><strong>WAM 设计从「预测未来」进化到「预测什么信号」</strong>：DiffWAM 用连续视觉差作显式学习信号，推理零开销（LIBERO 98.8%）。</li>
+<li><strong>Genie 4</strong>（DeepMind 官方博客，2026-11）：新一代码世界模拟，无 arXiv 论文（同 Genie 2/3 口径，仅官方博客）。</li>
+</ol>
+<h2>总表（10 篇，按时间）</h2>
+<table>
+<thead>
+<tr>
+<th>论文</th>
+<th>arXiv</th>
+<th>日期</th>
+<th>输出任务</th>
+<th>核心机制一句话</th>
+<th>关键数字</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TacForeSight</td>
+<td><a href="https://arxiv.org/abs/2606.11184">2606.11184</a></td>
+<td>06-09</td>
+<td>T4 力学</td>
+<td>腕部高频力/力矩条件化触觉潜动力学预测 + 预测性触觉策略</td>
+<td>5 任务均值 79.0%；推理 20Hz@4090D</td>
+</tr>
+<tr>
+<td>DTWM</td>
+<td><a href="https://arxiv.org/abs/2609.34286">2609.34286</a></td>
+<td>09-28</td>
+<td>T4 力学</td>
+<td>手套触觉在对应手部位置 zero-init 残差注入视频 DiT</td>
+<td>手部运动低估 23%→9%；手部 LPIPS −7.4%</td>
+</tr>
+<tr>
+<td>Roz</td>
+<td><a href="https://arxiv.org/abs/2611.00612">2611.00612</a></td>
+<td>10-31</td>
+<td>评测</td>
+<td>三角品尝式 contrastive 任务测潜变量物理记忆</td>
+<td>1,734 场景；物理记忆类任务全员崩溃</td>
+</tr>
+<tr>
+<td>Physical Registry</td>
+<td><a href="https://arxiv.org/abs/2610.16365">2610.16365</a></td>
+<td>10-12</td>
+<td>T1+显式状态</td>
+<td>DiT 内 registry slots 显式承载预测动力学</td>
+<td>+0.45% 参数令 Cosmos Nano 16B 超 Super 64B（43.56 vs 42.7）</td>
+</tr>
+<tr>
+<td>DiffWAM</td>
+<td><a href="https://arxiv.org/abs/2611.19904">2611.19904</a></td>
+<td>11-15</td>
+<td>T5 WAM</td>
+<td>三专家（World/Action/Diff）+ 连续视觉差监督，推理移除两专家</td>
+<td>LIBERO 98.8% / RoboTwin 92.65% / 真机 88.3%（+15.0）</td>
+</tr>
+<tr>
+<td>FlipTest</td>
+<td><a href="https://arxiv.org/abs/2611.19822">2611.19822</a></td>
+<td>11-15</td>
+<td>评测</td>
+<td>反事实最小对三级层级探测因果状态追踪</td>
+<td>最强模型 18.3% &lt; 随机 25%；告知结局后 73.7%</td>
+</tr>
+<tr>
+<td>SAFER</td>
+<td><a href="https://arxiv.org/abs/2611.20107">2611.20107</a></td>
+<td>11-15</td>
+<td>T5 规划</td>
+<td>离线批量制造可恢复失败+专家标注，在线自我精炼，风险感知 MPPI</td>
+<td>CARLA RC 0.95 / reward-per-step 0.77；MetaDrive 53.4</td>
+</tr>
+<tr>
+<td>EPM</td>
+<td><a href="https://arxiv.org/abs/2611.22294">2611.22294</a></td>
+<td>11-17</td>
+<td>T2+显式记忆</td>
+<td>显式知觉状态与神经潜动力学并步推进，奖励对齐产生它的转移</td>
+<td>Memory Maze 13×13 30.37 vs 23.37（+7.00）</td>
+</tr>
+<tr>
+<td>InertialWorld</td>
+<td><a href="https://arxiv.org/abs/2611.22314">2611.22314</a></td>
+<td>11-17</td>
+<td>T1+惯性先验</td>
+<td>欧拉网格+拉格朗日载体双视图惯性记忆，carry→predict→update</td>
+<td>RT-1 PSNR 24.37 / CSGO 18.36 全胜基线</td>
+</tr>
+<tr>
+<td>AgentWorld</td>
+<td><a href="https://arxiv.org/abs/2611.22880">2611.22880</a></td>
+<td>11-17</td>
+<td>T5 AD</td>
+<td>固定 N=20 离散 agent token 接地几何/运动/交互，三阶段训练</td>
+<td>NeurIPS 2026；Bench2Drive DS 81.17；延迟 0.31s</td>
+</tr>
+</tbody>
+</table>
+<h2>实现细节速查（每篇 4 项：数据 / 架构 / 损失与训练 / 推理）</h2>
+<h3>TacForeSight（力→触觉的先行指标）</h3>
+<ul>
+<li><strong>数据</strong>：双指 Xense 触觉 35×20 3D 形变 @30Hz + 腕部六轴力/力矩 @120Hz；5 任务。</li>
+<li><strong>架构</strong>：TacForceWM = CNN-Transformer tokenizer + 膨胀因果 1D 卷积力编码器 + AdaLN 潜 Transformer 做 chunk 预测（SIGReg 目标）；策略 = DINOv2-small + 现-未来 cross-attention + 触觉门控通道融合 + flow-matching 头。WM 11.8M 参数/150k 步/2700 幕，策略 68.9M，8×A100。</li>
+<li><strong>关键证据</strong>：原文 L98-103「abrupt wrist-wrench changes consistently precede fingertip tactile responses … global force signals act as leading indicators of future tactile states」；L573-576 预测触觉潜变量比当前触觉<strong>提前约 200ms</strong> 出现接触变化。</li>
+<li><strong>推理</strong>：L128-129「maintaining a real-time inference rate of 20 Hz on an RTX 4090D GPU」——目前触觉世界模型链里明确给出实时推理数字的一篇。</li>
+</ul>
+<h3>DTWM（触觉注入视频世界模型的「位置」问题）</h3>
+<ul>
+<li><strong>数据</strong>：EgoTouch——头戴 RGB 480×640@30fps + 双手压力手套，20.21h / 43,604 clips（38,600 训练）。</li>
+<li><strong>架构</strong>：Wan2.2-Fun-5B-InP 预训练 DiT（30 块、d=3072）+ LoRA rank 64；每手 138/147 通道经 σ=1.8 高斯足迹在块 {0,6,12,18,24} 注入 <strong>zero-initialized residual</strong>（λ=1 buffer）；预测帧令 v_ht=0（t&gt;m）实现 causal。</li>
+<li><strong>关键论证</strong>：原文 L90-93 提出 <strong>indexing mismatch</strong>——手套读数按「皮肤 patch」索引、视频按「图像位置」索引，触觉注入必须落在对应手部位置而非全局。</li>
+<li><strong>消融铁证</strong>：把触觉换成 binary contact（每位置/每手）都更差；训练期触觉使推理无触觉仍优于 vision-only。</li>
+<li><strong>训练/推理伪代码</strong>：见下方 §伪代码 2（训练 12 步 + 推理 7 步，全部带行号）。</li>
+</ul>
+<h3>Physical Registry（动力学预测应是显式可读状态）</h3>
+<ul>
+<li><strong>架构</strong>：Tr=8 registry slots（1 编码器上下文 + 7 预测器 rollout），初始化自 observation-conditioned forecast（冻结 V-JEPA 2.1 ViT-g@384px 特征，每 slot 196 token）；与视频 token 共享 dense 双向自注意力共演化；中间 DiT 块（Nano 36→10 等）用 MLP 读头对齐 full-video JEPA 目标，Lalign=−(1/Tr)Σcos，λalign=0.5。</li>
+<li><strong>PRS 选择器</strong>：在 K 步前缀后，用「registry readout 与共享 forecast 的角距离」对候选排序，选 1 条继续 D−K 步——<strong>无需外部奖励模型/验证器</strong>（原文 L96-98）。</li>
+<li><strong>效率代价</strong>：每步耗时 1.67×/1.55×；多样性 0.029→0.018（正文自述的代价性事实）。</li>
+<li><strong>注意</strong>：主文 4.4 的 PRS 数值（38.36/46.68）与 Table 12（39.08/47.67）不一致，原文未解释，笔记已标注。</li>
+</ul>
+<h3>DiffWAM（WAM：预测什么信号？）</h3>
+<ul>
+<li><strong>定义</strong>：Δf_i = f_i − f_{i−1}（连续观测潜表示之差）作为显式时间变化学习信号（L390）。</li>
+<li><strong>架构</strong>：三专家共享 Observation Encoder；World/Diff 共享前 N−M 层；<strong>单向注意力掩码</strong>——各专家只读当前帧表示、专家间阻断（L480-487）；推理时<strong>移除 World/Diff 专家、零额外开销</strong>（L413-415）。</li>
+<li><strong>训练</strong>：L = L_world + λ_diff·L_diff + λ_action·L_action（L575；λ 数值原文未写）；Table 9：N=30/M=10、lr 1e-4/1e-5、8×A100、Wan2.2-5B 初始化、约 7B 参数。</li>
+<li><strong>消融</strong>：+Diff Loss 97.05→97.75、+Diff Expert→98.80（LIBERO）；Only-Diff 96.20 &lt; World+Diff 98.80。</li>
+<li><strong>叙事线接口</strong>：原文把 WAM 问题从「预测未来」推进到「预测什么信号」（L136-138）——与「轨迹接口 vs 全帧预测」的争论同源。</li>
+</ul>
+<h3>AgentWorld（规划只需要少量关键 token）</h3>
+<ul>
+<li><strong>架构</strong>：固定 N=20 个离散 ⟨agent_i⟩ token，可动态接地到周边参与者或「no-object」状态；查询=特殊 token 可学习嵌入，经 L=3 层几何门控+视觉门控路由，接地冻结 VGGT 4D 特征与 MLLM 2D 特征；training-time head 预测类别/3D 框/未来轨迹 + DETR 式匈牙利匹配。</li>
+<li><strong>训练三阶段</strong>：接地 SFT 12ep/lr 1e-4 → 推理 SFT 12ep/lr 5e-5（η:0.1→0 渐进去除接地脚手架）→ GRPO 1ep/lr 1e-6，奖励 R=λfmt·Rfmt+λpercep·Rpercep+λaction·Raction+λtraj·Rtraj+λagent·Ragent（权重均 1）。</li>
+<li><strong>关键证据</strong>：原文 L106-112——现有 world VLA 用大量稠密视觉 token 但去除图像线索只轻微掉点（visual grounding ablation），证明像素世界状态效率低下。</li>
+<li><strong>局限自认</strong>（L623-626）：仍依赖显式几何监督而非端到端自发涌现。</li>
+</ul>
+<h3>SAFER（离线批量制造失败 + 有界碰撞价格）</h3>
+<ul>
+<li><strong>离线数据配方</strong>（核心贡献）：13 个部分训练 Roach checkpoint + 动作噪声 + hold/late-brake 可恢复脚本事件制造失败；专家（策略+价值）<strong>任意状态可查询</strong>，逐状态标注 (a,v)；CARLA 语料 22.06M 步。原文 L481-482：配方只需「允许可恢复失败的驾驶员 + 可在访问状态上查询的专家」——试验场+安全员即可。</li>
+<li><strong>世界模型</strong>：chunked latent WM，16 步一次前向；symlog 101-bin 分布头；因子化奖励；K=5 价值集成；BC prior 学恢复动作。</li>
+<li><strong>规划</strong>：MPPI 135 候选（128 采样+6 prior proposals+1 精确 prior）×2 迭代；<strong>J = return − W·ρ̄</strong>，W=50，ρ̄∈[0,1] 有界——碰撞预测是「有界价格」而非开关惩罚（L753-754：首步确定碰撞 ≈ 一个好候选的全部折现回报）。</li>
+<li><strong>在线 Refine</strong>：256 步驾驶/32 更新（UTD 0.125）；只精调 dynamics+scorers+risk，prior/value/encoder 冻结；EMA 慢副本打分防目标漂移。</li>
+<li><strong>伪代码</strong>：原文 Algorithm 1 逐字见下方 §伪代码 1。</li>
+</ul>
+<h3>FlipTest（视频世界模型学不会因果状态）</h3>
+<ul>
+<li><strong>方法</strong>：1,680 初始帧（600 最小对 + 600 匹配控制 + 480 稠密 sweep）；10 仿真 + 15 真实任务；11 个视频世界模型；双裁判（Gemini 3.6/3.8 Flash）读生成视频判定结局；指标 = pair accuracy / SS=CFR−SFR / P(event|m)。</li>
+<li><strong>结论</strong>（全部原文验证）：最强模型 18.3% &lt; 随机 25%；<strong>mode collapse 72%（真实）/89%（仿真）</strong>——边界两侧预测完全相同；<strong>告知结局后 18.3%→73.7%</strong>——模型学的是外观而非因果状态；VLM 呈 S 形选择性曲线，代码测量 agent 93.3%/91.3% 接近真界。</li>
+<li><strong>对叙事线的意义</strong>：这是「运动学 vs 力学」在<strong>评测层</strong>的独立证据——世界模型不追踪决定未来的状态，而接触状态恰是最决定性的那种状态。</li>
+</ul>
+<h3>Roz（潜变量不编码质量/摩擦）</h3>
+<ul>
+<li><strong>方法</strong>：10 contrastive（三角品尝三选一、严格不等式）+ 3 continuous（最近邻排序）；物理性质映射：Collision→质量、Deform→形变、Roll/Bowl→摩擦、Bounce→弹性；输入仅需模型吃 256×256 帧/视频 + 潜提取 + 距离函数，<strong>单次前向</strong>（低成本、可快速迭代）。</li>
+<li><strong>结论</strong>：图像稳健类任务（bowl/basic color/translation）全员高分，物理记忆类（occlusion/bounce/deform）<strong>全员崩溃</strong>（L335-337）；DreamDojo <strong>重建 MSE 减半而 Roz 分数恒定</strong>（L387-389）——重建目标 ≠ 动力学记忆。</li>
+<li><strong>注意</strong>：摘要里没有 "AnonWM"，实际模型名是 PantheonWM（笔记已纠正）。</li>
+</ul>
+<h3>EPM（可执行知觉记忆：记忆随动作演化）</h3>
+<ul>
+<li><strong>核心</strong>：显式知觉状态 m̃ 与神经潜状态 ž 在想象中<strong>并步推进</strong>（Eq.2）；read-out 进 reward/value/policy；<strong>奖励对齐「产生它的转移」</strong>——用实测运动推进前一步记忆再配对奖励（Eq.4，防止时序错位毒化训练）；开环记录动作 rollout 沿 prior 前滚 15 步、只训 reward head（Eq.5）。</li>
+<li><strong>结果</strong>：Memory Maze 13×13 30.37 vs 23.37（+7.00 [3.80,10.21]，6/6 种子）。</li>
+<li><strong>触觉实验</strong>：concentration / tactile recovery / real tactile frames——但原文自认「does not isolate tactile initialization」（L605-609）。</li>
+</ul>
+<h3>InertialWorld（惯性作为表征层结构先验）</h3>
+<ul>
+<li><strong>核心</strong>：状态 Sτ=(Gτ,{rτ,k},Bτ)；每步顺序固定 <strong>carry → predict → update</strong>（L875-876）：carry 用 ξ=Uθ(S,a) 做动作条件坐标传输（速度保持 η=0.90）；predictor 从 carried 状态+Context 预测完整下一视频状态+候选记忆+写门 g；门控合并 M+=(1−g)⊙M̃+g⊙Mnew，<strong>默认 g0=0.020（持久化是默认路径）</strong>。</li>
+<li><strong>架构</strong>：0.8B 参数（宽 1280/20 头/15 层）；320 稠密 token + 16 载体 + 64 slot；冻结 FSQ tokenizer；AR8→16→32 课程 + 全 rollout BPTT。</li>
+<li><strong>原文澄清</strong>（L252-253）：这是「表征惯性」的操作定义，<strong>不是硬编码牛顿定律</strong>。</li>
+<li><strong>结果</strong>：RT-1 PSNR 24.37 / CSGO 18.36 / RECON 16.70 全胜基线（36/36 点估计，35/36 显著）。</li>
+</ul>
+<h2>伪代码速览（旗舰三篇）</h2>
+<h3>伪代码 1：SAFER —— Algorithm 1（原文算法环境，逐字提取，L887–900）</h3>
+<blockquote>
+<p>Algorithm 1Online adaptation loop.
+Require:offline corpusD, world modelθfrom Section 3.3, EMA copies ¯θ←θof the scorers and the risk head
+1:bufferB ← ∅, credit←0
+2:whilefewer than10^6 environment steps collecteddo
+3:driven b = 256steps with the planner of Section 3.5 (live dynamics, EMA scorers, EMA risk head); append the transitions toB, which keeps only the most recent ones
+4:credit←credit+ 0.125n b;U← ⌊credit⌋; credit←credit−U
+5:forUupdatesdo
+6:sample a batch of windows, half fromDand half fromB, half of the latter from the latest burst
+7:updateD θ with Eq. (30), the scorers with Eq. (31), the risk head withL bce +L mono
+8:end for
+9: ¯θ←(1−τ b)¯θ+τ bθ ▷Eq. (32)
+10:end while
+11:returnlive dynamics, EMA scorers, EMA risk head, frozen encoder / prior / value ensemble</p>
+</blockquote>
+<p>SAFER 其余两段（离线 Stage &amp; Annotate、Risk-aware MPPI）为 ⚠ 依据原文重建，完整版（每步带行号）见 <a href="papers/SAFER.html">SAFER 精读笔记 §5</a>。</p>
+<h3>伪代码 2：DTWM —— 训练单步（⚠ 依据原文重建，每步带行号）</h3>
+<pre><code>输入: 49 帧 clip (384×512)、每帧每手 21×21 触觉栅格 s、任务指令 τ、手部骨架流
+1.  采样 K ~ Uniform({4,8,...,44})                                   [L219]
+2.  编码观测帧 0..K 为干净 latent（latent 帧 0..m, m=K/4），
+    观测 token 时间步置 0；预测 latent 共享同一采样时间步           [L213-215]
+3.  手部骨架经扩宽至 148 通道的 zero-initialized patch embedding 编码 [L221-222, L903-907]
+4.  触觉: 通道标准化后 clip 到 [-8,8]；e_ht = W_h s_ht + frame(t) + hand(h) [L246-249]
+5.  由渲染骨架得手部质心与有效性 v_ht，validity-weighted mean 降到 latent 帧 [L254-258]
+6.  按 Eq.(1) 计算归一化高斯足迹 ĝ_ht(p)，σ=1.8（训练值）           [L259-264]
+7.  causal 处理: 对 t &gt; m 令 v_ht = 0（预测 latent 无触觉残差）      [L273-274]
+8.  在块 ℓ ∈ {0,6,12,18,24} 注入:
+    u ← u + λ Σ_h ĝ_ht(p) (W(ℓ) LN(ℓ)(e_ht) + b(ℓ)), λ=1
+    （W,b 初始化为零）                                               [L266-272]
+9.  文本经冻结 umt5-xxl 编码（512 tokens）                          [L908-909]
+10. flow-matching Euler 调度（1000 训练时间步, shift 12.0）去噪      [L909-910]
+11. loss: 观测 latent 权重 0 / 第一预测 chunk 权重 1 / 后续帧 0.2；
+    空间上 × (1 + 5.0H)（H=手部位置加权，只用 GT 位置，不作输入）    [L354-355, L987-991]
+12. AdamW lr=3e-5、grad clip 1.0、bf16；LoRA rank/scale=64 覆盖 306 个线性模块 [L912-925]
+</code></pre>
+<p>推理段（K=12、block-causal chunk、30 步/CFG 6.0/σ=3.0）见 <a href="papers/DTWM.html">DTWM 精读笔记 §5.2</a>。</p>
+<h3>伪代码 3：Physical Registry —— 训练 + PRS 推理（⚠ 依据原文重建，每步带行号）</h3>
+<pre><code>训练：
+1. Xt ← (1−t)X0 + tϵ；V⋆ ← ϵ − X0                                        (L153, L155)
+2. Henc ← E(x)；Jcond ← [Henc; P(Henc; ncontext=1)] ∈ J^{Tr}            (L170-171)
+   （Tr=8：1 编码器上下文 + 7 预测器 rollout）                             (L172-173)
+3. R(0)t ← Gϕ(Jcond)；Z(0)t ← [Xt; R(0)t]（registry slot 赋 RoPE 坐标）    (L181-186)
+4. Ztgt ← Etgt(v)（各 slot 目标 = 196 空间 token 均值）                    (L194-195)
+5. Z(0)t 过共享 DiT 双向自注意力（视频与 registry token 保持 distinct）    (L187-188)
+6. 在中间监督块读头输出 Ẑt,s ← qψ(Hreg,t,s)                               (L201-203)
+7. Lalign ← −(1/Tr) Σs cos(Ẑt,s, Ztgt^s)（λalign = 0.5）                  (L207, L745-746)
+8. L ← LFM + λalign·Lalign                                               (L217)
+
+PRS 推理（候选选择）：
+1. Jcond ← [Henc; P(Henc)]（所有候选共享的 forecast）                     (L170-171)
+2. for n = 1…N: for k = 1…K:
+     每个去噪步用同一 forecast 重新初始化 registry；去噪一步；
+     收集监督层 registry 隐状态 H(n)k,s                                  (L177-178, L234-236)
+3. a(n)k,s ← cos(qψ(H(n)k,s), Jcond^s)；r(n) ← 1 − (1/(K|S|)) ΣΣ a        (Eq.11)
+4. b̂ ← arg max r(n)；从中选候选 b̂ 的 latent 继续去噪剩余 D−K 步           (L238-240)
+</code></pre>
+<p>其余 7 篇的伪代码（DiffWAM 掩码、AgentWorld 的 Algorithm 1 逐字 + 三阶段重建、EPM Eq.1-5 重建、InertialWorld carry→predict→update 重建、TacForeSight Eq.1-13 重建、FlipTest/Roz 评测流程重建）均在各自精读笔记第 5 节（<code>papers/&lt;篇名&gt;-notes.md</code>）。</p>
+<h2>三个横切观察（对叙事线的直接含义）</h2>
+<ol>
+<li><strong>「显式状态」成为 2026 下半年的共识方向</strong>：Physical Registry（可读动力学寄存器）、EPM（可执行知觉记忆）、InertialWorld（惯性记忆）、AgentWorld（离散 agent token）不约而同地把「预测动力学」做成显式、可读、随演化推进的状态——这正是你们叙事线「快脑需要一个结构化世界状态」的文献级印证。注意四篇均未触及力学量（EPM 触觉实验自认不隔离触觉初始化）。</li>
+<li><strong>评测开始审判「世界状态」</strong>：FlipTest 与 Roz 用反事实和物理性质直接测「模型到底知不知道世界」，结论一致——<strong>重建/外观好 ≠ 状态追踪好</strong>。这为「运动学 vs 力学」提供了独立评测维度：下一张牌就是「接触状态的最小对测试」（FlipTest 之于触觉）。</li>
+<li><strong>T4 力学的实时性在逼近</strong>：TacForeSight 20Hz 实时推理、TacForeSight 的「力比触觉早约 200ms」先行指标——「脊髓层」的毫秒级仍无人触及，但 100ms 级的力引导闭环已经是可复现的实现路径（FAWAM 10Hz 校正环 + TacForeSight 20Hz 预测环）。</li>
+</ol>
+<h2>引用纪律</h2>
+<ul>
+<li>35 篇旧文 + 10 篇新文共 45 篇关键引文已 grep 原文验证（6 篇旧文为🔶状态，见进度页）。</li>
+<li>本页所有数字与引文均来自已验证的笔记；「原文未写」处（如 DiffWAM 的 λ 值、AgentWorld 的 R_traj 公式）已如实标注。</li>
+<li>每篇论文页含本地 txt/PDF 对照入口，可逐句复核。</li>
+</ul>
+<footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
+<a href="index.html">返回首页</a></footer></div></main></body></html>

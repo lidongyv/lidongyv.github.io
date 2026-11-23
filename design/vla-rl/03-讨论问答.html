@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>讨论问答记录 · VLA/VA 调研阅读站</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="topnav"><div class="inner"><a class="" href="index.html">首页</a><a class="" href="01-vla-va-参考论文.html">01 · VLA/VA 参考论文总览</a><a class="" href="02-驾驶VLA-LAV拆解.html">02 · 驾驶 VLA 的 L/A/V 拆解</a><a class="active" href="03-讨论问答.html">03 · 讨论问答记录</a><a class="" href="04-vla-蒸馏实现.html">04 · 蒸馏实现 VLA</a></div></nav>
+<main>
+<h1>讨论问答记录</h1><p class="meta">六轮关键问答的结论速览，细节与原文引用见 01/02 页对应章节。</p>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">Q1：VLA 或 VA 方案的主要参考论文怎么整理？</a></li><li class=""><a href="#sec-2">Q2：驾驶 VLA 里 L 如何实现、A 如何表达、V 有没有显式监督？</a></li><li class=""><a href="#sec-3">Q3：RL 的 post training 怎么做？</a></li><li class=""><a href="#sec-4">Q4：具体如何实现？</a></li><li class=""><a href="#sec-5">Q5：forward / backward 以及 loss 如何实现？GRPO 这类 RL 是如何实现的？</a></li><li class=""><a href="#sec-6">Q6：oracle PDMS 是什么意思？</a></li><li class=""><a href="#sec-7">附：证据留档文件</a></li></ol></details>
+<h1>讨论问答记录</h1>
+<blockquote>会话中逐轮讨论的要点整理（2026-10-26 ~ 2026-11-13）。详细推导与原文引用在「02 · 驾驶 VLA 的 L/A/V 拆解」页。</blockquote>
+<h2 id="sec-1">Q1：VLA 或 VA 方案的主要参考论文怎么整理？</h2>
+<ul>
+<li>结论：三条技术主脉——离散 token VLM 路线（RT-2→OpenVLA→GR00T N1）、连续动作生成路线（ACT/Diffusion Policy/π0）、自动驾驶端到端路线（UniAD/VAD→DriveVLM/LMDrive/EMMA/Senna）。
+</li><li>与你 L4 方案最对症的 6 篇：LMDrive、Senna、DriveVLM(-Dual)、ACT、Diffusion Policy、LAPA。
+</li><li>完整清单见「01 · 参考论文总览」页（含规模-实时性速查、数据侧、与你方案的动作对应表）。
+</li></ul>
+<h2 id="sec-2">Q2：驾驶 VLA 里 L 如何实现、A 如何表达、V 有没有显式监督？</h2>
+<ul>
+<li><strong>A</strong>：车场景几乎全是 BEV waypoint。两条实现路：数值回归头（UniAD/VAD/Senna/LMDrive/GRU adapter）vs 数值转文本 token 自回归（DriveVLM/EMMA/OmniDrive）。唯一例外 DriveGPT4 直接输出控制量（速度+转角以固定文本格式生成）。survey 进一步分 LH/REG/SEL/GEN 四型动作头。
+</li><li><strong>V</strong>：三档光谱——全显式（UniAD/VAD/Omni-Q）→ 半显式（LMDrive 仅预训练头、Senna E2E 侧）→ 零显式（CarLLaVA/DriveGPT4/EMMA 基础版）。最硬证据：EMMA 纯自监督（唯一监督=ego 未来轨迹）在 nuScenes 反超 DriveVLM-Dual 6.4%。
+</li><li><strong>L</strong>：四种位置——无语言（导航命令嵌入）→ 仅输入指令 → 双向（输出 meta-action 文本再注入低层）→ 一切皆文本。语言中间层有量化收益（EMMA 消融 meta-decision +3.0%、critical object +1.5%）。
+</li><li>双刃剑证据：ICR-Drive 措辞微扰 ΔDS −33.64/−32.50；Language2Drive 93.2% 成功 rollout 换等价指令即失败。
+</li></ul>
+<h2 id="sec-3">Q3：RL 的 post training 怎么做？</h2>
+<ul>
+<li>通用配方：SFT 起手 → 冻结 VLM backbone、只训 LoRA/动作头 → 可验证奖励 → GRPO（或 PPO/TD3）+ KL 约束 → Best-of-N 兜底。
+</li><li>驾驶侧范式：AutoVLA（NeurIPS 2025）——GRPO + r = r_Driving(PDMS/ADE) − λ·r_CoT；LoRA；lr 3e-5；β=0.04；6000 步；PDMS +10.6%、推理时长 −66.8%。
+</li><li>通用 VLA 侧：TEMPO 的 Related Work 是现成分类（VLA-RL/RIPT-VLA/VLA-RFT/ConRFT/RECAP/iRe-VLA/SimpleVLA-RL）；TEMPO 本身=冻结 VLM + 语义投影层低频/动作专家高频的双 TD3 回路。
+</li><li>遥操接管=天然负样本（ConRFT 干预轨迹）。
+</li></ul>
+<h2 id="sec-4">Q4：具体如何实现？</h2>
+<ul>
+<li>三个进程：采样 worker → 奖励服务（NAVSIM PDMS，开源 autonomousvision/navsim）→ GRPO 训练器（verl 支持 Qwen2.5-VL 多模态 GRPO）。
+</li><li>三组件：动作 token 化（K-disk 聚类 2048 codebook，0.5s/token，10 token=5s）→ 奖励（PDMS = 乘法惩罚 NC·DAC × 加权平均 EP/TTC/C=5/5/2，LQR+自行车模型 10Hz 滚 4s）→ 训练循环（组采样→组内标准化优势→ratio+clip+KL→单步更新）。
+</li><li>超参表、伪代码、仓库链接见「02」页 §六。
+</li></ul>
+<h2 id="sec-5">Q5：forward / backward 以及 loss 如何实现？GRPO 这类 RL 是如何实现的？</h2>
+<ul>
+<li>一次训练步 = 三套前向 + 一个 token 级损失 + 一次反向。
+</li><li>三套前向：rollout 采样记 old_log_prob；奖励→组内标准化优势（广播到每个 response token）；训练前向重算 log_prob 与 ref_log_prob（冻结）。
+</li><li>loss：ratio = exp(log_prob − old_log_prob)；pg_loss = −A·ratio（或 clip 版）；KL 三估计器 k1/k2/k3（verl 默认 k3 低方差）；token-mean 聚合、prompt 全掩。
+</li><li>backward：梯度只流向可训子集（LoRA/动作专家）；advantages/ratio/ref 全部 no_grad；AutoVLA 单步更新简化=免 clip、免 old-policy 跟踪；GRPO 无 critic（基线=组内均值），没有 value loss 和 GAE。
+</li><li>逐行代码与 verl 函数名见「02」页 §6.6。
+</li></ul>
+<h2 id="sec-6">Q6：oracle PDMS 是什么意思？</h2>
+<ul>
+<li>oracle = 拥有特权真值的裁判；oracle PDMS = 用「知道正确答案」的 PDMS 评分器在 N 条采样里挑最高分轨迹（Best-of-N 评估）。
+</li><li>AutoVLA Table 1 三口径：One-shot 80.54 → Post-RFT 89.11 → Best-of-N 92.12。<strong>92.12 是潜力上限，不是部署口径</strong>。
+</li><li>为什么 PDMS 是 oracle：算分要用地图/他车 3D 框等测试期特权真值，EP 上界来自特权规则规划器 PDM-Closed（NAVSIM §3）。
+</li><li>无 oracle 的近似：EMMA Top-K=24 取中位数轨迹（模型自洽，车端可部署）。
+</li></ul>
+<h2 id="sec-7">附：证据留档文件</h2>
+<ul>
+<li><code>evidence/</code> 目录：vlp_2401.05577.txt、bevdriver_2503.03074.txt、genad_2403.09630.txt、drivevlaw0_2510.12796.txt、vl_drive_full.txt、icr_drive_full.txt、senna_main.txt（逐字引用与截断说明）。
+</li><li>源码依据：verl trainer/ppo/core_algos.py（compute_grpo_outcome_advantage / kl_penalty / compute_policy_loss_*）；ucla-mobility/AutoVLA；autonomousvision/navsim。
+</li></ul>
+<footer>VLA / VA 与 RL post-training 调研阅读站 · 来源：docs/ 两份 md 与会话讨论（核实纪律：引用逐字摘自论文/代码）</footer>
+</main>
+</body>
+</html>

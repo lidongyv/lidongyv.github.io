@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GR00T 系列精读：N1 / N1.5 / GR00T 2</title>
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>GR00T 系列精读：N1 / N1.5 / GR00T 2</h1>
+  <p>实现与训练：双系统 VLA → 冻结 VLM + FLARE → 世界-动作模型（WAM）</p>
+</header>
+
+<nav class="top">
+  <a href="../index.html">首页</a>
+  <a href="concepts.html">概念：S0-S3</a>
+  <a href="marr.html">Marr × Kahneman</a>
+  <a class="on" href="groot.html">GR00T 系列</a>
+  <a href="../../wam-reading.html">WAM 总览</a>
+  <a href="../../notes/system0123-reading.html">四概念精读</a>
+</nav>
+
+<section>
+  <h2>0. 三代总览</h2>
+  <table>
+    <tr><th>代</th><th>时间</th><th>一句话</th><th>关键跃迁</th></tr>
+    <tr><td><b>GR00T N1</b></td><td>2025-03</td><td>双系统 VLA：Eagle-2 VLM（S2）+ DiT flow-matching 动作头（S1），跨本体</td><td>数据金字塔 + 潜动作/IDM 标注无动作视频</td></tr>
+    <tr><td><b>GR00T N1.5</b></td><td>2025-06</td><td>冻结 VLM + 简化 adapter + FLARE 未来潜表征对齐</td><td>语言跟随 46.6→93.3%；G1 真机 98.8%</td></tr>
+    <tr><td><b>GR00T 2</b></td><td>2026-11</td><td>世界-动作模型：一个 DiT 联合去噪未来视频+动作</td><td>X-Adapt；5 示教 95%；机上 124ms</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>1. GR00T N1（L3，论文全文）</h2>
+  <h3>1.1 架构原文</h3>
+  <blockquote>"GR00T N1 is a Vision-Language-Action (VLA) model with a dual-system architecture. The vision-language module (System 2) interprets the environment through vision and language instructions. The subsequent diffusion transformer module (System 1) generates fluid motor actions in real time. Both modules are tightly coupled and jointly trained end-to-end."
+  <div class="tr"><b>译文：</b>GR00T N1 是采用双系统架构的 VLA 模型。视觉语言模块（System 2）通过视觉与语言指令理解环境；随后的扩散 Transformer 模块（System 1）实时生成流畅动作。两个模块紧密耦合、端到端联合训练。</div>
+  <span class="src">— 2503.14734 Abstract</span></blockquote>
+
+  <h3>1.2 关键实现数字</h3>
+  <table>
+    <tr><th>项</th><th>数值（原文）</th></tr>
+    <tr><td>模型规模</td><td>GR00T-N1-2B：共 2.2B 参数，VLM 1.34B（Eagle-2 = SmolLM2 + SigLIP-2）</td></tr>
+    <tr><td>图像 token</td><td>224×224 + pixel shuffle → 64 image tokens/帧</td></tr>
+    <tr><td>VLM 层</td><td>用第 12 层中间层 embedding（比最后一层更快且下游成功率更高）</td></tr>
+    <tr><td>动作块</td><td>H=16；flow matching K=4 步；τ~Beta((s−τ)/s;1.5,1)，s=0.999</td></tr>
+    <tr><td>频率/时延</td><td>S2 ≈10Hz（L40）；S1 ≈120Hz；16 步动作块 63.9ms（L40 bf16）</td></tr>
+    <tr><td>预训练算力</td><td>1024×H100；约 5 万 H100 GPU 小时</td></tr>
+  </table>
+
+  <h3>1.3 数据金字塔（原文）</h3>
+  <ul>
+    <li>底层：互联网视频 + 人类 egocentric 视频（OXE 的 RT-1/Bridge-v2/Language Table/DROID 等；AgiBot-Alpha 14 万轨迹）。</li>
+    <li>中层：<b>潜动作</b>（VQ-VAE 学帧间潜动作，encoder 当 IDM；把无动作视频当作 "LAPA" embodiment）+ <b>神经轨迹</b>（fine-tune 图生视频模型于 88h 遥操作，生成 <b>827h</b>，≈10× 扩增）。</li>
+    <li>顶层：真机遥操作（Fourier GR-1，VIVE Tracker + Xsens 手套，20Hz）。</li>
+    <li>仿真：DexMimicGen 生成 <b>78 万条</b>轨迹 ≈ <b>6,500 小时</b>，仅 11 小时计算。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>2. GR00T N1.5（L1，官方研究页）</h2>
+  <h3>2.1 三个改动（原文）</h3>
+  <blockquote>"The main differences from N1 are the following: The VLM model is frozen during both pretraining and finetuning. The adapter MLP connecting the vision encoder to the LLM is simplified and adds layer normalization to both visual and text token embeddings input to the LLM."
+  <div class="tr"><b>译文：</b>与 N1 的主要差异：VLM 在预训练与微调期间均被冻结；连接视觉编码器与 LLM 的 adapter MLP 被简化，并在输入 LLM 的视觉/文本 token 嵌入上加入 LayerNorm。</div>
+  <span class="src">— GR00T N1.5 官方页（2025-06-11）</span></blockquote>
+  <ul>
+    <li>VLM 换 <b>Eagle 2.5</b>（2.1B），强化 grounding（GR-1 IoU 40.4 / RefCOCOg 89.6，vs Qwen2.5VL-3B 的 35.5 / 85.2）。</li>
+    <li>新增 <b>FLARE</b>：对齐目标未来嵌入（loss 系数 0.2）——不做生成式未来建模，但让模型能从人类视频学新物体。</li>
+    <li>训练：250K 步、1K H100、全局 batch 16384。</li>
+  </ul>
+  <h3>2.2 结果（原文数值）</h3>
+  <table>
+    <tr><th>设置</th><th>N1</th><th>N1.5</th></tr>
+    <tr><td>Language Table（从零训）</td><td>52.8%</td><td><b>93.2%</b></td></tr>
+    <tr><td>Sim GR-1 Language（从零训）</td><td>36.4%</td><td><b>54.4%</b></td></tr>
+    <tr><td>RoboCasa（30 demos/任务）</td><td>17.4</td><td><b>47.5</b></td></tr>
+    <tr><td>真机 GR-1 语言跟随率</td><td>46.6%</td><td><b>93.3%</b></td></tr>
+    <tr><td>真机 GR-1 总成功率</td><td>43.3%</td><td><b>83.0%</b></td></tr>
+    <tr><td>新技术物体 0-shot</td><td>0%</td><td><b>15.0%</b></td></tr>
+    <tr><td>人视频 FLARE 后训练（新物体）</td><td>—</td><td><b>55.0%</b></td></tr>
+    <tr><td>DreamGen 12 新动词</td><td>13.1%</td><td><b>38.3%</b></td></tr>
+    <tr><td>Unitree G1（1K demos）</td><td>44.0%</td><td><b>98.8%</b></td></tr>
+    <tr><td>G1 新物体（5 种）</td><td>—</td><td><b>84.2%</b></td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>3. GR00T 2（L1，官方研究页，2026-11）</h2>
+  <h3>3.1 范式升级：VLA → WAM</h3>
+  <blockquote>"We introduce GR00T 2, a new generation of foundation world-action models (WAMs). GR00T 2 predicts future video and robot actions together… One diffusion transformer denoises future video and robot actions together."
+  <div class="tr"><b>译文：</b>GR00T 2 是新一代世界-动作模型（WAM）：同时预测未来视频与机器人动作。一个扩散 Transformer 联合去噪未来视频与机器人动作。</div>
+  <span class="src">— GR00T 2 官方页</span></blockquote>
+  <ul>
+    <li><b>Turbo 版</b>：2B 参数、更小 transformer + 更高压缩视频编码器；<b>124ms/预测</b>（G1 板载 Jetson Thor），经 SONIC 全身控制器 50Hz 执行；RTX 5090 上 38ms。</li>
+    <li><b>S2 的外延变了</b>：推理 agent "runs as System 2 (S2)"，通过 WAM API 调用 GR00T 2——S2 从「模型内 VLM 模块」变成「模型外推理 agent」。</li>
+  </ul>
+
+  <h3>3.2 预训练数据（原文数值）</h3>
+  <ul>
+    <li>402,730 小时人类 egocentric 工作视频（Human-1M；10 万小时开放为 Human-1M-100K）</li>
+    <li>10,184 小时手持 UMI 夹爪示教（2,897 任务）</li>
+    <li>23,500 小时机器人遥操作（YAM/Franka、Sharpa/Wuji 灵巧手、Unitree G1）</li>
+  </ul>
+
+  <h3>3.3 关键能力（原文数值）</h3>
+  <table>
+    <tr><th>能力</th><th>数值</th></tr>
+    <tr><td>X-Adapt（跨本体）</td><td>human→Dexter 65%；UMI→YAM 60%；DexUMI→灵巧手</td></tr>
+    <tr><td>小样本适应</td><td>50 个新任务 0-shot 40%；5 示教（<3 分钟数据）+30 分钟 LoRA（RTX 5090）→ <b>95%</b></td></tr>
+    <tr><td>真机 RL 自改进</td><td>三个接触丰富任务 40–76% → <b>88–96%</b>（GRPO 自模仿）</td></tr>
+    <tr><td>Agentic 控制</td><td>装配 97–98/100（纯 SFT 23–69；无 agent 71–84）</td></tr>
+    <tr><td>视觉引导</td><td>40%→<b>92%</b>（YAM，短程 what-and-where）；Dexter 30%→70%</td></tr>
+    <tr><td>仿真相关性</td><td>25 任务 YAM 基准：真机 vs 仿真 Pearson 0.92 / Spearman 0.89；加仿真数据 OOD 6.7%→<b>63.3%</b></td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>4. 三代训练配方对比</h2>
+  <table>
+    <tr><th>项</th><th>N1</th><th>N1.5</th><th>GR00T 2</th></tr>
+    <tr><td>范式</td><td>VLA（双系统）</td><td>VLA（VLM 冻结）</td><td><b>WAM</b>（视频+动作联合去噪）</td></tr>
+    <tr><td>VLM</td><td>Eagle-2 1.34B，第 12 层</td><td>Eagle 2.5 2.1B，冻结</td><td>未公开</td></tr>
+    <tr><td>动作头</td><td>DiT FM，H=16，K=4</td><td>同 N1 + FLARE</td><td>一个 DiT 联合去噪；Turbo 2B</td></tr>
+    <tr><td>训练规模</td><td>1024×H100，5 万 GPU 小时</td><td>1K×H100，250K 步，GBS 16384</td><td>未公开</td></tr>
+    <tr><td>数据</td><td>88h 遥操作→827h 神经轨迹+78 万仿真+人类视频+OXE</td><td>同 N1 + DreamGen/AgiBot-Beta</td><td>402,730h 人视频+10,184h UMI+23,500h 遥操作</td></tr>
+    <tr><td>后训练</td><td>真机:神经轨迹=1:1</td><td>同 + FLARE 0.2</td><td>30 分钟 LoRA（5 示教）；真机 RL（GRPO）</td></tr>
+    <tr><td>开源</td><td>N1-2B 权重+数据+基准</td><td>N1.5-3B</td><td>代码 2026-12 开放</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>5. 精读要点与缺口</h2>
+  <ol>
+    <li><b>N1</b>：双系统 + 数据金字塔；潜动作/IDM 把无动作视频变训练数据；视频生成 10× 扩增真机数据。</li>
+    <li><b>N1.5</b>：冻结 VLM + 简化 adapter + FLARE；语言跟随 46.6→93.3%——双系统瓶颈在<b>语言接地</b>而非动作生成。</li>
+    <li><b>GR00T 2</b>：S1 从动作头升级为世界-动作模型；S2 外延为外部推理 agent；机上 124ms、5 示教 95%、真机 RL 88–96%。</li>
+    <li><b>可复用数字</b>：63.9ms/16 步（N1，L40）；98.8%（N1.5，G1 1K demos）；124ms（GR00T 2 Turbo，Jetson Thor）。</li>
+  </ol>
+  <div class="warn">缺口：N1.5 与 GR00T 2 的 whitepaper 正文未取（官方页为 L1 一手）；GR00T 1.7 仅在 GR00T 2 页被提及（仿真 OOD 40.0%），细节未取；N1 附录 D 超参表与附录 F 数据统计表未取。</div>
+  <p class="foot">返回 <a href="../index.html">首页</a> ｜ 详细笔记：<a href="../../notes/09-gr00t-series.md">09-gr00t-series.md</a></p>
+</section>
+
+</div>
+</body>
+</html>

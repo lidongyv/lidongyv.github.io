@@ -1,0 +1,130 @@
+# PhysMem 精读笔记
+
+> 数据源：`auto_docs/papers/txt/PhysMem.txt`（142,978 字符，41 页，arXiv 2602.20323）。所有英文引文逐字抄自 txt，括号内为行号；PDF 断行连字符（如 con-cepts）照原样保留；数值不四舍五入。标注【推断】处为笔者解读，非论文原文。正文（L1–926）全覆盖，Appendix 提取关键表与图注。
+
+## 1. 原文信息
+
+标题：PhysMem: Scaling Test-Time Memory for Embodied Physical Reasoning（L1–2）。作者：Haoyang Li ♠、Yang You ♣、Hao Su ♠、Leonidas Guibas ♣（L3），机构标注 ♣Stanford University、♠UC San Diego（L4）——即 Li、Su 属 UC San Diego，You、Guibas 属 Stanford。ID：arXiv:2602.20323v6 [cs.RO] 3 May 2026（L92）。发表状态：arXiv 预印本 v6；是否被会议/期刊录用：原文未写。项目页：https://phys-mem.github.io/（L26）。
+
+## 2. Abstract 全文逐字（L5–26）
+
+摘要把全文论证压缩成三段：VLM 概念级物理知识推不出实例级预测（球怎么滚、哪块石头稳）→ 解决思路是在测试期用交互学原则、冻结参数 → 核心设计选择是「先验证后应用」，并在砖块插入任务给出 76% vs 23% 的对照数字。逐字如下：
+
+"Abstract—Reliable object manipulation requires understand-ing physical properties that vary across objects and environments. Vision-language model (VLM) planners can reason about friction and stability in general terms, but they often cannot predict how a specific ball will roll on a particular surface or which stone will provide a stable foundation without direct experience. We present PhysMem, a memory framework that lets a VLM robot planner learn physical principles from interaction at test time, without updating model parameters. The system records experiences, drafts candidate hypotheses, and verifies them through targeted interaction before committing validated knowledge to guide future decisions. Verification before application is the central design choice: the system tests each hypothesis against new observations instead of applying retrieved experience directly, so that prior experience does not harden into a stale rule once physical conditions change. We evaluatePhysMemon three real-world manipulation tasks and simulation benchmarks across four VLM backbones. On a controlled brick insertion task, principled abstraction achieves 76% success against 23% for direct experience retrieval, and real-world experiments show consistent improvement over 30-minute deployment sessions. Website: https://phys-mem.github.io/"
+
+## 3. 问题与动机
+
+**VLM 为何无法预测特定物体的摩擦/稳定性**：论文指认的是「声明性知识→物理落地」的鸿沟——VLM 有概念级知识，却推不出实例级结果（L35–38）：
+
+"A VLM planner may understand friction in the abstract yet misjudge how far a ball will roll on a given surface, or recognize stability as a concept yet fail to identify which irregular stone will provide a stable foundation."
+
+且该鸿沟在规划中会放大（L39–42）："its consequences compound in planning, where a single misjudgment about contact or dynamics can invalidate an entire action sequence." 论文选的三个任务正是「接触才能揭示」的物理量：堆石任务 "requires stability judgments about stones whose mass distribution and surface friction only reveal themselves upon contact"（L78–79），故 "Initial attempts on these tasks often fail because the planner lacks the specific physical intuition that only interaction can provide."（L80–81）。
+
+**「先验证后应用」的论证**：问题不只是记不住，而是「未验证的记忆固化为死规则」（L84–91）：
+
+"However, embodied situations rarely repeat exactly, and retrieval-augmented approaches [34, 24, 36] apply past experience without verifying whether it still holds. Our experiments make this concrete: on a controlled brick insertion benchmark, retrieving raw experience reaches only 23% success while principled abstraction reaches 76%. The issue is that unverified memory hardens into a fixed rule, and a small change in friction or object shape then turns a useful heuristic into a repeated error. Avoiding this failure mode calls for verified abstraction, not just better recall."
+
+人也不背每个接触事件，而是形成可修订的紧凑原则（L124–127）："People do not memorize every contact event. Instead, they form compact principles and revise them when evidence contradicts expectation [48]."
+
+## 4. 方法逐机制
+
+核心是「科学记忆回路」（L253–258）："a scientific memory loop that drafts hypotheses from experience, checks each against tar-geted experiments, and commits only the survivors to guide future decisions." 分四步：
+
+**① 经验记录 + 共振检测**：成败经验都存（L349–354）："Each experiencee= (o, ω, r, c,s)records the observationo, selected optionω, outcomer∈ {0,1}, contextc(task description, subtask), and symbolic states(discrete features like action type, object properties)." 共振分（式3，L359）ρ(e,P active) = |{p∈ Pactive :consistent(e, p)}||Pactive|，即「经验与当前生效原则的预测是否一致」。低于 1 视为惊讶，优先进入巩固（L361–365）："Whenρ <1 (a "surprise"), the experience is prioritized for consolidation; whenρ= 1, the experience reinforces existing principles without triggering new hypothesis generation. This surprise-driven filtering focuses learning on novel situations."
+
+**② 假说生成**：经验按符号相似性聚类，足够大的簇交反思模型提炼类型化假说（L366–373）："we use a reflection modelf ϕ (VLM in real-world, LLM in simulation) to generate hypotheses about patterns"；类型为（L373–377）："AVOID: "Don't doXwhenY" (from failures) / PREFER: "DoXwhenY" (from successes) / SEQUENCE: "DoXbeforeY" (temporal constraints)"。
+
+**③ 定向交互验证（动作级归因）**：假说不看整局成败，只看该动作本身的成败（L378–381）："Hypotheses are judged by action-level outcomes, not episode-level success." 置信度更新只用「该动作确实被尝试过」的经验（式5，L382）：conf(h)←conf(h) +α· |{e∈ Eh :a e =a ∗, re = 1}||{e∈ Eh :a e =a ∗}|，从而 "isolates specific action effects from confounding factors"（L413–414）——所谓「定向」即用后续交互检验假说预测，而非直接套用。
+
+**④ 验证与知识提升（晋升 + 折叠）**：达标假说晋升为原则、源经验折叠压缩（L415–423）："Hypotheses achieving high confidence (conf(h)≥τ p, typically 0.8) with sufficient supporting evidence (|E support| ≥3) are promoted to principles. Upon promotion, source experiences are "folded" into the principle, compressing episodic memory while pre-serving learned knowledge: P ← P ∪ {h},E ← E \ Efolded (6). Hypotheses with low confidence (conf(h)≤τ r) and contradicting evidence are refuted and removed."
+
+三层记忆与检索（L424–432）："(1)Episodic memorystores raw experiences with symbolic state for efficient filtering, bounded by capacityN max; (2)Working memoryholds hypotheses under test, each with confidence scores from supporting/contradicting evidence; (3)Long-term memorycontains verified principles that guide decisions, with importance scores that decay over time (γ= 0.995) to forget outdated knowledge." 推理时符号过滤+语义排序取 top-k 注入 VLM 提示（L434–453）。
+
+## 5. 实验与主结果
+
+实验设计先「隔离变量」：VLM 只输出离散高层决策，动作执行交给固定低层策略，因此性能若提升，只能归因于推理变好而非运动策略变好（L460–466）："The VLM outputs discrete decisions (which part to place, which direction to push, which stone to stack), while motion planning handles execution." 五大基线各代表一种部署期记忆范式，且全部在冻结基座、相同任务预算、top-K=5 注入下对比（L551–554）。
+
+设置：真机 xArm6 + TPU 打印 fin-ray 软爪 + RealSense D435，VLM 规划用 Gemini-3.0-Flash（thinking mode），假说生成用 Qwen3-VL 每 15 秒异步运行，每任务 10–20 episodes（L471–477）；仿真为 Reflect-VLM 砖块插入（MuJoCo + Franka Panda），难度按砖数 easy (2–3) / medium (4–5) / hard (6–8)，500+ episodes（L510–518）。
+
+**主表 Table II（L537–549；每格 100 episodes × 3 seeds）：**
+
+| Method | Easy | Med. | Hard | Tokens |
+|---|---|---|---|---|
+| No Memory | 83% | 53% | 28% | 0.40× |
+| Direct Retrieval | 48% | 23% | 8% | 0.55× |
+| MemER-style Retrieval | 85% | 53% | 19% | 1.0× |
+| MemoryVLA-style Token Memory | 69% | 35% | 13% | 2.5× |
+| Reflexion-style | 86% | 61% | 31% | 1.2× |
+| PhysMem (Full) | 89% | 76% | 39% | 1.0× |
+
+解读（L567–581）：MemER 式检索在 medium 恰好回到无记忆 53%；hard 上三个未验证变体全部跌破 28% 无记忆底线（8%/13%/19%），只有 PhysMem 的已验证原则 39% 领先；MemoryVLA 式以 2.5× token 代价反而落后 MemER 式 18 分——增益来自抽象与验证，而非「更多记忆」。
+
+**真机 30 分钟部署**（L141–148）："Across real-world runs lasting over 30 minutes,PhysMemenables clear learning curves: for Parts Organization, per-formance improves from -1 to 9.7 with memory while re-maining near 0 without; for Ball Navigation, the gap is 14.7 versus 0.7." 共振分度量「预测是否命中结果」（L626–629）："ρ climbs from≈0.2in early episodes to≈0.9by episode 10, crossingρ= 0.7around episode 5–6"；高共振段 "score2.3×higher than episodes 1–3"（L636–637）。经验利用率：Ball Navigation 50% vs 100% 为 11.0 vs 14.7，堆叠任务 50% 近饱和（L656–660）。
+
+**迁移 Table III（L731–736；各条件 10 次试验，Score / Succ.）：**
+
+| Prior | Adapt | Parts Org. | Ball Nav. | Balanced Stack. |
+|---|---|---|---|---|
+| ✗ | ✗ | −0.6 / 0/10 | 1.6 / 1/10 | 6.7 / 4/10 |
+| ✗ | ✓ | 3.3 / 1/10 | 5.5 / 2/10 | 8.3 / 7/10 |
+| ✓ | ✗ | 6.9 / 3/10 | 2.9 / 1/10 | 9.2 / 8/10 |
+| ✓ | ✓ | 8.3 / 4/10 | 7.1 / 4/10 | 12.3 / 9/10 |
+
+要点：堆叠任务 "prior knowledge alone achieves 80% success"（L705–707）；新球型上 "Adding adaptation improves the score of Ball Navigation to 7.1 and 40% success"（L713–714；即 10%→40%，L147–148）。
+
+**四个 VLM 主干（medium，各 100 episodes；Fig. 9 L778–790 + Table VIII L3084–3092）：** "Gemini-3-Flash leads across difficulties, reaching 53% on medium against 29–43% for the other models. The gain from test-time learning then scales with that baseline: on medium, Gemini-3-Flash improves by+23%(53% to 76%), GPT-5.1 by+14%, Qwen3-VL by+12%, and Gemini-ER-1.5 by+5%." Table VIII：GPT-5.1 43%→57%、Qwen3-VL-235B 38%→50%、Gemini-ER-1.5 29%→34%。medium 增益最大（+23%），hard 仍 +11%（L787–790）。
+
+**原则数量扩展（L791–803）：** "performance rises from 55%→67% between 2 and 8 principles, then stabilizes (76% at 64+). Easy tasks saturate quickly (83%→89%). Hard tasks improve by+11%even though many remain unsolved;68%of the principles learned at hard difficulty are avoidance constraints (versus41%on medium)"。仿真中性能 "stabilizing around 16–64 principles after an initial high-variance phase"（L151–152）。
+
+## 6. 消融（全部抄录）
+
+**Table IV（L842–849；各 100 episodes，Gemini-3-Flash）：**
+
+| Configuration | Easy | Med. | Hard | Tokens |
+|---|---|---|---|---|
+| PhysMem (Full) | 89% | 76% | 39% | 1.0× |
+| Direct Retrieval | 48% | 23% | 8% | 0.55× |
+| w/o Resonance | 81% | 58% | 21% | 1.3× |
+| w/o Verification | 85% | 64% | 27% | 0.85× |
+| w/o Forgetting | 91% | 78% | 36% | 3.4× |
+| w/o Working Mem. | 84% | 69% | 28% | 0.75× |
+
+正文解读（L850–865）：共振滤波 "-8% on easy, -18% on hard"；验证 "-4%→-12%"；工作记忆 "-5%→-11%"；遗忘 "a small bump on easy and medium (+2%) but hurts performance on hard (−3%)"。
+
+**完整消融 Table VI（L1828–1841）：** w/o Episodic 54%/37%/14%；w/o Working 84%/69%/28%；w/o Long-term 81%/64%/26%；w/o Resonance 81%/58%/21%；w/o Verification 85%/64%/27%；w/o Forgetting 91%/78%/36%；w/o Folding 88%/74%/37%；Direct Retrieval 48%/23%/8%；Only Episodic 52%/28%/10%；Only Principles 67%/51%/21%。要点："performance collapses to54%,37%, and14%across the three difficulties (about25to39points below the full system)"（L1856–1857）；"Forgetting trades a small accuracy cost for a3–5×token saving"（L1931–1933）。
+
+**数量配置 Table VII（L2002–2010，medium）：** Sparse (1 H/C, 3 P/P) 71%（12 原则，0.7×）；Balanced (2, 5) 76%（18，1.0×）；Dense (3, 10) 74%（31，1.6×）；Hypo-Heavy (3, 3) 73%（26，1.2×）；Principle-Heavy (1, 10) 72%（14，1.1×）。
+
+**阈值灵敏度（L1946–1957）：** τp∈{0.6,0.7,0.8,0.9}：71%/74%/76%/73%；τc∈{0.5,0.6,0.7,0.8}：72%/75%/76%/74%；γ∈{0.99,0.995,0.999,1.0}：74%/76%/77%/73%；64 个配置中 59 个落在默认值 5% 内，最差 66% 仍超所有非 PhysMem 基线。
+
+**证伪统计（L1810–1821）：** "verification refuted approximately31%of generated hypothe-ses (87of281across all real-world and simulation runs) before they could condition the planner. Refuted hypotheses had a median lifespan of6episodes (IQR4–9) and a median initial confidence of0.58"。
+
+## 7. 局限 / 未来工作（原文逐字）
+
+- 观察空间（L868–879）："Our experiments use visual observations and outcome feedback, but the physical world offers richer signals (tac-tile, force, and audio) that could accelerate principle discov-ery."
+- 表征（L880–892）："Text-based principles ex-cel at discrete rules but struggle with continuous dynamics like trajectories or force profiles. Language cannot fully capture the continuous nature of physical interaction [5, 59]."（另提及 "Visual chain-of-thought reasoning [67] achieves 17% improvements over text-based approaches"）
+- 局限（L905–914）："Our work focuses on high-level planning rather than low-level control. Integrating learned principles into end-to-end VLA execution is still open [47, 25], and current VLAs struggle when task descriptions include novel physical constraints; closing that gap is a natural next step. For continuous real-world deployment, environment reset is a practical bottleneck: when objects fall off tables or parts break, the system needs human intervention, and autonomous recovery and repair would be required for truly lifelong learning [39]."
+- 失败模式（L1959–1983）：medium 的 24% 失败 = Over-generalization 40% + Delayed correction 35%（平均 2–4 episode 滞后）+ Planner–principle mismatch 25%；"The third sits at the limit of what frozen-base prompting can do and would need execution-layer integration to fix."
+- 结论展望（L923–926）："A natural next step is to let the same verification step run against world-model rollouts, so that text principles and learned dynamics can share one loop."
+
+一句话概括局限结构：观察模态只用了视觉与结果反馈（缺触觉/力/声音）；语言原则擅长离散规则、弱于连续动力学；系统只覆盖高层规划、未进端到端执行；真实连续部署还卡在环境复位需人工介入。失败模式分析进一步把「frozen-base 提示」的边界画在 25% 的 Planner–principle mismatch 上。
+
+## 8. 叙事关联【推断，共 5 条】
+
+1. **「验证器审慎且事后」的具名实现 = PhysMem 的 Verification and Principle Promotion（§III-C-d）+ Table I 的 "Verified abstraction (ours)" 行。** 支持原句："verifies them through targeted interaction before committing validated knowledge to guide future decisions"（L14–15）；"Verification before application is the central design choice"（L16–17）；Table I："Verified abstraction (ours)PhysMem✗Verified principles ms"（L187）。【推断】验证是「事后」的：假说先经定向交互积累证据（conf≥0.8、支持≥3、准确率≥85%，L1439–1442）才晋升，否则证伪移除；被证伪的假说 "were not obviously bad at generation time"（L1814–1815）——审慎来自新观察，而非生成时直觉。
+2. **接触物理（摩擦/稳定）的慢速世界建模。** "Balanced Stackingrequires stability judgments about stones whose mass distribution and surface friction only reveal themselves upon contact"（L78–79）；"The challenge: friction and weight distribution are invisible, and only contact reveals which pairings hold."（L507–509）；"surface friction and ball elasticity vary across the workspace, requiring trial-and-error calibration"（L500–502）。【推断】ρ 从 ≈0.2 爬到 ≈0.9 需 10 episodes（L627–628）、每任务 10–20 episodes（L476–477）：这是「多次接触回合→语言原则」的分–小时级慢速建模，而非单次观察。
+3. **与毫秒级脊髓层的差距证据（原文时间尺度表述）。** 低层执行："Timestep: 1ms simulation, 20ms control frequency (frame skip = 20)"（L2036）；真机推速 150/300/450 mm/s（L2710–2712）。记忆回路："adds about180ms per planning step"（L1986–1987）；"runs in a background thread every15s with an average wall-clock cost of1.4s per cycle"（L1989–1992）。【推断】180ms vs 20ms ≈ 9×、15s vs 20ms ≈ 750×：原则回路不在毫秒尺度；论文亦自承 "we separate high-level planning (VLM decisions) from low-level control (motion execution)"（L46–48）——毫秒级执行全由固定低层策略承担，原文未给出任何毫秒级在线修正机制。
+4. **提升已有知识而非注入新物理。** "which fits the picture of a system surfacing what the model already knows rather than installing new physics"（L169–170）；"memory amplifies existing capabilities rather than compensating for fundamental limitations"（Fig. 9 注，L770–771）。【推断】增益随主干能力上升（+5%→+23%），说明验证器做的是「浮出模型已会的物理」，而非从经验蒸馏新世界模型。
+5. **原则随世界漂移，验证器必须常开。** "The transfer experiments show the flip side: abstraction has limits, and irrelevant principles hurt per-formance once the world drifts."（L898–900）；"the ability to revise beliefs is what makes the loop a learning system rather than a memorizing one."（L902–904）；"prior principles provide strong starting points when physics are similar, but test-time adaptation (ours) becomes essential when dynamics change"（L145–147）。【推断】没有一次性的正确原则，只有不断被新观察复审的原则——这正是「验证器审慎且事后」必须持续运行的原因。
+
+## 9. 主要图注 / 表注抄录
+
+- Fig. 1（L61–71，节选）："Fig. 1:PhysMemlearns physical principles through in-teraction. (a)Continually Learn via the memory consoli-dation system maintains principlesP, hypothesesH, and experiencesE, which guide the embodied agent's actionsa; world feedback (observationso, rewardsr) generates new experiencesethat refine knowledge.(b)Test-time learning on Parts Organization:PhysMem(blue) improves continuously while no-memory baseline (gray) remains flat.(c)Qualitative results onParts Organization: green boxes show covered cells, red dashed boxes indicate potential collisions avoided, and blue circles highlight learned space-saving strategies."
+- Fig. 2（L117–123）："A three-tier memory system stores raw experiences in episodic memory, clusters them into testable hypotheses in working memory, and promotes verified knowledge to long-term memory as principles."
+- Table I（L180–187）："TABLE I:Adaptation paradigms for deployed VLM/VLA agents.PhysMemsits in a separate row: frozen base, structured memory, and a verification step before commitment."
+- Table II（L537–541）："TABLE II:Main results:PhysMemvs. memory paradigms on Brick Insertion(100 episodes per cell, 3 seeds). MemER-style retrieval lands at the No-Memory baseline on medium (53%), and onlyPhysMem's verified principles exceed No Memory on hard. Best per-difficulty in bold."
+- Table III（L724–730）："TABLE III:Memory transfer to OOD task variants. We ablate prior knowledge (Prior) and test-time adaptation (Adapt). Prior knowledge helps when physics are similar (Parts Organization, Balanced Stacking). For Ball Navigation with new ball types, adaptation is essential since dynamics differ substantially."
+- Table IV（L838–841）："TABLE IV:Ablation study across difficulty levels.Success rates and token consumption (on medium) for brick insertion. Direct retrieval validates the need for principle abstraction. Component importance scales with task complexity."
+- Fig. 9（L765–771）："Bars show baseline performance (w/oPhysMem); annotations indicate improvement with test-time learning. Gemini-3-Flash dominates across all difficulties and shows the largest improve-ment. Weaker models benefit less from test-time learning."
+- Table VI（L1823–1825）："TABLE VI:Complete ablation results across difficulty levels.Success rates and token consumption on simulation benchmark (100 episodes each)."
+- Table VIII（L3084–3087）："TABLE VIII:Cross-model results on medium difficulty. Success rates with and withoutPhysMemacross different VLM planners (100 episodes each). All models use thinking mode. Consolidation model fixed to Qwen3-VL."

@@ -1,0 +1,368 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vista 论文精读笔记 · 世界模型调研与精读</title>
+<link rel="stylesheet" href="../style.css"></head><body>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次4 · T1 视频/驾驶世界模型</div><h1>Vista 论文精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2405.17398</span> <a href="https://arxiv.org/abs/2405.17398">arXiv 页面</a> · <a href="txt/Vista.txt">提取正文 txt</a></div><blockquote>
+<p>数据源：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\Vista.txt</code>（共 1393 行，arXiv 2405.17398）。所有英文引用均逐字复制自该 txt 并标注行号；「原文未写」= 论文未提及；【推断】= 笔记作者解读。txt 系 PDF 抽取文本，个别字符带排版痕迹（如 "WoV oGen"），引用保留原样。</p>
+</blockquote>
+<p><strong>TL;DR（中文总览）</strong>：Vista 是在最大公开驾驶数据集 OpenDV-YouTube（过滤后约 1735 小时）上训练、输出 10 Hz / 576×1024 前视视频的扩散世界模型（Stable Video Diffusion 初始化）。三个核心设计：①动态先验注入（latent replacement，以最后 3 帧作为长期 rollout 的条件）；②两个新损失（动态增强损失按邻帧差自适应加权关键运动区域，结构保持损失在频域监督高频分量）；③统一动作条件化接口（角度/速度、轨迹、指令、目标点四种格式 → Fourier 嵌入 → cross-attention 零初始化投影），配合低分辨率训练 + LoRA 与"单样本只激活一种动作"的独立性约束。在 Table 2 所列驾驶世界模型中 FID 6.9 / FVD 89.4 均为最低；并首次用模型自身预测不确定性构建无需真值动作的奖励函数。</p>
+<h2>1. 原文信息</h2>
+<ul>
+<li>标题（L1–2 逐字）："Vista: A Generalizable Driving World Model with High Fidelity and Versatile Controllability"</li>
+<li>作者（L3–4 逐字）："Shenyuan Gao1,2 Jiazhi Yang2 Li Chen2,5 Kashyap Chitta3,4 Yihang Qiu2 / Andreas Geiger3,4† Jun Zhang1† Hongyang Li2,5†"；L45："Primary contact to Shenyuan at sygao@connect.ust.hk †Equal advising."</li>
+<li>机构（L5–6 逐字）："1 Hong Kong University of Science and Technology 2 OpenDriveLab at Shanghai AI Lab / 3 University of Tübingen 4 Tübingen AI Center 5 University of Hong Kong"</li>
+<li>代码与演示（L7–8 逐字）："Code and model: github.com/OpenDriveLab/Vista"；"Demo page: opendrivelab.com/Vista"</li>
+<li>发表状态（L46–47 逐字）："38th Conference on Neural Information Processing Systems (NeurIPS 2024)."；"arXiv:2405.17398v5 [cs.CV] 28 Oct 2024"</li>
+</ul>
+<h2>2. Abstract 全文逐字（L9–28）</h2>
+<blockquote>
+<p>"World models can foresee the outcomes of different actions, which is of paramount importance for autonomous driving. Nevertheless, existing driving world models still have limitations in generalization to unseen environments, prediction fidelity of critical details, and action controllability for flexible application. In this paper, we present Vista, a generalizable driving world model with high fidelity and versatile controllability. Based on a systematic diagnosis of existing methods, we introduce several key ingredients to address these limitations. To accurately predict real-world dynamics at high resolution, we propose two novel losses to promote the learning of moving instances and structural information. We also devise an effective latent replacement approach to inject historical frames as priors for coherent long-horizon rollouts. For action controllability, we incorporate a versatile set of controls from high-level intentions (command, goal point) to low-level maneuvers (trajectory, angle, and speed) through an efficient learning strategy. After large-scale training, the capabilities of Vista can seamlessly generalize to different scenarios. Extensive experiments on multiple datasets show that Vista outperforms the most advanced general-purpose video generator in over 70% of comparisons and surpasses the best-performing driving world model by 55% in FID and 27% in FVD. Moreover, for the first time, we utilize the capacity of Vista itself to establish a generalizable reward for real-world action evaluation without accessing the ground truth actions."</p>
+</blockquote>
+<h2>3. 问题与动机：为什么驾驶世界模型要高保真 + 多动作可控</h2>
+<p>本节的论证逻辑：世界模型的价值在于"用历史观测 + 备选动作推演未来、进而评估动作可行性"；要承担这个角色，就必须①在新环境仍能预测（泛化）、②保留关键细节（保真）、③吃下多级动作格式（可控）。论文用 Table 1 把当时的驾驶世界模型逐一列出，指出三条缺口正好对应这三点——数据规模/地理覆盖受限、低帧率低分辨率丢细节、单一控制模态与规划器输出格式不兼容。</p>
+<ul>
+<li>世界模型的定义与价值（L32–35）："One promising solution lies in world models [57, 76], which infer the possible future states of the world from historical observations and alternative actions, in turn assessing the feasibility of such actions. They hold the potential to reason with uncertainty and avoid catastrophic errors [54, 76, 127], thereby promoting generalization and safety in autonomous driving."</li>
+<li>现有模型的三大局限（L10–13）："existing driving world models still have limitations in generalization to unseen environments, prediction fidelity of critical details, and action controllability for flexible application."</li>
+<li>数据规模与地理覆盖受限（L36–38）："existing driving world models are still constrained by data scale [90, 125, 127, 143, 147] and geographical coverage [54, 61]."</li>
+<li>低帧率低分辨率丢细节（L38–39）："they are also often confined to low frame rates and resolutions, resulting in a loss of critical details."</li>
+<li>单一控制模态 → 表达不了多级动作格式、不兼容规划算法输出（L39–42）："Furthermore, most models only support a single control modality such as the steering angle and speed. This is insufficient to express various action formats ranging from high-level intentions to low-level maneuvers, and incompatible with the outputs of prevalent planning algorithms [12, 14, 21, 56, 58, 64]."</li>
+<li>动作可控性的跨数据集泛化缺研究（L42–43）："In addition, generalizing action controllability to unseen datasets is understudied."</li>
+<li>三者叠加的后果（L43–44）："These limitations impede the applicability of existing works, making it imperative to develop a world model that overcomes these limitations."</li>
+<li>用途动机：既能评估高层策略也能执行低层机动（L281–282）："one may use the world model to evalute high-level policies [127], or to execute low-level maneuvers [102]."（"evalute" 为原文拼写）</li>
+<li>Table 1 佐证（L48–59）：Vista 数据 1740h、10 Hz、576×1024、四种控制全支持；而 GAIA-1 为 4700h/25 Hz/288×512 仅角度&amp;速度，GenAD 为 2000h/2 Hz/256×448 仅轨迹+指令。</li>
+</ul>
+<h2>4. 方法逐机制</h2>
+<h3>4.1 视频扩散 backbone：Stable Video Diffusion (SVD)</h3>
+<p>SVD 是现成的图生视频扩散模型：首帧作条件图、生成 25 帧、连续时间步采样。论文指出其三点缺陷——首帧与条件图不一致（无法自回归）、驾驶场景动力学失真、完全不可控——这三点恰好对应 Vista 后续三个改造方向（首帧对齐、先验与损失、动作接口）。</p>
+<ul>
+<li>L107–109："We initialize Vista with the pretrained Stable Video Diffusion (SVD) [5], a latent diffusion model for image-to-video generation. For sampling flexibility, SVD adopts a continuous-timestep formula [66, 111]."</li>
+<li>L117–119："SVD processes a sequence of noisy latent n = {n1, n2, ..., nK} ∈RK×C×H×W and generates a video with K = 25 frames. The generation process is guided by a condition image, whose latent is concatenated channel-wise to the inputs, serving as a reference for content generation."</li>
+<li>直接用 SVD 的三点缺陷（L121–123、L135）："the first frame predicted by SVD is not identical to the condition image, making it impractical for autoregressive rollout due to content inconsistency. In addition, SVD struggles with the intricate dynamics of driving scenarios, entailing implausible motions."；"SVD cannot be controlled by any action format."</li>
+<li>参数量（L1137–1138）："We adopt the framework of SVD [5] as the architecture of Vista, which consists of 2.5B parameters in total, including 1.6B UNet parameters."（UNet 具体层数等细节原文未写）</li>
+</ul>
+<h3>4.2 Phase 1：高保真未来预测</h3>
+<p>第一阶段只做"高保真预测"，不学动作。思路分三步：先把首帧固定为条件帧（丢弃噪声增强）保证自回归起点一致；再用"位置/速度/加速度 = 连续三帧"这一等价关系，把历史帧作为 clean latent 直接替换进输入（而非通道拼接）；最后用两个新损失补齐 SVD 在驾驶动力学与高分辨率结构上的短板。</p>
+<p><strong>基础改造（首帧对齐）</strong>（L146–150）："we tailor SVD into a dedicated predictive model by imposing the first frame as the condition image and discarding the noise augmentation [5, 49] during training. With this prediction ability, Vista can perform long-term rollouts by iteratively predicting short-term clips and resetting the condition image with the last clip."</p>
+<p><strong>动态先验注入（latent replacement）</strong>：动机是历史帧信息不足导致长期 rollout 动力学失理（L151–154）："using the aforementioned setup for training often results in irrational dynamics with respect to historical frames, especially in long-term rollouts. We conjecture that this mainly arises from the ambiguity caused by insufficient priors about the tendency of future motions, which is also a common limitation of existing driving world models [54, 68, 125, 127, 136]." 为什么是三个先验（L155–158）："Estimating coherent futures requires at least three essential priors that inherently govern the future motion of instances in the scene: position, velocity, and acceleration. Since velocity and acceleration are the first- and second-order derivative of position respectively, these priors can be entirely derived by using three consecutive frames for conditioning." 机制（L158–161、L193–198）："we build a frame-wise mask m ∈ {0, 1}K with a length of K to indicate the presence of condition frames. The mask is set sequentially following the time order, with at most three elements being assigned as 1 to denote three condition frames."；"Instead of concatenating additional channels to the inputs, we inject new condition frames by replacing the corresponding noisy latent ni with the clean latent zi encoded by the image encoder. Formally, the input latent is constructed as ˆn = m · z + (1− m) · n (see Fig. 3 [Left]). To discern the clean latent, we duplicate a new timestep embedding from the pretrained weights and allocate it to the condition frames according to m. The timestep embeddings for condition frames and prediction frames are trained separately." 相比通道拼接（L198–201）："Compared to channel-wise concatenation, we find that replacing the latent is more effective and flexible in absorbing varying numbers of condition frames. In addition, we observe that the replaced latent, when applied to SVD directly, does not degrade its generation quality." rollout 时用预测 clip 的最后 3 帧作先验（L211–212）："In practice, we leverage the last three frames of a predicted clip as dynamic priors for the next prediction step during rollouts."
+- 扩散损失（Eq.1，L202–208，排版展平）："Since there is no need to predict the observed condition frames, we exclude them from the loss as follows: Ldiffusion = Ez,σ,ˆn [Σ_{i=1}^{K} (1 − mi) ⊙ ∥Dθ(ˆni; σ) − zi∥2], (1) where Dθ is the UNet denoiser that shares the same architecture with SVD."</p>
+<p><strong>动态增强损失（Dynamics Enhancement Loss）</strong>：动机——驾驶视频中动态前景占比小但随机性高，均匀监督学不到关键区域（L213–218）："In most driving videos, distant and monotonous regions dominate the view, with the moving foreground instances only occupying a relatively small area [17]. However, the latter often exhibit higher stochasticity, complicating their prediction. Since Eq. (1) supervises all outputs uniformly, it cannot effectively discriminate the nuances of different regions as Fig. 4(b) shows. As a result, the model cannot efficiently learn to predict realistic dynamics in crucial regions." 邻帧差构建权重（L219–224）："As the discrepancy between two adjacent frames provides considerable motion patterns [123, 132], we introduce an additional supervision to encourage the learning of dynamics for crucial regions. To be specific, we first introduce a dynamics-aware weight w = {w2, w3, ..., wk} ∈RK−1×C×H×W that highlights the regions where the prediction has inconsistent motion compared to the ground truth: wi = ∥(Dθ(ˆni; σ) − Dθ(ˆni−1; σ)) − (zi − zi−1)∥2. (2) For numerical stability, we normalize w within each video clip." 损失定义（L226–234）："Given the causality of future prediction, i.e. subsequent frames ought to follow previous ones, we define a new loss by penalizing the latter frame of each adjacent frame pair: Ldynamics = Ez,σ,ˆn [Σ_{i=2}^{K} sg(wi) ⊙ (1 − mi) ⊙ ∥Dθ(ˆni; σ) − zi∥2], (3) where sg(·) stops the gradient. By adaptively re-weighting the standard diffusion loss, Ldynamics can boost the learning efficiency of dynamic regions, e.g., the moving vehicles and sidewalks in Fig. 4(d)."</p>
+<p><strong>结构保持损失（Structure Preservation Loss）</strong>：动机——高分辨率下结构细节过平滑/断裂（L257–261）："when it comes to high-resolution prediction for dynamic driving scenarios, we discover that the predicted structural details degrade severely with over-smoothed or broken objects, e.g., the outlines of vehicles unravel quickly as they move (see Fig. 12). To alleviate this problem, it is important to place more emphasis on structural details. Based on the fact that structural details, such as edges and textures, mainly reside in high-frequency components, we identify them in the frequency domain as follows:" Eq.4（L262）："z′i = F (zi) = IFFT [H ⊙ FFT(zi)], (4)"；L263–265："where FFT and IFFT are the 2D discrete Fourier transform and inverse discrete Fourier transform respectively, and H is an ideal 2D high-pass filter that truncates low-frequency components under a certain threshold. The Fourier transforms are applied on each channel of zi independently." 损失（L268–276）："With the extracted high-frequency features, we devise a new structure preservation loss as: Lstructure = Ez,σ,ˆn [Σ_{i=1}^{K} (1 − mi) ⊙ ∥F(Dθ(ˆni; σ)) − F(zi)∥2]. (5) This loss function minimizes the disparity of high-frequency features between prediction and ground truth, so that more structural information can be retained." 总损失（L276–278）："Our final training objective is a weighted sum of Eq. (1), Eq. (3) and Eq. (5), where λ1 and λ2 are trade-off weights to balance the optimization: Lfinal = Ldiffusion + λ1Ldynamics + λ2Lstructure. (6)"</p>
+<h3>4.3 Phase 2：多动作可控性（可学习 token/指令控制）</h3>
+<p>第二阶段冻结第一阶段权重，只训练 LoRA 与动作投影层。关键约束是"每个训练样本只激活一种动作、其余置零"——因为推理时相机/车辆参数未知，无法同时提供多种等价动作条件，且全组合训练代价过高。数据上 nuScenes 提供动作标注、OpenDV-YouTube 动作条件置零，两数据集 1:1 混训以兼顾泛化与可控。</p>
+<p><strong>四种动作格式</strong>（L284–292）："(1) Angle and Speed stand for the utmost fine-grained action controls. We normalize angles to [−1, 1] and represent speeds in km/h. The signals from different timestamps are concatenated sequentially. (2) Trajectory is a series of 2D displacements in ego coordinates. It is widely used as the output of planning algorithms [12, 21, 58, 62, 63]. We represent the trajectory in meters and flatten it into a sequence. (3) Command is the most high-level intention. Without loss of generality, we define four commands, i.e. go forward, turn right, turn left, and stop, which are implemented as categorical indices. (4) Goal Point is a 2D coordinate projected from the short-term ego destination onto the initial frame, serving as an interactive interface [74]. The coordinate is normalized by the image size."</p>
+<p><strong>统一条件化接口（Fourier 嵌入 + cross-attention + 零初始化）</strong>（L293–300）："Note that these actions are heterogeneous and cannot be used interchangeably. After transforming all these actions into numerical sequences, we encode them as a unified concatenation of Fourier embeddings [114, 116] (see Fig. 3). These embeddings can be jointly ingested by learning additional projections to expand the input dimension of the cross-attention layers in the UNet [5]. The new projections are initialized as zeros to enable gradual learning from the pretrained state. We empirically discover that incorporating action conditions through cross-attention layers yields faster convergence and stronger controllability compared to other approaches such as additive embeddings [128, 136]."（L1138–1139：每个动作序列编码为 128 通道 Fourier 嵌入。）</p>
+<p><strong>高效训练策略（低分辨率→高分辨率 + LoRA）</strong>（L301–313）："Since the number of total iterations is crucial for diffusion training [5, 22, 32, 99], we separate action control learning into two stages. In the first stage, we train our model at a low resolution (320×576), which achieves 3.5× higher training throughput compared to the original resolution (576×1024). This stage constitutes the majority of training iterations. Then, we finetune the model at the desired resolution (576 ×1024) for a short duration, so that the learned controllability can effectively cater to high-resolution prediction."；"To solve this, we freeze the pretrained UNet and introduce parameter-efficient LoRA adapters [55] to each attention layer. After training, the low-rank matrices can be seamlessly integrated with the frozen weights, without introducing extra inference latency."</p>
+<p><strong>动作独立性约束（多动作预测的样本级训练）</strong>（L314–321）："Since the parameters of the camera and vehicle are unavailable for open-world scenarios, it seems impossible to obtain multiple equivalent action conditions simultaneously at inference time. Additionally, it will entail prohibitively expensive training to encompass all possible combinations of action conditions. Hence, unlike common practices that activate all conditions during training, we enforce the independence of different action formats by enabling only one of them for each training sample. The remaining action conditions will be filled with zeros as unconditional inputs. As demonstrated in Appendix D, this simple constraint prevents the squandering of training cost on action combinations and maximizes the learning efficiency of each individual action mode within the same training steps."</p>
+<p><strong>多任务数据（协同训练 OpenDV-YouTube + nuScenes）</strong>（L322–327）："Note that the aforementioned action conditions are not available in OpenDV-YouTube [136]. On the other hand, nuScenes [10] has adequate annotations to derive these conditions. To maintain generalization and learn controllability in tandem, we introduce a collaborative training strategy by utilizing the samples from both datasets, with the action conditions for OpenDV-YouTube set to zero. The action control learning phase adopts the same loss as Eq. (6). By learning from two complementary datasets, Vista gains versatile controllability that are generalizable to novel datasets."</p>
+<h3>4.4 可泛化奖励函数（动作评测器）</h3>
+<p>奖励的设计逻辑：OOD 动作条件 → 生成多样性增大 → 条件方差增大 → 奖励变低。对同一（条件帧、动作）做 M 轮去噪，各轮去噪结果间的方差即"世界模型对该动作的把握程度"，完全内生于 Vista、不依赖外部检测器，因此随模型一起泛化到任意场景。奖励取负条件方差的指数，值域 [0,1]。</p>
+<ul>
+<li>动机：Drive-WM 用外部检测器建奖励，受限于特定数据集（L330–332）："Drive-WM [127] establishes a reward using external detectors [82, 84]. However, these detectors are developed on a particular dataset [10], which may become a bottleneck for reward estimation in arbitrary scenarios."</li>
+<li>核心假设与定义（L333–345）："Based on the observation that out-of-distribution conditions will lead to increased diversity in generation [28, 60], we utilize the prediction uncertainty from Vista itself as the source of our reward."；"For reliable approximation, we denoise from randomly sampled noise with the same condition frame c and action a for M rounds. Our reward function R(c, a) is then defined as the exponential of averaged negative conditional variance: µ′ = 1/M Σ_m D(m)θ (ˆn; c, a), (7)；R(c, a) = exp[ avg( −1/(M−1) Σ_m (D(m)θ (ˆn; c, a) − µ′)2 ) ], (8) where avg(·) averages all latent values within the video clip."</li>
+<li>性质（L346–350）："Based on this formulation, unfavorable actions with larger uncertainties will lead to lower rewards. In contrast to commonly used evaluation protocols (e.g., the L2 error), our reward function can evaluate actions without referring to the ground truth actions. Note that we do not normalize the estimated rewards for the simplicity of definition, but it is straightforward to amplify the relative contrast by rescaling the estimated rewards with a factor."</li>
+<li>附：Q2 说明（L1012–1013）："Note that our reward calculation is meticulously designed to satisfy the Kolmogorov axioms, i.e. it is non-negative and the measure of the entire sample space is [0, 1]."</li>
+</ul>
+<h3>4.5 训练与采样关键配置（Appendix C，逐字摘录）</h3>
+<p>配置要点：转向/停车命令的阈值均为 2 米；动态先验阶数按 1/15、2/15、4/15、8/15 的概率采样 0–3 帧条件（训练时高频使用多先验配置）；三角 CFG 与 3 帧重叠解码都是为支撑 15 秒级自回归 rollout 而设计。</p>
+<ul>
+<li>数据（L1141–1148）："we manually eliminate 15 hours of irrelevant content from OpenDV-YouTube, yielding approximately 1735 hours of unlabeled driving videos. Since nuScenes is heavily biased [83, 107, 127], we balance its samples based on command categories to foster the learning of rare actions. The video clips are sampled with 25 frames at 10 Hz."</li>
+<li>指令定义阈值（L1149–1153）："we define the command of ego-vehicle as "turn right" or "turn left" when its final displacement exceeds 2 meters in the orthogonal direction relative to its initial heading. To allow more precise categorization, we additionally introduce a "stop" command when the forward driving distance is less than 2 meters."</li>
+<li>Phase 1（L1155–1163）："we train all UNet parameters at 576×1024 resolution on 128 A100 GPUs for 20K iterations, which takes about 8 days in total. We accumulate the gradients of 2 steps, yielding an effective batch size of 256."；"We use the AdamW optimizer [87] with a learning rate of 1 × 10−5. The learning rate for spatial layers is moderated by a discount factor of 0.1. The coefficients λ1 and λ2 in Eq. (6) are set to 1.0 and 0.1 respectively. Offset noise [38] is also used with a strength of 0.02"；先验采样概率（L1161–1162）："We randomly sample different orders of dynamic priors with increasing probabilities, i.e. 1/15, 2/15, 4/15, 8/15 for 0, 1, 2, 3 condition frames respectively."</li>
+<li>Phase 2（L1164–1171）："The rank of LoRA is set to 16. We then train the new weights at 320×576 resolution for 120K iterations using batch size 8 and learning rate 5 × 10−5. After the controllability can be clearly witnessed, we continue to finetune the unfrozen weights at 576×1024 resolution for another 10K iterations. We drop out each activated action mode with a ratio of 15% to allow classifier-free guidance [50]. The sampling ratio of OpenDV-YouTube and nuScenes is 1 : 1 at this training phase. The whole training process for action controllability takes around 10 days on 8 A100 GPUs, with roughly 8 days at the low resolution and 2 days at the high resolution."</li>
+<li>采样（L1173–1190）："We generate future videos using the DDIM sampler [109] for 50 steps. The sampling starts with σmax at 700.0."；三角 CFG（L1176–1184）："we employ a triangular classifier-free guidance scheme [118] to permit genuine long-horizon rollouts."；"In our experiments, we define smin as 1.0 and smax as 2.5."；解码（L1188–1190）："we split the generated latent into clips with an overlap of 3 frames before sending them to the video-aware decoder [5]. After decoding, the overlapped frames are averaged pixel-wise."</li>
+<li>奖励估计（L1217–1220）："we accumulate an ensemble with size M = 5 to obtain a reliable uncertainty estimation. Each sample in the ensemble is inferred for 10 denoising steps as we find it is unnecessary to generate high-quality results for uncertainty estimation. The coefficient β in the correlating strategy [35, 95] is set to 0.5."</li>
+</ul>
+<h2>5. 实验与主结果</h2>
+<h3>5.1 保真度：FID/FVD 对比（Table 2，L352–356 数值抄录）</h3>
+<p>指标与协议（L381–385）："We filter 5369 valid samples from the validation set to conduct FID [47] and FVD [115] evaluation. For FID evaluation, we crop and resize the predicted frames to the resolution of 256×448. For FVD evaluation, we use all 25 frames in each video clip and downsample them to 224×224 following LVDM [46]."（FID/FVD 公式定义原文未写，仅引用 [47]/[115]；评测在 nuScenes 验证集。）</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>DriveGAN [102]</th>
+<th>DriveDreamer [125]</th>
+<th>WoVoGen [90]</th>
+<th>Drive-WM [127]</th>
+<th>GenAD [136]</th>
+<th>Vista (Ours)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FID ↓</td>
+<td>73.4</td>
+<td>52.6</td>
+<td>27.6</td>
+<td>15.8</td>
+<td>15.4</td>
+<td>6.9</td>
+</tr>
+<tr>
+<td>FVD ↓</td>
+<td>502.3</td>
+<td>452.0</td>
+<td>417.7</td>
+<td>122.7</td>
+<td>184.0</td>
+<td>89.4</td>
+</tr>
+</tbody>
+</table>
+<p>结论原句（L386）："In both metrics, Vista surpasses previous driving world models with a considerable margin." 注：Abstract 中 "by 55% in FID and 27% in FVD"（L26）对应 best-performing 模型；【推断】按表内数值计算，FID 为相对 GenAD（15.4→6.9，约 55.2% 相对降低）、FVD 为相对 Drive-WM（122.7→89.4，约 27.1% 相对降低），与原文声称吻合；原文未写明对应关系。补充两点：其一，FID 用单帧、FVD 用 25 帧全序列，两者都衡量"预测分布与真值分布的差距"，并非逐帧对齐误差；其二，对比对象均非开源模型，故引用的是各家论文自报数值——正文明言当时没有公开的驾驶世界模型可用（L1299–1300："To our best knowledge, there is not a driving-specific world model publicly available so far"）。</p>
+<h3>5.2 人类评估：跨域泛化 + 与通用视频生成器对比（Fig. 5、Fig. 7）</h3>
+<ul>
+<li>方法动机与协议（L389–443）："It is known that automatic metrics like FVD [115] cannot conclusively reveal perceptual quality [3, 6, 32, 130, 136], let alone real-world dynamics. Therefore, we opt for human evaluation for more faithful analysis."；"Following recent advances [3, 5, 6, 15, 16, 32, 122, 126], we adopt the Two-Alternative Forced Choice protocol. Specifically, participants are presented with a side-by-side video pair and asked to choose the video they deem better on two orthogonal aspects: visual quality and motion rationality."；场景构成（L439–443）："we uniformly assemble 60 scenes from four representative datasets: OpenDV-YouTube-val [136], nuScenes [10], Waymo [112], and CODA [79]."；"We collect a total of 2640 answers from 33 participants."</li>
+<li>图 7 数值（txt 第 391–398 行原样抄录）：视觉质量组 "96.67 93.33 / 78.18"、"93.33 84.85 / 72.73"；另有 "3.33 6.67 / 21.82" 与 "6.67 15.15 / 27.27" 两组。【推断】后两组恰为前两组的 100 补数（3.33+96.67=100 等），应为"基线胜出 Vista"的百分比；但每个数值对应 I2VGen-XL / DynamiCrafter / SVD 中哪一模型，txt 无法还原（图布局信息丢失），原文未写。结论（L443–445）："As presented in Fig. 7, Vista outperforms all baselines on both aspects, demonstrating its profound comprehension of the driving dynamics." 要点：人类评估同时承担两重检验——自动指标能否被感知质量替代，以及四个来源数据集（含训练时未见过的 Waymo 与 CODA 角案）构成的跨域泛化测试；所有对比模型只喂一张条件帧，且统一裁剪分辨率、裁齐时长以去偏。图 7 中 Vista 对三个通用视频模型在视觉质量与运动合理性两项上全部被偏好。</li>
+</ul>
+<h3>5.3 动作可控性：FVD 子集、Trajectory Difference</h3>
+<ul>
+<li>协议与指标定义（L448–457）："we divide the validation set of both nuScenes and the unseen Waymo dataset into four subsets according to our command categories. We then generate predictions using different modalities of the ground truth actions. The FVD score is measured on each subset and then averaged. A lower FVD score reflects a closer distribution to the ground truth videos, indicating that the predictions exhibit more resemblance to each specific type of behavior."；"We also introduce a new metric named Trajectory Difference to assess control consistency. Following GenAD [136], we train an inverse dynamics model (IDM) that estimates the corresponding trajectory from a video clip. An illustration of IDM is shown in Fig. 13. We then send Vista's prediction to the IDM and calculate the L2 difference between the ground truth trajectory and the estimated trajectory."；L488–490："The differences are measured over 2 seconds. The lower the trajectory difference, the stronger the control consistency Vista exhibits. We conduct the experiments on nuScenes and Waymo. For each dataset, we collect a subset that contains 537 samples."</li>
+<li>Fig. 8 平均子集 FVD（L416–423 原样）：nuScenes：action-free 367.2，w/ goal point 322.7，w/ command 292.2，w/ angle &amp; speed 230.0，w/ trajectory 207.6；Waymo：action-free 311.8，w/ command 273.7，w/ trajectory 268.9。</li>
+<li>完整子集 FVD（Table 6，L1285–1297 数值抄录）：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Condition</th>
+<th>forth</th>
+<th>right</th>
+<th>left</th>
+<th>stop</th>
+<th>average</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>nuScenes</td>
+<td>action-free</td>
+<td>135.6</td>
+<td>405.6</td>
+<td>513.8</td>
+<td>414.1</td>
+<td>367.2</td>
+</tr>
+<tr>
+<td>nuScenes</td>
+<td>+ goal point</td>
+<td>122.4</td>
+<td>315.6</td>
+<td>439.6</td>
+<td>413.5</td>
+<td>322.7</td>
+</tr>
+<tr>
+<td>nuScenes</td>
+<td>+ command</td>
+<td>122.2</td>
+<td>299.7</td>
+<td>485.6</td>
+<td>261.6</td>
+<td>292.2</td>
+</tr>
+<tr>
+<td>nuScenes</td>
+<td>+ angle &amp; speed</td>
+<td>122.8</td>
+<td>285.6</td>
+<td>397.8</td>
+<td>114.1</td>
+<td>230.0</td>
+</tr>
+<tr>
+<td>nuScenes</td>
+<td>+ trajectory</td>
+<td>125.2</td>
+<td>229.2</td>
+<td>357.7</td>
+<td>118.5</td>
+<td>207.6</td>
+</tr>
+<tr>
+<td>Waymo</td>
+<td>action-free</td>
+<td>145.9</td>
+<td>407.6</td>
+<td>529.9</td>
+<td>164.1</td>
+<td>311.8</td>
+</tr>
+<tr>
+<td>Waymo</td>
+<td>+ command</td>
+<td>122.5</td>
+<td>331.5</td>
+<td>496.9</td>
+<td>143.9</td>
+<td>273.7</td>
+</tr>
+<tr>
+<td>Waymo</td>
+<td>+ trajectory</td>
+<td>126.3</td>
+<td>285.5</td>
+<td>527.6</td>
+<td>136.5</td>
+<td>268.9</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Trajectory Difference（Table 3，L513–525 数值抄录）：</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Condition</th>
+<th>with 1 prior</th>
+<th>with 2 priors</th>
+<th>with 3 priors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>nuScenes</td>
+<td>GT video</td>
+<td>0.379</td>
+<td>0.379</td>
+<td>0.379</td>
+</tr>
+<tr>
+<td>nuScenes</td>
+<td>action-free</td>
+<td>3.785</td>
+<td>2.597</td>
+<td>1.820</td>
+</tr>
+<tr>
+<td>nuScenes</td>
+<td>+ goal point</td>
+<td>2.869</td>
+<td>2.192</td>
+<td>1.585</td>
+</tr>
+<tr>
+<td>nuScenes</td>
+<td>+ command</td>
+<td>3.129</td>
+<td>2.403</td>
+<td>1.593</td>
+</tr>
+<tr>
+<td>nuScenes</td>
+<td>+ angle &amp; speed</td>
+<td>1.562</td>
+<td>1.123</td>
+<td>0.832</td>
+</tr>
+<tr>
+<td>nuScenes</td>
+<td>+ trajectory</td>
+<td>1.559</td>
+<td>1.148</td>
+<td>0.835</td>
+</tr>
+<tr>
+<td>Waymo</td>
+<td>GT video</td>
+<td>0.893</td>
+<td>0.893</td>
+<td>0.893</td>
+</tr>
+<tr>
+<td>Waymo</td>
+<td>action-free</td>
+<td>3.646</td>
+<td>2.901</td>
+<td>2.052</td>
+</tr>
+<tr>
+<td>Waymo</td>
+<td>+ command</td>
+<td>3.160</td>
+<td>2.561</td>
+<td>1.902</td>
+</tr>
+<tr>
+<td>Waymo</td>
+<td>+ trajectory</td>
+<td>1.187</td>
+<td>1.147</td>
+<td>1.140</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>定性（L492–494）："Fig. 9 exhibits the versatile action controllability of our model. Vista can be effectively controlled by multi-modal actions, even in unseen scenarios beyond the training domain. In Appendix E, we also showcase the counterfactual reasoning ability of Vista using abnormal actions."</li>
+</ul>
+<p>小结：可控性证据分两层——分布层（子集平均 FVD 越低，说明预测越接近该类行为真值视频；nuScenes 上 trajectory 条件把平均 FVD 从 367.2 压到 207.6）与轨迹层（IDM 从预测视频反推轨迹再与真值轨迹求 L2；trajectory + 3 先验在 nuScenes 上为 0.835，已接近 GT 视频自身 0.379）。Waymo 全程未参与训练，故同时构成零样本跨域可控性验证。</p>
+<h3>5.4 奖励预测与动作评测（Fig. 10）</h3>
+<ul>
+<li>实验设计（L496–504）："To validate the efficacy of our reward function, we jitter the ground truth trajectories into a series of inferior trajectories. Specifically, we compute the standard deviation of each waypoint from the nuScenes training set as prior distributions. These priors are jointly rescaled to sample perturbations with different L2 errors. The perturbations are then added as offsets to the ground truth trajectories."；"we conduct reward estimation on Waymo [112], which is unseen in training. This is done by uniformly sampling from each command category on Waymo validation set, resulting in 1500 cases in total."</li>
+<li>结果（L504–508）："Our reward decreases when the deviation from the ground truth increases, underscoring the potential of our approach to serve as a viable reward function. It also holds the promise to remedy the irrationality in current evaluation protocols for planning [18, 83, 141], such as the L2 error shown in Fig. 10."</li>
+<li>图内数值（L460–461 原样）："Action1 L2 Error: 0.94 Reward: 0.88 / Action2 L2 Error: 1.36 Reward: 0.90"（即 L2 误差大者反而奖励高，正文以此说明 L2 无法判断而奖励函数能区分）。</li>
+<li>指令奖励（Table 4，L1201–1208 数值抄录）：GT Com. 平均奖励 0.892；random Com. 0.878 (-0.014)。</li>
+<li>下游规划收益：原文未写任何闭环规划/决策的定量实验；仅讨论用途（L1030–1034）："Taking advantage of this property, there is great promise for our reward function to be used as a critic module [76], which enables model-predictive control by executing the optimal action that maximizes the estimated reward [27, 30, 35]. This procedure can be performed in conjunction with distribution-based planners [53, 148] that can make action proposals to reduce the searching space." 另需注意：正文只报告了奖励随 L2 误差增大的趋势（图 10 左图），没有给出两者的相关系数数值（原文未写）；右图案例中 L2 误差更大的 Action2 反而奖励更高（1.36→0.90 vs 0.94→0.88），论文以此论证 L2 协议无法区分而奖励函数可以。</li>
+</ul>
+<h2>6. 消融</h2>
+<p>消融覆盖四块：先验阶数（Table 3 定量：nuScenes action-free 下 1 先验 3.785 → 3 先验 1.820；Fig. 11 定性）；两个损失（各自从双损失变体中移除，Fig. 12 定性对比）；动作学习策略（Table 5 证明动作独立性约束全面占优、Fig. 16 证明 LoRA 必需、Fig. 15 证明三角 CFG 必需）；奖励估计超参（去噪步数比集成规模更关键）。另有与 GenAD 的补充人类评估（Vista 被降采样到 GenAD 规格后仍以 94.4%/94.8% 被偏好）。</p>
+<ul>
+<li>动态先验阶数：定性（L527–529）："Fig. 11 visualizes the outcomes of using different orders of dynamic priors. The order of priors corresponds to the number of condition frames. It shows that dynamic priors play a pivotal role in long-horizon rollouts, where the coherence with respect to historical frames is essential." 定量（L547–552）："we use the IDM in Sec. 4.2 to infer the trajectories of the predicted videos with different orders of dynamic priors. The diminishing differences in trajectory suggest that introducing more priors can effectively improve the consistency between prediction and ground truth."（数值见 Table 3：nuScenes action-free 从 1 prior 3.785 → 3 priors 1.820。）</li>
+<li>两个损失：定性（L553–559）："we devise two additional variants by individually ablating each loss from a variant that incorporates both losses. We qualitatively compare their effects through Fig. 12, which confirms that the dynamics enhancement loss can promote the learning of real-world dynamics, and the structure preservation loss can reinforce the prediction of structural details."（训练设置 L1222–1223："we train each variant on OpenDV-YouTube [136] for 10K steps at a spatial resolution of 576×1024."）</li>
+<li>动作独立性约束（Table 5，L1209–1215 数值抄录；列序 forth/right/left/stop）：w/o A.I. 且 w/o Traj.：163.0 / 273.9 / 428.3 / 497.1；w/o A.I. 且 w/ Traj.：138.8 / 232.9 / 368.2 / 132.3；w/ A.I. 且 w/o Traj.：156.2 / 263.7 / 402.9 / 463.7；w/ A.I. 且 w/ Traj.：130.7 / 230.8 / 345.7 / 118.9。设置（L1253–1255）："We train two variants on nuScenes [10] at the resolution of 320×576 pixels for 62K steps."</li>
+<li>三角 CFG 方案（L1269–1272）："We further compare the introduced classifier-free guidance scheme with the vanilla scheme and the linear scheme [5] to verify its necessity. Fig. 15 shows that our triangular scaling attains the best trade-off between visual quality and saturation preservation."</li>
+<li>LoRA 必要性（L1274–1277）："we train two variants at a resolution of 320×576 pixels for 30K iterations. With the pretrained UNet weights fixed, we let one variant train LoRA and action projection layers in the attention blocks, while the other adjusts new projection layers only. As shown in Fig. 16, adding LoRA is essential for action control learning."</li>
+<li>奖励估计参数敏感性（L1234–1247）："The results show that increasing the number of denoising steps can greatly enlarge the relative contrast of rewards, suggesting that denoising step is a more important factor than ensemble size under the same computation budget for reward estimation."</li>
+<li>与 GenAD 的补充人类评估（L1312–1328）："we conduct an extra human evaluation with the state-of-the-art GenAD model [136]."；"We collect 25 diverse samples from the unseen OpenDV-YouTube-val set and invite 20 volunteers for evaluation."；"As a result, Vista is preferred in 94.4% and 94.8% of the time on visual quality and motion rationality respectively."</li>
+</ul>
+<h2>7. 局限 / 未来工作（原文逐字）</h2>
+<ul>
+<li>正文（L566–568）："Limitations and future work. As an early endeavor, Vista still exhibits some limitations with respect to computation efficiency, quality maintenance, and training scale. Our future work will look into applying our method to scalable architectures [54, 97]. More discussions are included in Appendix A."</li>
+<li>Appendix A Q7 展开（L1059–1072）："As one of the pioneering efforts, Vista still has a few limitations that call for future works. (1) Since Vista predicts futures at an exceptional spatiotemporal resolution, it is inevitable to be computationally expensive, particularly in downstream applications. Potential solutions may include faster sampling techniques [89, 146] and training-based distillations [91, 93, 101, 103, 110, 124]. (2) It is possible that the prediction may undergo an apparent degradation in long-horizon rollouts or drastic view shifts. Extra refinements on the prediction results [6, 49, 54, 99, 126, 144] could be helpful. Speculatively, applying our recipe to more scalable architecture [54, 97] is also promising to address this limitation. (3) Similar to other controllable video generation methods [128], the chance of failure still persists in our action controls, especially for ambiguous intentions such as commands and goal points as Fig. 8 reveals. Incorporating more datasets with action annotations [11, 112, 129] for collaborative training could be beneficial. Using compositional classifier-free guidance [8, 19, 32] to amplify the individual impact of action conditions may also help (at a cost of increased inference compute). (4) Although our training data is based on the largest public driving dataset [136], it is nowhere near the entirety of Internet driving data, thus leaving huge untapped potential to further expand the capabilities of Vista."</li>
+<li>落地安全（Q9，L1084–1087）："As Vista is based on the diffusion framework, which introduces stochastic outcomes and non-negligible latencies, deploying it into autonomous vehicles directly could pose safety risks."</li>
+</ul>
+<p>小结：局限可归为四类——推理开销（高时空分辨率不可避免）、长时 rollout / 视角剧变下的质量退化、模糊指令（command / goal point）控制失败、数据规模仍远小于全网驾驶视频；未来方向明确指向 DiT 类可扩展架构（[97]）与更快的采样/蒸馏。</p>
+<h2>8. 叙事关联【推断】</h2>
+<ol>
+<li>动作条件化世界模型作「策略评测器」的证据链：论文从问题定义（L32–34 "infer the possible future states of the world from historical observations and alternative actions, in turn assessing the feasibility of such actions"）→ 贡献声明（L103–105 "Our empirical evidence shows that Vista can be used as a reward function to assess actions."）→ 机制（Sec. 3.3 以预测不确定性为奖励）→ 用途（Q4，L1030–1034 明确 critic/MPC）。这条链是 Vista 的核心叙事：世界模型先做"动作后果模拟器"，再退化为"无需真值动作的评测器"。</li>
+<li>与 GAIA-1 路线的对比：原文对 GAIA-1 [54] 仅作引用与 Table 1 罗列（4700h、25 Hz、288×512、仅 Angle&amp;Speed），未做任何定量对比（GAIA-1 未开源，其架构细节原文未写）。路线差异体现在：Vista 强调公开数据规模（L141–142 "we utilize the largest public driving dataset [136] for training"）与局限中承认数据仍不足（L1070–1072）；同时把 GAIA-1 归入"更可扩展架构"的追赶对象（L568、L1065 "applying our recipe to more scalable architecture [54, 97]"）。【推断】Vista 的定位是"开源/公开数据路线的可复现高保真世界模型"，与 GAIA-1 的私有大数据路线形成对照，但原文并未明说这一对照。</li>
+<li>高保真 + 多动作条件化服务于"规划算法接口兼容"：多模态动作的定义（L287–289 "Trajectory is a series of 2D displacements in ego coordinates. It is widely used as the output of planning algorithms [12, 21, 58, 62, 63]."）与 L39–42（单一控制模态 "incompatible with the outputs of prevalent planning algorithms"）互为呼应，说明动作条件化设计的第一客户是规划器的输出格式，而非人类指令。</li>
+<li>奖励函数 = 世界模型自身不确定性，替代依赖真值的开环评测：L347–349 "our reward function can evaluate actions without referring to the ground truth actions" + L505–508 "remedy the irrationality in current evaluation protocols for planning [18, 83, 141]"——这是与 GAIA/Drive-WM 系"外部检测器奖励"（L330–332）的关键分歧点。</li>
+<li>协同训练（OpenDV-YouTube 零动作条件 + nuScenes 带标注）作为"泛化 × 可控"解耦手段：L324–327 的两数据集互补策略，以及 Q6（L1052–1053 "Unlike GenAD that requires labeling OpenDV-YouTube with commands and texts, our collaborative training strategy skillfully averts this labor"），是"多任务/多源数据拼盘"在驾驶世界模型上的具体落法。【推断】这一策略与"统一条件化接口 + 动作独立性约束"共同构成可扩展到更多标注源的框架。</li>
+</ol>
+<h2>9. 图注 / 表注逐字抄录（主要部分）</h2>
+<ul>
+<li>Table 1（L48–50）："Table 1: Real-world driving world models. Trained on large-scale high-quality driving data, Vista performs at high spatiotemporal resolution and supports versatile action controllability. Private data . Method Model Setups Action Control ModesData Scale Frame Rate Resolution Angle&amp;Speed Trajectory Command Goal Point"（"." 为 txt 抽取痕迹）</li>
+<li>Fig. 1（L83）："Figure 1: Resolution comparison. Vista predicts at a higher resolution than previous literature."</li>
+<li>Fig. 2（L132–134）："Figure 2: Capabilities of Vista. Starting from arbitrary environments, Vista can anticipate realistic and continuous futures at high spatiotemporal resolution (A-B). It can be controlled by multi-modal actions (C), and serve as a generalizable reward function to evaluate real-world driving actions(D)."</li>
+<li>Fig. 3（L189–192）："Figure 3: [Left]: Vista pipeline. In addition to the initial frame, Vista can absorb more priors about future dynamics via latent replacement. Its prediction can be controlled by different actions and be extended to long horizons through autoregressive rollouts. [Right]: Training procedure. Vista takes two training phases, where the second phase freezing the pretrained weights to learn action controls."</li>
+<li>Fig. 4（L253–256）："Figure 4: Illustration on loss design. Different from the standard diffusion loss (b) that is distributed uniformly, our dynamics enhancement loss(d) enables an adaptive concentration on critical regions(c) (e.g., moving vehicles and roadsides) for dynamics modeling. Moreover, by explicitly supervising high-frequency features (e), the learning of structural details (e.g., edges and lanes) can be enhanced."</li>
+<li>Fig. 5（L363–364）："Figure 5: Driving futures predicted by different models using the same condition frame. We contrast Vista to publicly available video generation models using their default configurations. Whilst previous models produce misaligned and corrupted results, Vista does not suffer from these caveats."</li>
+<li>Fig. 6（L371–374）："Figure 6: [Top]: Long-horizon prediction. Vista can forecast 15 seconds high-resolution futures without much degradation, encompassing long driving distances. The length of the blue lines indicate the duration of the longest prediction showcased by previous works.[Bottom]: Long-term extension results of SVD. SVD fails to generate consistent high-fidelity videos autoregressively as Vista does."</li>
+<li>Fig. 7（L402–404）："Figure 7: Human evaluation results. The value denotes the percentage of the times that one model is preferred over the other. Vista outperforms existing works in both metrics."</li>
+<li>Fig. 8（L424–426）："Figure 8: Efficacy of action controls. Applying action controls will produce more similar predictions to the real data."</li>
+<li>Fig. 9（L430–431）："Figure 9: Versatile action controllability. Vista can predict the corresponding outcomes in response to multi-modal action conditions across diverse scenarios. More results can be found in Appendix E."</li>
+<li>Fig. 10（L462–465）："Figure 10: [Left]: Average reward on Waymo with different L2 errors. [Right]: Case study. The relative contrast of our reward can properly assess the actions that the L2 error fails to judge."</li>
+<li>Fig. 11（L474–477）："Figure 11: Effect of dynamic priors. Injecting more dynamic priors yields more consistent future motions with the ground truth, such as the motions of the white vehicle and the billboard on the left."</li>
+<li>Fig. 12（L483–487）："Figure 12: [Left]: Effect of dynamics enhancement loss. The model supervised by the dynamics enhancement loss generates more realistic dynamics. In the first example, instead of remaining static, the front car moves forward normally. In the second example, when the ego-vehicle steers right, the trees shift towards the left naturally adhering to the real-world geometric rules. [Right]: Effect of structure preservation loss. The proposed loss yields a clearer outline of the objects as they move."</li>
+<li>Fig. 13（L545–546）："Figure 13: An illustration of the IDM experiments in Table 3."</li>
+<li>Table 2（L352–353）："Table 2: Comparison of prediction fidelity on nuScenes validation set. Vista achieves encouraging results that outperform the state-of-the-art driving world models with a significant performance gain."</li>
+<li>Table 3（L511–512）："Table 3: Impacts of different action conditions and dynamic priors. By applying action conditions and dynamic priors, Vista can predict motion that is more consistent compared to the ground truth."</li>
+<li>Fig. 14（L1227–1233）："Figure 14: Sensitivity of reward estimation to hyperparameters. Increasing the number of denoising steps can produce more discriminative rewards, whereas increasing the ensemble size can slightly stabilize the estimations."</li>
+<li>Fig. 15（L1263–1264）："Figure 15: Effect of guidance scale. We predict 15s long-term videos with different CFG schemes. Our method achieves the optimal equilibrium between detail generation and saturation maintenance."</li>
+<li>Fig. 16（L1267–1268）："Figure 16: Necessity of LoRA adaptation. Training newly added projections alone without LoRA results in visual corruptions. The compared variants are trained on nuScenes and inferred on Waymo."</li>
+<li>Table 4（L1201–1205）："Table 4: Reward of commands on Waymo. The ground truth commands generally obtain higher rewards than random command inputs, suggesting that the proposed reward function can be used as a reliable indicator for command selection."</li>
+<li>Table 5（L1209–1212）："Table 5: Effect of action independence. Without losing generality, we choose the trajectory as a representative action for evaluation. The proposed constraint expedites the learning of actions."</li>
+<li>Table 6（L1285–1286）："Table 6: Complete FVD scores of different action categories. We obtain the FVD scores on four subsets divided by command categories. All types of action controls are effective across all categories."</li>
+<li>Fig. 17（L1310–1311）："Figure 17: Perceptual disparity between GenAD and Vista."</li>
+<li>Fig. 18（L1353–1356）："Figure 18: Generalization ability of Vista. We apply Vista across diverse scenes (e.g., countrysides and tunnels) with unseen camera poses (e.g., the perspective of a double-decker bus). Our model can predict high-resolution futures with vivid behaviors of vehicles and pedestrians, exhibiting strong generalization abilities and profound comprehension of world knowledge. Best viewed zoomed in."</li>
+<li>Fig. 20（L1361–1362）："Figure 20: Additional results of long-horizon prediction. Our model can autoregressively simulate long driving experiences with marginal quality decline. All videos continue for 15 seconds at 10 Hz."</li>
+<li>Fig. 21（L1373–1375）："Figure 21: Additional results of action controllability. We trial different action conditions across multiple scenes from OpenDV-YouTube-val and Waymo. The behaviors of the ego-vehicle can be consistently controlled by various kinds of interventions."</li>
+<li>Fig. 22（L1385–1389）："Figure 22: Counterfactual reasoning ability. By imposing actions that violate the traffic rules, we discover that Vista can also predict the consequences of abnormal interventions. In the first example, the ego-vehicle passes over the road boundary and rushes into the bush following our instructions. In the second example, the passing car stops and waits to avoid a collision when we force the ego-vehicle to proceed at the crossroads. This showcases Vista's potential for facilitating closed-loop simulation."</li>
+<li>Fig. 23（L1390–1392）："Figure 23: Diverse scenes collected for human evaluation. We carefully curate 60 scenes from OpenDV-YouTube-val, nuScenes, Waymo and CODA. The distinctive attributes of each dataset jointly represent the diversity of real-world environments, permitting a comprehensive human evaluation."</li>
+</ul>
+<h2>10. 全文总结</h2>
+<p>一页总结：Vista 把"泛化 × 保真 × 可控"三者压在同一个 SVD 底座上——公开大数据保证泛化，动态先验 + 双损失保证保真，统一动作接口 + 高效训练策略保证可控，最后以自身预测不确定性把世界模型升级为动作评测器。对本系列"策略评测器"叙事的价值在于：它给出了一条"从大规模驾驶视频世界模型到无需真值动作的奖励"的完整、可复现路径（代码与模型均开源，L7），并且把评测接口对齐到规划算法实际输出的四种动作格式；代价是扩散框架固有的推理延迟与随机性（原文自认，L1084–1087），以及没有闭环规划收益的实证（原文未写）。</p>
+<footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
+<a href="../index.html">返回首页</a></footer></div></main></body></html>

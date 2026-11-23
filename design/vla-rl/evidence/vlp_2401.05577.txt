@@ -1,0 +1,61 @@
+# 留证：VLP: Vision Language Planning for Autonomous Driving
+# arXiv 2401.05577 (v4, 2024-11-23), CVPR 2024, pp.14760-14769
+# 机构：Syracuse University + Bosch Research North America & BCAI
+# 来源 URL: https://ar5iv.labs.arxiv.org/html/2401.05577 （2026-10-26 抓取）
+# 核实状态：全文 HTML 获取，但工具输出在 Sec 3.3 中段截断；Sec 3.4 (Training Loss)、Sec 4 (Experiments) 未在本记录中。
+# 以下为逐字抓取正文（公式以 LaTeXML 展开形式保留）。
+
+## Abstract（逐字）
+"Autonomous driving is a complex and challenging task that aims at safe motion planning through scene understanding and reasoning. ... In this paper, we present VLP, a novel Vision-Language-Planning framework that exploits language models to bridge the gap between linguistic understanding and autonomous driving. VLP enhances autonomous driving systems by strengthening both the source memory foundation and the self-driving car's contextual understanding. VLP achieves state-of-the-art end-to-end planning performance on the challenging NuScenes dataset by achieving 35.9% and 60.5% reduction in terms of average L2 error and collision rates, respectively, compared to the previous best method. Moreover, VLP shows improved performance in challenging long-tail scenarios and strong generalization capabilities when faced with new urban environments."
+
+## 1 Introduction（关键句逐字）
+"Our VLP consists of two key components: Agent-centric Learning Paradigm (ALP) and Self-driving-car-centric Learning Paradigm (SLP), leveraging LLMs to enhance the ADS from reasoning and decision-making aspects, respectively."
+"ALP integrates the consistent feature space of a pretrained language model to revamp the agent features on the BEV, actively shaping semantics, and guiding the BEV reasoning process."
+"In the SLP, we align the planning query with intended goals and the ego-vehicle driving status by leveraging the knowledge encoded in the pretrained language model."
+贡献 bullet 3："Through extensive experiments in real-world driving scenarios, we show that VLP significantly and consistently outperforms the state-of-the-art vision-based approaches across a spectrum of driving tasks, including open-loop planning, multi-object tracking, motion forecasting, and more."
+贡献 bullet 4："We conduct the first new-city generalization study on the nuScenes dataset [Caesar et al. 2020] by training and testing on distinct cities, demonstrating the remarkable zero-shot generalization ability of our VLP approach over vision-only methods."
+贡献 bullet 5："To the best of our knowledge, this is the first work introducing LLMs into multiple stages of ADS to address the generalization ability in new cities and long-tail cases."
+
+## 3.1 Preliminary（逐字）
+"In vision-based ADS, a sequence of multi-view camera images serves as the source input, offering abundant visual data for downstream tasks. Initially, an image backbone extracts fundamental features for perception. These features are then processed by a BEV encoder to transform multi-view features into a unified 2D representation from a top-down view. This BEV feature map encapsulates crucial perception details like object positions, lane markings, and road boundaries."
+"Acting as an information hub, this BEV feature map supports diverse downstream tasks such as 3D object tracking, mapping, motion prediction, occupancy prediction, and path planning [Hu et al. 2023; Jiang et al. 2023]."
+"In the final planning stage, an ego-query models the ego-vehicle's status and interacts with environmental features to determine the optimal path for autonomous driving."
+
+## 3.2 Agent-centric Learning Paradigm（逐字节选）
+"three kinds of BEV agents are considered: ego-vehicle (self-driving-car), foreground (FG) objects, and lane elements. We first align the ground-truth area of each agent with the produced BEV map, and crop the regions of interest. We utilize the 3D bounding box to crop the ego-car and FG object area, and panoptic scene mask to segment the lane area."
+Agent BEV features（Eq 1）:
+  A_bev^Ego = Pool(Crop(BEV, bbox3D^Ego)) ∈ R^C
+  A_bev^FG  = Pool(Crop(BEV, bbox3D^FG))  ∈ R^C
+  A_bev^Lane= Pool(Seg(BEV, SegMask^Lane)) ∈ R^C
+  A_bev = Batch([A_bev^Ego; A_bev^FG; A_bev^Lane]) ∈ R^{N_batch×C}
+Agent expectation features（Eq 2 及文字）:
+"We precisely define the perceptual information expected from the corresponding agent, such as agent labels, bounding boxes, and future trajectories. These driving-related ground-truth information, which should also be embedded in the local BEV feature is formulated into a prompt as illustrated in Fig. 2 b. The description is then passed to the language encoder, LM, to generate the corresponding agent expectation feature."
+  A_exp^Ego = F_bev(LM(T^Ego[y^Ego])) ∈ R^C
+  A_exp^FG  = F_bev(LM(T^FG[y^FG]))   ∈ R^C
+  A_exp^Lane= F_bev(LM(T^Lane[y^Lane])) ∈ R^C
+"Note that during training, we freeze the LM and only train the adaptation layer F_bev to save memory and retain the pre-trained knowledge in the LM."
+Contrastive Learning Formulation in ALP（Eq 3）:
+  S_pred = α_alp × (A_bev/‖A_bev‖₂ ⊗ A_exp/‖A_exp‖₂)
+  L_alp = (L_CE(S_pred, S_gt, dim=0) + L_CE(S_pred, S_gt, dim=1))/2
+"The ground truth for the similarity matrix, S_gt, is a unit matrix, signifying that each agent's BEV feature should be closest to its corresponding expected feature in the shared space."
+
+## 3.3 SDC-centric Learning Paradigm（逐字节选）
+"a trainable ego-query E_query is applied to interact with other agents, A_query^FG and A_query^Lane, on BEV map, to gather the self-driving perception/prediction information. The produced ego-car query feature E_qfeat is further processed to predict the future waypoints of the self-driving car y_pred^plan."
+Eq 4:
+  E_qfeat = M_inter(E_query, A_query^FG, A_query^lane) ∈ R^{B×C}
+  y_pred^plan = M_plan(E_qfeat) ∈ R^{B×P×2}
+"where M_inter and M_plan denote the intermediate ego information gathering module and the planning head in ADS, respectively. P×2 indicate the planned waypoints in the next P timesteps, and B is the batch size during training."
+"solely relying on numeric ground-truth can make it challenging to understand the rationale behind the ADS' decisions, which can result in inconsistent feature learning for the planning and lead to limited adaptability to new environments."
+"We template a language description of the ego-vehicle status with the planning ground truth (GT) including high-level driving command and the future trajectory of the ego-vehicle, as illustrated in Fig. 2 b. The prompt is sent to the LM to obtain the ground truth planning features of the ego-car embedding driving scenario information and human driving logic."
+Eq 5:
+  E_prompt = F_ego(LM(T_slp^Ego[y^plan])) ∈ R^{B×C}
+"Note that the LM is a shared off-the-shelf model for both ALP and SLP. As in ALP, only the adaptation layer F_ego is trainable during training to save memory and retain the pre-trained knowledge in LM."
+Eq 6（截断处保留）:
+  S_pred^slp = α_slp × (E_qfeat/‖E_qfeat‖₂ ⊗ E_prompt/‖E_prompt‖₂)
+  L_slp = (L_CE(S_pred^slp, S_gt^slp, dim=0) + ... )  ← 页面截断，公式第二项未捕获
+
+## Fig 2 caption（逐字）
+"a) The overview of proposed vision language planning (VLP) framework. VLP enhances ADS from self-driving BEV-reasoning and self-driving decision-making aspects, through two innovative modules, ALP and SLP, respectively. Leveraging LLM and contrastive learning, ALP conducts agent-wise learning for refining local details on BEV, while SLP engages sample-wise learning for advancing global context understanding ability of the ADS. VLP is only active during training, ensuring no additional parameters or computations are introduced during inference. b) Prompt formats used in VLP."
+
+## 未获取部分（如实说明）
+Sec 3.4 Training Loss、Sec 4 Experiments（实现细节/LLM backbone 名称/超参）因抓取截断未取得；CVF open access 页与 alphaXiv 页均无正文（alphaXiv 页面内容为 AI 生成概述，不作为原文依据）。附 CVF 官方页证实论文出处：Proceedings CVPR 2024, pp. 14760-14769（https://openaccess.thecvf.com/content/CVPR2024/html/Pan_VLP_Vision_Language_Planning_for_Autonomous_Driving_CVPR_2024_paper.html）。

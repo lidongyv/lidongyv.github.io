@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · VLA 蒸馏 · 大模型→VLA/WAM 蒸馏研究</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="topnav"><div class="inner"><a href="index.html">首页</a><a class="" href="00-evidence.html">00 · 证据与核实</a><a class="" href="01-taxonomy.html">01 · 分类框架</a><a class="" href="02-vla-distill.html">02 · VLA 蒸馏</a><a class="" href="03-wam-distill.html">03 · WAM 蒸馏</a><a class="" href="04-step-distill.html">04 · 步数蒸馏</a><a class="" href="05-feature-latent.html">05 · 特征与 latent</a><a class="" href="06-on-policy.html">06 · On-policy 蒸馏</a><a class="" href="07-data-distill.html">07 · 数据蒸馏</a><a class="" href="08-tricks.html">08 · Trick 总谱</a><a class="" href="09-benchmarks.html">09 · 教师 vs 学生</a><a class="" href="10-recent.html">10 · 最近三个月</a><a class="" href="11-pitfalls.html">11 · 陷阱与复现</a><a class="" href="12-implementation.html">12 · 实现手册</a></div></nav>
+<main>
+<h1>02 · VLA 蒸馏：驾驶与操作两条线的实现与数字</h1>
+<p class="meta">来源 docs/02-vla-distill.md · 生成于 2026-11-21</p>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 全景：VLA 蒸馏的 8 种做法</a></li><li class=""><a href="#sec-2">2. 驾驶线：省掉推理期的 LLM</a></li><li class="toc-h3"><a href="#sec-3">2.1 Orion-Lite（2604.08266，L3）——最硬的证据</a></li><li class="toc-h3"><a href="#sec-4">2.2 DRIFT（2611.24719，L1）——把 LM 做成&quot;可摘除的推理支架&quot;</a></li><li class="toc-h3"><a href="#sec-5">2.3 FPD-Drive（2610.13232，L1）——特权教师</a></li><li class="toc-h3"><a href="#sec-6">2.4 OPTED（2609.20756，L1）——闭环 on-policy 经验蒸馏</a></li><li class="toc-h3"><a href="#sec-7">2.5 Reflect-VLA（2610.13453，L1）——同体自蒸馏</a></li><li class="toc-h3"><a href="#sec-8">2.6 ConDenseDrive（2610.16908，L1）——多教师特征蒸馏</a></li><li class="toc-h3"><a href="#sec-9">2.7 数据蒸馏（驾驶，见 07 章）</a></li><li class=""><a href="#sec-10">3. 操作线：压动作头的 NFE</a></li><li class="toc-h3"><a href="#sec-11">3.1 π0-FAST（PI 官方，无 arXiv，L2）</a></li><li class="toc-h3"><a href="#sec-12">3.2 SnapFlow（2604.05656，L3）</a></li><li class="toc-h3"><a href="#sec-13">3.3 FastOPD（2610.02832，L1）</a></li><li class="toc-h3"><a href="#sec-14">3.4 VLA-MOPD（2611.12286，L1）</a></li><li class="toc-h3"><a href="#sec-15">3.5 REPAIR（2611.02777，L1）</a></li><li class="toc-h3"><a href="#sec-16">3.6 TAD（2610.33650，L1）——黑盒教师的上限</a></li><li class="toc-h3"><a href="#sec-17">3.7 TILDE（2610.25376，L1）</a></li><li class="toc-h3"><a href="#sec-18">3.8 剪枝 + 离线隐层蒸馏（2609.19579，L1）——最实用的基线</a></li><li class="toc-h3"><a href="#sec-19">3.9 SPARK-VLA（2611.10443，NeurIPS 2026，L1）</a></li><li class=""><a href="#sec-20">4. 横向总表（VLA）</a></li><li class=""><a href="#sec-21">5. 三条实现范式（可直接抄）</a></li><li class="toc-h3"><a href="#sec-22">范式 A：latent token 蒸馏（驾驶）</a></li><li class="toc-h3"><a href="#sec-23">范式 B：动作头步数蒸馏（操作）</a></li><li class="toc-h3"><a href="#sec-24">范式 C：剪枝 + 离线隐层（最便宜）</a></li><li class=""><a href="#sec-25">6. 选型</a></li></ol></details>
+<h1>02 · VLA 蒸馏：驾驶与操作两条线的实现与数字</h1>
+<blockquote>VLA = Vision-Language-Action。蒸馏它有两种完全不同的动机：<br><strong>驾驶</strong>——把 7B 级 LLM 的车端推理省掉（延迟/显存是硬约束）；<br><strong>操作</strong>——把 flow/diffusion 动作头的 NFE 压下来（控制频率是硬约束）。<br>两条线的论文几乎不互引，但机制高度重合。本页按&quot;蒸什么&quot;组织。<br><strong>实现级细节（张量形状、完整伪代码、超参）统一放在第 12 章《实现手册》。</strong></blockquote>
+<hr>
+<h2 id="sec-1">1. 全景：VLA 蒸馏的 8 种做法</h2>
+<table><tr><th>#</th><th>做法</th><th>代表</th><th>教师</th><th>学生</th><th>部署带走什么</th></tr><tr><td>1</td><td>latent planning token 回归</td><td><strong>Orion-Lite</strong> (2604.08266)</td><td>7B LLM</td><td>0.1B decoder</td><td>只有学生</td></tr><tr><td>2</td><td>latent 推理特征 + 可摘 LM</td><td><strong>DRIFT</strong> (2611.24719)</td><td>&lt;150M LM</td><td>255M 规划器</td><td>只有规划器</td></tr><tr><td>3</td><td>特权/未来观测蒸馏</td><td><strong>FPD-Drive</strong> (2610.13232)、<strong>OPTED</strong> (2609.20756)</td><td>特权教师</td><td>纯视觉规划器</td><td>只有学生</td></tr><tr><td>4</td><td>多教师特征蒸馏</td><td><strong>ConDenseDrive</strong> (2610.16908)</td><td>3 个 VFM</td><td>单一视觉编码器</td><td>只有编码器</td></tr><tr><td>5</td><td>同体渐进 + token 级纠正</td><td><strong>Reflect-VLA</strong> (2610.13453)</td><td>自身渐进教师</td><td>单次前向 VLA</td><td>只有学生</td></tr><tr><td>6</td><td>动作头步数蒸馏</td><td><strong>SnapFlow</strong> (2604.05656)、<strong>π0-FAST</strong>、<strong>FastOPD</strong> (2610.02832)</td><td>10-NFE / flow 教师</td><td>1-NFE</td><td>只有学生</td></tr><tr><td>7</td><td>多专家策略合并（OPD）</td><td><strong>VLA-MOPD</strong> (2611.12286)、<strong>REPAIR</strong> (2611.02777)</td><td>多任务/RL 专家</td><td>单一 VLA</td><td>只有学生</td></tr><tr><td>8</td><td>剪枝 + 离线隐层蒸馏</td><td><strong>2609.19579</strong></td><td>OpenVLA-OFT 7B</td><td>宽度剪枝 63–72%</td><td>剪枝后的学生</td></tr></table>
+<hr>
+<h2 id="sec-2">2. 驾驶线：省掉推理期的 LLM</h2>
+<h3 id="sec-3">2.1 Orion-Lite（2604.08266，L3）——最硬的证据</h3>
+<table><tr><th>项</th><th>教师 ORION</th><th>学生 Orion-Lite</th></tr><tr><td>结构</td><td>EVA-02-L + Vicuna-v1.5 <strong>7B</strong> + VAE 规划器</td><td>EVA-02-L（冻结）+ <strong>0.1B</strong> 6 层 decoder + planner</td></tr><tr><td>输入</td><td>图像 + 文本 prompt</td><td><strong>纯视觉</strong>（丢弃文本）</td></tr><tr><td>蒸什么</td><td>—</td><td>教师 LLM 的 latent planning token <code>T_p</code></td></tr><tr><td>损失</td><td>—</td><td><code>L = L_GT + L_mimic</code>，<code>L_mimic = ‖T_s − T_p‖₁</code></td></tr><tr><td>Bench2Drive 闭环 DS</td><td><strong>77.7</strong></td><td><strong>80.6</strong></td></tr><tr><td>能力分</td><td>54.7</td><td>60.5</td></tr><tr><td>推理模块延迟</td><td>基线</td><td><strong>150×</strong></td></tr><tr><td>端到端延迟</td><td>—</td><td><strong>806ms → 267ms</strong></td></tr><tr><td>显存</td><td><strong>31GB</strong></td><td><strong>8GB</strong></td></tr></table>
+<p><strong>要点</strong>：</p>
+<ul>
+<li>冻结视觉编码器 + QT-Former，只训 0.1B decoder；
+</li><li>用 L1 而不是 KL（作者明确对比 DiMA 的 KL 路线）；
+</li><li>闭环反超，作者归因于&quot;LLM 在直接模式下是过参数化的特征提取器&quot;。
+</li></ul>
+<h3 id="sec-4">2.2 DRIFT（2611.24719，L1）——把 LM 做成&quot;可摘除的推理支架&quot;</h3>
+<ul>
+<li>轻量 LM（&lt;150M）→ 规划器（全模型 <strong>255M</strong>）；蒸 <strong>surrogate reasoning features</strong>（latent 推理特征），推理期可把 LM 摘掉。
+</li><li>数字：Bench2Drive <strong>DS 97.03 / SR 89.39%</strong>（三次均值）。
+</li><li>解读：比 Orion-Lite 更彻底——连 0.1B decoder 都不保留，直接把推理压进 255M 规划器。<strong>但 97.03 与 Orion-Lite 的 80.6 不可比</strong>（前者大概率是不同评测设置/更大数据），只说明&quot;小模型可以做到很高&quot;。
+</li></ul>
+<h3 id="sec-5">2.3 FPD-Drive（2610.13232，L1）——特权教师</h3>
+<ul>
+<li>教师：可见未来观测的特权教师；学生：纯视觉规划器；蒸未来多目标轨迹监督。
+</li><li>数字：NAVSIM v1 <strong>94.9 PDMS</strong>；v2 navhard <strong>55.9 EPDMS</strong>；Pro 95.5/58.1；HUGSIM HD-Score 45.1、RC 55.3。
+</li><li>定位：典型的 Learning-by-Cheating 变体，部署不带教师。
+</li></ul>
+<h3 id="sec-6">2.4 OPTED（2609.20756，L1）——闭环 on-policy 经验蒸馏</h3>
+<ul>
+<li>教师：向量化输入（HD 图 + 框）的 RL 特权教师；学生：相机（TransFuser/VaVAM）。
+</li><li>做法：AlpaSim + 3DGS 在线采样，闭环蒸馏。
+</li><li>数字：DS 提升 <strong>1.6× 与 9.5×</strong>；同等闭环性能少约 <strong>3 个数量级</strong>仿真交互。
+</li><li>价值：证明&quot;闭环经验&quot;比&quot;离线轨迹&quot;值钱得多——3 个数量级是这条线最夸张的样本效率数字。
+</li></ul>
+<h3 id="sec-7">2.5 Reflect-VLA（2610.13453，L1）——同体自蒸馏</h3>
+<ul>
+<li>教师：同体渐进教师（Reflective Guidance 作为训练期特权）→ 单次前向 VLA。
+</li><li>做法：<strong>token 级纠正分布蒸馏</strong>；风险轨迹蒸教师、可靠轨迹自模仿（双路径）。
+</li><li>数字：训练时间较 RL 减少 <strong>90%+</strong>；NAVSIM v1/v2、Bench2Drive（摘要未给分值）。
+</li><li>价值：把&quot;自我反思/纠错&quot;变成训练期信号，推理期不需要反思循环。
+</li></ul>
+<h3 id="sec-8">2.6 ConDenseDrive（2610.16908，L1）——多教师特征蒸馏</h3>
+<ul>
+<li>教师：3 个视觉基础模型（视觉/语义/几何）→ 单一 E2E 视觉编码器；配 register token 压缩。
+</li><li>数字：<strong>2.0×</strong> 加速；NAVSIM v1 <strong>94.5 PDMS</strong>、v2 <strong>90.8 EPDMS</strong>；HUGSIM 37.4 HD-Score。
+</li></ul>
+<h3 id="sec-9">2.7 数据蒸馏（驾驶，见 07 章）</h3>
+<p>AutoVLA（Qwen2.5-VL-72B → 3B，45.6k nuPlan + 7.2k Waymo CoT）、Senna（GPT-4o）、DriveGPT4（ChatGPT）、OmniDrive（GPT-4）、LMDrive（指令改写）。</p>
+<hr>
+<h2 id="sec-10">3. 操作线：压动作头的 NFE</h2>
+<h3 id="sec-11">3.1 π0-FAST（PI 官方，无 arXiv，L2）</h3>
+<ul>
+<li>把 π0 的 flow matching 动作专家蒸馏成 <strong>FAST tokenizer 的自回归专家</strong>，推理约 <strong>5×</strong>（官方博客 + openpi 代码）。
+</li><li>注意：没有同行评议论文；引用时标 ❗。
+</li></ul>
+<h3 id="sec-12">3.2 SnapFlow（2604.05656，L3）</h3>
+<ul>
+<li>教师=π0.5（10-NFE），学生=同网络 1-NFE；短切目标 + zero-init destination-time projection。
+</li><li>数字：LIBERO <strong>98.75% vs 教师 97.75%</strong>；π0 单步版超教师 <strong>+10.5pp</strong>；延迟 <strong>−3.3×</strong>。
+</li><li>详见 04 章。
+</li></ul>
+<h3 id="sec-13">3.3 FastOPD（2610.02832，L1）</h3>
+<ul>
+<li>教师：π0.5 / LingBot-VLA / MolmoAct2；学生：轻量 VLA。
+</li><li>蒸什么：教师速度场（flow map 单状态监督 + self-consistency），<strong>on-policy</strong> 在学生状态上查教师。
+</li><li>数字：LIBERO 2 步保留 <strong>84%</strong>，延迟 <strong>−78.1%</strong>；RoboTwin2.0 单步 <strong>+15.9pp</strong>。
+</li><li>详见 06 章。
+</li></ul>
+<h3 id="sec-14">3.4 VLA-MOPD（2611.12286，L1）</h3>
+<ul>
+<li>多任务 flow-VLA 专家 → 单一共享 flow VLA；在<strong>学生观测 + 每个 ODE 中间状态</strong>做 masked local matching。
+</li><li>数字：LIBERO mean success-once <strong>75.4%→98.9%</strong>；RoboTwin 2.0 <strong>73.0%→89.3%</strong>；Piper 真机两轮 <strong>70.0%→90.0%</strong>。
+</li><li>价值：多专家合并第一次做到 ODE 轨迹级对齐。
+</li></ul>
+<h3 id="sec-15">3.5 REPAIR（2611.02777，L1）</h3>
+<ul>
+<li>轻量 RL 专家 + critic → 单一 flow VLA；critic 加权多专家动作候选成监督分布。
+</li><li>数字：六个真机任务各 30 trials <strong>全部 100%</strong>；末端 jerk 均低于专家辅助执行。
+</li></ul>
+<h3 id="sec-16">3.6 TAD（2610.33650，L1）——黑盒教师的上限</h3>
+<ul>
+<li>教师只给轨迹库（joint-position 特征），不给动作分数、不给在线查询。
+</li><li>判别器比较教师/学生 rollout 特征边缘分布 → reward → on-policy 学习。
+</li><li>数字：<strong>26.2%→76.6%</strong>（+50.4 点）；但白盒 OPD 是 <strong>81.6%</strong>，且 TAD 花 <strong>5× 交互</strong>、<strong>12.5× batch-passes</strong>。
+</li></ul>
+<h3 id="sec-17">3.7 TILDE（2610.25376，L1）</h3>
+<ul>
+<li>预训练 EFM → 未做动作预训练的策略；on-policy 教师监督 + 教师恢复轨迹；AutoDAgger 用 reward model 触发干预。
+</li><li>数字：三个真机任务最高 <strong>4.1×</strong> 于 behavior cloning；恢复轨迹采集比 human-in-the-loop 快 <strong>&gt;2×</strong>。
+</li></ul>
+<h3 id="sec-18">3.8 剪枝 + 离线隐层蒸馏（2609.19579，L1）——最实用的基线</h3>
+<ul>
+<li>教师：OpenVLA-OFT <strong>7B</strong> → 学生：<strong>宽度剪枝 63%</strong> 的同构模型（CogACT 也测）。
+</li><li>做法：<strong>离线缓存教师 hidden state</strong>，直接对齐同形状残差流；无 projector、无 online rollout。
+</li><li>数字：
+<ul>
+<li>63% 剪枝使 LIBERO-Long <strong>93.2%→0.8%</strong>；蒸馏后回到教师 <strong>3.5 点内</strong>，约 <strong>8 GPU-hours</strong>；
+</li><li>72% 压缩学生真机 <strong>77.5%</strong>（vs 监督恢复 59.5%）；
+</li><li>板载 <strong>2.23×</strong> 快、显存少 <strong>62%</strong>。
+</li></ul>
+</li><li>价值：<strong>如果你只想低成本恢复一个被剪坏的 VLA，这是最划算的做法</strong>——纯离线、8 GPU 小时。
+</li></ul>
+<h3 id="sec-19">3.9 SPARK-VLA（2611.10443，NeurIPS 2026，L1）</h3>
+<ul>
+<li>冻结 3D 专家 → LoRA 视觉分支；0.5B LLM backbone，约 <strong>53M</strong> 可训练参数；对齐注意力响应、router 用 action-loss 梯度监督选 token。
+</li><li>定位：蒸&quot;空间表征&quot;而非动作。
+</li></ul>
+<hr>
+<h2 id="sec-20">4. 横向总表（VLA）</h2>
+<table><tr><th>工作</th><th>场景</th><th>教师</th><th>学生</th><th>蒸什么</th><th>教师效果</th><th>学生效果</th><th>速度/成本</th></tr><tr><td>Orion-Lite</td><td>驾驶</td><td>7B LLM</td><td>0.1B decoder</td><td>latent token</td><td>DS 77.7</td><td><strong>DS 80.6</strong></td><td>150× 模块 / 806→267ms / 31→8GB</td></tr><tr><td>DRIFT</td><td>驾驶</td><td>&lt;150M LM</td><td>255M 规划器</td><td>latent 推理特征</td><td>—</td><td>DS 97.03 / SR 89.39</td><td>255M</td></tr><tr><td>FPD-Drive</td><td>驾驶</td><td>特权教师</td><td>视觉规划器</td><td>未来轨迹</td><td>—</td><td>94.9 PDMS (v1)</td><td>—</td></tr><tr><td>OPTED</td><td>驾驶</td><td>向量化 RL 教师</td><td>相机学生</td><td>闭环经验</td><td>—</td><td>DS 1.6–9.5×</td><td>交互 −3 数量级</td></tr><tr><td>ConDenseDrive</td><td>驾驶</td><td>3 VFM</td><td>视觉编码器</td><td>特征</td><td>—</td><td>94.5 PDMS</td><td>2.0×</td></tr><tr><td>Reflect-VLA</td><td>驾驶</td><td>同体渐进</td><td>单次 VLA</td><td>token 级纠正</td><td>—</td><td>未给分值</td><td>训练 −90%</td></tr><tr><td>SnapFlow</td><td>操作</td><td>π0.5 10-NFE</td><td>1-NFE</td><td>端点</td><td>97.75%</td><td><strong>98.75%</strong></td><td>−3.3×</td></tr><tr><td>FastOPD</td><td>操作</td><td>π0.5 等</td><td>轻量</td><td>速度场</td><td>—</td><td>2 步保留 84%</td><td>−78.1%</td></tr><tr><td>VLA-MOPD</td><td>操作</td><td>多专家</td><td>单一 VLA</td><td>ODE 轨迹</td><td>—</td><td>75.4→98.9%</td><td>—</td></tr><tr><td>REPAIR</td><td>操作</td><td>RL 专家</td><td>flow VLA</td><td>critic 加权动作</td><td>—</td><td>真机 100%</td><td>—</td></tr><tr><td>TAD</td><td>操作</td><td>轨迹库</td><td>OpenVLA-OFT 7B</td><td>判别器 reward</td><td>—</td><td>26.2→76.6%</td><td>5× 交互</td></tr><tr><td>TILDE</td><td>操作</td><td>EFM</td><td>策略</td><td>恢复轨迹</td><td>—</td><td>4.1× BC</td><td>采集 −2×</td></tr><tr><td>2609.19579</td><td>操作</td><td>7B</td><td>剪枝 63–72%</td><td>离线 hidden</td><td>93.2%</td><td>教师 −3.5 点内（真机 77.5%）</td><td>8 GPU-h；2.23×</td></tr><tr><td>SPARK-VLA</td><td>操作</td><td>3D 专家</td><td>0.5B + LoRA</td><td>空间表征</td><td>—</td><td>未给</td><td>53M 可训</td></tr></table>
+<blockquote>表内数字来自不同 benchmark，<strong>不可直接横比</strong>；作用是看&quot;量级&quot;和&quot;代价结构&quot;。所有 L1 条目仅摘要级。</blockquote>
+<hr>
+<h2 id="sec-21">5. 三条实现范式（可直接抄）</h2>
+<h3 id="sec-22">范式 A：latent token 蒸馏（驾驶）</h3>
+<pre class="code"><code># 教师：一次性前向，取 planning token
+with torch.no_grad():
+    T_t = teacher(images, text).planning_token      # [B, 1, C]
+
+# 学生：纯视觉
+T_s = student_decoder(student_vision(images))       # [B, 1, C]
+
+loss = L_traj_gt + (T_s - T_t).abs().mean()         # L1，λ=1
+# 冻结视觉塔；只训 decoder + planner</code></pre>
+<h3 id="sec-23">范式 B：动作头步数蒸馏（操作）</h3>
+<pre class="code"><code># 教师：10 步 Euler 到端点（或直接用教师多步输出）
+with torch.no_grad():
+    a_t = teacher_sample(obs, steps=10)
+
+# 学生：1 步
+a_s = student_sample(obs, steps=1)
+
+loss = flow_matching_loss(student, a_t) + λ * shortcut_loss   # SnapFlow 式</code></pre>
+<h3 id="sec-24">范式 C：剪枝 + 离线隐层（最便宜）</h3>
+<pre class="code"><code># 离线：教师对所有训练帧提 hidden state，存 memmap
+teacher_hidden = cache[(traj_id, frame_idx)]         # [D]
+
+# 训练：学生（剪枝后的同构模型）对齐同一层
+h_s = student(images, return_hidden=True)
+loss = L_task + λ * (h_s - teacher_hidden).pow(2).mean()</code></pre>
+<hr>
+<h2 id="sec-25">6. 选型</h2>
+<table><tr><th>约束</th><th>选</th></tr><tr><td>驾驶、要省推理 LLM</td><td>Orion-Lite（0.1B）或 DRIFT（255M）</td></tr><tr><td>驾驶、有特权教师/仿真</td><td>OPTED（闭环经验，样本效率最高）</td></tr><tr><td>操作、flow 动作头太慢</td><td>SnapFlow（无教师、一次训练）或 FastOPD（可到 2 步）</td></tr><tr><td>多个任务专家要合并</td><td>VLA-MOPD（ODE 轨迹级）</td></tr><tr><td>真机、有 RL 专家</td><td>REPAIR（critic 加权）</td></tr><tr><td>没预算、只想恢复剪坏的模型</td><td>2609.19579 的离线隐层（8 GPU-h）</td></tr></table>
+<hr>
+<p>更新时间: 2026-11-21</p>
+<footer>大模型 → VLA/WAM 蒸馏研究 · 2026-11 · 数字均标证据级别（L3 全文 / L2 部分 / L1 摘要）</footer>
+</main>
+</body>
+</html>

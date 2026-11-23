@@ -1,0 +1,139 @@
+# TD-MPC2 精读笔记（唯一数据源：papers/txt/TDMPC2.txt，arXiv 2310.16828）
+
+## 1) 原文信息
+- 标题："TD-MPC2: Scalable, Robust World Models for Continuous Control"（L2–3）
+- 作者与机构："Nicklas Hansen⋆, Hao Su ⋆†, Xiaolong Wang ⋆†"（L4）；"⋆University of California San Diego, †Equal advising"（L5）；"{nihansen,haosu,xiw012}@ucsd.edu"（L6）
+- 发表状态："Published as a conference paper at ICLR 2024"（L1）
+- ID/版本："arXiv:2310.16828v2 [cs.LG] 21 Mar 2024"（L115）
+- 资源："Explore videos, models, data, code, and more at https://tdmpc2.com"（L100）
+
+## 2) Abstract 全文逐字
+> "TD-MPC is a model-based reinforcement learning (RL) algorithm that performs local trajectory optimization in the latent space of a learned implicit (decoder-free) world model. In this work, we present TD-MPC2: a series of improvements upon the TD-MPC algorithm. We demonstrate that TD-MPC2 improves significantly over baselines across 104 online RL tasks spanning 4 diverse task domains, achieving consistently strong results with a single set of hyperparameters. We further show that agent capabilities increase with model and data size, and successfully train a single 317M parameter agent to perform 80 tasks across multiple task domains, embodiments, and action spaces. We conclude with an account of lessons, opportunities, and risks associated with large TD-MPC2 agents."（L90–99）
+
+## 3) 问题与动机
+**问题**：现有多数 RL 算法单任务、依赖逐任务调参；泛化型具身智能体受限于专家轨迹克隆假设与缺少可扩展连续控制算法：
+> "We argue that current approaches to generalist embodied agents suffer from (a) the assumption of near-expert trajectories for behavior cloning which severely limits the amount of available data (Reed et al., 2022; ...), and (b) a lack of scalable continuous control algorithms that are able to consume large uncurated datasets."（L108–113）
+> "However, most existing RL algorithms (Lillicrap et al., 2016; Haarnoja et al., 2018) are designed for single-task learning and rely on per-task hyperparameters, with no principled method for selecting those hyperparameters (Zhang et al., 2021)."（L121–123）
+
+**为什么隐式世界模型 + 单组超参能跨域**（动机链条）：
+> "In this work, we present TD-MPC2: a model-based RL algorithm designed for learning generalist world models on large uncurated datasets composed of multiple task domains, embodiments, and action spaces, with data sourced from behavior policies that cover a wide range of skill levels, and without the need for hyperparameter-tuning."（L125–129）
+> "As shown in Figure 1, na¨ıvely increasing model and data size of TD-MPC often leads to a net decrease in agent performance, as is commonly observed in RL literature (Kumar et al., 2023). In contrast, scaling TD-MPC2 leads to consistently improved capabilities."（L135–137）
+> "Our algorithmic contributions, which have been key to achieving this milestone, are two-fold: (1) improved algorithmic robustness by revisiting core design choices, and (2) careful design of an architecture that can accommodate datasets with multiple embodiments and action spaces without relying on domain knowledge."（L137–141）
+
+**为何不重建观测（隐式而非生成式）**：
+> "Learning a generative model of the environment using a reconstruction (decoder) objective is tempting due to its rich learning signal. However, accurately predicting raw future observations (e.g., images or proprioceptive features) over long time horizons is a difficult problem, and does not necessarily lead to effective control (Lambert et al., 2020)."（L209–214）
+> "We argue that this alternative formulation of model-based RL is key to modeling large datasets with modest model sizes."（L223–225）
+
+## 4) 方法逐机制
+**五组件架构**（L229–235，Equation 2）：
+> "The TD-MPC2 architecture is shown in Figure 3 and consists of five components: Encoder z = h(s, e) ▷ Maps observations to their latent representations; Latent dynamics z′ = d(z, a, e) ▷ Models (latent) forward dynamics; Reward ˆr = R(z, a, e) ▷ Predicts reward r of a transition; Terminal value ˆq = Q(z, a, e) ▷ Predicts discounted sum of rewards (return); Policy prior ˆa = p(z, e) ▷ Predicts action a∗ that maximizes Q"（L229–234）；"where s and a are states and actions, z is the latent representation, and e is a learnable task embedding for use in multitask world models."（L236）
+
+Figure 3 图注："Observations s are encoded into their (normalized) latent representation z. The model then recurrently predicts actions ˆa, rewards ˆr, and terminal values ˆq, without decoding future observations."（L204–208）
+
+**模型目标**（联合嵌入预测 + 奖励/价值离散回归）：
+> "The h, d, R, Q components are jointly optimized to minimize the objective ... Joint-embedding prediction + Reward prediction + Value prediction"（L244–258，式 3 三个损失项）
+> "As the magnitude of rewards may differ drastically between tasks, TD-MPC2 formulates reward and value prediction as a discrete regression (multi-class classification) problem in a log-transformed space, which is optimized by minimizing cross-entropy with rt, qt as soft targets (Bellemare et al., 2017; Kumar et al., 2023; Hafner et al., 2023)."（L266–269）
+
+**策略目标**（最大熵策略先验）："The policy prior p is a stochastic maximum entropy (Ziebart et al., 2008; Haarnoja et al., 2018) policy that learns to maximize the objective ... where H is the entropy of p which can be computed in closed form."（L270–279）
+
+**SimNorm 隐状态归一化**：
+> "To mitigate exploding gradients, we normalize the latent representation by projecting z into L fixed-dimensional simplices using a softmax operation (Lavoie et al., 2022)."（L287–289）
+> "A key benefit of embedding z as simplices (as opposed to e.g. a discrete representation or squashing) is that it naturally biases the representation towards sparsity without enforcing hard constraints (see Appendix H for motivation and implementation). We dub this normalization scheme SimNorm."（L289–292）
+
+**Q 集成**："To reduce bias in TD-targets generated by ¯Q, we learn an ensemble of Q-functions using the objective from Equation 3 and maintain ¯Q as an EMA of each Q-function. We use 5 Q-functions in practice. Targets are then computed as the minimum of two randomly sub-sampled ¯Q-functions (Chen et al., 2021)."（L300–302）
+
+**MPPI 采样规划**：
+> "Specifically, our approach leverages the MPC framework for local trajectory optimization using Model Predictive Path Integral (MPPI) (Williams et al., 2015) as a derivative-free optimizer with sampled action sequences (at, at+1, . . . ,at+H ) of length H evaluated by rolling out latent trajectories with the model."（L305–308）
+> "Notably, Equation 6 estimates the full RL objective introduced in Section 2 by bootstrapping with the learned terminal value function beyond horizon H. TD-MPC2 repeats this iterative planning process for a fixed number of iterations and executes the first action at ∼ N(µ∗t , σ∗t ) in the environment."（L354–356）
+> "To accelerate convergence of planning, a fraction of action sequences originate from the policy prior p, and we warm-start planning by initializing (µ, σ) as the solution to the previous decision step shifted by 1."（L357–359）
+
+**多任务机制**：任务嵌入（"TD-MPC2 conditions all of its five components with a learnable, fixed-dimensional task embedding e, which is jointly trained together with other components of the model. To improve training stability, we constrain the ℓ2-norm of e to be ≤ 1"（L372–375））；动作掩码（"we zero-pad all model inputs and outputs to their largest respective dimensions, and mask out invalid action dimensions in predictions made by the policy prior p during both training and inference."（L379–381））
+
+**与 Dreamer 的差异（原文怎么说）**：
+> "DreamerV3 (Hafner et al., 2023), a model-based method that optimizes a model-free policy with rollouts from a learned generative model of the environment"（L441–442）
+> "the original version of TD-MPC (Hansen et al., 2022), a model-based RL algorithm that performs local trajectory optimization (planning) in the latent space of a learned implicit (non-generative) world model"（L443–445）
+> "While e.g. DreamerV3 (Hafner et al., 2023) has delivered strong results on challenging tasks with discrete action spaces (such as Atari games and Minecraft), we find that TD-MPC2 produces significantly better results on difficult continuous control tasks. At the same time, extending TD-MPC2 to discrete action spaces remains an open problem."（L739–742）
+
+## 5) 实验与主结果
+**任务设置**："We evaluate TD-MPC2 across a total of 104 diverse continuous control tasks spanning 4 task domains: DMControl (Tassa et al., 2018), Meta-World (Yu et al., 2019), ManiSkill2 (Gu et al., 2023), and MyoSuite (Caggiano et al., 2022). Tasks include high-dimensional state and action spaces (up to A ∈R39), sparse rewards, multi-object manipulation, physiologically accurate musculoskeletal motor control, complex locomotion (e.g. Dog and Humanoid embodiments), and cover a wide range of task difficulties."（L385–389）
+
+**指标定义**：成功判定——"In all experiments, we only consider an episode successful if the final step of an episode is successful."（L1163–1164）；归一化得分——"we produce a normalized score that is an average of all individual task success rates (Meta-World) and episode returns normalized to the [0, 100] range (DMControl)."（L570–572）
+
+**环境设置表**（Table 6，L1169–1177，全抄）：
+
+| 域 | Episode length | Action repeat | Effective length | Total env. steps | Performance metric |
+|---|---|---|---|---|---|
+| DMControl | 1,000 | 2 | 500 | 4M–14M | Reward |
+| Meta-World | 200 | 2 | 100 | 2M | Success |
+| ManiSkill2 | 200 | 2 | 100 | 4M–14M | Success |
+| MyoSuite | 100 | 1 | 100 | 2M | Success |
+
+**基线超参对比**（L447–453）："SAC and TD-MPC use task-specific hyperparameters, whereas TD-MPC2 uses the same hyperparameters across all tasks. Additionally, it is worth noting that both SAC and TD-MPC use a larger batch size of 512, while 256 is sufficient for stable learning with TD-MPC2. Similarly, DreamerV3 uses a high update-to-data (UTD) ratio of 512, whereas TD-MPC2 uses a UTD of 1 by default. We use a 5M parameter TD-MPC2 agent in all experiments (unless stated otherwise). For reference, the DreamerV3 baseline has approx. 20M learnable parameters."
+
+**主结果**："We find that TD-MPC2 outperforms prior methods across all task domains."（L457）；"Notably, TD-MPC sometimes diverges due to exploding gradients, whereas TD-MPC2 remains stable."（L462–463）；"TD-MPC2 achieves a > 60% success rate on the Pick YCB task, whereas other methods fail to learn within the given budget."（L1302–1303）
+
+**扩展性**（80 任务，545M transitions）："Models are trained on a dataset of 545M transitions obtained from the replay buffers of 240 single-task TD-MPC2 agents, and thus contain a wide variety of behaviors ranging from random to expert policies."（L539–542）；"to improve rate of convergence we use a 4× larger batch size (1024) compared to the single-task experiments, but make no other changes to hyperparameters."（L548–550）；"We refrain from formulating a scaling law, but note that normalized score appears to scale linearly with the log of model parameters (gray line in Figure 7)."（L576–578）
+
+**Table 1 训练成本与分数**（L521–533，全抄）：
+
+| Params (M) | GPU days | Score |
+|---|---|---|
+| 1 | 3.7 | 16.0 |
+| 5 | 4.2 | 49.5 |
+| 19 | 5.3 | 57.1 |
+| 48 | 12 | 68.0 |
+| 317 | 33 | 70.6 |
+
+30 任务 DMControl 子集缩放分数（L487–491）：1M=18.9, 5M=28.3, 19M=54.2, 48M=59.4, 317M=71.4（原文未列各点参数对应，数值按曲线标注顺序）。
+15 任务子集（L1794–1795）：61.7, 78.0, 80.5（原文未写明各点参数）。
+
+**Few-shot**："We find that TD-MPC2 improves 2× over learning from scratch on new tasks in the low-data regime (20k environment steps)."（L706–707）
+
+**Dog 真机结果：原文未写。** 全文中 "real world" 仅出现于引文（Feng et al., 2023, L856；Lancaster et al., 2023, L909），TD-MPC2 自身实验均为仿真，无真机部署段落；与真机最接近的表述是：L1684–1685 "prior work has demonstrated that TD-MPC supports inputs as large as 9 × 224 × 224 (Lancaster et al., 2023)"（指前作 MoDem-v2，非本文结果）。
+
+**视觉 RL**（10 个图像 DMC 任务）："TD-MPC2 performs comparably to the two best baselines, DrQ-v2 and DreamerV3, without any changes to hyperparameters."（L726–727）
+
+## 6) 消融（全抄）
+**Figure 9 主消融**（3 难任务 Dog Run/Humanoid Walk/Pick YCB，柱=80 任务 19M 归一化分）：
+- Actor：Actor 42.2 / Policy 53.7 / Planning + policy 54.2（L607–608）
+- Normalization：No Norm 46.8 / SimNorm 51.0 / LN + SimNorm 54.2（L629–631）
+- Regression：Continuous 49.6 / Discrete 54.2（L651–652）
+- Q-functions：2→53.5 / 5→54.2 / 10→57.0（L672–673）
+> "We observe that all of our proposed improvements contribute meaningfully to the robustness and strong performance of TD-MPC2 in both single-task RL and multi-task RL. Interestingly, we find that the relative importance of each design choice is consistent across both settings."（L713–715）
+
+**任务嵌入归一化消融**（Figure 18，L1401–1402）：Unnormalized 46.6 / Normalized 54.2；"We find that normalizing e to have a maximum ℓ2-norm of 1 improves multitask performance."（L1409）
+
+**激活函数消融**（Figure 20，L1477–1479）："We find that TD-MPC2 achieves comparable asymptotic performance and data-efficiency with either activation function, but that Mish (Misra, 2019) leads to smoother gradients overall."
+
+**测试时正则化（offline）**（Table 10，L1774–1775）：No reg. 56.54 / c=0.001 58.14 / c=0.01 62.01 / c=0.1 44.13；"Given that our heuristic with c = 0.01 leads to meaningful improvements across 80 tasks, we expect it to work reasonably well for other datasets as well, but leave this for future work."（L1768–1769）
+
+**A 附录改进清单**（L1005–1059）另含：策略先验由确定性+高斯噪声改为最大熵（L1021–1026）；移除 MPPI momentum、改均匀采样（L1052–1055）；"We also improve the throughput of planning by approx. 2× through a series of code-level optimizations."（L1030–1031）；"which makes the wall-time of TD-MPC2 comparable to that of TD-MPC despite a larger architecture (5M vs. 1M)."（L1058–1059）
+
+**关键超参**（Table 8，L1562–1569）："Horizon (H) 3 / Iterations 6 (+2 if ∥A∥ ≥20) / Population size 512 / Policy prior samples 24 / Number of elites 64"。
+
+## 7) 局限 / 未来工作（原文逐字）
+> "A key lesson from the development of TD-MPC2 is that the community has yet to discover an algorithm that truly masters everything out-of-the-box."（L737–738）
+> "extending TD-MPC2 to discrete action spaces remains an open problem."（L742）
+> "Our results are promising, but such level of generalization will likely require several orders of magnitude more tasks than currently available."（L750–752）
+> "However, leveraging such rewards for large-scale pretraining is an open problem."（L756–757）
+> "Risks. ... (i) misspecification of task rewards can lead to unintended outcomes (Clark & Amodei, 2016) that may be difficult to anticipate, (ii) handing over unconstrained autonomy of physical robots to a learned model can result in catastrophic failures if no additional safety checks are in place (Lancaster et al., 2023), and (iii) data for certain applications may be prohibitively expensive for small teams to obtain at the scale required for generalist behavior to emerge, leading to a concentration of power."（L760–766）
+
+## 8) 叙事关联【推断】
+1.【推断】隐式世界模型 vs 显式视频生成是本文立论分野：论文明确以"无需解码未来观测"为架构核心（L204–208），并以 L209–214 论证重建目标"does not necessarily lead to effective control"；其对大视觉变化任务的优势引前作佐证："prior work suggests that the implicit world model of TD-MPC2 may be better suited than reconstruction-based approaches for tasks with large visual variation (Zhu et al., 2023)."（L745–747）——支持原句见上。
+2.【推断】"快脑"层实时控制借鉴点：TD-MPC2 将世界模型压缩为纯隐状态预测（不生成像素），规划成本与图像分辨率解耦（视觉实验才换卷积编码器，L724–725），天然适配低延迟控制回路。但**推理频率/绝对延迟数值原文未写**：全文仅有两处成本表述，即规划吞吐 ~2× 优化（L1030–1031）与 wall-time 与 TD-MPC 相当（L1058–1059）；规划超参 Horizon 3 / 512 采样 / 6 迭代（L1562–1565）可作相对量级参考，属我给出的定位，非原文推断。
+3.【推断】跨域单组超参的机制等价于"把 reward/value 预测做成尺度不变表示"：离散回归（log 空间软交叉熵）使损失对任务奖励幅值不敏感（L266–269），加上 SimNorm 稳定梯度（L287–289）——这是"跨 104 任务同一超参"的工程根基，见 L188 "achieving strong algorithmic robustness (can use the same hyperparameters across all tasks)"。
+4.【推断】本文 scaling 曲线（70.6 @317M 未饱和，L574–575）暗示"更大世界模型→更强低层控制"路线可行，且成本可控："The 317M parameter model can be trained with limited computational resources."（L579–580），33 GPU 天（L533）。
+5.【推断】真机迁移是留给前作/未来工作的缺口：本文无真机段落（原文未写），仅在 L762–764 把"physical robots"作为风险（ii）出现，说明作者对该路线持"需加安全护栏"态度，而非否认其可行性。
+
+## 9) 主要图注/表注逐字
+- Figure 1（L85–88）："Overview. TD-MPC2 compares favorably to existing model-free and model-based RL methods across 104 continuous control tasks spanning multiple domains, with a single set of hyper-parameters (right). We further demonstrate the scalability of TD-MPC2 by training a single 317M parameter agent to perform 80 tasks across multiple domains, embodiments, and action spaces (left)."
+- Figure 2（L117–119）："Tasks. TD-MPC2 performs 104 diverse tasks from (left to right) DMControl (Tassa et al., 2018), Meta-World (Yu et al., 2019), ManiSkill2 (Gu et al., 2023), and MyoSuite (Caggiano et al., 2022), with a single set of hyperparameters."
+- Figure 4（L348–351）："Single-task RL. Episode return (DMControl) and success rate (others) as a function of environment steps across 104 continuous control tasks spanning 4 diverse task domains. TD-MPC2 achieves higher data-efficiency and asymptotic performance than existing methods, while using the same hyperparameters across all tasks. Mean and 95% CIs over 3 seeds."
+- Figure 5（L409–412）："High-dimensional locomotion. ... SAC and DreamerV3 are prone to numerical instabilities in Dog tasks, and are significantly less data-efficient than TD-MPC2 in Humanoid tasks."
+- Figure 6（L427–429）："Object manipulation. ... Pick YCB considers manipulation of all 74 objects from the YCB (Calli et al., 2015) dataset. TD-MPC2 excels at hard tasks."
+- Figure 7（L513–516）："Massively multi-task world models. (Left) Normalized score as a function of model size on the two 80-task and 30-task datasets. TD-MPC2 capabilities scale with model size. (Right) T-SNE (van der Maaten & Hinton, 2008) visualization of task embeddings learned by a TD-MPC2 agent trained on 80 tasks from DMControl and Meta-World."
+- Figure 8（L561–567）："Finetuning. Score of a 19M parameter TD-MPC2 agent trained on 70 tasks and finetuned online to each of 10 held-out tasks for 20k environment steps. 3 seeds."
+- Figure 9（L679–683）："Ablations. (Curves) Normalized score as a function of environment steps, averaged across three of the most difficult tasks: Dog Run, Humanoid Walk (DMControl), and Pick YCB (ManiSkill2). Mean and 95% CIs over 3 random seeds. (Bars) Normalized score of 19M parameter multitask (80 tasks) TD-MPC2 agents. Our ablations highlight the relative importance of each design choice; red is the default formulation of TD-MPC2."
+- Table 1（L521–533）："Training cost. Approximate TD-MPC2 training cost on the 80-task dataset, reported in GPU days on a single NVIDIA GeForce RTX 3090 GPU. We also list the normalized score achieved by each model at end of training."
+- Table 6（L1169–1171）："Environment details. We list the episode length and action repeat used for each task domain, as well as the total number of environment steps and performance metrics that we use for benchmarking methods. All methods use the same values for all tasks."
+- Table 10（L1770–1773）："Test-time regularization. Normalized score of a 19M parameter TD-MPC2 agent trained on the 80-task dataset, varying the regularization strength c of our proposed test-time regularizer. We do not apply this regularization in any of our other experiments, and only include these results to inspire future research directions."

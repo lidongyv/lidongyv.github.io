@@ -1,0 +1,869 @@
+ViTacWorld: Scaling Visuo-Tactile World Models for Contact-Rich
+Robot Manipulation
+Yunao Huang1,2, Shiyu Sang 1,2, Suting Ni 1, Haotao Lu 1,
+Shijie Wu1, Rui Lv 1, Ziyang Guo 1, Ye Shi 1,2, Jingya Wang 1,∗
+Abstract— Contact-rich robot manipulation requires physical
+interaction cues that are often invisible to cameras, making
+tactile sensing essential for robust control. However, scaling
+visuo-tactile robot learning remains difficult because real tactile
+interaction data are expensive to collect, hardware-dependent,
+and limited in task and scene diversity. We present ViTacWorld,
+an action-conditioned visuo-tactile world model for scalable
+contact-rich robot manipulation. ViTacWorld leverages public
+real tactile datasets and a constructed simulation environment
+to scale visuo-tactile-action data, exploiting the fact that tactile
+signals are directly grounded in physical contact and can
+exhibit a smaller simulation-to-real gap than purely visual
+observations. The model is first pretrained with large-scale real
+and simulated visuo-tactile trajectories, and then finetuned with
+real-world policy rollouts to better match downstream manip-
+ulation behaviors. Given robot actions, ViTacWorld predicts
+temporally aligned visual observations and tactile feedback,
+enabling visuo-tactile-action rollout generation. To the best of
+our knowledge, ViTacWorld is the first framework that uses
+a world model for robot visuo-tactile-action trajectory gener-
+ation and policy evaluation. It serves two roles: synthesizing
+rollouts to improve downstream tactile policies, and evaluating
+policies by predicting action-conditioned visuo-tactile outcomes
+under controlled action sequences. Experiments on contact-rich
+manipulation tasks show that ViTacWorld generates physically
+meaningful rollouts, improves policy performance through scal-
+able data augmentation, and enables action-conditioned policy
+evaluation.
+Project page: https://vitacworld.github.io/
+I. INTRODUCTION
+Contact-rich manipulation tasks such as insertion, peeling,
+and plugging are central to real-world robot manipulation,
+yet difficult to accomplish with vision alone due to occlusion,
+constrained interfaces, and subtle force-dependent dynamics.
+Tactile sensing directly captures physical interaction at con-
+tact, making it a key modality rather than a supplementary
+signal. However, scaling visuo-tactile robot learning remains
+challenging because task-relevant visuo-tactile-action trajec-
+tories are difficult to obtain at scale. Real-robot teleoperation
+with tactile sensors provides faithful data, but it is expensive
+and slow: vision-based tactile sensors such as GelSight-
+style devices [1], [2] are costly, have limited lifetime under
+repeated contact, and contact-rich demonstrations are often
+hard to collect reliably.
+Simulation offers a scalable alternative. Recent systems
+such as TacSL [3], TacEx [4], and UniVTAC [5] enable
+1ShanghaiTech University. 2InstAdapt.
+∗Corresponding author: Jingya Wang
+(wangjingya@shanghaitech.edu.cn).
+Emails:{huangya2024, sangshy2025, nist2024, luht2025, wushj12023,
+lvrui2026, guozy12025, shiye, wangjingya}@shanghaitech.edu.cn.
+Tactile policy improvement
+Expert only With ViTacWorld
+Generates vision and touch
+Tactile policy evaluation
+vs.
+Real Imagined
+Fig. 1.ViTacWorldgenerates action-conditioned visual and tactile
+observations for tactile policy improvement and evaluation. Top: generated
+rollouts improve charger plugging compared with expert-only training.
+Bottom: real and imagined U-Block insertion examples exhibit the same
+failure outcome.
+visuo-tactile sensor simulation and simulated contact-rich
+manipulation data collection in physics environments. Com-
+pared with purely visual observations, tactile signals are more
+directly grounded in local contact geometry and force re-
+sponse, which makes simulated tactile feedback a particularly
+promising source for scaling visuo-tactile data. Neverthe-
+less, simulated contact-rich data remain constrained by task
+diversity, asset fidelity, contact modeling, and the sim-to-
+real gap; many everyday tasks involving deformable objects,
+frictional surface interaction, wiping, peeling, or precise real-
+world fixtures remain difficult to reproduce faithfully. UMI-
+style robot-free teaching systems [6], [7] decouple demon-
+stration collection from full robot teleoperation, and recent
+tactile extensions such as FreeTacMan [8] and exUMI [9]
+further enable visuo-tactile data collection; however, they
+still require dedicated tactile hardware and may introduce
+embodiment or viewpoint gaps. These limitations motivate
+a broader question: can we scale visuo-tactile robot learning
+by combining public tactile data, simulation-generated inter-
+action data, and real-world policy rollouts within a unified
+action-conditioned world model?
+Recent progress in video foundation models [10], [11]
+suggests a new route for scaling robot data. General video
+generators such as Wan [12] demonstrate strong temporal
+arXiv:2607.22530v2  [cs.RO]  28 Sep 2026
+generation ability, while Physical-AI-oriented world models
+such as Cosmos [13] further adapt this capability to robotics,
+simulation, and dream data generation. In particular, action-
+conditioned robot world [13], [14] models provide a useful
+prior for modeling how robot actions change future obser-
+vations, making them a natural foundation for generating
+manipulation rollouts. Our insight is to extend this action-
+conditioned world-modeling capability beyond vision: by
+learning how robot actions jointly evolve visual observations
+and tactile feedback, a world model can synthesize contact-
+rich visuo-tactile-action trajectories and predict policy out-
+comes under controlled action sequences. This perspective
+differs from using world models only as video predictors,
+planners [15], or internal components of end-to-end world-
+action policies [16], [17]. We instead study visuo-tactile
+world models as reusable data generators for downstream
+tactile policies.
+We propose ViTacWorld (Fig. 1), a visuo-tactile world-
+modeling framework that generates contact-rich manipu-
+lation rollouts with temporally aligned visual and tactile
+observations conditioned on robot action chunks. Rather than
+learning motion and tactile dynamics jointly from scratch,
+ViTacWorld inherits strong motion priors and focuses its
+capacity on acquiring tactile dynamics at low adaptation cost.
+Architecturally, we model tactile sensing as an additional
+generated view and align the visual and tactile streams via
+view-aware conditioning and cross-view attention, which
+ensures cross-view consistency between the two modalities.
+To enhance generalization and generation quality, we first
+pretrain the model on large-scale public and simulated data,
+then finetune it on real task demonstrations and policy
+rollouts from our target setup. Notably, the simulated data,
+constructed via real-to-sim techniques, serves as a comple-
+mentary source during pretraining, helping the model better
+inherit knowledge from large-scale data while adapting to
+our target tasks. We validate the generated data by fine-
+tuning representative downstream tactile policies, including
+lightweight imitation policies and VLA-style policies that
+consume visual and tactile observations. Improved contact-
+rich manipulation performance after finetuning indicates that
+the generated rollouts are not only visually plausible, but
+useful as dream visuo-tactile data for policy learning.
+In summary, our contributions are:(i)we propose ViTac-
+World, an action-conditioned visuo-tactile world-modeling
+framework that enables temporally aligned visuo-tactile-
+action rollout generation for contact-rich robot manipulation;
+to the best of our knowledge, this is the first world-model-
+based framework for robot visuo-tactile-action trajectory
+generation;(ii)we develop a scalable training pipeline
+that combines public visuo-tactile-action data, simulation-
+generated visuo-tactile interactions, and real-world policy
+rollout finetuning to scale visuo-tactile world modeling; and
+(iii)we show that ViTacWorld not only improves down-
+stream tactile policies through synthetic rollout augmenta-
+tion, but also supports action-conditioned policy evaluation
+by predicting visuo-tactile outcomes under controlled action
+sequences.
+II. RELATEDWORK
+a) Visuo-Tactile Policies for Contact-Rich Manipula-
+tion.:Tactile sensing has been widely studied as a comple-
+mentary modality to vision for contact-rich robot manipula-
+tion. Recent work integrates tactile feedback into end-to-end
+manipulation policies, including visuo-tactile imitation or
+diffusion policies [18]–[20] such as 3D-ViTac [21], Reactive
+Diffusion Policy [22], and PolyTouch [23], among others,
+which improve fine-grained manipulation, grasp adjustment,
+and contact-rich control under visual ambiguity. In parallel,
+tactile-augmented and force-aware VLA models incorporate
+tactile or force feedback into generalist robot policies to
+improve contact-sensitive decision making, including VLA-
+Touch [24], Tactile-VLA [25], ForceVLA [26], and re-
+lated variants [27]–[30], among others. Recent visuo-tactile
+world-action models, including DreamTacVLA [31], Om-
+niVTA [16], VTAM [17], and VT-W AM [32], integrate tactile
+prediction with action generation. Complementary predictive
+policies, such as TacForeSight [33] and TouchWorld [34],
+use anticipated tactile states to guide contact-rich control.
+Together, these works demonstrate that tactile feedback
+provides policy-relevant information that cannot be reliably
+inferred from vision alone. However, they primarily focus on
+how policies consume tactile observations or integrate tactile
+prediction into the policy itself, whereas our work focuses
+on the complementary question of how to generate additional
+task-relevant visuo-tactile data that can be used to train and
+improve downstream tactile policies.
+b) Scaling Visuo-Tactile Data for Robot Learning.:
+A key bottleneck for tactile robot learning is the limited
+availability of synchronized visuo-tactile-action data. Real-
+robot tactile collection usually builds on standard robot-
+gripper-camera setups, such as DROID-style platforms [35],
+with tactile sensors additionally mounted on the gripper fin-
+gers. UMI-style and robot-free collection systems decouple
+demonstration collection from full robot teleoperation, and
+recent tactile extensions, including MimicTouch [36], Free-
+TacMan [8], and exUMI [9], among others [37]–[39], enable
+visuo-tactile demonstrations with handheld or task-agnostic
+interfaces. These systems provide task-relevant trajectories,
+but scaling them still requires dedicated tactile hardware,
+careful synchronization, repeated physical contact, and may
+introduce embodiment or viewpoint gaps. Simulation offers
+another route: tactile simulators such as TacSL [3] and
+TacEx [4] enable scalable visuo-tactile sensor simulation
+and simulated contact-rich data collection [5], [40]–[43].
+Yet simulated tactile data remain constrained by contact
+fidelity, asset realism, task diversity, and sim-to-real transfer.
+Recent robot world models [44], [45] have explored using
+generated rollouts for policy evaluation or improvement,
+while large video and world foundation models provide
+strong generative priors for robot data synthesis. However,
+most action-conditioned robot world models used for rollout
+generation remain primarily visual, which is insufficient for
+contact-rich manipulation where critical contact states are
+often weakly observable from cameras. Visuo-tactile world-
+modeling work [15] has shown that tactile observations
+can improve the physical consistency of imagined contact
+dynamics, but these models are not primarily designed
+as scalable data generators for downstream tactile policy
+learning. In contrast, ViTacWorld extends a large action-
+conditioned robot video prior into a visuo-tactile data gen-
+erator, producing policy-improvement rollouts with aligned
+visual and tactile observations for contact-rich robot learning.
+III. METHOD
+Figure 2 summarizes the model architecture, the two-
+stage training pipeline, and the two downstream uses of
+ViTacWorld.
+A. Problem Formulation
+We aim to learn an action-conditioned visuo-tactile world
+model for contact-rich manipulation. At timet, we represent
+the multimodal observation aso t ={I vt }v∈V , whereV=
+{main,wrist,tactile}denotes the external camera, wrist
+camera, and image-like tactile stream, respectively. Given an
+H-step world-model action sequenceu t:t+H−1, where each
+action is represented as relative end-effector motion with a
+gripper command, the model predicts future visual and tactile
+observations,
+ˆot+1:t+H =f θ(ot, ut:t+H−1 , m),(1)
+wherem∈ {0,1} |V| is a view-presence mask for heteroge-
+neous training data.
+B. Action-Conditioned Visuo-Tactile World Model
+ViTacWorld extends a pretrained action-conditioned robot
+video world model to visuo-tactile generation while preserv-
+ing its backbone and action-conditioning pathway. For each
+training sample, the main camera, wrist camera, and tactile
+observations are separately encoded by the V AE [46] encoder
+into latent tokens and assembled as a unified visuo-tactile
+sequence. We then adapt the action-conditioned DiT [47]
+with stream-aware modulation and explicit cross-stream ex-
+change, allowing the model to reuse robot motion priors
+while generating aligned visual and tactile observations.
+To make the DiT aware of the source stream of each latent
+token, we introduce stream identity embeddingse v for the
+visual and tactile streams. These embeddings are projected
+into the same AdaLN [48] modulation path as timestep and
+action conditioning. For each blockb, stream-aware self-
+attention is first applied within each stream:
+˜Z vb = SelfAttnv  AdaLN(Z vb−1;c b +P(e v)) , v∈ V,
+(2)
+whereZ vb denotes the latent tokens of streamv,c b denotes
+the timestep-action conditioning, andPis a zero-initialized
+projection. Then an explicit cross-view attention module
+exchanges information across streams:
+Z vb = CrossViewAttnv
+
+˜Z vb ,{ ˜Z v′b }v′̸=v , v∈ V.(3)
+This design avoids uncontrolled mixing between camera
+and tactile tokens during ordinary self-attention, while still
+allowing the tactile stream to exchange contact information
+with the visual streams. As a result, tactile is generated as a
+first-class observation stream that remains temporally aligned
+with the visual rollout.
+Action conditioning.ViTacWorld follows the world-
+model action convention of the action-conditioned robot
+video prior. The action sequence is embedded through the
+inherited action-conditioning pathway and injected into the
+DiT through the original timestep/AdaLN [48] modulation
+path. To support multi-view visuo-tactile generation, we
+simply repeat the action conditioning across visual and tactile
+streams at the corresponding latent timestep.
+Training objective.ViTacWorld is trained with the latent
+denoising objective of the underlying video world model,
+applied to future visual and tactile latents. Letz 0 denote the
+target latent rollout andz σ its noisy version at diffusion noise
+levelσ. The model predicts the denoising target conditioned
+on the current observation, robot actions, stream identities,
+and the view-presence mask:
+Lwm = Ez0,σ
+h
+∥Dθ(zσ, σ, ot, ut:t+H−1 , m)−z0∥22
+i
+.(4)
+The loss is applied only to future prediction frames and valid
+streams. This objective trains ViTacWorld to generate action-
+conditioned contact-rich rollouts with temporally aligned
+visual and tactile observations.
+C. ViTacWorld Pretraining and Fine-Tuning
+A key design goal of ViTacWorld is to scale visuo-tactile
+world modeling beyond small task-specific tactile datasets.
+We therefore pretrain the model on large-scale public and
+simulated visuo-tactile data, and then finetune it with real
+demonstrations and policy rollouts from our target setup.
+Pretraining with large-scale real and simulated data.
+In the first stage, we pretrain ViTacWorld with large-
+scale real and simulated visuo-tactile-action trajectories to
+learn broad action-conditioned visual-tactile dynamics before
+target-domain adaptation. To handle heterogeneous view
+coverage, we use a fixed stream layout with view-presence
+masks, allowing incomplete trajectories to contribute to pre-
+training without corrupting missing streams.
+We collect task-aligned simulated data as a complementary
+pretraining source to bridge large-scale public data and our
+target real-robot tasks. Our motivation is that, although full
+manipulation simulation still suffers from scene, dynamics,
+and embodiment level sim-to-real gaps, the visual appearance
+of image-like tactile observations can be rendered with
+relatively smaller modality gap when the sensor geometry
+and rendering pipeline are well aligned. This makes tactile
+simulation a useful source for enriching contact patterns
+during pretraining. The simulation is built in Isaac Sim,
+with tactile observations synthesized through the Xense
+tactile rendering pipeline. To align simulation with the real
+setup, we reconstruct target scenes and objects with 3D
+Gaussian scanning, calibrate the real camera extrinsics, and
+reproduce the camera-robot spatial layout in simulation.
+Beyond matching the real tasks, we also vary task assets
+and interaction instances under the same robot-sensor setup,
+In-View Attention
+ViTacWorld
+VAE Encoder
+Visual
+Tactile
+VAE Decoder
+DiT Backbone
+Action
+…
+Visual
+Tactile
+Visual Stream 1
+(Wrist)
+View-Aware Transformer
+Visual Stream 2
+(Main)
+Tactile Stream
+…
+…
+…
+…
+…
+…
+In-View Attention
+Cross-View 
+Attention
+DiT Block
+View-Aware AdaLN
+In-View Attention
+Cross-View Attention
+FFN
+DiT Block N
+DiT Block 2
+…
+DiT Block 1
+Policy ViTacWorld
+Actions
+Observations
+Policy 
+Improvement
+Policy 
+Evaluation
+ViTacWorld Finetuning
+Real-World Policy Rollout
+Success
+Failure
+Real-World Setting
+ViTacWorld Pretraining
+Real Visuo-Tactile Data
+Task-Aligned Simulation Data
+Scenes Tasks
+Tactile View
+Wrist View
+Main View
+ Real
+Sim
+Fig. 2.Overview of ViTacWorld.Right side shows scaling training pipeline, where real visuo-tactile data and task-aligned simulation data are used
+for pretraining, followed by real robot task data and policy rollout data for target-domain tuning. Left side illustrates the action-conditioned visuo-tactile
+world model and its rollout generation process. Visual and tactile streams are encoded into latent tokens and modeled with a view-aware DiT to produce
+policy-conditioned rollouts, which support both dataset augmentation and policy evaluation.
+providing additional object and task diversity while keeping
+the generated data close to the target deployment domain.
+Stage-I pretraining mixes over 16K public real trajecto-
+ries with over 5K task-aligned simulated trajectories at an
+approximately2:1sampling ratio. We train on 13-frame
+windows sampled at 15 Hz for 30K steps with a global batch
+size of 256 and learning rate3×10 −5. Stage-II target-domain
+fine-tuning uses a global batch size of 128, learning rate
+1×10 −5, and 7K steps.
+Real-world policy rollout and finetuning.In the second
+stage, we adapt ViTacWorld to the target real-world setup
+using expert demonstrations and policy rollouts collected
+on the real robot. Expert trajectories align the model with
+real task executions, while policy rollouts expose it to states
+induced by downstream policies, including both successful
+and failed contact-rich interactions. This tuning stage helps
+the world model better match the deployment distribution in
+which synthetic rollouts will later be generated.
+Together, the two stages turn a visual robot world-model
+prior into a target-ready visuo-tactile generator with both
+broad visual-tactile generalization and real-domain adaptabil-
+ity.
+D. Visuo-Tactile Policy Improvement and Evaluation
+After training, ViTacWorld is used as both a policy-
+conditioned generator and a lightweight evaluator of visuo-
+tactile manipulation. Given real initial observations and
+action chunks proposed by a downstream tactile policy,
+ViTacWorld autoregressively generates contact-rich visual-
+tactile rollouts. These imagined rollouts can be inspected
+for success or failure, and selected successful rollouts are
+converted into dream data to augment real demonstrations
+for policy training.
+Letπ ϕ denote a downstream tactile policy that maps the
+current observationo t and task instructionlto anH-step
+action chunk:
+at:t+H−1 ∼π ϕ(· |ot, l).(5)
+When necessary, policy actions are converted to the world-
+model action space defined in Sec. III-A. Given the current
+observation and action sequence, ViTacWorld predicts anH-
+step future rollout:
+ˆot+1:t+H =f θ(ot, ut:t+H−1 , m).(6)
+We then use the generated observationˆo t+k as the next
+policy input and repeat the process autoregressively. This
+receding-horizon loop produces policy-conditioned contact-
+rich rollouts that reflect states likely to be visited by the
+downstream policy. We filter generated rollouts according to
+task success and visual-tactile plausibility, convert selected
+rollouts into policy-training trajectories, and merge them with
+expert demonstrations:
+Daug =D expert ∪ Ddream.(7)
+The augmented dataset can then be used to finetune down-
+stream tactile policies. In addition, the same policy-in-the-
+loop rollouts can be inspected as imagined executions, al-
+lowing ViTacWorld to provide a lightweight evaluation signal
+before real-robot deployment.
+IV. EXPERIMENTS
+Our experiments evaluate whether ViTacWorld-generated
+rollouts improve contact-rich manipulation policies, whether
+imagined executions preserve real-robot policy performance,
+and how training choices affect generation quality.
+A. Experimental Setup
+Robot platform.All real-robot experiments are conducted
+on a Franka Panda robot equipped with a Robotiq 2F-85
+parallel gripper. Xense optical tactile sensors are mounted
+on the gripper fingers to capture image-like tactile observa-
+tions during contact-rich interaction. Visual observations are
+captured by an Intel RealSense D435 camera as the external
+third-person view and a ZED Mini camera as the wrist-
+mounted view. The tactile policies take synchronized third-
+person RGB, wrist RGB, tactile observations, robot proprio-
+ception, and task instructions as input. Expert demonstrations
+are collected through FACTR teleoperation [49].
+Tasks.We evaluate on four contact-rich manipulation
+tasks:Charger Plugging,Cucumber Peeling,U-Block Inser-
+tion, andCuboid Insertion. These tasks cover precise charger
+alignment and insertion, tool-object contact during peeling,
+and object-slot insertion with tight geometric constraints.
+Among them,Charger Pluggingis particularly challenging
+because small pose errors can lead to failed insertion even
+when the visual trajectory appears similar.
+Expert and rollout data.We collect 300 real expert
+demonstrations for policy warm-up, including 120 charger
+plugging, 50 cucumber peeling, 62 U-block insertion, and 68
+cuboid insertion demonstrations. After warming up a tactile
+π0.5 policy [50], we further collect 50 real policy rollouts per
+task, including both successful and failed executions. These
+rollouts are used to tune ViTacWorld to the state distribution
+induced by the downstream policy.
+Visuo-Tactile data generation.After ViTacWorld is
+trained, we use the warmed-up tactileπ 0.5 policy as the
+rollout policy to generate candidate visuo-tactile trajectories.
+We select 200 successful rollouts across the four tasks
+and merge them with the expert demonstrations. Candidate
+rollouts are retained only when a human annotator verifies
+fixed task-completion criteria and visual–tactile plausibility;
+task-specific rules include complete insertion and continuous
+valid tool–object contact.
+Downstream policies.We evaluate a vision-onlyπ 0.5
+baseline, a tactileπ 0.5 policy, and ACT + tactile [51]. All
+three are trained at the expert-only, round-1, and round-2
+stages. The vision-only baseline uses the visual observa-
+tions and actions from the selected rollouts without tactile
+input, whereas the tactile policies also use the generated
+tactile stream. Round 2 adds another 200 selected rollouts
+generated by the round-1 tactileπ 0.5 policy, retaining the
+Expert only Expert + ViTacWorld rollouts
+Fig. 3. Qualitative comparison of real-robot rollouts using the sameπ 0.5
++ tactile policy architecture. The top row shows the policy trained only
+with expert demonstrations, while the bottom row shows the policy trained
+with the same expert demonstrations augmented by ViTacWorld-generated
+rollouts.
+200 round-1 rollouts and 300 expert demonstrations for a
+total of 700 training trajectories. Thus, Table I compares
+expert-only training with visual-only and visuo-tactile rollout
+augmentation. The tactileπ 0.5 policy generates the rollouts
+used to finetune all downstream policies.
+Evaluation protocol.We report real-robot success rates
+over 50 trials for each policy, training stage, and task, using
+the same task setup and initial-state distribution. A trial is
+successful only when the robot completes the task-specific
+goal, such as full insertion, sustained peeling contact, or
+placement into the target slot. The average is the unweighted
+mean across the four tasks.
+B. Policy Improvement with Generated Visuo-Tactile Data
+ViTacWorld-generated rollouts improve tactile-policy per-
+formance across all four tasks (Table I). The mean success
+rate of tactileπ 0.5 rises from 43.0% with expert demon-
+strations to 67.5% and 79.5% after successive augmentation
+rounds. ACT + tactile also benefits, improving from 17.0%
+to 47.0%. These results demonstrate that generated visuo-
+tactile trajectories provide useful training supervision across
+two policy architectures, with further gains from iterative
+augmentation.
+To examine the role of generated tactile observations, we
+compare the vision-only and tactileπ 0.5 policies trained on
+the same selected rollouts, with the tactile stream omitted for
+the vision-only baseline. With the added rollout count and
+visual–action sequences matched, the tactile policy achieves
+a larger four-task gain over its own expert-only baseline:
+24.5 versus 20.5 percentage points after round 1, and 36.5
+versus 34.5 after round 2. The tactile policy also maintains
+higher success on every task at every training stage. These
+comparisons support the utility of retaining generated tactile
+observations for policy augmentation, alongside the benefit
+of additional visual–action training data.
+Figure 3 illustrates the corresponding changes in real-
+robot behavior. The expert-only policy can fail through
+inaccurate grasping or poor alignment before insertion. After
+augmentation, the tactile policy shows more stable grasping
+and contact-phase corrections, including small re-alignment
+motions after an initially misaligned insertion attempt. These
+examples complement the success-rate results by showing
+how additional visuo-tactile rollouts can improve both ap-
+proach behavior and contact adjustment.
+TABLE I
+REAL-ROBOT SUCCESS RATES(%)OVER50TRIALS PER TASK,POLICY,AND TRAINING STAGE. AVG.IS THE FOUR-TASK MEAN;BOLD MARKS THE
+BEST RESULT PER COLUMN.
+Data source Method
+Charger
+Plugging
+Cucumber
+Peeling
+U-Block
+Insertion
+Cuboid
+Insertion Avg.
+Expert only
+ACT + tactile 4 8 32 24 17.0
+π0.5 18 28 48 28 30.5
+π0.5 + tactile 20 44 72 36 43.0
+Expert +
+Round-1 rollouts
+ACT + tactile 14 22 36 32 26.0
+π0.5 34 60 68 42 51.0
+π0.5 + tactile 44 82 80 64 67.5
+Expert +
+Round-2 rollouts
+ACT + tactile 26 44 68 50 47.0
+π0.5 44 72 82 62 65.0
+π0.5 + tactile64 86 94 74 79.5
+0.0 0.2 0.4 0.6 0.8 1.0
+Real success rate
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0Imagined success rate
+y = x
+y = 0.845x + 0.008
+r = 0.863; ρ = 0.790
+Charger
+Cucumber
+U-Block
+Cuboid
+Expert only Round 1 Round 2
+Fig. 4. Real-versus-imagined success rates for three tactileπ 0.5 check-
+points on four tasks (12 points), each based on 50 matched initial states.
+Colors and marker shapes denote tasks; open, light-filled, and solid markers
+denote the expert-only, round-1, and round-2 stages. Bars are marginal 95%
+Wilson confidence intervals for each success rate. The dashed line isy=x
+and the solid line is the least-squares fit.
+C. Policy Evaluation with Imagined Rollouts
+We evaluate the expert-only, round-1, and round-2 tactile
+π0.5 checkpoints on all four tasks, reusing the corresponding
+real-robot trials reported in Table I. For each checkpoint–
+task combination, we use the recorded initial state and
+observation from each of the 50 trials to initialize one
+imagined execution with the same policy checkpoint. This
+gives 50 real–imagined pairs per combination and 600 pairs
+in total. A human annotator applies the same fixed task-
+completion criteria to real and imagined executions; each
+success rate is the fraction of successful executions among
+Fig. 5. Matched qualitative policy-evaluation example on U-Block inser-
+tion. The shared initial observation is shown at left. The top row is the failed
+real-robot execution; the following three rows are independent ViTacWorld
+rollouts, all of which also predict failure. This example illustrates outcome
+agreement and is separate from the 50-trial quantitative evaluation.
+the 50 trials.
+Figure 4 compares the resulting 12 pairs of aggregate
+success rates. Real and imagined performance are positively
+associated (Pearsonr= 0.863; Spearmanρ= 0.790), with
+a mean absolute error of 12.33 percentage points. Within
+every task, both evaluations rank the checkpoints in the order
+expert-only<round 1<round 2. However, ViTacWorld
+underestimates success by 9.0 points on average, with a 26-
+point error for round-2 Cucumber Peeling. These results sup-
+port relative comparison among the evaluated checkpoints,
+but do not establish exact success-rate calibration or trial-
+level outcome agreement from the aggregate rates alone.
+Separately, Figure 5 illustrates a matched qualitative U-
+Block failure example. From the same initial observation, the
+real execution and all three independently sampled imagined
+executions fail the task. The generated trajectories need not
+be frame-identical to the real rollout; the relevant signal
+is agreement on the task-level outcome under the matched
+policy and initial condition.
+D. Visuo-Tactile World Model Quality Analysis
+To reduce score inflation from prolonged non-contact
+segments, we evaluate all variants on the same held-out
+real-world clips spanning contact transitions, rather than
+full trajectories. Given the first observation and logged
+action sequence, each model predicts future observations;
+Fig. 6. Qualitative world-model predictions on held-out validation clips. The model receives the first observation frame and the logged action sequence,
+then predicts future visual and tactile observations.
+we compute view-wise PSNR, SSIM, and LPIPS against
+the corresponding ground-truth future frames. These image-
+based measures complement the qualitative predictions and
+downstream policy evaluation.
+As shown in Table II, pretraining substantially improves
+generation quality over direct real-data tuning, indicating that
+large-scale visuo-tactile data helps the world model learn
+more stable action-conditioned dynamics beyond the limited
+real tuning set. Adding task-aligned simulated tactile trajec-
+tories further improves the model over real-data pretraining
+alone, suggesting that simulation aligned with our real scenes
+and tasks helps adapt the world model to the target robot
+domain.
+Replacing cross-view attention with self-attention through-
+out the model increases LPIPS from 0.0513 to 0.0611 in the
+main view, from 0.0725 to 0.0854 in the wrist view, and
+from 0.0157 to 0.0163 in the tactile stream. Main-view SSIM
+is nearly unchanged (0.8286 versus 0.8290). These results
+support the contribution of explicit cross-view attention to
+perceptual prediction quality across the three streams.
+We also provide qualitative visualizations in Figure 6. The
+held-out validation examples show that pretraining and task-
+aligned simulation improve generation quality across visual
+and tactile views. Compared with ablated variants, the full
+model produces clearer rollouts with better preserved object
+geometry, more consistent end-effector motion, and fewer
+hallucinated contact states.
+TABLE II
+WORLD-MODEL PREDICTION QUALITY ON HELD-OUT
+CONTACT-TRANSITION CLIPS. BOLD MARKS THE BEST RESULT PER
+VIEW AND METRIC.
+View Model variant PSNR↑SSIM↑LPIPS↓
+Main
+w/o pretraining 22.718 0.7859 0.0781
+w/o task-aligned sim 23.128 0.8011 0.0687
+w/o cross-view attn. 23.6530.82900.0611
+Full ViTacWorld24.2580.82860.0513
+Wrist
+w/o pretraining 21.080 0.6649 0.1084
+w/o task-aligned sim 21.434 0.6869 0.0901
+w/o cross-view attn. 21.853 0.6913 0.0854
+Full ViTacWorld21.925 0.6962 0.0725
+Tactile
+w/o pretraining 34.967 0.9204 0.0211
+w/o task-aligned sim 35.127 0.9296 0.0179
+w/o cross-view attn. 35.220 0.9310 0.0163
+Full ViTacWorld35.225 0.9318 0.0157
+V. CONCLUSION
+In this paper, we present ViTacWorld, an action-
+conditioned visuo-tactile world model for contact-rich robot
+manipulation. ViTacWorld generates temporally aligned vi-
+sual and tactile rollouts under robot actions, serving both as
+a scalable source of synthetic visuo-tactile-action data and as
+a lightweight policy evaluation tool. We train the model with
+large-scale real and simulated visuo-tactile trajectories, fol-
+lowed by real-world policy-rollout fine-tuning. Experiments
+on contact-rich tasks show that ViTacWorld produces policy-
+improvement rollouts and supports imagination-based policy
+evaluation.
+ACKNOWLEDGMENTS
+This work was supported by the National Natural Sci-
+ence Foundation of China (62406195), the HPC Platform
+of ShanghaiTech University, the Key Laboratory of Intelli-
+gent Perception and Human-Machine Collaboration (Shang-
+haitech University), Ministry of Education, and the Shanghai
+Engineering Research Center of Intelligent Vision and Imag-
+ing. This work was also supported in part by computational
+resources provided by Fcloud CO., LTD.
+REFERENCES
+[1] S. Dong, W. Yuan, and E. H. Adelson, “Improved gelsight tactile sen-
+sor for measuring geometry and slip,” in2017 IEEE/RSJ International
+Conference on Intelligent Robots and Systems (IROS), 2017, pp. 137–
+144.
+[2] W. Yuan, S. Dong, and E. H. Adelson, “Gelsight: High-resolution
+tactile sensors for perceiving physical properties,”IEEE Robotics &
+Automation Magazine, vol. 24, no. 3, pp. 66–77, 2017.
+[3] I. Akinola, J. Xu, J. Carius, D. Fox, and Y . Narang, “Tacsl: A library
+for visuotactile sensor simulation and learning,”IEEE Transactions on
+Robotics, 2025.
+[4] D. H. Nguyen, T. Schneider, G. Duret, A. Kshirsagar, B. Belousov,
+and J. Peters, “Tacex: Gelsight tactile simulation in isaac sim–
+combining soft-body and visuotactile simulators,”arXiv preprint
+arXiv:2411.04776, 2024.
+[5] B. Chen, W. Wan, T. Chen, X. Guo, C. Xu, Y . Qi, H. Zhang, L. Wu,
+T. Xu, Z. Li,et al., “Univtac: A unified simulation platform for visuo-
+tactile manipulation data generation, learning, and benchmarking,”
+arXiv preprint arXiv:2602.10093, 2026.
+[6] C. Chi, Z. Xu, C. Pan, E. Cousineau, B. Burchfiel, S. Feng, R. Tedrake,
+and S. Song, “Universal manipulation interface: In-the-wild robot
+teaching without in-the-wild robots,” inRobotics: Science and Systems
+(RSS), 2024.
+[7] Z. Zhaxizhuoma, K. Liu, C. Guan, Z. Jia, Z. Wu, X. Liu, T. Wang,
+S. Liang,et al., “Fast-umi: A scalable and hardware-independent
+universal manipulation interface with dataset,” inConference on Robot
+Learning (CoRL), 2025.
+[8] L. Wu, C. Yu, J. Ren, L. Chen, Y . Jiang, R. Huang, G. Gu, and
+H. Li, “Freetacman: Robot-free visuo-tactile data collection system for
+contact-rich manipulation,”arXiv preprint arXiv:2506.01941, 2025.
+[9] Y . Xu, L. Wei, P. An, Q. Zhang, and Y .-L. Li, “exumi: Extensible
+robot teaching system with action-aware task-agnostic tactile repre-
+sentation,”arXiv preprint arXiv:2509.14688, 2025.
+[10] A. Blattmann, T. Dockhorn, S. Kulal, D. Mendelevitch, M. Kilian,
+D. Lorenz, Y . Levi, Z. English, V . V oleti, A. Letts,et al., “Stable video
+diffusion: Scaling latent video diffusion models to large datasets,”
+arXiv preprint arXiv:2311.15127, 2023.
+[11] X. Chi, P. Jia, C.-K. Fan, X. Ju, W. Mi, K. Zhang, Z. Qin, W. Tian,
+K. Ge, H. Li,et al., “Wow: Towards a world omniscient world model
+through embodied interaction,”arXiv preprint arXiv:2509.22642,
+2025.
+[12] T. Wan, A. Wang, B. Ai, B. Wen, C. Mao, C.-W. Xie, D. Chen, F. Yu,
+H. Zhao, J. Yang,et al., “Wan: Open and advanced large-scale video
+generative models,”arXiv preprint arXiv:2503.20314, 2025.
+[13] A. Ali, J. Bai, M. Bala, Y . Balaji, A. Blakeman, T. Cai, J. Cao, T. Cao,
+E. Cha, Y .-W. Chao,et al., “World simulation with video foundation
+models for physical ai,”arXiv preprint arXiv:2511.00062, 2025.
+[14] S. Huang, Q. Chen, X. Zhang, J. Sun, and M. Schwager, “Particle-
+former: A 3d point cloud world model for multi-object, multi-material
+robotic manipulation,”arXiv preprint arXiv:2506.23126, 2025.
+[15] C. Higuera, S. Arnaud, B. Boots, M. Mukadam, F. R. Hogan,
+and F. Meier, “Visuo-tactile world models,”arXiv preprint
+arXiv:2602.06001, 2026.
+[16] Y . Zheng, S. Gu, W. Li, Y . Zheng, Y . Zang, S. Tian, X. Li, C. Hao,
+C. Gao, S. Liu,et al., “Omnivta: Visuo-tactile world modeling for
+contact-rich robotic manipulation,”arXiv preprint arXiv:2603.19201,
+2026.
+[17] H. Yuan, W. Yi, Z. Zhang, W. Chen, Y . Mo, J. Yin, X. Li, X. Zeng,
+C. Wen, C. Lu,et al., “Vtam: Video-tactile-action models for complex
+physical interaction beyond vlas,”arXiv preprint arXiv:2603.23481,
+2026.
+[18] C. Chi, Z. Xu, S. Feng, E. Cousineau, Y . Du, B. Burchfiel, R. Tedrake,
+and S. Song, “Diffusion policy: Visuomotor policy learning via action
+diffusion,”The International Journal of Robotics Research, vol. 44,
+no. 10-11, pp. 1684–1704, 2025.
+[19] Y . Ze, G. Zhang, K. Zhang, C. Hu, M. Wang, and H. Xu, “3d
+diffusion policy: Generalizable visuomotor policy learning via simple
+3d representations,”arXiv preprint arXiv:2403.03954, 2024.
+[20] S. Wu, Y . Zhu, Y . Huang, K. Zhu, J. Gu, J. Yu, Y . Shi, and
+J. Wang, “Afforddp: Generalizable diffusion policy with transferable
+affordance,” inProceedings of the Computer Vision and Pattern
+Recognition Conference, 2025, pp. 6971–6980.
+[21] B. Huang, Y . Wang, X. Yang, Y . Luo, and Y . Li, “3d-vitac: Learning
+fine-grained manipulation with visuo-tactile sensing,” inConference
+on Robot Learning, 2024.
+[22] H. Xue, J. Ren, W. Chen, G. Zhang, Y . Fang, G. Gu, H. Xu, and C. Lu,
+“Reactive diffusion policy: Slow-fast visual-tactile policy learning for
+contact-rich manipulation,” inProceedings of Robotics: Science and
+Systems (RSS), 2025.
+[23] J. Zhao, N. Kuppuswamy, S. Feng, B. Burchfiel, and E. Adelson,
+“Polytouch: A robust multi-modal tactile sensor for contact-rich ma-
+nipulation using tactile-diffusion policies,” in2025 IEEE International
+Conference on Robotics and Automation (ICRA). IEEE, 2025, pp.
+104–110.
+[24] J. Bi, K. Y . Ma, C. Hao, M. S. Zheng, and H. Soh, “Vla-touch:
+Enhancing vision-language-action model with dual-level tactile feed-
+back,”IEEE Robotics and Automation Letters, 2026.
+[25] J. Huang, S. Wang, F. Lin, Y . Hu, C. Wen, and Y . Gao, “Tactile-
+vla: unlocking vision-language-action model’s physical knowledge for
+tactile generalization,”arXiv preprint arXiv:2507.09160, 2025.
+[26] J. Yu, H. Liu, Q. Yu, J. Ren, C. Hao, H. Ding, G. Huang, G. Huang,
+Y . Song, P. Cai,et al., “Forcevla: Enhancing vla models with a
+force-aware moe for contact-rich manipulation,”Advances in Neural
+Information Processing Systems, vol. 38, pp. 93 409–93 439, 2026.
+[27] Y . Li, H. Jiang, J. Xia, H. Zhang, J. Du, Y . Zhou, J. Zeng, C. Hao,
+J. Ren, Q. Yu,et al., “Forcevla2: Unleashing hybrid force-position
+control with force awareness for contact-rich manipulation,”arXiv
+preprint arXiv:2603.15169, 2026.
+[28] P. Hao, C. Zhang, D. Li, X. Cao, X. Hao, S. Cui, and S. Wang, “Tla:
+Tactile-language-action model for contact-rich manipulation,”arXiv
+preprint arXiv:2503.08548, 2025.
+[29] C. Morissette, A. Abyaneh, W.-D. Chang, A. Houssaini, D. Meger, H.-
+C. Lin, J. Tremblay, and G. Dudek, “Tactile modality fusion for vision-
+language-action models,”arXiv preprint arXiv:2603.14604, 2026.
+[30] C. Zhang, P. Hao, X. Cao, X. Hao, S. Cui, and S. Wang, “Vtla: Vision-
+tactile-language-action model with preference learning for insertion
+manipulation,”Biomimetic Intelligence and Robotics, p. 100333, 2026.
+[31] G. Ye, Z. Zhang, X. Zhao, S. Wu, H. Lu, S. Lu, and H. Liu, “Learning
+to feel the future: Dreamtacvla for contact-rich manipulation,”arXiv
+preprint arXiv:2512.23864, 2025.
+[32] S. Tian, Y . Zheng, Y . Zheng, S. Gu, Y . Zang, Y . Qin, W. Li, H. Li,
+W. Ding, and D. Zhao, “VT-W AM: Visual-tactile world action model
+for contact-rich manipulation,”arXiv preprint arXiv:2607.02503,
+2026.
+[33] Y . Zang, Y . Zheng, X. Nie, Y . Zheng, S. Tian, S. Gu, C. Gao, Z. Wang,
+S. Yan, and W. Ding, “TacForeSight: Force-guided tactile world model
+for contact-rich manipulation,”arXiv preprint arXiv:2606.11184,
+2026.
+[34] J. Zhou, F. Hong, Y . Li, Y . Zhao, Y . Cen, Z. Liu, J. Huang, Z. Chen,
+R. Zhang, W. Zhu, X. Song, and S. Yang, “TouchWorld: A predictive
+and reactive tactile foundation model for dexterous manipulation,”
+arXiv preprint arXiv:2607.07287, 2026.
+[35] A. Khazatsky, K. Pertsch, S. Nair, A. Balakrishna, S. Dasari, S. Karam-
+cheti, S. Nasiriany, M. K. Srirama, L. Y . Chen, K. Ellis,et al., “Droid:
+A large-scale in-the-wild robot manipulation dataset,” inRobotics:
+Science and Systems, 2024.
+[36] K. Yu, Y . Han, Q. Wang, V . Saxena, D. Xu, and Y . Zhao, “Mimictouch:
+Leveraging multi-modal human tactile demonstrations for contact-rich
+manipulation,” inConference on Robot Learning. PMLR, 2025, pp.
+4844–4865.
+[37] F. Liu, C. Li, Y . Qin, J. Xu, P. Abbeel, and R. Chen, “Vitamin: Learn-
+ing contact-rich tasks through robot-free visuo-tactile manipulation
+interface,”arXiv preprint arXiv:2504.06156, 2025.
+[38] M. Xu, H. Zhang, Y . Hou, Z. Xu, L. Fan, M. Veloso, and S. Song,
+“Dexumi: Using human hand as the universal manipulation inter-
+face for dexterous manipulation,” inConference on Robot Learning.
+PMLR, 2025, pp. 437–459.
+[39] T. Cheng, K. Chen, L. Chen, L. Zhang, Y . Zhang, Y . Ling, M. Hamad,
+Z. Bing, F. Wu, K. Sharma,et al., “Tacumi: A multi-modal uni-
+versal manipulation interface for contact-rich tasks,”arXiv preprint
+arXiv:2601.14550, 2026.
+[40] S. Wang, M. Lambeta, P.-W. Chou, and R. Calandra, “Tacto: A fast,
+flexible, and open-source simulator for high-resolution vision-based
+tactile sensors,”IEEE Robotics and Automation Letters, vol. 7, no. 2,
+pp. 3930–3937, 2022.
+[41] Z. Si and W. Yuan, “Taxim: An example-based simulation model for
+gelsight tactile sensors,”IEEE Robotics and Automation Letters, vol. 7,
+no. 2, pp. 2361–2368, 2022.
+[42] Z. Si, G. Zhang, Q. Ben, B. Romero, Z. Xian, C. Liu, and C. Gan,
+“Difftactile: A physics-based differentiable tactile simulator for
+contact-rich robotic manipulation,”arXiv preprint arXiv:2403.08716,
+2024.
+[43] Y . Li, W. Du, C. Yu, P. Li, Z. Zhao, T. Liu, C. Jiang, Y . Zhu,
+and S. Huang, “Taccel: Scaling up vision-based tactile robotics via
+high-performance gpu simulation,”Advances in Neural Information
+Processing Systems, vol. 38, pp. 94 577–94 604, 2026.
+[44] Y . Guo, L. X. Shi, J. Chen, and C. Finn, “Ctrl-world: A control-
+lable generative world model for robot manipulation,”arXiv preprint
+arXiv:2510.10125, 2025.
+[45] Y . Guo, T. Lee, L. X. Shi, J. Chen, P. Liang, and C. Finn, “Vlaw:
+Iterative co-improvement of vision-language-action policy and world
+model,”arXiv preprint arXiv:2602.12063, 2026.
+[46] D. P. Kingma and M. Welling, “Auto-encoding variational bayes,”
+arXiv preprint arXiv:1312.6114, 2013.
+[47] W. Peebles and S. Xie, “Scalable diffusion models with transformers,”
+inProceedings of the IEEE/CVF international conference on computer
+vision, 2023, pp. 4195–4205.
+[48] E. Perez, F. Strub, H. De Vries, V . Dumoulin, and A. Courville, “Film:
+Visual reasoning with a general conditioning layer,” inProceedings of
+the AAAI conference on artificial intelligence, vol. 32, no. 1, 2018.
+[49] J. J. Liu, Y . Li, K. Shaw, T. Tao, R. Salakhutdinov, and D. Pathak,
+“Factr: Force-attending curriculum training for contact-rich policy
+learning,”arXiv preprint arXiv:2502.17432, 2025.
+[50] P. Intelligence, K. Black, N. Brown, J. Darpinian, K. Dhabalia,
+D. Driess, A. Esmail, M. Equi, C. Finn, N. Fusai,et al., “π 0.5: A
+vision-language-action model with open-world generalization,”arXiv
+preprint arXiv:2504.16054, 2025.
+[51] T. Z. Zhao, V . Kumar, S. Levine, and C. Finn, “Learning fine-grained
+bimanual manipulation with low-cost hardware,”arXiv preprint
+arXiv:2304.13705, 2023.

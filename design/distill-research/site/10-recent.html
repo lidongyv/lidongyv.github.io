@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>10 · 最近三个月 · 大模型→VLA/WAM 蒸馏研究</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="topnav"><div class="inner"><a href="index.html">首页</a><a class="" href="00-evidence.html">00 · 证据与核实</a><a class="" href="01-taxonomy.html">01 · 分类框架</a><a class="" href="02-vla-distill.html">02 · VLA 蒸馏</a><a class="" href="03-wam-distill.html">03 · WAM 蒸馏</a><a class="" href="04-step-distill.html">04 · 步数蒸馏</a><a class="" href="05-feature-latent.html">05 · 特征与 latent</a><a class="" href="06-on-policy.html">06 · On-policy 蒸馏</a><a class="" href="07-data-distill.html">07 · 数据蒸馏</a><a class="" href="08-tricks.html">08 · Trick 总谱</a><a class="" href="09-benchmarks.html">09 · 教师 vs 学生</a><a class="" href="10-recent.html">10 · 最近三个月</a><a class="" href="11-pitfalls.html">11 · 陷阱与复现</a><a class="" href="12-implementation.html">12 · 实现手册</a></div></nav>
+<main>
+<h1>10 · 最近三个月雷达（2026-08-15 → 2026-11-21）</h1>
+<p class="meta">来源 docs/10-recent.md · 生成于 2026-11-21</p>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 六个月前的状态 vs 现在</a></li><li class=""><a href="#sec-2">2. 时间线（按提交日期）</a></li><li class="toc-h3"><a href="#sec-3">2026-09</a></li><li class="toc-h3"><a href="#sec-4">2026-10</a></li><li class="toc-h3"><a href="#sec-5">2026-11</a></li><li class=""><a href="#sec-6">3. 六条趋势</a></li><li class="toc-h3"><a href="#sec-7">趋势 1：on-policy 成为默认姿势</a></li><li class="toc-h3"><a href="#sec-8">趋势 2：步数蒸馏与 on-policy 合流</a></li><li class="toc-h3"><a href="#sec-9">趋势 3：从&quot;蒸输出&quot;转向&quot;蒸表征&quot;</a></li><li class="toc-h3"><a href="#sec-10">趋势 4：多教师与策略合并</a></li><li class="toc-h3"><a href="#sec-11">趋势 5：把 test-time compute 蒸回权重</a></li><li class="toc-h3"><a href="#sec-12">趋势 6：低成本恢复成为独立赛道</a></li><li class=""><a href="#sec-13">4. 反例与边界（同样重要）</a></li><li class=""><a href="#sec-14">5. 三个空白（可做的方向）</a></li><li class=""><a href="#sec-15">6. 如果你只有一周时间，读这 6 篇</a></li></ol></details>
+<h1>10 · 最近三个月雷达（2026-08-15 → 2026-11-21）</h1>
+<blockquote>这一页只回答一个问题：<strong>过去三个月，蒸馏这件事在 VLA/WAM 上发生了什么变化？</strong><br>收录 30+ 篇，按机制归类；所有条目只到摘要级（L1）的都标了，未读全文的不假装读过。</blockquote>
+<hr>
+<h2 id="sec-1">1. 六个月前的状态 vs 现在</h2>
+<table><tr><th>维度</th><th>2026 上半年</th><th>2026-08 之后</th></tr><tr><td>主流信号</td><td>logit / 动作 MSE / 特征 MSE</td><td><strong>on-policy 轨迹与状态上的匹配</strong>、分布匹配</td></tr><tr><td>教师角色</td><td>离线标注器</td><td><strong>训练中可查询的裁判/专家</strong></td></tr><tr><td>压缩对象</td><td>参数量、层数</td><td><strong>NFE（步数）</strong> 成为一等公民</td></tr><tr><td>WAM</td><td>蒸隐状态（CKT-WAM）</td><td><strong>蒸未来表征，不生成像素</strong>（W2A/DreamFree/FRED）</td></tr><tr><td>评测</td><td>LIBERO 成功率</td><td>LIBERO + LIBERO-Plus + RoboTwin + 真机 + 延迟</td></tr><tr><td>反例意识</td><td>弱</td><td>出现&quot;预算不公平&quot;（TAD）与&quot;显式拒绝蒸馏&quot;（Driving the Style）的对照</td></tr></table>
+<hr>
+<h2 id="sec-2">2. 时间线（按提交日期）</h2>
+<h3 id="sec-3">2026-09</h3>
+<table><tr><th>日期</th><th>ID</th><th>工作</th><th>一句话</th></tr><tr><td>09-14</td><td>2609.15570</td><td>DIDO</td><td>DMD + 交互表征，把多步视频 WAM 蒸成单步；LIBERO 99.0%</td></tr><tr><td>09-17</td><td>2609.19579</td><td>剪枝 VLA + 离线隐层</td><td>63% 剪枝后 93.2%→0.8%，8 GPU-h 恢复到 3.5 点内</td></tr><tr><td>09-17</td><td>2609.20756</td><td>OPTED</td><td>闭环 on-policy 经验蒸馏，样本效率高 3 个数量级</td></tr><tr><td>09-25</td><td>2609.31349</td><td>DyMD</td><td>14B 视频教师 → 4 步 1.3B；动作规划 34% vs 16%</td></tr><tr><td>09-29</td><td>2610.00317</td><td>DriftOPD</td><td>teacher-free / rollout-free 的序列级 reverse-KL</td></tr></table>
+<h3 id="sec-4">2026-10</h3>
+<table><tr><th>日期</th><th>ID</th><th>工作</th><th>一句话</th></tr><tr><td>10-02</td><td>2610.02832</td><td>FastOPD</td><td>on-policy + flow map + self-consistency；延迟 −78.1%</td></tr><tr><td>10-05</td><td>2610.06617</td><td>RealtimeWAM (TACD)</td><td>冻结多步 WAM → 单步；25×，掉点 &lt;1%</td></tr><tr><td>10-06</td><td>2610.08119</td><td>AutodidactWAM</td><td>自蒸馏（视频+手姿+IK）；17/10/7% → 75/47/42%</td></tr><tr><td>10-09</td><td>2610.13232</td><td>FPD-Drive</td><td>未来观测特权教师 → 纯视觉；94.9 PDMS</td></tr><tr><td>10-09</td><td>2610.13453</td><td>Reflect-VLA</td><td>同体双路径 on-policy 自蒸馏；训练时间 −90%</td></tr><tr><td>10-12</td><td>2610.16908</td><td>ConDenseDrive</td><td>3 个 VFM → 单编码器；2.0×</td></tr><tr><td>10-17</td><td>2610.24847</td><td>DiPLO</td><td>去条件化自蒸馏 + DA:PPO；99% vs 45%</td></tr><tr><td>10-18</td><td>2610.25376</td><td>TILDE</td><td>on-policy + 教师恢复轨迹；4.1× BC</td></tr><tr><td>10-21</td><td>2610.30320</td><td>FRED</td><td>自蒸馏未来视频表征；人类视频 50.0% vs 19.4%</td></tr><tr><td>10-24</td><td>2610.33650</td><td>TAD</td><td>黑盒轨迹库蒸馏；76.6% 但预算 5×/12.5×</td></tr><tr><td>10-26</td><td>2610.35448</td><td>Distilled Planner Surrogates</td><td>规划头 → 可微代理（对抗场景生成）</td></tr><tr><td>10-?</td><td>2610.21522</td><td>Multi-teacher flow OPD</td><td>LIBERO-40 +22.55 / CALVIN +33.4 绝对点</td></tr></table>
+<h3 id="sec-5">2026-11</h3>
+<table><tr><th>日期</th><th>ID</th><th>工作</th><th>一句话</th></tr><tr><td>11-02</td><td>2611.02600</td><td>W2A</td><td>视频扩散 → 动作模型，丢掉视频模型；95.9%，21×</td></tr><tr><td>11-02</td><td>2611.02777</td><td>REPAIR</td><td>RL 专家 + critic → 单一 VLA；真机 100%</td></tr><tr><td>11-03</td><td>2611.04527</td><td>DreamFree</td><td>14B 视频扩散蒸进编码器；11Hz</td></tr><tr><td>11-06</td><td>2611.10443</td><td>SPARK-VLA</td><td>3D 专家 → LoRA；NeurIPS 2026；53M 可训</td></tr><tr><td>11-09</td><td>2611.11894</td><td>Weightsmith</td><td>闭式权重编辑替代训练（不训练）</td></tr><tr><td>11-09</td><td>2611.12286</td><td>VLA-MOPD</td><td>ODE 轨迹级多专家合并；75.4→98.9%</td></tr><tr><td>11-12</td><td>2611.16246</td><td>H2E</td><td>agent 当教师；+15.6%，零 LLM token，3.7×</td></tr><tr><td>11-16</td><td>2611.20460</td><td>VLA-SSD</td><td>布朗路径随机单跳；前向 ÷7.7，GRPO +20.6%</td></tr><tr><td>11-16</td><td>2611.21094</td><td>Conflict-Aware MTOPD</td><td>多教师冲突感知（游戏 VLM，非机器人）</td></tr><tr><td>11-17</td><td>2611.22592</td><td>APM</td><td>端点+首中间态；单 ckpt 多预算；21.3×</td></tr><tr><td>11-18</td><td>2611.24011</td><td>WAM-Policy</td><td>四足 WAM；OPSD 76.7% + 14×；RL+M-OPD 85.0%</td></tr><tr><td>11-18</td><td>2611.24719</td><td>DRIFT</td><td>255M 规划器；DS 97.03</td></tr><tr><td>11-19</td><td>2611.26074</td><td>SNN 人形</td><td>RL 专家 → 脉冲网络；e-prop 100% 存活</td></tr><tr><td>11-19</td><td>2611.26103</td><td>UniVEP</td><td>非蒸馏对照：一致性监督，2 步超 16 步</td></tr></table>
+<hr>
+<h2 id="sec-6">3. 六条趋势</h2>
+<h3 id="sec-7">趋势 1：on-policy 成为默认姿势</h3>
+<p>VLA-MOPD、FastOPD、REPAIR、TAD、TILDE、WAM-Policy、OPTED、Reflect-VLA——<strong>八篇</strong>都在&quot;学生自己跑、教师对学生状态打分&quot;这一格里。离线 KD 的新论文几乎消失。</p>
+<blockquote>原因：离线蒸馏在 VLA 上的增益已经饱和（小模型对教师轨迹的拟合很快到顶），而<strong>分布偏移</strong>才是真正的瓶颈。</blockquote>
+<h3 id="sec-8">趋势 2：步数蒸馏与 on-policy 合流</h3>
+<p>FastOPD 同时做&quot;学生状态上的教师速度场&quot;和&quot;flow map 单状态监督&quot;；VLA-SSD 把随机单跳与 GRPO 接起来；APM 用单 ckpt 支持 1/2/4 步。</p>
+<blockquote>含义：<strong>&quot;蒸什么&quot;与&quot;在哪蒸&quot;解耦</strong>——可以在学生状态上蒸端点，也可以蒸整条 ODE 轨迹（VLA-MOPD 的 masked local matching）。</blockquote>
+<h3 id="sec-9">趋势 3：从&quot;蒸输出&quot;转向&quot;蒸表征&quot;</h3>
+<p>W2A（中间去噪表征）、DreamFree / FRED（未来视频表征）、THAW-VLA（世界模型特征）、SPARK-VLA（3D 空间表征）、DRIFT（latent 推理特征）——<strong>五篇</strong>都在蒸&quot;教师看到了什么&quot;，而不是&quot;教师输出了什么&quot;。</p>
+<blockquote>原因：当教师和学生的输出空间不一致（视频 vs 动作、LLM token vs 轨迹），输出对齐不可行；表征对齐是唯一接口。</blockquote>
+<h3 id="sec-10">趋势 4：多教师与策略合并</h3>
+<p>VLA-MOPD（多任务专家 → 单一 VLA）、ConDenseDrive（3 个 VFM → 单编码器）、2610.21522（多教师 flow OPD：LIBERO-40 +22.55）、Conflict-Aware MTOPD（冲突感知）。</p>
+<blockquote>含义：<strong>model merging 的替代品</strong>——权重平均在 VLA 上几乎不可用（动作头对不齐），蒸馏成了合并多个专家的唯一可行路径。</blockquote>
+<h3 id="sec-11">趋势 5：把 test-time compute 蒸回权重</h3>
+<p>Verify-Act-Distill（verifier 选候选 → LoRA）、H2E（agent 跑任务 → 单 VLA）、REPAIR（critic 加权 → 单 VLA）、TILDE（教师恢复轨迹）。</p>
+<blockquote>含义：<strong>&quot;推理时多花算力&quot;正在被&quot;训练时多花算力&quot;替代</strong>；部署时只跑一次前向。</blockquote>
+<h3 id="sec-12">趋势 6：低成本恢复成为独立赛道</h3>
+<p>2609.19579：剪枝 63% 把 LIBERO-Long 打到 0.8%，纯离线隐层蒸馏 <strong>8 GPU-hours</strong> 恢复到 3.5 点内；真机 77.5% vs 监督恢复 59.5%。</p>
+<blockquote>含义：不是所有人都要从 7B 蒸到 0.1B；<strong>&quot;修好一个被剪坏的模型&quot;</strong>是更现实的工业需求，而且成本低两个数量级。</blockquote>
+<hr>
+<h2 id="sec-13">4. 反例与边界（同样重要）</h2>
+<table><tr><th>工作</th><th>结论</th><th>意义</th></tr><tr><td><strong>TAD</strong> (2610.33650)</td><td>黑盒蒸馏 76.6%，但白盒 OPD 81.6%；TAD 花 5× 交互、12.5× batch-passes</td><td><strong>接口越弱，样本效率越差</strong>；&quot;黑盒蒸馏&quot;不是免费的</td></tr><tr><td><strong>Driving the Style</strong> (2611.20888)</td><td>显式声明不用 teacher distillation；held-out 慢走任务本文 2% vs 命令条件蒸馏 56%，但两者真机均失败</td><td><strong>蒸馏能提高仿真指标，不等于真机可用</strong></td></tr><tr><td><strong>UniVEP</strong> (2611.26103)</td><td>非蒸馏（一致性监督），2 步超 16 步，延迟 −77.1%</td><td>有些&quot;步数压缩&quot;根本不需要教师</td></tr><tr><td><strong>DiPLO</strong> (2610.24847)</td><td>自蒸馏 99% vs 预训练 45%</td><td>自蒸馏在规划器上也能大幅涨点（不一定是知识迁移）</td></tr></table>
+<hr>
+<h2 id="sec-14">5. 三个空白（可做的方向）</h2>
+<ol>
+<li><strong>没有统一的 VLA 蒸馏 benchmark</strong>：LIBERO / CALVIN / RoboTwin / 真机各说各话；同一篇论文里教师和学生的评测协议常常不同。谁做一个&quot;同协议、同硬件、同种子&quot;的对照表，价值很大。
+</li><li><strong>延迟报告不规范</strong>：模块加速比、NFE 比、端到端 ms 混用。缺一个&quot;batch=1、同精度、同卡&quot;的标准。
+</li><li><strong>蒸馏后的 OOD / 安全性几乎无人报</strong>：所有论文都报 in-distribution 成功率；分布外、指令扰动、对抗场景的表现是空白（Reflect-VLA 的 risk-aware 是少数例外）。
+</li></ol>
+<hr>
+<h2 id="sec-15">6. 如果你只有一周时间，读这 6 篇</h2>
+<ol>
+<li><strong>Orion-Lite</strong>（2604.08266）——驾驶 VLA 隐层蒸馏的模板，数字最硬。
+</li><li><strong>THAW-VLA</strong>（2609.24682）——部署零开销的严格证明。
+</li><li><strong>SnapFlow</strong>（2604.05656）——步数自蒸馏，不需要教师。
+</li><li><strong>VLA-MOPD</strong>（2611.12286）——on-policy 多专家合并的最新协议。
+</li><li><strong>VLA-SSD</strong>（2611.20460）——蒸馏 + RL 的连接点。
+</li><li><strong>2609.19579</strong>——8 GPU-hours 的实用基线。
+</li></ol>
+<hr>
+<p>更新时间: 2026-11-21</p>
+<footer>大模型 → VLA/WAM 蒸馏研究 · 2026-11 · 数字均标证据级别（L3 全文 / L2 部分 / L1 摘要）</footer>
+</main>
+</body>
+</html>

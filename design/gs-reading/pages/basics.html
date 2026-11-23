@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3DGS 工作原理｜GS 阅读站</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topnav">
+  <a href="../index.html">首页</a>
+  <a href="basics.html" class="active">工作原理</a>
+  <a href="paradigm.html">范式演进</a>
+  <a href="per-scene.html">per-scene 优化点</a>
+  <a href="latest-3months.html">最近三个月</a>
+  <a href="survey-master.html">调研总报告</a>
+  <a href="../survey-list.html">论文全清单</a>
+</nav>
+<main>
+<h1>3DGS 工作原理：输入、学习、新视角合成与渲染</h1>
+<p class="lede">3D Gaussian Splatting（Kerbl et al., SIGGRAPH 2023）。按 Marr 三层组织：L1 讲它算什么，L2 讲表征与算法（输入/学习在这层），L3 讲渲染管线（图片怎么出来）。</p>
+
+<div class="toc">
+  目录：
+  <a href="#l1">L1 计算理论</a>
+  <a href="#l2">L2 表征与算法</a>
+  <a href="#no-net">“没有神经网络”是什么意思</a>
+  <a href="#per-scene">单场景优化与泛化</a>
+  <a href="#l3">L3 渲染管线</a>
+  <a href="#color">颜色怎么出来：球谐系数</a>
+</div>
+
+<h2 id="l1">L1：计算理论——它要解决什么问题</h2>
+<ul>
+  <li><strong>任务</strong>：输入一组<strong>已标定相机位姿的照片</strong>，重建一个 3D 场景表征，使得对<strong>任何没见过的新相机位姿</strong>，都能渲染出照片级逼真的图像。</li>
+  <li><strong>天然约束</strong>：所有输入图像是同一个 3D 场景的不同投影，因此场景必须同时解释所有视角（几何一致性）；不可见区域没有信息，所以模型的失败只体现在“训练视角之外的区域模糊/出错”。</li>
+  <li><strong>正确性判据</strong>：渲染图与真值图逐像素 L1 误差 + 感知相似度（D-SSIM）。本质是在学习一个<strong>显式的、可微的场景表示</strong>（类辐射场/光场的采样版本）。</li>
+</ul>
+
+<h2 id="l2">L2：表征与算法——输入是什么、学的是什么</h2>
+<p><strong>输入（两样，没有网络前向推理）：</strong></p>
+<ol>
+  <li>几十到几百张照片 + 每张的相机内外参（位姿通常先用 COLMAP 做 SfM 求出来）；</li>
+  <li>SfM 产生的<strong>稀疏点云</strong>（几万~几十万点），用来初始化高斯的位置。</li>
+</ol>
+<p><strong>表征</strong>：场景 ≈ 一大组 3D 高斯椭球 {G<sub>i</sub>}，每个高斯携带的参数：</p>
+<table>
+  <thead><tr><th>参数</th><th>含义</th></tr></thead>
+  <tbody>
+    <tr><td>均值 μ</td><td>3D 位置（椭球中心）</td></tr>
+    <tr><td>协方差 Σ = RSSᵀRᵀ</td><td>缩放 S（3 个尺度）+ 旋转四元数（4 个数）→ 决定椭球的形状与朝向</td></tr>
+    <tr><td>不透明度 α</td><td>该椭球的透明度</td></tr>
+    <tr><td>球谐系数（SH）</td><td>颜色随观察方向变化，模拟视角相关的反射外观</td></tr>
+  </tbody>
+</table>
+<p><strong>学的是什么（关键反直觉点）</strong>：3DGS 的学习 = 对这上百万个高斯各自参数的梯度下降求解（per-scene optimization），信号来自“渲染图 vs 真值图”的损失：</p>
+<div class="formula">L = (1 − λ)·L₁ + λ·L<sub>D-SSIM</sub></div>
+<p>同时做<strong>自适应密度控制</strong>：在重建不好的区域把高斯分裂（split）或克隆（clone），把低贡献的高斯剪掉（prune）。所以“学习”= 优化高斯集合的布局 + 颜色 + 形状 + 透明度，让所有训练视角的渲染结果都对得上照片。</p>
+
+<h2 id="no-net">“没有神经网络”是什么意思（≠ 没有学习）</h2>
+<p class="lede">差在被优化的对象是什么：3DGS 里的“学习”是对一组显式场景参数的梯度下降求解，不是训练一个输入→输出的函数网络。</p>
+<table>
+  <thead><tr><th></th><th>NeRF</th><th>3DGS</th></tr></thead>
+  <tbody>
+    <tr><td>被优化的东西</td><td>一个 <strong>MLP 的权重</strong>（函数逼近器）</td><td><strong>场景本身</strong>：每个高斯的位置、形状、朝向、透明度、SH 颜色系数（显式数据，几百万个浮点数）</td></tr>
+    <tr><td>渲染时网络的角色</td><td>查询 MLP：(x, d) → (密度, 颜色)</td><td><strong>没有查询这一步</strong>，高斯参数直接参与光栅化</td></tr>
+    <tr><td>“模型”是什么</td><td>网络</td><td>高斯点集这个数据结构</td></tr>
+  </tbody>
+</table>
+<p>广义上，<strong>用梯度下降解一个逆问题就是学习</strong>——bundle adjustment、光度立体重建、相机标定都是“优化参数”，但没人说它们是神经网络。3DGS 属于这一类：</p>
+<div class="formula">场景未知参数 θ（数百万高斯参数）→ 可微渲染器 R(θ) 生成图像 → 与照片比较得损失 → 梯度反传 → Adam 更新 θ</div>
+<p>这里唯一算得上“网络”的东西只有那个<strong>可微渲染器</strong>，而它是固定管线，没有可学习权重。准确说法：<strong>3DGS 没有函数逼近网络，但有一个用梯度下降驱动的 per-scene 逆问题求解过程</strong>。</p>
+
+<h2 id="per-scene">单场景优化与泛化</h2>
+<p><strong>Vanilla 3DGS 和 NeRF 一样是 per-scene 优化</strong>：每个新场景必须从头优化（分钟级），参数无法跨场景迁移。换场景全部重来。</p>
+<p>泛化路线（前馈预测 + 可选微调）：在输入图后面接一个网络，让它<strong>直接回归每个像素对应的高斯参数</strong>，一次训练、多场景可用。代价：前馈预测没有“渲染闭环”逐场景修正，质量通常略低于 per-scene 优化；所以常见混合用法——<strong>前馈预测当初始化，再对每个场景微调几十步</strong>。详见<a href="paradigm.html">范式演进</a>页。</p>
+
+<h2 id="l3">L3：实现——如何渲染出图片</h2>
+<p>渲染 = 一个<strong>完全可微的光栅化（splatting）管线</strong>，四步：</p>
+<ol>
+  <li><strong>视锥剔除</strong>：只保留落在当前相机视锥内的 3D 高斯，其余丢弃。</li>
+  <li><strong>投影</strong>：把每个高斯的均值按针孔相机模型投到像平面；3D 协方差通过局部仿射近似（雅可比矩阵 J）变为屏幕空间的 2D 高斯：Σ′ = JWΣWᵀJᵀ。这一步把 3D 椭球“拍扁”成 2D 光斑（splat）。</li>
+  <li><strong>按深度排序</strong>：把图像切成 16×16 的 tile，每个 tile 内按深度给高斯排序（近到远）。</li>
+  <li><strong>Alpha 混合</strong>：每个像素沿视线把覆盖它的高斯颜色从前到后混合，最终输出就是一张 RGB 图片：</li>
+</ol>
+<div class="formula">C = Σᵢ cᵢ · αᵢ · Π<sub>j&lt;i</sub>(1 − αⱼ)　（αᵢ = 该像素处 2D 高斯值 × 该高斯不透明度）</div>
+<p>因为整条管线可微，损失对每个高斯参数的梯度可以一路反传回去，驱动 L2 里的优化。全部用 CUDA 实现，重建后渲染可达 <strong>100+ FPS</strong>；显式表征还让场景编辑、压缩（如 Compact3DGS）、动态场景（4DGS）变得容易。</p>
+
+<h2 id="color">颜色怎么出来：球谐系数（SH）</h2>
+<p class="lede">每个高斯存的不是固定 RGB，而是一组球谐系数；渲染时按“当前观察方向”求出一个颜色，再参与混合。</p>
+<p><strong>L2 表征——颜色存在哪</strong>：球谐是球面上的一组正交基函数（“定义在方向上的多项式”），给一个方向 d 就求出一个值：</p>
+<div class="formula">c(d) = Σₗ Σₘ kₗₘ · Yₗₘ(d)</div>
+<p>3DGS 常用 3 阶 SH：每个 RGB 通道 16 个系数 × 3 通道 = <strong>每个高斯 48 个数</strong>。这些系数和位置、形状一样，是被梯度下降学出来的参数。</p>
+<p><strong>为什么不用固定颜色</strong>：真实物体表面有视角相关外观——高光、镜面反射会在不同视角变化。固定 RGB 渲染不出这种效果；SH 相当于给每个高斯配了一个“随视角变化的小函数”。（训练早期常用 0 阶 SH = 常数色先收敛，随后逐步升阶，这也解释了为什么优化初期画面发“糊”。）</p>
+<p><strong>L3 渲染——颜色怎么变成像素值</strong>：① 高斯被投影到屏幕，算出它盖住哪些像素；② 对每个像素，用<strong>该像素的视线方向</strong>代入该高斯的 SH 系数，求出它朝这个方向反射的颜色 cᵢ；③ 所有覆盖这个像素的高斯按深度排序，做 alpha 混合得到 RGB。一句话：<strong>颜色的“存储”在 SH 系数里，“计算”发生在渲染时用视线方向求值的那一刻，“呈现”靠按深度的 alpha 混合</strong>。</p>
+
+<p><a href="../index.html">← 返回首页</a></p>
+</main>
+<footer><p>gs-reading-site ｜ 整理自会话讨论原文</p></footer>
+</body>
+</html>

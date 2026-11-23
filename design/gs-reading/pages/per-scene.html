@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>per-scene 的主要优化点｜GS 阅读站</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topnav">
+  <a href="../index.html">首页</a>
+  <a href="basics.html">工作原理</a>
+  <a href="paradigm.html">范式演进</a>
+  <a href="per-scene.html" class="active">per-scene 优化点</a>
+  <a href="latest-3months.html">最近三个月</a>
+  <a href="survey-master.html">调研总报告</a>
+  <a href="../survey-list.html">论文全清单</a>
+</nav>
+<main>
+<h1>per-scene 优化的主要优化点在哪</h1>
+<p class="lede">从调研中 208 篇 per-scene 优化论文抽样通读后的聚类：七大着力方向 + 底层四个优化旋钮。</p>
+
+<div class="toc">
+  目录：
+  <a href="#seven">七大方向</a>
+  <a href="#knobs">四个旋钮</a>
+  <a href="#why">为什么 per-scene 仍是最大盘</a>
+</div>
+
+<h2 id="seven">七大主要优化点</h2>
+<table>
+  <thead><tr><th>方向</th><th>在改什么</th><th>代表论文（会议）</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>① 训练/收敛速度</strong></td>
+      <td>把优化从 ~30 分钟压到秒/分钟级：换优化器、缩短高斯列表、分组训练</td>
+      <td><a href="https://openaccess.thecvf.com/content/CVPR2025/papers/Chen_DashGaussian_Optimizing_3D_Gaussian_Splatting_in_200_Seconds_CVPR_2025_paper.pdf" target="_blank" rel="noopener">DashGaussian</a>（200s, CVPR25）、<a href="https://openaccess.thecvf.com/content/CVPR2026/papers/Ren_FastGS_Training_3D_Gaussian_Splatting_in_100_Seconds_CVPR_2026_paper.pdf" target="_blank" rel="noopener">FastGS</a>（100s, CVPR26）、<a href="https://openaccess.thecvf.com/content/ICCV2025/papers/Hollein_3DGS-LM_Faster_Gaussian-Splatting_Optimization_with_Levenberg-Marquardt_ICCV_2025_paper.pdf" target="_blank" rel="noopener">3DGS-LM</a>（Levenberg-Marquardt, ICCV25）、Faster-GS、Speedy-Splat、Group Training</td>
+    </tr>
+    <tr>
+      <td><strong>② 稀疏视图抗过拟合</strong></td>
+      <td>few-shot 时高斯“共适应”出伪影，加正则/重初始化/集成</td>
+      <td><a href="https://openaccess.thecvf.com/content/CVPR2025/papers/Park_DropGaussian_Structural_Regularization_for_Sparse-view_Gaussian_Splatting_CVPR_2025_paper.pdf" target="_blank" rel="noopener">DropGaussian</a>（结构正则）、CoMapGS（共视地图）、Self-Ensembling、<a href="https://openreview.net/forum?id=GrPo8NTtzK" target="_blank" rel="noopener">Co-Adaptation 量化分析</a>（NeurIPS25）、HeroGS、ReInGS、TWINGS</td>
+    </tr>
+    <tr>
+      <td><strong>③ 免位姿 / 免 COLMAP</strong></td>
+      <td>拿掉 SfM 前处理：位姿联合优化或直接从图像训</td>
+      <td>SfM-Free 3DGS（CVPR25）、LongSplat（ICCV25）、<a href="https://openreview.net/forum?id=sl4KqWBkDq" target="_blank" rel="noopener">Deep Gaussian from Motion</a>（几何基础模型, NeurIPS25）、Liberated-GS、NopeRoomGS、BA-GS、TrackGS（AAAI26）</td>
+    </tr>
+    <tr>
+      <td><strong>④ 致密化/密度控制</strong></td>
+      <td>原版 clone/split 规则粗糙，改成方向一致/频率感知/tile 引导等</td>
+      <td>DC4GS（NeurIPS25）、ResGS（残差稠密化, ICCV25）、TileGS、Frequency-Aware Density Control（AAAI26）、SharpGS（模糊驱动, ECCV26）、MaskGaussian（概率掩码, CVPR25）</td>
+    </tr>
+    <tr>
+      <td><strong>⑤ 大场景/城市/驾驶</strong></td>
+      <td>分块、遮挡、外观编码、空地一体</td>
+      <td>Horizon-GS、Urban-GS（CVPR26）、OccluGaussian（ICCV25）、Toy-GS（AAAI26）、<a href="https://openreview.net/forum?id=p3z75I8lVq" target="_blank" rel="noopener">驾驶外观双边网格</a>（NeurIPS25）、Street Gaussians without 3D Tracker（ICCV25）</td>
+    </tr>
+    <tr>
+      <td><strong>⑥ 退化输入鲁棒性</strong></td>
+      <td>散焦/运动模糊/恶劣天气/水下/雾/热红外/事件相机/鱼眼</td>
+      <td>CoCoGaussian、DeRainGS / DehazeGS（AAAI26）、OceanSplat / AquaSplatting（水下, AAAI26）、SupIR-GS（热红外, ECCV26）、EventSplat / E2EGS（事件相机）、DirectFisheye-GS（CVPR26）</td>
+    </tr>
+    <tr>
+      <td><strong>⑦ 几何/表面重建质量</strong></td>
+      <td>平面先验、定向高斯、结构约束，逼近 mesh 级几何</td>
+      <td>PlanarSplatting（3min, CVPR25）、From Blobs to Spokes（定向高斯, ECCV26）、PlanarGS（VLM 平面先验, NeurIPS25）、StructureGS（关节物体, ECCV26）</td>
+    </tr>
+  </tbody>
+</table>
+<p>外加三个小簇：<strong>损失/训练范式</strong>（Random-Tile Loss、感知损失 Drop-In, ECCV26）、<strong>HDR</strong>（InstantHDR, ECCV26）、<strong>增量/持续更新</strong>（GaussianUpdate, ICCV25；在线增量三角化, ECCV26）。</p>
+
+<h2 id="knobs">底层看：所有论文动的都是这四个旋钮</h2>
+<ol>
+  <li><strong>被优化参数</strong>：μ（位置）、Σ（缩放+旋转）、α（不透明度）、SH（颜色系数），必要时加位姿 θ 联合优化（方向③）；</li>
+  <li><strong>密度控制策略</strong>：什么时候 clone/split、什么时候 prune、按什么信号（梯度/频率/方向一致性）——方向④整块在改它；</li>
+  <li><strong>损失与正则</strong>：原版 L1 + D-SSIM，新增几何正则/深度先验/感知损失/生成先验（方向②⑦）；</li>
+  <li><strong>初始化与调度</strong>：SfM 点云换成几何基础模型/点云增广、学习率与 SH 阶数 warm-up（方向①②交叉）。</li>
+</ol>
+
+<h2 id="why">为什么 per-scene 优化依然是最大盘（208 篇，24%）</h2>
+<p>因为它的输入条件在真实落地中最“脏”——稀疏、无位姿、天气恶劣、传感器杂（事件/鱼眼/热红外/无人机）。每个脏条件都是一个独立研究问题，于是论文数量被拆散放大；而前馈网络一条线解决的是“干净多视图”场景。这就是前馈只占 8%、优化占 24% 的结构性原因：<strong>前馈省的是时间，per-scene 解决的是条件泛化</strong>。</p>
+
+<p><a href="../index.html">← 返回首页</a></p>
+</main>
+<footer><p>gs-reading-site ｜ 整理自会话讨论原文</p></footer>
+</body>
+</html>

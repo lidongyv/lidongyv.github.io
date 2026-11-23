@@ -1,0 +1,2119 @@
+SAFER: Navigating the Exploration–Exploitation Dilemma in
+World-Model-Based Planning for Autonomous Driving
+Yansong Qua, Zilin Huangb, Zihao Shengb, Sikai Chenb,∗, Samuel Labia
+aLyles School of Civil and Construction Engineering, Purdue University, West Lafayette 47907, USA
+bDepartment of Civil and Environmental Engineering, University of Wisconsin–Madison, Madison 53706, USA
+Abstract
+An autonomous vehicle must foresee the consequences of its actions, especially in the rare, time-critical situations
+where crashes happen. A world model offers this foresight, but only within the coverage of its training data, which
+poses an exploration–exploitation dilemma. Within this coverage a planner can hardly improve on the data, and
+beyond it the model’s errors mislead it. Logs of competent driving rarely contain the failures that would widen the
+coverage, and agents that learn from interaction gain them only by failing themselves, without being shown what to do
+instead. We proposeSAFER , a framework that learns offline from failures that others make, judged by an expert, and
+keeps learning online from its own driving. Offline, partially trained agents and scripted, recoverable perturbations
+Stage failures in simulation, and an expertAnnotates every visited state with its action and value, so that much of what
+the planner explores is covered before it drives. In planning, a chunked latent world modelForesees the consequences
+fast enough for real-time use, and a risk-aware sampling-based plannerEvaluates candidate maneuvers by their return
+minus a bounded collision penalty. Online, a loop continuouslyR efines the model wherever this driving leaves the
+coverage of the offline data. In closed-loop evaluation against the compared methods, SAFER reaches the highest
+route completion and reward per step on the CARLA Leaderboard routes,0.95and0.77from a privileged bird’s-eye
+view, and the highest episode reward in MetaDrive,53.4in regular and49.0in safety-critical traffic. Project page:
+https://ys-qu.github.io/safer-website.
+Keywords:autonomous driving, world-model-based planning, exploration–exploitation dilemma, risk-aware
+planning, online adaptation, learning from failures, CARLA
+1. Introduction
+Autonomous vehicles must handle rare, time-critical interactions in which a late or wrong decision cannot be
+undone, the situations in which crashes happen. Learning-based driving systems have made rapid progress in closed-
+loop driving, yet these situations remain the main obstacle to deploying them, because the data they learn from contain
+few such situations and fewer of their consequences (Li et al., 2026).
+Handling such a situation requires anticipating what an action will lead to before taking it. An experienced driver
+does this before every maneuver, imagining how the next seconds will unfold and choosing accordingly. A policy
+trained by imitation or by model-free reinforcement learning does not. It maps the current observation directly to an
+action. A world model, in contrast, predicts how the scene will evolve under a candidate sequence of actions, so that a
+planner can compare the imagined futures before committing to one (Ha and Schmidhuber, 2018; Hafner et al., 2020;
+Hansen et al., 2024; Levy et al., 2026).
+A world model, however, can only foresee what its training data contain; we call the states and actions that these
+data represent itscoverage. This poses an exploration–exploitation dilemma for any planner that relies on a world
+model (Fig. 1b). The dilemma is the choice between exploiting known options, whose outcomes are predictable,
+and exploring new ones, which may pay off in the long run but whose outcomes are uncertain (Berger-Tal et al.,
+2014; Hills et al., 2015; Wilson et al., 2021). A planner that exploits what the model knows, choosing among the
+actions that the data cover, can rely on the predictions but can hardly do better than the driving in the data. To do
+better, it can explore actions that the data seldom contain, such as braking later or pulling out earlier than competent
+drivers do, and the states that its own decisions lead to. There the predictions are unreliable, and because the planner
+selects the candidate with the highest predicted value, it is drawn to exactly the candidates whose value the model
+overestimates (Chua et al., 2018; Janner et al., 2019; Yu et al., 2020). Experience of these actions is what corrects the
+model. Gathering such experience is the role of exploration in reinforcement learning (Curi et al., 2020; Sekar et al.,
+2020), but in driving the experience beyond competent driving is the experience of failure, which cannot be gathered
+on public roads.
+∗Corresponding author.
+Email addresses:qu120@purdue.edu(Yansong Qu),zilin.huang@wisc.edu(Zilin Huang),zihao.sheng@wisc.edu(Zihao
+Sheng),sikai.chen@wisc.edu(Sikai Chen),labi@purdue.edu(Samuel Labi)
+arXiv:2611.20107v1  [cs.RO]  15 Nov 2026
+Imitation Learning (IL)
+state
+ expert
+demonstrations
+clone
+policy
+Reinforcement Learning (RL)
+state
+ RL agent
+ environment
+action
+reward
+World Model + Imagination
+e.g. Dreamer, Think2Drive
+environment
+ world
+model imaginedrollouts policy
+acts
+World-Model Planning on Expert Data
+e.g. Drive-WM, World4Drive
+expert
+logs
+world
+model
+ planner
+S A Offline: staged failures, expert labels
+expert
+weaker agents
+perturbations
+ staged failure,
+until collision
+a : brakeᵉ
+vᵉ
+expert labels
+every state
+corpus
+F E Planning: search with a price on risk
+chunked
+world model,
+one pass
+imagined
+candidates
+return − W · risk
+speed up
+brake
+imagined risk, 1.6 s
+brake
+R Online: extend coverage
+dynamics reward risk
+prior value frozen
+fine-tuned
+(a) Traditional paradigms (c) SAFER framework (ours)(b) World-model-based paradigms
+action
+action
+exploits the demonstrations
+never sees a failure or recovery
+explores by failing itself
+millions of trials, outcome only
+explores by failing online
+learns in imagination, fails for real
+? exploits the logs
+beyond them, misjudged yet favored
+ explores through others' failures, labeled
+exploits the broadened coverage
+data coverage exploit: uses the coverage to the full
+ explore: grows the coverage failure expert label ? misjudged
+Figure 1: Learning paradigms for autonomous driving, compared by where the experience beyond competent driving comes from. The glyph under
+each paradigm shows the coverage of its data (gray) and how the paradigm treats it. Exploiting (blue) spreads the candidates over the coverage
+and takes the best one up to its edge, but no further. Exploring (orange) grows the coverage at the price of failures (red crosses), the paradigm’s
+own or, for SAFER, failures that others make, labeled by the expert (teal). A step out of the coverage that does not grow it is misjudged (?).
+(a) Imitation learning copies expert demonstrations and never observes a failure; reinforcement learning discovers consequences by failing in the
+environment. (b) A world model learned online (Hafner et al., 2020; Li et al., 2024) still explores by failing. A world model learned from logged
+expert driving (Wang et al., 2024b; Zheng et al., 2025) covers competent driving only, and a planner that searches beyond this coverage favors the
+actions that the model misjudges. (c) SAFER broadens the coverage offline with staged failures that an expert annotates, plans with a fast chunked
+world model that prices collision risk, and extends the coverage online from the planner’s own driving. The BEV frames, candidates and risk curves
+in (c) are from a recorded collision of the corpus (Fig. 5a).
+Existing approaches differ in where this experience comes from (Fig. 1a,b). Logs and demonstrations contain
+little of it. World models trained on logs of human or expert driving (Hu et al., 2023; Wang et al., 2024a,b; Zheng
+et al., 2025; Hu et al., 2022) see what competent drivers do and rarely what follows from a mistake of the ego vehicle,
+and asked what would have followed an action other than the logged one, they can miss what would actually have
+happened (Zhang et al., 2026); behavior cloning on such data does not explore at all, and an expert who never makes
+mistakes cannot show how to recover (Ross et al., 2011; Codevilla et al., 2019). Methods that learn from interaction
+gather the experience by failing: reinforcement-learning agents and world models learned online fail in simulation,
+typically over millions of steps (Zhang et al., 2021; Toromanoff et al., 2020; Li et al., 2024), RaWMPC exposes
+its world model to hazardous behavior through a risk-aware interaction strategy (Sun et al., 2026), and closed-loop
+training methods generate the scenarios in which the current policy is likely to fail (Zhang et al., 2023; Sheng et al.,
+2026a; Li et al., 2026). These failures are the learner’s own. The learner has to cause them, over many trials that
+would be unacceptable on public roads, and each failure teaches it only the outcome, a collision or a low reward, not
+what should have been done instead.
+We let the world model learn instead from failures that others make, judged by an expert. We call the resulting
+framework SAFER, after its five stages, which Fig. 1c groups into three parts. Offline (top), safety-critical failures
+are staged deliberately in simulation and annotated by an expert. Partially trained agents and scripted, recoverable
+perturbations drive until their failures run to their consequences, so that the world model learns what mistakes lead to,
+while the expert records at every visited state what should have been done instead. In planning (middle), a chunked
+world model foresees the consequences of candidate maneuvers, and a risk-aware planner evaluates them by their
+predicted return minus a price on collision risk. Online (bottom), the world model is refined on the planner’s own
+driving. SAFER thus broadens the coverage of the world model offline, so that much of what the planner explores is
+already covered, and extends it online, gradually, wherever the planner moves beyond it (Fig. 1c).
+SAFER is inspired by how people resolve the same dilemma as they grow up (Fig. 2, top). A child is not left to
+discover the consequences of every choice alone. Parents praise what works and point to negative examples, so that
+the child learns what leads where without having to fail first. The beliefs formed in this way, which choices pay off
+now, which goals are worth pursuing and which behavior is dangerous, let the child weigh a choice before making it.
+Later, school and work keep reshaping these beliefs in situations the parents never showed, while the core ones stay.
+Such learning does need failures, but failures that others make, where they can be afforded, judged by someone who
+knows what should have been done. SAFER follows the same course (Fig. 2, bottom). Like parenting, its offline data,
+staged and annotated by the expert, provide a wealth of experience to grow up with. Like the child, the world model
+foresees what leads where and forms the same beliefs, as predictions of reward, value and collision risk, by which the
+planner evaluates each choice. Like school and work, the online stage keeps the planner learning from its own driving.
+2
+Figure 2: An everyday analogy for SAFER (top) and the corresponding stages of the method (bottom, detailed in Fig. 3); the numbered badges
+link each stage to its scene. (1) Parents praise what works and point to negative examples, so that the child need not fail first. (a) Likewise, weaker
+drivers and scripted perturbations stage failures in simulation, and the expert labels every visited state with its action and value. (2) The child learns
+what each choice leads to. Hard work (action) brings good grades (reward), a far goal is worth pursuing (value), and staying out all night is risky
+(risk). (b) Likewise, the world model foresees these quantities for each candidate action chunk, and (c) the planner scores the candidates by their
+return minus a price on risk. (3) Away from home, school and work keep reshaping the beliefs while the core ones stay. (d) Likewise, the planner’s
+own driving refines the dynamics and the reward and risk heads, while the prior and the value, whose targets only the expert provides, stay fixed.
+It refines the dynamics and the reward and risk predictions, while the prior and the value stay fixed, like core beliefs.
+Driving already uses failures of this kind to widen the data of imitation learning. Logged trajectories are perturbed
+and the learner is trained to recover from them (Bansal et al., 2019), noise is injected into an expert’s driving while
+the expert keeps labeling (Laskey et al., 2017), and the interventions of safety drivers are recorded.
+Behavior cloning on the expert’s labels learns to recover rather than to repeat the mistakes that produced the data,
+and the resulting prior is a head of a chunked latent world model (Section 3.3) of the kind introduced by SimDist (Levy
+et al., 2026), which imagines a whole chunk of the future in one pass rather than step by step and so keeps planning
+fast. A collision-risk head (Section 3.4) learns from the recorded collisions of this corpus to predict the probability that
+a candidate action sequence leads to a collision, and it is trained so that braking harder does not raise the predicted risk.
+The risk-aware model predictive path integral (MPPI) planner (Williams et al., 2017) (Section 3.5) scores candidate
+action chunks by their predicted return minus a bounded collision penalty. The online loop (Section 3.6) adapts the
+dynamics, the reward scorers and the risk head on the planner’s own driving and keeps the prior and the value fixed,
+while the planner scores with slowly moving copies of the adapted heads. Observations and evaluation follow the
+privileged bird’s-eye-view (BEV) setting of Roach (Zhang et al., 2021) in CARLA (Dosovitskiy et al., 2017) and the
+closed-loop benchmark of CAT (Zhang et al., 2023) in MetaDrive (Li et al., 2023).
+Our contributions are summarized as follows:
+• A formulation of the exploration–exploitation dilemma of world-model-based planning in driving, in which
+searching beyond the coverage of the world model can improve on the data, but there the errors of the model
+bias the choice of action, and the experience that would correct them consists of failures. The bias and the regret
+it causes are stated formally in Section 3.5.
+• A data recipe in which the world model learns from failures that others make, judged by an expert. Partially
+trained agents and scripted, recoverable perturbations drive in simulation until their failures run to their conse-
+quences, and the expert annotates every visited state with its action and value, so that the data cover much of
+what the planner explores.
+• A fast chunked latent world model with a collision-risk head that is trained to be monotonic in braking and
+foresees collisions in recorded driving before they happen, without false alarms, and a risk-aware MPPI planner
+that scores candidate maneuvers by their predicted return minus a bounded collision penalty and plans in real
+time on a single GPU; the imagination of the world model carries the information on which driving decisions
+depend, such as a traffic light that is about to change.
+• An online adaptation rule that extends the coverage from the planner’s own driving by fine-tuning the reward
+scorers and the risk head together with the dynamics, while the planner scores against slowly moving copies of
+the adapted heads; adapting these heads, and not only the dynamics, makes every type of collision rarer.
+3
+• A closed-loop evaluation that isolates the contribution of each stage in CARLA, including towns without train-
+ing data, and compares SAFER with the baselines, against which it reaches the highest route completion and
+reward per step in CARLA and the highest episode reward in MetaDrive, in regular and safety-critical traffic;
+one turn of a data flywheel, which retrains the system on data targeted at the scenarios that the offline corpus
+covers least, makes it safer still.
+The remainder of the paper reviews related work (Section 2), presents the method (Section 3), reports the experi-
+ments (Section 4) and concludes (Section 5).
+2. Related work
+2.1. Learning-based driving policies
+Learning-based driving policies are trained mainly by imitation learning and by reinforcement learning. Imitation
+learning maps observations to the actions of an expert, from conditional imitation of human driving (Codevilla et al.,
+2018) to privileged experts that see the simulator state and teach sensorimotor students (Chen et al., 2020; Zhang et al.,
+2021). A policy trained on the expert’s states compounds its own errors once it leaves them, and demonstrations that
+contain no mistakes contain no corrections either (Ross et al., 2011; Codevilla et al., 2019); imitation is also prone to
+causal confusion, in which the policy keys on correlates of the expert’s action rather than on its causes (de Haan et al.,
+2019). DAgger lets the student drive and has the expert label the states it visits, which is how Chen et al. (2020) and
+Zhang et al. (2021) train their students, and DART injects noise into the expert’s actions (Laskey et al., 2017). Both
+widen the states around the expert, but neither shows what follows from driving badly.
+Reinforcement learning learns from outcomes instead. Model-free agents reach strong closed-loop performance
+in CARLA (Toromanoff et al., 2020; Zhang et al., 2021), and the PPO agent of Zhang et al. (2021) is the expert we use
+in CARLA, but such agents are shaped by millions of simulator steps under a hand-designed reward. Vision-language
+models have recently been used to enrich this reward and to guide training (Huang et al., 2025; Qu et al., 2026; Huang
+et al., 2026). Chen et al. (2021) gain sample efficiency by assuming that the world does not react to the ego vehicle,
+which removes exactly the interactions that matter for safety. Safety-critical scenarios are generated by perturbing
+other road users (Ding et al., 2020; Wang et al., 2021) or interactively with a multimodal large language model (Sheng
+et al., 2025), and closed-loop training methods train the policy on such scenarios (Zhang et al., 2023; Niu et al., 2024;
+Sheng et al., 2026a; Li et al., 2026). All of these learn from the failures of the policy that is being trained.
+The corpus of SAFER (Section 3.2) takes DAgger one step further. The states are visited by drivers that are
+deliberately worse than the expert, partially trained checkpoints of an RL agent, and by perturbations of the ego’s own
+actions that run until a consequence occurs, and the expert annotates each state with its action and value. A policy can
+learn recoveries from these labels, and a world model can, in addition, learn what the mistakes lead to.
+2.2. Model-based reinforcement learning and planning
+A world model predicts how the environment evolves under the agent’s actions, so that the agent can learn or plan
+in imagination (Ha and Schmidhuber, 2018). Agents use it in two ways. The Dreamer family trains an actor and a critic
+on imagined trajectories (Hafner et al., 2020, 2021, 2025a), and its most recent member trains agents entirely inside a
+world model of complex environments (Hafner et al., 2025b). PlaNet, TD-MPC and SimDist instead plan online with
+the model (Hafner et al., 2019; Hansen et al., 2022, 2024; Levy et al., 2026), searching over action sequences with
+sampling-based optimizers such as the cross-entropy method and model predictive path integral control (Williams
+et al., 2017; Pinneri et al., 2021). Online planning keeps the objective explicit at decision time, so that it can be
+extended, for example with the conditional value-at-risk of the sampled returns (Yin et al., 2023).
+Both uses share a weakness. The agent optimizes against the model, and the optimizer is drawn to the errors of
+the model in regions the model was not trained on. One line of work keeps the agent where the model is reliable,
+through probabilistic ensembles (Chua et al., 2018), short model rollouts branched from real data (Janner et al., 2019)
+or uncertainty-penalized rewards (Yu et al., 2020). This is the exploitation side of the dilemma of Section 1, and it
+gives up the improvement that lies beyond the coverage of the model. Another line widens the coverage by exploring,
+acting optimistically on the epistemic uncertainty of the model (Curi et al., 2020) or planning towards expected
+novelty (Sekar et al., 2020), which in driving means failing. SAFER widens the coverage from the data side instead.
+The failures that a planner would explore are staged offline and annotated by an expert, and the model is re-fitted
+online on the states that the planner actually reaches.
+2.3. World models for autonomous driving
+Driving world models differ mainly in what they learn from. Models trained on logs of competent driving generate
+future scenes (Hu et al., 2023; Wang et al., 2024a), select among candidate trajectories by their predicted futures (Wang
+et al., 2024b; Zheng et al., 2025), or, like MILE, learn a latent world model and a driving policy jointly from expert
+demonstrations (Hu et al., 2022); conditioned on an action other than the logged one, such models can miss what
+would actually have happened (Zhang et al., 2026). Other models learn from the agent’s own interaction. Think2Drive
+trains a policy inside a world model that it learns online (Li et al., 2024), and InDRiVE and ExploreVLA explore by
+4
+curiosity, rewarding the disagreement or the uncertainty of the world model’s predictions (Khanzada and Kwon, 2025;
+Sheng et al., 2026b). Closest to our aim, RaWMPC folds the predicted probabilities of driving events into the cost of
+model predictive control and exposes its world model to hazardous behavior through a risk-aware interaction strategy,
+without expert demonstrations (Sun et al., 2026), and CorrRisk-WM predicts the hazard that surrounding agents pose
+to the corridor of each candidate trajectory (Guo and Langari, 2026).
+SAFER also learns from failures, but from failures that other drivers make offline and that an expert annotates, so
+that its data record both what a mistake leads to and what should have been done at the states before it; logs contain
+few such failures, and models that learn from their own interaction have to cause them. As in RaWMPC, the predicted
+probability of an event enters the planning cost, but the risk head of SAFER is supervised by the staged failures and
+trained so that braking does not raise its prediction, and the planner keeps an explicit objective rather than a policy
+distilled from the model.
+2.4. Continual adaptation of world models
+A world model pretrained on one data distribution meets another once its own planner drives, and it has to keep
+learning from the planner’s experience without losing what it learned before. SimDist adapts a world model pretrained
+in simulation to a real robot by re-fitting only its latent dynamics on the planner’s rollouts (Levy et al., 2026), and
+AdaWM first identifies whether a loss in performance on a new driving task stems from the policy or from the
+dynamics and then updates the dominant part with low-rank updates (Wang et al., 2025). In driving, the closed-loop
+distribution also shifts the quantities that the planner scores, such as speeds, gaps and near-misses. SAFER therefore
+adapts the reward scorers and the collision-risk head together with the dynamics, since all three can be supervised
+from recorded outcomes, and keeps the prior and the value fixed, since only the expert can teach them. Every update
+mixes offline and online windows, so that the corpus is not forgotten, and the planner scores with slowly moving
+copies of the adapted heads, the target-network idea of value learning (Mnih et al., 2015), so that its objective does
+not change with every update.
+3. Methodology
+This section describes SAFER. At every control step, the planner imagines the consequences of candidate action
+sequences with a learned latent world model, searches for the sequence with the best predicted return, penalized by
+the predicted probability that the sequence leads to a collision, and executes its first action. The five stages of SAFER
+map onto four parts, the four panels of Fig. 3:
+(a)StageandAnnotate: a corpus ofmixed-qualitysimulated experience, driven by a reinforcement-learning (RL)
+expert, by weaker checkpoints of an RL agent trained with the expert’s recipe and by scripted perturbations, in
+which every step is labeled with the expert’s action and value (Section 3.2);
+(b)Foresee: achunked latent world modelthat encodes an observation, predicts the latent states of a whole chunk
+of the future under a candidate action sequence in one forward pass, and reads the imagined trajectory with a
+physically decomposed reward, a continuation probability, an ensemble of value heads and a behavior-cloned
+action prior (Section 3.3), together with acollision-risk headthat predicts the probability that a collision has
+occurred by each future step; the risk head is trained only on the simulator’s recorded outcomes and regularized
+so that braking harder does not raise the predicted risk (Section 3.4);
+(c)Evaluate: arisk-aware sampling-based plannerthat runs model predictive path integral control (MPPI) on the
+world model, seeded with the behavior-cloned prior and penalized by the predicted collision risk (Section 3.5);
+(d)Refine: anonline adaptationloop that keeps the dynamics, the reward scorers and the risk head consistent with
+the planner’s own driving, while the planner scores against slowly moving exponential-moving-average (EMA)
+copies of them (Section 3.6).
+The design follows the decomposition of Simulation Distillation (SimDist) (Levy et al., 2026): an observation
+encoder, a chunked latent dynamics model conditioned on an explicit history, reward and value heads that read the
+imagined trajectory, and a base policy that warm-starts a sampling-based planner. The world model of SAFER is
+trained on data that other policies generate and is then asked to plan on the states that its own planner visits. A planner
+for safety-critical driving must also know what makes a candidate good or dangerous, and its model must keep pace
+with the planner’s own driving. SAFER therefore predicts the reward through its physical factors and the value with
+an ensemble, prices the predicted collision probability in the planner’s score with an event-based risk head trained to
+be monotonic in braking, and adapts the scorers online while the planner scores with their EMA copies.
+3.1. Problem formulation
+We formulate driving as a partially observable Markov decision process in discrete time,t= 0,1, . . ., with
+steps of fixed length. At steptthe agent receives an observationo t, a partial view of the scene that describes the
+surroundings of the ego vehicle and its own state, and applies an actiona t = (α t, δt)made of two commands in
+[−1,1]: an acceleration commandα t, applied as throttleα t when it is positive and as brake−α t when it is negative,
+5
+S A (a) Mixed-quality data 1
+staged failures, labeled by the expert
+expert
+competent
+✓
+weaker
+checkpoints
+imperfect
+✗
+hold / late-
+brake events
+scripted
+✗
+drive until the first violation
+✓ ✗
+labels every visited state
+action: brake value
+labeled transitions
+including collisions
+F (b) Chunked latent world model 2
+imagines 16 steps (1.6 s) in one pass, not step by step
+16 past BEVs
+encoder
+ dynamics
+4-layer
+decoder
+one pass
+…
+imagined latents
+E (c) Risk-aware MPPI planning 2
+re-plans every 0.1 s with the world model as its simulator
+135 candidates
+128 sampled
+7 from the prior
+(b)
+ speed up
+brake
+refit on the 16 best, ×2
+R (d) Online refinement 3
+the planner's own driving, no expert
+frozen: no expert online
+encoder prior value
+the planner scores with slow EMA copies
+fine-tuned, sent back to (b)
+dynamics reward risk
+32 updates /
+256 steps
+buffer: 60 recent segments
++ ½ offline windows
+!
+drives the training
+towns, random traffic;
+meets states the
+corpus lacks
+train
+chunk from (c)
+action
+BC prior
+reward
++ 5 factors
+cont.
+survival
+value
+5 heads
+risk
+P(coll. ≤ k)
+execute , re-plan
+aet = πe(ot), v et = V e(ot)
+Mt
+ˆzt+1 . . . ˆzt+16
+at . . . at+15
+J(a) = ∑H−1k=0 γkSk ˆrt+k + γH SH ¯Vt+H− W ¯ρ(a)
+at
+¯θ← (1− τb) ¯θ + τb θ
+Figure 3: Technical overview of SAFER, illustrated with its CARLA instance. The numbered badges link each part to its scene of the analogy in
+Fig. 2. (a) Stage and Annotate: the expert, weaker Roach checkpoints and scripted hold and late-brake events drive until the first violation, and
+the expert labels every visited state with its action and value (Section 3.2). (b) Foresee: from the contextM t of the past BEVs, the dynamics
+imagines the16latents of a candidate chunk in one pass, and heads read them as the behavior-cloned prior, the reward and its five factors, survival,
+value and collision risk (Section 3.3). (c) Evaluate: every0.1s, the planner scores135candidate chunks on their imagined futures (Eq. (28)), refits
+its sampling distribution to the16best in each of two iterations and executes the first action (Section 3.5). (d) Refine: the planner’s own driving
+fine-tunes the dynamics, the reward and the risk head online, while the encoder, the prior and the value stay frozen and the planner scores with
+slowly moving EMA copies (Section 3.6). The crash frame in (a), the context frames in (b) and the candidates and risk curves in (c) are from a
+recorded collision of the corpus (Fig. 5a); the other two BEV frames are illustrative.
+and a steering commandδ t. The scene then evolves under unknown, stochastic dynamics, which include the motion of
+the other road users, and the environment returns a rewardrt, a termination flagd t ∈ {0,1}and a vectoret ∈ {0,1}ne
+of safety events, which marks the safety-critical outcomes of the step, such as a collision. The aim is a controller that
+maximizes the expected discounted returnE
+ PT
+t=0 γtrt of an episode, with discountγ∈(0,1)and termination step
+T, while keeping the probability of a collision low.
+We assume that the reward is a known function of quantities that the simulator records at every step,
+rt =f
+ 
+ϕt,a t,a t−1
+
+,(1)
+where the reward factorsϕ t ∈R nϕ are physical quantities, such as the speed of the ego vehicle, or indicators of
+events, such as a contact, andfis given in closed form. The world model uses this structure by predicting the factors
+and evaluatingfon them (Section 3.3).
+Three sources of supervision are available. The first is an expert policyπe with a value functionV e, both functions
+of the observation, so that they can be queried at any observation, including those of states that the expert would never
+reach itself; we writea et =π e(ot)for its deterministic action andv et =V e(ot)for its value at stept. The second
+is an offline corpusDof episodes driven by behavior policies that are allowed to fail, in which every step carries the
+expert’s labels(a et , vet )(Section 3.2). The third is online interaction, in which the controller drives the environment
+itself and records(o t,a t, rt,ϕ t, dt,e t)but no expert labels, so that what it learns online does not depend on the expert.
+The problem is to learn fromDa controller that drives well and safely, and to keep improving it from its own online
+experience.
+SAFER solves this problem by receding-horizon planning with a learned world model. At steptthe controller
+conditions on the lastCobservations and the actions between them,(o t−C+1:t ,a t−C+1:t−1 ), and searches over
+action chunksa t:t+H−1 = (at, . . . ,at+H−1 )∈[−1,1] H×2 ofHsteps for one that maximizes a planning objective
+J(a t:t+H−1 ); it executes the first action of the chunk and plans again at stept+ 1. The objective, Eq. (28), is the
+discounted return of the chunk predicted by the world model, completed by a predicted value at the end of the horizon,
+minus a penalty on the predicted probability of a collision. To evaluate it for a candidate chunk, the world model must
+predict the latent states that the chunk leads to, the rewards, the continuation and the value along them (Section 3.3),
+and the probability of a collision (Section 3.4); Section 3.5 describes the search and Section 3.6 the online adaptation.
+We useC=H= 16steps, i.e.1.6s of history and of horizon at the0.1s steps of both simulators.
+The formulation is instantiated in two simulators. In CARLA (Dosovitskiy et al., 2017), steps are0.1s long
+ando t = (m t,s t)(Fig. 4c), wherem t, a15×192×192array with values in{0, . . . ,255}, is the privileged
+BEV mask stack of Roach (Zhang et al., 2021) ands t ∈R 6 is the ego state. The BEV covers a38.4 m×38.4 m
+6
+window at5pixels per meter with the ego drawn40pixels from the bottom edge, and contains three static channels
+(drivable road, the planned route corridor, lane markings with broken markings at a lower intensity) and three dynamic
+channel groups (vehicles, pedestrians, and traffic-light stop lines together with stop signs) rasterized at four time
+offsets{0,0.5,1.0,1.5}s in the past, giving3 + 3×4 = 15channels. The dynamic groups therefore encode1.5s
+of motion history of every road user. The ego state iss t = (throttle,steer,brake,gear/5, vx, vy), i.e. the last applied
+control and the planar velocity. The safety events are a collision, a red-light violation and a stop-sign violation
+(ne = 3). The reward is the dense reward of Roach, whose factors are the ego speed, a desired speed that decreases
+towards zero as the ego approaches a vehicle, a pedestrian, a red light or a stop sign in its path, the lateral distance to
+the route, the heading error and the magnitude of the terminal penalty (nϕ = 5, Section 4.1);falso penalizes changes
+of the steering command. In MetaDrive (Li et al., 2023), on the benchmark of CAT (Zhang et al., 2023), steps are also
+0.1s long ando t ∈[0,1] 101 is a vector (Fig. 4f) that holds distances along30lidar beams to other vehicles,30beams
+to the road edges and12beams to the lane lines,6values of the ego state,10navigation values, the lateral offset from
+the logged route and4values for each of the three nearest vehicles. The safety events are a contact with a vehicle,
+a contact with an object and leaving the road (n e = 3). CAT’s reward is the progress along the route, except at the
+step of an arrival, an exit from the road or a contact, where it takes a fixed value; its factors are the progress and the
+indicators of these four events (nϕ = 5).
+3.2. Data collection: staged failures annotated by an expert
+The corpusDis generated in the simulator by behavior policies that are allowed to fail, and every state they visit
+is labeled by the expert.
+Behavior policies and perturbations.Besides the expert, the behavior policies areMcheckpointsπ 1, . . . , πM of a
+reinforcement-learning agent trained from scratch with the expert’s recipe and saved at increasing numbers of training
+steps, so that the corpus contains the systematic mistakes of drivers at several levels of competence, such as late
+braking, lane departures and running red lights, together with their consequences. Two perturbations of the action
+abt proposed by a behavior policy make the driving worse in a controlled way. The first is action noise. An episode
+alternates between clean phases and corrupt phases of random lengths, and during a corrupt phase the executed action
+is
+at = clip
+ 
+abt +ξ t,−1,1 ,ξ t ∼ N 0,diag(σ 2α, σ2δ ),(2)
+with severities(σ α, σδ)that are drawn at random and redrawn at random intervals, whilea t =a bt in a clean phase; a
+small share of the episodes stays clean throughout, and half of the others start in a corrupt phase, following SimDist’s
+mixed-quality recipe. The second is a scripted event. Triggered by the simulator state, it overrides the expert’s
+longitudinal command for a few steps with the opposite decision, braking where the expert would drive on or keeping
+the throttle where the expert brakes for a hazard, and is followed by a recovery in which the expert’s action is executed.
+An event that withholds braking is triggered only while the expert could still stop before the hazard, so that every
+staged mistake is recoverable. These events place the two situations that a planner most often gets wrong, waiting
+when it should go and going when it should brake, into the data together with their labeled corrections.
+The corpus is the union of three sets:D exp, driven by the expert without perturbation;D int, driven by the check-
+points with action noise; andD tgt, driven by the expert with action noise and scripted events. The checkpoints, the
+parameters of the perturbations and the events of each environment are given in Section 4.
+Recorded quantities.Episodes are not reset when a mistake happens; they run until the environment terminates them,
+so that the consequences of the mistakes, the safety events among them, are recorded. Whichever policy drives, every
+step stores  
+ot,a t, rt,ϕ t, dt,e t,a et , vet ,(3)
+that is, the transition with its reward factors and safety events and, as labels, the expert’s action and value at that state.
+The labels are what make mixed-quality data useful. A world model learns from the transitions what each mistake
+leads to, and a policy learns from the labels what should have been done at the states that the mistakes reach. In this
+work the failures are staged in simulators; the recipe itself needs only a driver that is allowed to fail recoverably and an
+expert that can be queried at the visited states, so a proving ground with a safety driver would serve the same purpose.
+3.3. Chunked latent world model
+Encoder.An observation encoder maps every observation to a latent state,
+zt =E θ(ot)∈R 256.(4)
+It has the architecture of the expert’s feature extractor, the part of the expert’s network that processes the observation;
+it is initialized from that extractor (Section 4) and fine-tuned with the rest of the model. Initializing from the expert
+gives the world model, from the first step, the features that were sufficient to drive well.
+7
+Context tokens.The context of the lastCobservations and the actions that led to them is turned into a set of2C
+context tokens,
+Mt =
+
+uzi ,u ai 	C−1i=0 ,
+uzi =z t−C+1+i +η z + PE(i),u ai =A θ(at−C+i ) +η a + PE(i), (5)
+whereA θ is a two-layer MLP action encoder,η z,η a are learned token-type embeddings andPE(i)is a sinusoidal
+position code. The action tokenu ai carries the actiona t−C+i that led toz t−C+1+i; the first one is set to zero, because
+the action that led to the first context observation lies outside the window. The context tokens depend on the history
+alone, not on the candidate, so they are computed once per control step and shared by all candidates.
+Action-conditioned latent rollout.A candidate action chunka t:t+H−1 is encoded intoHquery tokensq k =
+Aθ(at+k) + PE(k),k= 0, . . . , H−1. A four-layer transformer decoderDθ (Vaswani et al., 2017) with width256
+and four heads attends from the queries to the context tokens and among the queries with a causal mask, and predicts
+all future latents in one pass,  ˆzt+1, . . . ,ˆzt+H  =D θ q0:H−1 ;M t,(6)
+where, here and below, a hat marks a quantity predicted by the model or computed from its predictions. Because of the
+causal mask, ˆzt+k+1 depends ona t:t+k only. Predicting the chunk jointly rather than by step-wise recursion makes
+the cost of scoring a candidate one decoder pass instead ofHsequential passes, which is what makes sampling-based
+planning affordable in real time; the causal mask preserves the semantics of an autoregressive model.
+Reward, continuation and value scorers.The scalar heads do not read the decoder states directly. Each group of
+heads is preceded by a small temporal transformer, a scorer that maps a sequence over theHslots to one feature
+vector per slot (a two-layer input MLP and one encoder layer without a causal mask), so that the prediction at slot
+kcan use the whole imagined trajectory. The reward scorerT rθ reads, for every transition, the statebeforeit and the
+action taken,  
+f r0 , . . . ,frH−1  =T rθ  z−t+k,a t+kH−1k=0 ,
+z−t =z t,z −t+k = ˆzt+k (k≥1), (7)
+while the value scorerT vθ reads the stateafterit,(f v0 , . . . ,fvH−1 ) =T vθ  ( ˆzt+k+1)H−1k=0 . The reward and value heads
+are distributional (Hafner et al., 2025a). Each outputs a probability vectorp∈∆ B, where∆ B is the set of probability
+vectors overB= 101bins whose centersc 1 <· · ·< cB are uniformly spaced insymlogspace,symlog(x) =
+sign(x) ln(1 +|x|), and the prediction is decoded asˆy= symexp
+  P
+b pbcb
+
+withsymexp(y) = sign(y)(e |y| −1);
+the reward bins span[−3,3]and the value bins[−10,10]insymlogunits. Four quantities are predicted per slot, the
+reward and its factors from the reward features and the continuation and the values from the value features:
+ˆprt+k = softmax  Rθ(f rk ) ∈∆ B,(8)
+ˆϕt+k =g ϕ Φθ(f rk ) ∈R nϕ ,(9)
+ˆct+k = sigmoid
+ 
+Cθ(f vk ),(10)
+ˆpv,it+k+1 = softmax  V (i)θ (f vk ), i= 1, . . . , K.(11)
+ˆpr is a distribution over reward bins; ˆϕpredicts the reward factors of Eq. (1) through an output mapg ϕ that is fixed
+for each factor. For a continuous quantity it multiplies the output by a fixed scale, after a softplus if the quantity is
+non-negative, and for an event indicator it applies a sigmoid, so that the prediction is a probability;ˆcis the probability
+that the episode continues after the transition; and{V (i)θ }Ki=1 areK= 5independently initialized value heads on the
+shared value trunk, in the spirit of the value ensembles of TD-MPC2 (Hansen et al., 2024). The factor head allows the
+reward to be reconstructed from the predicted factors exactly as the simulator computes it,
+ˆrϕt+k =f   ˆϕt+k,a t+k,a t+k−1,(12)
+where the actions are those of the candidate itself anda t−1 is the last executed action; when some factors are event
+indicators,ˆrϕt+k is the expectation offunder independent indicators with the predicted probabilities. Two reward
+estimates are thus available for every imagined step, a direct oneˆrst+k = symexp   Pb ˆprt+k,bcb and a factorized one
+ˆrϕt+k. The planner uses their average (Section 3.5). The factorized path exists because the scalar reward compresses
+very different situations into one number, whereas the factors force the model to represent, for every candidate, the
+quantities from which the simulator computes the reward, such as how fast the vehicle will be going and how fast it
+should be going given the hazards ahead; these are the quantities on which the correct action depends.
+8
+Behavior-cloned action prior.A separate three-layer transformer decoderP θ attends fromHlearned queries to the
+same context tokensM t and outputs, for each future step, the parameters of a squashed Gaussian,
+πθ(at+k | Mt) :a t+k = tanh(xk),
+xk ∼ N
+ 
+µπk ,diag((σ πk )2),logσ πk ∈[−2,1], (13)
+fork= 0, . . . , H−1. Its deterministic chunkabct+k = tanh(µπk ), clipped entrywise to[−¯a,¯a]with¯a= 0.999, is the
+base policy that warm-starts the planner; executed on its own, it is the BC-prior arm of the ablation in Section 4.2. It
+reads only the context, never the candidate actions, so it costs one decoder pass per step regardless of the number of
+candidates.
+Training windows.The model is trained on windows ofC+H= 32consecutive steps sampled uniformly from the
+corpus. The firstCobservations form the context and the followingHtransitions the imagination targets, with the
+keyframetbeing the last context step. Windows that run into the end of an episode are padded after the terminal
+transition, and the padded steps are masked. When the risk head is trained on a corpus in which safety events end the
+episodes, windows are also started at every step before a terminal, so that each terminal event appears at every horizon
+position between1andH. Without this, a collision that ends an episode would appear only at the last position of a
+window, and the risk head would never see one at short range.
+Objective.LetM vk ∈ {0,1}mark the valid (non-padded) transitionsk= 0, . . . , H−1of a window,Msk =M vk (1−
+dt+k)the transitions whose successor observation exists, and⟨x⟩ M the mean ofx k over the slots withM k = 1. With
+the Huber lossℓ H, the stop-gradient operatorsg(·), the two-hot encodingtwohot(y)∈∆ B of a scalar targety, which
+puts all its mass on the two bin centers that bracketsymlog(y), split so that its mean issymlog(y), the cross-entropy
+CE(q, p) =−Pb qb logp b and the binary cross-entropyBCE(y, p) =−ylogp−(1−y) log(1−p), each with the
+target first, the per-window losses are
+Llat =
+
+ℓH
+  ˆzt+k+1,sg(E θ(ot+k+1)) M s ,(14)
+Lrew =
+
+CE
+ 
+twohot(rt+k),ˆprt+k M v ,(15)
+Lϕ =
+
+ℓϕ
+  ˆϕt+k,ϕ t+k M v ,(16)
+Lcons =
+
+ℓH
+ 
+ˆrϕt+k, rt+k M v ,(17)
+Lcont =
+
+BCE
+ 
+1−d t+k,ˆct+k
+ 
+M v ,(18)
+Lval = 1K
+KX
+i=1
+
+CE
+ 
+twohot(vet+k+1),ˆpv,it+k+1 M s ,(19)
+Lbc =
+
+−logπ θ
+ 
+aet+k | Mt M v ,(20)
+whereℓ H is averaged over the entries of its arguments,ℓϕ is the Huber loss on the continuous factors, each divided by
+its scale, averaged over them, plus the binary cross-entropy of the indicator factors, averaged over them, and the log-
+density of the squashed Gaussian ata=a et+k islogN   atanha;µ πk ,diag((σ πk )2) − Pj log(1−a 2j ). Three choices
+in Eqs. (14)–(20) deserve comment. First, the latent target is the encoder’s own output with a stop-gradient, so that
+the dynamics is trained to reproduce the representation rather than the representation being trained to be predictable.
+Second, the value heads regress the expert’s valueV e evaluated at the recorded future observationso t+k+1, not a
+Monte-Carlo return of the behavior policy, because the corpus is driven mostly by degraded policies whose returns
+would measure their own mistakes, whereasV e measures how good a state is under competent driving, which is the
+quantity the planner needs for bootstrapping. Third, the behavior-cloning target is the expert’s action at the visited state
+foreveryvalid step, including steps at which a degraded policy or a perturbation has taken the vehicle off the expert’s
+trajectory. The prior therefore learns recoveries, not only expert behavior, unlike the base policy of SimDist (Levy
+et al., 2026), which is trained only on steps the expert executed. The consistency lossL cons ties the factor head to the
+scalar reward through the known reward formula, and the continuation loss provides the survival probabilities used by
+the planner.
+The losses have very different scales and would otherwise require hand-tuned weights that drift during training.
+Each term is therefore divided by a running estimate of its own root-mean-square, ˜Lj =L j/√νj, whereν j ←
+0.99ν j + 0.01L 2j is updated at every training step and treated as a constant in the gradient, and the weights express
+relative importance only:
+Lwm = ˜Llat + ˜Lrew + ˜Lϕ + 0.1 ˜Lcons + 0.1 ˜Lcont
++ ˜Lval + 4 ˜Lbc (+ ˜Lrisk). (21)
+The risk term is introduced in the next section. The training schedules, which in CARLA add the risk head after a first
+stage and in MetaDrive train all parts together from the start, are given in Section 4.
+9
+3.4. Learned collision-risk head
+The return in the planner’s score, Eq. (28) below, already penalizes safety events, through the reward and the value
+bootstrap. A collision, however, enters the return only through the reward of a single imagined step, diluted by the
+discount and, when it ends the episode, by the survival probability, and its effect on the score depends on how well the
+reward head extrapolates to a rare event. A dedicated head that answers a simpler question,has a collision happened
+by imagined stepk, can be trained as a classifier with class re-weighting, is bounded, and yields a penalty whose scale
+is under direct control. Similar event heads are used by RaWMPC (Sun et al., 2026); our head differs in its cumulative
+target and in the monotonicity constraint below, and it is supervised only by the simulator’s recorded safety events,
+never by any hand-written rule.
+Architecture and target.The headρ θ is a three-layer MLP (LayerNorm, two hidden layers of width256with GELU
+and dropout0.1) applied to the concatenation of the keyframe latent and each imagined latent,
+ρk =ρ θ
+ 
+[zt; ˆzt+k+1] ∈R ne , k= 0, . . . , H−1,(22)
+one logitρ k,j per safety-event typej= 1, . . . , ne of Section 3.1. The target is cumulative. With the recorded events
+et+k of the window and the validity maskM v of Section 3.3,
+yk,j = maxk′≤k
+ 
+M vk′ et+k′,j, M rk,j = max  M vk , yk,j .(23)
+When an event ends the episode, the steps after it are padding; the maskM rk,j keeps them supervised with target1
+(“the event has happened”), so that the logit at every later slot is trained as well, whereas a channel without an event
+is not supervised on padding, where its outcome is unknown. The classification loss is a positively re-weighted binary
+cross-entropy averaged over the masked entries,
+Lbce =
+P
+k,j M rk,j BCEw+
+ 
+yk,j ,sigmoid(ρ k,j )
+
+P
+k,j M rk,j , w + = 20,(24)
+whereBCE w+ (y, p) =−w +ylogp−(1−y) log(1−p); the positive class weight compensates for the rarity of
+events among the transitions of a window.
+Braking monotonicity.A classifier trained on logged data inherits its correlations. In driving data hard braking co-
+occurs with danger, and a head trained with Eq. (24) alone can learn that a candidate which brakes ismorelikely to
+be in a collision window, which is the opposite of what a planner needs. We counter this bias with a soft constraint
+that needs no counterfactual outcome label. For each window, a braked copy of the recorded action sequence,a−t+k =
+(clip(αt+k −β,−1,1), δ t+k)with a brake offsetβ∼ U[0.1,0.5]drawn once per window, is rolled out with the same
+context into latents ˆz−t+k+1, and the head is penalized whenever the braked rollout is predicted to be riskier:
+Lmono = 1neH
+H−1X
+k=0
+neX
+j=1
+relu
+
+sigmoid
+ 
+ρ−k,j  −sigmoid  ρk,j ,
+ρ−k =ρ θ [zt; ˆz−t+k+1].
+(25)
+The term is evaluated with dropout disabled, since two stochastic passes would differ even for identical inputs and
+the hinge would penalize that noise. Both latent inputs are detached, so that the term can only change the head; if it
+could reach the dynamics, the cheapest way to satisfy it would be to make the executed rollout look more dangerous.
+The complete risk objective isL risk =L bce +L mono, RMS-normalized like the other terms in Eq. (21). When the
+risk head is trained together with the world model, the classification term is allowed to shape the latents, so that the
+imagined states carry the information needed to foresee an event.
+Planning penalty.For a candidateathe planner subtracts
+¯ρ(a) =1H
+H−1X
+k=0
+neX
+j=1
+ωj sigmoid
+ 
+ρk,j (a)
+
+,(26)
+whereρ k,j (a)are the logits of Eq. (22) on the rollout ofaand the non-negative weightsω∈R ne select the events
+that the planner prices; whenωselects the collision channel alone,¯ρ(a)∈[0,1]is the mean over the horizon of
+the predicted probability that a collision has occurred. Because the target is cumulative, an event predicted early
+contributes at every later slot and weighs more than the same event predicted late, and a candidate that is predicted to
+avoid the event pays almost nothing. Channels with zero weight are trained but do not enter the score; the weights of
+each environment are given in Section 4.
+10
+3.5. Risk-aware MPPI planning
+At every control step the planner searches over action chunksa t:t+H−1 using the world model as its simulator.
+The search is the model predictive path integral (MPPI) update of Williams et al. (2017), with a shifted warm start
+and with the risk penalty of Eq. (26) in the score.
+Candidate generation.The context tokensM t and the action priora bc =a bct:t+H−1 of Eq. (13) are computed once
+per control step. The sampling distribution is a diagonal Gaussian over chunks with meanµ∈R H×2 and standard
+deviationσ∈R H×2>0 . Its mean is warm-started from the previous step’s final mean shifted by one step, with the
+prior’s last action filling the vacated slot (at the first step of an episode, froma bc itself), and its standard deviation is
+reset at every step toσ 0 = (0.25,0.08), for the longitudinal and the steering command at every horizon step. In each
+ofI= 2iterationsi= 0,1the candidate set is
+Ai =
+n
+clip
+ 
+µ+σ⊙ϵ (i,n),−¯a,¯aoN
+n=1| {z }
+sampled
+∪
+n
+clip
+ 
+abc +σ bc ⊙ϵ ′(n),−¯a,¯aoNbc
+n=1| {z }
+prior proposals
+∪
+
+abc	, (27)
+withN= 128samples,N bc = round(0.05N) = 6prior proposals withσ bc = (0.10,0.04)and the exact prior
+chunk as the last candidate,135candidates in total; every entry is clipped to[−¯a,¯a], as for the prior. All entries of
+the noiseϵ (i,n) andϵ ′(n) are drawn independently from a standard normal distribution; the sampled part is redrawn in
+every iteration, whereas the prior proposals are drawn once per control step and reused in both iterations. The prior
+proposals and the exact prior keep the behavior-cloned chunk and its neighborhood in the candidate set whatever the
+mean has drifted to, and including the exact prior chunk guarantees that the best candidate of every iteration scores at
+least as high as the behavior-cloned chunk (Lemma 1).
+Scoring.Each candidate is rolled out with Eq. (6) and scored with
+J(a) =
+H−1X
+k=0
+γk Sk ˆrt+k +γ H SH ¯Vt+H −W¯ρ(a),
+Sk =
+k−1Y
+k′=0
+ˆct+k′,
+(28)
+where all predicted quantities are those of the rollout ofa,γis the discount of Section 3.1, the blended reward is
+ˆrt+k = 12 ˆrst+k + 12 ˆrϕt+k, the survival probabilityS k is accumulated from the continuation head (S0 = 1), the terminal
+value ¯Vt+H = 1K PKi=1 symexp   Pb ˆpv,it+H,b cb is the ensemble mean of the values predicted for the last imagined
+state, and the risk weight isW= 50. The value bootstrap extends the effective horizon far beyond1.6s, which
+is necessary in driving, where the consequences of an action such as entering an intersection often arrive after the
+horizon. The scale ofWis set so that a collision predicted with certainty from the first imagined step,¯ρ= 1, costs
+about as much as the whole discounted return of a good candidate.
+Planning under model error.Jis the world model’s estimate of the planner’s objective. WritingJ ⋆(a)for the
+same objective evaluated in expectation over the true environment, with the rewards, terminations and collisions that
+executingaactually produces and the expert’s value of the state it actually reaches, the cost of exploring beyond the
+coverage of the model, the exploration side of the dilemma of Section 1, can be stated precisely.
+Definition 1(Model error and the planner’s choice).At a decision state, letAbe a set of candidate chunks on which
+JandJ ⋆ attain their maxima. Themodel errorof a candidate ise J (a) =J(a)−J ⋆(a), the planner’s choice is
+ˆa∈arg max a∈A J(a), and the best candidate isa ⋆ ∈arg max a∈A J ⋆(a).
+Proposition 1(The planner overestimates its own choice).LetAbe fixed andJ ⋆ deterministic, and let the model
+be unbiased at every fixed candidate,E[e J (a)] = 0for alla∈ A, the expectation being over the randomness of the
+training data and of the model. Then
+E
+
+eJ (ˆa) ≥E J ⋆(a⋆)−J ⋆(ˆa) ≥0.
+Proposition 2(Regret is bounded by the error at two candidates).For every realization of the model,
+0≤J ⋆(a⋆)−J ⋆(ˆa)≤e J (ˆa)−e J (a⋆)≤ |e J (ˆa)|+|e J (a⋆)|.
+Remark1.Proposition 1 is the optimizer’s curse (Smith and Winkler, 2006). Even a model that is unbiased at every
+candidate, once maximized, overestimates the candidate it selects, by at least the expected regret of that selection.
+Proposition 2 shows that the regret is bounded by the errors at only two candidates, the best one and the chosen one.
+MaximizingJthus draws ˆatowards candidates whose value the model overestimates, typically candidates that the
+corpus does not cover. Staging failures and annotating them with the expert (Section 3.2) reduces the error on the
+candidates that competent and failing drivers take, and online refinement (Section 3.6) reduces it where the planner’s
+own choices lead. Proofs of all formal statements are in Appendix A.
+11
+Update and execution.Index the candidates of an iteration asa (n),n= 1, . . . , N+Nbc + 1, and letEbe the indices
+of theN e = 16candidates with the highest scores, the elites. The distribution is moved towards them with exponential
+weights,
+wn = exp
+ 
+κ(J(a (n))−J max)P
+n′∈E exp
+ 
+κ(J(a (n′))−J max) , n∈ E,
+µ←
+X
+n∈E
+wna(n),σ←max qPn∈E wn a(n) −µ 2,σ min, (29)
+withJ max = max n∈E J(a (n)), which cancels in the ratio and only keeps the exponentials bounded,κ= 0.25and
+σmin = (0.05,0.02); the square, the root and the maximum are taken entrywise, andσis computed around the
+updated mean. After the last iteration the first action of the mean is executed asat, and the mean is stored for the next
+step’s warm start. The planner executes the weighted mean rather than the single best sample, which averages out the
+randomness of any single sample. In the evaluation of Section 4 the planner runs at10Hz on one GPU, re-planning
+at every step with the full context.
+Properties of the update.Two facts of the implementation make the following statements exact. Scoring is determin-
+istic at planning time (all modules are in evaluation mode), and within a control step the fixed candidates, the prior
+proposals anda bc, are formed once and are the same in every iteration.
+Lemma 1(The prior is a floor).LetF t be the fixed candidates of control stept, theN bc prior proposals anda bc,
+and letJ besti = maxa∈Ai J(a)be the best score among the candidatesA i of iterationiof that step (Eq.(27)). Then
+for every iterationi= 0, . . . , I−1,Jbesti ≥max a∈Ft J(a)≥J(a bc).
+The planned chunk is the weighted meanµof the elites rather than the best candidate, and becauseJis in general
+not concave,J(µ)can be lower thanJ bestI−1 . What holds forµis asymptotic in the number of samples.
+Assumption 1.On the action boxC= [−¯a,¯a] H×2, which contains every candidate of Eq. (27), the scoreJattains its
+maximum at a unique ˆaC, is continuous at ˆaC, and the maximum is well separated:sup{J(a) :a∈ C,∥a− ˆaC∥ ≥
+ϵ}< J(ˆaC)for everyϵ >0.
+Theorem 1(Consistency of the elite update).Under Assumption 1, consider one iteration whose candidate set con-
+tains, besides any other candidates inC,N bc prior proposals drawn independently from the law ofclip(a bc +σ bc ⊙
+ϵ′,−¯a,¯a), withϵ′ standard normal andσ bc >0. For any fixed number of elitesN e and anyκ≥0, the updated mean
+µof Eq.(29)and the best candidate converge to ˆaC almost surely asN bc → ∞.
+Corollary 1(The remaining error is the model’s).LetJ ⋆ attain its maximum overCata ⋆C. In the limit of Theorem 1
+the planned chunk is ˆaC, and its regret is bounded by the model error at two chunks,0≤J ⋆(a⋆C)−J ⋆(ˆaC)≤
+|eJ (ˆaC)|+|e J (a⋆C)|.
+Remark2.Theorem 1 is a statement about the limit of many samples and says nothing about the rate. WithN bc = 6
+proposals andN= 128samples in32dimensions the planner is far from this limit. Full support comes from the prior
+proposals, whose Gaussian noise gives every neighborhood of ˆaC positive probability. The samples around the mean
+have full support as well, but their law depends on the warm start and, in the second iteration, on the candidates of
+the first, whereas the proposals are drawn from one fixed law per control step; the statement therefore relies on the
+proposals alone. A reward that is discontinuous in the actions, such as CARLA’s penalty for changing the steering,
+makes the factorized reward, Eq. (12), and with itJdiscontinuous, which is why Assumption 1 asks for continuity
+only at the maximizer. Corollary 1 is where the two halves of the method meet. Sampling removes the error of
+the optimizer, and what remains is the model error at the chosen and at the best chunk, the quantity that the data
+(Section 3.2) and the online refinement (Section 3.6) reduce.
+3.6. Online adaptation with EMA scoring targets
+A world model trained on the corpus of Section 3.2 has learned from the states that other drivers visited, not from
+those that its own planner visits. SimDist addresses the analogous simulation-to-reality gap by collecting rollouts with
+the planner and re-fitting only the latent dynamics on them. We adopt the same loop (Algorithm 1) with two changes.
+First, the reward scorers and the risk head are adapted as well, because the closed-loop distribution of speeds, gaps
+and near-misses differs from the corpus and these heads, not only the dynamics, determine which candidate wins.
+Second, the planner does not score with the live scorers but with EMA copies that follow the live parameters slowly,
+so that the objective it optimizes does not move with every gradient step.
+12
+Interleaved collection and updates.The planner drives in the environment to which it is to be adapted, which need
+not be the one in which the corpus was collected; in our experiments these are the training environments of each
+benchmark, so that its test routes and scenarios stay held out (Section 4). The planner’s transitions are kept in an in-
+memory buffer of fixed size that holds only the most recent ones, and the parts of episodes still being driven are added
+to it whenever windows are drawn (the sizes are given in Appendix C). After every burst ofn b = 256environment
+steps,⌊0.125n b⌋= 32gradient updates are made (an update-to-data ratio of0.125, with fractional credit carried
+over). Each update batch mixes offline and online windows. Half of the windows of a batch are drawn uniformly
+from the offline corpus and half from the online buffer, and half of the online windows come from the episodes that
+the most recent burst completed or extended. Online windows use the sameC+Hlayout and terminal padding as
+offline ones.
+What is updated.The encoderE θ, the action priorπ θ and the value ensemble stay frozen. The value ensemble is
+frozen because its targets, the expert’s values, are not available online, and a value learned from the planner’s own
+returns would bootstrap on its own mistakes. Besides the risk head, two parameter groups are trained, with the scorer
+losses computed on detached rollouts so that they cannot move the dynamics:
+Londyn = ˜Llat,(30)
+Lonsc = ˜Lrew + ˜Lϕ + ˜Lcons + 0.1 ˜Lcont,(31)
+where Eq. (30) trains the dynamicsD θ (learning rate3×10 −5) and Eq. (31) trains the reward scorer and the reward,
+factor and continuation heads(T rθ , Rθ,Φ θ, Cθ)(learning rate10 −5). The risk head is trained withL bce +L mono
+on the same mixed batches, with its latent inputs detached, at learning rate10 −4. Online windows carry recorded
+safety events but no expert labels; Eqs. (30)–(31) and the risk losses need only rewards, reward factors, events and
+observations, which is precisely why these modules, and not the prior or the value heads, can be adapted without an
+expert in the loop.
+EMA targets for planning.The planner rolls candidates out with the live dynamics but scores them with EMA copies
+¯θof the scorers and of the risk head. After each burst,
+¯θ←(1−τ b) ¯θ+τ b θ,
+τb = 1−(1−τ) nb/Nc , τ= 0.1, N c = 1000, (32)
+so that the target moves by the fractionτperN c collected steps regardless of the burst size (τb ≈0.027forn b = 256);
+the risk head usesτ b = 0.1per burst directly. The EMA copies are what is saved and what the evaluation of Section 4
+uses. The reasoning is the one behind target networks in value learning. The reward and risk scorers define the
+planner’s objective, and an objective that changes every32updates would make consecutive plans inconsistent; the
+slow copy keeps the objective stable while still tracking the closed-loop distribution over hundreds of bursts.
+In the following statementsθ m and ¯θm denote the live parameters and the EMA copy after burstm= 0,1, . . .of
+the loop, so that Eq. (32) reads ¯θm+1 = (1−τ b) ¯θm +τ b θm+1.
+Lemma 2(The target’s rate does not depend on the burst size).Aftermbursts ofn b steps, ¯θm is a convex combination
+of its initial value, with weight(1−τ b)m = (1−τ) mnb/Nc, and of the live parametersθ 1, . . . , θm after each burst.
+In particular, the weight of the initial value depends only on the numbers=mn b of collected steps, as(1−τ) s/Nc,
+whatever the burst sizen b, and equals1−τats=N c.
+Proposition 3(Tracking).Letτ b ∈(0,1]be constant and let the live parameters change by at most∆ θ per burst,
+∥θm+1 −θ m∥ ≤∆θ. Then for everym
+∥¯θm −θ m∥ ≤(1−τ b)m ∥¯θ0 −θ 0∥+ 1−τ bτb  1−(1−τ b)m ∆θ,
+and ifθ m converges, ¯θm converges to the same limit.
+Proposition 4(Attenuation of update noise).Letτ b ∈(0,1]be constant and let the live parameters fluctuate around
+a fixed point,θ m =θ ∞ +ζ m, with independent zero-meanζ m of common covarianceΣ, and let the initial target be
+deterministic. ThenE[ ¯θm]→θ ∞ andCov( ¯θm)→ τb2−τb Σasm→ ∞.
+Remark3.Withn b = 256,τ b = 1−0.9 0.256 ≈0.027. At this value, Proposition 4 reduces the standard deviation of
+the update noise in the scorers’ parameters by the factor
+p
+τb/(2−τ b)≈0.12(by0.23for the risk head,τ b = 0.1),
+while Proposition 3 bounds the lag behind a drifting live model by(1−τ b)∆θ/τb ≈37 ∆ θ, about37bursts of drift.
+The EMA does not slow a consistent drift of the live parameters, which in the steady state of Proposition 3 it follows
+at the same speed, only later; what it removes is the burst-to-burst noise of the updates, which is what would make
+consecutive plans inconsistent.
+13
+Algorithm 1Online adaptation loop.
+Require:offline corpusD, world modelθfrom Section 3.3, EMA copies ¯θ←θof the scorers and the risk head
+1:bufferB ← ∅, credit←0
+2:whilefewer than10 6 environment steps collecteddo
+3:driven b = 256steps with the planner of Section 3.5 (live dynamics, EMA scorers, EMA risk head); append
+the transitions toB, which keeps only the most recent ones
+4:credit←credit+ 0.125n b;U← ⌊credit⌋; credit←credit−U
+5:forUupdatesdo
+6:sample a batch of windows, half fromDand half fromB, half of the latter from the latest burst
+7:updateD θ with Eq. (30), the scorers with Eq. (31), the risk head withL bce +L mono
+8:end for
+9: ¯θ←(1−τ b)¯θ+τ bθ ▷Eq. (32)
+10:end while
+11:returnlive dynamics, EMA scorers, EMA risk head, frozen encoder / prior / value ensemble
+4. Experiments
+After the setup in both simulators (Section 4.1), the experiments ask four questions. What do planning with the
+world model, the risk term, online adaptation and the data flywheel each contribute in closed loop (Section 4.2)? How
+does the final system compare with the baselines, in CARLA (Section 4.3) and on the safety-critical benchmark of
+CAT in MetaDrive (Section 4.4)? Which of the states that the ego can reach within the horizon does the world model
+expect to be unsafe, and how reliable is this expectation (Section 4.5)? Does the imagination of the world model carry
+the information on which driving decisions depend (Section 4.6)? Section 4.7 then reports the cost of training and
+planning.
+4.1. Experimental setup
+SAFER is evaluated in CARLA and in MetaDrive (Fig. 4); this subsection gives the setup in each.
+4.1.1. CARLA
+Simulator, expert and behavior policies.We use CARLA (version 0.9.15; Dosovitskiy et al., 2017), and the agent
+observes only the privileged BEV mask stack and the ego state of Section 3.1 (Fig. 4c). The expert is the publicly
+released Roach PPO agent (Zhang et al., 2021) after11.8M environment steps. Its actor provides the action labels
+aet , its critic the value labelsv et , and its feature extractor gives the architecture of the world-model encoder and
+initializes it. The intermediate drivers are theM= 13checkpoints of a Roach agent that we trained from scratch with
+Roach’s code and hyper-parameters, saved between0.2and4M training steps, so that the bank spans a wide range of
+competence rather than one level of it.
+Offline corpus.The three sets of Section 3.2, summarized in Table 1, are collected in the four training towns of
+Roach’s benchmark, Town01, Town03, Town04 and Town06 (Fig. 4a), on unbounded random routes with randomized
+traffic density; every checkpoint contributes the same number of transitions toDint. Two scripted events are used; their
+durations and the parameters of the action noise of Eq. (2) are listed in Table C.1 in Appendix C. Aholdfires when
+the ego has been stopped and the reward’s desired speed jumps up, as when a light turns green or a lead vehicle moves
+off, and holds full brake while the expert would already be starting. Alate brakefires when the expert brakes for a
+hazard in the ego’s path and holds the previous throttle, but only if the expert could still stop before the hazard after
+the override. An episode terminates at the first collision, red-light or stop-sign violation, or when the ego is blocked or
+leaves its lane, so every safety event ends its episode in this corpus. The reward subtracts a terminal penalty, its fifth
+factor, of1at any termination and1 +v t, with the ego speedv t in m/s, at a safety violation, so that a fast collision
+is penalized more than a slow one. The corpus contains the effect that a planner must be able to foresee. Among the
+states in which the expert brakes for a hazard ahead, the collision rate within the next1.6s is roughly half as high
+when the executed action brakes as when it does not.
+Offline training.Both offline stages train on the union of the three sets with uniform sampling, with no re-weighting
+between the expert, intermediate and targeted sets. Stage 1 trains the world model, the reward, continuation and value
+heads and the action prior for1.0M steps, together with the scene-factor head of Section 4.6 as an auxiliary task,
+whose loss is RMS-normalized like the others and added to Eq. (21) with weight0.5. Stage 2 adds the risk head,
+drops the scene-factor head and continues all parameters jointly for0.5M steps, with the additional windows before
+terminals of Section 3.3. The remaining settings are listed in Table C.1 in Appendix C.
+Online adaptation.The online loop (Algorithm 1) drives the four training towns of the corpus under its termination
+rules, using the planner of Section 3.5 with the risk penalty (W= 50, pricing collisions only) and scoring against the
+EMA copies. It runs for10 6 environment steps,27.8h of driving.
+14
+CARLAMetaDrive / CAT
+(a) Towns
+Town01
+ Town02
+ Town03
+Town04
+ Town05
+ Town06
+(b) Scenes (front camera)
+Town01: pedestrian
+ Town02: cyclist, scooter
+Town04: highway
+ Town05: multi-lane
+(c) Input: BEV + state
+Town01
+ego state
+throttle
+steer
+brake
+gear
+vx
+vy
+route lane ego
+vehicles pedestrians
+red light
+(d) Waymo scenarios
+#401
+ #406
+ #408
+#426
+ #430
+ #442
+(e) #401: logged traffic vs CAT's opponent
+logged traffic
+front camera, 3.2 s
+CAT's opponent
+front camera, 3.2 s
+(f) Input: 101-d vector
+#401, 3.2 s + state
+ego
+navigation
+3 vehicles
+offset
+lidar, 30 rays
+road-edge detector, 30
+lane-line detector, 12
+Figure 4: Experimental environments. Top: CARLA. (a) The six towns of the evaluation, aerial view with the lane network inset; the corpus is
+collected in Town01, Town03, Town04 and Town06, while Town02 and Town05 contribute no training data. (b) Scenes of evaluation episodes in a
+front camera added for illustration; the Town04 scene lies on a held-out test route. (c) The agent’s input in the Town01 scene of (b): the bird’s-eye
+view,38m wide (route, lanes, vehicles and pedestrians over four past frames, fading, and traffic lights at their stop lines; the ego is the white box),
+and the ego state, i.e. the last applied control and the planar velocity. Bottom: MetaDrive with CAT. (d) Road layouts of six Waymo test scenarios.
+(e) Test scenario401at3.2s in its logged traffic (left) and against CAT’s opponent (right): top-down views, heading up, with the ego’s logged route
+(blue), the opponent’s logged path (white, dashed) and the path CAT generates for it (magenta), which crosses the ego’s route (star); below, the
+front camera at the same moment. (f) The agent’s101-dimensional input at the right-hand moment of (e):72distances, drawn as rays, to vehicles
+along30directions (lidar, cyan), to road edges along30(yellow) and to lane lines along12(pink), and29state entries: the ego’s state, navigation
+features, the relative states of the three nearest vehicles and the lateral offset from the logged trajectory.
+Table 1: Offline corpus in CARLA. Steps are transitions at10Hz. Episodes end on the first safety violation; the intermediate policies therefore
+produce many short episodes. “Perturbed” counts steps whose executed action differs from the behavior policy’s proposal. The lower block lists
+the sets that one turn of the data flywheel adds (Section 4.2); inD +tgt, scripted pedestrians step into the ego’s path.
+Set Driver Steps Episodes Collisions Red lights Perturbed
+Dexp expert10.00M1,901 1,669 133 0%
+Dint 13 intermediate checkpoints + noise10.05M52,023 28,629 10,006 21.6%
+Dtgt expert + noise + events (two runs)2.00M338 268 46 24.8%
+total22.06M54,262 30,566 10,185
+added by one turn of the data flywheel
+D+int 13 intermediate checkpoints + noise4.00M20,931 11,439 4,000 21.8%
+D+tgt expert + noise + events, crossing pedestrians (two runs)2.50M2,640 2,551 54 22.0%
+total28.56M77,833 44,556 14,239
+15
+Baselines.Besides the published results of end-to-end driving methods (Section 4.3), we train four reinforcement
+learning methods offline on the whole corpus of Table 1, including the sets that the data flywheel adds: TD3+BC (Fu-
+jimoto and Gu, 2021), IQL (Kostrikov et al., 2022), TD-MPC2 (Hansen et al., 2024) and DreamerV3 (Hafner et al.,
+2025a). They observe the BEV and the ego state through the frozen encoder of the Roach expert, are trained with the
+published settings of each method, adapted to the corpus where necessary, and are evaluated under the protocol below.
+Closed-loop evaluation protocol.Evaluation follows the route-based protocol of the CARLA Leaderboard (CARLA
+Team, 2020) as implemented in Roach’s benchmark. The ego must follow a predefined route through dense traffic and
+is scored on how much of the route it completes and on the infractions it commits on the way. We use all76routes
+of the benchmark, between0.5and4.9km long. They are50routes in the four training towns, the10held-out test
+routes of Town04 and16routes in Town02 and Town05, from which no training data come. Traffic is the benchmark’s
+fixed density per town. Unlike the corpus, an evaluation episode does not end at a collision or a run red light. It ends
+when the route is completed, when the ego has been blocked for90s, when it deviates from the route or after1,500s
+of simulation time, and every infraction on the way is recorded. Thedriving scoreof an episode is the product of
+the route completionRC(1for a completed route, otherwise the completed fraction of its length) and the infraction
+penalty
+P=
+ 
+1−ℓ off
+
+0.65 nlay 0.60 nveh 0.50 nped 0.70 nred 0.80 nstop ,(33)
+whereℓ off is the share of the completed distance driven outside the route’s lane andn lay,n veh,n ped,n red andn stop
+count collisions with the static layout, with vehicles and with pedestrians, red lights run and stop signs ignored.
+Besides the driving score we report the completion rate, infractions per100km by type, the rate of blocked episodes,
+and two action-smoothness measures, the mean absolute change of the executed acceleration and steering commands
+between consecutive steps, because a planner that re-optimizes at every step can be jerky in ways the driving score
+does not see. Every controller is evaluated on all76routes under three seeds,228episodes per controller. The seed
+sets the traffic and the planner’s sampling noise, and all controllers start from the same traffic.
+4.1.2. MetaDrive
+Benchmark.We use the closed-loop benchmark of CAT (Zhang et al., 2023), which consists of500scenarios of the
+Waymo Open Motion Dataset (Ettinger et al., 2021) replayed in MetaDrive (Li et al., 2023),400for training and
+100for testing, observed through the101-dimensional vector of Section 3.1 (Fig. 4d–f). Every test scenario is driven
+twice, first in its logged traffic (regular) and then with an opponent that CAT’s generator places on the predicted
+trajectory most likely to collide with the ego’s regular drive (safety-critical, Fig. 4e); the first vehicle contact ends the
+episode. The metrics are those of CurricuVLM (Sheng et al., 2026a): episode reward, road completion, total distance,
+crash rate (the share of episodes that end in a vehicle contact) and average speed.
+Data and model.The offline corpus applies the recipe of Section 3.2 to the400training scenarios under CAT’s
+training rules, in which a vehicle contact costs−1without ending the episode. The expert is a CAT agent, TD3
+trained with CAT’s closed-loop adversarial training and CAT’s code, for106 steps, and eight of its checkpoints, saved
+between2.5×10 4 and7.5×10 5 steps, are the intermediate drivers, perturbed by the noise process of Section 3.2 with
+the parameters of the CARLA corpus (Section 4.1.1). Every scenario is driven in its logged traffic and again against
+CAT’s opponent: by the intermediate drivers, by the noise-free expert, which also faces the opponents generated
+against the intermediate drivers, and by the expert with targeted hazard brakes, in which the ego brakes for0.5–1s
+when a road user ahead on its route closes in and the expert then resumes. CAT’s expert seldom brakes for hazards, so
+this event takes the place of the late brake of CARLA as the source of braking near hazards. The corpus holds44,800
+episodes and3.2M transitions; the expert labels every state with its action, and the value labels are the noise-free
+expert’s values, estimated by policy evaluation on the corpus with CAT’s discount of0.99, which the planner also
+uses asγ. The world model is that of Section 3.3, with an observation encoder initialized from the first two layers of
+the expert’s actor and CAT’s reward components as reward factors; dynamics, heads, action prior and risk head are
+trained together in a single stage of2.5×10 5 steps.
+Planner and online adaptation.On this benchmark the risk head predicts three events, vehicle contact, contact with
+an object and leaving the road, and the planner weights all three,ω= (1,1,1)in Eq. (26), since leaving the road
+also ends an episode;W= 50as in CARLA. Two settings differ from CARLA because of the benchmark. CAT’s
+traffic replays the logs and does not react to the ego, so slowing down can cause a rear-end contact, and the braking-
+monotonicity term of Eq. (25) is not used during online adaptation. The action prior, distilled from CAT’s TD3 expert,
+often acts at the bounds of the action range, where a plan carried over from the previous step lags behind it, so every
+MPPI step starts from the prior’s current chunk instead of the shifted previous plan of Section 3.5. SAFER is evaluated
+after10 6 steps of online adaptation on the training scenarios. We train three SAFER systems with different seeds,
+offline and online, evaluate each three times, and report the mean and standard deviation over the three systems.
+16
+Table 2: Closed-loop ablation on the76Leaderboard routes: mean±standard deviation over three seeds (76episodes per seed,228per arm).
+(a) DS: driving score; RC: route completion; IP: infraction penalty; Compl.: routes completed; Clean: routes completed without a collision;∆DS:
+change in driving score from the row above (for all three online rows, from + risk term), paired over route and seed, with its95%bootstrap interval
+over routes. The last two online rows are the snapshots of one online run after5×10 5 and10 6 environment steps; the first online row is a separate
+run of10 6 steps that adapts the dynamics alone. The last row is one turn of the data flywheel, in which the model is retrained on the corpus extended
+by the lower block of Table 1 and adapted online for10 6 steps. (b) Collisions by type, red lights run and stop signs run per100km; Blocked:
+episodes ended by blocking; smoothness: mean absolute step-to-step change of the executed acceleration|∆a|and steering|∆δ|commands.
+(a) Route level
+Arm DS RC IP Compl. (%) Clean (%)∆DS
+BC prior0.647±0.021 0.921±0.038 0.701±0.026 85.1±4.2 38.6±6.5–
+MPPI0.620±0.034 0.965±0.009 0.639±0.036 91.7±1.5 38.2±4.7−0.028 [−0.078,+0.021]
++ risk term0.702±0.018 0.978±0.019 0.715±0.014 94.7±3.5 50.4±5.3 +0.082 [+0.034,+0.131]
++ online, dynamics only0.719±0.036 0.959±0.004 0.750±0.037 90.8±1.3 48.7±6.0 +0.017 [−0.028,+0.061]
++ online,5×10 5 steps0.740±0.036 0.944±0.006 0.788±0.040 88.6±0.8 54.4±9.0 +0.038 [−0.013,+0.089]
++ online,10 6 steps0.768±0.029 0.967±0.008 0.796±0.023 93.4±1.3 57.5±6.1 +0.066 [+0.013,+0.119]
++ data flywheel0.801±0.038 0.950±0.014 0.843±0.031 89.0±3.8 61.8±7.3 +0.033 [−0.010,+0.076]
+(b) Infractions and smoothness
+per100km Smoothness
+Arm Vehicle Pedestrian Static Red light Stop sign Blocked (%)|∆a| |∆δ|
+BC prior27.9±4.8 19.5±3.7 0.8±0.8 1.3±0.4 0.5±0.5 14.9±4.2 0.038±0.002 0.004±0.000
+MPPI31.7±4.4 20.6±5.0 0.3±0.4 5.7±0.5 8.0±1.2 7.0±2.0 0.244±0.002 0.091±0.001
++ risk term28.3±4.1 12.7±0.3 0.3±0.4 4.3±1.6 4.6±0.7 4.8±4.2 0.243±0.003 0.092±0.002
++ online, dynamics only22.7±4.2 14.7±3.4 0.8±0.8 1.0±0.5 1.3±0.4 8.3±1.5 0.231±0.001 0.074±0.001
++ online,5×10 5 steps20.7±4.3 10.8±3.7 0.8±0.8 2.1±0.5 1.8±1.2 11.0±0.8 0.192±0.000 0.069±0.000
++ online,10 6 steps20.6±3.5 8.8±2.6 0.0±0.0 1.3±0.4 3.1±0.8 6.6±1.3 0.194±0.002 0.074±0.000
++ data flywheel16.0±2.4 5.5±1.3 0.5±0.9 1.6±1.6 1.8±0.4 11.0±3.8 0.172±0.001 0.059±0.000
+4.2. Closed-loop ablation
+Five controllers share the stage-2 checkpoint and differ only in how it is used, and a sixth arm retrains it:
+•BC prior: the behavior-cloned priorπ θ of Eq. (13) executed directly, no planning;
+•MPPI: planning with the reward, continuation and value heads and no risk penalty (W= 0), i.e. SimDist’s
+planner on our model;
+•+ risk term: the same planner with the risk penalty,W= 50;
+•+ online, dynamics only: the same planner on a model whose dynamicsD θ alone are adapted online (Eq. (30)),
+for10 6 steps and otherwise as in the full system, while the reward scorers and the risk head keep their offline
+weights, i.e. SimDist’s adaptation rule on our model;
+•+ online adaptation: the same planner on the model adapted online for10 6 steps, the full SAFER system. The
+snapshot of the same run after5×10 5 steps is evaluated as well, for the effect of training length;
+•+ data flywheel: one turn of a loop that aims new data at the scenarios that an analysis of the offline corpus
+finds covered least and retrains the system. These are encounters with pedestrians. Of the21,287recorded
+collisions analyzed in Section 4.5, only2,896involve a pedestrian, and the risk head predicts them at the step at
+which they happen less often than collisions with vehicles (Fig. 6b). The corpus is therefore extended by6.5M
+transitions, collected like the rest of it on random routes in the training towns. Of these,4.0M come from the
+intermediate drivers, and2.5M from the expert with noise and late brakes, facing scripted pedestrians that step
+into the ego’s path on straight roads and at the exits of left turns (Table 1). Both offline stages are retrained with
+the same recipe, and the new model is adapted online for10 6 steps with the full system’s settings.
+Table 2 adds these components one at a time, from the behavior-cloned prior to the adapted planner and one turn
+of the data flywheel. Differences between arms are paired over the same route and seed; their95%intervals come
+from a bootstrap that resamples routes and keeps the three seeds of a route together. The∆DS column of Table 2
+gives them for the driving score; a difference is called significant when its interval excludes zero.
+Replacing the prior by the planner without a risk term does not change the driving score significantly. The planner
+completes more of each route and is blocked less often (7.0%of the episodes against14.9%), but it runs more red
+lights (5.7against1.3per100km), so its infraction penalty falls, and its acceleration command changes six times
+more from one step to the next.
+Adding the risk penalty raises the driving score by0.08, and the gain comes from the infraction penalty. Collisions
+with pedestrians fall from20.6to12.7per100km, and the share of routes completed without a collision rises from
+38%to50%.
+17
+The model adapted on the planner’s own driving raises the driving score by a further0.07, again through the
+infraction penalty, while route completion stays at the level of the offline planner (0.967against0.978). Every type
+of infraction becomes rarer. Per100km, vehicle collisions fall from28.3to20.6, pedestrian collisions from12.7to
+8.8and red lights run from4.3to1.3, and the commands become smoother (|∆a|from0.243to0.194). The gain is
+concentrated where the online loop drives. The driving score rises by0.07on the50routes of the four training towns
+and by0.16on the ten held-out Town04 routes, too few to be conclusive, but not in the two towns without training
+data. Online adaptation thus extends the coverage of the towns in which the planner drives during adaptation; in the
+two towns where it never drives, the driving score is unchanged.
+Over the three steps, the full system raises the driving score of the behavior-cloned prior by0.12, through both a
+higher route completion and a higher infraction penalty. The standard deviation of the driving score over seeds lies
+between0.018and0.038for every row of Table 2, below the size of each significant step.
+Halfway through the online run, after5×10 5 steps, the safety gain is largely in place. The infraction penalty
+is already0.07above the offline planner’s, vehicle collisions are at20.7per100km (20.6after10 6 steps) and red
+lights run at2.1. This snapshot is more cautious, though. It is blocked in11.0%of the episodes (4.8%offline,6.6%
+after10 6 steps) and completes less of each route, so its gain in driving score over the offline planner is smaller and
+not significant. In the second half of the run, route completion rises again, from0.944to0.967, while the infraction
+penalty holds, which gives the full system’s gain.
+Besides how long the loop runs, the gain depends on what it adapts. When the loop adapts the dynamics alone, as
+SimDist does, and leaves the reward scorers and the risk head at their offline weights, the driving score rises by only
+0.02over the offline planner, which is not significant, and stays0.05below the full system’s, a significant difference
+that comes from the infraction penalty. The adapted dynamics alone make vehicle collisions and red lights run rarer
+(22.7and1.0per100km, against28.3and4.3offline), but pedestrian collisions do not fall (14.7against12.7) and the
+planner is blocked more often (8.3%of the episodes against4.8%). The significant gain of online adaptation therefore
+requires adapting the reward scorers and the risk head along with the dynamics, as SAFER does (Section 3.6).
+One turn of the data flywheel makes the system safer. Its infraction penalty rises by0.05, a significant gain.
+Pedestrian collisions fall from8.8to5.5per100km and vehicle collisions from20.6to16.0. The retrained system
+is also more cautious. It is blocked in11.0%of the episodes, against6.6%, and completes less of each route (0.950
+against0.967), so its driving score rises by0.03, which is not significant.
+Fig. 5 opens up two single decisions of the offline planner on recorded states. Each of the270candidate chunks
+scored in the planner’s two iterations is decomposed into its predicted return, the first two terms of Eq. (28), and its
+risk penalty¯ρof Eq. (26).
+In the first state (Fig. 5a) the ego drives at8.7m/s towards a vehicle ahead in its lane. The recorded driver kept
+accelerating and hit the vehicle1.6s later, although the expert’s label at that moment was to brake. The planner
+brakes over the whole horizon. Its executed plan scoresJ= 48.5, against45.4for the behavior-cloned prior and38.2
+for the recorded actions, and its predicted collision probability does not exceed0.001. For the recorded actions, by
+contrast, the risk head’s probability rises from about0.8s ahead and reaches0.33just before the recorded impact. The
+same holds beyond this example. Over200recorded collisions of this kind, the executed plan brakes harder than the
+recorded driver in98.5%of them and carries a lower predicted risk up to the impact in98.0%(mean0.013, against
+0.166for the recorded actions and0.016for the prior).
+In the second state (Fig. 5b) the ego drives at11.6m/s through a junction with vehicles on both sides and pedes-
+trians ahead to the right, and no collision is imminent. The risk head stays quiet. The plan’s predicted collision
+probability never exceeds0.003, and no candidate reaches a risk penalty of0.025. Candidates that turn towards the
+pedestrians or into the traffic receive the lowest scores; the plan keeps its lane and slows down, and it improves on the
+prior’s score (34.9against31.0) at the same predicted risk. The planner therefore responds to the situation rather than
+to the density of the scene. The risk term rises before a real collision, changes the plan there, and stays silent where
+none threatens.
+4.3. Comparison on the CARLA Leaderboard
+Table 3 compares SAFER with end-to-end driving baselines and with the four offline reinforcement learning
+baselines of Section 4.1.1 on the CARLA Leaderboard. SAFER observes the privileged bird’s-eye view of Roach and
+is scored with the Leaderboard’s metrics on the76Leaderboard routes of Section 4.1.1. The comparison therefore
+places SAFER’s driving decisions among those of the baselines; it does not rank complete pipelines from sensors
+to control. The offline reinforcement learning baselines observe what SAFER observes and are scored on the same
+routes under the same seeds, so they compare with SAFER directly.
+SAFER reaches the highest route completion (0.95) and the second-highest driving score (0.80), after DreamerV3
+(0.82). The strongest end-to-end baselines trade route completion for infraction penalty. TCP, InterFuser and TF++
+have the highest infraction penalties among them (0.84–0.87) but complete79–88%of the route length, while LA V
+completes94%at an infraction penalty of0.64. SAFER completes95%of each route at an infraction penalty of0.84,
+that of InterFuser and TF++ and below TCP’s, so its lead in driving score over them comes from completing more of
+each route at a comparable infraction penalty. The ablation shows where this pairing comes from (Table 2). Planning
+with the world model alone completes96.5%of each route at an infraction penalty of0.64, the risk term and online
+18
+Candidate paths (8.7 m/s)
+5 m
+ 42
+45
+48
+Score J
+10−4 10−3 10−2
+Risk penalty ̄ρ (log scale)
+37.5
+40.0
+42.5
+45.0
+47.5
+50.0Predicted return
+Return and risk
+0.0 0.4 0.8 1.2 1.6
+Imagined time (s)
+−1
+0
+1
+Acceleration command
+throttle
+brake
+Acceleration over the horizon
+0.0 0.4 0.8 1.2 1.6
+Imagined time (s)
+0.0
+0.5
+1.0Collision probability
+recorded
+impact
+plan: max 0.001
+Predicted collision risk
+executed plan behavior-cloned prior recorded driver candidates (color: score J) collision probability > 0.5
+(a) recorded collision with the vehicle ahead
+Candidate paths (11.6 m/s)
+5 m
+24
+28
+32
+Score J
+10−3 10−2
+Risk penalty ̄ρ (log scale)
+20
+25
+30
+35Predicted return
+Return and risk
+0.0 0.4 0.8 1.2 1.6
+Imagined time (s)
+−1
+0
+1
+Acceleration command
+throttle
+brake
+Acceleration over the horizon
+0.0 0.4 0.8 1.2 1.6
+Imagined time (s)
+0.0
+0.5
+1.0Collision probability
+plan: max 0.003
+Predicted collision risk
+executed plan behavior-cloned prior candidates (color: score J) collision probability > 0.5
+(b) dense traffic, no collision
+Figure 5: Two planning decisions of the offline planner on recorded states fromD int. From left to right: the BEV at the decision time (route light
+gray, road dark gray, lane markings magenta, vehicles blue, pedestrians cyan, lighter shades are earlier frames; ego white) with the270scored
+candidates drawn as paths and colored by their scoreJ, the executed plan (green), the behavior-cloned prior (dotted) and, in (a), the recorded
+driver’s actions up to the impact (dashed red, star), and a red cross where a candidate’s predicted collision probability first exceeds0.5; paths
+are sketched from the action chunks with a kinematic bicycle model and the predicted speed, not decoded positions; predicted return against risk
+penalty¯ρ(log scale) for all candidates, with the plan (star), the prior (triangle) and, in (a), the recorded actions (cross); the acceleration command of
+the60best candidates, the plan, the prior and the recorded actions over the imagined horizon (negative values brake); and the predicted probability
+that a collision has occurred by each imagined step.
+19
+adaptation raise the penalty to0.80while completion stays at0.97, and one turn of the data flywheel raises it to0.84
+at a completion of0.95.
+The four methods trained on SAFER’s corpus reach driving scores of0.82(DreamerV3),0.73(IQL),0.63
+(TD3+BC) and0.43(TD-MPC2), against0.80for SAFER. Paired over routes and seeds, DreamerV3 and SAFER
+do not differ significantly in any of the three metrics. SAFER’s lead over IQL is significant in driving score and
+in route completion, while their infraction penalties do not differ significantly. SAFER’s lead over TD-MPC2 is
+significant in all three metrics. TD-MPC2 is blocked in53%of its episodes, against11%for SAFER.
+Table 4 explores further metrics for the methods whose input is exactly that of SAFER, the bird’s-eye view and
+the ego state. SAFER has the best value in six of the eight measures: the highest reward per step (0.77, against at most
+0.71for the baselines), the highest average speed (3.31m/s) and the largest share of completed routes (89%), and the
+fewest collisions with vehicles, red lights run and blocked episodes. DreamerV3 collides with pedestrians less often
+than SAFER (1.1against5.5per100km) and runs no stop signs, but it falls behind SAFER in the other six measures.
+IQL also collides with pedestrians less often than SAFER (4.2against5.5per100km) and TD-MPC2 runs fewer stop
+signs.
+Table 3: Comparison with the baselines on the CARLA Leaderboard. The end-to-end methods (top) are given with their published results.
+TD3+BC, IQL, TD-MPC2 and DreamerV3 (middle) are trained by us on SAFER’s corpus, with the frozen encoder of the expert and without its
+labels, and evaluated as SAFER.
+Algorithm Input Driving Route Infraction
+score↑compl.↑penalty↑
+CILRS (Codevilla et al., 2019) RGB 0.05 0.14 0.55
+LBC (Chen et al., 2020) RGB 0.09 0.18 0.73
+TransFuser (Prakash et al., 2021) RGB + LiDAR 0.17 0.52 0.42
+NEAT (Chitta et al., 2021) RGB 0.22 0.42 0.65
+MMFN (Zhang et al., 2022) RGB + LiDAR + HD map 0.23 0.47 0.63
+IARL (Toromanoff et al., 2020) RGB 0.25 0.47 0.52
+Rails (Chen et al., 2021) RGB 0.31 0.58 0.56
+GRIAD (Chekroun et al., 2023) RGB 0.37 0.62 0.60
+Latent TransFuser (Chitta et al., 2023) RGB 0.45 0.66 0.72
+TransFuser (Chitta et al., 2023) RGB + LiDAR 0.61 0.87 0.71
+LA V (Chen and Krähenbühl, 2022) RGB + LiDAR 0.62 0.94 0.64
+TF++ (Jaeger et al., 2023) RGB + LiDAR 0.66 0.79 0.84
+TCP (Wu et al., 2022) RGB 0.75 0.86 0.87
+InterFuser (Shao et al., 2023) RGB + LiDAR 0.76 0.88 0.84
+TD-MPC2 (Hansen et al., 2024) BEV + ego state 0.43 0.70 0.59
+TD3+BC (Fujimoto and Gu, 2021) BEV + ego state 0.63 0.84 0.76
+IQL (Kostrikov et al., 2022) BEV + ego state 0.73 0.88 0.82
+DreamerV3 (Hafner et al., 2025a) BEV + ego state0.820.940.88
+SAFER (ours) BEV + ego state 0.800.950.84
+Table 4: Further metrics of the methods of Table 3 whose input is exactly that of SAFER, under the same protocol: mean±standard deviation over
+three seeds. Reward of Eq. (1) per step, average speed (route distance completed over the duration of the episode), share of the routes completed,
+share of the episodes in which the ego is blocked, and collisions and traffic-rule infractions per100km driven.
+Per100km↓
+Reward Speed Completed Blocked Collisions Red Stop
+Algorithm per step↑(m/s)↑(%)↑(%)↓Pedestrians Vehicles lights signs
+TD-MPC2 (Hansen et al., 2024)−0.51±0.18 2.61±0.22 43.0±8.0 52.6±6.0 5.6±1.4 27.2±0.2 3.8±2.0 0.7±1.2
+TD3+BC (Fujimoto and Gu, 2021)0.53±0.02 3.08±0.09 68.0±3.0 30.3±2.6 8.4±2.6 27.9±3.3 4.7±0.6 2.6±0.8
+IQL (Kostrikov et al., 2022)0.47±0.09 3.20±0.05 75.4±2.7 21.5±2.7 4.2±2.5 19.3±4.3 3.9±2.1 3.9±0.9
+DreamerV3 (Hafner et al., 2025a)0.71±0.01 3.26±0.05 88.2±2.6 11.8±2.61.1±0.917.1±6.0 2.1±1.60.0±0.0
+SAFER (ours)0.77±0.02 3.31±0.03 89.0±3.8 11.0±3.85.5±1.316.0±2.4 1.6±1.61.8±0.4
+4.4. Comparison on the MetaDrive/CAT benchmark
+To compare SAFER with a wider range of baselines under a common protocol, we evaluate it on the CAT bench-
+mark of Section 4.1.2. Table 5 compares SAFER with reinforcement learning (SAC (Haarnoja et al., 2018), PPO
+(Schulman et al., 2017), TD3 (Fujimoto et al., 2018)), safe reinforcement learning (SAC-PID and TD3-PID (Stooke
+et al., 2020), TD3-Lag (Ray et al., 2019)), imitation learning (BC (Gleave et al., 2022), GAIL (Ho and Ermon, 2016),
+AIRL (Fu et al., 2018), SQIL (Reddy et al., 2020)) and closed-loop training, which generates or selects training
+scenarios against the current policy (CAT, CLIC (Niu et al., 2024) and CurricuVLM), and with DreamerV3 (Hafner
+et al., 2025a), which we train on SAFER’s offline corpus of Section 4.1.2 as in CARLA (Section 4.1.1), on the
+101-dimensional observation and without online interaction.
+20
+Table 5: Closed-loop comparison on the MetaDrive/CAT benchmark (100test scenarios): mean±standard deviation over three seeds. (a) Regular:
+logged traffic; (b) safety-critical: CAT’s opponent generated against the regular drive. Baseline results are from Sheng et al. (2026a), except those
+of DreamerV3, which we trained.
+(a) Regular test scenarios
+Method Episode reward↑Road completion (%)↑Total distance↑Crash rate (%)↓Average speed↑
+SAC (Haarnoja et al., 2018)43.3±1.61 67.9±1.14 44.9±1.07 18.3±0.92 9.35±0.06
+PPO (Schulman et al., 2017)41.1±2.48 65.9±2.51 42.9±2.01 22.6±3.7510.1±0.24
+TD3 (Fujimoto et al., 2018)49.3±0.83 72.9±0.44 47.9±1.08 18.9±1.72 8.14±0.80
+SAC-PID (Stooke et al., 2020)7.57±3.20 24.8±10.3 12.9±2.91 21.3±1.35 5.19±0.57
+TD3-Lag (Ray et al., 2019)39.6±0.00 46.9±0.00 38.9±0.00 23.0±0.00 5.50±0.00
+TD3-PID (Stooke et al., 2020)−1.00±0.91 6.48±0.44 4.55±0.37 22.8±1.77 4.17±1.08
+BC (Gleave et al., 2022)29.7±2.52 58.6±2.09 33.4±1.80 20.6±1.18 7.42±0.28
+GAIL (Ho and Ermon, 2016)32.5±1.99 57.0±1.50 35.1±1.82 23.4±1.94 7.84±0.74
+AIRL (Fu et al., 2018)27.0±1.94 54.8±3.13 32.0±1.63 20.1±3.06 9.80±0.76
+SQIL (Reddy et al., 2020)20.3±0.21 44.7±0.78 25.1±0.36 26.9±1.30 6.50±0.38
+CAT (Zhang et al., 2023)49.1±3.89 73.0±3.94 48.5±3.39 15.5±1.72 8.45±1.23
+CLIC (Niu et al., 2024)43.5±0.49 68.3±0.60 45.1±0.7115.1±1.399.31±0.28
+CurricuVLM (Sheng et al., 2026a)52.3±2.28 76.2±2.28 51.0±1.65 16.0±0.80 9.52±0.14
+DreamerV3 (Hafner et al., 2025a)46.3±0.24 71.4±0.57 45.8±0.43 19.4±4.63 7.05±0.32
+SAFER (ours)53.4±1.60 79.7±0.79 51.3±1.3518.6±0.5710.1±0.06
+(b) Safety-critical test scenarios
+Method Episode reward↑Road completion (%)↑Total distance↑Crash rate (%)↓Average speed↑
+SAC (Haarnoja et al., 2018)38.4±1.97 63.2±1.21 40.9±1.34 30.5±2.33 9.25±0.07
+PPO (Schulman et al., 2017)38.4±0.86 62.7±1.05 40.0±0.70 32.0±2.02 9.94±0.30
+TD3 (Fujimoto et al., 2018)42.4±1.01 65.2±1.40 42.6±1.26 39.7±1.04 8.02±0.77
+SAC-PID (Stooke et al., 2020)7.46±3.05 19.0±4.19 12.7±2.82 30.4±3.27 5.22±0.54
+TD3-Lag (Ray et al., 2019)29.1±0.00 39.0±0.00 30.7±0.00 51.0±0.00 5.70±0.00
+TD3-PID (Stooke et al., 2020)−0.68±1.00 5.50±0.90 4.58±0.35 29.4±5.83 4.18±1.06
+BC (Gleave et al., 2022)27.4±2.69 53.2±1.81 31.0±2.17 33.7±0.27 7.30±0.26
+GAIL (Ho and Ermon, 2016)29.8±1.07 52.3±1.42 32.7±1.05 33.7±1.78 7.77±0.73
+AIRL (Fu et al., 2018)26.3±1.84 52.8±3.16 31.2±1.50 27.8±3.51 9.74±0.72
+SQIL (Reddy et al., 2020)18.9±0.56 41.4±1.01 23.5±0.52 38.5±1.67 6.54±0.34
+CAT (Zhang et al., 2023)42.5±3.95 66.6±4.37 43.4±3.48 32.1±2.08 8.36±1.17
+CLIC (Niu et al., 2024)39.3±0.72 64.3±0.40 41.6±0.78 26.2±1.17 9.21±0.26
+CurricuVLM (Sheng et al., 2026a)48.9±1.53 73.4±1.6648.4±1.31 25.1±1.179.45±0.16
+DreamerV3 (Hafner et al., 2025a)39.4±0.53 63.0±1.00 40.7±0.52 44.3±6.61 7.47±0.31
+SAFER (ours)49.0±0.54 74.5±0.3848.2±0.45 31.4±1.2310.0±0.05
+In regular traffic SAFER has the highest episode reward, road completion and total distance in Table 5 and shares
+the highest average speed with PPO; its crash rate (18.6%) is lower than that of every baseline except SAC (18.3%)
+and the three closed-loop training methods (15.1–16.0%). In safety-critical traffic it has the highest episode reward,
+road completion and average speed, and its crash rate (31.4%) is close to those of SAC and CAT (30.5%and32.1%),
+while CurricuVLM, which builds its training curriculum from generated safety-critical scenarios, keeps the lowest
+crash rate (25.1%) and a slightly longer total distance (48.4against48.2). DreamerV3, trained on the same corpus as
+SAFER, stays below SAFER in episode reward, road completion, total distance and average speed in both settings.
+It crashes about as often as SAFER in regular traffic (19.4%against18.6%) and more often in safety-critical traffic
+(44.3%against31.4%), and it drives at about7m/s, against10m/s for SAFER.
+4.5. A reachability view of the world model’s risk prediction
+This subsection examines the world model’s ability to predict risk from the perspective of reachability. Among
+the states that the ego can reach within the horizon, which does the world model expect to be unsafe, and how
+reliable is that expectation? At every step, the candidate chunks that the planner scores, each rolled out by the world
+model, sample the part of the ego’s reachable set that the planner explores within the horizon; we call it the imagined
+reachable set. Along every candidate the world model predicts the reward of each imagined step, and the risk head the
+probability that a priced safety event has occurred by then. Laid onto the ground, these probabilities mark a risk area,
+the places of the reachable set where the risk head expects a collision or another priced event. The planner does not
+threshold it. Eq. (26) charges every candidateWtimes the mean of its probabilities over the horizon, so a candidate
+loses score in Eq. (28) the longer, and the deeper, it runs through the risk area, while the predicted rewards enter its
+return. Read this way, the planner looks for a path through the reachable set that earns a high predicted return and
+stays clear of the risk area. The risk area is only as reliable as the risk head; we first test the head offline on recorded
+collisions (Fig. 6) and in closed loop on the system’s own collisions, and then show the reachable set and its risk area
+21
+−3 −2 −1 0
+Time to impact (s)
+0.0
+0.5
+1.0
+Predicted ̂P1.6
+impact enters
+the horizon
+(a) Collision probability within 1.6 s
+collision
+no collision
+−1.5 −1.0 −0.5 0.0
+Time to impact (s)
+0
+20
+40
+60
+80
+100
+Share with ̂Pimp > 0.5 (%)
+(b) Collisions predicted on time
+vehicle
+pedestrian
+other
+all
+false alarms
+−3 −2 −1 0
+Time to impact (s)
+0.5
+0.6
+0.7
+0.8
+0.9
+1.0
+AUC of ̂P1.6
+chance
+(c) Collision vs. no collision
+Figure 6: How early the risk head foresees recorded collisions (150events per collision partner,150collision-free control segments; world model
+fed the recorded history and the driver’s executed actions). (a) Median and interquartile range of ˆP1.6, the predicted probability of a collision
+within the1.6s horizon, against the time to impact, for the450collision segments and the controls; the dotted line marks the moment the impact
+enters the horizon. (b) Share of collisions with ˆPimp >0.5, i.e. predicted by the step at which they actually happen, per collision partner against
+the time to impact, and the false-alarm rate of the controls ( ˆP1.6 >0.5at any of their4,500decisions). (c) AUC of ˆP1.6 between collision and
+control segments at each time to impact.
+in two closed-loop decisions (Fig. 7).
+The test replays recorded collisions and asks how early, and how confidently, the head predicts them. An event
+is a collision that ends an episode of the corpus while the ego is still moving (at least1m/s just before the impact)
+and whose episode contains the3s before the impact plus a full context. The corpus contains21,287such events.
+Each is assigned to a collision partner from the BEV at the impact step: a pedestrian within4m, otherwise a vehicle
+within6m, otherwiseother, which covers collisions with the static layout and contacts that these distances do not
+attribute (12,961vehicle,2,896pedestrian and5,430other events). We draw150events per partner, so that the three
+are weighted equally, and150control segments from the same sets, in which the ego is moving and no episode ends
+within the segment or the horizon after it. For each event the decision time slides from3.0s to0.1s before the impact
+in steps of0.1s. At every decision the world model receives the recorded16-step history and the16actions the
+driver actually executed next, which are the actions that led to the collision, and the head predicts the cumulative
+collision probabilitiessigmoid(ρ k,coll)of Eq. (22) along the imagined rollout. No planner is involved. Two readouts
+are reported: ˆP1.6, the probability that a collision has occurred by the end of the1.6s horizon, whose correct value
+is0while the impact is more than1.6s away and1afterwards; and, once the impact lies inside the horizon, ˆPimp,
+the probability that it has occurred by the step at which it actually happens, which requires the collision to be timed
+as well as expected. Control segments go through the same procedure, and their ˆP1.6 measures false alarms. The
+events and controls come from the training corpus, so this test measures what the head has learned to predict from the
+recorded situations; how it carries over to new situations is shown by the closed-loop results of Sections 4.2–4.4.
+The controls never raise a false alarm. Over all4,500control decisions the largest ˆP1.6 is0.29and the99th
+percentile0.04(Fig. 6a). On the collision segments the median ˆP1.6 stays near zero until about2.2s before the
+impact, rises steeply as the impact approaches the horizon and is1once the impact lies inside it; from1.0s before the
+impact on,95–97%of the events have ˆP1.6 >0.5(97–100%of vehicle,95–97%of pedestrian and91–95%of other
+collisions). The separation from the controls is already0.88in AUC at3.0s, when the impact is still1.4s beyond the
+horizon,0.97at2.0s, and at least0.998from1.1s on (Fig. 6c).
+Requiring the collision to be predicted by the step at which it happens is stricter. ˆPimp exceeds0.5for56%of the
+events when the impact is1.6s away,54–57%between1.0and0.5s, and68%at0.1s (Fig. 6b). Vehicle collisions are
+timed best (73%at1.6s,90%at0.1s), pedestrian collisions at51–61%and other collisions at31–57%. Since at least
+92%of these events have ˆP1.6 >0.5from1.4s before the impact on, the gap between the two readouts is a timing
+error, not a missed collision. The head expects the collision inside the horizon but places it later than it happens.
+In closed loop, the same test runs on the system’s own collisions. In the228evaluation episodes of the final system,
+the SAFER of Table 3, the ego collides68times while moving (47times with a vehicle,20times with a pedestrian,
+once with the static layout); these events are compared with300collision-free control segments of the same episodes,
+and the executed plan takes the place of the driver’s actions. The head of the final system still separates the two, less
+sharply than on recorded collisions and again without a false alarm. No control decision reaches ˆP1.6 = 0.04, the
+AUC of ˆP1.6 is0.89at2.0s before the impact and0.95at0.1s, and it is at least0.95at every time to impact for the
+pedestrian collisions. The probabilities that the head assigns to its own plan before these collisions are much lower
+than those of the offline head on recorded collisions, though. Their median stays below0.02up to the impact, and
+within the last1.6s only4%of the vehicle and5%of the pedestrian collisions reach ˆP1.6 >0.5at any decision.
+Where the head does flag the behavior-cloned prior’s chunk (ˆP1.6 >0.5, at315moments), the planner executes a plan
+22
+0.5 1.0 1.5
+imagined time (s)
+0.0
+0.5
+1.0P(collision)
+W ̄ρ: prior 9.0, plan 0.2
+0.5 1.0 1.5
+imagined time (s)
+0.0
+0.5
+1.0P(contact) + P(off road)
+W ̄ρ: prior 27.0, plan 19.4
+−1 0 1
+predicted reward
+CARLA
+−1 0 2
+predicted reward
+MetaDrive
+0.0 0.5 1.0
+risk area
+risk-head probability
+(a) CARLA, Town02: a pedestrian stands at the inner curb of a left bend (6.3 m/s)
+(b) MetaDrive, CAT test scenario 449: CAT's opponent cuts in from the right lane (14.4 m/s)
+executed plan
+behavior-cloned prior
+CAT's opponent, generated path
+candidates
+Figure 7: The imagined reachable set and its risk area in two closed-loop decisions of the full system. Left: a front camera added for visualization,
+which the agent does not observe. Middle: (a) the BEV that the agent observes; (b) a top-down view drawn from the simulator state, with CAT’s
+opponent (magenta) and the trajectory that CAT generates for it (dashed), which the planner does not know. In both views the270candidate chunks
+that the planner scored at that step are drawn as in Appendix B, as the paths that they trace under a kinematic bicycle model at the speeds that the
+world model predicts, colored by the predicted reward of each imagined step; together they sample the reachable set. Red: the risk area, i.e. the risk
+head’s probability of a priced safety event (CARLA: collision; MetaDrive: vehicle contact plus leaving the road, object contact staying at zero),
+averaged at each place over the imagined states of all candidates that pass there and drawn with an opacity that grows with the probability; it is the
+same field in both views. Orange: executed plan; dotted: behavior-cloned prior. Right: the same probability along the horizon for every candidate
+(gray), the plan (orange) and the prior (dotted), with their risk termsW¯ρof Eq. (26).
+23
+Table 6: Reading the imagination of the stage-1 world model with its scene-factor head: share of recorded windows (%) in which the state read
+1.6s ahead in the imagined latents matches the rule label of the recorded frame, against copying the state the head reads at the decision time. All
+windows:400drawn at random; changing windows:150per factor in which the state1.6s ahead differs from the present one (the light changes
+color, a pedestrian comes near the path, a vehicle ahead appears or leaves).
+All windows Changing windows
+Factor Imagined Copied Imagined Copied
+Traffic light93.5 90.8 76.7 2.7
+Pedestrian near the path98.0 98.3 56.7 51.3
+Vehicle ahead94.8 95.0 49.3 30.0
+that the head expects to be safe in98%of the cases, and92%of these moments pass without a collision in the next
+3s.
+Fig. 7 shows the reachable set and the risk area in two decisions of the full system, the planner with the risk penalty
+on the model adapted online, while it drives in closed loop. (a) In CARLA, at6.3m/s, a pedestrian stands at the inner
+curb of a left bend, about13m ahead. The risk area is confined to the inner edge of the reachable set next to the
+pedestrian, where the predicted collision probability reaches0.83; most candidates do not come near it (median risk
+termW¯ρ= 0.15). The prior cuts the bend towards the pedestrian and runs into the risk area (risk term9.0, higher
+than for96%of the candidates); the plan follows the lane outside it (0.2). Of the plan’s score lead of19.8over the
+prior,8.8come from the risk term and10.9from the predicted return, since the world model also predicts low rewards
+for the steps at the curb. (b) On CAT’s benchmark, at14.4m/s, CAT’s opponent drives alongside in the right lane at
+8.5m/s on a trajectory that cuts into the ego’s lane. With the opponent next to the ego, every candidate carries some
+risk (risk terms between19.7and39.2), and the risk area is densest on the right, where the candidates would cut in
+front of the opponent. The plan, which MPPI refits from the best-scored candidates and is not itself one of them, keeps
+its lane at the left edge of the reachable set, where the risk is lowest (risk term19.4, against27.0for the prior). Plan
+and prior are predicted nearly the same reward (1.50and1.48per step on average, the progress along the route), and
+7.6of the plan’s score lead of10.0come from the risk term. In both decisions the plan runs through the part of the
+reachable set where the risk area is weakest, whereas the prior, which the planner keeps among its candidates, runs
+into it.
+4.6. Explaining the imagination
+The planner chooses among imagined futures, so the imagination has to carry the information that driving deci-
+sions depend on. We check this with a scene-factor head, a two-layer MLP that reads a latent as the state of the traffic
+light on the route (none, red light or stop sign, yellow, green) and the presence of a vehicle ahead, a vehicle directly
+ahead, a pedestrian near the path, a stop line on the route and the ego on its route, with targets from rule-based labels
+of the BEV frames. It is trained with the world model in stage 1, on the context and the imagined latents (Section 4.1),
+and the planner never uses it, so this subsection reads the imagination of the stage-1 world model. For recorded win-
+dows of the corpus, the model receives the16recorded steps of history and the16actions the driver executed next,
+and the head reads each imagined latent.
+Table 6 compares the state read1.6s ahead in the imagination with the label of the recorded frame, and with
+copying the state read at the decision time. Over random windows the factors rarely change within the horizon, and
+the imagination is as accurate as copying. It does not invent changes. Where the state does change, copying is almost
+always wrong for traffic lights, while the imagined light is right in77%of the windows; for pedestrians and the
+vehicle ahead the imagination also does better than copying (57%against51%and49%against30%). Fig. 8 turns
+the imagined factors of three recorded situations into a sentence. The model foresees a red light turning green and a
+yellow light turning red within0.1s of the recorded change, and pedestrians beside the road coming near the ego’s
+path (1.1s imagined,0.9s recorded). The imagination thus carries the state of traffic lights and the movement of other
+road users on which the planner’s decisions depend.
+4.7. Computational efficiency
+SAFER plans with a small model of15.5M parameters in CARLA (15.3M for the world model with its heads,
+0.2M for the risk head) and14.3M in MetaDrive. Its training is also inexpensive on at most two Quadro RTX
+6000 GPUs. The offline training takes66h in CARLA and7h in MetaDrive, and the online adaptation over10 6
+environment steps41h and8h. Table 7 gives the inference time per driving decision in CARLA, from the observation
+to the action, on one of these GPUs with a batch of one, and the decision frequency it allows. The behavior-cloned
+prior decodes one action chunk at173Hz. The planner rolls out and scores270candidate chunks of16steps per
+decision, two iterations of135, and is therefore about four times slower, yet it still decides at43–45Hz, more than
+four times the10Hz at which the agent acts; even the slowest of the2,000decisions (42ms) would allow24Hz.
+The risk term and the online adaptation do not change this cost. A small world model is thus enough. With15.5M
+parameters, SAFER reaches the highest route completion of Table 3 and plans in real time on a single GPU.
+24
+(a) Imagined: The red light ahead turns green after 0.9 s.
+Recorded: green after 0.9 s.
+t
+ t + 0.5 s
+ t + 1.0 s
+ t + 1.6 s
+t +0.5 s +1.0 s +1.6 s
+imagined
+recorded
+(b) Imagined: The yellow light ahead turns red after 0.8 s.
+Recorded: red after 0.7 s.
+t
+ t + 0.5 s
+ t + 1.0 s
+ t + 1.6 s
+t +0.5 s +1.0 s +1.6 s
+imagined
+recorded
+(c) Imagined: A pedestrian near the path appears after 1.1 s.
+Recorded: a pedestrian near the path appears after 0.9 s.
+t
+ t + 0.5 s
+ t + 1.0 s
+ t + 1.6 s
+t +0.5 s +1.0 s +1.6 s
+imagined
+recorded
+Figure 8: Explaining the imagination with the scene-factor head, on recorded windows of the corpus; the model receives the recorded history and
+the actions the driver executed. Each row: the sentence composed from the factors read in the imagined latents and the recorded outcome; the BEV
+at the decision timetand the recorded frames0.5,1.0and1.6s later (ego white); and the imagined and recorded state over the1.6s horizon in
+steps of0.1s: (a), (b) the traffic light, (c) a pedestrian near the path (magenta).
+Table 7: Inference time per driving decision (observation encoding and controller) on one Quadro RTX 6000 with a batch of one: mean±standard
+deviation over2,000decisions replayed from recorded closed-loop episodes, and the decision frequency it allows. All controllers use the same
+model of15.5M parameters. Rollouts: imagined16-step action chunks scored per decision. The agent acts at10Hz.
+Controller Rollouts Time per decision (ms) Frequency (Hz)
+BC prior0 5.8±0.4 173
+MPPI270 23.1±3.2 43
++ risk term270 22.3±2.3 45
++ online,10 6 steps270 22.0±2.3 45
+25
+5. Conclusion
+A world model lets an autonomous vehicle weigh the consequences of its actions before it acts, but it is reliable
+only within the coverage of its training data. A planner that exploits the model within this coverage can hardly improve
+on the data, a planner that explores beyond it is misled by the errors of the model, and the experience that would widen
+the coverage is the experience of failure. SAFER navigates this exploration–exploitation dilemma by learning from
+failures that others make, where they can be afforded, judged by an expert. Partially trained agents and scripted,
+recoverable perturbations fail in simulation, an expert annotates every visited state, and a chunked latent world model
+learns from this corpus to foresee consequences as reward factors, expert values and collision probabilities. A risk-
+aware MPPI planner scores candidate maneuvers by their predicted return minus a bounded collision penalty, and an
+online loop refines the dynamics, the reward scorers and the risk head on the planner’s own driving while the planner
+scores against slowly moving copies of them.
+In CARLA, the risk head foresees recorded collisions before they happen without raising a false alarm on collision-
+free driving, and in closed loop each stage contributes where it is meant to. On76routes, the risk term raises the
+driving score of the planner by0.08, mainly through fewer collisions with pedestrians, and online adaptation by a
+further0.07, with fewer collisions of every type, a gain that adapting the dynamics alone does not reach; together
+with planning they raise the driving score of the behavior-cloned prior from0.65to0.77, and one turn of the data
+flywheel, which adds targeted pedestrian data, makes the system safer at a driving score of0.80, with the highest
+route completion and reward per step in the comparison with the baselines. In MetaDrive, SAFER reaches the highest
+episode reward and road completion in the comparison with the baselines, in regular and in safety-critical traffic. The
+imagination of its world model carries the information on which driving decisions depend, such as a traffic light that
+is about to change, and with15.5M parameters the planner decides at43–45Hz on a single GPU.
+The recipe needs only a driver that is allowed to fail recoverably and an expert that can be queried at the states
+it visits. A proving ground with a safety driver offers both, which makes the transfer of SAFER from privileged
+bird’s-eye-view observations in simulation to sensor-based driving its natural next step.
+Acknowledgments
+This work was supported by Purdue University’s Center for Connected and Automated Transportation
+(CCAT) which is a part of the USDOT Region 5 University Transportation Center funded by the USDOT Award
+#69A3551747105. Also, general support was provided by Purdue’s Next-generation Transportation Systems (NEX-
+TRANS) Center, and the following initiatives at Purdue University’s College of Engineering: the Institute for Control,
+Optimization, & Networks (ICON), and the Autonomous & Connected Systems (ACS) initiative. The contents of this
+paper reflect the views of the authors, who are responsible for the facts and the accuracy of the data presented herein,
+and do not necessarily reflect the official views or policies of the sponsoring organization.
+Appendix A. Proofs of the formal statements
+Norms are Euclidean onR H×2 for action chunks and on the parameter space forθ. The statements of Section 3.5
+concern a single decision state and its candidate sets; those of Section 3.6 concern the sequence of burstsm= 0,1, . . .
+of the online loop, withθ m the live parameters and ¯θm the EMA target after burstm.
+Appendix A.1. Proof of Proposition 1
+Because ˆamaximizesJoverA,J( ˆa)≥J(a ⋆)in every realization (ties are broken by any fixed rule). Since
+Ais fixed andJ ⋆ is deterministic,a ⋆ is deterministic, and unbiasedness at this fixed candidate givesE[J(a ⋆)] =
+J ⋆(a⋆) +E[e J (a⋆)] =J ⋆(a⋆). Therefore
+E[eJ (ˆa)] =E[J( ˆa)]−E[J ⋆(ˆa)]≥E[J(a ⋆)]−E[J ⋆(ˆa)]
+=E
+
+J ⋆(a⋆)−J ⋆(ˆa) ≥0,
+where the last inequality holds becausea ⋆ maximizesJ ⋆ overA.□
+Appendix A.2. Proof of Proposition 2
+The regret is non-negative becausea ⋆ maximizesJ ⋆. WritingJ ⋆ =J−e J,
+J ⋆(a⋆)−J ⋆(ˆa) = J(a ⋆)−J( ˆa) +e J (ˆa)−e J (a⋆)
+≤e J (ˆa)−e J (a⋆)≤ |e J (ˆa)|+|e J (a⋆)|,
+sinceJ( ˆa)≥J(a ⋆)and by the triangle inequality. The argument uses only that ˆamaximizesJanda ⋆ maximizes
+J ⋆ over the same set. □
+26
+Appendix A.3. Proof of Lemma 1
+The fixed candidates are formed once per control step and enter the candidate set of every iteration (Eq. (27)), so
+Ft ⊆ Ai for everyi. Within a control step the context is the same and the modules are evaluated deterministically, so
+every fixed candidate receives the same score in every iteration. HenceJ besti = max a∈Ai J(a)≥max a∈Ft J(a),
+and the second inequality holds becausea bc ∈ Ft.□
+Appendix A.4. Proof of Theorem 1
+As usual for almost-sure statements in the number of samples, theN bc proposals are the firstN bc elements of
+one sequence of independent draws. WriteΠ(x) = clip(x,−¯a,¯a)for the entrywise clipping, fixϵ >0and let
+Uϵ ={a∈ C:∥a− ˆaC∥< ϵ}, which is convex as the intersection of an open ball with the boxC.
+Step 1: a superlevel set insideU ϵ.By Assumption 1,η:=J( ˆaC)−sup{J(a) :a∈ C \U ϵ}>0. The set
+V={a∈ C:J(a)> J( ˆaC)−η}satisfiesV⊆U ϵ, because everya∈ C \Uϵ hasJ(a)≤J( ˆaC)−η.
+Step 2: a prior proposal lands inVwith positive probability.By continuity ofJat ˆaC there isr >0such that every
+a∈ Cwith∥a− ˆaC∥< rlies inV. The clippingΠis non-expansive in every coordinate,|Π(x) j −Π(y) j| ≤ |xj −yj|,
+and fixes ˆaC ∈ C; hence∥Π(x)− ˆaC∥ ≤ ∥x−ˆaC∥, andΠmaps the open ballB( ˆaC, r)intoV. A prior proposal
+isΠ(a bc +σ bc ⊙ϵ ′), wherea bc +σ bc ⊙ϵ ′ is Gaussian with the positive diagonal covariancediag(σ 2bc), so the
+proposal lies inVwith probability at leastq:= Pr
+ 
+abc +σ bc ⊙ϵ ′ ∈B( ˆaC, r) >0, a non-degenerate Gaussian
+assigning positive probability to every open ball.
+Step 3: all elites lie inU ϵ.The proposals are independent and identically distributed, so by the strong law of
+large numbers the fraction of theN bc proposals that lie inVconverges almost surely toPr(proposal∈V)≥q >0.
+Hence, almost surely, at leastN e candidates lie inVfor allN bc large enough. On this event each of theN e best
+candidates scores at least as high as theN e-th best candidate inV, hence strictly aboveJ( ˆaC)−η. All candidates lie
+inC, and every candidate inC \Uϵ scores at mostJ( ˆaC)−η; therefore theN e best candidates, and with them the best
+candidate, lie inV⊆U ϵ.
+Step 4: the mean lies inU ϵ.For everyκ≥0the weights of Eq. (29) are non-negative and sum to one, soµis a
+convex combination of the elites and lies in the convex setU ϵ; in particular∥µ− ˆaC∥< ϵ, and no clipping ofµis
+needed.
+Step 5.Applying Steps 1–4 withϵ= 1, 12 , 13 , . . .and intersecting the countably many almost-sure events shows
+thatµ→ ˆaC and that the best candidate converges to ˆaC, almost surely, asN bc → ∞.□
+Appendix A.5. Proof of Corollary 1
+By Theorem 1 the planned chunkµconverges to ˆaC, the maximizer ofJoverC, anda ⋆C maximizesJ ⋆ overC.
+The proof of Proposition 2 uses only these two maximality properties, so it applies with the candidate setA=C,
+ˆa= ˆaC anda ⋆ =a ⋆C. □
+Appendix A.6. Proof of Lemma 2
+Unrolling Eq. (32) over the firstmbursts gives
+¯θm = (1−τ b)m ¯θ0 +
+mX
+j=1
+τb(1−τ b)m−j θj,
+a convex combination, since the weights are non-negative and(1−τ b)m +τ b Pm−1i=0 (1−τ b)i = 1. Withτ b =
+1−(1−τ) nb/Nc,(1−τ b)m = (1−τ) mnb/Nc = (1−τ) s/Nc withs=mn b, which equals1−τwhens=N c.□
+Appendix A.7. Proof of Proposition 3
+Letd m = ¯θm −θ m. By Eq. (32),d m+1 = (1−τ b)(¯θm −θ m+1) = (1−τ b)dm + (1−τ b)(θm −θ m+1), so
+∥dm+1∥ ≤(1−τb)∥dm∥+ (1−τ b)∆θ. By induction,
+∥dm∥ ≤(1−τb)m∥d0∥+ (1−τ b) ∆θ
+m−1X
+i=0
+(1−τ b)i
+= (1−τ b)m∥d0∥+ 1−τ bτb  1−(1−τ b)m ∆θ.
+Ifθ m →θ ∞, then∆ m :=∥θ m+1 −θ m∥ →0. Givenε >0, choosem 0 with∆ m ≤εfor allm≥m 0; the same
+recursion started atm 0 gives∥d m∥ ≤(1−τ b)m−m0 ∥dm0 ∥+ (1−τ b)ε/τb, solim sup m ∥dm∥ ≤(1−τ b)ε/τb for
+everyε >0andd m →0. Hence∥ ¯θm −θ ∞∥ ≤ ∥dm∥+∥θ m −θ ∞∥ →0.□
+27
+Appendix A.8. Proof of Proposition 4
+By the unrolled form in the proof of Lemma 2,
+¯θm = (1−τ b)m ¯θ0 +
+mX
+j=1
+τb(1−τ b)m−j(θ∞ +ζ j).
+Taking expectations,E[ ¯θm] = (1−τ b)m ¯θ0 +  1−(1−τ b)mθ∞ →θ ∞. The initial target is deterministic and the
+ζj are independent with covarianceΣ, so
+Cov(¯θm) =
+mX
+j=1
+τ 2b (1−τ b)2(m−j) Σ =τ 2b 1−(1−τ b)2m1−(1−τ b)2 Σ
+→ τ 2b
+τb(2−τ b) Σ = τb2−τ b Σ,
+using0< τ b ≤1. □
+Appendix B. Closed-loop planning examples
+Figs. B.1 and B.2 show single planning steps of the full system, the planner with the risk penalty (W= 50) on the
+model adapted online for10 6 steps, while it drives Leaderboard routes of Section 4.1.1 in closed loop (seed2021).
+Each row pairs the BEV that the planner receives with the image of a front camera that was added for these figures
+only; the agent never observes it. Both views show the270candidate chunks that the planner scored at that step in its
+two iterations (Section 3.5). As in Fig. 5, a candidate is drawn as the path that its action chunk traces under a kinematic
+bicycle model at the speeds predicted by the world model, not as decoded positions; in the camera image the paths are
+projected onto the road, taken as flat. Every segment is colored by the blended rewardˆrt+k of Eq. (28) that the world
+model predicts for that imagined step, a red cross marks the step at which the risk head’s probability that a collision
+has occurred first reaches0.5, the executed plan, the MPPI mean whose first action is applied, is drawn in orange and
+the behavior-cloned prior dotted. The row titles give the share of the candidates whose predicted collision probability
+reaches0.5within the1.6s horizon, and the probabilities of the plan and of the prior.
+Normal driving.In the scenes of Fig. B.1 no candidate approaches a collision, and the candidates differ only in their
+predicted rewards. On a straight road with oncoming traffic (a) they end within0.5m of the lane center and are
+predicted high rewards (mean0.78, of a maximum of1). Entering a right turn at8.0m/s (b), the plan brakes first
+(acceleration command−0.87) and slows to about6m/s through the turn, while the prior turns less sharply and is
+predicted a lower reward (0.35against0.57on average over the horizon). At a junction where the ego’s lane turns right
+(c), a few chunks, the prior among them, continue straight towards a red light15–19m ahead. Their predicted rewards
+are lower (−0.08on average, against0.26for the chunks that turn), and the plan turns with the route (J= 49.9against
+36.8for the prior).
+Safety-critical scenes.In each scene of Fig. B.2,4–5%of the candidates are predicted to collide within the horizon,
+between1.2and1.6s ahead, and in (d) and (f) the behavior-cloned prior is one of them; in each the prior also
+accelerates harder than the plan (mean command over the first0.8s0.99,0.97and1.00, against0.50,0.58and0.32).
+(d) A car has stopped in the ego’s lane,16m ahead. At5.9m/s, the chunks that keep accelerating (mean command
+0.96against0.48, and a predicted8.3m/s at the end of the horizon) reach its rear; their predicted reward turns negative
+0.8–0.9s ahead, before their collision probability crosses0.5at1.5–1.6s. The prior is one of them (0.58,J= 42.0
+against58.6); the plan keeps its speed for1.2s and then brakes (below0.001). (e) Behind a police car about8m
+ahead, at5.0m/s, the chunks that accelerate hardest (mean command0.95against0.59, and a predicted12m/s at
+the end of the horizon) reach its rear, with a mean predicted reward of−0.33against0.52. The prior is one of them
+(0.36,J= 18.5against55.7); the plan keeps the speed and the gap (below0.001). (f) In a queue, at3.6m/s, the
+prior keeps full throttle towards the slower car ahead and is predicted to collide with probability0.92(J= 41.6); the
+plan accelerates less (J= 56.2, below0.001), and within the next1.5s the ego slows to0.5m/s behind the car. The
+colliding chunks are scored down twice, once by the risk penalty and once by their predicted returns, which are also
+lower (meanRof42.9,7.6and49.1against56.2,53.0and55.0for the other candidates). Of the score gap between
+the plan and the prior, the risk term accounts for3.5of16.6in (d),2.4of37.3in (e) and7.8of14.5in (f). In all three
+scenes the plan that MPPI refits from the best-scored candidates stays clear of the colliding chunks, although in (d)
+and (f) the prior, which the planner keeps among its candidates, is one of them.
+28
+5 m
+5 m
+5 m
+−1.0 −0.5 0.0 0.5 1.0
+candidate color: predicted reward ̂rt + k of each imagined step
+(a) Straight road with oncoming traffic (Town01, 6.5 m/s) P(collision) ≥  0.5: 0% of the candidates; plan 0.00, prior 0.00
+(b) Right turn at a T-junction (Town01, 8.0 m/s) P(collision) ≥  0.5: 0% of the candidates; plan 0.00, prior 0.00
+(c) Junction where the route turns right (Town03, 7.4 m/s) P(collision) ≥  0.5: 0% of the candidates; plan 0.00, prior 0.00
+executed plan (MPPI mean)
+behavior-cloned prior
+P(collision by step k) first ≥  0.5
+Figure B.1: Planning steps of the full system in normal driving (Appendix B). Left: a front camera added for visualization (not observed by the
+agent); right: the BEV that the planner receives, cropped around the candidates. Paths: the270candidate chunks scored at that step, sketched
+with a kinematic bicycle model at the predicted speeds and colored by the predicted reward of each imagined step; orange: executed plan; dotted:
+behavior-cloned prior; crosses: the first imagined step at which the predicted collision probability reaches0.5. (a) Straight road with oncoming
+traffic; (b) right turn at a T-junction; (c) junction where the route turns right while a few chunks, the prior among them, continue straight towards a
+red light.
+29
+5 m
+5 m
+5 m
+−1.0 −0.5 0.0 0.5 1.0
+candidate color: predicted reward ̂rt + k of each imagined step
+(d) Car stopped in the lane ahead (Town05, 5.9 m/s) P(collision) ≥  0.5: 5% of the candidates; plan 0.00, prior 0.58
+(e) Closing in on a police car ahead (Town02, 5.0 m/s) P(collision) ≥  0.5: 4% of the candidates; plan 0.00, prior 0.36
+(f) Closing in on a slower car in a queue (Town05, 3.6 m/s) P(collision) ≥  0.5: 5% of the candidates; plan 0.00, prior 0.92
+executed plan (MPPI mean)
+behavior-cloned prior
+P(collision by step k) first ≥  0.5
+Figure B.2: Planning steps of the full system in safety-critical scenes, drawn as in Fig. B.1. (d) A car stopped in the lane ahead; (e) a police car
+ahead; (f) a slower car ahead in a queue. In each scene the chunks that the risk head predicts to collide (in (d) and (f), the behavior-cloned prior
+among them) carry the crosses, and the executed plan stays clear of them.
+30
+MetaDrive, regular traffic.Figs. B.3 and B.4 show planning steps of the first of the three systems of Table 5 on test
+scenarios of CAT’s benchmark (evaluation seed0), in regular traffic and in safety-critical scenes. The agent observes
+the101-dimensional vector of Section 3.1; the front camera, placed as in CARLA, and the top-down view, drawn from
+the simulator’s state, are added for these figures only. Candidates are drawn as in Fig. B.1, with two differences. The
+color scale spans−1to2, since CAT’s reward is the progress along the route in meters per0.1s step, and blue crosses
+mark the step at which the predicted probability of leaving the road, the risk head’s third event, first reaches0.5; red
+crosses refer to vehicle contact, the event of CAT’s crash rate. In the scenes of Fig. B.3 no candidate approaches a
+vehicle contact. At a junction with an oncoming car (a) the candidates differ little, with predicted rewards between
+0.95and1.05per step. In a right turn at a junction at8.3m/s (b), the candidates spread over3.9m at the end of the
+horizon and all stay at least4.9m from the road edges; the plan follows the route, ending0.4m from it, while the prior
+ends1.2m further to the right and is predicted a slightly lower return (26.3against27.6). On a three-lane road (c),
+8%of the candidates are predicted to leave the road about1.5s ahead; they end further to the left than the others (5.2
+against3.9m on average). The prior also bends to the left, ending5.4m to the left against2.4m for the plan, with a
+probability of leaving the road of0.16against0.03(J= 17.4against27.0).
+MetaDrive, safety-critical scenes.In each scene of Fig. B.4, the behavior-cloned prior is predicted to make contact
+with a vehicle within the horizon (probability0.54,0.93and0.63) and the plan is not (0.05,0.22and0.13); in each,
+the prior keeps full throttle and the plan accelerates less (mean command over the first0.8s0.85,0.90and0.85).
+(d) In a right turn at12.2m/s, a car crosses from the right14m ahead and CAT’s opponent approaches from the right,
+21m away;5%of the candidates are predicted to make contact, about0.7s ahead. (e) In regular traffic, at10.8m/s, a
+slow car (3.8m/s) drives in the lane to the right,13m ahead, and a second car17m ahead in the ego’s lane.85%of
+the candidates, those that drift into the lane to the right, are predicted to make contact1.0–1.6s ahead, where the slow
+car will be; the prior ends4.5m to the right, level with the slow car, while the plan keeps its lane behind the second
+car. (f) During a left turn at4.5m/s, CAT’s opponent approaches from ahead on a trajectory that turns across the ego’s
+path;37%of the candidates are predicted to make contact. Of the score gap between the plan and the prior, the risk
+term accounts for11.9of16.1in (d),10.6of38.8in (e) and13.4of15.3in (f). All three episodes reach the end of
+the route.
+31
+5 m
+5 m
+5 m
+−1.0 −0.5 0.0 0.5 1.0 1.5 2.0
+candidate color: predicted reward ̂rt + k of each imagined step
+(a) Junction with an oncoming car (scenario 430, 8.7 m/s) P(vehicle contact) ≥  0.5: 0% of candidates; plan 0.00, prior 0.00
+(b) Right turn at a junction (scenario 443, 8.3 m/s) P(vehicle contact) ≥  0.5: 0% of candidates; plan 0.00, prior 0.02
+(c) Three-lane road (scenario 433, 10.0 m/s) P(out of road) ≥  0.5: 8% of candidates; plan 0.03, prior 0.16
+executed plan (MPPI mean)
+behavior-cloned prior
+P(vehicle contact by step k) first ≥  0.5
+P(out of road by step k) first ≥  0.5vehicle pedestrian / cyclist CAT's opponent its trajectory
+Figure B.3: Planning steps of the full system on CAT’s MetaDrive benchmark in regular traffic (Appendix B). Left: a front camera placed as in
+Fig. B.1 and rendered for visualization (the agent observes a101-dimensional vector); right: a top-down view drawn from the simulator’s state,
+cropped around the candidates. Paths: the270candidate chunks, colored by the predicted reward of each imagined step (CAT’s reward: progress
+in meters per step); orange: executed plan; dotted: behavior-cloned prior; red crosses: the first imagined step at which the predicted probability of
+a vehicle contact reaches0.5; blue crosses: the same for leaving the road. (a) Junction with an oncoming car; (b) right turn at a junction at8.3m/s;
+(c) three-lane road on which8%of the candidates are predicted to leave the road on the left.
+32
+5 m
+5 m
+5 m
+−1.0 −0.5 0.0 0.5 1.0 1.5 2.0
+candidate color: predicted reward ̂rt + k of each imagined step
+(d) Right turn across crossing traffic (scenario 429, 12.2 m/s) P(vehicle contact) ≥  0.5: 5% of candidates; plan 0.05, prior 0.54
+(e) Slow car in the right lane (scenario 408, 10.8 m/s) P(vehicle contact) ≥  0.5: 85% of candidates; plan 0.22, prior 0.93
+(f) Opponent crossing a left turn (scenario 419, 4.5 m/s) P(vehicle contact) ≥  0.5: 37% of candidates; plan 0.13, prior 0.63
+executed plan (MPPI mean)
+behavior-cloned prior
+P(vehicle contact by step k) first ≥  0.5
+P(out of road by step k) first ≥  0.5vehicle pedestrian / cyclist CAT's opponent its trajectory
+Figure B.4: Planning steps of the full system on CAT’s MetaDrive benchmark in safety-critical scenes, drawn as in Fig. B.3; magenta: CAT’s
+opponent in the top-down view, and its generated trajectory. (d) Right turn across crossing traffic; (e) a slow car in the lane to the right, in regular
+traffic; (f) the opponent turning across a left turn. In each scene the behavior-cloned prior is among the candidates predicted to make contact, and
+the executed plan is not.
+33
+Appendix C. Implementation details
+Table C.1 lists the hyper-parameters of the evaluated CARLA system: the parameters of the data collection, the
+architecture of the world model, the two offline training stages, the planner and the online adaptation. The MetaDrive
+system uses the same settings except those listed in Table C.2.
+34
+Table C.1: Hyper-parameters of the evaluated CARLA system.
+Data collection
+action noise clean phases25–100steps, corrupt phases5–30steps;σ α ∼ U[0.03,1.0],σδ ∼
+U[0.005,0.30], redrawn every500–1000steps;2.5%clean episodes
+scripted events hold30–80steps, late brake5–10steps, recovery30–60steps
+World model
+latent width / decoder256/ 4 layers, 4 heads, MLP ratio 4
+contextC, horizonH16,16steps (1.6s at10Hz)
+reward, value binsB= 101bins, uniform insymlogspace on[−3,3]and[−10,10]
+reward factors scaled softplus; scales6,6,1,1,6(speed, desired speed, lateral distance, head-
+ing error, terminal penalty)
+value headsK5
+policy decoder 3 layers;logσ π clamped to[−2,1]
+risk head MLP512→256→256→3, dropout0.1,w + = 20,β∼ U[0.1,0.5]
+Offline training
+stage 1 (world model)1.0M steps, batch32windows, lr2×10 −4 →10 −4 (10k warm-up, cosine
+over 800k), dropout0.05(value heads0.01)
+stage 2 (joint, + risk head)0.5M steps, lr10 −4 (2k warm-up), risk head lr10 −3, world-model dropout0
+loss weights Eq. (21); RMS decay0.99
+optimizer AdamW, weight decay10 −4, gradient clip10, linear warm-up and cosine decay
+Planner
+samplesN/ prior proposalsN bc / elitesN e 128/6/16; iterationsI= 2
+σ0,σ min,σ bc (0.25,0.08),(0.05,0.02),(0.10,0.04)
+sampling noise independent per step and dimension
+κ,γ0.25,0.985
+risk weightW, event weightsω50,(1,0,0)(collision only)
+Online adaptation
+environment steps, burst, UTD10 6,256,0.125
+buffer, batch mix the60most recent trajectory segments, an episode being cut at every burst (at
+most3,840transitions);32windows, half offline and half online, half of the
+online from the latest burst
+learning rates (dynamics / scorers / risk)3×10 −5 /10 −5 /10 −4, gradient clip1, weight decay10 −5 (risk head10 −4)
+EMAτ= 0.1per1,000steps (scorers),0.1per burst (risk head)
+frozen encoder, action prior, value ensemble
+Table C.2: Settings of the evaluated MetaDrive system that differ from those of the CARLA system; all other settings are those of Table C.1.
+Data collection
+scripted events hazard brake instead of hold and late brake:5–10steps at a brake level drawn fromU[0.3,1], triggered
+when a road user ahead on the route is within20m and at most3s from collision, the ego drives at
+2–10m/s and the expert’s acceleration command is above−0.3; recovery30–60steps
+value labels policy evaluation of the noise-free expert: its two Q-networks, initialized from its critic, fitted on all
+transitions of the corpus to one-step targets with the expert’s action at the next state;10 5 steps, batch
+1,024, lr3×10 −4, target-network rate0.005, discount0.99
+World model
+encoder two-layer MLP,101→256→256, initialized from the first two layers of the expert’s actor
+reward factors progress along the route (linear, scale2m) and the indicators of arrival, leaving the road, vehicle contact
+and object contact (sigmoid)
+Offline training
+schedule one stage of0.25M steps with the settings of stage 1 (cosine decay over 200k), in which the risk head is
+trained from the start at its stage-2 learning rate; no scene-factor head
+training windows a keyframe at every step, at the start of an episode with the missing context padded; no additional
+windows before terminals
+Planner
+γ, event weightsω0.99,(1,1,1)
+warm start none: every step starts from the prior’s current chunk
+Online adaptation
+episodes pairs on randomly drawn training scenarios: logged traffic, then CAT’s opponent generated against that
+drive
+buffer, batch mix the most recent finished episodes, about3,840transitions, and the episodes being driven;16windows,
+mixed as in CARLA
+risk-head loss without the braking-monotonicity term
+35
+References
+Bansal, M., Krizhevsky, A., Ogale, A., 2019. ChauffeurNet: Learning to drive by imitating the best and synthesizing
+the worst, in: Robotics: Science and Systems XV . doi:10.15607/RSS.2019.XV.031.
+Berger-Tal, O., Nathan, J., Meron, E., Saltz, D., 2014. The exploration-exploitation dilemma: A multidisciplinary
+framework. PLoS ONE 9, e95693. doi:10.1371/journal.pone.0095693.
+CARLA Team, 2020. CARLA autonomous driving leaderboard.https://leaderboard.carla.org.
+Chekroun, R., Toromanoff, M., Hornauer, S., Moutarde, F., 2023. GRI: General reinforced imitation and its applica-
+tion to vision-based autonomous driving. Robotics 12, 127. doi:10.3390/robotics12050127.
+Chen, D., Koltun, V ., Krähenbühl, P., 2021. Learning to drive from a world on rails, in: IEEE/CVF International
+Conference on Computer Vision (ICCV), pp. 15570–15579. doi:10.1109/ICCV48922.2021.01530.
+Chen, D., Krähenbühl, P., 2022. Learning from all vehicles, in: IEEE/CVF Conference on Computer Vision and
+Pattern Recognition (CVPR), pp. 17201–17210. doi:10.1109/CVPR52688.2022.01671.
+Chen, D., Zhou, B., Koltun, V ., Krähenbühl, P., 2020. Learning by cheating, in: Proceedings of the Conference on
+Robot Learning (CoRL 2019), pp. 66–75.
+Chitta, K., Prakash, A., Geiger, A., 2021. NEAT: Neural attention fields for end-to-end autonomous driv-
+ing, in: IEEE/CVF International Conference on Computer Vision (ICCV), pp. 15773–15783. doi:10.1109/
+ICCV48922.2021.01550.
+Chitta, K., Prakash, A., Jaeger, B., Yu, Z., Renz, K., Geiger, A., 2023. TransFuser: Imitation with transformer-
+based sensor fusion for autonomous driving. IEEE Transactions on Pattern Analysis and Machine Intelligence 45,
+12878–12895. doi:10.1109/TPAMI.2022.3200245.
+Chua, K., Calandra, R., McAllister, R., Levine, S., 2018. Deep reinforcement learning in a handful of trials using
+probabilistic dynamics models, in: Advances in Neural Information Processing Systems (NeurIPS), pp. 4754–4765.
+Codevilla, F., Müller, M., López, A., Koltun, V ., Dosovitskiy, A., 2018. End-to-end driving via conditional imitation
+learning, in: IEEE International Conference on Robotics and Automation (ICRA), pp. 4693–4700. doi:10.1109/
+ICRA.2018.8460487.
+Codevilla, F., Santana, E., López, A.M., Gaidon, A., 2019. Exploring the limitations of behavior cloning for
+autonomous driving, in: IEEE/CVF International Conference on Computer Vision (ICCV), pp. 9328–9337.
+doi:10.1109/ICCV.2019.00942.
+Curi, S., Berkenkamp, F., Krause, A., 2020. Efficient model-based reinforcement learning through optimistic policy
+search and planning, in: Advances in Neural Information Processing Systems, pp. 14156–14170.
+Ding, W., Chen, B., Xu, M., Zhao, D., 2020. Learning to collide: An adaptive safety-critical scenarios generat-
+ing method, in: IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), pp. 2243–2250.
+doi:10.1109/IROS45743.2020.9340696.
+Dosovitskiy, A., Ros, G., Codevilla, F., López, A., Koltun, V ., 2017. CARLA: An open urban driving simulator, in:
+Proceedings of the 1st Annual Conference on Robot Learning (CoRL), pp. 1–16.
+Ettinger, S., Cheng, S., Caine, B., Liu, C., Zhao, H., Pradhan, S., Chai, Y ., Sapp, B., Qi, C.R., Zhou, Y ., Yang, Z.,
+Chouard, A., Sun, P., Ngiam, J., Vasudevan, V ., McCauley, A., Shlens, J., Anguelov, D., 2021. Large scale inter-
+active motion forecasting for autonomous driving: The Waymo open motion dataset, in: IEEE/CVF International
+Conference on Computer Vision (ICCV), pp. 9690–9699. doi:10.1109/ICCV48922.2021.00957.
+Fu, J., Luo, K., Levine, S., 2018. Learning robust rewards with adversarial inverse reinforcement learning, in: Inter-
+national Conference on Learning Representations (ICLR).
+Fujimoto, S., Gu, S.S., 2021. A minimalist approach to offline reinforcement learning, in: Advances in Neural
+Information Processing Systems (NeurIPS), pp. 20132–20145.
+Fujimoto, S., van Hoof, H., Meger, D., 2018. Addressing function approximation error in actor-critic methods, in:
+Proceedings of the 35th International Conference on Machine Learning (ICML), pp. 1587–1596.
+Gleave, A., Taufeeque, M., Rocamonde, J., Jenner, E., Wang, S.H., Toyer, S., Ernestus, M., Belrose, N., Emmons, S.,
+Russell, S., 2022. imitation: Clean imitation learning implementations. arXiv preprint arXiv:2211.11972 .
+36
+Guo, T., Langari, R., 2026. CorrRisk-WM: Corridor-conditioned risk world modeling for safety-critical trajectory
+planning. arXiv preprint arXiv:2609.16724 .
+Ha, D., Schmidhuber, J., 2018. World models. arXiv preprint arXiv:1803.10122 .
+de Haan, P., Jayaraman, D., Levine, S., 2019. Causal confusion in imitation learning, in: Advances in Neural Infor-
+mation Processing Systems (NeurIPS), pp. 11698–11709.
+Haarnoja, T., Zhou, A., Abbeel, P., Levine, S., 2018. Soft actor-critic: Off-policy maximum entropy deep reinforce-
+ment learning with a stochastic actor, in: Proceedings of the 35th International Conference on Machine Learning
+(ICML), pp. 1861–1870.
+Hafner, D., Lillicrap, T., Ba, J., Norouzi, M., 2020. Dream to control: Learning behaviors by latent imagination, in:
+International Conference on Learning Representations (ICLR).
+Hafner, D., Lillicrap, T., Fischer, I., Villegas, R., Ha, D., Lee, H., Davidson, J., 2019. Learning latent dynamics
+for planning from pixels, in: Proceedings of the 36th International Conference on Machine Learning (ICML), pp.
+2555–2565.
+Hafner, D., Lillicrap, T., Norouzi, M., Ba, J., 2021. Mastering Atari with discrete world models, in: International
+Conference on Learning Representations (ICLR).
+Hafner, D., Pasukonis, J., Ba, J., Lillicrap, T., 2025a. Mastering diverse control tasks through world models. Nature
+640, 647–653. doi:10.1038/s41586-025-08744-2.
+Hafner, D., Yan, W., Lillicrap, T., 2025b. Training agents inside of scalable world models. arXiv preprint
+arXiv:2509.24527 .
+Hansen, N., Su, H., Wang, X., 2022. Temporal difference learning for model predictive control, in: Proceedings of
+the 39th International Conference on Machine Learning (ICML), pp. 8387–8406.
+Hansen, N., Su, H., Wang, X., 2024. TD-MPC2: Scalable, robust world models for continuous control, in: Interna-
+tional Conference on Learning Representations (ICLR).
+Hills, T.T., Todd, P.M., Lazer, D., Redish, A.D., Couzin, I.D., 2015. Exploration versus exploitation in space, mind,
+and society. Trends in Cognitive Sciences 19, 46–54. doi:10.1016/j.tics.2014.10.004.
+Ho, J., Ermon, S., 2016. Generative adversarial imitation learning, in: Advances in Neural Information Processing
+Systems (NeurIPS), pp. 4565–4573.
+Hu, A., Corrado, G., Griffiths, N., Murez, Z., Gurau, C., Yeo, H., Kendall, A., Cipolla, R., Shotton, J., 2022. Model-
+based imitation learning for urban driving, in: Advances in Neural Information Processing Systems (NeurIPS), pp.
+20703–20716. doi:10.52202/068431-1505.
+Hu, A., Russell, L., Yeo, H., Murez, Z., Fedoseev, G., Kendall, A., Shotton, J., Corrado, G., 2023. GAIA-1: A
+generative world model for autonomous driving. arXiv preprint arXiv:2309.17080 .
+Huang, Z., Sheng, Z., Qu, Y ., You, J., Chen, S., 2025. VLM-RL: A unified vision language models and reinforcement
+learning framework for safe autonomous driving. Transportation Research Part C: Emerging Technologies 180,
+105321. doi:10.1016/j.trc.2025.105321.
+Huang, Z., Sheng, Z., Wan, Z., Qu, Y ., You, J., Jiang, S., Chen, S., 2026. DriveVLM-RL: Neuroscience-inspired
+reinforcement learning with vision-language models for safe and deployable autonomous driving. arXiv preprint
+arXiv:2603.18315 .
+Jaeger, B., Chitta, K., Geiger, A., 2023. Hidden biases of end-to-end driving models, in: IEEE/CVF International
+Conference on Computer Vision (ICCV), pp. 8206–8215. doi:10.1109/ICCV51070.2023.00757.
+Janner, M., Fu, J., Zhang, M., Levine, S., 2019. When to trust your model: Model-based policy optimization, in:
+Advances in Neural Information Processing Systems (NeurIPS), pp. 12519–12530.
+Khanzada, F.K., Kwon, J., 2025. InDRiVE: Intrinsic disagreement based reinforcement for vehicle exploration
+through curiosity driven generalized world model. arXiv preprint arXiv:2503.05573 .
+Kostrikov, I., Nair, A., Levine, S., 2022. Offline reinforcement learning with implicit Q-learning, in: International
+Conference on Learning Representations (ICLR).
+Laskey, M., Lee, J., Fox, R., Dragan, A., Goldberg, K., 2017. DART: Noise injection for robust imitation learning, in:
+Proceedings of the 1st Annual Conference on Robot Learning (CoRL), pp. 143–156.
+37
+Levy, J., Westenbroek, T., Huang, K., Palafox, F., Yin, P., Omidshafiei, S., Kim, D.K., Gupta, A., Fridovich-Keil, D.,
+2026. Simulation distillation: Pretraining world models in simulation for rapid real-world adaptation, in: Robotics:
+Science and Systems XXII, Sydney, Australia. doi:10.15607/RSS.2026.XXII.017.
+Li, Q., Jia, X., Wang, S., Yan, J., 2024. Think2Drive: Efficient reinforcement learning by thinking with latent world
+model for autonomous driving (in CARLA-v2), in: European Conference on Computer Vision (ECCV), Springer.
+pp. 142–158. doi:10.1007/978-3-031-72995-9_9.
+Li, Q., Peng, Z., Feng, L., Zhang, Q., Xue, Z., Zhou, B., 2023. MetaDrive: Composing diverse driving scenarios
+for generalizable reinforcement learning. IEEE Transactions on Pattern Analysis and Machine Intelligence 45,
+3461–3475. doi:10.1109/TPAMI.2022.3190471.
+Li, T., Chen, L., Wang, C., Liu, H., Chitta, K., Yang, Z., Lu, Y ., Ye, N., Qiu, Y ., Wang, Y ., Zou, L., Peng, J., Pan, J.,
+Su, Z., Bursuc, A., Li, S.E., Geiger, A., Su, P., Li, H., 2026. World engine: Towards the era of post-training for
+autonomous driving. arXiv preprint arXiv:2606.19836 .
+Mnih, V ., Kavukcuoglu, K., Silver, D., Rusu, A.A., Veness, J., Bellemare, M.G., Graves, A., Riedmiller, M., Fidjeland,
+A.K., Ostrovski, G., Petersen, S., Beattie, C., Sadik, A., Antonoglou, I., King, H., Kumaran, D., Wierstra, D.,
+Legg, S., Hassabis, D., 2015. Human-level control through deep reinforcement learning. Nature 518, 529–533.
+doi:10.1038/nature14236.
+Niu, H., Xu, Y ., Jiang, X., Hu, J., 2024. Continual driving policy optimization with closed-loop individualized
+curricula, in: IEEE International Conference on Robotics and Automation (ICRA), pp. 6850–6857. doi:10.1109/
+ICRA57147.2024.10611578.
+Pinneri, C., Sawant, S., Blaes, S., Achterhold, J., Stueckler, J., Rolinek, M., Martius, G., 2021. Sample-efficient
+cross-entropy method for real-time planning, in: Proceedings of the 2020 Conference on Robot Learning (CoRL),
+pp. 1049–1065.
+Prakash, A., Chitta, K., Geiger, A., 2021. Multi-modal fusion transformer for end-to-end autonomous driving, in:
+IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pp. 7073–7083. doi:10.1109/
+CVPR46437.2021.00700.
+Qu, Y ., Sheng, Z., Huang, Z., Chen, J., Luo, Y ., Wang, T., Feng, Y ., Labi, S., Chen, S., 2026. Found-RL: Foundation
+model-enhanced reinforcement learning via asynchronous VLM feedback for autonomous driving. Communica-
+tions in Transportation Research 6, 9640027. doi:10.26599/COMMTR.2026.9640027.
+Ray, A., Achiam, J., Amodei, D., 2019. Benchmarking Safe Exploration in Deep Reinforcement Learning. Technical
+Report. OpenAI. URL:https://cdn.openai.com/safexp-short.pdf.
+Reddy, S., Dragan, A.D., Levine, S., 2020. SQIL: Imitation learning via reinforcement learning with sparse rewards,
+in: International Conference on Learning Representations (ICLR).
+Ross, S., Gordon, G., Bagnell, D., 2011. A reduction of imitation learning and structured prediction to no-regret
+online learning, in: Proceedings of the Fourteenth International Conference on Artificial Intelligence and Statistics
+(AISTATS), pp. 627–635.
+Schulman, J., Wolski, F., Dhariwal, P., Radford, A., Klimov, O., 2017. Proximal policy optimization algorithms.
+arXiv preprint arXiv:1707.06347 .
+Sekar, R., Rybkin, O., Daniilidis, K., Abbeel, P., Hafner, D., Pathak, D., 2020. Planning to explore via self-supervised
+world models, in: Proceedings of the 37th International Conference on Machine Learning, pp. 8583–8592.
+Shao, H., Wang, L., Chen, R., Li, H., Liu, Y ., 2023. Safety-enhanced autonomous driving using interpretable sensor
+fusion transformer, in: Proceedings of the 6th Conference on Robot Learning (CoRL), pp. 726–737.
+Sheng, Z., Huang, Z., Qu, Y ., Leng, Y ., Bhavanam, S., Chen, S., 2026a. CurricuVLM: Towards safe autonomous
+driving via personalized safety-critical curriculum learning with vision-language models. Transportation Research
+Part C: Emerging Technologies 185, 105549. doi:10.1016/j.trc.2026.105549.
+Sheng, Z., Huang, Z., Qu, Y ., Leng, Y ., Chen, S., 2025. Talk2Traffic: Interactive and editable traffic scenario gen-
+eration for autonomous driving with multimodal large language model, in: IEEE/CVF Conference on Computer
+Vision and Pattern Recognition Workshops (CVPRW), pp. 3788–3797.
+Sheng, Z., Ye, X., Luo, J., Chen, S., Ren, L., 2026b. ExploreVLA: Dense world modeling and exploration for
+end-to-end autonomous driving, in: European Conference on Computer Vision (ECCV), Springer. pp. 266–284.
+doi:10.1007/978-3-032-37261-1_16.
+38
+Smith, J.E., Winkler, R.L., 2006. The optimizer’s curse: Skepticism and postdecision surprise in decision analysis.
+Management Science 52, 311–322. doi:10.1287/mnsc.1050.0451.
+Stooke, A., Achiam, J., Abbeel, P., 2020. Responsive safety in reinforcement learning by PID Lagrangian methods,
+in: Proceedings of the 37th International Conference on Machine Learning (ICML), pp. 9133–9143.
+Sun, J., Xue, F., Long, T., Liu, C., Hu, J.F., Zheng, W.S., Sebe, N., 2026. Risk-aware world model predictive control
+for generalizable end-to-end autonomous driving. arXiv preprint arXiv:2602.23259 .
+Toromanoff, M., Wirbel, E., Moutarde, F., 2020. End-to-end model-free reinforcement learning for urban driving
+using implicit affordances, in: IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pp.
+7151–7160. doi:10.1109/CVPR42600.2020.00718.
+Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.N., Kaiser, Ł., Polosukhin, I., 2017. Attention
+is all you need, in: Advances in Neural Information Processing Systems (NeurIPS), pp. 5998–6008.
+Wang, H., Ye, X., Tao, F., Pan, C., Mallik, A., Yaman, B., Ren, L., Zhang, J., 2025. AdaWM: Adaptive world model
+based planning for autonomous driving, in: International Conference on Learning Representations (ICLR), pp.
+85591–85615.
+Wang, J., Pun, A., Tu, J., Manivasagam, S., Sadat, A., Casas, S., Ren, M., Urtasun, R., 2021. AdvSim: Generat-
+ing safety-critical scenarios for self-driving vehicles, in: IEEE/CVF Conference on Computer Vision and Pattern
+Recognition (CVPR), pp. 9904–9913. doi:10.1109/CVPR46437.2021.00978.
+Wang, X., Zhu, Z., Huang, G., Chen, X., Zhu, J., Lu, J., 2024a. DriveDreamer: Towards real-world-drive world
+models for autonomous driving, in: European Conference on Computer Vision (ECCV), Springer. pp. 55–72.
+doi:10.1007/978-3-031-73195-2_4.
+Wang, Y ., He, J., Fan, L., Li, H., Chen, Y ., Zhang, Z., 2024b. Driving into the future: Multiview visual forecasting and
+planning with world model for autonomous driving, in: IEEE/CVF Conference on Computer Vision and Pattern
+Recognition (CVPR), pp. 14749–14759. doi:10.1109/CVPR52733.2024.01397.
+Williams, G., Wagener, N., Goldfain, B., Drews, P., Rehg, J.M., Boots, B., Theodorou, E.A., 2017. Information theo-
+retic MPC for model-based reinforcement learning, in: IEEE International Conference on Robotics and Automation
+(ICRA), pp. 1714–1721. doi:10.1109/ICRA.2017.7989202.
+Wilson, R.C., Bonawitz, E., Costa, V .D., Ebitz, R.B., 2021. Balancing exploration and exploitation with information
+and randomization. Current Opinion in Behavioral Sciences 38, 49–56. doi:10.1016/j.cobeha.2020.10.
+001.
+Wu, P., Jia, X., Chen, L., Yan, J., Li, H., Qiao, Y ., 2022. Trajectory-guided control prediction for end-to-end
+autonomous driving: A simple yet strong baseline, in: Advances in Neural Information Processing Systems
+(NeurIPS), pp. 6119–6132. doi:10.52202/068431-0443.
+Yin, J., Zhang, Z., Tsiotras, P., 2023. Risk-aware model predictive path integral control using conditional value-at-
+risk, in: IEEE International Conference on Robotics and Automation (ICRA), pp. 7937–7943. doi:10.1109/
+ICRA48891.2023.10161100.
+Yu, T., Thomas, G., Yu, L., Ermon, S., Zou, J., Levine, S., Finn, C., Ma, T., 2020. MOPO: Model-based offline policy
+optimization, in: Advances in Neural Information Processing Systems (NeurIPS), pp. 14129–14142.
+Zhang, J., Cui, C., Xu, Y ., Ye, X., Zhang, R., Wang, Z., 2026. How can driving world models do counterfactual
+prediction? arXiv preprint arXiv:2608.11601 .
+Zhang, L., Peng, Z., Li, Q., Zhou, B., 2023. CAT: Closed-loop adversarial training for safe end-to-end driving, in:
+Proceedings of the 7th Conference on Robot Learning (CoRL), pp. 2357–2372.
+Zhang, Q., Tang, M., Geng, R., Chen, F., Xin, R., Wang, L., 2022. MMFN: Multi-modal-fusion-net for end-to-
+end driving, in: IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS), pp. 8638–8643.
+doi:10.1109/IROS47612.2022.9981775.
+Zhang, Z., Liniger, A., Dai, D., Yu, F., Van Gool, L., 2021. End-to-end urban driving by imitating a reinforcement
+learning coach, in: IEEE/CVF International Conference on Computer Vision (ICCV), pp. 15202–15212. doi:10.
+1109/ICCV48922.2021.01494.
+Zheng, Y ., Yang, P., Xing, Z., Zhang, Q., Zheng, Y ., Gao, Y ., Li, P., Zhang, T., Xia, Z., Jia, P., Lang, X., Zhao, D., 2025.
+World4Drive: End-to-end autonomous driving via intention-aware physical latent world model, in: IEEE/CVF
+International Conference on Computer Vision (ICCV), pp. 28632–28642. doi:10.1109/ICCV51701.2025.
+02659.
+39

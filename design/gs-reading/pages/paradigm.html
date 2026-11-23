@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>范式演进：per-scene vs 前馈｜GS 阅读站</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topnav">
+  <a href="../index.html">首页</a>
+  <a href="basics.html">工作原理</a>
+  <a href="paradigm.html" class="active">范式演进</a>
+  <a href="per-scene.html">per-scene 优化点</a>
+  <a href="latest-3months.html">最近三个月</a>
+  <a href="survey-master.html">调研总报告</a>
+  <a href="../survey-list.html">论文全清单</a>
+</nav>
+<main>
+<h1>范式演进：前馈泛化 3DGS 如何兴起，又为何没有取代 per-scene</h1>
+<p class="lede">讨论要点：前馈范式定义与术语校准 → 2024 锚点 → 2025–2026 版图 → 五条趋势 → 为什么两者并存。</p>
+
+<div class="toc">
+  目录：
+  <a href="#paradigm">前馈范式</a>
+  <a href="#terms">术语校准</a>
+  <a href="#anchors">2024 锚点</a>
+  <a href="#landscape">2025–2026 版图</a>
+  <a href="#trends">五条趋势</a>
+</div>
+
+<h2 id="paradigm">前馈范式：MV 图像 → 高斯参数，一次前向</h2>
+<p>Vanilla 3DGS 每个场景都要跑一遍梯度下降优化。前馈泛化 3DGS（feed-forward / generalizable 3DGS）把这一步换成<strong>网络前向</strong>：输入多视图图像（+ 位姿，近年来连位姿都省了），网络直接输出高斯参数集合，再走同一套可微光栅化渲染。网络学的是映射：</p>
+<div class="formula">M : {(Iᵢ, Cᵢ)} ↦ {(μⱼ, sⱼ, rⱼ, αⱼ, shⱼ)}</div>
+<p>按 Marr 三层看，这个范式<strong>只换了 L2 的算法，L1 和 L3 没变</strong>：L1 还是“从有限照片恢复可渲染的 3D 场景”这个欠定逆问题；L2 把“每个场景在线解一次逆问题”蒸馏进网络权重——网络扮演<strong>跨场景先验</strong>的角色，见过几万场景后对新场景一次前向（秒级）就给出合理的高斯集合；L3 渲染管线完全不动，训练监督也仍走渲染闭环（渲染新视角图与 GT 比较 MSE + LPIPS，梯度穿过光栅化器回传给网络）。</p>
+
+<h2 id="terms">术语校准：DiT 骨干 ≠ 扩散模型</h2>
+<ul>
+  <li><strong>「MV 图像 → 高斯参数」的重建工作</strong>：骨干多是 DiT 风格的 transformer（token 化 + attention），但<strong>没有噪声、没有时间步、没有多步去噪</strong>，一次前馈直接输出高斯参数。它们是 <strong>transformer 回归器</strong>。</li>
+  <li><strong>生成侧的工作</strong>（DiffGS、GaussianCube、SplatFlow 等）：在压缩后的高斯潜空间上做生成式建模，再解码回高斯渲染，主要面向 3D 生成而非多视图重建。</li>
+</ul>
+
+<h2 id="anchors">2024 锚点（这条线的起点）</h2>
+<table>
+  <thead><tr><th>工作</th><th>核心思路</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://arxiv.org/abs/2312.04737" target="_blank" rel="noopener">pixelSplat</a>（CVPR'24）</td><td>极线几何 + epipolar transformer，逐像素回归高斯，开启前馈 3DGS</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2403.14627" target="_blank" rel="noopener">MVSplat</a>（ECCV'24）</td><td>cost volume 估深度初始化位置，更高效、质量更高</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2312.03890" target="_blank" rel="noopener">Splatter Image</a>（CVPR'24）</td><td>单图 → 每像素一个高斯，2D 直接抬升成 3D</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2404.19702" target="_blank" rel="noopener">GS-LRM</a>（ECCV'24）</td><td>稀疏视图 → 高斯的 large reconstruction model，把 LRM 的 scaling 思路引入 GS</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2410.18979" target="_blank" rel="noopener">PixelGaussian</a>（2024）</td><td>DiT 风格：高斯当 query 与图像特征做 deformable attention；动态 split/prune 让高斯数量随几何复杂度自适应；2 视图训练可泛化到 2–4 视图</td></tr>
+  </tbody>
+</table>
+
+<h2 id="landscape">2025–2026 版图（纯 GS 口径，截至 2026-11）</h2>
+<h3>前馈重建线</h3>
+<table>
+  <thead><tr><th>工作</th><th>时间/出处</th><th>关键点</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://github.com/facebookresearch/vggt" target="_blank" rel="noopener">VGGT</a>（Meta）</td><td>CVPR 2025</td><td><strong>无位姿</strong>大前馈几何 transformer，一次输出点图/深度/位姿/点轨迹；VGGT + 3DGS 已成替代 COLMAP 的标准前端</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2510.10097" target="_blank" rel="noopener">Gesplat</a></td><td>2025.10</td><td>Pose-free，几何引导重建，不需要位姿输入</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2605.07287" target="_blank" rel="noopener">SplatWeaver</a></td><td>2026.05</td><td>学习“该在高斯上分配多少/哪些原语”——延续 PixelGaussian 的动态分配线，解决多视图冗余</td></tr>
+    <tr><td><a href="https://export.arxiv.org/pdf/2605.13465" target="_blank" rel="noopener">Z-Order Transformer</a></td><td>2026.05</td><td>前馈 GS 中用 z-order 注意力处理深度排序/遮挡</td></tr>
+    <tr><td><a href="https://neurips.cc/virtual/2026/loc/sydney/poster/155292" target="_blank" rel="noopener">U-MVP</a></td><td>NeurIPS 2026</td><td>Encode Locally, Decode Globally 前馈 GS 架构</td></tr>
+    <tr><td><a href="https://arxiv.org/html/2508.03643v3" target="_blank" rel="noopener">Uni3R</a></td><td>2025</td><td>无位姿多视图前馈重建 + 语义理解，连位姿都不用给</td></tr>
+    <tr><td><a href="https://arxiv.org/html/2608.02145v1" target="_blank" rel="noopener">UniqueSplat</a></td><td>2026.08</td><td>视角条件化的泛化重建</td></tr>
+  </tbody>
+</table>
+<h3>生成线（直接生成高斯参数）</h3>
+<table>
+  <thead><tr><th>工作</th><th>时间/出处</th><th>关键点</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://arxiv.org/abs/2411.16443" target="_blank" rel="noopener">SplatFlow</a></td><td>CVPR 2025</td><td>多视图直接合成 GS</td></tr>
+    <tr><td><a href="https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/03525-supp.pdf" target="_blank" rel="noopener">MIGS</a></td><td>ECCV 2024</td><td>单图生成多身份高斯，张量分解压缩表征</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2410.19657" target="_blank" rel="noopener">DiffGS</a> / <a href="https://arxiv.org/abs/2403.19655" target="_blank" rel="noopener">GaussianCube</a></td><td>NeurIPS 2024</td><td>高斯潜空间生成线：把高斯集合结构化/压缩后再生成</td></tr>
+  </tbody>
+</table>
+
+<h2 id="trends">五条趋势</h2>
+<ol>
+  <li><strong>去位姿化</strong>：VGGT / Uni3R / Gesplat 之后，“输入带位姿的多视图”前提正在消失——COLMAP 前处理出局，网络连相机一起预测。</li>
+  <li><strong>Scaling 取代架构创新</strong>：前沿问题从“怎么设计注意力”变成“数据多大、模型多大”，LRM 线与大规模生成模型都是这个逻辑。</li>
+  <li><strong>生成侧全面转向 flow-matching 式的一步/少步建模</strong>（在 GS 口径下即 SplatFlow 线）。</li>
+  <li><strong>高斯数量自适应分配</strong>：PixelGaussian → SplatWeaver 解决“多视图高斯重叠冗余”这个前馈范式的核心病。</li>
+  <li><strong>混合路线仍是质量上限</strong>：前馈出初始化 + 几十到几百步 per-scene 微调，是 2025–2026 工程落地的 best practice。</li>
+</ol>
+
+<div class="key"><strong>结论</strong>：L1（任务）和 L3（可微光栅化渲染）两年没变，变的全在 L2——“谁给高斯参数”从在线梯度下降换成了大规模学到的前馈先验；而当前竞争焦点是数据规模与 scaling law，不再是模型结构。前馈省的是时间，per-scene 解决的是条件泛化，两者并行共存。</div>
+
+<p><a href="../index.html">← 返回首页</a></p>
+</main>
+<footer><p>gs-reading-site ｜ 整理自会话讨论原文</p></footer>
+</body>
+</html>

@@ -1,0 +1,869 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DiffWAM 精读笔记 · 世界模型调研与精读</title>
+<link rel="stylesheet" href="../style.css"></head><body>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T5 决策/WAM</div><h1>DiffWAM 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.19904</span> <a href="https://arxiv.org/abs/2611.19904">arXiv 页面</a> · <a href="txt/DiffWAM.txt">提取正文 txt</a></div><blockquote>
+<p>数据源（唯一）：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\DiffWAM.txt</code>（1830 行，arXiv 2611.19904，21 页）。
+规则：所有事实性陈述附论文原句（英文逐字 + 行号）；论文没有的写「原文未写」；解读标注【推断】。
+行号格式 <code>(L行号)</code>；正文中 "DiffW AM" 为 txt 排版断词痕迹，指 "DiffWAM"。</p>
+</blockquote>
+<hr />
+<h2>1) 原文信息</h2>
+<ul>
+<li>标题："DiffWAM: Learning World Action Model from Consecutive Visual Difference" (L1)</li>
+<li>作者："Xinheng Zhang1,2,<em>, Haoyu Xiong5,3</em>, Chao Jing6,3, Xiaohan Zhang1, Linshan Li1, Hongbang Fan5,3, and Xingyu Chen3,4B" (L2-3)；"*Equal contribution. B Corresponding author." (L88) → 通讯作者为 Xingyu Chen。</li>
+<li>机构 (L4-7)：</li>
+<li>"1College of Information Science and Electronic Engineering, Zhejiang University"</li>
+<li>"2Polytechnic Institute, Zhejiang University"</li>
+<li>"3Zhongguancun Academy" / "4Zhongguancun Institute of Artificial Intelligence"</li>
+<li>"5Institute of Automation, Chinese Academy of Sciences"</li>
+<li>"6School of Intelligent Robotics and Advanced Manufacturing Innovation, Fudan University"</li>
+<li>ID："arXiv:2611.19904v1  [cs.RO]  15 Nov 2026" (L90)；"November 2026" (L89)</li>
+<li>发表状态：arXiv 预印本 v1（2026-11-15）。是否被会议/期刊接收：原文未写。</li>
+<li>项目页/代码："https://zgca-hmi-lab.github.io/DiffWAM" (L8)、"https://github.com/ZGCA-HMI-Lab/DiffWAM" (L9)</li>
+</ul>
+<h2>2) Abstract 全文逐字（L92-121）</h2>
+<blockquote>
+<p><strong>Abstract</strong> (L92)
+"World Action Models (WAMs) have emerged as an impor-(L93)
+tant paradigm in robot learning, jointly predicting future (L94)
+scene states and robot actions from current observations and (L95)
+instructions. However, future states entangle task-related (L96)
+changes with large amounts of task-irrelevant content, such (L97)
+as static backgrounds, which weakens the model's ability to (L98)
+capture changes relevant to task execution. To address this, (L99)
+we propose Difference World Action Model (DiffWAM), a (L100)
+Mixture-of-Experts (MoE) framework that enhances world (L101)
+representations by jointly learning future-state prediction (L102)
+and consecutive visual difference prediction. We define con-(L103)
+secutive visual differences as differences between the latent (L104)
+representations of consecutive observations, providing an (L105)
+explicit learning signal for temporal variation. The frame-(L106)
+work comprises a World Expert for future frame prediction, (L107)
+an Action Expert for action generation, and a Diff Expert (L108)
+for predicting these latent differences along the trajectory. A (L109)
+structured unidirectional attention mask conditions the Diff, (L110)
+World, and Action Experts solely on the current-frame rep-(L111)
+resentation while blocking attention between experts. This (L112)
+design allows both the World and Diff Experts to be removed (L113)
+during inference, introducing no additional inference over-(L114)
+head. DiffWAM achieves state-of-the-art performance on (L115)
+the LIBERO and RoboTwin 2.0 benchmarks and substan-(L116)
+tially improves over FastWAM on real-world manipulation (L117)
+tasks. Specifically, it attains average success rates of 98.8%, (L118)
+92.65%, and 88.3%, outperforming the state-of-the-art base-(L119)
+line (i.e., FastWAM) by 1.75, 1.55, and 15.0 percentage (L120)
+points, respectively." (L121)</p>
+</blockquote>
+<p>（注：逐字保留 txt 换行；L93-94 "impor-…tant"、L100/110 等 "DiffW AM" 均为排版断词，非原文拼写错误。）</p>
+<h2>3) 问题与动机（简）</h2>
+<ul>
+<li>核心问题：未来状态的预测目标把「任务相关变化」与大量「任务无关内容」混在一起监督，弱化任务相关表征：</li>
+<li>"However, future states entangle task-related changes with large amounts of task-irrelevant content, such as static backgrounds, which weakens the model's ability to capture changes relevant to task execution." (L96-99)</li>
+<li>"The full-state prediction objective supervises these changes together with persistent content, without providing a separate learning signal for temporal variation. Thus, the representation of task-related changes relies on what the model learns implicitly from predicting complete future states." (L141-146)</li>
+<li>关键洞察（principle of visual foresight）："This observation suggests a principle of visual foresight: a WAM should model not only what the future scene will look like, but also how it changes over time." (L147-149)</li>
+<li>三大范式的定位（Related Work）：VLA（缺显式场景演化监督）、WAM with Future Prediction（不区分持久内容与帧间差异）、WAM with Structured Signal Prediction（依赖外部先验/估计器，可能带误差）：</li>
+<li>"In contrast, DiffWAM directly models differences between consecutive frame latents alongside future states, integrating state and visual difference prediction within a WAM." (L367-369)</li>
+<li>"Their modeling emphasis therefore depends on the chosen signal, and targets obtained from external estimators may contain estimation errors." (L273-275)</li>
+</ul>
+<h2>4) 实现细节（重点）</h2>
+<h3>4.1 consecutive visual difference 的数学定义</h3>
+<ul>
+<li>联合建模目标（式 4）："pθ(f1:T ,∆f 1:T , a1:H |f 0, l),(4)" (L385)，其中 "f1:T denotes the future visual latents, a1:H the action chunk, and ∆f1:T the consecutive visual differences represented in latent space" (L386-388)。</li>
+<li>定义（式 5）："∆fi =f i −f i−1, i= 1, . . . , T.(5)" (L390) —— 相邻帧 VAE 潜表示的差。</li>
+<li>"Let fi denote the VAE latent representation of observation oi, T the number of future visual states, and H the action chunk length." (L381-382)。T、H 的具体数值：原文未写。</li>
+<li>语义边界：不限于机器人致变："Latent differences describe visual variation and may also include nuisance changes, rather than exclusively encoding changes caused by robot actions." (L403-405)</li>
+</ul>
+<h3>4.2 World / Action / Diff 三专家结构</h3>
+<ul>
+<li>总览："DiffWAM is a Mixture-of-Experts framework with a shared Observation Encoder and dedicated World, Diff, and Action Experts. The Observation Encoder and each expert contain N Transformer layers. The World and Diff Experts share parameters in their first N−M layers and use independent parameters in their last M layers." (L416-422)</li>
+<li>"Parameter sharing between the World and Diff Experts does not introduce cross-attention between their independent prediction pathways." (L429-431)</li>
+<li>输入编码："DiffWAM inherits the pretrained text encoder and video VAE from Wan2.2-5B [49]. The task instruction l is encoded with the T5 text encoder [50]... Images from multiple camera views are concatenated before being mapped into visual latents by the pretrained VAE [51]. The clean current-frame latents f0 are processed by the Observation Encoder to provide the shared conditioning representation." (L432-439)</li>
+<li>训练时视觉输入共享："During training, both the World and Diff Experts receive the same noised future-frame latents as input." (L440-441)；Diff 目标来自连续真值帧潜表示："the Diff Expert directly regresses latent differences, with targets computed from consecutive ground-truth visual latents" (L443-444)；"Actions a1:H are separately noised and embedded for the Action Expert." (L445-446)</li>
+<li><strong>World Expert</strong>："The World Expert learns the velocity field used for future-state generation through flow matching. Its prediction pathway is used during training and is removed at inference" (L452-455)；输入流为 "Noised future-frame latents are processed by the first N−M layers shared with the Diff Expert, followed by M independent state-prediction layers." (L450-452)</li>
+<li><strong>Diff Expert</strong>："The Diff Expert processes the same noised future-frame latents through the shared first N−M layers, followed by an independent M-layer Latent Diff Block (LDB). Conditioned on the current-observation representation and language instruction, it directly regresses inter-frame latent differences rather than generating future states through denoising. Its independent pathway does not attend to the World or Action Expert's tokens, and its outputs are not passed to these experts." (L457-465)</li>
+<li>回归目标含 i=1 项："The regression targets are differences between consecutive ground-truth frame latents, including the transition from the current observation to the first future state." (L465-468)</li>
+<li><strong>Action Expert</strong>："The Action Expert generates the action chunk through flow matching, conditioned on the current-observation representation... It does not directly receive predicted future states or diff outputs." (L471-475)；"State and visual difference modeling improve the representation used by the action pathway through joint training." (L475-477)</li>
+<li>专家间信号隔离："The joint objective does not require the Action Expert to consume predicted future states or latent differences; each expert is conditioned on the current-observation representation and language instruction." (L400-403)</li>
+<li>规模（4.1）："The World and Diff Experts use the Wan2.2-5B Transformer architecture [49]... The Action Expert follows the same architecture but uses a reduced hidden dimension of da = 1024. The complete model contains approximately 7B parameters." (L665-671)</li>
+</ul>
+<h3>4.3 单向注意力掩码（结构化）</h3>
+<ul>
+<li>总规则（逐字）："a structured unidirectional attention mask controls information flow between the current-observation pathway and the experts. Current-observation tokens do not attend to future-state, diff, or action tokens. Each expert may attend to the current-observation representation and tokens within its own pathway, while attention between different expert pathways is blocked." (L480-487)</li>
+<li>语言条件走 cross-attention，不参与上述掩码："These restrictions concern interactions between visual and action token groups; language conditioning is supplied separately through cross-attention." (L487-489)</li>
+<li><strong>(a) 前 N−M 层（World/Diff 共享视觉层）</strong>："In the first N−M layers, the visual and action pathways follow a first-frame-conditioned attention scheme [15]: current-frame tokens attend to themselves, noised future-frame tokens attend to the current-frame representation and their own tokens, and action tokens attend to the current-frame representation and their own tokens. Future-frame and action tokens do not attend to each other. The World and Diff Experts share the visual processing layers at this depth." (L490-499)</li>
+<li>「first-frame-conditioned attention scheme [15]」= 继承自 FastWAM（参考文献 [15] = Fast-WAM，L1187-1189）。</li>
+<li><strong>(b) 最后 M 层（独立预测通路）</strong>："Diff tokens attend to the current-frame representation and their own tokens, while the state and action pathways retain the attention restrictions in (a). Blocking cross-attention between these pathways prevents the Diff Expert from reading the World or Action Expert's token representations and prevents its outputs from entering their prediction pathways. This restriction does not exclude the noised future-frame input shared by the World and Diff Experts." (L500-509)</li>
+<li><strong>(c) 推理时</strong>："At inference, only the current-observation and action pathways are retained. The Action Expert generates a1:H from the current-observation representation and language instruction without invoking future-state or diff prediction, introducing no additional overhead from the visual prediction experts." (L510-515)</li>
+<li>Figure 3 caption（原文）："Structured attention masks in DiffWAM. (a) Attention in the first N−M layers, where the World and Diff Experts share visual processing layers. (b) Attention in the last M layers, with independent state and diff prediction pathways. (c) Observation and action pathways retained at inference. Each pathway attends to observation representations and its own tokens, while cross-attention between expert pathways is blocked." (L360-366)</li>
+</ul>
+<h3>4.4 训练损失（§3.3, L516-577）</h3>
+<ul>
+<li>三损失构成："DiffWAM is trained with three losses: video flow matching [52] for future-state prediction, squared-error latent regression for difference prediction, and action flow matching [53] for action generation." (L517-520)</li>
+<li><strong>L_world（式 6, L525-538）</strong>：对每个视觉预测步 i∈{1,…,T}，"we construct the interpolated sample along the probability path as fi,τ = (1−τ)ϵi +τ fi with τ∈[0,1]" (L528-529)，ϵ_i∼N(0,I)（L527）；"the World Expert is supervised to predict the corresponding velocity field" (L531-532)：</li>
+<li>Lworld = E_{i,τ,ϵi,fi}[ ∥vθ(fi,τ , τ|f0, l)−(fi −ϵi)∥₂² ] (L533-537，txt 公式排版有乱码，按符号还原)</li>
+<li><strong>L_diff（式 7, L539-553）</strong>：Diff Expert 与 World 接收同一 noised 潜表示 fi,τ（L540-542），直接输出差异预测 c∆f_i："We use squared-error supervision in latent space, as also used for latent prediction in DINO-WM [55]." (L543-545)；"the regression target ∆fi =f i −f i−1 is obtained by differencing consecutive ground-truth frame latents" (L545-547)：</li>
+<li>Ldiff = E_{i,τ,ϵi,fi−1,fi}[ ∥c∆f_i −(f_i −f_{i−1})∥₂² ] (L548-550)</li>
+<li>"The case i= 1 uses the difference between the first future-frame latent and the current-frame latent." (L551-553)</li>
+<li><strong>L_action（式 8, L554-572）</strong>：a_{i,τ}=(1−τ)ϵ′_i+τ a_i（L556-557）；"the Action Expert is trained to recover the target velocity field"（L559-560）：</li>
+<li>Laction = E_{i,τ,ϵ′i,ai}[ ∥uφ(ai,τ , τ|f0, l)−(ai −ϵ′i)∥₂² ] (L561-565)</li>
+<li>"The Action Expert attends to the current-observation representations provided by the Observation Encoder, without directly receiving future-state or diff predictions. State and visual difference prediction influence action generation through joint training of the shared Observation Encoder." (L568-572)</li>
+<li><strong>总损失（式 9）</strong>："The complete training objective is a weighted combination of the three terms: L=L world +λ diff Ldiff +λ actionLaction,(9) where λdiff and λaction are hyperparameters balancing the three losses." (L573-577)</li>
+<li>λ_diff、λ_action 的具体数值：原文未写（全文仅此一处提及，Table 9 无该行）。</li>
+<li>τ 的采样分布、优化器、warmup 等细节：原文未写。</li>
+</ul>
+<h3>4.5 推理时 World/Diff 专家移除机制</h3>
+<ul>
+<li>总规则："During inference, both the World and Diff Experts are removed, retaining only the Observation Encoder and Action Expert without additional inference overhead." (L413-415；同义 L175-177、L657-659)</li>
+<li>"Its prediction pathway is used during training and is removed at inference; the Observation Encoder is retained to provide the representation for action generation." (L454-456)</li>
+<li>视觉预测分支影响留在共享表征里："Visual difference modeling influences the shared representation during training, while the Diff Expert is removed at inference." (L468-470)</li>
+<li>"At inference, the Action Expert operates with the Observation Encoder after both visual prediction experts have been removed." (L477-479)</li>
+</ul>
+<h3>4.6 训练配置：DiffWAM-S 与 DiffWAM-L（§3.4, L578-661）</h3>
+<ul>
+<li>"We instantiate DiffWAM in two training configurations, DiffWAM-S for small-scale training and DiffWAM-L for large-scale training. Both configurations use the architecture and joint objective described above, with different parameter update schedules." (L579-582)</li>
+<li><strong>DiffWAM-S（小数据，冻结 LDB）</strong>："For small-scale training, we freeze the independent M-layer LDB of the Diff Expert while jointly optimizing the Observation Encoder, World Expert, and Action Expert, including the visual layers shared by the World and Diff Experts. Freezing the LDB helps reduce overfitting to noise in small datasets while accelerating training by reducing the number of parameters to update." (L585-590)</li>
+<li>关键：diff 损失保持激活且梯度穿过冻结 LDB 回传："The diff loss remains active: its gradients propagate through the fixed LDB into the shared visual layers and Observation Encoder. Thus, difference prediction continues to shape the representation used for action generation even though the LDB parameters are frozen." (L635-640)</li>
+<li><strong>DiffWAM-L（大数据，两阶段）</strong>："For large-scale training, we adopt a two-stage procedure. In the first stage, the Observation Encoder, World Expert, and Action Expert are frozen, and only the independent Diff Expert parameters are optimized using the diff regression loss. The visual layers shared with the frozen World Expert also remain frozen. In the second stage, all modules are jointly optimized with the full objective..." (L641-648)；"This schedule allows the Diff Expert to first adapt to difference prediction with a fixed visual representation, before using the larger dataset to jointly refine the shared representation and all three experts." (L649-652)</li>
+<li>推理通路两者一致："Both configurations use the same action-generation pathway... The two configurations therefore differ in their training schedules while retaining the same inference architecture." (L653-661)</li>
+</ul>
+<h3>4.7 超参表（Table 9, L1424-1443，逐字转录）</h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>LIBERO</th>
+<th>RoboTwin 2.0</th>
+<th>Real</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model configuration</td>
+<td>DiffWAM-S</td>
+<td>DiffWAM-L</td>
+<td>DiffWAM-S</td>
+</tr>
+<tr>
+<td>Training hardware</td>
+<td>8×A100</td>
+<td>8×A100</td>
+<td>8×A100</td>
+</tr>
+<tr>
+<td>Grad. accumulation</td>
+<td>2</td>
+<td>2</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Weight decay</td>
+<td>1×10⁻²</td>
+<td>1×10⁻²</td>
+<td>1×10⁻²</td>
+</tr>
+<tr>
+<td>LR schedule</td>
+<td>Cosine</td>
+<td>Cosine</td>
+<td>Cosine</td>
+</tr>
+<tr>
+<td>Learning rate</td>
+<td>1×10⁻⁴</td>
+<td>1×10⁻⁵</td>
+<td>1×10⁻⁴</td>
+</tr>
+<tr>
+<td>Batch size</td>
+<td>8</td>
+<td>8</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Training steps</td>
+<td>1.3×10⁴</td>
+<td>3×10⁴</td>
+<td>6.3×10⁴</td>
+</tr>
+<tr>
+<td>Network depth N</td>
+<td>30</td>
+<td>30</td>
+<td>30</td>
+</tr>
+<tr>
+<td>Network depth M</td>
+<td>10</td>
+<td>10</td>
+<td>10</td>
+</tr>
+<tr>
+<td>Cameras</td>
+<td>2</td>
+<td>3</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Video size</td>
+<td>[224,448]</td>
+<td>[384,320]</td>
+<td>[224,576]</td>
+</tr>
+<tr>
+<td>Image resize</td>
+<td>[224,224]</td>
+<td>[240,320]</td>
+<td>[240,320]</td>
+</tr>
+<tr>
+<td>Action dim.</td>
+<td>7</td>
+<td>14</td>
+<td>7</td>
+</tr>
+<tr>
+<td>Proprio dim.</td>
+<td>8</td>
+<td>14</td>
+<td>7</td>
+</tr>
+<tr>
+<td>Normalization</td>
+<td>min/max</td>
+<td>z-score</td>
+<td>z-score</td>
+</tr>
+<tr>
+<td>Validation split</td>
+<td>0.0</td>
+<td>0.01</td>
+<td>0.0</td>
+</tr>
+</tbody>
+</table>
+<p>（Table 9 标题："Implementation configurations for each experimental setting." L1442-1443）</p>
+<ul>
+<li>初始化：LIBERO 与真机 "DiffWAM-S is initialized from Wan2.2-5B"（L1452-1453、L1514-1515）；RoboTwin "Due to computational resource constraints, DiffWAM-L is initialized from FastWAM for this benchmark"（L1466-1468）。</li>
+<li>数据集规模：LIBERO "40 tasks and 2,000 demonstrations in total"（L1447-1448）；RoboTwin 2.0 "approximately 27k demonstration trajectories in total, comprising 2,500 demonstrations from clean scenes and 25,000 demonstrations with strong scene randomization"（L1460-1463）；真机 "approximately 1.1k demonstration trajectories in total across Place Pens, Store Block, and Stack Cups... train for 63k optimization steps"（L709-711、L1510-1511）。</li>
+</ul>
+<h2>5) 伪代码</h2>
+<p>⚠ <strong>依据原文重建（非原文伪代码）</strong>：全文 1830 行经检索无 Algorithm 环境，以下依据 §3.2 正文（L406-515）与 Figure 2/3 caption（L311-315、L360-366）重建；每步附行号；未写细节一律不补。</p>
+<h3>5.1 训练伪代码（含注意力掩码构造）</h3>
+<pre><code># ⚠ 依据原文重建（非原文伪代码）
+# 输入：当前帧潜表示 f0 (L438-439)；目标未来帧潜表示 f1:T (L526)；
+#       目标差异 Δfi = fi − fi−1, i=1..T (L390；i=1 用 f1−f0, L551-553)；
+#       动作 chunk a1:H (L556)；语言指令 l (L434)
+
+1. 文本编码：l_emb = T5(l)                       # L434-435（经 cross-attention 注入, L488-489）
+2. 观测编码：c = ObservationEncoder(f0)          # L438-439「provide the shared conditioning representation」
+3. 噪声化（视觉、动作各自加噪）:
+     fi,τ = (1−τ)εi + τ·fi ,  εi ~ N(0,I)       # L526-529
+     ai,τ = (1−τ)ε'i + τ·ai,  ε'i ~ N(0,I)      # L555-557
+4. 构造结构化单向注意力掩码（按层深度切换）:      # L480-515, Fig.3(L360-366)
+   (a) 深度 1..N−M（World/Diff 共享视觉层）:      # L490-499
+       - 当前帧 token：只 attend 自身             # L492
+       - 未来帧 token：attend {当前帧, 自身}      # L495-496
+       - 动作 token：attend {当前帧, 自身}        # L496-497
+       - 未来帧 ↔ 动作 token：相互阻断            # L497-498
+   (b) 深度 N−M+1..N（独立预测通路）:             # L500-509
+       - Diff token：attend {当前帧, 自身}        # L501-502
+       - 状态/动作通路：保持 (a) 的限制           # L502-503
+       - Diff ↔ World/Action 交叉注意力：阻断     # L504-507（Diff 输出也不进入其通路, L463-465）
+       # 注：World/Diff 共享同一 noised 未来帧输入，不被此阻断排除 (L508-509)
+5. World Expert：共享 N−M 层 + 独立 M 层 State Block (L450-452)
+     → 速度场 vθ(fi,τ, τ | c, l)，目标 (fi − εi)   # L452-453, L531-537 → L_world (式6)
+6. Diff Expert：共享 N−M 层 + 独立 M 层 LDB (L457-460)
+     → 直接回归 c∆f_i（非去噪），目标 (fi − fi−1)   # L460-467, L542-551 → L_diff (式7)
+7. Action Expert：uφ(ai,τ, τ | c, l)，目标 (ai − ε'i)  # L471-472, L559-567 → L_action (式8)
+     # Action Expert 不直接接收预测状态/diff 输出 (L474-475, L568-570)
+8. 总损失：L = L_world + λ_diff·L_diff + λ_action·L_action   # L573-577（λ 数值原文未写）
+9. 参数更新（按配置）:
+   DiffWAM-S：冻结 M 层 LDB，其余联合优化；diff 梯度穿过冻结 LDB 回传共享层  # L585-590, L635-640
+   DiffWAM-L：阶段1 仅优化独立 Diff Expert（其余冻结，仅 L_diff）;             # L641-646
+              阶段2 全部模块联合优化完整目标                                   # L646-648
+</code></pre>
+<h3>5.2 推理伪代码（专家移除）</h3>
+<pre><code># ⚠ 依据原文重建（非原文伪代码）
+1. 移除 World Expert 与 Diff Expert（含其独立 M 层）   # L413-415, L454-456, L657-659
+2. c = ObservationEncoder(f0)                          # L654-655
+3. a1:H = ActionExpert(c, l)  （flow matching 去噪）   # L655-657, L471-472
+4. 注意力掩码：仅剩 (c) 通路——当前帧 token + 动作 token   # L510-515, Fig.3(c) L363-366
+   # 不调用未来状态或 diff 预测，无额外推理开销         # L511-514
+</code></pre>
+<h2>6) 主结果数值表</h2>
+<h3>Table 1 — LIBERO（L692-705；caption L706-708："We use DiffWAM-S due to the small size of the LIBERO training dataset. † denotes our FastWAM baseline."）</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Spatial</th>
+<th>Object</th>
+<th>Goal</th>
+<th>Long</th>
+<th>Avg.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenVLA [5]</td>
+<td>84.70</td>
+<td>88.40</td>
+<td>79.20</td>
+<td>53.70</td>
+<td>76.50</td>
+</tr>
+<tr>
+<td>OpenVLA-O [6]</td>
+<td>97.60</td>
+<td>98.40</td>
+<td>97.90</td>
+<td>94.50</td>
+<td>97.10</td>
+</tr>
+<tr>
+<td>MemoryVLA [56]</td>
+<td>98.40</td>
+<td>98.40</td>
+<td>96.40</td>
+<td>93.40</td>
+<td>96.65</td>
+</tr>
+<tr>
+<td>π0.5 [8]</td>
+<td>98.80</td>
+<td>98.20</td>
+<td>98.00</td>
+<td>92.40</td>
+<td>96.85</td>
+</tr>
+<tr>
+<td>GR00T-N1 [9]</td>
+<td>94.40</td>
+<td>97.60</td>
+<td>93.00</td>
+<td>90.60</td>
+<td>93.90</td>
+</tr>
+<tr>
+<td>Motus [13]</td>
+<td>96.80</td>
+<td>99.80</td>
+<td>96.60</td>
+<td>97.60</td>
+<td>97.70</td>
+</tr>
+<tr>
+<td>Lingbot-VA [14]</td>
+<td>98.50</td>
+<td>99.60</td>
+<td>97.20</td>
+<td>98.50</td>
+<td>98.45</td>
+</tr>
+<tr>
+<td>FastWAM† [15]</td>
+<td>98.20</td>
+<td>99.80</td>
+<td>97.80</td>
+<td>92.40</td>
+<td>97.05</td>
+</tr>
+<tr>
+<td>ImageWAM [57]</td>
+<td>97.20</td>
+<td>99.20</td>
+<td>98.80</td>
+<td>98.40</td>
+<td>98.40</td>
+</tr>
+<tr>
+<td>WLA [58]</td>
+<td>99.00</td>
+<td>100.00</td>
+<td>97.80</td>
+<td>97.60</td>
+<td>98.60</td>
+</tr>
+<tr>
+<td><strong>DiffWAM-S (Ours)</strong></td>
+<td><strong>98.00</strong></td>
+<td><strong>99.80</strong></td>
+<td><strong>99.00</strong></td>
+<td><strong>98.40</strong></td>
+<td><strong>98.80</strong></td>
+</tr>
+</tbody>
+</table>
+<p>正文："DiffWAM-S achieves an average success rate of 98.8%, improving upon FastWAM by 1.75 percentage points. The improvement is most pronounced on LIBERO-Goal and LIBERO-Long, where DiffWAM-S reaches 99.0% and 98.4%, outperforming FastWAM by 1.2 and 6.0 points, respectively." (L757-763)</p>
+<h3>Table 2 — RoboTwin 2.0（L736-749；caption L750-752："We use DiffWAM-L due to the large size of the RoboTwin 2.0 training dataset."）</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Clean</th>
+<th>Random</th>
+<th>Avg.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>π0 [7]</td>
+<td>65.92</td>
+<td>58.80</td>
+<td>62.36</td>
+</tr>
+<tr>
+<td>X-VLA [59]</td>
+<td>72.08</td>
+<td>72.84</td>
+<td>72.46</td>
+</tr>
+<tr>
+<td>π0.5 [8]</td>
+<td>82.74</td>
+<td>76.76</td>
+<td>79.75</td>
+</tr>
+<tr>
+<td>ABot-M0 [60]</td>
+<td>86.60</td>
+<td>85.08</td>
+<td>85.84</td>
+</tr>
+<tr>
+<td>QwenVLA [61]</td>
+<td>86.10</td>
+<td>87.20</td>
+<td>86.65</td>
+</tr>
+<tr>
+<td>Motus [13]</td>
+<td>88.66</td>
+<td>87.02</td>
+<td>87.84</td>
+</tr>
+<tr>
+<td>Lingbot-VA [14]</td>
+<td>92.90</td>
+<td>91.50</td>
+<td>92.20</td>
+</tr>
+<tr>
+<td>FastWAM† [15]</td>
+<td>91.88</td>
+<td>90.32</td>
+<td>91.10</td>
+</tr>
+<tr>
+<td>X-WAM [44]</td>
+<td>89.76</td>
+<td>90.68</td>
+<td>90.22</td>
+</tr>
+<tr>
+<td>WLA [58]</td>
+<td>92.94</td>
+<td>90.02</td>
+<td>91.48</td>
+</tr>
+<tr>
+<td><strong>DiffWAM-L (Ours)</strong></td>
+<td><strong>93.28</strong></td>
+<td><strong>92.02</strong></td>
+<td><strong>92.65</strong></td>
+</tr>
+</tbody>
+</table>
+<p>正文："DiffWAM-L obtains an average success rate of 92.65% on RoboTwin 2.0, outperforming the reproduced FastWAM baseline by 1.55 percentage points. The gain is consistent across both evaluation conditions, increasing performance from 91.88% to 93.28% in clean scenes and from 90.32% to 92.02% under scene randomization." (L771-777)</p>
+<h3>Table 3 — clean-to-random 泛化（OOD）（L784-793；caption L794-797："Success rates (%) for policies trained on clean demonstrations and evaluated in clean and randomized environments without further adaptation."）</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Embodied PT</th>
+<th>Clean</th>
+<th>Random</th>
+<th>Avg.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>π0 [7]</td>
+<td>Yes</td>
+<td>46.4</td>
+<td>16.3</td>
+<td>31.35</td>
+</tr>
+<tr>
+<td>X-VLA [59]</td>
+<td>Yes</td>
+<td>68.0</td>
+<td>20.9</td>
+<td>44.45</td>
+</tr>
+<tr>
+<td>π0.5 [8]</td>
+<td>Yes</td>
+<td>70.7</td>
+<td>46.0</td>
+<td>58.35</td>
+</tr>
+<tr>
+<td>StarVLA [62]</td>
+<td>No</td>
+<td>46.5</td>
+<td>3.2</td>
+<td>24.85</td>
+</tr>
+<tr>
+<td>AHA-WAM [63]</td>
+<td>No</td>
+<td>64.3</td>
+<td>3.2</td>
+<td>33.75</td>
+</tr>
+<tr>
+<td>FastWAM† [15]</td>
+<td>No</td>
+<td>70.2</td>
+<td>1.50</td>
+<td>35.85</td>
+</tr>
+<tr>
+<td><strong>DiffWAM (Ours)</strong></td>
+<td><strong>No</strong></td>
+<td><strong>69.7</strong></td>
+<td><strong>5.27</strong></td>
+<td><strong>37.47</strong></td>
+</tr>
+</tbody>
+</table>
+<p>正文："DiffWAM achieves 5.27% success, compared with 1.50% for our FastWAM baseline, an absolute gain of 3.77 percentage points. Clean success decreases slightly from 70.2% to 69.7%, while the mean of Clean and Random improves from 35.85% to 37.47%." (L810-814)</p>
+<h3>真机结果（ALOHA-AgileX，3 任务 × 20 trials，DiffWAM-S）</h3>
+<ul>
+<li>"DiffWAM-S achieves success rates of 90%, 85%, and 90% on the three tasks, respectively, compared with 80%, 70%, and 70% for FastWAM. Averaged across the three tasks, DiffWAM-S achieves 88.3% success versus 73.3% for FastWAM, an absolute improvement of 15.0 percentage points." (L839-844)</li>
+<li>次数："These rates correspond to 18/20, 17/20, and 18/20 successful trials for DiffWAM-S, compared with 16/20, 14/20, and 14/20 for FastWAM. The average success rate increases from 73.3% (44/60) to 88.3% (53/60)" (L1613-1617)</li>
+</ul>
+<h3>Table 4 — 两种配置对比（L828-836）</h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>FastWAM</th>
+<th>DiffWAM-L</th>
+<th>DiffWAM-S</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LIBERO</td>
+<td>97.05</td>
+<td>97.70</td>
+<td><strong>98.80</strong></td>
+</tr>
+<tr>
+<td>RoboTwin-Clean</td>
+<td>88.47</td>
+<td>87.72</td>
+<td><strong>93.13</strong></td>
+</tr>
+<tr>
+<td>RoboTwin-Full</td>
+<td>91.88</td>
+<td><strong>93.28</strong></td>
+<td>92.60</td>
+</tr>
+</tbody>
+</table>
+<p>正文："DiffWAM-S therefore outperforms DiffWAM-L by 1.10 and 5.41 percentage points in these two settings [LIBERO、RoboTwin-Clean]. With the full RoboTwin training set, DiffWAM-L instead achieves 93.28%, exceeding DiffWAM-S's 92.60% by 0.68 percentage points; both outperform FastWAM's 91.88%." (L859-864)</p>
+<h3>训练效率（LIBERO，Figure 6）</h3>
+<ul>
+<li>"DiffWAM improves substantially faster during the early stage of training and reaches a 95% average success rate after only 6.9k steps, whereas FastWAM requires 9.6k steps. This corresponds to a 28.1% reduction in the number of optimization steps needed to reach the same performance level. DiffWAM also increases the convergence AUC from 73.1 to 79.8" (L946-953)</li>
+</ul>
+<h3>Table 10 — 三随机种子复现（L1548-1559）</h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Run 1</th>
+<th>Run 2</th>
+<th>Run 3</th>
+<th>Mean±Std.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RoboTwin 2.0 Full-data</td>
+<td>92.49</td>
+<td>92.65</td>
+<td>92.43</td>
+<td>92.52±0.11</td>
+</tr>
+<tr>
+<td>LIBERO</td>
+<td>98.60</td>
+<td>98.80</td>
+<td>98.60</td>
+<td>98.67±0.12</td>
+</tr>
+<tr>
+<td>RoboTwin 2.0 Clean-only</td>
+<td>37.33</td>
+<td>37.40</td>
+<td>37.47</td>
+<td>37.40±0.07</td>
+</tr>
+</tbody>
+</table>
+<h3>Table 12 — RoboTwin 2.0 任务级 Overall 行（L1828；全文见 L1776-1828）</h3>
+<ul>
+<li>Overall（Clean/Random）：π0.5 82.74/76.76；Motus 88.66/87.02；LingBot-VA 92.90/91.50；GigaWorld-Policy 86.36/85.04；X-WAM 89.76/90.68；FastWAM 91.88/90.32；DiffWAM-L 93.28/92.02。</li>
+</ul>
+<h2>7) 消融（全部）</h2>
+<h3>Table 5 — 架构消融（LIBERO，L971-981）</h3>
+<table>
+<thead>
+<tr>
+<th>Architecture</th>
+<th>Spatial</th>
+<th>Object</th>
+<th>Goal</th>
+<th>Long</th>
+<th>Avg.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>World Expert（=FastWAM）</td>
+<td>98.20</td>
+<td>99.80</td>
+<td>97.80</td>
+<td>92.40</td>
+<td>97.05</td>
+</tr>
+<tr>
+<td>World Expert + Diff Loss</td>
+<td>97.80</td>
+<td>100.00</td>
+<td>97.40</td>
+<td>95.80</td>
+<td>97.75</td>
+</tr>
+<tr>
+<td>World Expert + Diff Expert（=DiffWAM-S）</td>
+<td>98.00</td>
+<td>99.80</td>
+<td>99.00</td>
+<td>98.40</td>
+<td>98.80</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>加 diff loss："adding the diff loss raises average success from 97.05% to 97.75%. The clearest gain is on LIBERO-Long, where success increases from 92.40% to 95.80% (+3.40 points)" (L963-966)</li>
+<li>加 Diff Expert："Retaining the diff loss and introducing the separate Diff Expert further raises average success to 98.80% (+1.05 points over loss-only supervision)... Relative to FastWAM, the full architecture improves Long by 6.00 points and Goal by 1.20 points" (L992-999)</li>
+<li>结论："the diff loss provides a measurable improvement, and the Diff Expert contributes a further gain; both are necessary to attain the full performance of DiffWAM in this ablation." (L1003-1006)</li>
+<li>注意（loss-only 并非全赢）："loss-only supervision does not improve every suite: Spatial and Goal decrease slightly, while Object reaches 100.00%." (L990-991)</li>
+</ul>
+<h3>Table 6 — LDB 层数 M（LIBERO，DiffWAM-S，L983-987）</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Spatial</th>
+<th>Object</th>
+<th>Goal</th>
+<th>Long</th>
+<th>Avg.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FastWAM [15]</td>
+<td>98.20</td>
+<td>99.80</td>
+<td>97.80</td>
+<td>92.40</td>
+<td>97.05</td>
+</tr>
+<tr>
+<td>DiffWAM (M=5)</td>
+<td>99.60</td>
+<td>100.00</td>
+<td>97.20</td>
+<td>96.00</td>
+<td>98.20</td>
+</tr>
+<tr>
+<td>DiffWAM (M=10)</td>
+<td>98.00</td>
+<td>99.80</td>
+<td>99.00</td>
+<td>98.40</td>
+<td>98.80</td>
+</tr>
+<tr>
+<td>DiffWAM (M=15)</td>
+<td>98.20</td>
+<td>99.80</td>
+<td>97.40</td>
+<td>97.00</td>
+<td>98.10</td>
+</tr>
+<tr>
+<td>DiffWAM (M=20)</td>
+<td>97.00</td>
+<td>100.00</td>
+<td>98.40</td>
+<td>98.00</td>
+<td>98.35</td>
+</tr>
+</tbody>
+</table>
+<p>正文："All tested LDB depths outperform the FastWAM baseline on average. Increasing M from 5 to 10 improves the average success rate from 98.20% to 98.80%... Further increasing the depth to 15 or 20 layers does not yield additional improvements. These results favor a moderate depth for the difference-prediction pathway; we therefore use M= 10 as the default configuration." (L1011-1023)</p>
+<h3>Table 7 — 视觉专家配置（LIBERO，L1016-1018）</h3>
+<table>
+<thead>
+<tr>
+<th>Visual Experts</th>
+<th>Spatial</th>
+<th>Object</th>
+<th>Goal</th>
+<th>Long</th>
+<th>Avg.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Only World Expert</td>
+<td>98.20</td>
+<td>99.80</td>
+<td>97.80</td>
+<td>92.40</td>
+<td>97.05</td>
+</tr>
+<tr>
+<td>Only Diff Expert</td>
+<td>99.20</td>
+<td>100.00</td>
+<td>95.80</td>
+<td>89.80</td>
+<td>96.20</td>
+</tr>
+<tr>
+<td>World + Diff Expert</td>
+<td>98.00</td>
+<td>99.80</td>
+<td>99.00</td>
+<td>98.40</td>
+<td>98.80</td>
+</tr>
+</tbody>
+</table>
+<p>正文："World + Diff Expert improves the average success rate to 98.80%, outperforming the two single-expert configurations by 1.75 and 2.60 percentage points, respectively. The improvement is especially pronounced on LIBERO-Long, where the combined configuration reaches 98.40%, compared with 92.40% for Only World Expert and 89.80% for Only Diff Expert." (L1035-1042)
+- 结论："the World Expert models future scene states, while the Diff Expert explicitly captures inter-frame visual differences. Jointly learning these capabilities enhances the representation used for action generation, particularly on long-horizon tasks." (L1043-1048)</p>
+<h3>Table 8 — 控制「额外训练量」（RoboTwin 2.0 clean，L1061-1063）</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Additional training</th>
+<th>Clean success (%)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FastWAM (continued training)</td>
+<td>1 epoch</td>
+<td>88.47</td>
+</tr>
+<tr>
+<td>DiffWAM (Ours)</td>
+<td>1 epoch</td>
+<td>93.13</td>
+</tr>
+</tbody>
+</table>
+<p>正文："we initialize FastWAM and DiffWAM from the same task-trained FastWAM checkpoint and train both for one additional epoch on clean demonstrations under matched training conditions... DiffWAM achieves 93.13% clean success, compared with 88.47% for continued FastWAM training, a gain of 4.66 percentage points. This comparison supports an improvement beyond additional training alone" (L1051-1058)；"The shared-checkpoint initialization isolates the effect of the modified training objective under a matched additional training budget." (L1082-1084)</p>
+<h3>Table 11 — 预测质量（附录 B.5，L1596-1599）</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>f1</th>
+<th>f2</th>
+<th>Δf1</th>
+<th>Δf2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PSNR⇑</td>
+<td>37.94</td>
+<td>30.79</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>SSIM⇑</td>
+<td>0.9851</td>
+<td>0.9701</td>
+<td>-</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Latent Error⇓</td>
+<td>-</td>
+<td>-</td>
+<td>0.0055</td>
+<td>0.0136</td>
+</tr>
+</tbody>
+</table>
+<p>正文："The predicted future observations preserve scene structure and reflect the progression of the manipulation trajectory. The visualized diff outputs highlight localized variation around the robot and manipulated objects... These differences describe inter-frame visual variation and do not exclusively isolate changes caused by robot actions." (L1630-1637)</p>
+<h2>8) 局限（逐字，L1717-1737）</h2>
+<blockquote>
+<p>"Several limitations remain. First, the independent M-(L1717)
+layer Diff Expert pathway introduces additional computation (L1718)
+and memory during training. Freezing the LDB in DiffWAM-(L1719)
+S does not eliminate this cost, since diff predictions are still (L1720)
+computed and their gradients propagate into the shared rep-(L1721)
+resentation. Both the World and Diff Experts are removed at (L1722)
+inference, so these visual prediction pathways add no online (L1723)
+action-generation overhead. Second, the difference target (L1724)
+captures inter-frame latent variation without explicitly dis-(L1725)
+tinguishing changes caused by robot actions from camera (L1726)
+motion, illumination changes, or movement of unrelated ob-(L1727)
+jects. This ambiguity may be more significant in dynamic, (L1728)
+unstructured environments. Third, the clean-to-random result (L1729)
+establishes a benefit under the evaluated RoboTwin pertur-(L1730)
+bations, while absolute Random success remains low and (L1731)
+generalization to other shifts is not established. The experi-(L1732)
+ments cover a limited range of data scales and embodiments, (L1733)
+and DiffWAM is not pretrained on a large-scale robot dataset. (L1734)
+Broader evaluation is needed to establish how the benefits of (L1735)
+DiffWAM-S and DiffWAM-L generalize across training-data (L1736)
+regimes and deployment settings." (L1737)</p>
+</blockquote>
+<p>另，真机部分亦有：<strong>"Broader evaluation across objects, environments, and embodiments remains necessary to establish generality."</strong> (L1620-1622)</p>
+<p>未来工作方向（C.2）：更高效的 Diff Expert 设计、action-conditioned/motion-aware/object-centric 约束解耦致变来源、大规模机器人交互数据预训练（L1739-1755）。</p>
+<h2>9) 叙事关联【推断】</h2>
+<ol>
+<li>【推断】DiffWAM 是对 FastWAM 的直接复现与改进（表中 "† denotes our FastWAM baseline"，L702/746/792；RoboTwin 的 DiffWAM-L 直接从 FastWAM checkpoint 初始化，L1466-1468），并显式继承了其 "first-frame-conditioned attention scheme [15]"（L491）——属于同一 WAM 研究线上「预测什么信号」的下一步。</li>
+<li>【推断】论文的叙事定位是把 WAM 的核心问题从「要不要预测未来」推进到「预测什么信号才有利于动作」：论据为 "is future-state prediction alone sufficient to learn world representations that capture task-related changes?"（L136-138）与原理句 L147-149；且其声称的优势恰在于不用外部先验（对照 WAM-s 的 "targets obtained from external estimators may contain estimation errors"，L273-275）。</li>
+<li>【推断】真机增益（+15.0，L843-844）远大于仿真增益（+1.75/+1.55，L759-760/772-774），且 FastWAM 真机仅 73.3%——暗示仿真基准接近饱和，差异信号在真实场景（更多任务无关内容与噪声）下价值更大，与 L96-99 的动机自洽。</li>
+<li>【推断】S/L 双配置形成「按数据规模选择训练策略」的设计模式（小数据冻结 LDB 防过拟合 L585-590；大数据两阶段 L641-652；Table 4 结论 "choosing DiffWAM-S when training data are limited and DiffWAM-L when more data are available"，L940-942），而其局限中承认未做大规模预训练（L1733-1734），为后续叙事留下「预训练 + diff prediction」的开放命题。</li>
+</ol>
+<hr />
+<h3>附：关键原文引用索引（速查）</h3>
+<ul>
+<li>差异定义："We define consecutive visual differences as differences between the latent representations of consecutive observations, providing an explicit learning signal for temporal variation." (L103-105)；式 (5) L390</li>
+<li>掩码："A structured unidirectional attention mask conditions the Diff, World, and Action Experts solely on the current-frame representation while blocking attention between experts." (L110-112)</li>
+<li>推理移除："At inference, both the World and Diff Experts are removed, retaining only the Observation Encoder and Action Expert without additional inference overhead." (L175-177 / L413-415)</li>
+<li>总损失："L=L world +λ diff Ldiff +λ actionLaction,(9)"（L575；λ 数值原文未写）</li>
+<li>主结果："Specifically, it attains average success rates of 98.8%, 92.65%, and 88.3%, outperforming the state-of-the-art baseline (i.e., FastWAM) by 1.75, 1.55, and 15.0 percentage points, respectively." (L118-121)</li>
+<li>消融结论："the diff loss provides a measurable improvement, and the Diff Expert contributes a further gain; both are necessary to attain the full performance of DiffWAM in this ablation." (L1003-1006)</li>
+</ul>
+<footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
+<a href="../index.html">返回首页</a></footer></div></main></body></html>

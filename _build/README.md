@@ -28,6 +28,7 @@
 ├─ opensource.html         开源（39 个自建仓库，按类型分类）
 ├─ about.html              关于 / 联系方式 / 简历下载
 ├─ blog/                   博客：index.html、每篇一个 HTML、feed.xml
+├─ design/                 研究站：7 个独立成站的研究笔记与综述（见下文）
 ├─ en/                     以上全部页面的英文版
 ├─ 404.html
 ├─ sitemap.xml  robots.txt
@@ -131,9 +132,31 @@ summary_en: One-line English summary.
 - 顶部加了一条「← 返回新主页 / Home」的细栏；
 - 顺手修了 3 个旧站遗留的死链（详见 `_build/docs/migration.md`）。
 
-## 容量与成本
+## 研究站（`/design/`）
 
-- 发布内容约 **20.8 MB**，GitHub Pages 上限 **1 GB**（约 2%），余量 40 倍以上；
+`design/` 下是 7 个独立成站的研究笔记 / 综述，源目录在
+`C:\Users\Admin\Desktop\design`，由 `_build/design.py` 复制过来，清单在
+`_build/gen/data_design.py`。
+
+它们同时出现在博客列表里（带「站」标记），并各自有 `/design/<slug>/` 入口。
+
+**只发布自建正文**，以下内容被排除：
+
+| 排除项 | 原因 |
+|---|---|
+| `*.pdf`（1.14 GB，72 个） | 论文 PDF，既超出 Pages 容量，也不是我们该托管的 |
+| `raw/`（55 MB） | 抓取的 CVPR / ICCV 会议页面 |
+| 保存的 arXiv 论文页 | 第三方全文，且依赖 arxiv 自己的 `/static/` 资源 |
+| 两份公众号文章副本（丁文伯、吴佳俊） | 别人写的，不是你的博客 |
+| `__pycache__`、`*.pyc`、`*.bin`、`*.whl`、`*.tex`、会话转储 | 构建垃圾 |
+| 单文件 > 6 MB | 体积保护 |
+| `auto_docs/site` | 与 `world-model-reading` 逐文件哈希相同，只发一份 |
+
+如果源目录新增了项目：在 `_build/gen/data_design.py` 里加一条（slug / src / 标题 / 日期 /
+摘要 / 标签），然后 `python _build/build.py`。构建时会先清空 `design/` 再复制，所以删掉
+清单里的条目，对应站点也会消失。
+
+- 发布内容约 **37 MB**，GitHub Pages 上限 **1 GB**（约 4%），余量 25 倍以上；
 - 12 个论文 / 报告 PDF（共 133 MB）已迁到 Release
   [`papers-2026-11`](https://github.com/lidongyv/lidongyv.github.io/releases/tag/papers-2026-11)，
   页面链接直接指向 Release 下载地址，不再占用 Pages 配额，也不会再吃站点流量；

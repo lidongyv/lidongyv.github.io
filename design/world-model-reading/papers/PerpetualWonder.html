@@ -1,0 +1,204 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PerpetualWonder 精读笔记（arXiv:2602.04876v2） · 世界模型调研与精读</title>
+<link rel="stylesheet" href="../style.css"></head><body>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次5 · T3 几何/物理-视觉闭环</div><h1>PerpetualWonder 精读笔记（arXiv:2602.04876v2）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2602.04876</span> <a href="https://arxiv.org/abs/2602.04876">arXiv 页面</a> · <a href="txt/PerpetualWonder.txt">提取正文 txt</a></div><blockquote>
+<p>数据源：<code>auto_docs/papers/txt/PerpetualWonder.txt</code>（共 1110 行）。所有英文引文逐字复制自该 txt，行号即 txt 行号；PDF 提取伪影（换行连字符如 "sim-ulator"、缺空格如 "ofaction"）一律保留。标注【推断】处为本人解读，非论文原文；论文未写的一律标「原文未写」。</p>
+</blockquote>
+<h2>1. 原文信息</h2>
+<ul>
+<li>标题（L1）："PerpetualWonder: Long-Horizon Action-Conditioned 4D Scene Generation"</li>
+<li>作者（L2）："Jiahao Zhan∗,† Zizhang Li∗ Hong-Xing Yu Jiajun Wu"；机构（L3）："Stanford University"；项目页（L4）："https://johnzhan2023.github.io/PerpetualWonder/"</li>
+<li>版本/ID（L56）："arXiv:2602.04876v2  [cs.CV]  20 May 2026"</li>
+<li>发表状态：arXiv 预印本 v2（2026-05-20）；会议录用信息原文未写。</li>
+<li>作者注脚（L33–34）："∗Equal contribution. †Work was done when J. Zhan was a visiting student at Stanford University. J. Zhan is currently with Fudan University."</li>
+<li>资助（L636–640）："This work is in part supported by NSF RI #2211258 and #2338203, ONR YIP N00014-24-1-2117, ONR MURI N00014-22-1-2740, Accenture, the Stanford Institute for Human-Centered AI (HAI), and the Magic Grant from the Brown Institute for Media Innovation."</li>
+</ul>
+<h2>2. Abstract 全文逐字（L16–32）</h2>
+<blockquote>
+<p>"We introduce PerpetualWonder, a hybrid generative sim-
+ulator that enables long-horizon, action-conditioned 4D
+scene generation from a single image. Current works fail
+at this task because their physical state is decoupled from
+their visual representation, which prevents generative re-
+finements to update the underlying physics for subsequent
+interactions. PerpetualWonder solves this by introducing
+the first true closed-loop system. It features a novel uni-
+fied representation that creates a bidirectional link between
+the physical state and visual primitives, allowing genera-
+tive refinements to correct both the dynamics and appear-
+ance. It also introduces a robust update mechanism that
+gathers supervision from multiple viewpoints to resolve op-
+timization ambiguity. Experiments demonstrate that from
+a single image, PerpetualWonder can successfully simulate
+complex, multi-step interactions from long-horizon actions,
+maintaining physical plausibility and visual consistency."</p>
+</blockquote>
+<h2>3. 问题与动机：物理状态与视觉表示解耦如何阻碍生成式优化</h2>
+<p>任务定义（L43–48）："We study the task ofaction-conditioned 4D scene generation from a single image. Given a single input image and a sequence of phys-ical actions (local forces like pushes and pokes, or global forces like wind fields and gravity), the goal is to generate the dynamic 4D scene that corresponds to the actions and evolves plausibly over time."</p>
+<p>解耦问题的核心表述在 Abstract 已给出（L18–21）："Current works fail at this task because their physical state is decoupled from their visual representation, which prevents generative refinements to update the underlying physics for subsequent interactions." 即：视觉生成模型产出的精修结果无法写回物理状态，物理与视觉两条通道信息流不完整。正文对"如何阻碍"的完整机制表述（L76–84）："The core problem is that the flow of infor-mation is incomplete: the physical state informs the video model, but the video model's refinement only propagates back to the scene's appearance representation, not its un-derlying physical state. The physical and visual representations are thus decoupled. This prevents any form of long-horizon, sequential interaction, as the physical simulator is blind to the generative corrections from the previous step, leading to the accumulation of errors." 也就是说：阻碍的链条是"物理→视觉"单向（前向可行），"视觉精修→物理"断裂（反向不可行）→ 物理模拟器对上一轮的生成修正"失明"→ 误差逐轮累积 → 长时程交互不可行。相关工作节重复了这一论证（L203–209）："However, these methods are limited by a fun-damental architectural drawback that the flow of informa-tion is incomplete. The generative refinements, whether for appearance or dynamics, only affect the visual primitives and do not propagate back to the underlying physical state."</p>
+<p>作者据此归纳出两个待解挑战（L88–98）："We identify two fundamental challenges: the first is that current physical states (physics particle position and velocity) cannot be up-dated by the refinement from the video generation model. A new representation is required to unify the physical and visual domains. Then, to update the unified representation, the refinement from video generation models must be multi-view to prevent ambiguity in optimization. However, the video models naturally will not generate perfectly consis-tent videos from different viewpoints. To resolve this ambi-guity, a robust update mechanism is required." 目标则被表述为（L86–88）："This requires a sys-tem that can perpetually cycle between user actions, physi-cal simulation, and generative refinement."</p>
+<h2>4. 方法逐机制</h2>
+<p><strong>总体闭环框架</strong>（L99–110）："First, we introducevisual-physical aligned parti-cle(VPP), a novel unified representation that tightly binds physics particles to the visual representations. The pro-posed VPP acts as a bidirectional bridge: enabling the for-ward physics pass that uses physical simulation to drive the visual prediction, and critically, updating the physics parti-cles through the optimized visual representation in a back-ward optimization, resulting in an innovative closed-loop system." 系统定义为（L236–244）："PerpetualWonder achieves this by an innovative closed-loop hybrid generative simulator, perpetually iterating between a forward physics passΦp and a backward neural optimization passΨ n."</p>
+<p><strong>（1）VPP 统一表示</strong>（L263–266）："we introduce the VPP, a novel unified rep-resentation that tightly binds the physics particles to the vi-sual primitives, creating a bidirectional bridge between dy-namics and appearance." 前景物体由三部分组成（L267–279）："We define the foregroundF t as a set ofOobjects, Ft ={P ot ,V ot ,G ot }Oo=1. … Physics dynamics. A set ofJphysics particle positionsP= {pj}Jj=1 and their velocitiesV={v j}Jj=1. The particlesP are sampled from an initial object mesh volume. … Visual appearance. A set ofJ×Kvisual primitives, i.e., gaussians [18],G= SJj=1{gj,k}Kk=1. Specifically, each physics particlep j serves as an anchor to a small set ofK gaussian primitives." 每个高斯相对锚点粒子的参数化（L285–290）："Position offset˜p: Each gaussian's 3D positionµ j,k is de-fined by a small, learnable position offset˜p j,k from its corresponding physics particlep j: µj,k =p j + tanh(˜pj,k)·δ, (1) whereδis the physics particle size defined during the sim-ulator's sampling process." 尺度（L291–292）："Scale: Each gaussian primitive is defined to be isotropic, with a fixed scaling value not larger thanδ." 不透明度（L293–301）："Inspired by [42], we define two opacity parameters.o s is the standard learnable spatial opacity scalar [18].o t(t)is a learnable temporal opacity, parameterized by a center timeµ t and durations d:"（式 2 为高斯型时间不透明度，txt 中分式排版破损，逐字形式为 L298–300 "ot(t) = exp − 12 ×  t−µ tsd 2! . (2)"）；"The final opacity iso(t) =o s ×o t(t)."（L301）旋转与颜色沿用 3DGS（L302–303）："Rotation and color attributes are parameterized the same as in the original 3D Gaussian Splatting work [18]."</p>
+<p><strong>（2）双向链接如何成立</strong>（L304–314）："This VPP representation forms the foundation of our closed-loop system. By ensuring every physics particlep j has a corre-sponding set of visual primitives{g j,k}, all dynamics and appearance are now expressed by the optimizable visual primitives. This structure creates the bidirectional bridge, where the forward physics pass drives the dynamics by up-datingp j, which in turn moves all anchored visual primi-tives. Critically, the backward optimization pass can now refine the final 4D scene by optimizing the attributes of {gj,k}while being constrained to remain consistent with the anchoring physics particles." 即：前向 = 物理粒子拖动视觉基元；反向 = 优化视觉基元但被锚约束，从而物理状态可被视觉精修间接修正。</p>
+<p><strong>（3）多视角监督与渐进优化</strong>（L110–119）："Next, we propose a multi-view optimization mech-anism to ensure the update is 3D consistent and plausible. We first initialize a complete 3D scene from the input image using dense view generation. This initialization allows us to render the scene from arbitrary viewpoints in a wide range and use the video model to gather supervision from multiple views. Then we progressively leverage refined videos from multiple viewpoints for backward optimization." 单视角为何不够（L319–322）："Simply optimizing from a single-view video refine-ment, as done in WonderPlay [21], leads to significant am-biguity and artifacts from novel viewpoints."</p>
+<p>3D 场景初始化（L328–336）："we first reconstruct the 3D scene S0 from the single input imageI. To construct a 3D scene that supports rendering from arbitrary viewpoints, we employ a state-of-the-art camera-controlled video model GEN3C [34] to synthesize dense surrounding views of the scene from the input image. This video is then processed with COLMAP [35] to acquire a scene point cloud for ini-tializing 3D Gaussians." 前后景分解与网格化（L341–354）："To decompose the scene into background and fore-ground objects, inspired by Gaussian Grouping [52], we add a learnable featureg i to each primitive. We leverage SAM2 [31] to obtain object masks on the dense surround-ing views, which supervise these learnable features. … These foreground object gaussians are then transformed into closed-surface meshes using TSDFusion [55]. Then these meshes are used to sample the initial physics parti-clesP 0 for the proposed VPP." 与 WonderPlay 的对比（L355–360）："This approach contrasts with the scene initializa-tion in WonderPlay, which relies on single-view depth-unprojection [53, 54] and object placement. Our multi-view reconstruction process builds the background and all objects together in a single, unified 3D coordinate space, which is essential for rendering from dense, arbitrary viewpoints."</p>
+<p>精修信号桥（L361–370）："The refinement pro-cessΨ n leverages pre-trained video generation models to refine both appearance and dynamics of the underlying 4D scene. The bridge between our VPP representation and the video generation model is the rendered video. Following [21], the coarse 4D scene from physical simulation (detailed in Section 3.3) is rendered into RGB and optical flow frames from a chosen viewpoint. This coarse video is then refined by the video generation model [5, 50] through a bimodal control scheme, resulting in a refined videoV t." 多视角精修视频不一致（L371–374）："However, refined videos from different viewpoints are inevitably inconsistent and can not be directly used for op-timization. To resolve the ambiguity and acquire the desired 4D scene, we introduce a two-part solution."</p>
+<p>损失函数（L377–385）："L=L p(Render(Bt)⊙(1−M),V t ⊙(1−M)) +L p(Render(Gt),V t ⊙M) +λ simLsim. (3) Here,Mis the binary mask for the foreground VPPs, Render(·)is the gaussian rendering function, andL p is the photometric loss (L1 and SSIM). In practice, we also model the background gaussiansB t with learnable spatial and temporal opacity (Eq. 2) and other attributes (excluding position) to capture secondary visual effects like shadows." 仿真一致性正则（L394–399）："TheL sim penalizes the visual primitivesµ j,k,t for de-viating from their corresponding physics particlep j,t. The VPP representation and the simulation consistency loss act as a strong regularizer, ensuring the optimized visual prim-itives do not break apart from their physical anchors, which inherently mitigates inconsistency."（式 4，按 L388–393 排版符号重构，txt 中求和/范数乱码：Lsim = (1/(T·J))·ΣₜΣⱼ‖p_{j,t} − (1/K)Σₖµ_{j,k,t}‖₂²。）</p>
+<p>渐进优化策略（L400–410）："we first render and refine the video only from the input im-age's viewpoint and optimize the scene representation with respect to this single video. Then, we render the 4D scene from other viewpoints and use the video model to refine them with a smaller control weight. Finally, we leverage all refined videos from every viewpoint to optimize the scene representation again, yielding a consistent 4D scene."</p>
+<p><strong>（4）更新机制（loop closure，状态回写）</strong>。循环三阶段（L414–418）："This loop operates over a time window ofTsteps and consists of three key stages: a forward pass to generate the entire sequence, a backward optimization pass to refine it, and a loop closure that enables the next round of action-conditioned interaction." 前向（L419–427）："Given the scene stateS 0, the hybrid generative simulator computes the coarse 4D scene for the time win-dow ofTsteps. This is achieved by applying the physics op-eratorΦ p step-by-step for each user actionAt fromt= 0to T−1: ˆSt+1 = Φp( ˆSt,A t). … We adopt a set of solvers [17, 21, 24, 25] for various materials, including cloth, sand, snow, liquid, smoke, elastic, and rigid bodies." 回写机制（L442–453）："The final refined state of the current time window,ST , becomes the starting stateS 0 for the nextT-step simulation. To prepare the system for this new time window, we update the VPP's underlying physics particles using the results of the backward pass. Specifically, we average the positions of the optimized visual primitives{g j,k}at timeTto up-date the positionp j of their corresponding physics particle. The velocity is directly inherited from the original veloci-ties at timeT, which is applicable becauseL sim limits the position updates of physics particles in a small range. This corrected physics state{P T ,V T }becomes the input for the next forward pass sequence, allowing the system to simulate sequential interactions over a long horizon."</p>
+<h2>5. 实验与主结果</h2>
+<p><strong>设置</strong>（L455–485）："We initialize the 3D sceneS 0 by reconstructing it from242views generated by the camera-controlled video model GEN3C [34]. We employ Gene-sis [19] as our physics simulator for different materials." "experimental results typically demonstrate multi-step in-teractions across3time windows, with each window spanning 392 physical simulation steps and receiving different input actions. For refinement, the video generation model [5] is conditioned on RGB and optical flow renderings at the reso-lution ofH=704, W=1280from the coarse dynamics. The output videos consist of49frames, each frame is sampled from every8physical simulation steps. The progressive multi-view optimization mechanism uses3key views for supervision: the frontal, left-side, and right-side views." 基准（L486–514）：条件视频生成模型 Wan2.2 [40]、Wan2.6、Veo3.1 [44]、Tora [59]、DaS [12]、GEN3C [34]，混合生成式模拟器 WonderPlay [21]，以及更强基线（L508–514）："we also create a stronger baseline, WonderPlay++. This baseline uses our superior multi-view 3D reconstruc-tion for initialization, which provides a more 3D-consistent scene but retains WonderPlay's original decoupled repre-sentation and single-view optimization methodology." 数据集与评估维度（L515–523）："Our evaluation is performed on a curated dataset of10scenes that feature a diverse range of materials, in-cluding cloth, rigid bodies, elastic objects, liquids, gases, and granular substances. We assess two primary aspects: the quality of the generated 4D scene and the plausibility of the physical dynamics." WorldScore 指标定义（L1017–1023）："we render all generated scenes along a predefined camera trajectory and evaluate them us-ing metrics from WorldScore [8]. Specifically, we use rule-based metrics to validate camera controllability and 3D con-sistency. We also include the imaging metric to assess general per-frame visual quality."</p>
+<p><strong>表 1 数值全抄</strong>（L466–473，WorldScore 指标、10 场景）：</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Camera Ctrl</th>
+<th>3D Consist</th>
+<th>Imaging</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Wan2.2 [40]</td>
+<td>59.73</td>
+<td>65.35</td>
+<td>67.03</td>
+</tr>
+<tr>
+<td>GEN3C [34]</td>
+<td>80.29</td>
+<td>61.69</td>
+<td>66.25</td>
+</tr>
+<tr>
+<td>WonderPlay [21]</td>
+<td>75.95</td>
+<td>63.93</td>
+<td>36.80</td>
+</tr>
+<tr>
+<td>Tora [59]</td>
+<td>51.80</td>
+<td>60.77</td>
+<td>54.37</td>
+</tr>
+<tr>
+<td>Wan2.6 [40]</td>
+<td>64.75</td>
+<td>70.49</td>
+<td>66.09</td>
+</tr>
+<tr>
+<td>DaS [12]</td>
+<td>78.96</td>
+<td>62.18</td>
+<td>60.23</td>
+</tr>
+<tr>
+<td>Veo3.1 [44]</td>
+<td>60.61</td>
+<td>73.93</td>
+<td>67.82</td>
+</tr>
+<tr>
+<td>PerpetualWonder (ours)</td>
+<td>93.26</td>
+<td>80.41</td>
+<td>66.98</td>
+</tr>
+</tbody>
+</table>
+<p><strong>表 2 数值全抄</strong>（L493–499，2AFC 人类偏好研究、对本方法的 favor rate）：</p>
+<table>
+<thead>
+<tr>
+<th>对比基线</th>
+<th>Physics Plausibility</th>
+<th>Motion Fidelity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>over Wan2.2 [40]</td>
+<td>74.1%</td>
+<td>71.8%</td>
+</tr>
+<tr>
+<td>over GEN3C [34]</td>
+<td>93.5%</td>
+<td>83.5%</td>
+</tr>
+<tr>
+<td>over WonderPlay [21]</td>
+<td>80.8%</td>
+<td>86.3%</td>
+</tr>
+<tr>
+<td>over Veo3.1 [44]</td>
+<td>62.0%</td>
+<td>70.8%</td>
+</tr>
+<tr>
+<td>over Wan2.6 [40]</td>
+<td>68.5%</td>
+<td>77.3%</td>
+</tr>
+<tr>
+<td>over Tora [59]</td>
+<td>83.5%</td>
+<td>85.3%</td>
+</tr>
+<tr>
+<td>over DaS [12]</td>
+<td>80.9%</td>
+<td>81.9%</td>
+</tr>
+</tbody>
+</table>
+<p>人类研究协议（L1024–1034）："we conducted a user study with 350 participants for this aspect. We employed a Two-alternative Forced Choice (2AFC) protocol, asking each participant to evaluate 10 scenes. For each scene, participants were given a multi-step interaction description and viewed a side-by-side, randomly ordered video comparison of our method and a baseline. Participants selected the video that per-formed better on one of two criteria: physics plausibility (the correctness of the predicted motion in response to the action) and motion fidelity (the quality and naturalness of the generated motion)."</p>
+<p>结果文字结论（L546–557）："Per-petualWonder achieves best performance in camera control-lability and 3D consistency, while keeping a high level of imaging quality. … In comparison to all baselines, about 70% to 90% of the par-ticipants prefer PerpetualWonder across both aspects. This strong preference provides strong evidence that Perpetual-Wonder successfully generates plausible physical dynam-ics, enabling long-horizon simulations by preventing the ac-cumulated errors that degrade realism in baseline methods." 长时程对比 WonderPlay 失败机制（L562–576）："WonderPlay exhibits severe accumulated errors as the interactions progress. For instance, after the shovel is rotated in the air, it fails to maintain its shape in-tegrity and becomes unrealistically deformed upon insertion into the castle. This is a fundamental limitation of its de-sign: the generative refinements from the last time window do not propagate back to update the physical particles in simulators for the next round of interaction. As a result, at the initialization of each new round, the gaussian primitives are reset to their original positions rather than the optimized positions according to the refined video. The discrepancy causes severe fracturing artifacts and disrupts the temporal continuity across time windows." 本文闭环的对应表述（L577–579）："In contrast, our VPP representation provides a bidirec-tional bridge, allowing the refined stateS T from the end of one round to become the corrected initial stateS 0 for the next round."</p>
+<h2>6. 消融</h2>
+<p>正文消融均为定性图、无数值表（数值消融原文未写）。<strong>消融一：VPP vs 标准 3DGS</strong>（L599–610）："The VPP representation constrains visual primitives{g j,k}to remain near their corresponding physics particlep j. This binding mechanism accurately drives the visual primitives accord-ing to the dynamics from physical solvers. We contrast this with a variant (bottom row) that uses standard 3D gaussian primitives. When subjected to the same multi-view opti-mization, these unconstrained primitives just aim for mini-mizing the photometric loss, resulting in degenerate results with chaotic dynamics and visual artifacts."</p>
+<p><strong>消融二：渐进优化 vs 直接优化</strong>（L614–627）："In direct optimization, video generators will not naturally generate perfectly consistent multi-view videos. For example, the generated video from the frontal view might hallucinate incorrect visual details (e.g., color or shape artifacts), while another view does not, leading to optimization conflicts. By using these inconsistent su-pervision signals to optimize the underlying scene at once, the representation becomes corrupted, which manifests as blurry textures and appearance flickering on the apple as time progresses. Our progressive approach successfully re-solves this ambiguity, yielding a consistent 4D scene."</p>
+<p><strong>补充材料消融</strong>。K 配置按材料（L1042–1056）："Solid and Surface Materials (Rigid body, Cloth):We setK= 1. … Volumetric and Emitter Materials (Gas, Liquid, Sand, Snow, Elastic object):To adequately represent the vol-umetric expansion and semi-transparent nature of these materials, we setK= 20to allow a single physics parti-cle to cover a larger visual volume. Correspondingly, the VPP's gaussian scale is initialized to be smaller than the particle size, defaulting to0.5δ." 各向同性基元（L1057–1060）："We find that isotropic primitives help remove blurry artifacts in novel views, as they do not tend to overfit the input image." 半径消融（L1062–1068）："The default radius is set toδ. Within a reasonable range (from 0.25δto4δ), our results are robust to different values. How-ever, an overly small radius (≤0.01δ) leads to insuffi-cient representational capability, and an overly large radius (≥100δ) leads to instability in optimization."</p>
+<h2>7. 局限与未来工作</h2>
+<p>正文（第 5 节 Conclusion 之前）没有专门 Limitations 小节——原文未写。局限仅出现在补充材料 H（L1069–1077）："PerpetualWonder is currently not real-time due to the back-ward optimization overhead. Figure S3 shows a failure case involving a hockey stick moving into the frame from out-of-view. In the middle, as the stick enters the field of view, it appears incomplete (a hockey stick should ideally be longer than it appears). It remains a future work to complete object geometry that is not seen in the input image." 运行时开销（Table S2，L1100–1101）：Initialization "∼8 min"、Forward Pass "&lt;1 min"、Backward Opt. "∼7 min"、Total (1st Loop) "∼16 min"。</p>
+<h2>8. 叙事关联【推断】</h2>
+<p>以下均为本人解读，非论文原文；每条附支持原句。</p>
+<ol>
+<li>
+<p><strong>【推断】"闭环生成式模拟器"是快脑层"状态—动作—生成修正—状态回写"循环的现成模板</strong>。PerpetualWonder 区别于 WonderPlay 的本质不是生成质量，而是把生成式精修的结果作为下一轮模拟的初始条件，形成持续循环。支持句：L86–88 "This requires a sys-tem that can perpetually cycle between user actions, physi-cal simulation, and generative refinement."；L577–579 "In contrast, our VPP representation provides a bidirec-tional bridge, allowing the refined stateS T from the end of one round to become the corrected initial stateS 0 for the next round." 若快脑层需要"每轮动作后快速更新对世界的可信预测并据此响应"，该闭环结构即其功能蓝本；但本文闭环运行在分钟级离线优化上，时延问题另见第 5 条。</p>
+</li>
+<li>
+<p><strong>【推断】快脑层的状态表示可借鉴 VPP 的"锚定"思想</strong>：把高维视觉表象绑定到低维、可模拟的物理状态上，并让生成修正被锚约束在物理粒子附近，避免修正破坏底层一致性。支持句：L394–399 "TheL sim penalizes the visual primitivesµ j,k,t for de-viating from their corresponding physics particlep j,t. The VPP representation and the simulation consistency loss act as a strong regularizer, ensuring the optimized visual prim-itives do not break apart from their physical anchors, which inherently mitigates inconsistency." 即"可写回"的表示 = 压缩状态锚点 + 一致性正则，这正是快脑层若要做"生成式世界状态维护"需要的关键设计。</p>
+</li>
+<li>
+<p><strong>【推断】动作接口与快脑层的"力/控制信号"输出天然兼容，但不含高层语义指令</strong>。本文动作只有两类：局部点力（推、戳）与全局力场（风、重力）。支持句：L44–47 "Given a single input image and a sequence of phys-ical actions (local forces like pushes and pokes, or global forces like wind fields and gravity), the goal is to generate the dynamic 4D scene that corresponds to the actions and evolves plausibly over time." 若快脑层输出力向量/场量可直接对接；若输出自然语言或目标级指令，则需额外翻译层——原文未涉及。</p>
+</li>
+<li>
+<p><strong>【推断】接触/碰撞力学没有被显式建模</strong>。论文只列出所采用的材料求解器，未给出任何接触检测、碰撞响应、摩擦模型的形式化描述，动作也只是点力/场力。支持句：L423–427 "We adopt a set of solvers [17, 21, 24, 25] for various materials, including cloth, sand, snow, liquid, smoke, elastic, and rigid bodies. We refer the reader to Li et al. [21] for more details of the physical simulation pro-cess."；L458 "We employ Gene-sis [19] as our physics simulator for different materials." 接触相关唯一证据是参数表中的摩擦系数（L1085 "friction coefficient 0.1"，属 rigid body solver），说明接触/摩擦被隐式外包给 Genesis 求解器，论文自身没有接触模型。另外文末参考文献 [19] 指向的是 EMNLP 2021 同名论文 "Genesis: a generative approach to substitutes in context"（L729–732），与正文所述物理引擎不符【推断：引用元数据错配】。</p>
+</li>
+<li>
+<p><strong>【推断】对快脑层的实时性约束，本文是反例而非方案</strong>。支持句：L1071–1072 "PerpetualWonder is currently not real-time due to the back-ward optimization overhead."；Table S2（L1100–1101）首轮总耗时 "∼16 min"，其中反向优化 "∼7 min"。若快脑层要复用此范式，反向优化必须被蒸馏为前馈模型或换用更轻量的更新机制——原文未给出此类方案。</p>
+</li>
+</ol>
+<h2>9. 图注/表注逐字抄录</h2>
+<p><strong>Figure 1</strong>（L11–14）："Figure 1. We proposePerpetualWonder, a hybrid generative simulator that generates a 4D scene with long-horizon actions and a single image. Here we show a side-by-side comparison for a three-step action sequence (top to bottom, actions overlaid on the images). The left and right image blocks show renderings from two different viewpoints. PerpetualWonder shows superior performance over the previous method. We show video results inhttps://johnzhan2023.github.io/PerpetualWonder/."（图内图例标签，L5–10："PerpetualWonder (ours) WonderPlay / Generated 4D Scene / Input Image / WonderPlay PerpetualWonder (ours) / : Gravity / : 3D Point Force"）</p>
+<p><strong>Figure 2</strong>（L181–185）："Figure 2.Overview of PerpetualWonder. Given an input image, based on the visual-physical aligned particle, we reconstruct a 3D scene from synthesized dense views. Then we iterate between a forward physics pass and a backward neural optimization. The forward pass leverages physical simulation to generate coarse scene dynamics. Then the backward optimization updates the scene according to the multi-view refined videos from the video generation model. The closed-loop system enables long-horizon actions for the final 4D scene generation. The rendered results on the right showcase the generated scene from each consecutive action."（图内流程标签见 L161–180：Image I、Scene 𝒮₀、Actions f、3D Scene Reconstruction、Forward Pass、Physics simulator、Rigid body solver、PBD solver、MPM solver、Backward Optimization、Long-Horizon Action-Conditioned 4D Scene、4D scene {𝒮ₜ}、Video generation、Visual-physical particle、Multi-view RGB, flow、Refined videos、VPP updates、Action1/2/3、Time）</p>
+<p><strong>Figure 3</strong>（L461–464）："Figure 3.Qualitative resultsof the proposed PerpetualWonder. We show the long-horizon scenes with three consecutive actions." + "and  indicate global force (gravity or wind force field), and 3D point force, respectively. The results are all rendered from novel views, demonstrating our method's ability in long-horizon action-conditioned 4D scene generation."（L462–463 两处 "and" 后的图标在 txt 提取中缺失）</p>
+<p><strong>Figure 4</strong>（L520–522）："Figure 4.Qualitative comparisonsbetween PerpetualWonder (ours) and the baseline methods. The top row shows the input images, actions, camera trajectories, and the texts describing the actions for conditional video generators [34, 40]. For ease of comparison, only one time window is shown. The images from left to right illustrate the resulting scene dynamics and camera motion for each method."（图内文本提示词，L518："A boat moves forward on Lake Venice" "Jam drips from a tilted jam jar onto toast."）</p>
+<p><strong>Figure 5</strong>（L584–585）："Figure 5.Long-horizon actionscomparison between PerpetualWonder (top row) and WonderPlay (bottom row). For each method, the view changes across time, illustrating the four-round interaction results on a castle scene. The applied actions are overlaid on the top row."</p>
+<p><strong>Figure 6</strong>（L586–588）："Figure 6.Ablationon VPP representation. Top row is with our proposed VPP for the foreground. Bottom row shows using 3D gaussians from the standard Gaussian Splatting [18] optimization."</p>
+<p><strong>Figure 7</strong>（L611–613）："Figure 7.Ablationon progressive multi-view optimization. Top row shows the optimized scene using progressive optimization and the bottom row shows direct optimization results."</p>
+<p><strong>Table 1</strong>（L474–475）："Table 1.Quantitative comparisonon10scenes using World-Score [8] metrics. Ctrl=Controllability, Consist=Consistency."</p>
+<p><strong>Table 2</strong>（L500–501）："Table 2.2AFC human study resultsof favor rate of our Perpetu-alWonder over baseline methods in dynamic realism."</p>
+<p><strong>Table S1</strong>（L1099）："Table S1. Simulation parameters and default values"。数值全抄（L1078–1098）：General simulation：Step time "1e −3"、Sub-steps number "10"、Sampled particle size "1e −2"、Gravity "(0,0,−9.8)"；Rigid body solver：friction coefficient "0.1"；MPM solver：Grid density "64"；Elastic material Young's modulus "3e 5"、Poisson's ratio "0.2"；Liquid material Young's modulus "1e 7"、Poisson's ratio "0.2"；Granular material Young's modulus "1e 6"、Poisson's ratio "0.2"、Friction angle "45"；PBD solver：Cloth material stretch compliance "1e −7"、Cloth material bending compliance "1e −5"、Smoke material viscosity coefficient "0.1"。</p>
+<p><strong>Table S2</strong>（L1102）："Table S2. Runtime Analysis." 数值全抄（L1100–1101）：Initialization "∼8 min"、Forward Pass "&lt;1 min"、Backward Opt. "∼7 min"、Total (1st Loop) "∼16 min"。</p>
+<p><strong>Figure S1</strong>（L1105–1106）："Figure S1. Comparison of isotropic and anisotropic primitives in novel view synthesis."</p>
+<p><strong>Figure S2</strong>（L1109）："Figure S2. Ablation on radius."</p>
+<p><strong>Figure S3</strong>（L1110）："Figure S3. Failure case in generating unseen geometry."</p>
+<footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
+<a href="../index.html">返回首页</a></footer></div></main></body></html>

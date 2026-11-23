@@ -1,0 +1,385 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VerseCrafter 精读笔记 · 世界模型调研与精读</title>
+<link rel="stylesheet" href="../style.css"></head><body>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T1+T3 4D几何控制</div><h1>VerseCrafter 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2601.05138</span> <a href="https://arxiv.org/abs/2601.05138">arXiv 页面</a> · <a href="txt/VerseCrafter.txt">提取正文 txt</a></div><blockquote>
+<p>数据源：<code>auto_docs/papers/txt/VerseCrafter.txt</code>（arXiv:2601.05138v2，1941 行，25 页）。全部事实性陈述附论文原句（英文逐字 + 行号）；未写内容标注「原文未写」；本人解读标注【推断】。</p>
+</blockquote>
+<h2>1) 原文信息</h2>
+<ul>
+<li>标题：<code>VerseCrafter: Dynamic Realistic Video World Model with 4D Geometric Control</code>（L1）</li>
+<li>作者：<code>Sixiao Zheng1,2 , Minghao Yin 3, Wenbo Hu4†, Xiaoyu Li4, Ying Shan4, Yanwei Fu1,2†</code>（L2，† 为通讯作者，L23）</li>
+<li>机构：<code>1Fudan University 2Shanghai Innovation Institute 3HKU 4ARC Lab, Tencent PCG</code>（L3）</li>
+<li>项目页：<code>Project Page:https://sixiaozheng.github.io/VerseCrafter_page/</code>（L4）</li>
+<li>ID：<code>arXiv:2601.05138v2  [cs.CV]  30 Mar 2026</code>（L37）</li>
+<li>CVPR 2026：<strong>原文未写</strong>——txt 全文未出现本文自述的会议归属（"CVPR"字样仅出现在参考文献条目中）。</li>
+</ul>
+<h2>2) Abstract 全文（L11–36，逐字；"V er-seCrafter"等为换行断字符）</h2>
+<blockquote>
+<p>"Video world models aim to simulate dynamic, real-world
+environments, yet existing methods struggle to provide uni-
+fied and precise control over camera and multi-object mo-
+tion, as videos inherently capture dynamics in the projected
+2D image plane. To bridge this gap, we introduceV er-
+seCrafter, a geometry-driven video world model that gen-
+erates dynamic, realistic videos from a unified 4D geometric
+world state. Our approach is centered on a novel4D Ge-
+ometric Controlrepresentation, which encodes the world
+state as a static background point cloud and per-object 3D
+Gaussian trajectories. This representation captures each
+object's motion path and probabilistic 3D occupancy over
+time, providing a flexible, category-agnostic alternative to
+rigid bounding boxes and parametric models. We render
+4D Geometric Control into 4D control maps for a pre-
+trained video diffusion model, enabling high-fidelity, view-
+consistent video generation that faithfully follows the spec-
+ified dynamics. To enable training at scale, we develop
+an automatic data engine and constructV erseControl4D,
+a real-world dataset of 35K training samples with automat-
+ically derived prompts and rendered 4D control maps. Ex-
+tensive experiments show that VerseCrafter achieves supe-
+rior visual quality and more accurate control over camera
+and multi-object motion than prior methods."</p>
+</blockquote>
+<h2>3) 问题与动机（逐字引用）</h2>
+<p>论文主张的核心矛盾是「理想世界模型应模拟完整 4D 时空，但视频只能记录投影后的 2D 平面」：</p>
+<blockquote>
+<p>"However, the reliance on video introduces a
+fundamental challenge: while an ideal world model should
+simulate the full 4D spatiotemporal space to reflect our
+physical reality, videos inherently capture dynamics in the
+projected 2D image plane."（L44–48）</p>
+</blockquote>
+<p>2D 投影为何限制控制精度（三段递进论据）：</p>
+<ol>
+<li>2D 线索缺乏 3D 感知、大视角变化下失效：<code>Existing approaches typically rely on 2D cues such as point trajectories [98], optical flow [58], masks [125], or bounding boxes [91], which lack 3D aware-ness and often fail under large viewpoint changes.</code>（L54–57）</li>
+<li>更高级的 3D 感知信号也无法形成统一可编辑的 4D 场景状态：<code>More advanced 3D-aware methods use depth maps [124], sparse 3D trajectories [15], 3D bounding boxes [94], or paramet-ric human models like SMPL-X [11] to align camera and object motion in 3D space. Nevertheless, these control rep-resentations remain inadequate for modeling multi-object dynamics as a unified, compact, and editable 4D geomet-ric scene state in a shared world coordinate frame.</code>（L58–64）</li>
+<li>具体缺陷逐一列举：<code>For in-stance, sparse trajectories are often noisy and incomplete, 3D bounding boxes impose rigid constraints ill-suited to natural objects, and SMPL-X representations are category-limited.</code>（L64–68）</li>
+</ol>
+<p>补充论据（真实场景 vs 合成环境）：<code>Furthermore, several existing works focus on syn-thetic game environments [41, 111, 115], where precise an-notations are available for training. However, controllable modeling of complex, realistic 4D scenes with multi-object motion remains underexplored.</code>（L68–72）</p>
+<p>论文对自身方案的定位句：<code>Unlike 2D control signals, our 4D Geometric Control is inherently 3D-aware, making it naturally more view-consistent and robust to occlusions, and thus a more effec-tive and reliable interface for video world modeling.</code>（L97–100）</p>
+<h2>4) 方法逐机制</h2>
+<h3>4.1 4D Geometric Control 表示（§3.1）</h3>
+<p><strong>定义（背景点云 + 逐物体 3DGS 轨迹，共享世界坐标系）：</strong></p>
+<blockquote>
+<p>"We represent each scene as an explicit 4D geometric scene
+state, which we term4D Geometric Control. This editable
+representation consists of a static background point cloud
+P bg and per-object 3D Gaussian trajectories{G to}, all de-
+fined in a shared world coordinate frame."（L209–213）</p>
+</blockquote>
+<p>共享坐标系的意义：<code>Crucially, the back-ground point cloud and per-object 3D Gaussian trajectories share a common world coordinate frame, enabling coherent and unified control over both camera and object motion.</code>（L87–90）</p>
+<p><strong>背景点云构建：</strong> <code>we start from the input image, estimate monocular depth and camera intrinsicsKusing MoGe-2 [95], and obtain object masks {Mo}with Grounded SAM2 [77], where the user selects one or more objects to control via text prompts or clicks.</code>（L214–219）输入视角被定为参考世界坐标系（L219–220，<code>the reference camera pose is given byR1 =I andt 1 =0</code>）；像素按式 (1) 反投影，物体掩码把点云分割为逐物体点云与静态背景点云（L224–235）。关键渲染语义：<code>During generation, the background at frametis rendered fromP bg under the camera pose, so viewpoint changes are realized as rigid camera motion in a fixed 3D world rather than by hallucinating a new background at every frame.</code>（L236–239）</p>
+<p><strong>3D Gaussian 轨迹：</strong> 单高斯编码位置（均值）/形状尺寸（特征值）/朝向（特征向量）：<code>A single 3D GaussianG o(x) = N(x|µ o,Σ o)in the world coordinate frame compactly en-codes an object's position (throughµ o), approximate shape and size (through the eigenvalues ofΣ o), and orientation (through the eigenvectors ofΣo).</code>（L240–244）；轨迹定义为高斯序列，<code>whose means{µ to}trace the motion path in 3D, while the covariances{Σ to}capture how the object's spatial extent and orientation evolve over time.</code>（L247–249 与 L292 衔接）。相比刚性盒的优势：<code>This probabilistic formu-lation describes the object's 3D occupancy in a soft, con-tinuous manner and yields a compact control space that is more flexible than rigid 3D bounding boxes and more category-agnostic than parametric body models.</code>（L292–296）</p>
+<p><strong>可编辑性（用户界面）：</strong> <code>The low-dimensional parameters{µ to,Σ to}naturally support flexible, user-driven editing. In practice, we convert eachG to into an ellipsoid mesh for visualization in a 3D edi-tor such as Blender, and let the user specify or refine the tra-jectory by dragging and keyframing this ellipsoid in world coordinate space. The edited poses and shapes are mapped back to{µ to,Σ to}as control signals. The ellipsoids are only a user interface; all conditioning maps used by model are rendered directly from the underlying 3D Gaussians.</code>（L303–311）</p>
+<h3>4.2 控制图渲染（§3.1 末）</h3>
+<p>每帧渲染三类解耦通道：<code>For each framet, we generate three types of maps: (i) background RGB/depth, RGB bgt and Depthbgt , by projecting the static background point cloudP bg un-der the camera pose(R t,t t); (ii) 3D Gaussian trajectory RGB/depth, RGB trajt and Depth trajt , by projecting the per-object Gaussians{G to}into soft elliptical footprints and tak-ing depth from the corresponding ellipsoid surfaces; and (iii) a soft merged maskM t, used as a control mask, that indicates regions where the diffusion model should synthe-size or overwrite content, obtained by inverting background visibility and merging it with the projected 3D Gaussian footprints, followed by Gaussian smoothing.</code>（L314–325）首帧保持：<code>For the first framet= 1, we replace RGB bg1 with input image and set M1 = 0, so that the first frame is preserved and only future frames are modified.</code>（L325–327）解耦语义：<code>Background and 3D Gaussian maps share the same 4D geometric scene state but are rendered throughdecoupledchannels, disentangling camera motion from object motion while preserving geometric consistency.</code>（L328–331）</p>
+<h3>4.3 GeoAdapter 架构（§3.2）</h3>
+<p>骨干冻结：<code>We adopt Wan2.1-14B [88] as a frozen latent video diffusion backbone with a Wan Encoder, a Wan-DiT denoiser and a Wan Decoder. VerseCrafter treats Wan2.1 as a generic video prior: we do not change its architecture or weights, and instead attach a lightweight geometric adapter that conditions the backbone on rendered 4D control maps.</code>（L333–338）</p>
+<p>注入方式（类 ControlNet）：<code>The encoded RGB/depth maps and the processed mask are concatenated channel-wise to form a spatio-temporal geometry tensor. GeoAdapter is a lightweight DiT-style branch that operates on this geometry tensor. It shares the same hidden dimen-sionality as the Wan-DiT blocks, but uses far fewer layers. We interleave GeoAdapter blocks with the frozen Wan-DiT: everyk-th DiT block in Wan-DiT is paired with a GeoAd-apter block whose output is linearly projected and added to the corresponding DiT block as a residual modulation.</code>（L345–353）文本由 umT5 注入两侧（L354–356）。附录给出零初始化残差细节：<code>Each GeoAdapter block is initialized from the weights of its paired Wan-DiT block for stable training, whileW (m)0 is initialized to zero. As a result, VerseCrafter behaves identically to the origi-nal Wan2.1 backbone at the beginning of training.</code>（L853–857，注入集 <code>[0,5,10,15,20,25,30,35]</code>、Wan-DiT 40 层、隐藏维 5120，Table 4，L753–757）</p>
+<p><strong>推理三模式：</strong> <code>At inference time, VerseCrafter supports camera-only, object-only, and joint control within a uni-fied framework.</code>（L360–361）；camera-only 时轨迹图置零、object-only 时相机固定、joint 时两类图同时渲染（L361–372）。</p>
+<h3>4.4 数据引擎与 VerseControl4D（§4）</h3>
+<p><code>VerseControl4D is built through four stages: data collec-tion, clip extraction, quality filtering, and data annotation.</code>（L378–379）
+- 数据来源：<code>VerseControl4D is built from two recent world-exploration datasets, Sekai-Real-HQ [56] and SpatialVID-HQ [93], which provide long in-the-wild videos with diverse outdoor and urban scenes, camera poses, and captions, but lack object-motion labels.</code>（L380–384）
+- 切片：<code>We apply PySceneDetect to detect shots in the videos. For each shot longer than 81 frames, we uniformly sample an 81-frame sub-clip and discard shorter shots, matching the default temporal length used by the Wan2.1 backbone.</code>（L387–391）
+- 质量过滤：<code>we keep only clips whose con-trollable object count lies in[1,6]. We then discard clips where any object mask covers more than20%of the im-age area.</code>（L396–399；另有"person . human . car . animal"提示词、人体截断/宽高比 [2,4] 过滤与美学亮度过滤，L394–403）
+- 标注：<code>We first generate a descriptive caption using Qwen2.5-VL-72B [5], which serves as text prompt.</code>（L442–443）；几何管线：<code>we adopt MegaSAM as the base pipeline and replace its monocular and metric depth modules with MoGe-2 [95] and UniDepth V2 [72], respectively, to obtain more accurate and temporally consistent depth.</code>（L444–447）
+- 规模：<code>In total, VerseControl4D contains 35,000 training sam-ples and 1,000 validation samples. In the training set, about 26% of samples are sourced from Sekai-Real-HQ and 74% from SpatialVID-HQ, while 20% of the samples de-pict static scenes</code>（L463–468）；<code>The validation set includes 250 static-scene sam-ples to specifically assess camera-only control.</code>（L493–494）附录 Table 5 细分：Train = Sekai 动态 9,071 + Sekai 静态 7,000 + SpatialVID 18,929；Val = 468 + 250 + 282（L866–869）。</p>
+<h2>5) 实验与主结果</h2>
+<p><strong>训练/推理配置：</strong> <code>we setk= 5so that ev-ery 5th DiT block in Wan-DiT is paired with a GeoAdapter block. We use the Adam optimizer with a learning rate of 2e-5, a constant learning rate schedule with 100 warmup steps.</code>（L500–503）；<code>All experiments are conducted on 16 96-GB GPUs with a global batch size of 16. Training is performed in two stages: we first train for 2,500 iterations on480P clips, and then fine-tune the same model for another 2,500 itera-tions on720P clips. The total wall-clock training time is about 380 hours.</code>（L504–509）；<code>At inference time, we use 50 denoising steps and a classifier-free guidance scale of 5.0. Generat-ing an 81-frame720P video clip on 8 96-GB GPU takes about 1152 seconds, with a peak per-GPU memory usage of about 90 GB.</code>（L511–515）</p>
+<p><strong>指标定义（原文）：</strong> VBench-I2V 取八维均值（附录式 10）；<code>For camera control, we follow CameraC-trl [33] and report rotation error (RotErr) and translation er-ror (TransErr). For object-motion control, we adopt ObjMC proposed in MotionCtrl [98].</code>（L516–520）；<code>ObjMC is com-puted as the average Euclidean distance between the esti-mated and ground-truth 3D Gaussian means over all con-trolled objects and frames.</code>（L524–527；附录补充：未匹配物体惩罚 λ=10.0m，匈牙利匹配，式 13–15，L1044–1077）</p>
+<p><strong>Table 1（联合控制，L534–538）：</strong></p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>Overall↑</th>
+<th>ImagingQ↑</th>
+<th>AestheticQ↑</th>
+<th>DynamicDeg↑</th>
+<th>MotionSm↑</th>
+<th>BgCons↑</th>
+<th>SubjCons↑</th>
+<th>I2VBg↑</th>
+<th>I2VSubj↑</th>
+<th>RotErr↓</th>
+<th>TransErr↓</th>
+<th>ObjMC↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Perception-as-Control</td>
+<td>83.66</td>
+<td>66.81</td>
+<td>53.34</td>
+<td>73.91</td>
+<td>96.89</td>
+<td>93.19</td>
+<td>94.02</td>
+<td>96.35</td>
+<td>94.78</td>
+<td>5.006</td>
+<td>8.767</td>
+<td>6.556</td>
+</tr>
+<tr>
+<td>Yume</td>
+<td>85.47</td>
+<td>71.16</td>
+<td>52.39</td>
+<td>72.24</td>
+<td>98.96</td>
+<td>95.66</td>
+<td>96.43</td>
+<td>98.51</td>
+<td>98.39</td>
+<td>7.560</td>
+<td>8.735</td>
+<td>7.959</td>
+</tr>
+<tr>
+<td>Uni3C</td>
+<td>83.55</td>
+<td>68.06</td>
+<td>53.16</td>
+<td>66.09</td>
+<td>98.94</td>
+<td>93.74</td>
+<td>94.19</td>
+<td>97.19</td>
+<td>97.05</td>
+<td>1.361</td>
+<td>7.731</td>
+<td>5.883</td>
+</tr>
+<tr>
+<td><strong>Ours</strong></td>
+<td><strong>88.10</strong></td>
+<td><strong>72.70</strong></td>
+<td><strong>57.49</strong></td>
+<td><strong>86.26</strong></td>
+<td>98.79</td>
+<td><strong>95.69</strong></td>
+<td><strong>96.48</strong></td>
+<td><strong>98.76</strong></td>
+<td><strong>98.65</strong></td>
+<td><strong>0.890</strong></td>
+<td><strong>3.103</strong></td>
+<td><strong>2.507</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Table 2（仅相机控制、静态场景，L543–546）：</strong></p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>Overall↑</th>
+<th>ImagingQ↑</th>
+<th>AestheticQ↑</th>
+<th>DynamicDeg↑</th>
+<th>MotionSm↑</th>
+<th>BgCons↑</th>
+<th>SubjCons↑</th>
+<th>I2VBg↑</th>
+<th>I2VSubj↑</th>
+<th>RotErr↓</th>
+<th>TransErr↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ViewCrafter</td>
+<td>84.04</td>
+<td>69.56</td>
+<td>55.52</td>
+<td>68.02</td>
+<td>97.86</td>
+<td>92.09</td>
+<td>94.25</td>
+<td>97.70</td>
+<td>97.29</td>
+<td>2.101</td>
+<td>9.868</td>
+</tr>
+<tr>
+<td>Voyager</td>
+<td>78.12</td>
+<td>55.48</td>
+<td>49.80</td>
+<td>65.34</td>
+<td>99.39</td>
+<td>92.31</td>
+<td>91.55</td>
+<td>86.02</td>
+<td>85.03</td>
+<td>3.557</td>
+<td>3.880</td>
+</tr>
+<tr>
+<td>FlashWorld</td>
+<td>85.33</td>
+<td>71.68</td>
+<td>58.74</td>
+<td>73.46</td>
+<td>98.35</td>
+<td>94.27</td>
+<td>92.47</td>
+<td>95.38</td>
+<td>98.32</td>
+<td>1.792</td>
+<td>3.257</td>
+</tr>
+<tr>
+<td><strong>Ours</strong></td>
+<td><strong>86.80</strong></td>
+<td><strong>74.57</strong></td>
+<td>54.78</td>
+<td><strong>80.34</strong></td>
+<td>97.62</td>
+<td><strong>94.88</strong></td>
+<td><strong>95.55</strong></td>
+<td><strong>97.86</strong></td>
+<td><strong>98.79</strong></td>
+<td><strong>0.650</strong></td>
+<td><strong>2.587</strong></td>
+</tr>
+</tbody>
+</table>
+<p>（注：Table 2 中 Ours 的 Aesthetic Quality 54.78 低于 FlashWorld 的 58.74，Motion Smoothness 97.62 也非最高；原文只说 "maintaining motion smoothness compara-ble to prior methods"，L599–600。全文未给出显著性检验或置信区间。）</p>
+<p><strong>Table 3（消融，L614–618）：</strong></p>
+<table>
+<thead>
+<tr>
+<th>变体</th>
+<th>Overall↑</th>
+<th>ImagingQ↑</th>
+<th>AestheticQ↑</th>
+<th>DynamicDeg↑</th>
+<th>MotionSm↑</th>
+<th>BgCons↑</th>
+<th>SubjCons↑</th>
+<th>I2VBg↑</th>
+<th>I2VSubj↑</th>
+<th>RotErr↓</th>
+<th>TransErr↓</th>
+<th>ObjMC↓</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ours (3D Bounding Box)</td>
+<td>85.45</td>
+<td>69.23</td>
+<td>55.70</td>
+<td>78.57</td>
+<td>98.70</td>
+<td>92.92</td>
+<td>93.27</td>
+<td>97.74</td>
+<td>97.48</td>
+<td>1.350</td>
+<td>3.805</td>
+<td>4.520</td>
+</tr>
+<tr>
+<td>Ours (3D Point Trajectory)</td>
+<td>85.57</td>
+<td>70.29</td>
+<td>55.27</td>
+<td>78.23</td>
+<td>98.63</td>
+<td>94.00</td>
+<td>92.75</td>
+<td>97.85</td>
+<td>97.55</td>
+<td>1.298</td>
+<td>3.281</td>
+<td>6.896</td>
+</tr>
+<tr>
+<td>Ours (w/o depth)</td>
+<td>85.64</td>
+<td>70.19</td>
+<td>55.00</td>
+<td>80.60</td>
+<td>98.66</td>
+<td>92.07</td>
+<td>92.83</td>
+<td>98.07</td>
+<td>97.69</td>
+<td>1.177</td>
+<td>3.900</td>
+<td>4.929</td>
+</tr>
+<tr>
+<td>Ours (BG &amp; FG Merged)</td>
+<td>85.72</td>
+<td>69.19</td>
+<td>54.86</td>
+<td>83.72</td>
+<td>98.65</td>
+<td>91.15</td>
+<td>92.86</td>
+<td>97.93</td>
+<td>97.41</td>
+<td>1.080</td>
+<td>3.803</td>
+<td>3.726</td>
+</tr>
+<tr>
+<td><strong>Ours（全模型）</strong></td>
+<td><strong>88.10</strong></td>
+<td><strong>72.70</strong></td>
+<td><strong>57.49</strong></td>
+<td><strong>86.26</strong></td>
+<td><strong>98.79</strong></td>
+<td><strong>95.69</strong></td>
+<td><strong>96.48</strong></td>
+<td><strong>98.76</strong></td>
+<td><strong>98.65</strong></td>
+<td><strong>0.890</strong></td>
+<td><strong>3.103</strong></td>
+<td><strong>2.507</strong></td>
+</tr>
+</tbody>
+</table>
+<p>正文结论句：<code>On 3D control metrics, VerseCrafter substan-tially reduces rotation, translation, and object-motion er-rors compared with the best-performing baseline, reflect-ing much tighter alignment with the target 4D geometric control.</code>（L566–570）</p>
+<h2>6) 消融/局限（原文逐字）</h2>
+<p>三个消融设计（L635–640）：<code>We conduct ablations to analyze three key design choices in VerseCrafter: (i) the 3D representations for object motion, (ii) the use of depth in control maps, and (iii) the decoupling of background and foreground controls.</code> 替代表示的具体做法：<code>(1) an oriented3D bounding boxwhose axes follow the Gaus-sian's principal directions and whose side lengths are scaled by its principal spreads; and (2) a3D point trajectory that retains only the Gaussian centroid.</code>（L643–647）；结论：<code>replacing Gaussians with boxes slightly hurts both visual quality and control accu-racy, while point trajectories give the weakest object-motion consistency.</code>（L650–653）；无深度：<code>This variant yields a lower Overall Score and significantly worse 3D control (higher RotErr and ObjMC values).</code>（L659–661）；合并通道：<code>it consistently underperforms the full model, with a particularly noticeable drop in object-motion accuracy.</code>（L674–675）</p>
+<p><strong>官方局限（§H，L1296–1328，四条全部原文）：</strong>
+1. 单高斯只给椭球级控制：<code>our current object representation provides only ellipsoid-levelcontrol through a single 3D Gaussian per ob-ject, which limits fine-grained pose and part-level articula-tion, especially for human-like or near-symmetric objects.</code>（L1300–1303）
+2. 背景点云静态：<code>our background point cloud is reconstructed from the first frame and serves as a mostly static geometric scaffold, which limits controllability for highly non-rigid and texture-dominant scene dynamics such as waterfalls.</code>（L1307–1310）
+3. 无物理约束：<code>although VerseCrafter enforces 4D geometric consistency through explicit camera control and 3D Gaus-sian trajectory control, it does not impose explicit phys-ical constraints during generation.</code>（L1314–1317）
+4. 算力贵：<code>VerseCrafter remains computationally expensive at high resolution and long temporal horizons because it conditions a large frozen video diffusion backbone and ren-ders multi-channel 4D controls for all frames.</code>（L1322–1325）</p>
+<p>附录补充失败模式：<code>VerseCrafter is most effective when the underlying 4D geometric cues are suf-ficiently informative, while failures mainly arise in under-constrained cases such as subtle human orientation changes or highly non-rigid background dynamics.</code>（L1247–1251）；对深度噪声不敏感：<code>the reconstructed point cloud acts as acoarsegeometric scaf-fold rather than a per-pixel hard constraint.</code>（L1239–1241）</p>
+<h2>7) 叙事关联【推断】（≤3 条）</h2>
+<ol>
+<li>【推断】"4D 几何场景状态 = 世界模型的显式世界接口"。VerseCrafter 把相机轨迹与多物体运动统一进一个可编辑状态（L209–213），并强调可编辑性（Blender 拖拽椭球，L303–311），若本项目叙事是「可交互的 4D 世界模拟/编辑平台」，这篇论文是「显式几何状态 + 冻结扩散先验」路线的直接证据。附原句：<code>This editable representation consists of a static background point cloud P bg and per-object 3D Gaussian trajectories{G to}, all de-fined in a shared world coordinate frame.</code>（L210–213）</li>
+<li>【推断】"解耦渲染通道 = 控制可分解性"。背景/前景分通道渲染（L328–331）与推理三模式（camera-only/object-only/joint，L360–361）证明统一状态上可实现控制维度的解耦，若叙事涉及「统一世界模型支持多模态控制入口」，可引用此设计。附原句：<code>Background and 3D Gaussian maps share the same 4D geometric scene state but are rendered throughdecoupledchannels, disentangling camera motion from object motion while preserving geometric consistency.</code>（L328–331）</li>
+<li>【推断】"轻几何脚手架 + 强扩散先验"是低成本真实世界视频生成路线：几何只作粗约束、细节交给 Wan2.1 先验（L1239–1241 的 "coarse geometric scaffold"），且数据引擎把无标注真实视频自动转为训练对（L373–386），说明可扩展性瓶颈在扩散推理而非几何构造（L1293–1295）。附原句：<code>the reconstructed point cloud acts as acoarsegeometric scaf-fold rather than a per-pixel hard constraint.</code>（L1239–1241）</li>
+</ol>
+<h2>8) 主要图注抄录</h2>
+<ul>
+<li><strong>Fig. 1</strong>（L8–10）：<code>VerseCrafterenables precise control of camera motion and multi-object motion via a 4D Geometric Control representation built from a static background point cloud and per-object 3D Gaussian trajectories, producing videos that better follow the desired motion than Yume [63] and Uni3C [11] and more closely match the ground-truth video.</code></li>
+<li><strong>Fig. 2</strong>（L286–291）：<code>Framework of VerseCrafter.Given an input image and a text prompt, we estimate depth and obtain user-specified object masks to construct4D Geometric Control…rendered into per-frame background RGB/depth, 3D Gaussian trajectory RGB/depth, and a soft merged mask, forming multi-channel 4D control maps. The 4D control maps are encoded and fed into the proposed GeoAdapter, which conditions a frozen Wan2.1-14B backbone together with text embeddings from umT5…</code></li>
+<li><strong>Fig. 3</strong>（L430–437）：<code>Construction pipeline of VerseControl4D.Starting from Sekai-Real-HQ and SpatialVID-HQ, we extract 81-frame clips and apply quality filtering. For each retained clip, Qwen2.5-VL-72B, Grounded-SAM2, and MegaSAM provide captions, ob-ject masks, depth, and camera trajectory, which are lifted into background/object point clouds, from which 3D Gaussian trajecto-ries are fitted, and then rendered into background/trajectory maps and a soft merged mask…</code></li>
+<li><strong>Fig. 4</strong>（L479–482）：<code>Qualitative comparison of joint camera and object motion control.Perception-as-Control and Uni3C exhibit noticeable human deformation, while Yume roughly follows the text-described motion but lacks precise camera control. Uni3C is also limited to single human. In contrast, VerseCrafter more faithfully follows both the camera trajectory and multi-object motion…</code></li>
+<li><strong>Fig. 5</strong>（L489–491）：<code>ViewCrafter and V oyager exhibit distorted facades, drifting structures, or inaccurate camera motion, while FlashWorld tends to produce blurred scene boundaries and imprecise camera motion. In contrast, VerseCrafter better follows the target camera trajectory while preserving sharp details and globally consistent 3D geometry.</code></li>
+<li><strong>Fig. 6</strong>（L556–562）：<code>Ablation on 3D representations for object motion control…3D point trajectory and 3D bounding box often cause scale drift and misaligned motion (red boxes), whereas 3D Gaus-sian trajectory better follows the intended object motion while pre-serving plausible shapes and background interactions.</code></li>
+<li><strong>Fig. 7</strong>（L582–589）：<code>Ablation on depth-aware control…Without depth, the model often produces incorrect foreground-background ordering, e.g., lampposts are pulled in front of distant buildings, and occlusion boundaries drift over time (red boxes). With RGB+depth, the model recovers consistent parallax and oc-clusion, producing geometry much closer to the ground truth.</code></li>
+<li><strong>Fig. 8</strong>（L624–630）：<code>Ablation on decoupled background and foreground controls…When the controls are merged, object motion control degrades significantly (red boxes), whereas the decoupled design better preserves the static back-ground and produces more accurate and stable object motion.</code></li>
+<li><strong>Fig. 9</strong>（L834–839）：<code>Detailed architecture of VerseCrafter…all geometry latents are then concatenated along the channel dimension to form a unified spatio-temporal geometry feature…GeoAdapter outputs are passed through zero-initialized linear layers and added to the backbone tokens as residual modulations…</code></li>
+<li><strong>Fig. 10</strong>（L904–906）：<code>VerseControl4D dataset examples…we visualize the input image and target camera trajectory (left), followed by several frames of ground-truth video and our rendered control signals (right): background RGB/depth, 3D Gaussian trajectory RGB/depth for controlled objects, and the final merged mask.</code></li>
+<li><strong>Fig. 15</strong>（L1219–1222）：<code>Additional analysis of control fidelity and boundary cases. (a) Orientation controllability.Two success cases on rigid anisotropic objects and one failure case on a human-like subject.(b) Dynamic background modeling.Two success cases on moderate background dynamics and one failure case on highly non-rigid background motion.(c) Articulated and non-rigid object controllability.</code></li>
+<li><strong>Fig. 16</strong>（L1256–1258）：<code>(a) Single-view vs. multi-view input.Multi-view reconstruction improves geometry coverage and novel-view faithfulness.(b) Robustness to monocular-depth errors.Even with noisier depth and distorted point clouds, the generated videos remain visually similar and preserve the main scene structure.</code></li>
+</ul>
+<h2>附：数据核对备注</h2>
+<ul>
+<li>正文与附录数字一致：35K 训练 / 1K 验证（L463–464 与 L879–880）；26%/74% 来源占比（L465–466 与 L881–882）；Table 5 的 Train 合计 9,071+7,000+18,929=35,000，Val 合计 468+250+282=1,000，吻合。</li>
+<li>推理成本两处口径：正文 L513–515 "takes about 1152 seconds, with a peak per-GPU memory usage of about 90 GB"；附录 Table 7 拆解 Diffusion Inference 866 s（50 步）+ 模型加载 203 s + 状态构建 23 s + 渲染 60 s ≈ 1152 s，自洽；Table 6 另报告 FSDP 可将峰值内存 90→70 GB、加 CPU offload 57 GB（L1262–1265）。</li>
+<li>论文全文无与"CVPR 2026"相关的自述信息；评测为 VBench-I2V 自动指标 + 自建数据集轨迹误差，未做用户研究（原文未写）。</li>
+</ul>
+<footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
+<a href="../index.html">返回首页</a></footer></div></main></body></html>

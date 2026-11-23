@@ -1,0 +1,1351 @@
+Preprint
+WORLDMODELSNEED APHYSICALREGISTRY:
+LEARNINGINTERNALPREDICTIVESTATES
+FORPHYSICALLYPLAUSIBLEWORLDMODELS
+Shinseong Kim1,2,* Jaeseok Jeong1 Jianlong Fu2 Youngjung Uh1,‡
+tltydl2@yonsei.ac.kr jete_jeong@yonsei.ac.kr jianf@microsoft.com yj.uh@yonsei.ac.kr
+1Yonsei University 2Microsoft Research Asia
+ABSTRACT
+Video world models must generate physically plausible futures, not just realistic
+frames. Existing approaches typically use semantic, physical, or predictive in-
+formation to guide the visual generation stream, leaving a fundamental question:
+where inside the generator should predictions of scene evolution live?Standard
+video tokens jointly encode appearance and dynamics, but provide no distinct state
+for learning and reading predictive dynamics. We answer this question with the
+Physical Registry: temporally grounded registry slots inside a video DiT that are
+initialized from an observation-conditioned forecast, co-evolve with video tokens,
+and receive future-representation supervision, making predictive dynamics an ex-
+plicit, readable state of the generator. In a controlled comparison of predictive-state
+interfaces on Physics-IQ Verified, Physical Registry improves vanilla fine-tuning
+by 9.9/8.7 points on I2V/V2V , the largest gain among the interfaces we compare.
+Across all Cosmos and W AN backbones, Physical Registry improves Physics-IQ
+Verified scores. With only 0.45% additional parameters, it enables Cosmos 3 Nano
+16B to surpass the published I2V score of Cosmos 3 Super 64B (43.56 vs. 42.7).
+On WorldModelBench, it also improves physical adherence and the total score
+for all four evaluated backbones. Because the registry becomes candidate-specific
+while remaining readable, thePhysical Registry Selector (PRS)ranks emerging fu-
+tures by how far their intermediate registry readouts depart from the shared forecast
+before full denoising is complete. Across four backbones, this selection improves
+I2V scores by 5.6–15.9% without completed-video external scoring. Together,
+these results support a broader principle:dynamics prediction should live as an
+explicit model state that co-evolves with the video representation.Project page:
+https://grainsack.github.io/physical-registry/.
+1 INTRODUCTION
+Video generators are increasingly used as world models, i.e., environments for training agents (Ha &
+Schmidhuber, 2018; Bruce et al., 2024; NVIDIA et al., 2025b). From this perspective, a generated
+video should contain not only high-quality visuals, but also physically plausible phenomena such as
+solid mechanics, fluid dynamics, optics, thermodynamics, and magnetism (Motamed et al., 2026).
+However, recent video models still often fail to follow them (Li et al., 2025a; Motamed et al., 2026).
+To address this, exploiting physical priors has made some progress by supplying explicit cues
+about scene evolution, such as motion, force, or physical control signals (Yang et al., 2025a;
+Gillman et al., 2025; Wang et al., 2025a). However, it depends on availability of the controls and
+corresponding supervision. On the other hand, supervision for aligning the intermediate features
+in the video models to pre-trained representations is readily available (Yu et al., 2025; Zhang et al.,
+2025; Hwang et al., 2025; Bhowmik et al., 2026). However, their appearance and dynamics can
+remain entangled (Bhowmik et al., 2026). This context motivates us to ask a more basic question:
+How and where can we internalize scene evolution using representation alignment?
+∗First author. ‡Corresponding author.
+1
+arXiv:2610.16365v1  [cs.AI]  12 Oct 2026
+Preprint
+We introduce thePhysical Registry, dedicated registry slots containing scene evolution inside video
+DiTs. They are encouraged to be aligned with representations of future frames to be generated,
+which are predicted from a source frame. We use JEPA representations for the Physical Registry
+because JEPA’s predictive representation learning aligns with our goal of modeling scene evolution:
+a frozen JEPA encoder–predictor (Bardes et al., 2024; Assran et al., 2025) produces forecast features
+for future temporal positions in the same space as future-video targets, compactly representing how
+the scene is expected to evolve. Prior works have also shown that JEPA representations capture
+physical properties (Garrido et al., 2025; Joseph et al., 2026). In detail, the Physical Registry of the
+first DiT layer starts from JEPA features of the source and future frames via the JEPA encoder and
+encoder–predictor, respectively. Then, a readout layer aligns the registries for future frames to the
+original representations of the future frames from the JEPA encoder. As a whole, the registries and
+video tokens are designed to co-evolve through the transformer blocks such that the registries can
+estimate the original representations from the predicted representations.
+We show that a dedicated registry combined with predictive supervision yields the largest gain among
+the compared interfaces. Notably, this gain generalizes to Cosmos and W AN backbones. Furthermore,
+the readouts can be used to choose the best sample among denoising processes from different initial
+noises, namelyPhysical Registry Selector (PRS). It works in the middle of denoising processes
+instead of completely generated videos (Yuan et al., 2026; Intern`o et al., 2026).
+Our contributions are threefold:
+• The Physical Registry conveys future dynamics from the initial frames in a video generator.
+• The Physical Registry provides an internal selection signal across different initial noises
+before fully generating videos.
+• The Physical Registry outperforms other interfaces for predictive representations.
+2 RELATEDWORK
+Physical plausibility in video generation.Prior work improves physical plausibility or controlla-
+bility by conditioning video generation on motion, force, trajectory, or language-derived physical
+signals (Li et al., 2025b; Gillman et al., 2025; Wang et al., 2025a; Yang et al., 2025a; Pathak et al.,
+2026). These approaches express the intended evolution through an external control signal, whereas
+Physical Registry represents predicted future dynamics as an internal state of the video generator.
+Predictive representations inside video generators.I-JEPA learns predictive representations
+from visible context, with V-JEPA and V-JEPA 2 extending this principle to video (Assran et al.,
+2023; Bardes et al., 2024; Assran et al., 2025). JEPA representations capture dynamics-relevant
+structure, including sensitivity to intuitive-physics violations and information about motion and
+physical plausibility (Garrido et al., 2025; Joseph et al., 2026). Generative models typically use
+such pretrained representations in one of two ways. REPA and its video extensions align them with
+intermediate generative features (Yu et al., 2025; Zhang et al., 2025; Hwang et al., 2025; Bhowmik
+et al., 2026; Lian et al., 2026), while ReDi (Kouzelis et al., 2025) and PHANTOM (Shen et al.,
+2026) jointly generate visual and representation states. Register tokens offer a different primitive:
+Vision Transformer registers provide additional tokens for internal computation (Darcet et al., 2024),
+and HyperDiT (He et al., 2026) uses representation-aligned semantic registers for image generation.
+Physical Registry brings these lines together by holding forecast-initialized predictive representations
+in dedicated, temporally grounded registry slots within the video backbone and supervising them
+toward future representations.
+Inference-time guidance and candidate selection.WMReward uses V-JEPA 2 as a physics reward
+for inference-time guidance and best-of- N selection (Yuan et al., 2026), while GeoPhys uses an
+external physical-plausibility verifier to rerank generated candidates (Intern `o et al., 2026). PRS
+instead ranks candidates from the generator’s own intermediate registry states, without an external
+reward model or verifier.
+2
+Preprint
+Figure 1:Physical Registry during training and inference.The Physical Registry gives predicted
+future dynamics a dedicated, readable state inside the video DiT. (a) Training: forecast-initialized
+registry tokens co-evolve with video tokens and receive predictive supervision. (b) Inference: the
+same registry provides readouts for PRS (Section 3.5).
+Shared DiT blocks
+Shared DiT blocks
+……
+Shared DiT blocks
+Shared DiT blocks
+Observation frames + 
+Future frames
+Noisy token
+Video token
+Physical
+registry token
+VAE encoder
+Registry reader
+JEPA encoder
+Physical 
+registry
+JEPA Predictor
+Prediction
++Noise
+(a) Training (b) Inference
+VAE encoderJEPA encoder
+Observation frames
+Registry reader
+PRS Score
+Noise
+NFE
+Shared DiT blocks
+Shared DiT blocks
+……
+Shared DiT blocks
+Shared DiT blocks
+JEP A Predictor
+Prediction
+Physical 
+registry
+Video token
+Physical 
+token
+JEPA token
+Noisy token
+Predicted future
+Registry
+3 METHOD
+We augment flow-matching video DiTs with Physical Registry (Sec. 3.1) with forecast-initialized
+registry states (Sec. 3.2) that evolve with the video representations (Sec. 3.2), and align them toward
+the target future (Sec. 3.3). Then we introduce our training objective (Sec. 3.4) and our inference
+technique (Sec. 3.5).
+3.1 CONDITIONAL FLOW MATCHING
+Let X0 denote a clean video latent, ϵ∼ N(0, I), and t∼ U(0,1). With condition c, rectified flow
+(Liu et al., 2023) uses linear interpolation path, velocity target, and objective:
+Xt = (1−t)X 0 +tϵ, V ⋆ =ϵ−X 0,(1)
+LbaseFM =E X0,ϵ,t
+h
+∥Vθ(Xt, t|c)−V ⋆∥22
+i
+,respectively.(2)
+Below, we augment DiTs with the Physical Registry using the same formulation.
+3.2 PHYSICALREGISTRY
+Physical Registry represents the forecast in a fixed set of dedicated registry slots that carry predictive
+features alongside the video latent rather than within it. Let Xt ∈R B×C×T v×H×W denote the noisy
+video latent. We use the frozen JEPA encoder E and predictor P . The encoder receives a full video
+and produces JEPA features for individual frames. The predictor receives the JEPA feature of the
+first frame and produces future representations in the shared representation space(Bardes et al., 2024;
+Assran et al., 2025). Given an initial observed frame x, we retain the first encoder-derived feature as
+an observed context and use the predictor to forecast the remaining features:
+H enc =E(x),
+J cond = [H enc;P(H enc;n context = 1)]∈ JTr . (3)
+We define J cond to be theforecast, with Tr = 8: one encoder-derived feature for the observed context
+and seven predictor-generated features for the subsequent future temporal positions. The forecast
+occupies Tr positions, calledregistry slots, placed after the video tokens. Each slot is a spatial grid of
+registry tokenswhich are the units for attention, whereas slots correspond to frames.
+A learned spatio-temporal adapter Gϕ (Appendix A) maps the forecast into the video latent’s shape
+and coordinates. At each denoising step t, the same forecast initializes the registry, which is
+3
+Preprint
+concatenated with the noisy video latent along the temporal dimension:
+R(0)t =G ϕ J cond ∈R B×C×T r×H×W , Z (0)t = [Xt;R (0)t ]∈R B×C×(T v+Tr)×H×W .(4)
+To place the registry on the same temporal axis as the video, each registry slot is assigned the RoPE
+coordinate of its corresponding video time. Let us ∈[0,1) denote the normalized clip time of registry
+slots, and letρ v map normalized time to the corresponding video-latent RoPE coordinate. We use
+τ regs =ρ v(us), s∈ {1, . . . , Tr},(5)
+withu s = (s−1)/T r for uniformly spaced registry slots.
+After patchification, video and registry tokens remain distinct but are jointly processed by the same
+bidirectional self-attention blocks. Although the registry is initialized from the same observation-
+conditioned forecast at each denoising step, interaction with the evolving video tokens makes its
+hidden state candidate-specific as it propagates through the DiT.
+3.3 PREDICTIVE SUPERVISION OF THE REGISTRY
+We supervise the registry toward representations of the realized future. Conditioning and target
+features play complementary roles: J cond is an observation-conditioned forecast that initializes R(0)t ,
+whileZ tgt is the target encoding of the corresponding full training videov:
+Z tgt =E tgt(v) =  Z tgt1 , . . . , ZtgtTr  , Z tgts ∈ J.(6)
+Because J cond depends only on the observation, the registry starts each denoising step from an
+observation-only prediction. As the registry exchanges information with the video tokens, predictive
+supervision encourages this state to align with the representation of the future realized in the training
+video. We apply the supervision at an intermediate DiT block so that the registry is shaped toward
+the realized future and can subsequently interact with the video states throughout the remaining DiT
+blocks. Let Hreg,t,s denote the hidden state of registry slot s at the supervised layer and denoising
+stept. A readoutq ψ maps each registry state to a slot-level vector in the JEPA feature space:
+bZt,s =q ψ(Hreg,t,s).(7)
+Writing Z
+tgt
+s for the corresponding slot-level target, we optimize
+Lalign =− 1Tr Xs cos bZt,s, Z tgts  .(8)
+Appendix A specifies the readout and target construction. After training, the same readout qψ is
+frozen and reused for selection in Sec. 3.5.
+3.4 TRAINING OBJECTIVE
+Given the augmented sequence Z (0)t = [Xt;R (0)t ], the DiT jointly processes the video and registry
+tokens. We denote by V Xθ (Z (0)t , t, ctxt) the velocity prediction from the video tokens. The flow-
+matching objective is
+LFM =E X0,ϵ,t
+V Xθ Z (0)t , t, ctxt −V ⋆22 .(9)
+Both terms optimize the shared DiT:
+L=L FM +λ alignLalign.(10)
+The video tokens receive the generation objective and the registry slots receive predictive supervision
+through the same DiT blocks, so the registry carries future-referenced information while the backbone
+continues to learn generation.
+3.5 THEPHYSICALREGISTRYSELECTOR
+Through joint interaction with the video tokens and predictive supervision, the Physical Registry
+becomes a readable internal state that reflects the future dynamics represented by each generation
+trajectory. This makes it possible to compare candidate trajectories before generation is complete
+using the registry states themselves.
+4
+Preprint
+For a fixed observation, all candidates start from the same observation-conditioned forecast, but
+their registry states become candidate-specific as they interact with different video trajectories
+during denoising. We therefore interpret the departure of each registry from the shared forecast as
+the trajectory-specific update to the predicted future. ThePhysical Registry Selector (PRS)ranks
+candidates by this departure and continues denoising only the selected trajectory for the remaining
+steps. For input x, let the N candidate trajectories be C(x) ={Y (n)}Nn=1, all initialized from the
+same forecast J cond, which we denote by J cond when used as their shared reference. After K
+denoising steps, PRS compares each candidate’s registry readouts with J
+cond
+, selects the trajectory
+whose registry reflects the largest candidate-specific update to the shared forecast, and continues
+denoising it from its current latent for the remaining D−K steps, where D is the total number of
+denoising steps (Figure 2).
+Figure 2:Three-stage prefix selection with PRS.Candidates share the same forecast initialization,
+are ranked from registry readouts over a K-step prefix, and only the selected trajectory continues for
+the remainingD−Ksteps.
+Generate candidate prefixes1 Read out and compare2 Pick one, finish it3
+DenoisingKsteps Video DiT
+ε(1)
+· · ·
+ DiT
+blocks
+DiT
+blocks
+ε(2)
+· · ·
+ DiT
+blocks
+DiT
+blocks
+ε(N)
+· · ·
+ DiT
+blocks
+DiT
+blocks
+JEPA forecastJ cond
+Gϕ · · · R(0)t
+Physical Registry token
+Video token
+JEPA token
+Predicted future
+COSINE a(n)k,s = cos qψ (H(n)k,s ), J conds 
+DEP ARTURE rn = 1−mean k,s a(n)k,s
+H (1)k,s
+H (2)k,s
+H (N)k,s
+qψ cos
+Shared forecast
+J conds
+a(n)k,s
+SELECT bn= arg maxn rn
+r1 0.123
+X(1)K
+r2 0.950
+X(2)K
+rN 0.235
+X(N)K
+pick!
+Stop
+Stop
+denoising
+D−K
+Completed video
+The readout qψ maps the registry hidden state H (n)k,s into the JEPA feature space. Theforecast-
+departure scorefor candidaten, accumulated overKdenoising steps and a registry subsetS, is
+r(n) = 1− 1K|S|
+KX
+k=1
+X
+s∈S
+cos
+
+qψ
+
+H (n)k,s
+
+, J
+cond
+s
+
+,
+bn= arg max
+n∈{1,...,N}
+r(n).
+(11)
+The score measures angular departure from the shared forecast and is invariant to positive rescaling
+of the registry readouts. Appendix F.2 empirically supports this ranking direction and its robustness.
+4 EXPERIMENTS
+We first show that Physical Registry is a more effective interface for predictive representations than
+conditioning and joint generation (Sec. 4.2), and that its gains generalize across video backbones and
+world-model benchmarks (Sec. 4.3). We then show that its registry states support candidate selection
+during generation (Sec. 4.4), before analyzing the sources of its gains and its responses to physical
+changes (Secs. 4.5 and 4.6).
+4.1 EXPERIMENTALDETAILS
+Benchmarks and tasks.We evaluate on Physics-IQ Verified (R ¨adsch et al., 2026), which scores
+physical plausibility against recorded futures, and on WorldModelBench (Li et al., 2025a), which
+scores instruction following, physical adherence, and common sense over its full 350-prompt set.
+Metric definitions are in Appendix A.
+Multi-backbone evaluation.We use Cosmos and W AN 2.2 as two backbone families: Cosmos
+is a widely used world-model backbone that supports both I2V and V2V continuation, while W AN
+5
+Preprint
+2.2 is a widely adopted video-generation backbone in recent world-model research. Since WAN
+does not provide a V2V setting, we evaluate it on I2V only. Models are fine-tuned on the Enlarge
+dataset, which combines physics-oriented, web, simulation, and robot videos (Wang et al., 2025b;
+2023; NVIDIA, 2026a;b) while excluding Physics-IQ videos (Appendix A). Each backbone–Physical
+Registry pair shares the task, conditioning input, sampling protocol, and evaluator.
+Candidate selection.All methods use the same ten-candidate pool per input. Plain reports the
+pool average, while WMReward and PRS select one candidate using completed-video scores and
+intermediate registry readouts, respectively. Published leaderboard values are used for Plain where
+available. Additional details are in Appendix F.1.
+4.2 CONTROLLEDCOMPARISON OFPREDICTIVE-STATEINTERFACES
+We compare alternative interfaces for incorporating predictive representations into the video generator
+under a controlled held-view setting. Each variant is adapted on the 66 center-view Physics-IQ videos
+and evaluated on the 132 held-out left and right views using Physics-IQ Verified, with the same
+pretrained backbone, training budget, and frozen JEPA source. Table 1 compares conditioning and
+modulation, video-stream alignment, joint generation, and dedicated registry states (Appendix A).
+Table 1:Controlled comparison of predictive-state interfaces.Interface mechanisms and Physics-
+IQ Verified scores after center-view training and left/right evaluation, with std over three generation
+seeds and∆relative to vanilla fine-tuning. Registry only setsλ align = 0in Eq. (10).
+Variant Mechanism Registry Alignment Readout I2V∆V2V∆
+Vanilla fine-tuning –× × ×41.3±2.1–46.4±1.0–
+REPA (Yu et al., 2025) Feature alignment×✓×41.8±1.7+0.546.9±0.9+0.5
+Cross-attention (Peebles & Xie, 2023) External context× × ×43.1±1.9+1.849.2±1.2+2.8
+AdaLN (Peebles & Xie, 2023) Feature modulation× × ×45.1±0.8+3.848.3±0.5+1.9
+Joint generation (Kouzelis et al., 2025) Joint denoising×✓×45.1±1.8+3.848.0±0.4+1.6
+Registry onlyDedicated predictive state✓×✓45.0±1.3+3.750.3±0.9+3.9
+Physical Registry Dedicated predictive state✓ ✓ ✓51.2±1.5+9.9 55.1±1.1+8.7
+Dedicated predictive states benefit most from predictive supervision.Table 1 shows that a
+dedicated registry state is already beneficial without predictive supervision: Registry only improves
+vanilla fine-tuning by +3.7/+ 3.9 on I2V/V2V . In contrast, applying representation alignment
+directly to the video stream with REPA yields only +0.5/+ 0.5 . Adding predictive supervision to
+the registry further raises the scores to 51.2/55.1, the best among the compared interfaces. These
+results suggest that explicitly allocating a dedicated internal state for predictive representations is
+beneficial, and that predictive supervision is important for assigning this state a meaningful role in
+representing future dynamics.
+4.3 FINE-TUNING ON THEENLARGEDATASET ACROSSVIDEOBACKBONES
+Physical Registry improves physical plausibility across backbones.Physical Registry improves
+Physics-IQ Verified over every evaluated backbone (Table 2). Under the expanded-prompt setting
+(Appendix A), it raises Cosmos 3 Nano 16B from37.3/46.45 to 43.56/49.54 on I2V/V2V , surpassing
+the Cosmos 3 Super 64B reference (42.7/48.02) with only 0.45% additional parameters (Table 6).
+The WAN TI2V-5B matched-budget control further shows that the gain is not explained by fine-
+tuning alone: vanilla fine-tuning on the Enlarge dataset remains near pretrained performance, whereas
+Physical Registry improves (Appendix B). Figure 3 further shows more faithful realization of the
+intended physical events across five physics categories.
+Physical Registry also improves on other physics-related benchmarks.On WorldModelBench,
+Physical Registry improves physical adherence and the total score across all four backbones. Com-
+mon sense is maintained or improved, while instruction following decreases on Cosmos v2.5 and
+WAN TI2V-5B (Table 3; full leaderboard in Table 10, qualitative examples in Appendix I.2). On
+EWMBench (Hu et al., 2025), Physical Registry also improves Cosmos 3 Nano’s scene consistency
+and all three motion metrics, with the largest gain in trajectory agreement (Appendix E).
+6
+Preprint
+Table 2:Physics-IQ Verified.Plain averages our candidate pool or reports the published value ( *). ∆
+is the gain over the backbone above, green parentheses the PRS gain over Plain. Bold and underline
+mark the best and second-best per task. Gray marks unavailable entries, dashes unreported.
+Model I2V V2V
+Plain∆PRS Plain∆PRS
+Cosmos 3 Nano 16B (NVIDIA et al., 2026) 30.18 ± 0.84 – 38.78 ± 0.78 –
++ Physical Registry 36.01 ± 0.95 +5.83 40.27 (+4.26) 45.12 ± 0.94 +6.34 46.78 (+1.66)
+Cosmos 3 Nano 16B† (NVIDIA et al., 2026) 37.3 ± 0.9 * – 46.45 ± 0.76 –
++ Physical Registry† 43.56± 0.95 +6.26 45.81 (+2.25)49.54± 0.63 +3.09 52.06 (+2.52)
+Cosmos v2.5 2B (NVIDIA et al., 2025b) 30.65 ± 0.37 – 37.40 ± 0.53 –
++ Physical Registry 33.71 ± 1.11 +3.06 39.08 (+5.37) 42.33 ± 1.90 +4.93 47.67 (+5.34)
+W AN 2.2 I2V-A14B (Wan Team, 2025) 32.2 ± 0.6 * –
++ Physical Registry 38.44 ± 1.06 +6.24 40.58 (+2.14)
+W AN 2.2 TI2V-5B (Wan Team, 2025) 27.7 ± 0.9 * –
++ Physical Registry 29.24 ± 1.30 +1.54 32.03 (+2.79)
+Cosmos 3 Super 64B† (NVIDIA et al., 2026) 42.7 ± 0.8* – 48.02 ± 0.75 –
+MiniMax H3 (MiniMax, 2026) 39.8 ± 0.3 * – 37.71 ± 1.75 –
+Grok Imagine Video (Anates Labs, 2026) 34.8 ± 0.6 * –
+HunyuanVideo 1.5 (R¨adsch et al., 2026) 33.4 ± 0.8 * –
+Cosmos 3 Edge† (NVIDIA et al., 2026) 32.7 ± 1.1 * – 33.29 ± 0.78 –
+CogVideoX-5B (Yang et al., 2025b) 31.8 ± 1.5 * –
+Kandinsky-WM 1.0 (Anates Labs, 2026) 30.8 ± 0.9 * –
+Magi-1 (op) (Physics-IQ Benchmark, 2026) 30.2 ± 1.1 * – 48.4 ± 1.1* –
+Sora 2 (R¨adsch et al., 2026) 26.5 ± 0.8 * –
+P-Video (R¨adsch et al., 2026) 25.3 ± 1.8 * –
+† Expanded prompt: Claude Opus 5 converts the image-conditioned OP description to NVIDIA’s official I2V JSON format; 50 steps, CFG 3.0,
+shift 4.75 (Appendix A). * Published Physics-IQ Verified reference; unmarked estimates are our runs.
+Figure 3:Qualitative comparisons across five Physics-IQ categories.Top: Cosmos 3 Nano 16B
+backbone; bottom: Physical Registry, with matched conditioning and eight equally spaced frames.
+Physical Registry better realizes the intended physical event: ball separation after collision, liquid
+motion in the inverted jar, persistence of the ball and its reflection, preservation of the paper under
+rising smoke, and wrench attraction toward the magnet. More examples: Figures 16 to 18.
+7
+Preprint
+Table 3:WorldModelBench results.Values in parentheses indicate the change from the correspond-
+ing backbone. * denotes published leaderboard scores (Li et al., 2025a). Table 10 for the full results.
+Model
+Instruction
+following (0–3)
+Physical
+adherence (0–5)
+Common
+sense (0–2)
+Total
+(0–10)
+Cosmos 3 Nano 16B (NVIDIA et al., 2026) 2.20 ± 0.02 4.50 ± 0.08 1.43 ± 0.06 8.13 ± 0.13
++ Physical Registry 2.20 ± 0.002(–)4.82± 0.03(+0.32)1.81 ± 0.02(+0.38)8.83 ± 0.04(+0.69)
+Cosmos v2.5 2B (NVIDIA et al., 2025b) 2.14 ± 0.03 4.43 ± 0.07 1.55 ± 0.05 8.12 ± 0.14
++ Physical Registry 2.07 ± 0.01(-0.07)4.54 ± 0.03(+0.11)1.58 ± 0.04(+0.03)8.19 ± 0.01(+0.07)
+W AN 2.2 I2V-A14B (Wan Team, 2025) 2.23 ± 0.03 4.45 ± 0.04 1.60 ± 0.03 8.28 ± 0.02
++ Physical Registry 2.30 ± 0.04(+0.07)4.53 ± 0.04(+0.07)1.60 ± 0.02(+0.004)8.43 ± 0.05(+0.15)
+W AN 2.2 TI2V-5B (Wan Team, 2025)2.33± 0.01 4.35 ± 0.10 1.57 ± 0.04 8.24 ± 0.14
++ Physical Registry 2.24 ± 0.05(-0.09)4.50 ± 0.05(+0.14)1.68 ± 0.06(+0.11)8.41 ± 0.11(+0.17)
+KLING (Kuaishou Technology, 2024) 2.32 * 4.81* 1.95* 9.10*
+Luma (Luma AI, 2024) 1.98 * 4.49* 1.76* 8.24*
+OpenSoraPlan-T2V (Lin et al., 2024) 1.72 * 4.64* 1.68* 8.04*
+Mochi 1 (Genmo Team, 2024) 2.06 * 4.39* 1.45* 7.91*
+CogVideoX-I2V (Yang et al., 2025b) 1.78 * 4.17* 1.12* 7.08*
+Figure 4:Selection comparison on Physics-IQ Verified.(left) I2V and (right) V2V . Dashed caps
+mark Oracle scores and hatched bars denote published scores.
+4.4 SELECTION FROMREGISTRYREADOUTS
+Figure 4 compares PRS with Plain generation and completed-video WMReward. Under the same
+WMReward selector, Physical Registry improves over its corresponding backbone across all evaluated
+I2V and V2V settings. PRS improves I2V over Plain by5.6%–15.9% across the four default backbone
+configurations, using only intermediate registry readouts without completed-video external scoring.
+On Cosmos v2.5, PRS selects after 10 of 35 denoising steps and reaches 38.36/46.68 on I2V/V2V ,
+slightly exceeding WMReward’s37.74/46.59. Continuing only the selected trajectory requires 125
+candidate-steps instead of 350, reducing the serial denoising budget by 64%. Together, these results
+show that registry readouts provide a useful early signal for candidate selection before generation is
+complete. Appendices F.1 and F.3 provide the full results and early-selection analysis.
+4.5 ABLATION OF THEPHYSICALREGISTRY
+We examine whether the gains of Physical Registry come from the forecast itself, additional registry
+capacity, or predictive supervision. Table 4(a) tests the forecast content, while Table 4(b) isolates the
+contributions of registry capacity, forecast initialization, and predictive supervision.
+Generation depends on the forecast content.In Table 4(a), removing the projected forecast
+drops Nano from 36.01 to 16.78 on I2V , whereas moderate Gaussian perturbation (σ= 0.5 ) has
+only a small effect; W AN 14B shows the same trend. The registry therefore depends strongly on the
+forecast content while remaining robust to moderate perturbation. In the motion-transfer experiment
+(Appendix G), replacing the forecast with JEPA features from a source video shifts the generated
+motion toward that source while keeping the initial frame, prompt, and noise fixed.
+8
+Preprint
+Table 4:Registry ablations on Physics-IQ Verified.(a) Forecast-content controls on Cosmos 3
+Nano 16B and W AN 2.2 I2V-A14B. (b) Comparison of learnable registers, joint generation, forecast-
+initialized registry states, and full Physical Registry on Cosmos v2.5 2B.
+Registry content I2V V2V
+Physical Registry
+(Cosmos 3 Nano 16B) 36.01± 0.9545.12± 0.94
+Zero mask 16.78 ± 0.01 24.15 ± 0.32
+Perturbed mask (Noiseσ= 0.5) 35.84 ± 0.11 44.35 ± 0.75
+Physical Registry
+(W AN 2.2 I2V-A14B) 38.44± 1.06
+Zero mask 35.88 ± 0.22
+Perturbed mask (Noiseσ= 0.5) 36.40 ± 0.39
+Variant I2V∆V2V∆
+Vanilla fine-tuning 41.3 ± 2.1 – 46.4 ± 1.0 –
+ViT Needs Registers
+(Darcet et al., 2024) 39.0 ± 1.1−2.344.6 ± 0.9−1.8
+Joint generation 45.1 ± 1.8 +3.8 48.0 ± 0.4 +1.6
+Registry only 45.0 ± 1.3 +3.7 50.3 ± 0.9 +3.9
+Physical Registry 51.2± 1.5+9.9 55.1± 1.1+8.7
+Figure 5:Registry attention and activation during balloon inflation.Foreground queries are video
+tokens inside the Physics-IQ motion mask of the generated video. Labels give query→key pairs (e.g.,
+q3→r1: queries in latent frame 3 attending to its time-aligned registry slot r1); r1 alone marks that
+slot’s activation. Protocol: Appendix A; more examples: Appendices H.1 and I.3.
+Learnable registers alone are not sufficient.In Table 4(b), input-independent learnable registers
+underperform vanilla fine-tuning, while forecast initialization improves over them and predictive
+supervision improves further. The gains therefore do not come from additional registry capacity
+alone: forecast content in the registry helps, and predictive supervision further strengthens its role in
+representing future dynamics.
+4.6 REGISTRYATTENTION ANDACTIVATION
+Figure 5 highlights how Physical Registry responds differently from text cross-attention and video-
+token attention during balloon inflation. While these attention maps broadly follow the balloon and
+its interaction region, attention to the aligned registry slots and registry activation concentrate near
+the expanding boundary, where the dominant physical change occurs. This suggests that the registry
+provides a more localized representation of regions where the intended scene dynamics unfold.
+5 DISCUSSION ANDCONCLUSION
+Physical Registry gives predictive representations an explicit, temporally grounded state within the
+video backbone rather than leaving them entangled with the video representation. Our results suggest
+that this dedicated state can be explicitly supervised toward future dynamics while remaining readable
+during inference. More broadly, explicit predictive states provide a usefulinterface for representing
+and reading physically plausible futuresin world models.
+9
+Preprint
+AI USESTATEMENT
+Writing and language polishing.Generative AI tools were used to refine wording, shorten figure
+captions, and improve consistency in terminology and presentation.
+Retrieval and discovery.Generative AI tools were used to assist in identifying relevant prior
+methods and related literature. Papers considered or cited in this work were subsequently checked
+against their original sources by the authors.
+Research execution.Generative AI tools were used for routine operational assistance during
+experimental execution, including preparing and submitting experiment jobs to cloud computing
+environments, formatting execution commands and configuration files, and assisting with minor
+scripting or runtime issues.
+Manuscript drafting.Generative AI tools were used to help convert author-provided technical
+notes and descriptions into preliminary prose, reorganize existing text for clarity, and suggest
+alternative wording. All AI-assisted material was reviewed by the authors.
+REFERENCES
+Anates Labs. Physics-IQ verified leaderboard, 2026. URL https://physics-iq-verified.
+anates.ai/. Accessed September 23, 2026.
+Mahmoud Assran, Quentin Duval, Ishan Misra, Piotr Bojanowski, Pascal Vincent, Michael
+Rabbat, Yann LeCun, and Nicolas Ballas. Self-supervised learning from images with
+a joint-embedding predictive architecture. InProceedings of the IEEE/CVF Confer-
+ence on Computer Vision and Pattern Recognition, pp. 15619–15629, 2023. URL
+https://openaccess.thecvf.com/content/CVPR2023/html/Assran_
+Self-Supervised_Learning_From_Images_With_a_Joint-Embedding_
+Predictive_Architecture_CVPR_2023_paper.html.
+Mido Assran, Adrien Bardes, David Fan, Quentin Garrido, Russell Howes, Mojtaba Komeili, Matthew
+Muckley, Ammar Rizvi, Claire Roberts, Koustuv Sinha, Artem Zholus, Sergio Arnaud, Abha
+Gejji, Ada Martin, Francois Robert Hogan, Daniel Dugas, Piotr Bojanowski, Vasil Khalidov,
+Patrick Labatut, Francisco Massa, Marc Szafraniec, Kapil Krishnakumar, Yong Li, Xiaodong Ma,
+Sarath Chandar, Franziska Meier, Yann LeCun, Michael Rabbat, and Nicolas Ballas. V-JEPA
+2: Self-supervised video models enable understanding, prediction and planning, 2025. URL
+https://arxiv.org/abs/2506.09985.
+Adrien Bardes, Quentin Garrido, Jean Ponce, Xinlei Chen, Michael Rabbat, Yann LeCun, Mido
+Assran, and Nicolas Ballas. Revisiting feature prediction for learning visual representations from
+video.Transactions on Machine Learning Research, 2024. URL https://openreview.
+net/forum?id=QaCCuDfBk2.
+Aritra Bhowmik, Denis Korzhenkov, Cees G. M. Snoek, Amirhossein Habibian, and Mohsen Ghafoo-
+rian. MoAlign: Motion-centric representation alignment for video diffusion models. InInterna-
+tional Conference on Learning Representations, 2026. URL https://iclr.cc/virtual/
+2026/poster/10009784.
+Jake Bruce, Michael D Dennis, Ashley Edwards, Jack Parker-Holder, Yuge Shi, Edward Hughes,
+Matthew Lai, Aditi Mavalankar, Richie Steigerwald, Chris Apps, Yusuf Aytar, Sarah Maria Elis-
+abeth Bechtle, Feryal Behbahani, Stephanie C.Y . Chan, Nicolas Heess, Lucy Gonzalez, Si-
+mon Osindero, Sherjil Ozair, Scott Reed, Jingwei Zhang, Konrad Zolna, Jeff Clune, Nando
+De Freitas, Satinder Singh, and Tim Rockt ¨aschel. Genie: Generative interactive environments.
+InInternational Conference on Machine Learning, volume 235, pp. 4603–4623, 2024. URL
+https://arxiv.org/abs/2402.15391.
+Timoth´ee Darcet, Maxime Oquab, Julien Mairal, and Piotr Bojanowski. Vision transformers need
+registers. InInternational conference on learning representations, volume 2024, pp. 2632–2652,
+2024.
+10
+Preprint
+Quentin Garrido, Nicolas Ballas, Mahmoud Assran, Adrien Bardes, Laurent Najman, Michael
+Rabbat, Emmanuel Dupoux, and Yann LeCun. Intuitive physics understanding emerges from
+self-supervised pretraining on natural videos, 2025. URL https://arxiv.org/abs/2502.
+11831.
+Genmo Team. Mochi 1. GitHub repository, 2024. URL https://github.com/genmoai/
+mochi.
+Nate Gillman, Charles Herrmann, Michael Freeman, Daksh Aggarwal, Evan Luo, Deqing Sun,
+and Chen Sun. Force prompting: Video generation models can learn and generalize physics-
+based control signals. InAdvances in Neural Information Processing Systems, 2025. URL
+https://arxiv.org/abs/2505.19386.
+David Ha and J¨urgen Schmidhuber. Recurrent world models facilitate policy evolution. InAdvances
+in Neural Information Processing Systems, volume 31, 2018. URL https://worldmodels.
+github.io/.
+Yoav HaCohen, Nisan Chiprut, Benny Brazowski, Daniel Shalem, Dudu Moshe, Eitan Richardson,
+Eran Levin, Guy Shiran, Nir Zabari, Ori Gordon, Poriya Panet, Sapir Weissbuch, Victor Kulikov,
+Yaki Bitterman, Zeev Melumian, and Ofir Bibi. LTX-Video: Realtime video latent diffusion, 2024.
+URLhttps://arxiv.org/abs/2501.00103.
+Yu He, Lichen Ma, Zipeng Guo, Xinyuan Shan, Jingling Fu, Dong Chen, Junshi Huang, and Yan
+Li. HyperDiT: Hyper-connected transformers for high-fidelity pixel-space diffusion, 2026. URL
+https://arxiv.org/abs/2605.15741.
+Jonathan Ho, Tim Salimans, Alexey Gritsenko, William Chan, Mohammad Norouzi, and David J.
+Fleet. Video diffusion models. InAdvances in Neural Information Processing Systems, pp.
+8633–8646, 2022. URLhttps://arxiv.org/abs/2204.03458.
+Yue Hu, Siyuan Huang, Yue Liao, Shengcong Chen, Pengfei Zhou, Liliang Chen, Guanghui Ren, and
+Maoqing Yao. EWMBench: Evaluating scene, motion, and semantic quality in embodied world
+models. InBritish Machine Vision Conference (BMVC), 2025. URL https://arxiv.org/
+abs/2505.09694.
+Siyuan Huang, Liliang Chen, Pengfei Zhou, Shengcong Chen, Yue Liao, Zhengkai Jiang, Yue Hu,
+Peng Gao, Hongsheng Li, Maoqing Yao, and Guanghui Ren. EnerVerse: Envisioning embodied
+future space for robotics manipulation. InAdvances in Neural Information Processing Systems,
+2025. URLhttps://arxiv.org/abs/2501.01895.
+Sungwon Hwang, Hyojin Jang, Kinam Kim, Minho Park, and Jaegul Choo. Cross-frame represen-
+tation alignment for fine-tuning video diffusion models, 2025. URL https://arxiv.org/
+abs/2506.09229.
+Christian Intern`o, Alexander Pondaven, Habon Issa, Fabio Pizzati, Francesco Pinto, Markus Olhofer,
+Ivan Laptev, Philip Torr, Eero P. Simoncelli, Barbara Hammer, and David Klindt. GeoPhys: The
+geometry of physical plausibility, 2026. URLhttps://arxiv.org/abs/2606.20707.
+Sonia Joseph, Quentin Garrido, Randall Balestriero, Matthew Kowal, Thomas Fel, Shahab Bakhtiari,
+Blake Richards, and Mike Rabbat. Interpreting physics in video world models. InInternational
+Conference on Machine Learning, 2026. URLhttps://arxiv.org/abs/2602.07050.
+Theodoros Kouzelis, Efstathios Karypidis, Ioannis Kakogeorgiou, Spyridon Gidaris, and Nikos
+Komodakis. Boosting generative image modeling via joint image-feature synthesis. InAdvances
+in Neural Information Processing Systems, 2025. URL https://arxiv.org/abs/2504.
+16064.
+Kuaishou Technology. KLING: Video generation model, 2024. URL https://kling.
+kuaishou.com/.
+Dacheng Li, Yunhao Fang, Yukang Chen, Shuo Yang, Shiyi Cao, Justin Wong, Michael Luo, Xiaolong
+Wang, Hongxu Yin, Joseph E. Gonzalez, Ion Stoica, Song Han, and Yao Lu. WorldModelBench:
+Judging video generation models as world models. InAdvances in Neural Information Processing
+Systems Datasets and Benchmarks Track, 2025a. URL https://arxiv.org/abs/2502.
+20694.
+11
+Preprint
+Jiachen Li, Weixi Feng, Tsu-Jui Fu, Xinyi Wang, Sugato Basu, Wenhu Chen, and William Yang
+Wang. T2V-Turbo: Breaking the quality bottleneck of video consistency model with mixed
+reward feedback. InAdvances in Neural Information Processing Systems, 2024. URL https:
+//arxiv.org/abs/2405.18750.
+Quanhao Li, Zhen Xing, Rui Wang, Hui Zhang, Qi Dai, and Zuxuan Wu. MagicMotion: Controllable
+video generation with dense-to-sparse trajectory guidance. InProceedings of the IEEE/CVF
+International Conference on Computer Vision, pp. 12112–12123, 2025b. URLhttps://arxiv.
+org/abs/2503.16421.
+Jiesong Lian, Zixiang Zhou, Ruizhe Zhong, Yuan Zhou, Qinglin Lu, Rui Wang, Long Hu, Yixue Hao,
+and Baoru Huang. Sara: Semantically adaptive relational alignment for video diffusion models.
+arXiv preprint arXiv:2605.07800, 2026.
+Bin Lin, Yunyang Ge, Xinhua Cheng, Zongjian Li, Bin Zhu, Shaodong Wang, Xianyi He, Yang Ye,
+Shenghai Yuan, Liuhan Chen, Tanghui Jia, Junwu Zhang, Zhenyu Tang, Yatian Pang, Bin She,
+Cen Yan, Zhiheng Hu, Xiaoyi Dong, Lin Chen, Zhang Pan, Xing Zhou, Shaoling Dong, Yonghong
+Tian, and Li Yuan. Open-Sora Plan: Open-source large video generation model, 2024. URL
+https://arxiv.org/abs/2412.00131.
+Xingchao Liu, Chengyue Gong, and Qiang Liu. Flow straight and fast: Learning to generate and
+transfer data with rectified flow. InInternational Conference on Learning Representations, 2023.
+URLhttps://arxiv.org/abs/2209.03003.
+Luma AI. Dream Machine, 2024. URLhttps://lumalabs.ai/dream-machine.
+MiniMax. Hailuo AI video generator, 2024. URLhttps://hailuoai.video/.
+MiniMax. MiniMax H3, 2026. URL https://huggingface.co/MiniMaxAI/
+MiniMax-H3.
+Saman Motamed, Laura Culp, Kevin Swersky, Priyank Jaini, and Robert Geirhos. Do generative
+video models understand physical principles? InIEEE/CVF Winter Conference on Applications of
+Computer Vision, pp. 948–958, 2026. URLhttps://arxiv.org/abs/2501.09038.
+Lorenzo Mur-Labadia, Matthew Muckley, Amir Bar, Mido Assran, Koustuv Sinha, Mike Rabbat,
+Yann LeCun, Nicolas Ballas, and Adrien Bardes. V-JEPA 2.1: Unlocking dense features in video
+self-supervised learning, 2026. URLhttps://arxiv.org/abs/2603.14482.
+NVIDIA. PhysicalAI-WorldModel-Synthetic-Physical-Interaction-Scenes. Hug-
+ging Face, 2026a. URL https://huggingface.co/datasets/nvidia/
+PhysicalAI-WorldModel-Synthetic-Physical-Interaction-Scenes.
+NVIDIA. PhysicalAI WorldModel Synthetic Embodied Robot Scenes. Hug-
+ging Face, 2026b. URL https://huggingface.co/datasets/nvidia/
+PhysicalAI-WorldModel-Synthetic-Embodied-Robot-Scenes.
+NVIDIA et al. Cosmos world foundation model platform for physical AI, 2025a. URL https:
+//arxiv.org/abs/2501.03575.
+NVIDIA et al. World simulation with video foundation models for physical AI, 2025b. URL
+https://arxiv.org/abs/2511.00062.
+NVIDIA et al. Cosmos 3: Omnimodal world models for physical AI, 2026. URL https://arxiv.
+org/abs/2606.02800.
+Saurabh Pathak, Elahe Arani, Mykola Pechenizkiy, and Bahram Zonooz. PhysVid: Physics aware
+local conditioning for generative video models. InProceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition, pp. 41847–41858, 2026. URL https://arxiv.
+org/abs/2603.26285.
+William Peebles and Saining Xie. Scalable diffusion models with transformers. InProceedings
+of the IEEE/CVF International Conference on Computer Vision, pp. 4195–4205, 2023. URL
+https://arxiv.org/abs/2212.09748.
+12
+Preprint
+Physics-IQ Benchmark. Physics-IQ verified leaderboard. GitHub repository README, 2026. URL
+https://github.com/google-deepmind/physics-IQ-benchmark.
+Tim R¨adsch, Yuki M. Asano, Hilde Kuehne, Stefan Bauer, Priyank Jaini, Robert Geirhos, and
+Carsten T. L¨uth. Physics-IQ Verified.arXiv preprint arXiv:2606.18943, 2026.
+Runway. Introducing Gen-3 Alpha: A new frontier for video generation, 2024. URL https:
+//runwayml.com/research/introducing-gen-3-alpha.
+Ying Shen, Jerry Xiong, Tianjiao Yu, and Ismini Lourentzou. PHANTOM: Physics-infused video
+generation via joint modeling of visual and latent physical dynamics. InProceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 11185–11194, 2026.
+URLhttps://arxiv.org/abs/2604.08503.
+Du Tran, Lubomir Bourdev, Rob Fergus, Lorenzo Torresani, and Manohar Paluri. Learning spa-
+tiotemporal features with 3D convolutional networks. InProceedings of the IEEE International
+Conference on Computer Vision, pp. 4489–4497, 2015. URL https://arxiv.org/abs/
+1412.0767.
+Wan Team. Wan2.2, 2025. URLhttps://github.com/Wan-Video/Wan2.2.
+Chen Wang, Chuhao Chen, Yiming Huang, Zhiyang Dou, Yuan Liu, Jiatao Gu, and Lingjie Liu.
+PhysCtrl: Generative physics for controllable and physics-grounded video generation. InAdvances
+in Neural Information Processing Systems, 2025a. URL https://arxiv.org/abs/2509.
+20358.
+Jing Wang, Ao Ma, Ke Cao, Jun Zheng, Jiasong Feng, Zhanjie Zhang, Wanyuan Pang, and Xiaodan
+Liang. WISA: World simulator assistant for physics-aware text-to-video generation. InAdvances
+in Neural Information Processing Systems, 2025b. URL https://arxiv.org/abs/2503.
+08153.
+Yi Wang, Yinan He, Yizhuo Li, Kunchang Li, Jiashuo Yu, Xin Ma, Xinhao Li, Guo Chen, Xinyuan
+Chen, Yaohui Wang, Conghui He, Ping Luo, Ziwei Liu, Yali Wang, Limin Wang, and Yu Qiao.
+InternVid: A large-scale video-text dataset for multimodal understanding and generation, 2023.
+URLhttps://arxiv.org/abs/2307.06942.
+Jiannan Xiang, Guangyi Liu, Yi Gu, Qiyue Gao, Yuting Ning, Yuheng Zha, Zeyu Feng, Tianhua
+Tao, Shibo Hao, Yemin Shi, Zhengzhong Liu, Eric P. Xing, and Zhiting Hu. Pandora: Towards
+general world model with natural language actions and video states, 2024. URL https://
+arxiv.org/abs/2406.09455.
+Xindi Yang, Baolu Li, Yiming Zhang, Zhenfei Yin, Lei Bai, Liqian Ma, Zhiyong Wang, Jian-
+fei Cai, Tien-Tsin Wong, Huchuan Lu, and Xu Jia. VLIPP: Towards physically plausible
+video generation with vision and language informed physical prior. InProceedings of the
+IEEE/CVF International Conference on Computer Vision, pp. 12360–12370, 2025a. URL
+https://openaccess.thecvf.com/content/ICCV2025/html/Yang_VLIPP_
+Towards_Physically_Plausible_Video_Generation_with_Vision_and_
+Language_ICCV_2025_paper.html.
+Zhuoyi Yang, Jiayan Teng, Wendi Zheng, Ming Ding, Shiyu Huang, Jiazheng Xu, Yuanming Yang,
+Wenyi Hong, Xiaohan Zhang, Guanyu Feng, Da Yin, Yuxuan Zhang, Weihan Wang, Yean Cheng,
+Bin Xu, Xiaotao Gu, Yuxiao Dong, and Jie Tang. CogVideoX: Text-to-video diffusion models
+with an expert transformer. InInternational Conference on Learning Representations, 2025b. URL
+https://arxiv.org/abs/2408.06072.
+Sihyun Yu, Sangkyung Kwak, Huiwon Jang, Jongheon Jeong, Jonathan Huang, Jinwoo Shin, and
+Saining Xie. Representation alignment for generation: Training diffusion transformers is easier
+than you think. InInternational Conference on Learning Representations, 2025. URL https:
+//arxiv.org/abs/2410.06940.
+Jianhao Yuan, Xiaofeng Zhang, Felix Friedrich, Nicolas Beltran-Velez, Melissa Hall, Reyhane
+Askari-Hemmat, Xiaochuang Han, Nicolas Ballas, Michal Drozdzal, and Adriana Romero-Soriano.
+Inference-time physics alignment of video generative models with latent world models. In
+13
+Preprint
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp.
+16118–16129, 2026. URL https://openaccess.thecvf.com/content/CVPR2026/
+html/Yuan_Inference-time_Physics_Alignment_of_Video_Generative_
+Models_with_Latent_World_CVPR_2026_paper.html.
+Xiangdong Zhang, Jiaqi Liao, Shaofeng Zhang, Fanqing Meng, Xiangpeng Wan, Junchi Yan, and
+Yu Cheng. VideoREPA: Learning physics for video generation through relational alignment
+with foundation models. InAdvances in Neural Information Processing Systems, 2025. URL
+https://openreview.net/forum?id=oHjLfABsK4.
+Zangwei Zheng, Xiangyu Peng, Tianji Yang, Chenhui Shen, Shenggui Li, Hongxin Liu, Yukun Zhou,
+Tianyi Li, and Yang You. Open-Sora: Democratizing efficient video production for all, 2024. URL
+https://arxiv.org/abs/2412.20404.
+Zangwei Zheng, Xiangyu Peng, Yuxuan Lou, Chenhui Shen, Tom Young, Xinying Guo, Binluo
+Wang, Hang Xu, Hongxin Liu, Mingyan Jiang, Wenjun Li, Yuhui Wang, Anbang Ye, Gang Ren,
+Qianran Ma, Wanying Liang, Xiang Lian, Xiwen Wu, Yuting Zhong, Zhuangyan Li, Chaoyu Gong,
+Guojun Lei, Leijun Cheng, Limin Zhang, Minghao Li, Ruijie Zhang, Silan Hu, Shijie Huang,
+Xiaokang Wang, Yuanheng Zhao, Yuqi Wang, Ziang Wei, and Yang You. Open-sora 2.0: Training a
+commercial-level video generation model in $200k, 2025. URL https://arxiv.org/abs/
+2503.09642.
+14
+Preprint
+APPENDIX
+Appendix A gives experimental details. Appendices B to E report additional benchmark results:
+separating fine-tuning on the Enlarge dataset from the registry interface, Physics-IQ components,
+WorldModelBench references, and EWMBench. Appendix F details the selector, Appendix G the
+source-transfer probe, and Appendix H the mechanistic diagnostics. Appendix I collects qualitative
+comparisons.
+A IMPLEMENTATION ANDEXPERIMENTALDETAILS
+A.1 REGISTRYARCHITECTURE ANDSUPERVISION
+Registry representation.The frozen JEPA encoder is V-JEPA 2.1 (Mur-Labadia et al., 2026)
+ViT-g at384 px, loaded from the pretrained target-encoder branch. The registry uses eight slots, one
+context feature and seven predictor rollout steps, each with 196 spatial tokens of 5,632 channels.
+Full-video JEPA features provide the alignment targets, mean-pooled over the 196 spatial tokens.
+Video and registry tokens share dense self-attention, while text remains a separate cross-attention
+condition.
+Predictive supervision.We use λalign = 0.5 in Equation (10), following the default REPA
+projection-loss weight (Yu et al., 2025). Registry only retains the forecast-initialized registry and
+removes the alignment term. Following prior representation-alignment work (Yu et al., 2025; Zhang
+et al., 2025), we supervise an early-to-middle generation block. The block used for each backbone is
+listed below. For W AN I2V-A14B, the block count and alignment index apply to each noise expert.
+Mean-pooled implementation Generation blocks Alignment block index
+Cosmos 3 Nano 16B 36 10
+Cosmos v2.5 2B 28 14
+W AN 2.2 I2V-A14B 40 11
+W AN 2.2 TI2V-5B 30 15
+Registry projection architecture.The adapter Gϕ of Equation (4) combines established video-
+modeling components: local spatio-temporal convolutions (Tran et al., 2015) and per-position
+temporal attention, a factorization used in video diffusion architectures (Ho et al., 2022). The
+convolutions mix neighboring locations and adjacent forecast features. Temporal attention then
+integrates the slot sequence at each spatial position. Spatial resizing and channel projection match the
+backbone’s latent geometry while retaining the forecast’s temporal indexing. Figure 6 shows this
+adapter.
+Projection input and output.For the Cosmos v2.5 2B configuration, the input is the forecast
+J cond, a sequence of Tr=8 slots, each a 14×14 grid of 5632-dimensional features (the encoder
+embedding width of 1408 concatenated over four blocks). The output is R(0)t in the video-latent
+format of the backbone:16channels over8registry slots at the88×160latent resolution.
+Projection stages.Figure 6 gives the operations and shapes of each stage. Upsampling acts on the
+two spatial axes only, and the temporal Transformer is applied independently at each spatial position
+with the eight registry slots as its sequence, so spatial mixing comes from the convolutions and, after
+concatenation, from the backbone’s self-attention. The adapter is initialized randomly and trained
+jointly with the backbone.
+Projection placement.The module emits the backbone’s native latent channel count. Its output
+is normalized with the tokenizer’s own per-frame statistics for the registry slots, which places the
+registry on the scale of the video latent. The normalized output is then concatenated along the
+temporal axis to give Tv+Tr = 24 + 8 = 32 latent frames. Registry slot i receives the video-latent
+RoPE coordinate 3i, the temporal alignment of Equation (5). With 2×2 spatial patchification,
+each registry slot contains 44×80 tokens, giving 8×44×80 = 28,160 registry tokens in this
+configuration.
+15
+Preprint
+Figure 6:The registry projection layer Gϕ.The three bands show spatial lifting with 3D convolu-
+tions (Tran et al., 2015), per-position temporal attention (Ho et al., 2022) and channel projection, and
+backbone input assembly. Shapes are for the Cosmos v2.5 2B configuration.
+1 Spatial lifting and refinement
+2 Temporal mixing and channel head
+3 Backbone input assembly
+8 registry slots throughout
+independently at each spatial position
+J cond
+forecast
+Reshape
+14×14grid
+Conv3D3 3
+5632→96
+Trilinear resize
+14×14→88×160
+spatial only;Tfixed
+Residual block
+2×(GN 32 −SiLU−3 3)
+one skip around the pair
+(B,8,196,5632) (B,96,8,14,14) (B,96,8,88,160)
+Slot sequence
+8×96
++Epos
+Temporal Transformer×8
+d= 96,8heads, FFN384
+post-norm; ReLU; dropout0.1
+Conv3D1 3
+96→16
+R(0)t
+registry init
+learned positions:(1,8,96) (B,16,8,88,160)
+Tokenizer normalization
+µ, σof slotsTv :Tv +Tr
+Temporal concat
+[Xt;R (0)t ] Temporal RoPEregistry sloti7→3i
+Xt: noisy video
+24 + 8 = 32latent frames to the shared video DiT
+Registry readout modules.The readout operator qψ in Equations (7) and (11) includes spatial
+mean-pooling within each registry slot, before its projection. Registry slots remain separate until loss
+or score aggregation. For training, qψ uses a three-layer MLP with output widths 2048, 2048, and
+5632, and SILU activations ( 19.9M parameters). It maps the spatially averaged registry hidden state
+to the encoder feature dimension.
+The slot-level target Z
+tgt
+s and reference J
+cond
+s are spatial means of the frozen encoder’s target grid and
+the unprojected shared-forecast grid, respectively. These reductions preserve the temporal indexing
+of their source features. The alignment loss trains a single readout, which the selection policy reuses
+frozen. No additional module is trained for selection. The conditioning adapter Gϕ operates in the
+reverse direction, mapping the forecast into the video-latent geometry.
+A.2 TRAINING ANDDATA
+The Enlarge dataset.The Enlarge dataset combines physics-focused data with broad visual
+coverage. It includes physics-oriented video, rigid-body simulation, general web video, and embodied
+robot simulation (Wang et al., 2025b; 2023; NVIDIA, 2026a;b). We fine-tune Physical Registry using
+only its RGB videos and corresponding captions, without additional physical annotations or simulator
+states. The Enlarge dataset excludes Physics-IQ videos. Table 5 and Figure 7 report the exact number
+of clips and video hours used from each source.
+Table 5:The Enlarge dataset.Exact clips used
+by the evaluated Physical Registry models.
+Dataset Clips Mean (s) Hours
+WISA 74,370 7.1 146.7
+InternVid 8,115 7.5 16.9
+SDG-PhysXSim 101,422 5.0 140.9
+SDG-RobotSim 28,193 9.0 70.6
+Total 212,100 6.4 375.2
+Figure 7:Used-hour composition.Projected
+hours for the exact used clips.
+Fine-tuning settings.Table 6 reports model sizes, effective batch, and GPU resources for Physical
+Registry fine-tuning on the Enlarge dataset. The matched-budget W AN control in Appendix B uses
+8,000 iterations and effective batch 16.
+16
+Preprint
+Table 6:Model sizes, fine-tuning resources, and optimization settings.Registry modules denote
+the added projection and readout parameters (e.g., 16.0M + 19.9M for Cosmos v2.5 2B).
+Model Pretrained Registry modules Batch/update GPUs
+Cosmos 3 Nano 16B 16B 72.63M 168×H100
+Cosmos v2.5 2B 2B 35.93M 168×A100 40 GB
+W AN 2.2 I2V-A14B2×14B 129.39M 168×H100
+W AN 2.2 TI2V-5B 5B 105.02M 168×A100 40 GB
+Model Learning rate Schedule Weight decay AdamW(β 1, β2)
+Cosmos 3 Nano 16B1×10 −5 constant 0(0.9,0.95)
+Cosmos v2.5 2B3×10 −5 100-step warm-up, then decay1×10 −3 (0.9,0.999)
+W AN 2.2 I2V-A14B1×10 −5 constant1×10 −2 (0.9,0.95)
+W AN 2.2 TI2V-5B1×10 −5 constant1×10 −2 (0.9,0.999)
+A.3 INFERENCE ANDSAMPLING
+Sampling settings.Apart from the expanded-prompt setting ( †, Table 2), guidance, shift, sampler,
+and step count follow each model’s official inference defaults (Table 7). Each backbone and its
+Physical Registry counterpart use the same settings. Following the Physics-IQ protocol, the first five
+seconds after conditioning are evaluated.
+Table 7:Sampling settings.Steps are denoising steps and guidance is the classifier-free guidance
+scale (WAN I2V-A14B: high-/low-noise experts). Generated frames exclude conditioning frames
+(Cosmos v2.5: I2V / V2V). † Expanded-prompt setting of Table 2.
+Model Steps Guidance Shift Sampler Resolution Gen. frames @ fps
+Cosmos 3 Nano 16B 35 6.0 10.0 UniPC1280×720120 @ 24
+Cosmos 3 Nano 16B† 50 3.0 4.75 UniPC1280×720120 @ 24
+Cosmos v2.5 2B 35 7.0 5.0 UniPC1280×70492 / 80 @ 16
+W AN 2.2 I2V-A14B 40 3.5 / 3.5 5.0 UniPC1280×72080 @ 16
+W AN 2.2 TI2V-5B 50 5.0 5.0 UniPC1280×704120 @ 24
+Sampling cost.Table 8 reports the median per-step time over three Physics-IQ scenarios with
+three repeats; for Cosmos 3 Nano 16B, whose sampler caches activations, it is computed from total
+sampling time. The registry increases per-step cost to 1.67× on Cosmos v2.5 2B and 1.55× on
+Cosmos 3 Nano 16B. Times are compared only within each backbone.
+Table 8:Sampling cost of the registry.Both arms of a backbone are measured in one session on
+a single H100 80 GB. Times are per sampler step; peak memory is the generation peak above the
+weights resident before sampling. Two sequence lengths are given for Cosmos 3 Nano 16B because
+its two classifier-free guidance branches carry different text lengths.
+Model Arm Sequence (tokens) s / sampler step Peak (GiB)
+Cosmos v2.5 2B Backbone 84,480 6.514 6.20
++Physical Registry 112,640 10.909 7.00
+Cosmos 3 Nano 16B Backbone 28,607 / 31,364 1.384 11.44
++Physical Registry 35,967 / 38,724 2.148 11.94
+Prompt expansion.For the expanded-prompt Nano setting in Tables 2 and 12, Claude Opus 5
+(model id claude-opus-5) expands the Physics-IQ original description (OP) together with the
+conditioning image into NVIDIA’s Cosmos I2V structured prompt format. The image specifies
+appearance and layout, whereas OP specifies temporal dynamics. The expansions are generated
+once and reused in every run. The balloon-inflation example contrasts OP with the benchmark’s
+best-practice prompt (BPP), and shows the full expanded prompt produced from OP and the image.
+Original description (OP)
+A black balloon is attached to a fixed electric air pump hose on a table
+with a plain wall in the background. Air is being pumped in the balloon.
+Static shot with no camera movement.
+17
+Preprint
+Benchmark best-practice prompt (BPP)
+Static locked-off single-shot with fixed frame throughout filmed with
+constant framerate in real-time. The scene shows a realistic scientific
+demonstration. The scene only contains the described setup and actions.
+The balloon is attached to a black hose that points upwards from behind
+a wooden table. Air is being pumped into the black balloon.
+Expanded prompt (OP + image)
+Temporal dynamics.Air is pumped continuously into the black balloon so
+that it swells steadily larger over the five seconds, its rubber
+stretching thinner and its highlights spreading while the neck stiffens
+and lifts the balloon more upright on the hose.
+Subject.A matte black rubber balloon inflated to a firm round sphere,
+its neck pulled down over the black nozzle of a hose and clamped there
+with a band of bright blue tape.
+Setting.A bare indoor corner used as a test bay: a plain pale
+grey-green painted wall fills the frame, and a honey-toned oak tabletop
+runs straight across the bottom as a level horizontal band. A broad
+soft shadow of the rig falls on the wall to the left. No other
+furniture, decoration or clutter is present.
+Camera.Static
+0:00-0:01.The pump runs on and the black balloon, already a firm centred
+sphere, grows visibly wider; its paired highlights drift apart as the
+surface curvature flattens.
+0:01-0:02.The balloon continues to swell, its lower bulge rounding out
+and the pear-shaped taper above the blue tape shortening as rubber is
+drawn up into the body.
+0:02-0:03.Pressure rises enough to stiffen the braided hose; the balloon
+climbs a little higher on the vertical midline and its slight lean
+straightens out entirely.
+0:03-0:04.Expansion carries on at the same steady rate, the rubber now
+thinner and its blacks a shade lighter where it is most stretched, with
+a small wobble passing through the balloon on each pump surge.
+0:04-0:05.The balloon reaches its largest size in the clip, taut and
+nearly upright on the stiff hose, still growing and still intact as the
+pump keeps running.
+A.4 EVALUATION ANDVISUALIZATIONDETAILS
+Benchmark metrics.Physics-IQ Verified measures physical plausibility against a recorded future,
+with higher scores indicating better results (R¨adsch et al., 2026). It normalizes four subscores per
+sample and averages equally across subscores and inputs, replacing dataset-level normalization. The
+input-level scores support within-input candidate comparisons. WorldModelBench (Li et al., 2025a)
+supplies a first-frame image and text instruction for 350 prompts spanning 7 application domains
+and 56 subdomains. Its human-aligned multimodal judge scores instruction following, physical
+adherence over five physical laws, and common sense over frame-wise and temporal quality. The
+total is the sum of these scores. EWMBench (Hu et al., 2025) evaluates embodied world models on
+real robot manipulation episodes, scoring visual scene consistency, motion correctness against the
+recorded trajectory, and semantic alignment with the task instruction (Appendix E). Each backbone
+and Physical Registry pair uses the same conditioning inputs, sampling protocol, and judge on the
+full set.
+Tasks and candidate pools.The evaluation covers image-to-video and video-to-video generation
+on Physics-IQ (Motamed et al., 2026). Candidates are compared within the same scene, view, and
+conditioning input. Within matched pools of ten candidates per input, Plain scores average the pool,
+while WMReward and PRS select one candidate from it. The content ablations in Table 4(a) use
+Cosmos 3 Nano 16B without prompt expansion and WAN 2.2 I2V-A14B. They either replace the
+18
+Preprint
+projected registry features with zeros (zero mask) or apply Gaussian noise with σ= 0.5 (perturbed
+mask). Their full-model references repeat the Plain values in Table 2.
+Controlled comparison (Table 1).All interfaces share the pretrained backbone, center-view
+training data, training budget, JEPA source, and held-out left/right-view evaluation. REPA aligns
+ordinary denoising hidden states to JEPA features; joint generation adapts ReDi (Kouzelis et al., 2025)
+to denoise video and future JEPA tokens in one sequence; Registry only keeps the forecast-initialized
+registry but removes its alignment loss. Training uses only center views, while evaluation uses the left
+and right views. This protocol is meaningful only if the JEPA condition describes the same scenario
+across viewpoints. Figure 8 confirms this: JEPA features from different views of the same scenario
+are closer than those of different scenarios in both L2 distance and cosine similarity. A held-out view
+therefore supplies a JEPA condition consistent with its scenario, and the comparison tests how each
+interface uses this condition under a new viewpoint.
+Figure 8:Cross-view JEPA feature correspondence.Views of the same scene (blue) are closer
+than different scenes (red) in L2 distance (left; means 15.7 versus 28.0) and cosine similarity (right;
+0.9887 versus 0.9649).
+Visualization protocol.Registry activation is the hidden-state variance over denoising steps 0–10
+at each aligned registry slot and spatial position, averaged over feature channels.
+For Figure 5, foreground queries use the Physics-IQ generated-foreground mask (Motamed et al.,
+2026), downsampled by area averaging to the 44×80 video-latent grid. Attention maps average
+native QK-softmax responses over steps{0,5,11,16,22,28,34}.
+For Appendix I.3, text-attention maps aggregate the corresponding lexical token groups and normalize
+by valid-text attention at each spatial location. Text and video self-attention use steps 0–10, while
+registry self-attention uses steps 11–22.
+19
+Preprint
+B EVALUATIONCURVES: VANILLAFINE-TUNING VERSUSPHYSICAL
+REGISTRY
+The controlled comparisons in Table 1 and Table 4(b) use Cosmos v2.5 2B. To separate fine-tuning on the
+Enlarge dataset from the Physical Registry in a second backbone family, we track WAN TI2V-5B for 8,000
+iterations with batch size 16, evaluating Physics-IQ Verified every 1,000 iterations. Vanilla fine-tuning on the
+Enlarge dataset uses the same data, schedule, and optimizer as Physical Registry, differing only in the absence of
+registry tokens and predictive alignment.
+Figure 9: Physics-IQ Verified gains over pretrained W AN TI2V-5B. Shading marks one pretrained
+standard deviation (±0.8) around zero.
+The vanilla fine-tuning stays within 1.3 points of the pretrained score throughout and ends at +0.15 after 8,000
+iterations. Physical Registry exceeds vanilla at all eight evaluation points. Even our smallest gain ( +1.98)
+exceeds vanilla’s largest (+1.25). Under the same data and update budget, vanilla fine-tuning produces little
+change from pretrained performance, whereas Physical Registry improves consistently across checkpoints. This
+control supports the interpretation that the W AN TI2V-5B gain in Table 2 arises from the registry interface rather
+than from additional training data alone.
+C PHYSICS-IQ COMPONENTS ANDORIGINALPHYSICS-IQ SCORE
+Table 9 reports the four Physics-IQ Verified components of the Physical Registry models fine-tuned
+on the Enlarge dataset in Tables 2 and 12, retaining both Nano prompt settings. The Original column
+reports the original Physics-IQ score, recomputed from the same evaluation metrics (Motamed
+et al., 2026; R¨adsch et al., 2026). Across both tasks, the model ordering under the original score is
+unchanged from Verified.
+Table 9:Physics-IQ components and original Physics-IQ score.Component scores, the Verified
+score, and the original Physics-IQ score for our Physical Registry (PR) models, each normalized to
+0–100.Bold/ underline mark the highest/second-highest value per column within a task. † Expanded-
+prompt setting of Table 2.
+I2VSpatial Spatiotemp. Weighted Inv. MSE Verified Original
+Nano 16B + PR 46.63 31.01 32.76 33.63 36.01 35.00
+Nano 16B† + PR60.7033.5642.46 37.53 43.56 42.95
+Cosmos v2.5 2B + PR 44.46 34.44 30.29 25.65 33.71 34.00
+W AN I2V-A14B + PR 44.7742.0632.67 34.19 38.44 38.90
+W AN TI2V-5B + PR 36.82 30.81 22.33 26.99 29.24 27.87
+V2VSpatial Spatiotemp. Weighted Inv. MSE Verified Original
+Nano 16B + PR 57.72 38.31 43.43 41.02 45.12 45.60
+Nano 16B† + PR68.05 38.37 49.90 41.85 49.54 50.54
+Cosmos v2.5 2B + PR 57.98 37.43 43.37 30.56 42.33 44.39
+20
+Preprint
+D WORLDMODELBENCHREFERENCELEADERBOARD
+Table 10 collects published WorldModelBench reference scores (Li et al., 2025a) together with the
+backbone comparisons in Table 3. All four backbone-versus-Physical Registry pairs use the matched
+protocol described in Appendix A.
+Table 10:WorldModelBench reference scores.Backbone pairs report mean ± std, rounded to
+two decimals.Bold/ underline mark the highest/second-highest mean in each displayed column.
+Green/red parentheses show positive/negative Physical Registry-minus-backbone changes before
+rounding; (–) marks a tie. Rows from KLING onward are published references under their own
+generation settings (Li et al., 2025a). Main results: Table 3.
+Model
+Instruction
+following (0–3)
+Physical
+adherence (0–5)
+Common
+sense (0–2)
+Total
+(0–10)
+Cosmos 3 Nano 16B (NVIDIA et al., 2026) 2.20 ± 0.02 4.50 ± 0.08 1.43 ± 0.06 8.13 ± 0.13
++ Physical Registry 2.20 ± 0.002(–)4.82± 0.03(+0.32)1.81 ± 0.02(+0.38)8.83 ± 0.04(+0.69)
+Cosmos v2.5 2B (NVIDIA et al., 2025b) 2.14 ± 0.03 4.43 ± 0.07 1.55 ± 0.05 8.12 ± 0.14
++ Physical Registry 2.07 ± 0.01(-0.07)4.54 ± 0.03(+0.11)1.58 ± 0.04(+0.03)8.19 ± 0.01(+0.07)
+W AN 2.2 I2V-A14B (Wan Team, 2025) 2.23 ± 0.03 4.45 ± 0.04 1.60 ± 0.03 8.28 ± 0.02
++ Physical Registry 2.30 ± 0.04(+0.07)4.53 ± 0.04(+0.07)1.60 ± 0.02(+0.004)8.43 ± 0.05(+0.15)
+W AN 2.2 TI2V-5B (Wan Team, 2025)2.33± 0.01 4.35 ± 0.10 1.57 ± 0.04 8.24 ± 0.14
++ Physical Registry 2.24 ± 0.05(-0.09)4.50 ± 0.05(+0.14)1.68 ± 0.06(+0.11)8.41 ± 0.11(+0.17)
+KLING (Kuaishou Technology, 2024) 2.32 4.81 1.95 9.10
+Minimax (MiniMax, 2024) 2.28 4.72 1.92 8.92
+Mochi 1-official (Genmo Team, 2024) 2.00 4.80 1.86 8.66
+Runway (Runway, 2024) 2.17 4.60 1.86 8.64
+Luma (Luma AI, 2024) 1.98 4.49 1.76 8.24
+OpenSoraPlan-T2V (Lin et al., 2024) 1.72 4.64 1.68 8.04
+Mochi 1 (Genmo Team, 2024) 2.06 4.39 1.45 7.91
+CogVideoX-T2V (Yang et al., 2025b) 2.03 4.27 1.35 7.65
+CogVideoX-I2V (Yang et al., 2025b) 1.78 4.17 1.12 7.08
+Pandora (Xiang et al., 2024) 1.56 4.31 1.03 6.90
+T2V-Turbo (Li et al., 2024) 1.37 4.10 1.08 6.56
+OpenSora-T2V (Zheng et al., 2024) 1.61 3.88 0.69 6.17
+OpenSora-I2V (Zheng et al., 2024) 1.42 3.85 0.55 5.82
+21
+Preprint
+E EMBODIEDWORLDMODELBENCHMARK
+EWMBench (Hu et al., 2025) evaluates embodied world models on real robot manipulation episodes
+along three axes: visual scene consistency, motion correctness against the recorded gripper trajectory,
+and semantic alignment with the task instruction. It complements Physics-IQ, which scores physical
+plausibility on passive scenes, by asking whether a generated rollout follows an embodiment through
+a task.
+Protocol.We run the official evaluator on the full public ground-truth split, 21 episodes over seven
+tasks. Each episode is generated three times from its initial frame and instruction, giving 126 videos
+across the two arms. Our clips are 121 frames at 24 fps, whereas the recorded episodes run at 30 fps.
+Both arms share the backbone, sampling recipe, and conditioning inputs, and differ only in the
+registry interface.
+Table 11:EWMBench (Hu et al., 2025).All metrics are higher-is-better and shown on a 0–1 scale.
+Bold/underline mark the highest/second-highest value in each column across all rows, and green
+parentheses give the Physical Registry change over the backbone above it.
+Scene Motion Semantics Diversity
+Model Consist. HSD NDTW DYN BLEU CLIP Logic Div.
+Cosmos 3 Nano 16B (NVIDIA et al., 2026) 0.855 0.328 0.305 0.383 0.242 0.884 0.921 0.029
++Physical Registry 0.895 0.351 0.378 0.4590.244 0.8970.921 0.018
+(+0.040) (+0.023) (+0.073) (+0.076) (+0.002) (+0.013) (-0.011)
+EnerVerse-FT* (Huang et al., 2025) 0.943 0.536 0.5960.536 0.180 0.8640.9780.069
+LTX-FT* (HaCohen et al., 2024)0.9440.476 0.521 0.6200.174 0.855 0.967 0.016
+Kling* (Kuaishou Technology, 2024) 0.889 0.323 0.316 0.305 0.168 0.854 0.967 0.049
+Hailuo* (MiniMax, 2024) 0.858 0.223 0.179 0.134 0.185 0.886 0.911 0.037
+COSMOS* (NVIDIA et al., 2025a) 0.796 0.250 0.253 0.205 0.123 0.846 0.7330.080
+OpenSora* (Zheng et al., 2025) 0.921 0.155 0.142 0.047 0.160 0.851 0.822 0.042
+LTX* (HaCohen et al., 2024) 0.916 0.158 0.143 0.100 0.069 0.832 0.733 0.017
+* Published in the EWMBench evaluation table (Hu et al., 2025, Table 2), evaluated on ten tasks with ten ground-truth episodes each; the public
+ground-truth release used here covers 21 episodes across seven tasks. EnerVerse-FT and LTX-FT are adapted to the benchmark’s robot domain;
+our models are not.
+Results.Physical Registry improves scene consistency and all three motion metrics (Table 11). The
+largest gains are in trajectory agreement, where NDTW rises by 0.073 and DYN by 0.076. Semantic
+metrics change by at most 0.013. Diversity, the spread across the three seeds, decreases from 0.029
+to 0.018.
+F THEPHYSICALREGISTRYSELECTOR
+F.1 AGGREGATION AND PROTOCOL
+We apply the PRS rule in Equation (11) to candidates generated from the same conditioning input.
+Each cosine is evaluated before slot–step averaging. Prefix selection follows the PRS settings in
+Table 12. The registry subset S is the contiguous range of registry slot positions with the largest
+departure from the shared forecast. Nano† averages over the latest min(K,10) evaluations. Prefix-
+selected quality is measured on the chosen candidate’s completed video under its original 35- or
+50-step schedule.
+With N candidates and a full trajectory ofD steps, continuing one candidate afterK prefix steps gives
+a serial denoising budget of N K+ (D−K) candidate-steps, compared with N Dfor completing
+all candidates. All selection budgets are reported in these serial denoising candidate-steps. In
+the completed-video best-of- N (BoN) comparison, WMReward scores decoded candidates with
+its external world model (Yuan et al., 2026). Relative gains of PRS over Plain are computed as
+100(PRS−Plain)/Plain . All reported selection policies and Oracles use ten candidates per input.
+For backbone rows marked *, Plain is the published reference, while WMReward and Oracle select
+from our own ten-candidate pool of that backbone; Physical Registry rows use their own pool for
+every column.
+22
+Preprint
+Table 12:Selection policies on Physics-IQ Verified.WMReward and PRS each select one candidate
+from our ten-candidate pool; Oracle is the best in that pool, an upper bound rather than a policy. *
+marks published Plain values, external to the pool, and † the configuration in Table 2. Bold marks the
+strongest non-Oracle score in each row, gray unavailable PRS.
+I2VPlain WMReward PRS Oracle
+Cosmos 3 Nano 16B 30.18 ± 0.8431.69 41.48
++ Physical Registry 36.01 ± 0.95 38.8540.2751.88
+Cosmos 3 Nano 16B† 37.3 ± 0.9* 44.28 50.59
++ Physical Registry† 43.56 ± 0.95 45.4145.8154.72
+Cosmos v2.5 2B30.65± 0.37 30.61 36.07
++ Physical Registry 33.71 ± 1.11 37.7439.0849.37
+W AN 2.2 I2V-A14B 32.2 ± 0.6 * 35.31 43.71
++ Physical Registry 38.44 ± 1.0641.8240.58 51.87
+W AN 2.2 TI2V-5B 27.7 ± 0.9 * 31.19 37.76
++ Physical Registry 29.24 ± 1.3033.1832.03 39.88
+V2VPlain WMReward PRS Oracle
+Cosmos 3 Nano 16B 38.78 ± 0.7842.46 49.09
++ Physical Registry 45.12 ± 0.9449.7046.78 59.43
+Cosmos 3 Nano 16B† 46.45 ± 0.7650.41 56.98
++ Physical Registry† 49.54 ± 0.63 51.6952.0659.69
+Cosmos v2.5 2B 37.40 ± 0.5339.38 42.60
++ Physical Registry 42.33 ± 1.90 46.5947.6755.84
+Figure 10:Candidate-conditioned registry readouts and selection direction.(a) Mean cosine
+to the generated-video reference: the terminal readout tracks the candidate more closely than the
+shared forecast (0.974 versus 0.764). (b) Within-scene readout–generated-video agreement. (c) PRS
+against controls per backbone and task: Random is uniform selection in the same pool and Inverse
+the reversed ranking.
+Selection
+Model Task PRS Inverse Random
+Cosmos
+v2.5 I2V39.0825.60 33.71
+V2V47.6733.76 42.33
+Cosmos
+Nano I2V40.2733.12 36.01
+V2V46.7842.62 45.12
+W AN 14B I2V40.5834.73 38.44
+W AN 5B I2V32.0326.91 29.24
+F.2 DIRECTION AND CONSISTENCY
+The registry readout tracks the realized candidate.For each completed candidate v(n)gen, we
+encode the generated video with the same frozen target encoder to obtain a diagnostic reference
+Z (n)gen. Figure 10(a) compares this reference with the terminal registry readout and with the shared
+observation-conditioned forecast. The terminal readout has a higher mean cosine similarity to the
+generated-video reference than the shared forecast ( 0.974 versus 0.764). This shows that, after
+interacting with the evolving video tokens, the registry more closely reflects the future realized by the
+candidate than the common forecast from which it was initialized.
+This candidate dependence is visible within scenes.Figure 10(b) resolves the same comparison
+within individual scenes, showing variation in readout–generated-video agreement across candidates
+that share the same observation-conditioned forecast. Thus, the terminal registry is not merely pre-
+serving the common initialization: its readout varies with the trajectory produced by each candidate.
+23
+Preprint
+Selection direction.PRS outperforms both the reversed ranking (Inverse) and uniform selection
+(Random) in every configuration (Figure 10(c)), supporting the direction in Equation (11). The
+direction also holds for smaller pools: averaged over all pools of four to six candidates drawn from
+the ten, PRS keeps positive gains over both controls, and paired scenario-level bootstrap intervals
+exclude zero. Against completed-video WMReward, PRS is comparable while selecting before the
+candidates are fully denoised. Within inputs, departure is also positively rank-correlated with Verified
+quality (e.g., Spearman 0.297 [0.209,0.383] for Cosmos v2.5 I2V at pool size four). Entries below
+are PRS-minus-control gains in Physics-IQ Verified points with 95% intervals.
+Model Pool Task Inverse Random WMReward
+Cosmos v2.5 2B 6 I2V+12.58 [9.19,16.08] +5.07 [3.01,7.23] +1.33 [−0.45,3.33]
+6 V2V+12.69 [8.60,17.04] +4.90 [2.85,7.09] +0.60 [−0.64,1.92]
+5 I2V+11.46 [8.39,14.66] +4.73 [2.94,6.59] +1.24 [−0.24,2.98]
+5 V2V+11.37 [7.70,15.34] +4.50 [2.65,6.48] +0.22 [−0.84,1.36]
+4 I2V+10.05 [7.34,12.85] +4.32 [2.80,5.87] +1.05 [−0.16,2.49]
+4 V2V+9.86 [6.62,13.30] +4.08 [2.48,5.81]−0.05 [−0.91,0.87]
+W AN 2.2 I2V-A14B 6 I2V+4.35 [2.53,6.28] +1.82 [0.92,2.74]−0.51 [−1.31,0.30]
+5 I2V+3.99 [2.32,5.76] +1.71 [0.88,2.55]−0.47 [−1.19,0.25]
+4 I2V+3.53 [2.04,5.10] +1.56 [0.83,2.31]−0.42 [−1.05,0.20]
+F.3 EARLY SELECTION
+Figure 11 compares table-aligned prefix selection for Cosmos v2.5 and the two Nano configurations.
+Cosmos v2.5 first exceeds WMReward after 8/10 steps on I2V/V2V . At ten steps, Cosmos v2.5
+selection already slightly exceeds completed-video WMReward on both tasks. It agrees with the
+full-schedule PRS decision on 72.7%/56.1% of I2V/V2V inputs, and this agreement increases as
+more denoising steps are used for selection (Figure 11c,d).
+Figure 11:Early selection and decision agreement.(a,b) Prefix-selected Physics-IQ Verified gain
+over WMReward using the PRS settings in Table 12; zero marks the WMReward reference. (c,d)
+Agreement with the full-schedule PRS decision. Horizontal axes show the fraction of denoising
+steps used for selection. † denotes the expanded-prompt Nano configuration in Table 2. Protocol:
+Appendix F.1.
+24
+Preprint
+F.4 SELECTION COST
+Continuing only the selected candidate saves candidate-steps as well as the decodes and reward
+evaluations that completed-video selection needs. Table 13 times both policies end to end on the same
+Physical Registry model, using K= 10 as an illustrative prefix length; Table 12 reports quality under
+the PRS settings, and Figure 11 shows quality as a function of the prefix length. On Cosmos v2.5
+the measured wall-clock ratio is 2.84× against the 2.80× (64%) candidate-step reduction reported
+in Section 4.4. Across backbones, measured wall-clock speedups range from 2.84× to 4.06× and
+broadly track the reduction in candidate-steps, while also reflecting backbone-specific sampling,
+decoding, and reward-evaluation costs.
+Table 13:End-to-end cost of selection.One input, N= 10 candidates, both policies run on the
+same Physical Registry model inside one job on a single H100 80 GB; model loading is excluded.
+Complete BoN times sampling, all ten V AE decodes, and the ten WMReward evaluations; PRS times
+the ten prefixes, the continuation of the selected candidate, and its single decode. K= 10 is an
+illustrative prefix length. † Expanded-prompt setting (Table 7).
+Backbone Policy Candidate-steps Decodes Wall-clock (s) Speed-up
+Cosmos v2.5 2B Complete BoN+WMReward 350 10 4,031 1.00×
+PRS (K= 10ofD= 35) 125 1 1,4202.84×
+Cosmos 3 Nano 16B† Complete BoN+WMReward 500 10 1,985 1.00×
+PRS (K= 10ofD= 50) 140 1 6143.23×
+W AN 2.2 I2V-A14B Complete BoN+WMReward 400 10 10,748 1.00×
+PRS (K= 10ofD= 40) 130 1 3,2893.27×
+W AN 2.2 TI2V-5B Complete BoN+WMReward 500 10 2,834 1.00×
+PRS (K= 10ofD= 50) 140 1 6974.06×
+25
+Preprint
+G MOTIONTRANSFER
+G.1 SETUP AND SCOPE
+To test whether registry content can influence generated motion, we replace the native forecast of a
+receiver scene (the white-sphere scene) with source-video JEPA features on Cosmos 3 Nano 16B
+with Physical Registry. Both configurations use the white-sphere image and general prompt shown in
+Figures 12 and 13. The conditioning image, text, initial noise, and sampler are held fixed. The text
+specifies no falling, bouncing, or settling behavior.
+Experimental setup.The native-forecast configuration combines one source-context feature with
+seven predicted features. The transfer configuration instead uses eight features from a frozen
+JEPA video encoder applied to the source video. Both representations have shape 8×196×5632
+and enter the same trained projection and video-generation interface. The source features are
+full video representations, containing scene content as well as dynamics. For this comparison,
+both configurations use the same factor-two amplification of the projected registry residual in
+the conditional branch, P(0) + 2[P(J)−P(0)] . The unconditional branch uses P(J) without
+amplification. Here P is the trained projection and J the chosen registry input. Both receiver outputs
+use the same inference configuration: 50 denoising steps, classifier-free guidance scale 3.0, flow shift
+4.75, and1280×720outputs with 121 frames at 24 fps.
+Figure 12:Registry-source configurations for motion transfer.The native configuration uses
+the conditioning image’s JEPA context and forecast; the transfer configuration uses video-encoded
+features from the source video. Both use the same conditioning frame, general text, initial noise,
+and projection recipe. The exact prompt is shown in a monospace block and contains no motion
+description.
+G.2 SOURCE EXAMPLES
+Each example compares two generations that share the conditioning image, prompt, initial noise, and
+sampler: A uses the native forecast, and B replaces it with the source video’s JEPA features.
+Bowling ball: bounce suppression.In the source video, a heavy bowling ball lands and stays
+on the table. With the native forecast, the generated ball (A) bounces three times with decreasing
+26
+Preprint
+Figure 13:Motion transfer with matched inputs.The source video supplies JEPA features; A and
+B are generated videos. Red dots track ball centers and rows share timestamps. The plot shows the
+upward return r(t) = maxs≤t y(s)−y(t) , with image y increasing downward, over the second after
+A’s first landing (0.333 s). B first lands at 0.417 s. Numbers mark A’s three diminishing returns.
+27
+Preprint
+height before settling. With the bowling-ball features (B), it lands and settles with almost no rebound
+(Figure 13), and the maximum upward return drops from 80.1 to 3.6 pixels (Table 14).
+Table 14:Image-plane ball-center movement in the matched pair.Both outputs use Cosmos 3
+Nano 16B with Physical Registry, over all 121 frames. Image y increases downward, and distances
+are image-plane pixels. Definitions in Figure 13.
+Configuration Valid frames Vertical span Upward return Path length
+A: Native forecast 121/121 289.7 80.1 526.9
+B: Transfer 121/121 281.1 3.6 290.9
+Balloon: slower descent.In the source video, a balloon descends slowly to the table, so we
+compare the descent before contact. With the balloon features (B), the ball descends more slowly
+than with the native forecast (A) (Figure 14). It takes 478 instead of 371 ms (1.29×) to pass through
+the same height range, and first contact moves from 0.375 to 0.500 s. The rebound after contact also
+drops from 40.9 to 12.1 pixels. First-frame silhouette areas differ by only 1.0%, so the slower descent
+is not explained by a change in ball size.
+Figure 14:Descent transfer from a slow-descent source.A and B share the prompt, initial noise,
+sampler, and amplification, and differ only in the registry source. Red dots track ball centers and
+rows share timestamps. The plot follows each center to first table contact, with image y increasing
+downward and contact marked on each curve.
+Changing only the registry content changes the generated motion, indicating that the generator uses
+the registry’s predicted dynamics when producing motion.
+28
+Preprint
+H EXTENDEDMECHANISTICDIAGNOSTICS
+H.1 REGISTRYFEATUREVISUALIZATION
+Registry activation maps characterize the spatial organization of each registry slot. The main-text
+visualization in Section 4.6 aligns five future times from one balloon-inflation trajectory and visualizes
+entity and action conditioning, foreground-query attention to video tokens and to the aligned registry
+slots, and slot-wise registry activation.
+Figure 15:Registry feature organization across DiT layers.Columns align five generated frames
+with their registry slots. Heat rows show hidden channel variance at denoising step 16 for layers 7,
+14, 21, and 27. Each layer uses an independent viridis log scale over all eight slots, so colors preserve
+within-layer slot magnitude.
+For the depth sweep, we fix denoising step 16 and measure variance across hidden feature channels
+at every registry token. Layers 7, 21, and 27 retain broad scene-level activation, while the alignment-
+supervised layer 14 exhibits a response around the balloon and expanding contour. At this layer,
+foreground enrichment is 1.13× and change-region enrichment is 1.05×. This layer shows the largest
+measured enrichment among these four layers. Enrichment is measured on the unnormalized maps.
+29
+Preprint
+I QUALITATIVECOMPARISONS
+I.1 ADDITIONALQUALITATIVECOMPARISONS
+Figure 16 covers the five physics categories of Figure 3 on Cosmos v2.5, and Figures 17 and 18
+provide additional comparisons on the same backbone. In each block, the top row shows the backbone
+and the bottom row shows Physical Registry built on the same backbone. Both rows start from the
+same conditioning input, and frames are sampled at eight equally spaced times of the generated
+sequence.
+In these examples, Physical Registry completes several intended events that the backbone leaves
+unrealized, while avoiding some duplicated or spurious objects. On Cosmos v2.5 (Figure 16), Physical
+Registry propagates the domino topple after contact and extinguishes a lit match once it reaches
+the water. In set A (Figure 17), the backbone duplicates the released ball and the magnet-sequence
+block, while Physical Registry keeps each single. In set B (Figure 18), Physical Registry flattens the
+styrofoam cup under the descending kettlebell, while the backbone leaves it standing.
+Figure 16:Qualitative comparisons on Cosmos v2.5.One scenario per physics category, with the
+layout of Figure 3; here the top row is the Cosmos v2.5 backbone.
+I.2 WORLDMODELBENCHQUALITATIVEEXAMPLES
+Figures 19 and 20 show eight WorldModelBench generations from Cosmos 3 Nano 16B with Physical
+Registry, grouped into robotics and driving/industrial/natural scenes. Each text prompt is followed by
+eight evenly spaced generated frames in a large 4×2 storyboard, read left to right and then top to
+bottom. These examples illustrate the range of robotics, driving, industrial, and natural-scene prompts
+covered by the evaluation.
+I.3 ADDITIONALATTENTION ANDREGISTRYVISUALIZATIONS
+We extend Figure 5 with six Physics-IQ examples spanning solid mechanics, fluid dynamics, optics,
+and magnetism (Motamed et al., 2026). All panels show the same six rows: generated frames, entity
+and action cross-attention, self-attention to video and registry slots, and registry activation. Captions
+identify entity words and event verbs. Appendix A gives the visualization protocol. Across these
+30
+Preprint
+Figure 17:Additional qualitative comparisons (set A).Layout as in Figure 3.
+Figure 18:Additional qualitative comparisons (set B).Layout as in Figure 3.
+examples, registry attention and activation tend to concentrate more locally around interacting or
+changing regions, whereas text cross-attention is often broader.
+31
+Preprint
+Figure 19:WorldModelBench robotics examples (Cosmos 3 Nano 16B with Physical Registry).
+Each prompt is followed by eight frames, read left to right and top to bottom; times are in seconds.
+32
+Preprint
+Figure 20:WorldModelBench driving, industry, and nature examples (Cosmos 3 Nano 16B with
+Physical Registry).Layout as in Figure 19.
+33
+Preprint
+Figure 21:Solid mechanics: object occlusion.Entity text:ball. Action text:lowered.
+Figure 22:Fluid dynamics: filling a glass.Entity text:glass, red. Action text:filled.
+34
+Preprint
+Figure 23:Optics: a mug and its cast shadow.Entity text:mug. Action text:placed, rotating,
+rotates, casting.
+Figure 24:Magnetism: a magnet–domino interaction.Entity text:domino, magnet. Action text:
+placed, rotating.
+35
+Preprint
+Figure 25:Solid mechanics: rolling-ball interaction.Entity text:ball, balls. Action text:rolls.
+Figure 26:Fluid dynamics: pouring liquid over a duck.Entity text:liquid, duck. Action text:
+pours.
+36

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>最近三个月进展（2026-08→11）｜GS 阅读站</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<nav class="topnav">
+  <a href="../index.html">首页</a>
+  <a href="basics.html">工作原理</a>
+  <a href="paradigm.html">范式演进</a>
+  <a href="per-scene.html">per-scene 优化点</a>
+  <a href="latest-3months.html" class="active">最近三个月</a>
+  <a href="survey-master.html">调研总报告</a>
+  <a href="../survey-list.html">论文全清单</a>
+</nav>
+<main>
+<h1>最近三个月最新进展（2026-08-21 → 2026-11-21）</h1>
+<p class="lede">数据源：arXiv API 按提交时间倒序检索 <code>ti:"gaussian splatting"</code> 共 170 条（三页全量），覆盖 2026-09-29 → 11-19；另含 8 月下旬的 UniqueSplat。深读 4 篇代表作（PaveSplat / CrossPressor / InstantHand / Cross3DGS），实现细节逐字核对论文原文（HTML v1），四篇均<strong>无 Algorithm 环境</strong>，文末伪代码为按论文文字整理并已标注。</p>
+
+<div class="toc">
+  目录：
+  <a href="#overview">一览（按线程）</a>
+  <a href="#pave">深读① PaveSplat</a>
+  <a href="#crossp">深读② CrossPressor</a>
+  <a href="#hand">深读③ InstantHand</a>
+  <a href="#cross3">深读④ Cross3DGS</a>
+  <a href="#link">与既有结论的衔接</a>
+</div>
+
+<h2 id="overview">一、最近三个月一览（按线程，共 28 篇精选）</h2>
+
+<h3>前馈重建（最活跃的一线）</h3>
+<table>
+  <thead><tr><th>工作</th><th>日期</th><th>出处</th><th>一句话</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://arxiv.org/abs/2611.26045" target="_blank" rel="noopener">PaveSplat</a></td><td>11-19</td><td>ACCV'26</td><td>单位四元数残差修正表面对齐协方差，高分辨率重渲染无洞（深读①）</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2611.06258" target="_blank" rel="noopener">CrossPressor</a></td><td>11-04</td><td>WACV'27</td><td>训练无关的 anchor 融合路由，256 视图融合 26.12×（深读②）</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2611.08330" target="_blank" rel="noopener">InstantHand</a></td><td>11-05</td><td>NeurIPS'26</td><td>单图前馈手部 avatar，2.84s 重建（深读③）</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.38951" target="_blank" rel="noopener">GradSplat</a></td><td>10-28</td><td>arXiv</td><td>把逐场景梯度步学进前向 pass 自精修高斯形状，6→42 视图稳定最优</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2609.38592" target="_blank" rel="noopener">StereoGaussians</a></td><td>09-29</td><td>arXiv</td><td>单校正立体对前馈重建，第二高斯层补去遮挡区</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2611.06593" target="_blank" rel="noopener">BudgetSplat</a></td><td>11-04</td><td>arXiv</td><td>保留率可调的前馈 GS，importance+覆盖+跨视图冗余联合建模</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.27712" target="_blank" rel="noopener">RLSplat</a></td><td>10-20</td><td>arXiv</td><td>资源线性预算控制：低预算下 4.1× 快、9.6× 省显存</td></tr>
+    <tr><td><a href="https://arxiv.org/html/2608.02145v1" target="_blank" rel="noopener">UniqueSplat</a></td><td>08 月</td><td>arXiv</td><td>视角条件化的泛化重建（8 月下旬，接上本站既有清单）</td></tr>
+  </tbody>
+</table>
+
+<h3>per-scene 密度控制（从启发式走向“损失感知”）</h3>
+<table>
+  <thead><tr><th>工作</th><th>日期</th><th>出处</th><th>一句话</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://arxiv.org/abs/2611.02044" target="_blank" rel="noopener">Unified Loss-Aware Density Control</a></td><td>11-01</td><td>NeurIPS'26</td><td>用 Taylor 代理预测 split/clone/opacity decay 的损失下降，取代启发式梯度阈值</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.27108" target="_blank" rel="noopener">Occlusion-Aware Densification</a></td><td>10-19</td><td>ACCV'26 Oral</td><td>致密化统计只统计“真的贡献了的”视图，遮挡区 LPIPS 最高 −6%</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.39399" target="_blank" rel="noopener">ACD-GS</a></td><td>10-29</td><td>arXiv</td><td>二阶曲率先验做非对称致密化，高斯数 −60%</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2609.39089" target="_blank" rel="noopener">UGOD</a></td><td>09-30</td><td>arXiv</td><td>逐高斯视角相关不确定度，驱动不透明度调制与 detached dropout 抗稀疏视图过拟合</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2609.39553" target="_blank" rel="noopener">EffGS</a></td><td>09-30</td><td>arXiv</td><td>频率感知引导 + 局部密度控制 + 逐高斯尺度调制，兼顾大场景</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.28615" target="_blank" rel="noopener">KoalaGS</a></td><td>10-20</td><td>NeurIPS'26 Spotlight</td><td>图像复杂度先验引导连续 LoD，跨预算平滑退化</td></tr>
+  </tbody>
+</table>
+
+<h3>压缩 / 流式 / 部署（移动端与分布式成为主战场）</h3>
+<table>
+  <thead><tr><th>工作</th><th>日期</th><th>出处</th><th>一句话</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://arxiv.org/abs/2611.22240" target="_blank" rel="noopener">Cross3DGS</a></td><td>11-17</td><td>WACV'27 W</td><td>Vulkan 跨平台 3DGS 训练：同一优化器在 6 厂商 8 设备（含手机）跑通（深读④）</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2611.10652" target="_blank" rel="noopener">SHIN</a></td><td>11-07</td><td>arXiv</td><td>可扩展层级增量 3DGS：高质档是低质档的“扩展”而非替换</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.14663" target="_blank" rel="noopener">TETRIS-4DGS</a></td><td>10-10</td><td>ICME'26</td><td>4DGS 后训练压缩 40×，秒级完成，codec 友好</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.03162" target="_blank" rel="noopener">Budgeted-GS</a></td><td>10-02</td><td>arXiv</td><td>城市级 factoring tree LOD + 可测量的容量下限（budget-error law）</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.13503" target="_blank" rel="noopener">SplatQ</a></td><td>10-09</td><td>ICLR'27 审</td><td>组合剪枝：QUBO + 模拟退火/伊辛机做联合选择</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.02851" target="_blank" rel="noopener">ByteSplat</a></td><td>10-02</td><td>arXiv</td><td>分布式训练：前后向融合 kernel + 梯度稀疏编码，8 GPU 6.1×</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2611.22805" target="_blank" rel="noopener">DOOM-GS</a></td><td>11-17</td><td>arXiv</td><td>首个大规模动态 GS 的 out-of-core 训练</td></tr>
+  </tbody>
+</table>
+
+<h3>动态 / 4D 与语义 / 机器人</h3>
+<table>
+  <thead><tr><th>工作</th><th>日期</th><th>出处</th><th>一句话</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://arxiv.org/abs/2611.00375" target="_blank" rel="noopener">MoRE-GS</a></td><td>10-30</td><td>WACV'27</td><td>四专家路由 + 持久化门控，预测动态高斯场景未来</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.13860" target="_blank" rel="noopener">Make It Flow</a></td><td>10-09</td><td>arXiv</td><td>光流抬升成 3D 欧拉运动场，静态 3DGS 场景里的水动起来</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.16177" target="_blank" rel="noopener">DIGS</a></td><td>10-12</td><td>NeurIPS'26</td><td>训练自由的开放词汇 3D 分割，LERF-OVS 71.95 mIoU</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2611.01939" target="_blank" rel="noopener">VLSplat</a></td><td>11-01</td><td>NeurIPS'26</td><td>场景图对象级语义先验做语义提升</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2611.10379" target="_blank" rel="noopener">RefineSplat</a></td><td>11-07</td><td>arXiv</td><td>重建引导反馈修 2D 跟踪，对象-高斯对应保持开放词汇查询</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2611.22235" target="_blank" rel="noopener">CoSphere-SLAM</a></td><td>11-17</td><td>arXiv</td><td>多智能体全景相机 GS SLAM，SO(3) 球面回环</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2610.13309" target="_blank" rel="noopener">NovaSplat</a></td><td>10-09</td><td>WACV'27</td><td>无模型 6D 位姿：onboarding 短视频训 3DGS 当模板+可微精修</td></tr>
+    <tr><td><a href="https://arxiv.org/abs/2611.06020" target="_blank" rel="noopener">METRIC-GS</a></td><td>11-04</td><td>arXiv</td><td>真实室内照片的度量尺度估计（量化启发式误差 27%）</td></tr>
+  </tbody>
+</table>
+
+<h2 id="pave">二、深读① PaveSplat：表面对齐协方差 + 单位四元数残差（ACCV'26）</h2>
+<p><strong>动机</strong>：surfel 式前馈 GS（每像素一个高斯）的 3D 协方差由预测深度的切向帧<strong>解析导出</strong>，是深度的确定性函数——深度边缘、细结构、掠射处该帧病态时，没有可学习的朝向修正；且 normal-only 帧的平面内轴不与测量半径对齐。结果：训练分辨率下 1px 最小足迹盖住缝隙，<strong>同一预测在更高分辨率重渲染时暴露为空洞</strong>。</p>
+<p><strong>管线</strong>：骨干 DepthSplat（cost volume + Depth Anything V2）不变；head 加 4 通道输出单位四元数 Δq（仅 +9,512 参数，&lt;0.05%）；μ(u)=o(u)+z(u)·d(u)。</p>
+<p><strong>核心实现细节</strong>：</p>
+<div class="formula">① 表面对齐帧：X(u) = z(u)·K⁻¹ũ / ⟨K⁻¹ũ⟩_z（点图）<br>
+② 切向量 t_x, t_y = Sobel(X)（分量 clamp 到 [−0.1, 0.1]）<br>
+③ 法向 n̂ = normalize(t_x × t_y)（翻转到 ⟨n̂⟩_z ≥ 0）；ê₁ = Gram–Schmidt(t_x, n̂)，ê₂ = n̂ × ê₁ → R_a = [ê₁ ê₂ n̂]<br>
+④ 尺度先验 s̄₁ = ‖t_x‖，s̄₂ = ‖t_y − (t_y·ê₁)ê₁‖；s_i = s̄_i · m_i，m_i = clamp(softplus(·), [1/3, 3])<br>
+⑤ 残差重定向（核心）：R = R_a · R_Δ(Δq)，即 q = q_a ⊗ Δq（右乘 = 局部系）；Δq 恒等初始化（零权重 + 单位四元数偏置）→ 首趟前向精确复现解析帧，学到的 Δq 只修正病态处<br>
+⑥ 协方差：Σ_s = R·diag(s₁,s₂,s_ε)²·Rᵀ，Σ_w = R_c2w·Σ_s·R_c2wᵀ（c2w 只乘一次）</div>
+<p><strong>训练</strong>：RE10K 256×256、2 视图；L = MSE + 0.05·LPIPS；opacity 上限 0.6；150K 步；残差仅 +2% 编码器耗时。注：完整逐像素伪代码在补充材料（未随 arXiv 发布），正文无算法框。</p>
+<p><strong>关键数值</strong>（RE10K，PSNR/SSIM/LPIPS，单高斯/像素组每尺度三项全最优）：1× 27.686/.893/.109；2× 26.493；4× 25.182；8× 24.266/.867/.336（vs SurfSplat 23.342、DepthSplat 15.079）。DL3DV zero-shot 每尺度 PSNR 领跑（8× 20.671 vs 14.388）。机制：残差转角 θ_Δ 均值 9.1°、p99 61.5°（未塌缩）；8× 黑洞率 0.78% vs 1.00%。</p>
+<p><strong>伪代码</strong>（按论文文字整理，Eq.(2)–(6)）：</p>
+<div class="formula">输入: V 张图 (I^v,K^v,T^v) → DepthSplat 骨干（不变）
+1. head 输出: z, o, d, α, m₁, m₂, 颜色 c, Δq_raw(4 通道)
+2. μ(u) = o(u) + z(u)·d(u)
+3. X(u) = z(u)·K⁻¹ũ / ⟨K⁻¹ũ⟩_z                          # Eq.2
+4. t_x = Sobel_x(X); t_y = Sobel_y(X); 分量 clamp [−0.1,0.1]
+5. n̂ = normalize(t_x×t_y); 若 ⟨n̂⟩_z&lt;0 则 n̂ ← −n̂
+6. ê₁ = normalize(t_x−(t_x·n̂)n̂); ê₂ = n̂×ê₁                # Eq.3（退化有 fallback）
+7. R_a = [ê₁ ê₂ n̂];  s̄₁=‖t_x‖;  s̄₂=‖t_y−(t_y·ê₁)ê₁‖      # Eq.4
+8. m_i = clamp(softplus(·),[1/3,3]);  s_i = s̄_i·m_i;  s_ε = 全局尺度下限
+9. Δq = normalize(Δq_raw)                                # 恒等初始化
+10. q = q_a ⊗ Δq;  R = R_a·R_Δ(Δq)                        # Eq.5 右乘=局部系
+11. n̂_c = normalize(R·e₃)                                 # surfel 法向
+12. Σ_s = R·diag(s₁,s₂,s_ε)²·Rᵀ;  Σ_w = R_c2w·Σ_s·R_c2wᵀ   # Eq.6
+输出: {μ,α,q,s,c,Σ_w} → surfel 光栅化 → L = MSE + 0.05·LPIPS</div>
+
+<h2 id="crossp">三、深读② CrossPressor：训练无关的可扩展 anchor 融合（WACV'27）</h2>
+<p><strong>动机</strong>：ZPressor 用 FPS 选 K 个锚视图、其余视图按最近锚融合，只有 K 张锚图进高斯解码器。representation–fusion mismatch = 固定锚集合限制了<strong>解码器侧表征</strong>，却不限制构造它的<strong>支撑证据</strong>：视图增多时支撑侧 K/V 投影与 cross-attention 持续增长。CrossPressor 与 ZPressor 互补：锚表征/解码器/注意力参数全不动，只重排支撑→锚融合，<strong>training-free</strong>（直接作用于官方 checkpoint；s_c=1 时逐 token 精确恢复 dense，36 视图等价性测试最大差异为 0）。</p>
+<p><strong>核心实现细节</strong>：</p>
+<div class="formula">① stride（每簇一次）：s_c ← min{s ∈ {1,2,4,8,16,32,64} : m_c·⌈H/s⌉⌈W/s⌉ ≤ β_KV·T}（Eq.5，β_KV=1.5）<br>
+② coverage-cycled routing：偏移 p = (r_c(v) + κℓ) mod s_c²（Eq.6，κ=5 与 s_c² 互素→最大长度环）；行/列偏移 a=⌊p/s_c⌋、b=p mod s_c；采样位置 Ω = {i≡a, j≡b (mod s_c)}。层内相邻视图偏移 +1（view-wise stagger），跨层 +κ（layer-wise cycle）→ 每视图保留 T/s_c² 个位置、<strong>所有视图都保留</strong>（空间压缩而非整视图丢弃）<br>
+③ 路由放在 K/V 投影之前：被丢弃 token 免去 Norm_KV/Proj_KV/attention，无需先算 dense 注意力分数或学习选择模块（锚侧 Q̂ 仍用原算子）<br>
+④ joint context packing：支撑特征跨层共享，Pack() 在 fusion 循环前一次性 gather 全部 L=6 层上下文为 [L, Ñ_c, C] layer-major 张量（Eq.16）；每层仍各自 Norm_KV/Proj_KV/attention</div>
+<p><strong>复杂度</strong>：dense 每层 O((m_c−1)(TC²+T²C)) → routed O(Ñ_cC²+TÑ_cC) ≤ O(β_KV(TC²+T²C))，主导项与视图数解耦。</p>
+<p><strong>关键数值</strong>（MVSplat–ZPressor，RTX 4090，β_KV=1.5）：256 视图 cross-view 融合 125.28→4.80 ms（26.12×，QK 保留 1.85%）；端到端 432.16→303.18 ms（1.43×）；质量 p5 ΔPSNR −0.0063 dB（对照 Zero-TPrune 18.12× 但 p5 −0.1666 dB）；融合显存峰值 653→170.8 MiB（−73.8%）；迁移 DepthSplat–ZPressor 256 视图 2.95×、ACID 24.91×。</p>
+<p><strong>伪代码</strong>（按论文文字整理，Eq.1–16）：</p>
+<div class="formula">输入: 视图特征 {F_v}, β_KV=1.5, κ=5, L=6, D={1,2,4,8,16,32,64}
+1. FPS 选 K 锚视图 + 最近邻分簇; 簇 c 支持视图按输入索引升序 → 秩 r_c(v)
+2. 对每簇 c:
+3.   s_c ← min{s∈D : m_c·⌈H/s⌉·⌈W/s⌉ ≤ β_KV·T}            # Eq.5
+4.   for ℓ=0..L−1, v∈S_c:
+5.     p ← (r_c(v) + κ·ℓ) mod s_c²                          # Eq.6
+6.     a ← ⌊p/s_c⌋;  b ← p mod s_c                          # Eq.7-8
+7.     Ω_{c,v}^ℓ ← {(i,j): i≡a, j≡b (mod s_c)}              # Eq.9
+8.   {M̃_c^ℓ} ← Pack({F_v},{Ω_{c,v}^ℓ})     # 一次性 gather 成 [L,Ñ_c,C]  # Eq.16
+9.   Q_c^0 ← F_{a_c}
+10.  for ℓ=0..L−1:
+11.    Q̂ ← Proj_Q^ℓ(Norm_Q^ℓ(Q_c^ℓ))        # 锚 query 通路原样
+12.    K,V ← Proj_KV^ℓ(Norm_KV^ℓ(M̃_c^ℓ))    # 只对压缩支撑序列投影
+13.    Q_c^{ℓ+1} ← ZPressor block(Q_c^ℓ + Attn^ℓ(Q̂,K,V) + 后续操作)
+输出: K 个更新锚特征 → 原高斯解码器（393,216 高斯不变）</div>
+
+<h2 id="hand">四、深读③ InstantHand：单图前馈可动画手部 avatar（NeurIPS'26）</h2>
+<p><strong>动机</strong>（原文引用）：① "Image-averaged losses provide insufficient supervision for alpha leakage, which thickens thin finger contours"——图像平均损失对 alpha 泄漏监督不足 → 手指变粗；② "colors regressed from image features can drift toward a learned prior even in observed regions"——特征回归的颜色在可见区域也向先验漂移。</p>
+<p><strong>管线</strong>：单图 + MANO/相机/掩码估计 → 冻结 DINOv3 提特征，2 个 1×1 卷积融合成 256 个 1024 维 tokens；MANO(β,θ_mean) 网格 k=3 次细分取 49,281 顶点为 query 锚点（八倍频正弦点嵌入 d=512）；双流条件 Transformer：Z^g=Φ_g(Q;F_s)（2 个 SD3 joint-attention 块）、Z^a=Φ_a(Z^g;F_s)（单层 cross-attn）。解码头：x_i=q_i+0.008(sigmoid(·)−0.5)（每轴 ±4mm），s_i=clamp(exp(f_s), 5e-4, 0.008) 各向同性，α₀=1、r₀=(1,0,0,0) 固定。MANO 驱动变形 W 后渲染 R。</p>
+<p><strong>核心实现细节（两大正则）</strong>：</p>
+<div class="formula">① Soft Alpha Band（SAB，Eq.16）：B_out = GT 掩码外 2px 膨胀带，B_in = 内 2px 腐蚀带<br>
+L_band = η(n)·( λ_out·Avg_{B_out} ψ([A−τ_out]_+) + λ_in·Avg_{B_in} ψ([τ_in−A]_+) )<br>
+ψ = smooth-L1（转折 0.03/0.05），τ_out=0.03、τ_in=0.60，λ_out=0.25、λ_in=0.05，η(n) 前 5000 步 0、5000–12000 步线性升到 1<br><br>
+② Reliability-gated Appearance Transfer（Eq.7–13）：7×7 窗口 footprint 聚合 w_i(p)=exp(−‖p−u_i‖²/2σ_i²)，σ_i=max(投影半径/2, 0.5px)<br>
+双门：γ_i = min(√C_i·m_i / P₉₅({√C_j·m_j}_{j∈O}), 1)·1[i∈O]，O={j: C_j&gt;0.5·med(C_+), m_j&gt;0.5}（渲染贡献 + 掩码支持）<br>
+合成（Eq.13）：c_i* = c_i⁰ + g_i·γ_i·(c_i^obs−c_i⁰) + Δ_s^aid，只改颜色；g_i 头 bias 初始化 −1.5，δ_i=0.1tanh，clip[0,1]</div>
+<p><strong>两阶段训练</strong>：Stage1：L_can = L_rec + 0.6L_sil + L_geo + L_band（L_rec=1.0(L1+0.2LPIPS) mask-aware；L_geo=0.1L_off+10⁴L_lap+0.75L_scale）；20k 步 bs6/GPU×4，lr 3e-4→0.1×，约 25h。Stage2 冻结 Stage1 全部：L_app = 1.0L1^src + 0.5LPIPS^src + 0.05L_stat + 1.0L1^novel + 0.25LPIPS^novel（L_stat = DINOv3 前景掩码特征通道均值/方差 MAE）。数据：InterHand2.6M/HO3Dv3/Goliath/HARP/PALM（304 人、339,532 帧）+ 合成数据（仅 Stage2）。</p>
+<p><strong>关键数值</strong>：InterHand2.6M 26.21/0.866/0.133（PSNR/SSIM/LPIPS），追平并超过 per-subject 最优 OHTA；HanCo 零样本 20.18/0.836/0.188；重建 2.84s（快 1964×/1183×/486×）、160.71 FPS、显存 1.79GB；消融 w/o SAB −2.32dB、w/o γ −3.03dB、w/o g −1.69dB。</p>
+<p><strong>伪代码</strong>（按论文文字整理，Eq.1–16）：</p>
+<div class="formula">输入: I_s, MANO(β,θ_s), K_s,T_s, 掩码 M_s
+1 F_s ← E_img(I_s)                    # 冻结DINOv3 + 2×1×1卷积 → 256×1024 tokens (Eq.1)
+2 {q_i} ← Vert(S_3(MANO(β,θ_mean)))   # k=3细分, N=49,281 锚点 (Eq.2)
+3 Z^g ← Φ_g(Q;F_s);  Z^a ← Φ_a(Z^g;F_s)          # 双流条件Transformer (Eq.3)
+4 x_i ← q_i + 0.008(sigmoid(f_Δ(z_i^g))−0.5);  s_i ← clamp(exp(f_s(z_i^g)), 5e-4, 0.008)
+5 c_i^0 ← sigmoid(f_rgb(z_i^a));  α0=1, r0=(1,0,0,0)   # 规范高斯 G^can (Eq.4-5)
+6 (Î_s, {Ω_i}, {C_i}) ← R(W(G^can;θ_s,β); K_s,T_s)    # 源视角渲染→footprint/贡献 (Eq.6)
+7 c̄_i^src ← Agg_{Ω_i}(I_s;M_s); c̄_i^ren ← Agg_{Ω_i}(Î_s;M_s); f_i^x ← Agg_{Ω_i}(F_s^x;M_s)
+8 m_i ← Agg_{Ω_i}(M_s;1);  O ← {j : C_j&gt;0.5·med(C_+), m_j&gt;0.5}
+9 γ_i ← min(√C_i·m_i / P₉₅({√C_j·m_j}_{j∈O}), 1)·1[i∈O]   # 渲染贡献门控可靠度 (Eq.8)
+10 z_i^loc ← f_loc([c̄_i^src, c̄_i^ren, c̄_i^src−c̄_i^ren, f_i^x, γ_i])
+11 t_s^aid ← MLP(全局外观统计);  Z̃^a ← U(Z^a; Z^loc, t_s^aid);  D_s ← B(t_s^aid)
+12 h_i ← U_c(z_i^loc, z̃_i^a, t_s^aid, c_i^0, D_s)
+13 (c_i^obs, g_i, δ_i) ← f_out(h_i);  Δ_s^aid ← mean_i(δ_i)
+14 c_i* ← g_i[γ_i c_i^obs+(1−γ_i)c_i^0] + (1−g_i)c_i^0 + Δ_s^aid;  clip[0,1]  (Eq.13)
+15 渲染: Î_t ← R(W(G^can|_{c^0←c*}; θ_t,β); K_t,T_t)             (Eq.14)
+# 训练: Stage1 最小化 L_can(含SAB Eq.16); Stage2 冻结Stage1, 最小化 L_app (Eq.17)</div>
+
+<h2 id="cross3">五、深读④ Cross3DGS：跨平台 Vulkan 3DGS 训练（WACV'27 W）</h2>
+<p><strong>动机</strong>（原文引用）："requires more than translating kernels"——subgroup 宽度、float32 atomic add、storage-buffer 范围、batched command submission 的可靠性因 GPU/驱动而异，决定名义等价的步骤能否完成并返回<strong>正确</strong>的 update（错误梯度也可能得到合理 PSNR，所以论文直接测 update 本身）。VkSplat 需 ≥32 lane subgroup 且无移动 host；Brush 超出 Adreno740 的 128-MiB storage-buffer 范围。</p>
+<p><strong>管线</strong>：θ⁺ = U(θ,I)；U = projection → tile binning + radix sort → alpha 合成 → loss → 梯度 → Adam；MCMC 稠密化每 100 步、在 U 之外。schedule = 6 个选项各取一值共 256 种：梯度方法 8 值、command submission（batched 8 updates / fenced）、训练图（resident/streamed）、radix sort（subgroup/portable）、projection+Adam（fused/split）、pair dispatch（indirect/direct）。</p>
+<p><strong>两步选择机制（核心）</strong>：① 13 条规则排除不可行——5 设备限制（如 native atomic 需 float32 atomic add；tiled 需 48 KiB 共享内存 + ≥8 lane subgroup）+ 4 负载（图像 fit 单 storage buffer 才可 resident；SH 两 buffer 之一放不下即拒训）+ 4 driver 规则（全绑定 Qualcomm，记录 limit 之外的实测故障：scatter failure / watchdog timeout / sort key 损坏 / device fault）；② 固定偏好序 P 选 c* = P(A_E)，<strong>不在设备上计时</strong>，AMD/Intel 有专属序，无可行解则拒绝训练。实选例 Adreno740：per-splat+CAS、fenced、streamed、portable sort、split、indirect（可行集淘汰链 256→128→32→6）。</p>
+<p><strong>实现</strong>：C++20 单库 + 自研 Vulkan 1.1 runtime，运行时 GLSL→SPIR-V 1.3；固定容量 buffer 常驻 GPU、command buffer 录一次重放、无逐更新分配/CPU 回读。内存 1180 B/高斯槽 × 1M = 1.18 GB（bicycle 全程 2.13 GB）。8 配置 6 厂商：PRO6000、Iris Xe/UHD730、Mali G1-Ultra、Adreno740、RX9070XT（RADV）、M5Pro/A14（经 MoltenVK）。一致性验证：|q̂−q| ≤ ε_abs + ε_rel|q|；同 GPU exact pair gather 最大差 3.4e-8（梯度）/1.5e-6（Adam）；CPU 双精度 oracle 1.6e-5；负控制（漏一 tile partial）→ 29,921 例违反。</p>
+<p><strong>关键数值</strong>：11 场景 Macro PSNR 27.86/27.79/27.90（Cross3DGS/VkSplat/Brush），对 VkSplat +0.074 dB、时间差 4.4s（CI 含 0）；Brush 约 3×（426 vs 136.8 s/场景）。bicycle 115s（工作站）→ 2.36–3.23h（Android×2+iPhone）；8 设备 PSNR span 0.019 dB。App：Android ARCore + CPU COLMAP、iOS ARKit；28–46 分钟出可看模型（SfM 占 19–30 分钟）。</p>
+<p><strong>伪代码</strong>（按论文文字整理，§3–§4，论文无算法框）：</p>
+<div class="formula">choose_schedule(device d, workload W):
+  C ← 全部 256 个 schedule（6 选项各取一值的组合）        # Table 1
+  C_d ← 查询 Vulkan 设备限制   # subgroup宽/共享内存/storage-buffer范围/float32原子加/厂商
+  for j in 1..13:                                          # 5设备限制+4负载+4driver规则
+    for c in C:
+      if H_j(c, C_d, W) == 0: C.remove(c)                  # 式(2)
+  if C == ∅: 拒绝训练
+  c* ← P(C)                    # 固定偏好序：按Table 1列序逐项比较取列首值；不在设备上计时
+  记录 c* 与完整可行集（供复现）
+train_loop():
+  for update in 1..30_000:
+    if update % 100 == 0: MCMC 稠密化                      # 在 U 之外
+    θ ← U(θ, I) 按 c* 执行    # projection→tile binning+radix sort→alpha合成→loss→梯度→Adam
+  # 离线一致性: 同GPU exact pair gather; CPU双精度oracle; 式(3)容差</div>
+
+<h2 id="link">六、与既有结论的衔接：这三个月更新了什么</h2>
+<ul>
+  <li><strong>前馈线爆发式扩容</strong>：八月以来前馈重建出现“质量（PaveSplat 残差协方差）— 扩展性（CrossPressor 训练无关融合）— 效率（GradSplat 前向内梯度自精修）— 成本（BudgetSplat/RLSplat 预算可控）”四个子方向，印证调研结论“前馈竞争焦点转向数据与 scaling”；且 PaveSplat/GradSplat 都在把<strong>逐场景优化的机制学回前馈网络里</strong>（残差校正、梯度步），两个范式的边界在变模糊。</li>
+  <li><strong>per-scene 的“致密化旋钮”被系统化</strong>：本站 per-scene 页指出旋钮②（密度控制）是核心战场；这三个月出现损失感知（Taylor 代理）、遮挡感知、曲率感知三条理论化路线，正在替换原版启发式 clone/split。</li>
+  <li><strong>压缩从“模型瘦身”走向“codec/流式/预算”</strong>：TETRIS-4DGS 直接用图像/视频 codec、SHIN 做增量层级、Budgeted-GS 提出可测量的容量下限——与移动端部署（Cross3DGS、Seele）合流。</li>
+  <li><strong>系统实现（L3）成为独立热点</strong>：Cross3DGS（跨平台训练）、ByteSplat（分布式）、DOOM-GS（out-of-core）说明 3DGS 的工程竞争已经从 CUDA 单机走向多设备与集群。</li>
+  <li><strong>机器人/理解交叉持续加深</strong>：NovaSplat（6D 位姿）、2DGS-Planner（路径规划）、CoSphere-SLAM（多机建图）、DIGS/VLSplat（开放词汇）——3DGS 正在变成机器人世界的“可渲染地图标准”。</li>
+</ul>
+
+<div class="note"><strong>方法说明</strong>：一览表来自 arXiv API（ti:"gaussian splatting"，提交时间倒序，三页共 170 条）人工精选；四篇深读的实现细节、公式、数值均逐字核对论文 HTML v1（PaveSplat 另核 PDF/TeX 源码），四篇均无 Algorithm 环境，伪代码按论文文字整理并标注。原文留存：<code>raw/reading/</code>。</div>
+
+<p><a href="../index.html">← 返回首页</a></p>
+</main>
+<footer><p>gs-reading-site ｜ 最新进展页 ｜ 数据快照 2026-11-21</p></footer>
+</body>
+</html>

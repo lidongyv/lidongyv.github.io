@@ -266,19 +266,28 @@ Sitemap: https://lidongyv.github.io/sitemap.xml
 # --------------------------------------------------------------------------
 def main():
     made = []
-    print("[1/5] assets")
+    print("[1/6] assets")
     made += assets()
 
-    print("[2/5] og images")
+    print("[2/6] og images")
     made += og_images()
 
-    print("[3/5] pages")
+    print("[2/6] design subsites")
+    import design
+    d_made, d_skipped = design.build()
+    for m in d_made:
+        print("      %-22s %4d files %7.2f MB" % (m["entry"]["slug"], m["files"], m["mb"]))
+    for s in d_skipped:
+        print("      SKIPPED %-18s %s" % (s[0], s[1]))
+
+    print("[3/6] pages")
     posts = R.load_posts(os.path.join(HERE, "posts"))
     print("      posts:", len(posts))
 
     for lang in ("zh", "en"):
         home_file = "index.html" if lang == "zh" else "en/index.html"
         made.append(w(home_file, R.render_home(lang, posts)))
+        made.append(w(url(lang, "design/index.html").lstrip("/"), R.render_design_index(lang)))
         made.append(w(url(lang, "experience.html").lstrip("/"), R.render_experience(lang)))
         made.append(w(url(lang, "publications.html").lstrip("/"), R.render_publications(lang)))
         made.append(w(url(lang, "projects.html").lstrip("/"), R.render_projects(lang)))
@@ -310,9 +319,12 @@ def main():
         pages.append((lang, "opensource.html", "0.8"))
         pages.append((lang, "about.html", "0.8"))
         pages.append((lang, "blog/index.html", "0.7"))
+        pages.append((lang, "design/index.html", "0.6"))
         if lang == "zh":
             for p in posts:
                 pages.append((lang, "blog/%s.html" % p["slug"], "0.6"))
+    for d in R.DESIGN:
+        pages.append(("zh", "design/%s/index.html" % d["slug"], "0.5"))
     made.append(w("sitemap.xml", sitemap(pages)))
     made.append(w("robots.txt", robots()))
     made.append(w(".nojekyll", ""))

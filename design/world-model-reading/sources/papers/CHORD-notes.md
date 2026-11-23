@@ -1,0 +1,252 @@
+# CHORD 精读笔记（arXiv 2601.04194）
+
+> 数据源：`auto_docs/papers/txt/CHORD.txt`（64,813 字符，18 页）。所有行号指该 txt 的行号；英文引用均逐字复制（含原文换行连字符与空格缺失等提取痕迹）。【推断】为笔者解读；「原文未写」表示论文中未出现该内容。
+
+## 1. 原文信息
+
+- 标题（L1）："Choreographing a World of Dynamic Objects"
+- 作者与机构（L2–4）：
+  > "Yanzhe Lyu1,∗,† Chen Geng1,∗ Karthik Dharmarajan1 / Yunzhi Zhang1 Hadi Alzayer1,3 Shangzhe Wu2 Jiajun Wu1 / 1Stanford University 2University of Cambridge 3University of Maryland"
+- 贡献与作者脚注（L23–25）：
+  > "∗Equal contribution. †Work was done when Y . Lyu was a visiting student at Stanford University. Y . Lyu is currently with the University of Science and Technology of China."
+- 编号与日期（L42）：
+  > "arXiv:2601.04194v1  [cs.CV]  7 Jan 2026"
+- 项目主页（L8–9；L33–34）："Project page:https://yanzhelyu.github.io/chord"
+- 发表状态：原文未写（全文仅出现 arXiv v1 预印本信息，未提及任何会议/期刊录用或投稿状态）。
+- 名称释义：CHORD = "forCHOReographingDynamic objects and scenes"（L14–16）。
+
+## 2. Abstract 全文逐字（L11–34）
+
+> "Dynamic objects in our physical 4D (3D + time) world
+> are constantly evolving, deforming, and interacting with
+> other objects, leading to diverse 4D scene dynamics. In this
+> paper, we present a universal generative pipeline,CHORD,
+> forCHOReographingDynamic objects and scenes and syn-
+> thesizing this type of phenomena. Traditional rule-based
+> graphics pipelines to create these dynamics are based on
+> category-specific heuristics, yet are labor-intensive and not
+> scalable. Recent learning-based methods typically demand
+> large-scale datasets, which may not cover all object cate-
+> gories in interest. Our approach instead inherits the uni-
+> versality from the video generative models by proposing a
+> ∗Equal contribution. †Work was done when Y . Lyu was a visiting
+> student at Stanford University. Y . Lyu is currently with the University of
+> Science and Technology of China.
+> distillation-based pipeline to extract the rich Lagrangian
+> motion information hidden in the Eulerian representations
+> of 2D videos. Our method is universal, versatile, and
+> category-agnostic. We demonstrate its effectiveness by con-
+> ducting experiments to generate a diverse range of multi-
+> body 4D dynamics, show its advantage compared to exist-
+> ing methods, and demonstrate its applicability in generat-
+> ing robotics manipulation policies. Project page:https:
+> //yanzhelyu.github.io/chord"
+
+一句话概括：把「视频模型欧拉式像素表示里隐藏的拉格朗日运动信息」蒸馏出来，做成一个通用、无类别先验的 4D 场景动画管线，并用于机器人操控。
+
+## 3. 问题与动机：为什么从 2D 视频蒸馏拉格朗日运动
+
+论文的动机链是：4D 交互运动数据稀缺 → 数据驱动方法只能做单体 → 转向蒸馏视频生成模型这个「不用大规模 4D 数据集」的替代路径。
+
+- 任务重要性（L36–41）：
+  > "Humans and other embodied agents live in a 4D (3D + time) world, a world composed of a diverse range of dynamic objects,i.e., objects that can evolve, deform, or interact with other objects. Creating 4D motions for both object deformations and interactions is crucial when building 3D world models for robotics [48, 74] and embodied AI [36]."
+- 手工建模昂贵（L44–46）：
+  > "Traditionally, it has been challenging to generate such motions for a scene composed of dynamic objects in their static snapshots because it requires extensive manual modeling and expert labor."
+- 数据稀缺（L49–56）：
+  > "However, most existing datasets [13] focus on the internal deformations and evolutions of an individual object with little to no coverage on their interactions, and 4D data describing both deformations of objects and object interactions is extremely rare. This scarcity on scene-level 4D dynamics has rendered existing data-driven approaches into only being capable of generating dynamics of a single object."
+- 转向蒸馏（L57–67）：
+  > "Inspired by the recent success of general-purpose video generative models, we use a different approach to tackle this problem: distilling these scene motions from video generative models. At a high level, we iteratively optimize the low-level Lagrangian deformations of each object. At each optimization step, we deform the 3D scene and render it from certain viewpoints, and let video generative models judge whether the deformation is plausible. Through this process, we essentially leverage video models as a high-level “choreographer” to plan the motions of individual objects and make them consistent with each other."
+- 「拉格朗日 vs 欧拉」术语在全文仅出现三处：摘要（L26–27 "the rich Lagrangian motion information hidden in the Eulerian representations of 2D videos"）、引言（L61 "the low-level Lagrangian deformations of each object"）、L113 "physically-grounded Lagrangian deformation trajectories of real-world objects"。论文未给出二者的形式化定义（原文未写）。【推断】拉格朗日=附着于每个对象的变形/轨迹描述（本文即每对象的控制点 SE(3) 变形序列），欧拉=固定在像素/网格上的视频观察；蒸馏的实质是把视频模型的像素级「运动感」转化为逐物体可驱动的几何轨迹。
+
+## 4. 方法逐机制
+
+### 4.1 任务定义与总体管线
+
+- 输入输出（L181–187）：
+  > "Given a 3D scene containing multiple dynamic objects represented by their static 3D snapshots, along with a text prompt describing how the scene should change over time (e.g., a man facing a lamp with the prompt “the man lowers the head of the lamp with his hand”), our goal is to generate a sequence of temporal deformations that drive the objects so that the resulting 3D animations aligns with the prompt."
+- 总体思路（L188–191）：
+  > "We iteratively optimize a 4D scene motion representation using guidance signals distilled from a video generative model."
+- 三组件（L192–196）："a strategy for distillation from modern rectified flow-based video generative models (Sec. 3.2), a robust and general 4D scene motion representation (Sec. 3.3), and regularization terms to ensure stable optimization (Sec. 3.4)."
+
+### 4.2 SDS 基础与面向 Rectified Flow 的蒸馏
+
+- SDS 回顾（L197–215）：
+  > "The Score Distillation Sampling method [53] was introduced to distill 3D assets from image diffusion models [24]. At each iteration, an imagezis rendered from the 3D asset parameterized byθ. Gaussian noiseϵis then added to produce a noisy imagez τ , where the noise levelτis uniformly sampled from(0,1). … SDS updatesθwith the following gradient: ∇θLSDS(θ;z,y) =E τ,ϵ [w(τ) (ˆϵ(zτ ;τ,y)−ϵ) ∂z/∂θ], (1) wherew(τ)is a weighting function."
+  > "Extending this idea to 4D generation follows the same principle: at each iteration, a video is rendered from the 4D asset, blended with noise, and then passed through the diffusion model, which provides gradients to update the 4D representation."
+- 障碍与对策（L217–223）：
+  > "The above-mentioned 4D SDS algorithm is conceptually simple, yet it is non-trivial to apply them to distill from modern video generative models. The major obstacle is the gap between the diffusion architecture used in the original SDS target and the Rectified Flow (RF)-based model architecture in modern video generative models, such as Wan 2.2 [65] used in our paper."
+- RF-SDS 更新规则（式 2）（L224–236）：
+  > "To mitigate this architectural gap, we derive a novel SDS target for RF models. … ∇θLRFSDS(θ;z,y) = Eτ,ϵ [w(τ) (ˆv(zτ ;τ,y)−ϵ+z) ∂z/∂θ], (2) whereτis the noise level uniformly sampled from(0,1), w(τ)is the corresponding weight in the training schedule, ϵis the added noise,z τ = (1−τ)z+τ ϵdenotes the noisy video, andˆv(zτ ;τ,y)is the predicted velocity."
+- 关键观察：按 w(τ) 归一化密度采样噪声水平（L237–246）：
+  > "A domain-specific noise sampling strategy is critical for this target to work well on our objective of optimizing scene deformations. We observed that the deformations are prone to be generated at higher noise levelsτ, as significant changes only happen when substantial noise is added. Based on this observation and the properties of w(τ), instead of samplingτuniformly, we perform sampling according to a probability density functionˆw(τ) = 1/(∫∞−∞ w(τ) dτ) w(τ), which is the normalized form ofw(τ)."
+- 退火实现（L274–295）：
+  > "Practically, this noise sampling strategy is implemented with an annealing noise schedule [26, 62] during the optimization. At each optimization stepiout of entireIiterations, we setτto be a fixed noise levelτ i, which is obtained by solving: h(τi) = 1− i/I+1 , (4) whereh(τ) = ∫τ−∞ ˆw(t) dtis the cumulative distribution function (CDF) ofˆw(τ). This creates an annealing schedule in whichτgradually decreases over training, enabling coarse motion to form early and allowing fine deformations to be refined in later iterations."
+  （式 3 的 W-RFSDS 形式见 L274–282：权重项被消去以保证梯度期望不变。）
+
+### 4.3 层级 4D 表示
+
+- 动机与总体结构（L296–310）：
+  > "Most existing 4D representations are highly unstable to optimize with the W-RFSDS target described above. Therefore, we introduce a hierarchical 4D representation that leverages natural locality of deformations in both spatial and temporal domain to stabilize the optimization process. Our representation is composed of two components: a geometric representation of canonical shapes and a 4D motion representation that deforms the canonical geometry in different frames. The canonical shape of our 4D representation is represented with 3D-GS [31]. Specifically, givenNmesh inputs, we convert them into 3D-GS models S={G i}Ni=1 by optimizing directly on multi-view images rendered from the meshes, where eachG i denotes a converted 3D-GS model."
+- 每对象独立变形场（L316–320）：
+  > "At timet, the canonical 3D geometry is deformed with a set of deformation fields to represent the 4D motion of the 3D-GS sceneS. The set of deformation fields at timetis denoted byD t ={T ti }Ni=1, whereT ti denotes the deformation for objectiat timet."
+- 空间层级：控制点（L324–337）：
+  > "The deformation fieldsT ti are spatially high-dimensional, and we reduce the dimensionality of this representation with a hierarchical control point-based representation. Inspired by SC-GS [27], we representT ti with a coarse level and a fine level of control points — a sparse set of spatially-grounded blobs that controls a local spatial region of deformations. The coarse level of control points roughly dictates how an object will deform, and the fine level adds more details to the deformation."
+  > "Specifically, each control point is defined by a meanp and a covariance matrixΣ, which together determine its radius of influence. In addition, each control point maintains a sequence of deformations(R t,T t)inSE(3)."（变形通过线性混合蒙皮式(5)–(7)作用到每个高斯：位置 μt 与四元数 qt 的插值公式，L338–364。）
+- 粗到细优化（L365–378）：
+  > "We optimize the bi-level sets of control points in a coarse-to-fine manner, following the noise schedule defined in Eq. (4). Whenτis large during the optimization process, substantial motion can be generated; however, the SDS gradients produced at such noise levels are often noisy. Conversely, whenτis annealed to a lower value, the gradients become more stable but are less capable of producing substantial deformations. … we only optimize the coarse level of control points at earlier iterations whenτis large, and we introduce the fine control points later, onceτbecomes smaller, to append their residual deformations"
+  （细层残差按式(8)–(9)叠加。）
+- 时间层级：Fenwick 树（L386–400）：
+  > "We further observe that deformations of later frames are challenging to learn if(R t, Tt)of frametare modeled independently from other frames. This can be explained by the fact that all deformations are initially initialized as zero vectors and the parameters of the first frame are kept frozen, leading to the significant deviation of deformations in later frames. To alleviate this issue, we represent the sequence of deformations for each control point(Rt, Tt)with the Fenwick tree, a hierarchical data structure from theoretical algorithm design [18]. As illustrated in Figure 4, for each control pointk, we maintain nodesF k ={(r [j]k , T[j]k )}Tj=1, where each node encodes the accumulated deformation over a specific range of frames."
+  > "This range-based decomposition allows deformations at different frames to share parameters through overlapping intervals, greatly improving temporal coherence and enable the learning of long-horizon motion."（L400–424）
+- 查询合成（L425–435）：
+  > "The final deformation at frametis obtained by composing all relevant nodes: T tk = Σj∈BIT(t) T [j]k, (10), rtk =norm(Σj∈BIT(t) r[j]k), (11), where BIT(t)denotes the set of active nodes returned by the Fenwick query operation, and norm(·)ensures that the summed result forms a valid quaternion."
+- 高斯→网格迁移（L382–385）：
+  > "After training, the deformation learned with Gaussians can be directly transferred to deform meshes. Concretely, we deform the mesh vertices using Eq. (5) by substituting the Gaussian means with the vertex positions."
+
+### 4.4 正则化
+
+- 两个正则（L436–440）：
+  > "We introduce two regularization terms to further stabilize the optimization process: a temporal regularization loss to enforce smoothness over time and a spatial regularization loss to encourage local spatial consistency."
+- 时间正则（L441–456）：同时渲染 3D 流图视频 F（把高斯颜色属性替换为 μti−μt+1i），损失为
+  > "Ltemp = Σt Σp ||F tp ||2^2, (12), where the inner summation is over all pixelsp, andF tp represents the rendered 3D flow at pixelpand timet."
+- 空间正则（L457–477）：物体表面附近均匀点云 + ARAP：
+  > "To ensure spatially uniform regularization, we generate a uniformly distributed point cloud near the surface of each objecti, deform it using the learned motion, and compute an As-Rigid-As-Possible (ARAP) loss [59] over the resulting sequence of deformed point clouds. … LARAP = Σi,t,x∈Si,y∈Nx ||x−y−ˆRx(xt −y t)||2^2, (13), whereN x denotes the set of the 10 nearest neighbors ofx inS i, and ˆRx is the estimated local rotation matrix atx."
+
+### 4.5 多体动力学生成
+
+多体交互不靠物理引擎，而是靠「视频模型当编舞」+ 每对象独立变形场 + 正则化实现跨物体一致性。核心机制即 L65–67 的 choreographer 表述与 L316–320 的逐对象变形场集合；单次生成 41 帧（L1097–1098）。长时程扩展（L554–558）：
+  > "By using the last frame of the generated deformation as the input state for the subsequent generation process, we can extend our method to produce longer motion sequences. In Figure 1, we show an example motion sequence consisting of four actions."
+真实物体动画（L559–563）：
+  > "Since our method distills a video generative model trained extensively on real-world video data, it is robust and can be applied to animate scanned real-world objects without concern for the gap between synthetic and real-world data, as shown in Figure 6."
+
+### 4.6 用于机器人操控策略
+
+- 论文中的表述（L111–117）：
+  > "Beyond visual generation, our pipeline also enables the robot manipulation in the physical world by generating physically-grounded Lagrangian deformation trajectories of real-world objects. We demonstrate this by leveraging the generated 3D trajectories to plan the motion of a real robot and showing that they can guide zero-shot manipulation of diverse dynamic objects."
+- 具体流程（L595–607）：
+  > "We demonstrate that the dense object flow generated by our method can be utilized as guidance for manipulation of rigid, articulated, and deformable objects, as shown in Figure 7. We first use an off-the-shelf grasp planner [17] to propose a grasp on the relevant object. Then, the robot either grasps the object or moves to a pose for pushing the object, which is at an offset from the proposed grasp. Constrained by a rigid attachment forward model, where relative transformations of the end-effector also apply to the initial points on the object, a motion planner [32] solves for a sequence of end-effector poses to minimize an objective consisting of transformed points to dense flow alignment, reachability, and pose smoothness costs."
+  【注】"the dense ob-" 跨行，句首在 L595–596。操控实现细节见附录 A.2（L1115–1119）：直接扫描真实物体或按尺寸统计制作「digital cousins」。
+
+### 4.7 实现与训练超参（附录 A.1，抄录关键数值）
+
+- 模型与规模（L1096–1098）：
+  > "We adopt the Wan 2.2 (14B) image-to-video model [65] as our video generation model. All training is conducted at a resolution of832×464(the default for Wan 2.2), and deformation sequences of41frames are optimized."
+- 学习率与权重衰减（L1107–1114）：
+  > "The learning rate for the deformations stored in the Fenwick tree decays from0.006to0.00006. The learning rate for the scales of the control points follows the same decay (from0.006to0.00006), while the learning rate for rotations decays from0.003to0.00003. The CFG [23] scale is linearly decayed from 25 to 12. The weight for the temporal regularization loss is decayed from9.6to1.6, and the weight for the spatial regularization loss is decayed from3000to300." … "|S i| ≈7500. Each asset is trained for 2,000 iterations with a batch size of 4, requiring approximately20hours on an NVIDIA H200 GPU."
+- 拆分训练（L1105–1106）："at a iteration 100, we reinitialize all deformations after 30 to the deformation at 30"
+
+## 5. 实验与主结果（全部数值）
+
+基线（L487–504）：Animate3D、AnimateAnyMesh、MotionDreamer（两种后端：DynamiCrafter 与 Wan 2.2 复现）、TrajectoryCrafter（先 Wan 2.2 生成视频→重定向相机轨迹→4D 重建）。六个场景（L505–509）：“A man petting a dog”、“A cat stepping on a cushion”、“A sealion nudging a ball”、“A block falling on a trampoline”、“Two men shaking hands”、“A robot picking up a block”。
+
+表 1 主结果（L518–525，原文数值逐字抄录）：
+
+| 方法 | User Study Alignment↑ | User Study Realism↑ | SA↑ | PC↑ |
+|---|---|---|---|---|
+| Animate3D | 0.34% | 0.51% | 3.83 | 3.42 |
+| AnimateAnyMesh | 1.01% | 0.51% | 3.5 | 4.5 |
+| MotionDreamer (DC) | 0.51% | 0.84% | 3.42 | 4.08 |
+| MotionDreamer (Wan) | 0.84% | 0.34% | 3.5 | 3.83 |
+| TrajectoryCrafter | 9.60% | 10.44% | 4.17 | 3.83 |
+| CHORD (Ours) | 87.71% | 87.37% | 4.33 | 4.25 |
+
+【注】txt 原文中 AnimateAnyMesh 行为 "3.54.5"、CHORD 行为 "4.334.25"，两列数值连排无分隔符；按正文 "our method achieves the highest score in SA and the second-highest score in PC"（L545–546）与 "AnimateAnyMesh achieves the highest Physical Commonsense (PC) score"（L547–548）判定：AnimateAnyMesh SA=3.5/PC=4.5，CHORD SA=4.33/PC=4.25。
+
+正文结论（L540–550）：
+  > "We perform a user study with 99 participants to compare the quality of our method with the baselines. Additionally, we utilize VideoPhy-2 [5] to automatically evaluate the rendered videos from two aspects: Semantic Adherence (SA) and Physical Commonsense (PC). As shown in Table 1, our method achieves the highest score in SA and the second-highest score in PC. Note that AnimateAnyMesh achieves the highest Physical Commonsense (PC) score due to its common failure mode, where objects remain static—an outcome that aligns with physical commonsense but fails to follow the given prompt."
+
+定性结论与基线分析（L526–539）：
+  > "Our method exhibits stronger prompt alignment and generates more natural motion compared to existing approaches. Animate3D and AnimateAnyMesh fail to generate results that align with the given prompts, as they have not been extensively trained on 4D data containing multiple objects. MotionDreamer suffers from severe artifacts due to errors in diffusion feature matching when fitting meshes. Although 4D reconstruction from videos sampled via TrajectoryCrafter yields motions that follow the prompts, the results suffer from strong temporal inconsistencies and unnatural dynamics due to discrepancies among videos generated under different camera trajectories. This highlights the necessity of distilling a video model in our method."
+
+用户研究原始票数（表 2，L1188–1206，99 人、每场景每指标最佳投票数）：
+
+| 指标/场景 | A3D | AAM | MD(Orig) | MD(Wan) | TC | Ours | Total |
+|---|---|---|---|---|---|---|---|
+| 对齐-Cat | 0 | 2 | 0 | 1 | 0 | 96 | 99 |
+| 对齐-Dog | 0 | 3 | 0 | 1 | 7 | 88 | 99 |
+| 对齐-Hugging | 1 | 0 | 0 | 0 | 1 | 97 | 99 |
+| 对齐-Robot | 0 | 0 | 1 | 1 | 2 | 95 | 99 |
+| 对齐-Sea Lion | 1 | 0 | 1 | 2 | 43 | 52 | 99 |
+| 对齐-Brick | 0 | 1 | 1 | 0 | 4 | 93 | 99 |
+| 对齐-Avg | 0.3333 | 1 | 0.5 | 0.8333 | 9.5 | 86.8333 | 99 |
+| 真实-Cat | 0 | 0 | 1 | 1 | 2 | 95 | 99 |
+| 真实-Dog | 1 | 2 | 1 | 0 | 11 | 84 | 99 |
+| 真实-Hugging | 0 | 0 | 0 | 0 | 3 | 96 | 99 |
+| 真实-Robot | 0 | 1 | 1 | 1 | 1 | 95 | 99 |
+| 真实-Sea Lion | 1 | 0 | 2 | 0 | 37 | 59 | 99 |
+| 真实-Brick | 1 | 0 | 0 | 0 | 8 | 90 | 99 |
+| 真实-Avg | 0.5 | 0.5 | 0.8333 | 0.3333 | 10.3333 | 86.5 | 99 |
+
+单体网格动画用户研究（附录 C.1，L1228–1231）：
+  > "For quantitative evaluation, we conducted a user study with 50 participants comparing our results against all baselines:89.6%of participants rated our method highest in prompt alignment, and84%rated it highest in motion realism."
+表 3（L1207–1222）逐行：对齐 Avg (raw) 1.6 / 0.4 / 1.6 / 0.4 / 1.2 / 44.8 / 50；真实 Avg (raw) 2.8 / 0.8 / 2.6 / 0.2 / 1.6 / 42 / 50。五个提示（L1226–1227）：“The lid of a chest is closing”、“A lamp is lowering its head”、“The blades of a pair of scissors cross together”、“A tiger is sitting down”、“A tiger is walking”。
+
+## 6. 消融（全部，均为定性图 + 文字，无数值表）
+
+- 噪声水平采样策略（L631–636）：
+  > "We compare the effectiveness of the noise-level sampling strategy (Sec. 3.2) against uniform noise sampling with weighting. As shown in Figure 8, unrealistic results emerge under uniform sampling due to insufficient coverage of noise levels that inject motion. In this case, the laptop appears to float above the table."
+- 4D 表示两大组件（L637–660）：
+  > "We study two key components of our 4D representation: the Fenwick tree for modeling deformation sequences and the hierarchical control-point structure. Results are shown in Figure 9. Removing the Fenwick tree leads to noticeable artifacts, as later frames become extremely difficult to learn when each deformation is modeled independently. Removing the fine control-point layer prevents the model from producing detailed motions (e.g., grasping). Conversely, starting with the fine layer from the beginning also introduces artifacts, since the noise injected at early iterations cannot be effectively smoothed without an initial coarse stage."
+- 正则化（L661–665）：
+  > "We show that the regularization losses are necessary. Removing them results in temporal flickering (e.g., the tail suddenly appearing when temporal regularization is removed) and visual artifacts (when spatial regularization is removed), as shown in Figure 10."
+- 消融的定量指标：原文未写（论文未给出任何消融数值表）。
+
+## 7. 局限 / 未来工作（原文逐字）
+
+失败案例（附录 C.3，L1237–1241）：
+  > "Our failure cases mainly arise from two factors: (1) limitations of the underlying video generative model, and (2) the inability to handle objects that do not exist in the static snapshot but appear later in the motion sequence."
+两类失败详述（L1256–1266）：
+  > "Because our approach distills from a pretrained video generation model, its capabilities are inherently linked to those of the underlying model. If the generator cannot synthesize videos aligning with the prompt, our 4D optimization receives misleading gradients. In such cases, our method cannot generate the correct motion."
+  > "Another limitation of our method is that it cannot handle objects that do not exist in the initial static snapshot. Our 4D representation only deforms the geometry present at the start, so any object that should appear later in the sequence cannot be created. When the prompt involves new objects entering the scene, the supervision asks for motion that the system cannot produce. In these cases, the optimization either omits the requested effect or yields incomplete motion, as illustrated in the second row of Figure 12, where no liquid appears because the system cannot introduce new geometry."
+局限与未来工作（附录 D，L1267–1277 全文）：
+  > "Although our method can generate dynamic scenes with highly realistic interactions among multiple objects, there remain several limitations that point to promising directions for future work. For the failure cases described in Sec. C.3, those arising from limitations of the underlying video generative model may be alleviated as video generation technology continues to improve. For failures caused by newly appearing objects that are not present in the initial static scene, a potential solution is to incorporate a module capable of generating new geometry during the optimization process. Apart from the failure cases, another limitation of our method is its extensive training time. In our observations, a substantial portion of the runtime is spent backpropagating through the VAE [33]. A promising future direction is to develop a distillation strategy that avoids backpropagating through the VAE entirely. This may be feasible because our objective is to generate motion rather than RGB appearance, suggesting that full VAE gradients may not be strictly necessary for effective motion supervision."
+（正文 Conclusion 无单独局限小节；结论段见 L674–681。）
+
+## 8. 叙事关联（【推断】≤5 条）
+
+1. **「向视频模型借一个世界（SDS 广义版）」的具名实现。** CHORD 就是该叙事的一个有名有姓的落地：把 DreamFusion 式 SDS（原文明确以 [53] 为起点）从 3D 资产扩展到 4D 场景运动，再针对现代 Rectified Flow 视频模型推导新目标，即「SDS 的广义版」。支持原句：L22+L26–28 "Our approach instead inherits the universality from the video generative models by proposing a distillation-based pipeline to extract the rich Lagrangian motion information hidden in the Eulerian representations of 2D videos."；L197–199 "The Score Distillation Sampling method [53] was introduced to distill 3D assets from image diffusion models [24]."；L211–215 "Extending this idea to 4D generation follows the same principle: at each iteration, a video is rendered from the 4D asset, blended with noise, and then passed through the diffusion model…"；L224 "To mitigate this architectural gap, we derive a novel SDS target for RF models."
+
+2. **运动学轨迹蒸馏：恰好落在「力学数据不存在」时可操作的那一侧。** 论文蒸馏的产物是几何轨迹（每对象 SE(3) 控制点变形序列、稠密点流），全文没有引入质量、力、摩擦、本构等任何动力学量（原文未写），唯一「物理感」来自视频先验外加 ARAP 这种几何软约束（L457–462）。也就是说，它不需要力学数据/物理标注就能产出「physically-grounded」的轨迹——这正是「力学数据不存在」时借分布先验补位的做法；但「grounded」的程度只有视频模型先验兜底，物理真值并未被建模。
+
+3. **「借来的世界」之所以可执行，靠的是把蒸馏对象拉格朗日化。** 视频模型输出的欧拉像素运动本身不能直接驱动机器人；CHORD 把它转成附着于物体的点流（dense object flow），再经抓取/推姿规划变成可执行策略，并且是零样本。支持原句：L111–117 "generating physically-grounded Lagrangian deformation trajectories of real-world objects. … they can guide zero-shot manipulation of diverse dynamic objects."；L595–607 "the dense object flow generated by our method can be utilized as guidance for manipulation of rigid, articulated, and deformable objects" 及 "rigid attachment forward model…"。
+
+4. **蒸馏世界的能力闭包 = 教师模型的能力闭包，缺口会原样传导。** 视频模型不懂的力学（如倒液体这类流体/新物质出现），学生也补不出来；且学生的表示只允许变形「已存在的几何」，无法产生拓扑/新对象。这为「借世界」叙事划了硬边界：借来的不是完整物理世界模型，而是教师视频分布的可变形投影。支持原句：L1256–1259 "its capabilities are inherently linked to those of the underlying model. If the generator cannot synthesize videos aligning with the prompt, our 4D optimization receives misleading gradients."；L1261–1266 "it cannot handle objects that do not exist in the initial static snapshot. Our 4D representation only deforms the geometry present at the start…"
+
+5. **「物理常识」指标可被平凡解（静止）钻空子，借来的常识缺乏对抗性验证。** 论文自己承认最高 PC 得分者是 AnimateAnyMesh——因为物体不动也符合物理常识（L547–550）；CHORD 只拿 PC 第二（4.25 vs 4.5）。这说明「借世界」叙事当前的自动评测仍难以区分「真的会物理」与「不做就不错」，评价格局未闭合（原文未写相应改进）。
+
+## 9. 图注 / 表注逐字抄录
+
+- Figure 1（L5–9，含分镜文字）：
+  > "“A robot arm picking up a brick.”“A cat stepping on a cushion.”“A child jumps on a seesaw, sending a brick flying.”“A basketball hits the rim and bounces away.”“A man puts a plate in a microwave and shuts the door.”“A man opens the microwave door and takes out the plate.”"
+  > "Figure 1.4D scene motion generated by our method.We present CHORD, a universal generative pipeline capable of animating scenes with multiple objects that interact with each other. Project page:https://yanzhelyu.github.io/chord"
+- Figure 2（L269–273）：
+  > "Figure 2.Overview.For the input meshes of a given scene, we first convert them into 3D-GS representations to enable smooth gradient computation. The converted 3D-GS models are then used to initialize a 4D representation (Sec. 3.3). We iteratively refine this 4D representation by sampling camera poses at each iteration, rendering the corresponding videos, and passing them to the video generation model to obtain optimization gradients (Sec. 3.2). Additionally, we compute regularization terms (Sec. 3.4) to enforce spatial and temporal smoothness during the optimization process."
+- Figure 3（L312–315）：
+  > "Figure 3.Illustration of the hierarchical control point representation.We represent the deformation using a spatial hierarchical structure. Coarse control points capture large-scale deformations, while fine control points refine local details."
+- Figure 4（L416–422）：
+  > "Figure 4.Illustration of the Fenwick Tree representation.Each node stores the cumulative deformation over a temporal range, allowing nearby frames to share parameters and naturally enforcing temporal coherence. For example,(r [6]k , T[6]k )encodes the accumulated deformation from frames 5–6. Queries for frames 6 and 7 then compose their deformations from a small, overlapping set of nodes, as shown in the figure."
+- Figure 5（L588–591）：
+  > "Figure 5.Qualitative comparisons.We compare our approach with several mesh animation methods. Our method produces results that better align with the given prompts and exhibit more natural motion. In the figure, A3D refers to Animate3D [30], AAM denotes AnimateAnyMesh [73], MD represents MotionDreamer [64], and TC corresponds to 4D reconstruction results from videos generated by TrajectoryCrafter [84]. For additional comparisons and full animation results, please refer to our supplementary website."
+- Figure 6（L595）："Figure 6.Real-world object animation results."
+- Figure 7（L617–619）：
+  > "Figure 7.Robot manipulation guided by our generated dense object flow.Given our generated dense object flow, the robot either grasps or pushes the object of interest in a manner that matches the flow. This allows effective manipulation of rigid objects (first row), articulated objects (second row), and deformable objects (third and fourth rows)."
+- Figure 8（L627–629）：
+  > "Figure 8.Ablation on noise-level sampling strategy.Removing our noise-level sampling strategy leads to unnatural motion, such as the laptop appearing to float."
+- Figure 9（L651–654）：
+  > "Figure 9.Ablations on components in the 4D representation.Removing the Fenwick Tree leads to severe artifacts in later frames; removing fine control points prevents detailed deformation; and removing coarse control points causes distortions."
+- Figure 10（L671–673）：
+  > "Figure 10.Ablations on regularization losses.Removing temporal regularization results in flickering, while removing spatial regularization results in distortions."
+- Figure 11（L1181–1184）：
+  > "Figure 11.Qualitative comparisons on single mesh animation.We compare our approach with several mesh animation methods. Our method produces results that better align with the given prompts and exhibit more natural motion. In the figure, A3D refers to Animate3D [30], AAM denotes AnimateAnyMesh [73], MD represents MotionDreamer [64], and TC corresponds to 4D reconstruction results from videos generated by TrajectoryCrafter [84]."
+- Figure 12（L1251–1254）：
+  > "Figure 12.Failure Cases.The failure in the first row is due to limitations of the video generative model: it cannot produce motion that matches the prompt, as evidenced by its inability to sample videos aligned with the described action. The failure in the second row arises because our method cannot generate objects that were not present in the initial static scene. As a result, no liquid can appear when prompted, since the system cannot generate newly emerging objects."
+- Figure 13（L1279）："Figure 13.Screenshot of the user study question on Prompt Alignment."
+- Figure 14（L1284）："Figure 14.Screenshot of the user study question on Motion Realism."
+- Table 1（L514–517）：
+  > "Table 1.Quantitative comparisons with baselines.We conduct a user study on six scene animations to evaluate the performance. Additionally, we report the Semantic Adherence (SA) and Physical Commonsense (PC) metrics computed with VideoPhy-2 [5]."
+- Table 2（L1205–1206）：
+  > "Table 2. Raw results of the user study on generating scene-level 4D motion. We show the number of vote from each participant on which option they consider the best under certain metric."
+- Table 3（L1222）：
+  > "Table 3. User study results for quantitative comparison on single-object 4D motion generation."
+
+（图注中的 "Figure N.xxx" 空格缺失为 txt 提取痕迹，逐字保留。）

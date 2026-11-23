@@ -1,0 +1,58 @@
+# 留证：DriveVLA-W0: World Models Amplify Data Scaling Law in Autonomous Driving
+# arXiv 2510.12796 (v2, 2025-12-18；v1 2025-10-14)
+# 机构：NLPR, Institute of Automation, Chinese Academy of Sciences (CASIA)；Yinwang Intelligent Technology Co. Ltd.
+# 作者：Yingyan Li*, Shuyao Shang*, Weisong Liu*, Bing Zhan*, Haochen Wang*, Yuqi Wang, Yuntao Chen, Xiaoman Wang, Yasong An, Chufeng Tang, Lu Hou, Lue Fan, Zhaoxiang Zhang
+# 代码: https://github.com/BraveGroup/DriveVLA-W0
+# 来源 URL: https://ar5iv.labs.arxiv.org/html/2510.12796 （2026-10-26 抓取；工具输出截断于 Sec 4.4 开头）
+
+## Abstract（逐字）
+"Scaling Vision-Language-Action (VLA) models on large-scale data offers a promising path to achieving a more generalized driving intelligence. However, VLA models are limited by a 'supervision deficit': the vast model capacity is supervised by sparse, low-dimensional actions, leaving much of their representational power underutilized. To remedy this, we propose DriveVLA-W0, a training paradigm that employs world modeling to predict future images. This task generates a dense, self-supervised signal that compels the model to learn the underlying dynamics of the driving environment. We showcase the paradigm's versatility by instantiating it for two dominant VLA archetypes: an autoregressive world model for VLAs that use discrete visual tokens, and a diffusion world model for those operating on continuous visual features. Building on the rich representations learned from world modeling, we introduce a lightweight action expert to address the inference latency for real-time deployment. Extensive experiments on the NAVSIM v1/v2 benchmark and a 680x larger in-house dataset demonstrate that DriveVLA-W0 significantly outperforms BEV and VLA baselines. Crucially, it amplifies the data scaling law, showing that performance gains accelerate as the training dataset size increases."
+
+## 1 Introduction（逐字节选）
+"The standard paradigm involves fine-tuning these VLM models solely on expert actions. This tasks the model with mapping high-dimensional sensory inputs to a few low-dimensional control signals (e.g., waypoints). This creates a severe 'supervision deficit'."
+"For VLAs that represent images as discrete visual tokens, world modeling is a natural extension. We propose an autoregressive world model to predict the sequence of discrete visual tokens of future images. For VLAs that operate on continuous features ... we introduce a diffusion world model that generates future image pixels conditioned on the vision and action features produced at the current frame."
+"we leverage a massive 70M-frame in-house dataset, as Figure 1 shows."
+"we introduce a lightweight, MoE-based Action Expert. This expert decouples action generation from the large VLA backbone, reducing inference latency to just 63.1% of the baseline VLA and creating an efficient testbed to study different action decoders at a massive scale."
+"while complex flow-matching decoders often hold an advantage on small datasets, we find that this relationship inverts at a massive scale, where the simpler autoregressive decoder emerges as the top performer."
+
+## 3.1 VLA Baseline（逐字）
+"we build variants on the two dominant VLM paradigms: VLA (VQ), which quantizes images into discrete visual tokens for an Emu3-style backbone, and VLA (ViT), which extracts continuous features for a Qwen2.5-VL-style backbone."
+Input Tokenization："High-level driving language instructions (L_t) are processed using the VLM's native tokenizer. For past actions, we use the FAST tokenizer [Pertsch et al. 2025] to convert continuous waypoint trajectories into a sequence of discrete tokens, denoted A_{t−1}."
+VLM Backbone："At each timestep t, we form a deeply interleaved input sequence S_t by concatenating multimodal chunks over a history of H steps following [Wang et al. 2025; Fan et al. 2025]: S_t = [L_{t−H}, V_{t−H}, A_{t−H−1}, …, L_t, V_t, A_{t−1}]. This sequence is processed autoregressively by our VLM backbone, for which we select two representative models: Emu3 (8B) [Wang et al. 2024] to handle discrete visual representations and Qwen2.5-VL (7B) [Bai et al. 2025] for continuous features, using a causal attention mask. The VLM backbone outputs the final-layer hidden states, which are then split according to their respective modalities into language (F_t^L), vision (F_t^V), and action (F_t^A) features."
+Action Prediction（Eq 1）：
+  L_Action = −Σ_{i=1}^{L} log P(a_i | S_t, a_<i)
+"During inference, the trained model then autoregressively generates a sequence of action tokens conditioned on the context S_t. These tokens are subsequently converted back into a continuous waypoint trajectory by the FAST detokenizer [Pertsch et al. 2025]."
+
+## 3.2 World Modeling（逐字节选）
+AR World Model（Eq 2）：
+  L_WM-AR = −Σ_{i=1}^{N} log P(v_i | S_<V_t, v_<i)
+"We refer to this complete framework as DriveVLA-W0 (VQ). It is trained jointly by optimizing a weighted sum of the action and AR world model losses: L_Total = L_Action + α L_WM-AR, where α is a balancing coefficient."
+Inference："While the explicit generation of visual tokens is typically bypassed during inference to ensure low latency ... To generate an image, the model autoregressively samples a sequence of visual tokens, which are then passed to the MoVQGAN [Zheng et al. 2022] decoder to render the final image I_t."
+Diffusion World Model（Eq 3）：
+  L_WM-Diff = E_{z_{t+1},ε,k} [‖ε − ε̂(z_{t+1,k}, k, F_t^V, F_t^A)‖²]
+"This choice to predict the future frame (I_{t+1}) is critical: since the model is conditioned on all present features simultaneously, predicting the future is necessary to learn predictive dynamics rather than simply performing a reconstruction task."
+"We term this overall framework DriveVLA-W0 (ViT). It is trained end-to-end by optimizing a joint objective that combines the action prediction loss and the diffusion world model loss: L_Total = L_Action + β L_WM-Diff, where β is a balancing coefficient."
+Inference："As with the AR model, the diffusion process is bypassed during driving inference to ensure real-time performance."
+
+## 3.3 Action Expert（逐字节选）
+MoE Architecture："we introduce a lightweight action expert (500M) that operates alongside the main VLA Expert (our full VLA backbone) in a Mixture-of-Experts (MoE) architecture. The Action Expert shares a similar transformer block structure with the VLA Expert but uses a much smaller hidden dimension. This architectural similarity enables a deep and efficient fusion of information via a Joint Attention mechanism ... both experts first compute their respective Query, Key, and Value matrices. These matrices are then concatenated along the token sequence dimension to create a single set of inputs for a Joint Attention operation: Q=[Q_VLA;Q_AE], K=[K_VLA;K_AE], V=[V_VLA;V_AE]."
+"three distinct action decoding strategies: a query-based, an autoregressive, and a flow matching expert."
+Query-based Action Expert："This expert employs a set of learnable action queries that interact with the VLA's multimodal context via joint attention. The resulting updated queries are then projected by an MLP head to directly regress the continuous waypoint trajectory. The model is optimized by minimizing the L1 distance between the predicted and ground-truth trajectories."
+Autoregressive Action Expert："This expert generates actions by autoregressively predicting a sequence of discrete tokens. Its training objective and formulation are identical to those used for our VLA Baseline ... minimizing a standard cross-entropy loss."
+Flow Matching Action Expert："we also implement a continuous action generation method based on flow matching. ... During training, we define a simple straight-line trajectory between a random noise sample and a ground-truth action [Liu et al. 2022]. The model is then optimized via a mean squared error loss to predict a vector field v_φ ... For inference, we simply start with a new noise sample and follow the learned vector field for a fixed number of steps using a numerical ODE solver."
+
+## 4.1 Datasets（逐字节选）
+"NAVSIM. We use the NAVSIM [Dauner et al. 2024] benchmark derived from OpenScene [Contributors 2023], for evaluating performance in safety-critical scenarios."
+In-house Dataset："Our training set contains 70 million frames from over 1 million unique clips. ... The test set comprises 100 challenging scenarios. We evaluate trajectory using the Average Displacement Error (ADE) over a 3-second, 6-waypoint future trajectory (2 Hz), and safety using a Collision Rate."
+
+## 4.2 Implementation Details（逐字）
+Two-stage Training Paradigm："Our model is trained via a two-stage paradigm designed to first learn rich world representations and then specialize in action generation. In the first stage, we pretrain the VLA backbone utilizing the 6VA sequence configuration. The model is optimized with a joint objective, combining both the world model loss and the action prediction loss. In the second stage, we integrate the model with Action Expert. The VLA backbone now processes a 2VA input sequence. While we do not freeze the VLA backbone, the model is only supervised by the action loss from the action expert part."
+NAVSIM："For experiments on the NAVSIM benchmark, models are pretrained on NuPlan [Caesar et al. 2021] for 8k steps and then fine-tuned on NAVSIM for 4k steps, processing 256x144 images. The training is conducted on 8 NVIDIA L20 GPUs with a global batch size of 48. We used the AdamW optimizer with a cosine learning rate schedule, an initial learning rate of 2e-4, and bfloat16 mixed-precision. For our ablation studies, we select DriveVLA-W0 (VQ) as the default model due to its architectural simplicity."
+In-house Dataset："For our large-scale experiments on the in-house dataset, models are pretrained for 50k steps and fine-tuned for 30k steps using the same data. This training utilized a cluster of 64 GPUs with a global batch size of 256."
+
+## 4.3 Results（逐字节选）
+"DriveVLA-W0 establishes a new state-of-the-art on the NAVSIM benchmark by surpassing top-performing methods across different architectural paradigms, including the BEV-based WoTE [Li et al. 2025a] and the VLA-based AutoVLA [Zhou et al. 2025c]. Notably, our model achieves this top performance using only a single front-view camera, surpassing competitors that rely on richer sensor suites combining multi-view cameras and LiDAR."
+（Table 1: NAVSIM v1, DriveVLA-W0† 单目 PDMS 93.0 对 AutoVLA† 92.1；Table 2: NAVSIM v2 EPDMS 86.1 对 DiffusionDrive 84.5。）
+
+## 未获取部分（如实说明）
+Sec 4.4 之后（scaling law 曲线讨论、结论）因抓取截断未取得；引用仅基于以上已获取原文。

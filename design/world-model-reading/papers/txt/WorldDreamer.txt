@@ -1,0 +1,782 @@
+WorldDreamer: Towards General World Models for Video Generation
+via Predicting Masked Tokens
+Xiaofeng Wang*1 Zheng Zhu*1 Guan Huang*1,2 Boyuan Wang1 Xinze Chen1 Jiwen Lu2
+1GigaAI 2Tsinghua University
+Project Page: https://world-dreamer.github.io
+Text to Video
+WorldDreamer
+Image to Video
+Action to Video
+Video Inpainting
+Video Stylization
+“A polar bear is 
+ walking on ice.”
+“A monkey is reading 
+a book in the desert.”
+“Autumn style, a sailboat 
+glides across the lake.”
+Figure 1. WorldDreamerdemonstrates a comprehensive understanding of visual dynamics in the general world. It excels in image-to-video
+synthesis, text-to-video generation, video inpainting, video stylization and even action-to-video generation.
+Abstract
+World models play a crucial role in understanding and
+predicting the dynamics of the world, which is essential for
+video generation. However, existing world models are con-
+fined to specific scenarios such as gaming or driving, limit-
+ing their ability to capture the complexity of general world
+dynamic environments. Therefore, we introduce World-
+Dreamer, a pioneering world model to foster a compre-
+hensive comprehension of general world physics and mo-
+tions, which significantly enhances the capabilities of video
+generation. Drawing inspiration from the success of large
+*These authors contributed equally to this work. Corresponding au-
+thor: Zheng Zhu, zhengzhu@ieee.org
+language models, WorldDreamer frames world modeling
+as an unsupervised visual sequence modeling challenge.
+This is achieved by mapping visual inputs to discrete to-
+kens and predicting the masked ones. During this pro-
+cess, we incorporate multi-modal prompts to facilitate in-
+teraction within the world model. Our experiments show
+that WorldDreamer excels in generating videos across dif-
+ferent scenarios, including natural scenes and driving en-
+vironments. WorldDreamer showcases versatility in ex-
+ecuting tasks such as text-to-video conversion, image-to-
+video synthesis, and video editing. These results under-
+score WorldDreamer’s effectiveness in capturing dynamic
+elements within diverse general world environments.
+arXiv:2401.09985v1  [cs.CV]  18 Jan 2024
+1. Introduction
+The next significant leap in artificial intelligence is ex-
+pected to come from systems that possess a profound un-
+derstanding of the dynamic visual world. At the core of this
+advancement are world models, crucial for comprehending
+and predicting the dynamic nature of our world. World
+models hold great promise for learning motion and physics
+in the general world, which is essential for video generation.
+The early exploration of world models [19] primarily fo-
+cus on gaming scenarios, which proposes a generative neu-
+ral network model capable of learning compressed repre-
+sentations of spatial and temporal dynamics within game
+environments. Subsequent research in the Dreamer se-
+ries [21–23] further validated the efficacy of world mod-
+els across diverse gaming scenarios. Considering its struc-
+tured nature and paramount importance, autonomous driv-
+ing has become a forefront domain for the practical appli-
+cation of world models. Various approaches [31, 32, 49, 50]
+are introduced to explore the efficacy of world models in
+autonomous driving scenarios. Furthermore, DayDreamer
+[52] has extended the application of world models to en-
+compass real-world robotic environments, However, cur-
+rent world models are predominantly confined to gaming,
+robotics, and autonomous driving, lacking the capability to
+capture the motion and physics of the general world. Be-
+sides, relevant research in world models mainly relies on
+Recurrent Neural Networks (RNNs) [20–24, 35, 42, 52] and
+diffusion-based methods [32,49,50] to model visual dynam-
+ics. While these approaches have yielded some success in
+video generation, they encounter challenges in effectively
+capturing the motion and physics in general world scenes.
+In this paper, we introduce WorldDreamer, which pio-
+neers the construction of general world models for video
+generation. Drawing inspiration from the successes of large
+language models (LLMs) [5, 12, 37, 38], we predict the
+masked visual tokens to effectively model the intricate dy-
+namics of motion and physics embedded in visual signals.
+Specifically, WorldDreamer involves encoding images into
+discrete tokens using VQGAN [15]. We then randomly
+mask a portion of these tokens and utilize the unmasked
+tokens to predict the masked ones, a process integral to
+capturing the underlying motion and physics in visual data.
+WorldDreamer is constructed on the Transformer architec-
+ture [46]. Regarding the spatial-temporal priority inherent
+in video signals, we propose the Spatial Temporal Patch-
+wise Transformer (STPT), which enables attention to focus
+on localized patches within a temporal-spatial window, fa-
+cilitating the learning of visual signal dynamics and accel-
+erating the convergence of the training process. Addition-
+ally, WorldDreamer integrates language and action signals
+through cross-attention, to construct multi-modal prompts
+for interaction within world model. Notably, compared to
+diffusion-based methods, WorldDreamer capitalizes on the
+reuse of LLM infrastructure and benefits from optimiza-
+tions developed over years for LLMs, including model scal-
+ing learning recipes. Besides, WorldDreamer exhibits a re-
+markable speed advantage, parallel decoding videos with
+just a few iterations, which is ∼3× faster than diffusion-
+based methods [3, 10, 48]. Therefore, WorldDreamer holds
+great promise for constructing a general world model from
+visual signals.
+The main contributions of this paper can be summarized
+as follows: (1) We introduce WorldDreamer, the first gen-
+eral world model for video generation, which learns general
+world motion and physics. (2) We propose the Spatial Tem-
+poral Patchwise Transformer (STPT), which enhances the
+focus of attention on localized patches within a temporal-
+spatial window. This facilitates easier learning of visual
+signal dynamics and expedites the training process. (3) We
+conduct extensive experiments to verify thatWorldDreamer
+excels in generating videos across different scenarios, in-
+cluding natural scenes and driving environments. World-
+Dreamer showcases versatility in executing tasks such as
+text-to-video conversion, image-to-video synthesis, video
+editing, and action-to-video generation (see Fig. 1).
+2. Related Work
+2.1. Video Generation
+Currently, state-of-the-art video generation models are
+primarily classified into two categories: Transformer-based
+methods and diffusion-based methods.
+Transformer-based methods. The Transformer-based
+video generation methods are derived from the general fam-
+ily of LLMs [5, 12, 37, 38]. Typically, these methods em-
+ploy autoregressive prediction of the next token or parallel
+decoding of masked tokens to generate videos. Drawing in-
+spiration from image generation techniques [11, 13, 40, 54],
+VideoGPT [53] integrates VQV AE [45] with Transformer-
+based token prediction, enabling it to autoregressively pre-
+dict visual tokens for video generation. Furthermore,
+GAIA-1 [31] integrates various modalities, including text
+descriptions, images, and driving actions, resulting in the
+generation of autonomous driving scenario videos. Unlike
+these autoregressive methods, some Transformer-based ap-
+proaches [29, 47], draw inspiration from [8, 9, 14, 55], ac-
+celerating video generation through parallel decoding. In
+addition to these methods, VideoPoet [33] adopts video tok-
+enizer [56] and generates exceptionally high-quality videos
+based on parallel decoding. The incorporation of Trans-
+former models into video language models showcases their
+formidable zero-shot capability in handling various tasks
+during pretraining. Therefore, employing Transformer-
+based mask image models as the foundation for general
+world models emerges as a promising avenue.
+Diffusion based methods. Compared to Transformer-
+Predicted 
+Visual Tokens
+Text 
+Embeddings
+Visual 
+Tokenizer
+LLM
+Encoder
+MLP
+Text:
+‘A lizard is reading 
+a book in the desert.’
+‘A monkey is reading 
+a book in the desert.’
+Mask
+Image
+Video
+Action:
+Velocity/steering
+Spatial Temporal
+Patchwise Transformer
+Visual
+Decoder
+Text to Video
+Image to Video
+Video Inpainting
+Video stylization
+Action to Video
+Action
+Embeddings
+× �
+Maksed Visual 
+Embeddings
+Figure 2. Overall framework of WorldDreamer. WorldDreamer first converts images and videos into visual tokens, followed by a token-
+masking operation. Text and action inputs are encoded separately into embeddings, acting as multimodal prompts. Subsequently, STPT
+predicts the masked visual tokens, which are processed by visual decoders to enable video generation and editing in various scenarios.
+based models, there has been extensive research employing
+diffusion-based models for video generation. VideoLDM
+[4] introduces a temporal dimension to the latent space of
+the 2D diffusion model and fine-tuned it using videos, effec-
+tively transforming the image generator into a video genera-
+tor and enabling high-resolution video synthesis. Similarly,
+LVDM [26] explores lightweight video diffusion models,
+making use of a low-dimensional 3D latent space. Make-A-
+Video [43] also employs a pre-trained text-to-image model,
+eliminating the need for large-scale video training. More-
+over, in the Imagen Video [27], a cascading video diffusion
+model is built upon the pretrained 2D diffusion model [27].
+DiffT [25] and W.A.L.T [18] improve the video genera-
+tion by utilizing a Transformer-based Diffusion network.
+Recently, Emu Video [17] and PixelDance [57] propose
+a two-step factorization approach for text-to-video gener-
+ation, wherein the process is initially decomposed into text-
+to-image conversion, followed by image-to-video synthesis.
+This methodology capitalizes on the effectiveness of con-
+temporary text-to-image models, strategically directing the
+focus of the video diffusion model training toward the learn-
+ing of motion dynamics. However, diffusion-based methods
+have difficulty integrating multiple modalities within a sin-
+gle model. Furthermore, these diffusion-based approaches
+struggle to produce results that accurately capture dynamics
+and motion.
+2.2. World Models
+World models play a pivotal role in comprehending and
+predicting the dynamic nature of our environment, holding
+immense potential for acquiring insights into motion and
+physics on a global scale. Initially, the exploration of world
+model [19] focuses primarily on gaming scenarios, present-
+ing a generative neural network model capable of learning
+condensed representations of spatial and temporal dynamics
+within game environments. Subsequent research within the
+Dreamer series [21–23] affirmed the effectiveness of world
+models across a diverse array of gaming scenarios. Given
+its structured nature and critical significance, the domain of
+autonomous driving has emerged as a forefront application
+area for world models. Numerous approaches [31,32,49,50]
+have been introduced to assess the efficacy of world mod-
+els in autonomous driving scenarios. Additionally, Day-
+Dreamer [52] has expanded the scope of world models to
+encompass real-world robotic environments. However, it
+is noteworthy that current world models primarily oper-
+ate within the realms of gaming, robotics, and autonomous
+driving, lacking the capability to comprehensively capture
+the motion and physics of the general world.
+3. WorldDreamer
+3.1. Overall Framework
+The overall framework of WorldDreamer is depicted in
+Fig. 2. The initial phase involves encoding visual signals
+(i.e., images and videos) into discrete tokens using a visual
+tokenizer. These tokens undergo a carefully devised mask-
+ing strategy before being processed by STPT. Meanwhile,
+textual and action signals are separately encoded into em-
+beddings, which serve as multimodal prompts. STPT en-
+gages in the pivotal task of predicting the masked visual
+tokens, which are then decoded by visual decoders, facili-
+tating video generation and editing in multiple contexts.
+To train WorldDreamer, we construct triplets of Visual-
+Text-Action data, where the training supervision solely in-
+volves predicting masked visual tokens without any addi-
+tional supervision signals. WorldDreamer also supports
+training without text or action data, which not only re-
+duces the difficulty of data collection but also enables
+WorldDreamer to learn unconditional or single-condition
+video generation. At inference time, WorldDreamer can
+accomplish various video generation and video editing
+tasks: (1) For image-to-video, only a single image input
+is needed, considering the remaining frames as masked.
+WorldDreamer can also predict the future frames based on
+both single image condition and text condition. (2) For
+video stylization, a video segment can be input, with a ran-
+dom masking of certain pixels. WorldDreamer can alter
+the video style, such as creating an autumn-themed effect,
+based on both the input language. (3) For text-to-video,
+providing language input allows WorldDreamer to predict
+the corresponding video, assuming that all visual tokens are
+masked. (4) For video inpainting, a video segment can be
+input, with a manually masked region of interest. World-
+Dreamer can fill in the masked portion based on the input
+language and unmasked visual signals. (5) For action-to-
+video, inputting the initial frame of a driving scene along
+with future driving commands allowsWorldDreamerto pre-
+dict future frames.
+The subsequent subsections elaborate on the model ar-
+chitecture and the masking strategy.
+3.2. Model Architecture
+Preliminery WorldDreamer utilizes VQGAN [16] to tok-
+enize visual signals:
+V = Fv(I), (1)
+where I ∈ RN ×H×W ×3 are N frames of visual inputs.
+VQGAN Fv downsamples the resolution by 16 ×, which
+produces visual tokens TV ∈ RN ×h×w (h = H4 , w= W4 ).
+The VQGAN has a vocabulary size of 8192 and is trained
+with billions of images [41]. For text inputs, we employ the
+pretrained T5 [39] to map them into high-dimensional em-
+beddings ET ∈ RK×CT, where K is the sequence length
+and CT is the embedding channel. To be compatible with
+the feature learning in STPT, the text embeddings are re-
+peated for N frames, and the embedding channel is mapped
+into CV. Furthermore, Multi Layer Perception (MLP) is uti-
+lized to encode action inputs, which generates action em-
+beddings EA ∈ RN ×CV. The text embeddings and action
+embeddings are concatenated, producing the multimodal
+prompt embeddings EM ∈ RN ×(K+1)×CV. Note that either
+Visual Embeddings
+Multimodal
+Embeddings
+3D Conv. Layers
+× �
+Spatial Temporal 
+Patchwise Self-attention
+Spatial-wise
+Cross-attention
+Figure 3. Overall architecture of STPT. STPT first utilizes 3D con-
+volution to aggregate visual embeddings. Then these embeddings
+are partitioned into several patches for spatial-temporal patchwise
+self-attention.In the following, spatial-wise cross attention is ap-
+plied to facilitate feature interaction between visual embeddings
+and multimodal embeddings.
+text or action embedding can be empty, enabling uncondi-
+tional learning.
+During training, and the optimizing objective is to pre-
+dict the masked visual token conditioned on unmasked to-
+kens and multimodal prompts:
+LWorldDreamer = − log p( ˆTV| eTV, EM), (2)
+where ˆTV are masked visual tokens, and eTV are unmasked
+visual tokens.
+STPT STPT leverages the foundation of U-ViT [30] while
+strategically enhancing its architecture to better capture
+the intricacies of spatial-temporal dynamics in video data.
+Specifically, STPT confines the attention mechanism within
+spatial-temporal patches. Additionally, to seamlessly incor-
+porate multimodal information, spatial-wise cross-attention
+is employed to integrate multimodal embeddings. For in-
+put tokens ˆTV, STPT transforms them into visual embed-
+dings EV ∈ RN ×h×w×CV by referencing a learnable code-
+book. The size of this codebook is set to 8193, exceeding
+the codebook size of VQGAN by 1, which enables com-
+patibility with masked tokens. In each layer of STPT, as
+illustrated in Fig. 3, the visual embeddings are first pro-
+cessed through a 3D convolutional network. Then these
+embeddings are spatially partitioned into several patches
+EP ∈ RN ×h/s×w/s×CV, where we empirically set patch
+stride s as 2. Subsequently, each patch embeddings are flat-
+tened for spatial-temporal patchwise self-attention:
+EP = G−1s (Fst(Gs(EP))), (3)
+where Gs is the flatten operation that maps the embedding
+dimension to RN hw/s2×CV, and G−1s is the reverse opera-
+tion. Fs is the standard self-attention. These patches are
+Diffusion Model: Denoising Process
+Autoregressive Model: Autoregressively Predicting Next Token
+WorldDreamer: Parallel Predicting Masked Tokens
+Figure 4. Comparison between the inference schedule of diffusion-based methods, autoregressive methods and WorldDreamer. Diffusion-
+based methods usually require ∼30 steps to reduce noise, and autoregressive methods need∼200 steps to iteratively predict the next token.
+In contrast, WorldDreamer parallel predicts masked tokens, achieving video generation in about 10 steps.
+then concatenated and reshaped back to their original di-
+mensions. In the following, the spatial-wise cross attention
+is applied, which facilitates feature interaction between vi-
+sual embeddings and multimodal embeddings:
+EV = Fc(Ev, EM), (4)
+where Fc is the cross-attention operation that regards the
+frame number as batch size. After being processed through
+L layers of STPT, the feature dimensionality of EV is
+mapped to the codebook size of VQGAN. This enables the
+utilization of softmax to calculate the probability of each
+token, facilitating the prediction of masked visual tokens.
+Finally, cross-entropy loss is employed to optimize the pro-
+posed STPT:
+Lce( ˆTV, PSTPT( eTV, EM)), (5)
+where PSTPT( eTV, EM) are visual token probabilities pre-
+dicted by the STPT.
+Notably, the proposed STPT can be trained jointly with
+videos and images. For image inputs, we simply replace
+the attention weight of Fs as a diagonal matrix [18]. Simul-
+taneous training on both video and image datasets offers a
+substantial augmentation of the training samples, enabling
+more efficient utilization of extensive image datasets. Be-
+sides, the joint training strategy has significantly enhanced
+WorldDreamer’s capability to comprehend temporal and
+spatial aspects within visual signals.
+3.3. Mask Strategy
+Mask strategy is crucial for training WorldDreamer, fol-
+lowing [8], we train WorldDreamer utilizing a dynamic
+masking rate based on cosine scheduling. Specifically, we
+sample a random mask rate r ∈ [0, 1] in each iteration, and
+totally 2hwπ (1 − r2) −12 tokens are masked in each frame.
+Note that we employ the same token mask across different
+frames. This decision is grounded in the similarity of vi-
+sual signals between adjacent frames. Using different token
+masks could potentially lead to information leakage during
+the learning process. In comparison to an autoregressive
+mask scheduler, the dynamic mask schedule employed in
+our approach is crucial for parallel sampling at inference
+time, which enables the prediction of multiple output tokens
+in a single forward pass. This strategy capitalizes on the as-
+sumption of a Markovian property, where many tokens be-
+come conditionally independent given other tokens [8]. The
+inference process also follows a cosine mask schedule, se-
+lecting a fixed fraction of the highest-confidence masked to-
+kens for prediction at each step. Subsequently, these tokens
+are unmasked for the remaining steps, effectively reducing
+the set of masked tokens. As shown in Fig. 4, diffusion-
+based methods usually require ∼30 steps to reduce noise,
+and autoregressive methods need ∼200 steps to iteratively
+predict the next token. In contrast, WorldDreamer, paral-
+lel predicts masked tokens in about 10 steps, presenting a
+3× ∼20× acceleration compared to diffusion-based or au-
+toregressive methods.
+4. Experiment
+4.1. Datasets
+We employ a diverse set of images and videos to train
+WorldDreamer, enhancing its understanding of visual dy-
+namics. The specific data utilized in this training includes:
+Deduplicated LAION-2B [34] The original LAION
+dataset [41] presented challenges such as data duplication
+and discrepancies between textual descriptions and accom-
+panying images. We follow [36] to address these issues.
+Specifically, we opted to utilize the deduplicated LAION-
+2B dataset [34] for training WorldDreamer. This refined
+dataset excludes images with a watermark probability ex-
+ceeding 50% or an NSFW probability surpassing 45%. The
+deduplicated LAION dataset was made available by [41],
+following the methodology introduced in [51].
+WebVid-10M [1] WebVid-10M comprises approxi-
+mately 10 million short videos, each lasting an average
+of 18 seconds and primarily presented in the resolution
+of 336 × 596. Each video is paired with associated text
+correlated with the visual content. A challenge posed by
+WebVid-10M is the presence of watermarks on all videos,
+resulting in the watermark being visible in all generated
+video content. Therefore, we opted to further refine World-
+Dreamer leveraging high-quality self-collected video-text
+pairs.
+Self-collected video-text pairs We obtain publicly avail-
+able video data from the internet and apply the procedure
+detailed in [3] to preprocess the obtained videos. Specifi-
+cally, we use PySceneDetect [7] to detect the moments of
+scene switching and obtain video clips of a single continu-
+ous scene. Then, we filtered out clips with slow motion by
+calculating optical flow. Consequently, 500K high-quality
+video clips are obtained for training. For video caption,
+we extract the 10th, 50th, and 90th percentile frames of
+the video as keyframes. These key frames are processed
+by Gemini [44] to generate captions for each keyframe.
+Additionally, Gemini is instructed to aggregate these indi-
+vidual image captions into an overall caption for the entire
+video. Regarding that highly descriptive captions enhance
+the training of generative models [2], we prompt Gemini
+to generate captions with as much detail as possible. The
+detailed captions allow WorldDreamer to learn more fine-
+grained text-visual correspondence.
+NuScenes [6] NuScenes is a popular dataset for au-
+tonomous driving, which comprises a total of 700 training
+videos and 150 validation videos. Each video includes ap-
+proximately 20 seconds at a frame rate of 12Hz. World-
+Dreamer utilizes the front-view videos in the training set,
+with a frame interval of 6 frames. In total, there are approx-
+imately 28K driving scene videos for training. For video
+caption, we prompt Gemini to generate a detailed descrip-
+tion of each frame, including weather, time of the day, road
+structure, and important traffic elements. Then Gemini is
+instructed to aggregate these image captions into an over-
+all caption for each video. Furthermore, we extract the yaw
+angle and velocity of the ego-car as the action metadata.
+4.2. Implementation Details
+Train details WorldDreamer is first trained on a combi-
+nation of WebVid and LAION datasets. For WebVid videos,
+we extract 16 frames as a training sample. For the LAION
+dataset, 16 independent images are selected as a training
+sample. Each sample is resized and cropped to an input res-
+olution of 256 × 256. WorldDreamer is trained over 2M
+iterations with a batch size of 64. The training process in-
+volves the optimization with AdamW and a learning rate of
+5 × 10−5, weight decay 0.01. To enhance the training and
+extend the data scope, WorldDreamer is further finetuned
+on self-collected datasets and nuScenes data, where all (1B)
+parameters of STPT can be trained. During the finetuning
+stage, the input resolution is192×320, and each sample has
+24 frames. WorldDreamer is finetuned over 20K iterations
+with a batch size of 32, and the learning rate is 1 × 10−5.
+Inference details At inference time, Classifier-Free
+Guidance (CFG) [28] is utilized to enhance the generation
+quality. Specifically, we randomly eliminate multimodal
+embeddings for 10% of training samples. During inference,
+we calculate a conditional logit c and an unconditional logit
+u for each masked token. The final logits g are then derived
+by adjusting away from the unconditional logits by a factor
+of β, referred to as the guidance scale:
+g = (1 +β)c − βu. (6)
+For the predicted visual tokens, we employ the pretrained
+VQGAN decoder to directly output the video. Notably,
+WorldDreamercan generate a video consisting of 24 frames
+at a resolution of 192 × 320, which takes only 3 seconds on
+a single A800.
+4.3. Visualizations
+We have conducted comprehensive visual experiments
+to demonstrate that WorldDreamer has acquired a profound
+understanding of the general visual dynamics of the gen-
+eral world. Through detailed visualizations and results, we
+present compelling evidence showcasing Worlddreamer’s
+ability to achieve video generation and video editing across
+diverse scenarios.
+Image to Video WorldDreamer excels in high-fidelity
+image-to-video generation across various scenarios. As il-
+lustrated in Fig. 5, based on the initial image input, World-
+dreamer has the capability to generate high-quality, cine-
+matic landscape videos. The resulting videos exhibit seam-
+less frame-to-frame motion, akin to the smooth camera
+movements seen in real films. Moreover, these videos ad-
+here meticulously to the constraints imposed by the original
+image, ensuring a remarkable consistency in frame compo-
+sition. It generates subsequent frames adhering to the con-
+straints of the initial image, ensuring remarkable frame con-
+sistency.
+Figure 5. WorldDreamer excels in producing high-fidelity image-to-video generation across various scenarios.
+“A brown bear is surfing in the rainbow.”
+“A train passes through the valley, anime-style.”
+“Evening streets of Japan, zoom in.”
+“The waves crash against the beach.”
+Figure 6. WorldDreamer demonstrates proficiency in generating videos from text in diverse stylistic paradigms.
+Text to Video Fig. 6 demonstrates WorldDreamer’s re-
+markable proficiency in generating videos from text across
+various stylistic paradigms. The produced videos seam-
+lessly align with the input language, where the language
+serves as a powerful control mechanism for shaping the
+content, style, and camera motion of the videos. This high-
+“Jellyfish swim in the sea.” “A Bear swim in the sea.”
+“A lizard is reading 
+a book in the desert.” “A monkey is reading a book in the desert.”
+Figure 7. WorldDreamer possesses an exceptional ability to achieve high-quality video inpainting.
+“A sailboat glides 
+across the lake.”
+“Autumn style, a sailboat glides across the lake.”
+“A small elephant is 
+crossing the forest.” “Autumn style, a small elephant is crossing the forest.”
+Figure 8. WorldDreamer excels in delivering high-quality video stylization capabilities.
+lights WorldDreamer’s effectiveness in translating textual
+descriptions into visually faithful video content.
+Video Inpainting As depicted in Fig. 7, WorldDreamer
+exhibits an exceptional ability for high-quality video in-
+painting. By providing a mask outlining the specific area of
+interest and a text prompt specifying desired modifications,
+WorldDreamer intricately alters the original video, yielding
+remarkably realistic results in the inpainting process.
+Video Stylization Fig. 8 shows that WorldDreamer ex-
+cels in delivering high-quality video stylization. By sup-
+plying a randomly generated visual token mask and a style
+prompt indicating desired modifications, WorldDreamer
+convincingly transforms the original video, achieving a gen-
+uinely realistic outcome in the stylization process.
+Action to Video WorldDreamershows the ability to gen-
+erate videos based on actions in the context of autonomous
+driving. As shown in Fig. 9, given identical initial frames
+and different driving actions, WorldDreamer can produce
+distinct future videos corresponding to different driving ac-
+tions (e.g., controlling the car to make a left-turn or a right-
+turn).
+5. Conclusion
+In conclusion, WorldDreamer marks a notable advance-
+ment in world modeling for video generation. Unlike tra-
+ditional models constrained to specific scenarios, World-
+Dreamer capture the complexity of general world dynamic
+environments. WorldDreamer frames world modeling as a
+visual token prediction challenge, fostering a comprehen-
+sive comprehension of general world physics and motions,
+which significantly enhances the capabilities of video gen-
+eration. In experiments, WorldDreamer shows exceptional
+performance across scenarios like natural scenes and driv-
+ing environments, showcasing its adaptability in tasks such
+as text-to-video conversion, image-to-video synthesis, and
+video editing.
+Turn  Left
+Turn  Right
+Turn  Left
+Turn  Right
+Figure 9. WorldDreamer excels in realizing the ability to generate videos based on actions in the context of autonomous driving.
+References
+[1] Max Bain, Arsha Nagrani, G ¨ul Varol, and Andrew Zisser-
+man. Frozen in time: A joint video and image encoder for
+end-to-end retrieval. In ICCV, 2021. 6
+[2] James Betker, Gabriel Goh, Li Jing, Tim Brooks, Jianfeng
+Wang, Linjie Li, Long Ouyang, Juntang Zhuang, Joyce
+Lee, Yufei Guo, et al. Improving image generation with
+better captions. Computer Science. https://cdn. openai.
+com/papers/dall-e-3. pdf, 2023. 6
+[3] Andreas Blattmann, Tim Dockhorn, Sumith Kulal, Daniel
+Mendelevitch, Maciej Kilian, Dominik Lorenz, Yam Levi,
+Zion English, Vikram V oleti, Adam Letts, et al. Stable video
+diffusion: Scaling latent video diffusion models to large
+datasets. arXiv preprint arXiv:2311.15127, 2023. 2, 6
+[4] Andreas Blattmann, Robin Rombach, Huan Ling, Tim Dock-
+horn, Seung Wook Kim, Sanja Fidler, and Karsten Kreis.
+Align your latents: High-resolution video synthesis with la-
+tent diffusion models. In CVPR, 2023. 3
+[5] Tom Brown, Benjamin Mann, Nick Ryder, Melanie Sub-
+biah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakan-
+tan, Pranav Shyam, Girish Sastry, Amanda Askell, et al. Lan-
+guage models are few-shot learners. NeurIPS, 2020. 2
+[6] Holger Caesar, Varun Bankiti, Alex H. Lang, Sourabh V ora,
+Venice Erin Liong, Qiang Xu, Anush Krishnan, Yu Pan, Gi-
+ancarlo Baldan, and Oscar Beijbom. nuscenes: A multi-
+modal dataset for autonomous driving. In CVPR, 2020. 6
+[7] Brandon Castellano. Pyscenedetect. Github repository ,
+2020. 6
+[8] Huiwen Chang, Han Zhang, Jarred Barber, AJ Maschinot,
+Jose Lezama, Lu Jiang, Ming-Hsuan Yang, Kevin Mur-
+phy, William T Freeman, Michael Rubinstein, et al. Muse:
+Text-to-image generation via masked generative transform-
+ers. arXiv preprint arXiv:2301.00704, 2023. 2, 5
+[9] Huiwen Chang, Han Zhang, Lu Jiang, Ce Liu, and William T
+Freeman. Maskgit: Masked generative image transformer. In
+CVPR, 2022. 2
+[10] Haoxin Chen, Menghan Xia, Yingqing He, Yong Zhang,
+Xiaodong Cun, Shaoshu Yang, Jinbo Xing, Yaofang Liu,
+Qifeng Chen, Xintao Wang, et al. Videocrafter1: Open
+diffusion models for high-quality video generation. arXiv
+preprint arXiv:2310.19512, 2023. 2
+[11] Mark Chen, Alec Radford, Rewon Child, Jeff Wu, Hee-
+woo Jun, Prafulla Dhariwal, David Luan, and Ilya Sutskever.
+Generative pretraining from pixels. 2020. 2
+[12] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina
+Toutanova. Bert: Pre-training of deep bidirectional
+transformers for language understanding. arXiv preprint
+arXiv:1810.04805, 2018. 2
+[13] Ming Ding, Zhuoyi Yang, Wenyi Hong, Wendi Zheng,
+Chang Zhou, Da Yin, Junyang Lin, Xu Zou, Zhou Shao,
+Hongxia Yang, et al. Cogview: Mastering text-to-image gen-
+eration via transformers. NeurIPS, 2021. 2
+[14] Ming Ding, Wendi Zheng, Wenyi Hong, and Jie Tang.
+Cogview2: Faster and better text-to-image generation via hi-
+erarchical transformers. NIPS, 2022. 2
+[15] Patrick Esser, Robin Rombach, and Bjorn Ommer. Taming
+transformers for high-resolution image synthesis. In CVPR,
+2021. 2
+[16] Patrick Esser, Robin Rombach, and Bjorn Ommer. Taming
+transformers for high-resolution image synthesis. In CVPR,
+2021. 4
+[17] Rohit Girdhar, Mannat Singh, Andrew Brown, Quentin Du-
+val, Samaneh Azadi, Sai Saketh Rambhatla, Akbar Shah, Xi
+Yin, Devi Parikh, and Ishan Misra. Emu video: Factoriz-
+ing text-to-video generation by explicit image conditioning.
+arXiv preprint arXiv:2311.10709, 2023. 3
+[18] Agrim Gupta, Lijun Yu, Kihyuk Sohn, Xiuye Gu, Meera
+Hahn, Li Fei-Fei, Irfan Essa, Lu Jiang, and Jos ´e Lezama.
+Photorealistic video generation with diffusion models. arXiv
+preprint arXiv:2312.06662, 2023. 3, 5
+[19] David Ha and J ¨urgen Schmidhuber. Recurrent world models
+facilitate policy evolution. NeurIPS, 2018. 2, 3
+[20] Danijar Hafner, Kuang-Huei Lee, Ian Fischer, and Pieter
+Abbeel. Deep hierarchical planning from pixels. NeurIPS,
+2022. 2
+[21] Danijar Hafner, Timothy Lillicrap, Jimmy Ba, and Moham-
+mad Norouzi. Dream to control: Learning behaviors by la-
+tent imagination. arXiv preprint arXiv:1912.01603, 2019. 2,
+3
+[22] Danijar Hafner, Timothy Lillicrap, Mohammad Norouzi, and
+Jimmy Ba. Mastering atari with discrete world models.arXiv
+preprint arXiv:2010.02193, 2020. 2, 3
+[23] Danijar Hafner, Jurgis Pasukonis, Jimmy Ba, and Timothy
+Lillicrap. Mastering diverse domains through world models.
+arXiv preprint arXiv:2301.04104, 2023. 2, 3
+[24] Danijar Hafner, Jurgis Pasukonis, Jimmy Ba, and Timothy
+Lillicrap. Mastering diverse domains through world models.
+arXiv preprint arXiv:2301.04104, 2023. 2
+[25] Ali Hatamizadeh, Jiaming Song, Guilin Liu, Jan Kautz, and
+Arash Vahdat. Diffit: Diffusion vision transformers for im-
+age generation. arXiv preprint arXiv:2312.02139, 2023. 3
+[26] Yingqing He, Tianyu Yang, Yong Zhang, Ying Shan, and
+Qifeng Chen. Latent video diffusion models for high-fidelity
+video generation with arbitrary lengths. arXiv preprint
+arXiv:2211.13221, 2022. 3
+[27] Jonathan Ho, William Chan, Chitwan Saharia, Jay Whang,
+Ruiqi Gao, Alexey Gritsenko, Diederik P Kingma, Ben
+Poole, Mohammad Norouzi, David J Fleet, et al. Imagen
+video: High definition video generation with diffusion mod-
+els. arXiv preprint arXiv:2210.02303, 2022. 3
+[28] Jonathan Ho and Tim Salimans. Classifier-free diffusion
+guidance. arXiv preprint arXiv:2207.12598, 2022. 6
+[29] Wenyi Hong, Ming Ding, Wendi Zheng, Xinghan Liu,
+and Jie Tang. Cogvideo: Large-scale pretraining for
+text-to-video generation via transformers. arXiv preprint
+arXiv:2205.15868, 2022. 2
+[30] Emiel Hoogeboom, Jonathan Heek, and Tim Salimans. sim-
+ple diffusion: End-to-end diffusion for high resolution im-
+ages. arXiv preprint arXiv:2301.11093, 2023. 4
+[31] Anthony Hu, Lloyd Russell, Hudson Yeo, Zak Murez,
+George Fedoseev, Alex Kendall, Jamie Shotton, and Gian-
+luca Corrado. Gaia-1: A generative world model for au-
+tonomous driving. arXiv preprint arXiv:2309.17080, 2023.
+2, 3
+[32] Fan Jia, Weixin Mao, Yingfei Liu, Yucheng Zhao, Yuqing
+Wen, Chi Zhang, Xiangyu Zhang, and Tiancai Wang.
+Adriver-i: A general world model for autonomous driving.
+arXiv preprint arXiv:2311.13549, 2023. 2, 3
+[33] Dan Kondratyuk, Lijun Yu, Xiuye Gu, Jos ´e Lezama,
+Jonathan Huang, Rachel Hornung, Hartwig Adam, Hassan
+Akbari, Yair Alon, Vighnesh Birodkar, et al. Videopoet: A
+large language model for zero-shot video generation. arXiv
+preprint arXiv:2312.14125, 2023. 2
+[34] Hugo Laurenc ¸on, Lucile Saulnier, L´eo Tronchon, Stas Bek-
+man, Amanpreet Singh, Anton Lozhkov, Thomas Wang, Sid-
+dharth Karamcheti, Alexander M Rush, Douwe Kiela, et al.
+Obelisc: An open web-scale filtered dataset of interleaved
+image-text documents. arXiv preprint arXiv:2306.16527 ,
+2023. 6
+[35] Jessy Lin, Yuqing Du, Olivia Watkins, Danijar Hafner, Pieter
+Abbeel, Dan Klein, and Anca Dragan. Learning to model
+the world with language. arXiv preprint arXiv:2308.01399,
+2023. 2
+[36] Suraj Patil, William Berman, Robin Rombach, and Patrick
+von Platen. amused: An open muse reproduction. arXiv
+preprint arXiv:2401.01808, 2024. 6
+[37] Alec Radford, Karthik Narasimhan, Tim Salimans, Ilya
+Sutskever, et al. Improving language understanding by gen-
+erative pre-training. OpenAI, 2018. 2
+[38] Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario
+Amodei, Ilya Sutskever, et al. Language models are unsu-
+pervised multitask learners. OpenAI, 2019. 2
+[39] Colin Raffel, Noam Shazeer, Adam Roberts, Katherine Lee,
+Sharan Narang, Michael Matena, Yanqi Zhou, Wei Li, and
+Peter J Liu. Exploring the limits of transfer learning with
+a unified text-to-text transformer. The Journal of Machine
+Learning Research, 2020. 4
+[40] Aditya Ramesh, Mikhail Pavlov, Gabriel Goh, Scott Gray,
+Chelsea V oss, Alec Radford, Mark Chen, and Ilya Sutskever.
+Zero-shot text-to-image generation. In ICML, 2021. 2
+[41] Christoph Schuhmann, Romain Beaumont, Richard Vencu,
+Cade Gordon, Ross Wightman, Mehdi Cherti, Theo
+Coombes, Aarush Katta, Clayton Mullis, Mitchell Worts-
+man, et al. Laion-5b: An open large-scale dataset for training
+next generation image-text models. NIPS, 2022. 4, 6
+[42] Younggyo Seo, Danijar Hafner, Hao Liu, Fangchen Liu,
+Stephen James, Kimin Lee, and Pieter Abbeel. Masked
+world models for visual control. In CoRL, 2023. 2
+[43] Uriel Singer, Adam Polyak, Thomas Hayes, Xi Yin, Jie An,
+Songyang Zhang, Qiyuan Hu, Harry Yang, Oron Ashual,
+Oran Gafni, et al. Make-a-video: Text-to-video generation
+without text-video data. arXiv preprint arXiv:2209.14792 ,
+2022. 3
+[44] Gemini Team, Rohan Anil, Sebastian Borgeaud, Yonghui
+Wu, Jean-Baptiste Alayrac, Jiahui Yu, Radu Soricut, Johan
+Schalkwyk, Andrew M Dai, Anja Hauth, et al. Gemini: a
+family of highly capable multimodal models. arXiv preprint
+arXiv:2312.11805, 2023. 6
+[45] Aaron Van Den Oord, Oriol Vinyals, et al. Neural discrete
+representation learning. NeurIPS, 2017. 2
+[46] Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszko-
+reit, Llion Jones, Aidan N Gomez, Łukasz Kaiser, and Illia
+Polosukhin. Attention is all you need. NIPS, 2017. 2
+[47] Ruben Villegas, Mohammad Babaeizadeh, Pieter-Jan Kin-
+dermans, Hernan Moraldo, Han Zhang, Mohammad Taghi
+Saffar, Santiago Castro, Julius Kunze, and Dumitru Erhan.
+Phenaki: Variable length video generation from open domain
+textual description. ICLR, 2023. 2
+[48] Jiuniu Wang, Hangjie Yuan, Dayou Chen, Yingya Zhang,
+Xiang Wang, and Shiwei Zhang. Modelscope text-to-video
+technical report. arXiv preprint arXiv:2308.06571, 2023. 2
+[49] Xiaofeng Wang, Zheng Zhu, Guan Huang, Xinze Chen,
+and Jiwen Lu. Drivedreamer: Towards real-world-driven
+world models for autonomous driving. arXiv preprint
+arXiv:2309.09777, 2023. 2, 3
+[50] Yuqi Wang, Jiawei He, Lue Fan, Hongxin Li, Yuntao Chen,
+and Zhaoxiang Zhang. Driving into the future: Multiview
+visual forecasting and planning with world model for au-
+tonomous driving. arXiv preprint arXiv:2311.17918, 2023.
+2, 3
+[51] Ryan Webster, Julien Rabin, Loic Simon, and Frederic Ju-
+rie. On the de-duplication of laion-2b. arXiv preprint
+arXiv:2303.12733, 2023. 6
+[52] Philipp Wu, Alejandro Escontrela, Danijar Hafner, Pieter
+Abbeel, and Ken Goldberg. Daydreamer: World models for
+physical robot learning. In CoRL, 2023. 2, 3
+[53] Wilson Yan, Yunzhi Zhang, Pieter Abbeel, and Aravind
+Srinivas. Videogpt: Video generation using vq-vae and trans-
+formers. arXiv preprint arXiv:2104.10157, 2021. 2
+[54] Jiahui Yu, Yuanzhong Xu, Jing Yu Koh, Thang Luong, Gun-
+jan Baid, Zirui Wang, Vijay Vasudevan, Alexander Ku, Yin-
+fei Yang, Burcu Karagol Ayan, et al. Scaling autoregres-
+sive models for content-rich text-to-image generation. arXiv
+preprint arXiv:2206.10789, 2022. 2
+[55] Lijun Yu, Yong Cheng, Kihyuk Sohn, Jos ´e Lezama, Han
+Zhang, Huiwen Chang, Alexander G Hauptmann, Ming-
+Hsuan Yang, Yuan Hao, Irfan Essa, et al. Magvit: Masked
+generative video transformer. In CVPR, 2023. 2
+[56] Lijun Yu, Jos ´e Lezama, Nitesh B Gundavarapu, Luca Ver-
+sari, Kihyuk Sohn, David Minnen, Yong Cheng, Agrim
+Gupta, Xiuye Gu, Alexander G Hauptmann, et al. Language
+model beats diffusion–tokenizer is key to visual generation.
+arXiv preprint arXiv:2310.05737, 2023. 2
+[57] Yan Zeng, Guoqiang Wei, Jiani Zheng, Jiaxin Zou,
+Yang Wei, Yuchen Zhang, and Hang Li. Make pixels
+dance: High-dynamic video generation. arXiv preprint
+arXiv:2311.10982, 2023. 3

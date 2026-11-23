@@ -1,0 +1,47 @@
+# 留证：GenAD: Generalized Predictive Model for Autonomous Driving
+# arXiv 2403.09630 (v1 2024-03), CVPR 2024（openaccess CVF 页证实）
+# 机构：OpenDriveLab / Shanghai AI Lab、HKUST、HKU、U. Tübingen 等
+# 作者：Jiazhi Yang, Shenyuan Gao, Yihang Qiu, Li Chen, Tianyu Li, Bo Dai, Kashyap Chitta, Penghao Wu, Jia Zeng, Ping Luo, Jun Zhang, Andreas Geiger, Yu Qiao, Hongyang Li
+# 来源 URL: https://ar5iv.labs.arxiv.org/html/2403.09630 （2026-10-26 抓取；工具输出截断于 Sec 4.2 末尾）
+# CVF 佐证: https://openaccess.thecvf.com/content/CVPR2024/papers/Yang_Generalized_Predictive_Model_for_Autonomous_Driving_CVPR_2024_paper.pdf
+
+## Abstract（逐字）
+"In this paper, we introduce the first large-scale video prediction model in the autonomous driving discipline. To eliminate the restriction of high-cost data collection and empower the generalization ability of our model, we acquire massive data from the web and pair it with diverse and high-quality text descriptions. The resultant dataset accumulates over 2000 hours of driving videos, spanning areas all over the world with diverse weather conditions and traffic scenarios. Inheriting the merits from recent latent diffusion models, our model, dubbed GenAD, handles the challenging dynamics in driving scenes with novel temporal reasoning blocks. We showcase that it can generalize to various unseen driving datasets in a zero-shot manner, surpassing general or driving-specific video prediction counterparts. Furthermore, GenAD can be adapted into an action-conditioned prediction model or a motion planner, holding great potential for real-world driving applications."
+
+## 2 OpenDV-2K Dataset（逐字节选）
+"OpenDV-2K occupies a total of 2059 hours of videos paired with texts, including 1747 hours from YouTube and 312 hours from public datasets. We use OpenDV-YouTube and OpenDV-2K to specify the YouTube split and the overall dataset, respectively."
+"OpenDV-2K covers more than 40 countries and 244 cities worldwide."
+"we collect 43 YouTubers with 2139 high-quality front-view driving videos."
+"Each frame is then described with language contexts using a VLM model, BLIP-2 [Li et al. 2023d]."
+"Language Annotation for YouTube Videos: ... we construct two types of texts for OpenDV-YouTube, i.e., driving commands for ego-vehicle and frame descriptions, namely 'command' and 'context', to help the model comprehend ego actions and open-world concepts, respectively. For commands, we train a video classifier on Honda-HDD-Action [Ramanishka et al. 2018] for 14 types of actions to label ego behaviors in a 4s sequence. These categorical commands will be further mapped to multiple free-form expressions from a predefined dictionary. For contexts, we leverage an established vision-language model, BLIP-2 [Li et al. 2023d], to describe the main objects and scenarios for each frame."
+"their metadata is relatively sparse with only a few words such as 'sunny road'. We further enhance their text quality using GPT [Ouyang et al. 2022] to form a descriptive 'context' and generate a 'command' by categorizing the logged trajectory for each video clip."
+
+## 3.1 Image Domain Transfer（逐字节选）
+"we initialize our model with SDXL [Podell et al. 2023], which is a large-scale latent diffusion model (LDM) for text-to-image generation ... It is implemented as a denoising UNet f_θ ... trained to predict the added noise ε of x_t via the following objective:
+  Eq (1): L_img := E_{x,ε~N(0,1),c,t} [‖ε − f_θ(x_t; c, t)‖²₂]
+where ... c is the text condition that guides the denoising process, which is a concatenation of context and command."
+"To adapt the model to synthesize images for driving, we fine-tune it on text-to-image generation using image-text pairs in OpenDV-2K with the same objective as Eq. 1. Following the original training of SDXL, all parameters θ of the UNet are fine-tuned at this stage, whereas the CLIP text encoders [Radford et al. 2021] and the autoencoder [Esser et al. 2021] remain frozen."
+
+## 3.2 Video Prediction Pre-training（逐字节选）
+Causal Temporal Attention："we leverage temporal attention to exchange information among different video frames. ... we restrict the attention direction by adding a causal attention mask ... to encourage the model to fully exploit knowledge from past observations and faithfully reason about the future as if in real-world driving."
+Decoupled Spatial Attention："we introduce spatial attention to propagate each grid feature in spatial axes to aid in gathering information for temporal attention. We implement a decoupled variant of self-attention for its efficiency with linear computational complexity, compared to quadratic full self-attention. ... the two decoupled attention layers propagate features in horizontal and vertical axes, respectively."
+Training（Eq 2 及文字）：
+"GenAD is trained to predict the future by jointly denoising from the noisy latents with the guidance of past frames and text conditions. We first project T consecutive frames of a video clip into a batch of latents v={v^m, v^n}, where the leading m frame latents v^m are clean, representing historical observations, and other n=T−m frame latents v^n indicate the future to be predicted."
+  Eq (2): L_vid := E_{v,ε~N(0,1),c,t} [‖ε − f_{θ,φ}(v_t^n; v^m, c, t)‖²₂]
+"Following [Blattmann et al. 2023], we freeze θ and only train the temporal reasoning blocks to avoid perturbing the generation ability of the image generation model and focus on learning temporal dependencies in videos."
+Zero Initialization："for each block that is newly introduced in stage two, we initialized all parameters of its final layer as zero. This avoids disrupting the prior knowledge of the well-trained image generation model in the beginning and stabilizes the training process."
+
+## 3.3 Extensions（逐字）
+Action-conditioned Prediction："we fine-tune the model with the paired future trajectory as an additional condition. Specifically, we map the raw trajectory to a high-dimensional feature with Fourier embeddings [Tancik et al. 2020]. After further projection by a linear layer, it is added to the original conditions. Thus, the ego actions are injected into the network through the conditional cross-attention layer in Fig. 4 (b)."
+Planning："By learning to predict the future, GenAD acquires strong representations of complex driving scenes, which can be further exploited for planning. Specifically, we extract spatiotemporal features of two historical frames through the UNet encoder of the frozen GenAD, which is nearly half the size of the entire model, and feed them to a multi-layer perceptron (MLP) to predict future waypoints. With the frozen GenAD encoder and a learnable MLP layer, the training process of our planner can be sped up by 3400 times compared to an end-to-end planning model UniAD [Hu et al. 2023c], validating the effectiveness of the learned spatiotemporal feature of GenAD."
+
+## 4.1 Setup and Protocols（逐字节选）
+"In stage one, the model takes input (image, text) pairs and is trained on text-to-image generation. We broadcast the command annotation, which is labeled for each 4s video sequence, to all frames included. The model is trained for 300K iterations on 32 NVIDIA Tesla A100 GPUs with a total batch size of 256. In the second stage, GenAD is trained to jointly denoise future latents conditioned on past latents and texts. Its inputs are (video clip, text) pairs where each video clip is 4s at 2Hz. The current version of GenAD is trained on 64 GPUs for 112.5K iterations with a total batch size of 64. The input frames are resized to 256×448 for training in both stages, and the text condition c is dropped at a probability of p=0.1 to enable classifier-free guidance."
+
+## 4.2 Results（逐字节选）
+"GenAD significantly reduces FVD by 44.5% compared to DrivingDiffusion [Li et al. 2023f], without taking 3D future layouts as additional inputs."
+"we train a model variant (GenAD-nus) on nuScenes dataset only. We find that although GenAD-nus performs on par with GenAD on nuScenes, it struggles to generalize to unseen datasets like Waymo, where the generation degrades to the nuScenes visual pattern."
+Ablation："By interleaving the temporal blocks with the spatial blocks, the FVD significantly improves (-17%) due to more sufficient spatiotemporal interactions. Both temporal causality and decoupled spatial attention contribute to better CLIPSIM, improving the temporal consistency between future predictions and the condition frames."
+
+## 未获取部分（如实说明）
+Sec 4.3（planning 下游实验表）及附录因抓取截断未取得；planning 实验细节（waypoint 数量/评估指标）在本记录未覆盖，精读中不引用未获取内容。

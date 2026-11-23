@@ -1,0 +1,227 @@
+# TacForeSight 精读笔记
+
+> 数据源：`auto_docs/papers/txt/TacForeSight.txt`（830 行，全文）。所有行号指该 txt 文件行号。
+> 凡【推断】均为解读，非原文；凡「原文未写」表示论文无对应内容。
+
+---
+
+## 1) 原文信息
+
+| 项 | 内容 | 行号 |
+|---|---|---|
+| 标题 | "TacForeSight: Force-Guided Tactile World Model for Contact-Rich Manipulation" | L1–2 |
+| 作者 | Yujie Zang¹,²,³\*, Yuhang Zheng²\*, Xian Nie¹,³\*, Yupeng Zheng¹,⁴, Shuai Tian⁴, Songen Gu⁵, Chen Gao², Zining Wang¹, Shuicheng Yan²†, Wenchao Ding¹† | L3–4 |
+| 标注 | "† Corresponding Author, * Equal Contribution" | L7 |
+| 机构 | "1 TARS Robotics 2 National University of Singapore 3 Shanghai Jiao Tong University 4 Institute of Automation, Chinese Academy of Sciences 5 Fudan University" | L5–6 |
+| ID | "arXiv:2606.11184v1  [cs.RO]  9 Jun 2026" | L97 |
+| 发表状态 | arXiv 预印本 v1（2026-06-09）；是否被会议接收：**原文未写**。项目主页：https://tacforesight.github.io/ | L72 |
+| 开放承诺 | "All models and datasets will be made publicly available on the project website" | L70–72 |
+
+---
+
+## 2) Abstract 全文逐字（L48–73）
+
+> （行尾连字符词按惯例合并，如 L48–49 "con-/tinuously" → "continuously"）
+>
+> "Contact-rich manipulation requires robots to continuously perceive and regulate evolving physical interactions under dynamic contact transitions or complex surface geometries. Recent imitation learning methods improve contact-aware control by incorporating tactile or force feedback, but they rarely model the asymmetric spatiotemporal roles of global force and local tactile sensing. To address this, we propose TacForeSight, a lightweight force-conditioned tactile foresight framework for real-time manipulation. The core component is TacForceWM, a tactile world model that predicts short-horizon tactile latent dynamics from dual-finger tactile observations conditioned on high-frequency wrist force and torque signals. Another key component, the Predictive Tactile-Conditioned Policy, leverages the predicted latents as anticipatory contact priors, models the current-to-future tactile evolution via cross-attention, and adaptively fuses visuo-tactile features through a tactile-guided gating module. By forecasting purely within a compact latent space, TacForeSight enables proactive contact reasoning with efficient real-time inference suitable for high-frequency manipulation control. Real-robot experiments on five representative tasks and three in-process perturbation settings show that TacForeSight consistently outperforms existing baselines, particularly under dynamic contact disturbances. All models and datasets will be made publicly available on the project website at https://tacforesight.github.io/ ProjectPage."
+>
+> 来源行号：L48–49, L49–51, L51–54, L54, L54–56, L56–57, L57–59, L59, L60–64, L64–67, L67–71, L71–73（"at" 与 URL 之间原文即连写 "athttps://…"，L72）。
+
+---
+
+## 3) 问题与动机（简：全局力 vs 局部触觉的非对称时空角色）
+
+- 问题场景："Contact-rich manipulation remains a fundamental challenge, as robots need to adapt to dynamic contact transitions or geometrically complex surfaces."（L74–77）；执行中接触力/局部几何/物体位姿的细微变化可导致 "slippage, misalignment, or contact loss"（L78–80）。
+- 既有方法两类："most existing approaches either treat force and tactile signals as separate modalities to be fused into a joint representation [3], [4], [5], or use them as passive feedback signals for reactive control [6], [7]."（L86–89）；"Although these designs improve contact awareness, their inherently reactive nature limits their effectiveness in tasks that require proactive temporally coordinated interaction modeling."（L89–92）。
+- 核心缺陷（非对称时空角色未被建模）："A key limitation of current methods is that they do not explicitly model the asymmetric temporal and spatial roles of global force and local tactile sensing."（L92–95）；"Wrist wrench signals provide high-frequency global cues about external load changes, whereas optical tactile sensors capture fine-grained local deformation."（L95–98）。
+- 关键观察（力先于触觉）："in bulb insertion and locking (Fig. 1), abrupt wrist-wrench changes consistently precede fingertip tactile responses become evident, indicating a coarse-to-fine temporal dependency where global force signals act as leading indicators of future tactile states."（L98–103）。（注：L101 "responses become evident" 疑为 "responses before they become evident" 的 OCR 漏字，照录原文。）
+- 人类传感运动类比："Inspired by human sensorimotor control, where load-related cues are used to anticipate object interaction states and guide local contact adjustments [8], [9], we explicitly model this force-to-tactile predictive process for contact-rich manipulation."（L106–110）。
+- 对比既有世界模型（像素空间预测昂贵）："Unlike existing frameworks [10], [2] that rely on computationally intensive predictive branches or high-dimensional video generation, TacForeSight focuses on efficient latent-space forecasting."（L124–127）；另见 L191–197："Some methods directly predict future force or tactile observations for planning [27], [2], but generating high-dimensional sensory observations, especially in pixel space, is computationally expensive for real-time control [27]. Other works use force or tactile prediction as an auxiliary objective for representation learning [10], [28], without explicitly using the predicted contact information as prior during execution."
+- 三大贡献（原文 bullet，L139–151）：① "We propose TacForeSight, a compact force-conditioned tactile prediction framework for real-time contact-rich manipulation…"；② "We introduce TacForceWM, a tactile world model that predicts short-horizon tactile latent dynamics from dual-finger tactile observations conditioned on high-frequency wrist force/torque signals."；③ "We design a Predictive Tactile-Conditioned Policy that uses future tactile latents as anticipatory contact priors, models current–future tactile evolution via cross-attention, and performs adaptive visuo-tactile fusion with a tactile-guided gate."
+
+---
+
+## 4) 实现细节（重点）
+
+整体架构（Fig.2 caption 逐字，L255–257）："Overview of TacForceSight. Our framework consists of two coupled components. In Stage 1, a force-conditioned tactile world model encodes dual-finger tactile fields into compact latent representations and predicts tactile evolution conditioned on wrist force/torque signals. In Stage 2, the predicted tactile dynamics are used as contact priors for a lightweight flow-based policy."（caption 标题写 "TacForceSight"，疑为原文笔误，照录。）正文总述："TacForeSight, a cascaded predictive framework that first pretrains a force-conditioned world model to predict short-horizon tactile evolution in latent space and then leverages the predicted tactile dynamics for lightweight flow-based action sequence prediction."（L204–206、L258–261）。
+
+### 4.1 数据（平台、任务与采集）
+
+- 硬件（L461–467）："we use a 7-DoF UFactory xArm7 robot equipped with a Robotiq 2F-85 gripper, an Intel RealSense D435 wrist-mounted camera, a UFactory 6-axis force/torque sensor, and two Xense tactile sensors equipped on each fingertip."
+- 采样频率（L466–467）："Image and tactile observations are captured at 30 Hz, while wrist wrench data are recorded at 120 Hz."
+- 触觉输出（L468–469）："Each tactile sensor outputs a 35×20 3D displacement map representing the local contact deformation."
+- 触觉输入通道语义（L271–276）："each finger-specific tactile field is denoted as X^s_t ∈ R^{H×W×3}, where s ∈ {L, R} indexes the left or right finger, H×W is the tactile spatial resolution, and the three channels represent dense 3D marker displacement at each spatial location."
+- 世界模型训练数据（L470–473）："The Predictive Force-conditioned Tactile World Model (11.8M parameters) is trained on 2,700 force-tactile interaction episodes, including both task-specific demonstrations and diverse contact interaction data."
+- 扰动数据（L512–517）："In the perturbation-aware setting, we additionally collect recovery demonstrations in which external disturbances are introduced during task execution, requiring the demonstrator to re-establish stable contact and recover the manipulation process. Policies in this setting are trained using both nominal demonstrations and recovery interaction data."
+- 每任务演示数量、单轮采集时长等细节：**原文未写**。
+
+### 4.2 TacForceWM（Stage 1）
+
+- 组成（L262–267）："Our tactile world model consists of a tactile tokenizer, a force encoder, and a latent dynamics predictor."
+- **Tactile Tokenizer**（L268–295）："a hybrid CNN-Transformer [29] that converts dense dual-finger tactile fields into compact frame-level tokens."
+  - 共享空间编码器："We first employ a shared spatial encoder Φ_sp, consisting of residual convolutional blocks and hierarchical downsampling layers… F^s_t = Φ_sp(X^s_t) ∈ R^{H'×W'×D_h}. (1)"（L276–279）；"The encoder weights are shared across both fingers for dual-finger tactile observations [30]."（L280–281）。
+  - 嵌入增强："we augment the feature maps with learnable spatial positional embeddings E_pos and finger-specific identity embeddings E_sid: F̃^s_t = F^s_t + E_pos + E_sid. (2)"（L282–286）。
+  - Token 化与 [CLS]："The feature maps are flattened into patch-level tactile tokens and prepended with a learnable [CLS] token. A Transformer is applied to the concatenated left and right finger tokens… The [CLS] output is taken as the frame-level tactile latent z_t ∈ R^{D_z}."（L287–293）。
+- **Force Encoder**（L296–311）："we design a temporal force encoder that extracts temporally consistent conditions from high-rate wrist force/torque signals. Given a six-axis force/torque sequence w_{t−nH:t} ∈ R^{nH×6} sampled at a higher rate than tactile observations, where n denotes the sampling-rate ratio, the encoder maps it into a tactile-aligned condition sequence: c_{t−H:t} = G_φ(w_{t−nH:t}). (3)"；实现："The encoder first projects raw force/torque vectors into a latent feature space, and then applies dilated causal 1D convolutional blocks to capture multi-scale temporal force variations [31]. A causal temporal downsampling layer aligns the high-rate force features with the tactile latent sequence."（L304–308）。（n 的数值：原文未写；按 120 Hz vs 30 Hz 可推 n=4，属【推断】。）
+- **Latent Dynamics Predictor**（L312–330）："Instead of performing frame-wise one-step prediction [33], we formulate the task as chunk-based forecasting… given a tactile latent chunk z_{t−H:t} and its aligned force condition c_{t−H:t}, the predictor estimates a future tactile latent chunk with temporal offset ∆: ẑ_{t−H+∆:t+∆} = T_ψ(z_{t−H:t}, c_{t−H:t}), (4) where T_ψ denotes a force-conditioned latent Transformer backbone. The force condition is injected through adaptive layer normalization (AdaLN) [34] to modulate the intermediate features according to the temporal wrench context."
+- **训练目标**（L331–356）：双目标。
+  - 预测损失（Eq.5，L338–347）："The prediction objective jointly supervises absolute future tactile latents and their first-order temporal dynamics to capture tactile evolution and reduce over-smoothed latent predictions." L_pred = MSE(Ẑ^tact, Z^tact) + λ_dyn·MSE(∇Ẑ^tact, ∇Z^tact)，"where ∇ denotes the first-order temporal difference along the chunk dimension."（L349–350）。
+  - 正则（Eq.6，L351–356）："Inspired by LeJEPA [35], we incorporate the Sketched Isotropic Gaussian Regularizer (SIGReg) to avoid representation collapse during training. In our setting, SIGReg regularizes the tactile latent distribution toward an isotropic Gaussian structure. The final world-model objective is: L_WM = L_pred + λ_sig·L_sig."
+- H（历史长度）、∆（预测偏移）、chunk 长度数值：**原文未写**。
+
+### 4.3 Predictive Tactile-Conditioned Policy（Stage 2）
+
+- 总述（L358–365）："Given multimodal observations, the policy extracts visual, proprioceptive, and tactile latent features, models the interaction between current and predicted tactile latents, and fuses the resulting tactile representation with visual features. A conditional flow-matching action head then predicts future action sequences conditioned on the fused multimodal features."
+- **多模态特征提取**（L366–377）："a frozen DINOv2-small [36] backbone encodes it into the visual feature h_img_t. The recent proprioceptive history s_{t−K+1:t} is flattened and encoded by an MLP into the state feature h_st. For tactile conditioning, the tactile tokenizer encodes recent H-frames tactile observations into the tactile latents z_{t−H:t}. The pretrained world model then predicts future tactile latents Ẑ_tact from z_{t−H:t} and aligned wrist force/torque features c_{t−H:t}."
+- **现-未来触觉 cross-attention**（L378–395）："learnable temporal embeddings are added to each latent to preserve the temporal order within each sequence: Z̄_tact,cur = z_{t−H:t} + E_temp,  Z̄_tact,fut = Ẑ_tact + E_temp. (7)"；"we employ the current tactile latents as queries, while utilizing the predicted future latents as keys and values. The cross-attention (CA) is written as: H_tact = Z̄_tact,cur + CA(Q = Z̄_tact,cur, K, V = Z̄_tact,fut). (8)"；"This residual structure augments the immediate contact state with predicted tactile dynamics. The enhanced tactile sequence H_tact is then averaged over the temporal dimension to obtain a compact future-aware tactile representation h_tact."（L391–394）。
+- **触觉引导门控融合**（L396–416）："our method performs fusion at the feature-channel granularity. Conditioned on h_tact, this gate enables the policy to dynamically balance visual context and predictive tactile dynamics… the tactile-guided gate is generated by an MLP with sigmoid activation: α = σ(MLP(h_tact)). (9)"；"We then project the visual and tactile features into a shared space and perform channel-wise adaptive fusion as: h_vt = (1−α)⊙h_img_t + α⊙h_tact. (10)"；"Here, α is computed from tactile representation and optimized with the policy objective."（L415–416）。对比定位："In contrast to prior token-level visuo-tactile fusion approaches [2], our method performs fusion at the feature-channel granularity."（L400–402）。
+- **Flow-matching 动作头**（L417–440）："The fused visuo-tactile feature h_vt and the proprioceptive feature h_st are concatenated and passed through a condition encoder to form the global policy condition y_t. Conditioned on y_t, the action head predicts an action chunk A_t = a_{t:t+L−1} ∈ R^{L×d_a}."；"Let A^(1)_t denote the expert action chunk and A^(0)_t ∼ N(0, I) denote a Gaussian noise action chunk. Given a sampled flow time τ ∼ U(0,1), we construct the linear interpolation path: A^(τ)_t = (1−τ)A^(0)_t + τA^(1)_t, u_t = A^(1)_t − A^(0)_t. (11)"；"A temporal U-Net v_θ is trained to predict the conditional velocity field along this trajectory: L_FM = E[A^(0)_t, A^(1)_t, τ ‖v_θ(A^(τ)_t, τ, y_t) − u_t‖²₂]. (12)"；"During inference, we initialize A^0_t ∼ N(0, I), and progressively refine by integrating the learned ordinary differential equation from τ = 0 to τ = 1 to obtain the denoised action chunk Â_t: dA_t(τ)/dτ = v_θ(A_t(τ), τ, y_t). (13)"。
+- 动作 chunk 长度 L、动作维度 d_a：**原文未写**。
+
+### 4.4 训练配置（原文全部训练细节）
+
+- 世界模型："The Predictive Force-conditioned Tactile World Model (11.8M parameters) is trained on 2,700 force-tactile interaction episodes, including both task-specific demonstrations and diverse contact interaction data. The model is optimized for 150k steps with λ_dyn = 1.00 and λ_sig = 0.09."（L470–475）。
+- 下游策略："We then freeze the pretrained tactile encoder and predictor to extract latent tactile representations for the downstream flow-matching policy (68.9M parameters)."（L475–477）。
+- 算力："All experiments are trained on 8 NVIDIA A100 GPUs."（L477–478）。
+- 学习率、优化器、batch size、动作 chunk 长度 L、H、∆、K：**原文未写**。
+- 基线与公平性处理（L479–494）：DP [39]（腕部 RGB+本体感受）；DP+Tactile+Force（"a multimodal extension of DP that additionally incorporates tactile features and wrist wrench observations"）；KineDex [40]（"jointly predicts action sequences and tactile representations from current visual and tactile observations"）；FoAR [11]（"We replace the original point-cloud encoder with a 2D RGB encoder for fair comparison."）；RDP [6]（"a reactive visual-tactile policy that leverages tactile and force feedback for online action refinement"）。
+
+### 4.5 推理（实时性数据）
+
+- "This enables proactive contact reasoning while maintaining a real-time inference rate of 20 Hz on an RTX 4090D GPU."（L127–129）。
+- 预测提前量（表示层分析）："the predicted tactile latents exhibit contact-related variations approximately 200 ms before similar changes appear in the current tactile latents."（L573–576）。
+
+---
+
+## 5) 伪代码
+
+论文**没有 Algorithm 环境**（全文无 Algorithm 块），以下为依据正文重建：
+
+```
+⚠ 依据原文重建（非原文伪代码）
+
+// ---------- Stage 1: TacForceWM（先预训练）[L262–267] ----------
+输入: 双指触觉场 X^s_t ∈ R^{H×W×3}, s∈{L,R}（3 通道=稠密 3D 形变）      [L271–276]
+     腕部六轴力/力矩序列 w_{t−nH:t} ∈ R^{nH×6}（高频, n=采样率比）      [L299–301]
+1.  F^s_t = Φ_sp(X^s_t)                      // 共享空间编码器(残差卷积+分级下采样) [L276–279, Eq.1]
+2.  F̃^s_t = F^s_t + E_pos + E_sid           // 空间位置+手指身份嵌入           [L282–286, Eq.2]
+3.  tokens = flatten(F̃^s_t) + [CLS]         // patch token 化                 [L287–288]
+4.  z_t = Transformer(tokens_{L,R}).CLS     // L/R 拼接后自注意力, 输出帧级潜向量 [L289–294]
+5.  c_{t−H:t} = G_φ(w_{t−nH:t})             // 力编码器: MLP投影→膨胀因果1D卷积
+                                            // →因果时间下采样对齐               [L296–311, Eq.3]
+6.  ẑ_{t−H+∆:t+∆} = T_ψ(z_{t−H:t}, c_{t−H:t}) // 潜Transformer, AdaLN 注入力条件,
+                                            // chunk 式预测                     [L312–330, Eq.4]
+7.  优化 L_WM = L_pred + λ_sig·L_sig        // L_pred = MSE(Ẑ,Z)+λ_dyn·MSE(∇Ẑ,∇Z)
+                                            // ∇=chunk 维一阶时间差分; SIGReg 防坍缩 [L331–356, Eq.5–6]
+
+// ---------- Stage 2: Predictive Tactile-Conditioned Policy [L358–365] ----------
+输入: 当前 RGB 图像, 本体感受历史 s_{t−K+1:t}, 触觉 H 帧, 腕部力/力矩      [L366–376]
+1.  h_img_t = DINOv2-small(RGB)            // 冻结视觉主干                    [L368–370]
+2.  h_st = MLP(flatten(s_{t−K+1:t}))       // 状态特征                        [L370–372]
+3.  z_{t−H:t} = TactileTokenizer(触觉 H 帧) // 冻结                           [L372–374]
+4.  Ẑ_tact = 冻结 WM 预测(z_{t−H:t}, c_{t−H:t})                                 [L374–376]
+5.  Z̄_cur = z_{t−H:t}+E_temp; Z̄_fut = Ẑ_tact+E_temp   // 可学时间嵌入        [L382–385, Eq.7]
+6.  H_tact = Z̄_cur + CA(Q=Z̄_cur, K=Z̄_fut, V=Z̄_fut) // 现→未来 cross-attention [L386–391, Eq.8]
+7.  h_tact = mean_over_time(H_tact)                                          [L392–394]
+8.  α = σ(MLP(h_tact))                     // 触觉引导门控                    [L405–411, Eq.9]
+9.  h_vt = (1−α)⊙h_img_t + α⊙h_tact        // 通道级自适应融合                [L412–414, Eq.10]
+10. y_t = CondEncoder([h_vt, h_st]); 预测动作 chunk A_t = a_{t:t+L−1}        [L417–421]
+11. 训练: τ~U(0,1); A^(τ)_t=(1−τ)A^(0)_t+τA^(1)_t; u_t=A^(1)_t−A^(0)_t
+    L_FM = E‖v_θ(A^(τ)_t, τ, y_t) − u_t‖²₂   // 时序 U-Net v_θ               [L422–432, Eq.11–12]
+12. 推理: A^0_t~N(0,I); 积分 ODE dA_t(τ)/dτ = v_θ(A_t(τ), τ, y_t), τ: 0→1    [L433–440, Eq.13]
+```
+
+⚠ 说明：论文未给出算法伪代码，上述流程为严格按 §III 正文顺序（Eq.1–13）重建；未发明任何原文没有的细节（如 H、∆、L、K 数值未写即不填）。
+
+---
+
+## 6) 主结果数值表
+
+### Table I（逐字重建，L450–459）
+
+「MANIPULATION PERFORMANCE ON CONTACT-RICH MANIPULATION TASKS AND IN-PROCESS PERTURBATION TASKS.」（L451）每格为 20 次试验的平均完成分（L518–520）。后三列为扰动任务（按 Fig.3 caption L447–449：Wiping-P=高度扰动、Swiping-P=角度扰动、Adjustment-P=位姿扰动；表头原文只写任务名）。
+
+| Policy | Wiping | Swiping | Adjustment | Locking | Insertion | Wiping-P | Swiping-P | Adjustment-P |
+|---|---|---|---|---|---|---|---|---|
+| DP [39] | 70% | 35% | 30% | 10% | 15% | 0% | 0% | 0% |
+| DP+Tactile+Force | 80% | 40% | 35% | 30% | 15% | 25% | 0% | 35% |
+| KineDex [40] | 30% | 35% | 25% | 45% | 30% | 10% | 0% | 0% |
+| FoAR [11] | 50% | 50% | 35% | 25% | 20% | 30% | 0% | 25% |
+| RDP [6] | 85% | 50% | 25% | 55% | 0% | 35% | 65% | 0% |
+| **Ours** | **100%** | **85%** | **70%** | **80%** | **60%** | **90%** | **85%** | **85%** |
+
+原文总结数值：
+- 标称任务均值："On the five representative contact-rich manipulation tasks, our method achieves an average completion score of 79.0%, substantially outperforming all baselines."（L538–540）。
+- 扰动均值："Across height, angle, and pose disturbances, our method achieves 90%, 85%, and 85%, respectively, with an average score of 86.7%, clearly outperforming all baselines."（L549–553）。
+- 扰动恢复定性："After height, angle, and pose disturbances, our policy can re-establish stable contact, correct the end-effector motion, and continue the task without losing progress."（L557–560）。
+
+### 任务定义（L496–504 + Fig.3 caption L446–449）
+
+- 五任务："Vase Wiping, Card Swiping, Tube Adjustment & Insertion, Bulb Insertion & Locking, and Wire Insertion."（L498–500）；"Wiping and Swiping require maintaining stable sliding contact during long-horizon surface interactions. Tube Adjustment and Bulb Locking involve sequential alignment and constrained contact manipulation. Wire Insertion requires precise contact control to insert a flexible wire into a socket."（L500–504）。
+- 三扰动："height perturbation during wiping (Wiping-P), angle perturbation during swiping (Swiping-P), and pose perturbation during tube adjustment (Adjustment-P)."（L447–449）。
+- 评分规则（L518–529）："we conduct 20 independent trials and report the average task completion score."；Wiping/Swiping："the ratio between the completed interaction length and the target length"；Adjustment/Locking："completing the first stage yields a score of 50%, while completing both stages yields 100%"；Wire Insertion："a trial is considered successful only if the wire is fully inserted into the target socket"；扰动："a trial is counted as successful only if the policy successfully recovers from the disturbance and completes the task."
+
+---
+
+## 7) 消融（全部）
+
+### 7.1 世界模型条件模态消融（Table II，L586–592）
+
+「ABLATION OF CONDITIONING MODALITY FOR TACTILE WORLD MODEL.」指标：MSE↓（逐元素预测误差）、Cos↑（潜方向一致性）、KL_sym↓（潜分布一致性）（L620–624）。
+
+| Condition | MSE↓ | Cos↑ | KL_sym↓ |
+|---|---|---|---|
+| w/o Condition | 0.027 | 0.954 | 0.014 |
+| RGB Image | 0.025 | 0.973 | 0.013 |
+| Robot State | 0.022 | 0.975 | 0.011 |
+| **Wrist Wrench** | **0.017** | **0.992** | **0.009** |
+
+原文结论（L624–632）："Compared with the no-condition variant, it reduces MSE from 0.027 to 0.017 and KL_sym from 0.014 to 0.009, while increasing cosine similarity from 0.954 to 0.992. These results indicate that wrist wrench provides the most informative physical condition for forecasting tactile contact evolution, as it directly captures physical interaction changes during contact-rich manipulation."
+
+### 7.2 策略消融（Table III，L593–601）
+
+「ABLATION OF THE PREDICTIVE TACTILE POLICY.」每变体 20 次真实试验（L652–654）。
+
+| Method | Wiping | Wiping-P | Swiping-P |
+|---|---|---|---|
+| Parallel fusion | 80% | 25% | 10% |
+| w/o force condition | 70% | 50% | 75% |
+| w/o predicted tactile | 65% | 15% | 15% |
+| w/o cross-attention | 100% | 65% | 0% |
+| w/o adaptive gate | 90% | 65% | 75% |
+| **Ours** | **100%** | **85%** | **90%** |
+
+变体定义（L642–651）：Parallel Fusion="directly fuses tactile features and wrist wrench features as policy input"；w/o Force Condition="removes wrist wrench conditioning from the predictive tactile prior"；w/o Predicted Tactile="removes predicted tactile features and uses only current tactile features as input"；w/o Cross-attention="replaces current–future tactile cross-attention with direct feature concatenation"；w/o Adaptive Gate="replaces adaptive visuo-tactile gating with direct feature concatenation"。
+
+原文解读（L654–675）：
+- 全模型最优："the full model achieves the best performance across all settings, with 100% on Wiping, 85% on Wiping-P, and 90% on Swiping-P."（L654–656）。
+- Parallel Fusion："performs poorly under perturbations, showing that simple force–tactile concatenation is insufficient for robust contact recovery."（L656–659）。
+- 预测触觉："Removing predicted tactile features causes a clear drop on both Wiping-P and Swiping-P, indicating the importance of future tactile priors for maintaining and recovering contact."（L659–662）。
+- 门控量化："Removing the adaptive gate also reduces Wiping-P performance and increases recovery time from 2.56 s to 4.06 s, suggesting that adaptive visuo-tactile fusion improves contact regulation during perturbation recovery."（L666–669）。
+- 门控可解释性（Fig.5，L669–675）："The gate responses vary across contact stages, indicating that the adaptive gate modulates tactile information according to changing contact conditions."
+
+### 7.3 表示分析（非消融但为关键证据，L561–605）
+
+- 提前量："the predicted tactile latents exhibit contact-related variations approximately 200 ms before similar changes appear in the current tactile latents. The latent difference responses become prominent around key contact-stage transitions, suggesting that the world model captures temporal contact evolution and provides anticipatory contact cues."（L573–579）。
+- 泛化性："we also evaluate representation generalization on unseen force–tactile interaction episodes, including pressing, twisting, and sliding… The t-SNE visualization in Fig. 4(b) shows that the embeddings form well-separated clusters according to the underlying contact pattern. This indicates that the tactile encoder learns contact-discriminative representations that capture local deformation and force-induced interaction changes beyond the training distribution."（L580–581、L601–605）。
+
+---
+
+## 8) 局限（逐字）
+
+**原文未写**：全文无 Limitations/Future Work 章节，结论（V. CONCLUSION，L676–688）亦未提及任何局限。检索确认：仅有两处 "limitation/limits" 均指既有方法的缺陷（L90 "their inherently reactive nature limits their effectiveness"；L92 "A key limitation of current methods is that they do not explicitly model the asymmetric temporal and spatial roles…"），不构成作者对本文的自我局限声明。
+
+（结论原文，供参考，L677–688："In this paper, we introduce TacForeSight, which moves beyond previous reactive feature fusion to establish a proactive and predictive paradigm for contact-rich manipulation. By conditioning tactile latent prediction on wrist force/torque signals, TacForeSight captures the asymmetric relationship between global force/torque changes and local tactile evolution. Real-robot experiments across contact-rich tasks and dynamic perturbations demonstrate its effectiveness for robust contact regulation and disturbance recovery. These results indicate that latent-space tactile prediction is an effective and efficient mechanism for bringing predictive physical reasoning into real-time contact-rich manipulation."）
+
+---
+
+## 9) 叙事关联【推断】≤4 条
+
+1. 【推断】TacForeSight 与 OmniVTA [2] 同源（共享作者 Y. Zheng、S. Gu、C. Gao 等，均 2603.19xxx 系），可视为同一团队"visuo-tactile world model"路线的效率化续作：TacForeSight 明确以 OmniVTA 的像素级/视频生成代价为反面对照（L124–127），收缩为纯触觉潜空间预测 + 20 Hz 实时推理，构成"潜空间触觉预测 vs 高维生成"的效率论据。
+2. 【推断】论文用两条独立证据链支撑"力→触觉因果先行"假设：宏观层 Fig.1（L98–102：腕部力变化先于指尖触觉响应）与表示层 Fig.4(a)（L573–576：预测潜变量约提前 200 ms 出现接触相关变化）。这一"力为触觉前兆（coarse-to-fine temporal dependency）"的论证可作为"非对称时空角色"主张的量化素材。
+3. 【推断】与其他触觉/力预测方法（[10],[28]）的关键分野是"预测结果的用途"：前者仅作辅助表征学习目标，TacForeSight 则把预测潜变量直接注入策略的 cross-attention（L194–197、L386–391），即"预测作为执行期先验 vs 预测作为训练期监督"的叙事分界。
+4. 【推断】实验叙事以"执行中扰动 + 恢复演示"为核心（L512–517），且最大优势集中在扰动列（Swiping-P 65%→85%、Adjustment-P 25%→85%，对最强基线），支持"预测式接触控制优于反应式"的鲁棒恢复主张，适合作为预测式 vs 反应式接触控制对比的实证证据源。
+
+---
+
+*笔记完成：2026-11-21。数据源仅 TacForeSight.txt（arXiv:2606.11184v1），未使用任何外部资料。*

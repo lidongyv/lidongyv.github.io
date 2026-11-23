@@ -1,0 +1,586 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DIAMOND 精读笔记（Diffusion for World Modeling: Visual Details Matter in Atari） · 世界模型调研与精读</title>
+<link rel="stylesheet" href="../style.css"></head><body>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次4 · T1 视频/扩散世界模型</div><h1>DIAMOND 精读笔记（Diffusion for World Modeling: Visual Details Matter in Atari）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2405.12399</span> <a href="https://arxiv.org/abs/2405.12399">arXiv 页面</a> · <a href="txt/DIAMOND.txt">提取正文 txt</a></div><blockquote>
+<p>数据源：<code>auto_docs/papers/txt/DIAMOND.txt</code>（arXiv:2405.12399v2，28 页，共 1238 行）。以下所有英文引用均逐字抄录自该 txt 并注明行号；标注【推断】处为本人解读，非论文原文。</p>
+</blockquote>
+<h2>1. 原文信息</h2>
+<ul>
+<li>标题（L1–2）："Diffusion for World Modeling: Visual Details Matter in Atari†"</li>
+<li>作者与机构（L3–16）：Eloi Alonso（University of Geneva）、Adam Jelley（University of Edinburgh）、Vincent Micheli（University of Geneva）、Anssi Kanervisto（Microsoft Research）、Amos Storkey（University of Edinburgh）、Tim Pearce（Microsoft Research）、François Fleuret（University of Geneva）。</li>
+<li>脚注（L50–51）："†To prevent confusion, this is the final version of (Alonso et al., 2023) and is not related to (Ding et al., 2024). ∗Equal contribution. ‡Equal supervision. Contact: eloi.alonso@unige.ch and adam.jelley@ed.ac.uk"</li>
+<li>会议（L52）："38th Conference on Neural Information Processing Systems (NeurIPS 2024)."</li>
+<li>ID（L53）："arXiv:2405.12399v2  [cs.LG]  30 Oct 2024"</li>
+<li>Spotlight 等级：原文未写。</li>
+</ul>
+<h2>2. Abstract 全文（逐字，L17–35）</h2>
+<p>"World models constitute a promising approach for training reinforcement learning agents in a safe and sample-efficient manner. Recent world models predominantly operate on sequences of discrete latent variables to model environment dynamics. However, this compression into a compact discrete representation may ignore visual details that are important for reinforcement learning. Concurrently, diffusion models have become a dominant approach for image generation, challenging well-established methods modeling discrete latents. Motivated by this paradigm shift, we introduce DIAMOND (DIffusion As a Model Of eNvironment Dreams), a reinforcement learning agent trained in a diffusion world model. We analyze the key design choices that are required to make diffusion suitable for world modeling, and demonstrate how improved visual details can lead to improved agent performance. DIAMOND achieves a mean human normalized score of 1.46 on the competitive Atari 100k benchmark; a new best for agents trained entirely within a world model. We further demonstrate that DIAMOND ’s diffusion world model can stand alone as an interactive neural game engine by training on static Counter-Strike: Global Offensive gameplay. To foster future research on diffusion for world modeling, we release our code, agents, videos and playable world models at https://diamond-wm.github.io."</p>
+<h2>3. 问题与动机（离散潜压缩丢失视觉细节的论证）</h2>
+<p>核心矛盾：近期世界模型主流用「离散潜变量序列」建模环境动态，离散化可抑制多步复合误差，但会丢失信息。逐字引文：</p>
+<ul>
+<li>L45–49："Recent world modeling methods (Hafner et al., 2021; Micheli et al., 2023; Robine et al., 2023; Hafner et al., 2023; Zhang et al., 2023) often model environment dynamics as a sequence of discrete latent variables. Discretization of the latent space helps to avoid compounding error over multi-step time horizons. However, this encoding may lose information, resulting in a loss of generality and reconstruction quality."</li>
+<li>举自动驾驶例证小细节可改变策略（L102–104）："This may be problematic for more real-world scenarios where the information required for the task is less well-defined, such as training autonomous vehicles (Hu et al., 2023). In this case, small details in the visual input, such as a traffic light or a pedestrian in the distance, may change the policy of an agent."</li>
+<li>增加离散潜数量能缓解但有代价（L104–105）："Increasing the number of discrete latents can mitigate this lossy compression, but comes with an increased computational cost (Micheli et al., 2023)."</li>
+<li>扩散范式的替代逻辑（L106–111）："In the meantime, diffusion models (Sohl-Dickstein et al., 2015; Ho et al., 2020; Song et al., 2020) have become a dominant paradigm for high-resolution image generation (Rombach et al., 2022; Podell et al., 2023). This class of methods, in which the model learns to reverse a noising process, challenges well-established approaches modeling discrete tokens (Esser et al., 2021; Ramesh et al., 2021; Chang et al., 2023), and thereby offers a promising alternative to alleviate the need for discretization in world modeling."</li>
+<li>扩散适合世界模型的两条性质（L111–115）："Additionally, diffusion models are known to be easily conditionable and to flexibly model complex multi-modal distributions without mode collapse. These properties are instrumental to world modeling, since adherence to conditioning should allow a world model to reflect an agent’s actions more closely, resulting in more reliable credit assignment, and modeling multi-modal distributions should provide greater diversity of training scenarios for an agent."</li>
+</ul>
+<h2>4. 方法逐机制</h2>
+<p><strong>术语校正</strong>：任务说明中「latent diffusion 世界模型」与论文不符——"latent diffusion" 仅出现在参考文献标题（L683、L695），DIAMOND 是直接在图像空间去噪的扩散世界模型："Additionally, operating in image space has the benefit of enabling our diffusion world model to be a drop-in substitute for the environment, which provides greater insight into world model and agent behaviors."（L121–123）。</p>
+<p><strong>(a) 条件扩散世界模型</strong>（§2.3）：把扩散模型条件化于历史观测与动作，直接估计并生成下一观测（L191–194）："To serve as a world model, we need a conditional generative model of the environment dynamics, p(xt+1 | x≤t, a≤t), where we consider the general case of a POMDP , in which the Markovian state st is unknown and can be approximated from past observations and actions. We can condition a diffusion model on this history, to estimate and generate the next observation directly, as shown in Figure 1." 训练目标（式 5，L195–197）："L(θ) = E [∥Dθ(xτt+1, τ,x0≤t, a≤t) − x0t+1∥2] ." 采样按反向 SDE 迭代求解，存在质量与 NFE 的权衡（L202–205）："To sample the next observation, we iteratively solve the reverse SDE in Equation 2... While we can in principle resort to any ODE or SDE solver, there is an inherent trade-off between sampling quality and Number of Function Evaluations (NFE), that directly determines the inference cost of the diffusion world model."</p>
+<p><strong>(b) 扩散范式与去噪设计选择</strong>（§3.1）：选 EDM 而非 DDPM（L210–213）："While DDPM (Ho et al., 2020) is an example of one such choice (as described in Appendix B) and would historically be the natural candidate, we instead build upon the EDM formulation proposed in Karras et al. (2022)." 扰动核与系数（L215–219）："We consider the perturbation kernel p0τ (xτt+1 | x0t+1) = N (xτt+1; x0t+1, σ2(τ )I)... This corresponds to setting the drift and diffusion coefficients to f (x, τ) = 0 (affine) and g(τ ) = p2 ˙σ(τ )σ(τ )." 网络预条件（式 6，L222–223）："Dθ(xτt+1, yτt ) = cτskip xτt+1 + cτout Fθ cτin xτt+1, yτt , where for brevity we define yτt := (cτnoise, x0≤t, a≤t) to include all conditioning variables." 噪声主导时训练目标趋向预测干净图像（L240–243）："When σ(τ ) ≫ σdata, we have cτskip → 0, and the training target forFθ is dominated by the clean signal x0t+1. Conversely, when the noise level is low, σ(τ ) → 0, we have cτskip → 1, and the target becomes the difference between the clean and the perturbed signal, i.e. the added Gaussian noise." 架构与条件注入（L249–252）："We use a standard U-Net 2D for the vector field Fθ (Ronneberger et al., 2015), and we keep a buffer of L past observations and actions that we use to condition the model. We concatenate these past observations to the next noisy observation channel-wise, and we input actions through adaptive group normalization layers (Zheng et al., 2020) in the residual blocks (He et al., 2015) of the U-Net." 采样器（L253–256）："While our codebase supports a variety of sampling schemes, we found Euler’s method to be effective without incurring the cost of additional NFE required by higher order samplers, or the unnecessary complexity of stochastic sampling."</p>
+<p><strong>(c) 在扩散世界模型中训练 agent</strong>（§3.2）：奖励/终止模型与 actor-critic（L258–265）："Since estimating the reward and termination are scalar prediction problems, we use a separate model Rψ consisting of standard CNN (LeCun et al., 1989; He et al., 2015) and LSTM (Hochreiter and Schmidhuber, 1997; Gers et al., 2000) layers to handle partial observability. The RL agent involves an actor-critic network parameterized by a shared CNN -LSTM with policy and value heads. The policy πϕ is trained with REINFORCE with a value baseline, and we use a Bellman error with λ-returns to train the value network Vϕ, similar to Micheli et al. (2023). We train the agent entirely in imagination as described in Section 2.1." 训练循环（L265–269）："The agent only interacts with the real environment for data collection. After each collection stage, the current world model is updated by training on all data collected so far. Then, the agent is trained with RL in the updated world model environment, and these steps are repeated." 关键超参（附录 E，Table 3，L859–893）："Number of epochs 1000"、"Imagination horizon (H) 15"、"Discount factor (γ) 0.985"、"λ-returns coefficient (λ) 0.95"、"For Dθ, number of conditioning observations and actions (L) 4"、"Diffusion Sampling: Method Euler / Number of steps 3"、"Image observation dimensions 64 ×64×3"、"Action space Discrete (up to 18 actions)"、"Frameskip 4"、"Reward clipping {−1, 0, 1}"。</p>
+<h2>5. 实验与主结果</h2>
+<p><strong>Atari 100k 设置</strong>（L273–279）："For comprehensive evaluation of DIAMOND we use the established Atari 100k benchmark (Kaiser et al., 2019), consisting of 26 games that test a wide range of agent capabilities. For each game, an agent is only allowed to take 100k actions in the environment, which is roughly equivalent to 2 hours of human gameplay, to learn to play the game before evaluation. As a reference, unconstrained Atari agents are usually trained for 50 million steps, a 500 fold increase in experience. We trained DIAMOND from scratch for 5 random seeds on each game. Each run utilized around 12GB of VRAM and took approximately 2.9 days on a single Nvidia RTX 4090 (1.03 GPU years in total)."</p>
+<p><strong>Table 1 全部数值</strong>（L317–346，逐字抄录；粗体原文标注最佳方法，此处省略加粗）：</p>
+<table>
+<thead>
+<tr>
+<th>Game</th>
+<th>Random</th>
+<th>Human</th>
+<th>SimPLe</th>
+<th>TWM</th>
+<th>IRIS</th>
+<th>DreamerV3</th>
+<th>STORM</th>
+<th>DIAMOND (ours)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Alien</td>
+<td>227.8</td>
+<td>7127.7</td>
+<td>616.9</td>
+<td>674.6</td>
+<td>420.0</td>
+<td>959.0</td>
+<td>983.6</td>
+<td>744.1</td>
+</tr>
+<tr>
+<td>Amidar</td>
+<td>5.8</td>
+<td>1719.5</td>
+<td>74.3</td>
+<td>121.8</td>
+<td>143.0</td>
+<td>139.0</td>
+<td>204.8</td>
+<td>225.8</td>
+</tr>
+<tr>
+<td>Assault</td>
+<td>222.4</td>
+<td>742.0</td>
+<td>527.2</td>
+<td>682.6</td>
+<td>1524.4</td>
+<td>706.0</td>
+<td>801.0</td>
+<td>1526.4</td>
+</tr>
+<tr>
+<td>Asterix</td>
+<td>210.0</td>
+<td>8503.3</td>
+<td>1128.3</td>
+<td>1116.6</td>
+<td>853.6</td>
+<td>932.0</td>
+<td>1028.0</td>
+<td>3698.5</td>
+</tr>
+<tr>
+<td>BankHeist</td>
+<td>14.2</td>
+<td>753.1</td>
+<td>34.2</td>
+<td>466.7</td>
+<td>53.1</td>
+<td>649.0</td>
+<td>641.2</td>
+<td>19.7</td>
+</tr>
+<tr>
+<td>BattleZone</td>
+<td>2360.0</td>
+<td>37187.5</td>
+<td>4031.2</td>
+<td>5068.0</td>
+<td>13074.0</td>
+<td>12250.0</td>
+<td>13540.0</td>
+<td>4702.0</td>
+</tr>
+<tr>
+<td>Boxing</td>
+<td>0.1</td>
+<td>12.1</td>
+<td>7.8</td>
+<td>77.5</td>
+<td>70.1</td>
+<td>78.0</td>
+<td>79.7</td>
+<td>86.9</td>
+</tr>
+<tr>
+<td>Breakout</td>
+<td>1.7</td>
+<td>30.5</td>
+<td>16.4</td>
+<td>20.0</td>
+<td>83.7</td>
+<td>31.0</td>
+<td>15.9</td>
+<td>132.5</td>
+</tr>
+<tr>
+<td>ChopperCommand</td>
+<td>811.0</td>
+<td>7387.8</td>
+<td>979.4</td>
+<td>1697.4</td>
+<td>1565.0</td>
+<td>420.0</td>
+<td>1888.0</td>
+<td>1369.8</td>
+</tr>
+<tr>
+<td>CrazyClimber</td>
+<td>10780.5</td>
+<td>35829.4</td>
+<td>62583.6</td>
+<td>71820.4</td>
+<td>59324.2</td>
+<td>97190.0</td>
+<td>66776.0</td>
+<td>99167.8</td>
+</tr>
+<tr>
+<td>DemonAttack</td>
+<td>152.1</td>
+<td>1971.0</td>
+<td>208.1</td>
+<td>350.2</td>
+<td>2034.4</td>
+<td>303.0</td>
+<td>164.6</td>
+<td>288.1</td>
+</tr>
+<tr>
+<td>Freeway</td>
+<td>0.0</td>
+<td>29.6</td>
+<td>16.7</td>
+<td>24.3</td>
+<td>31.1</td>
+<td>0.0</td>
+<td>33.5</td>
+<td>33.3</td>
+</tr>
+<tr>
+<td>Frostbite</td>
+<td>65.2</td>
+<td>4334.7</td>
+<td>236.9</td>
+<td>1475.6</td>
+<td>259.1</td>
+<td>909.0</td>
+<td>1316.0</td>
+<td>274.1</td>
+</tr>
+<tr>
+<td>Gopher</td>
+<td>257.6</td>
+<td>2412.5</td>
+<td>596.8</td>
+<td>1674.8</td>
+<td>2236.1</td>
+<td>3730.0</td>
+<td>8239.6</td>
+<td>5897.9</td>
+</tr>
+<tr>
+<td>Hero</td>
+<td>1027.0</td>
+<td>30826.4</td>
+<td>2656.6</td>
+<td>7254.0</td>
+<td>7037.4</td>
+<td>11161.0</td>
+<td>11044.3</td>
+<td>5621.8</td>
+</tr>
+<tr>
+<td>Jamesbond</td>
+<td>29.0</td>
+<td>302.8</td>
+<td>100.5</td>
+<td>362.4</td>
+<td>462.7</td>
+<td>445.0</td>
+<td>509.0</td>
+<td>427.4</td>
+</tr>
+<tr>
+<td>Kangaroo</td>
+<td>52.0</td>
+<td>3035.0</td>
+<td>51.2</td>
+<td>1240.0</td>
+<td>838.2</td>
+<td>4098.0</td>
+<td>4208.0</td>
+<td>5382.2</td>
+</tr>
+<tr>
+<td>Krull</td>
+<td>1598.0</td>
+<td>2665.5</td>
+<td>2204.8</td>
+<td>6349.2</td>
+<td>6616.4</td>
+<td>7782.0</td>
+<td>8412.6</td>
+<td>8610.1</td>
+</tr>
+<tr>
+<td>KungFuMaster</td>
+<td>258.5</td>
+<td>22736.3</td>
+<td>14862.5</td>
+<td>24554.6</td>
+<td>21759.8</td>
+<td>21420.0</td>
+<td>26182.0</td>
+<td>18713.6</td>
+</tr>
+<tr>
+<td>MsPacman</td>
+<td>307.3</td>
+<td>6951.6</td>
+<td>1480.0</td>
+<td>1588.4</td>
+<td>999.1</td>
+<td>1327.0</td>
+<td>2673.5</td>
+<td>1958.2</td>
+</tr>
+<tr>
+<td>Pong</td>
+<td>-20.7</td>
+<td>14.6</td>
+<td>12.8</td>
+<td>18.8</td>
+<td>14.6</td>
+<td>18.0</td>
+<td>11.3</td>
+<td>20.4</td>
+</tr>
+<tr>
+<td>PrivateEye</td>
+<td>24.9</td>
+<td>69571.3</td>
+<td>35.0</td>
+<td>86.6</td>
+<td>100.0</td>
+<td>882.0</td>
+<td>7781.0</td>
+<td>114.3</td>
+</tr>
+<tr>
+<td>Qbert</td>
+<td>163.9</td>
+<td>13455.0</td>
+<td>1288.8</td>
+<td>3330.8</td>
+<td>745.7</td>
+<td>3405.0</td>
+<td>4522.5</td>
+<td>4499.3</td>
+</tr>
+<tr>
+<td>RoadRunner</td>
+<td>11.5</td>
+<td>7845.0</td>
+<td>5640.6</td>
+<td>9109.0</td>
+<td>9614.6</td>
+<td>15565.0</td>
+<td>17564.0</td>
+<td>20673.2</td>
+</tr>
+<tr>
+<td>Seaquest</td>
+<td>68.4</td>
+<td>42054.7</td>
+<td>683.3</td>
+<td>774.4</td>
+<td>661.3</td>
+<td>618.0</td>
+<td>525.2</td>
+<td>551.2</td>
+</tr>
+<tr>
+<td>UpNDown</td>
+<td>533.4</td>
+<td>11693.2</td>
+<td>3350.3</td>
+<td>15981.7</td>
+<td>3546.2</td>
+<td>9234.0</td>
+<td>7985.0</td>
+<td>3856.3</td>
+</tr>
+<tr>
+<td>#Superhuman (↑)</td>
+<td>0</td>
+<td>N/A</td>
+<td>1</td>
+<td>8</td>
+<td>10</td>
+<td>9</td>
+<td>10</td>
+<td>11</td>
+</tr>
+<tr>
+<td>Mean (↑)</td>
+<td>0.000</td>
+<td>1.000</td>
+<td>0.332</td>
+<td>0.956</td>
+<td>1.046</td>
+<td>1.097</td>
+<td>1.266</td>
+<td>1.459</td>
+</tr>
+<tr>
+<td>IQM (↑)</td>
+<td>0.000</td>
+<td>1.000</td>
+<td>0.130</td>
+<td>0.459</td>
+<td>0.501</td>
+<td>0.497</td>
+<td>0.636</td>
+<td>0.641</td>
+</tr>
+</tbody>
+</table>
+<p><strong>主结论</strong>（L347–351）："Our results demonstrate that DIAMOND performs strongly across the benchmark, outperforming human players on 11 games, and achieving a superhuman mean HNS of 1.46, a new best among agents trained entirely within a world model. DIAMOND also achieves an IQM on par with STORM , and greater than all other baselines. We find that DIAMOND performs particularly well on environments where capturing small details is important, such as Asterix, Breakout and Road Runner." 注意：摘要与正文写 1.46（四舍五入表述），Table 1 精确值为 Mean 1.459、IQM 0.641。</p>
+<p><strong>与 IRIS 的成本对比</strong>（Table 4，L1003–1007，逐字）："#parameters (↓): IRIS 30M, DreamerV3 18M, DIAMOND (ours) 13M；Training days (↓): IRIS 4.1, DreamerV3 &lt;1, DIAMOND (ours) 2.9；Mean HNS (↑): IRIS 1.046, DreamerV3 1.097, DIAMOND (ours) 1.459"。正文（L1000–1002）："We see thatDIAMOND has the highest mean HNS, with fewer parameters than both IRIS and DreamerV3. DIAMOND also trains faster than IRIS , although is slower than DreamerV3."</p>
+<p><strong>CS:GO 可玩引擎</strong>（L441–460）："To investigate the ability of DIAMOND ’s diffusion world model to learn to model more complex 3D environments, we train the world model in isolation on static data from the popular video game Counter-Strike: Global Offensive (CS:GO). We use the Online dataset of 5.5M frames (95 hours) of online human gameplay captured at 16Hz from the map Dust II by Pearce and Zhu (2022). We randomly hold out 0.5M frames (corresponding to 500 episodes, or 8 hours) for testing, and use the remaining 5M frames (87 hours) for training. There is no reinforcement learning agent or online data collection involved in these experiments." 注脚（L450）："4This section was added after NeurIPS acceptance, following community interest in later CS:GO experiments." 工程细节（L452–460）："To reduce the computational cost, we reduce the resolution from (280 × 150) to (56 × 30) for world modeling. We then introduce a second, smaller diffusion model as an upsampler to improve the generated images at the original resolution (Saharia et al., 2022b). We scale the channels of the U-Net to increase the number of parameters from 4M for our Atari models to 381M for our CS:GO model (including 51M for the upsampler). The combined model was trained for 12 days on an RTX 4090. Finally, we introduce stochastic sampling and increase the number of denoising steps for the upsampler to 10, which we found to improve the resulting visual quality of the generations, while keeping the dynamics model the same (in particular, still using only 3 denoising steps). This enables a reasonable tradeoff between visual quality and inference cost, with the model running at 10Hz on an RTX 3090."</p>
+<h2>6. 消融（全部数值抄录）</h2>
+<p><strong>(a) DDPM vs EDM</strong>（§5.1）：相同架构、共享 Breakout 专家 100k 帧静态数据集（L359–361）："we train both variants with the same network architecture, on a shared static dataset of 100k frames collected with an expert policy on the game Breakout." NFE 预算约束（L364–366）："However, for our world model to be computationally comparable with other world model baselines (such as IRIS which requires 16 NFE for each timestep), we need at most tens of denoising steps, and preferably fewer." 结果（L368–373）："We see that using DDPM (Figure 3a) in this regime leads to severe compounding error, causing the world model to quickly drift out of distribution. In contrast, the EDM-based diffusion world model (Figure 3b) appears much more stable over long time horizons, even for a single denoising step."（n ≤ 10 步、自回归展开 t = 1000 步；L369–370："for different numbers of denoising steps n ≤ 10"）机制解释（L382–387）："This surprising result is a consequence of the improved training objective described in Equation 7, compared to the simpler noise prediction objective employed by DDPM . While predicting the noise works well for intermediate noise levels, this objective causes the model to learn the identity function when the noise is dominant ( σnoise ≫ σdata =⇒ ξθ(xτt+1, yτt ) → xτt+1)..." 定量版见 Fig. 8（L1081–1087）："DDPM becomes more stable with increasing number of denoising steps, but is less stable than 1-step EDM, even with 10 denoising steps."</p>
+<p><strong>(b) 去噪步数 n=3 vs n=1</strong>（§5.2）：单步预测是期望值、多模态时分布外（L397–402）："As discussed in Section 2.2, our score model is equivalent to a denoising autoencoder (Vincent et al., 2008) trained with an L2 reconstruction loss. The optimal single-step prediction is thus the expectation over possible reconstructions for a given noisy input, which can be out of distribution if this posterior distribution is multimodal." 决策（L404）："As a result, we therefore set n = 3 in all of our experiments." Table 7 数值（L1095–1107，逐字）：</p>
+<table>
+<thead>
+<tr>
+<th>Game</th>
+<th>Random</th>
+<th>Human</th>
+<th>DIAMOND (n = 3)</th>
+<th>DIAMOND (n = 1)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Amidar</td>
+<td>5.8</td>
+<td>1719.5</td>
+<td>225.8</td>
+<td>191.8</td>
+</tr>
+<tr>
+<td>Assault</td>
+<td>222.4</td>
+<td>742.0</td>
+<td>1526.4</td>
+<td>782.5</td>
+</tr>
+<tr>
+<td>Asterix</td>
+<td>210.0</td>
+<td>8503.3</td>
+<td>3698.5</td>
+<td>6687.0</td>
+</tr>
+<tr>
+<td>Boxing</td>
+<td>0.1</td>
+<td>12.1</td>
+<td>86.9</td>
+<td>41.9</td>
+</tr>
+<tr>
+<td>Breakout</td>
+<td>1.7</td>
+<td>30.5</td>
+<td>132.5</td>
+<td>50.8</td>
+</tr>
+<tr>
+<td>CrazyClimber</td>
+<td>10780.5</td>
+<td>35829.4</td>
+<td>99167.8</td>
+<td>87233.0</td>
+</tr>
+<tr>
+<td>Kangaroo</td>
+<td>52.0</td>
+<td>3035.0</td>
+<td>5382.2</td>
+<td>1710.0</td>
+</tr>
+<tr>
+<td>Krull</td>
+<td>1598.0</td>
+<td>2665.5</td>
+<td>8610.1</td>
+<td>9105.1</td>
+</tr>
+<tr>
+<td>Pong</td>
+<td>-20.7</td>
+<td>14.6</td>
+<td>20.4</td>
+<td>20.9</td>
+</tr>
+<tr>
+<td>RoadRunner</td>
+<td>11.5</td>
+<td>7845.0</td>
+<td>20673.2</td>
+<td>5084.0</td>
+</tr>
+<tr>
+<td>Mean HNS (↑)</td>
+<td>0.000</td>
+<td>1.000</td>
+<td>3.052</td>
+<td>1.962</td>
+</tr>
+</tbody>
+</table>
+<p>注（L1091–1093）："Note that the 1-step results correspond to a single seed only so will have higher variance."</p>
+<p><strong>(c) 架构与 3D 环境视觉质量</strong>（附录 M，Table 8，L1186–1192，逐字）：</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>FID↓ (CS:GO)</th>
+<th>FVD↓ (CS:GO)</th>
+<th>LPIPS↓ (CS:GO)</th>
+<th>FID↓ (Driving)</th>
+<th>FVD↓ (Driving)</th>
+<th>LPIPS↓ (Driving)</th>
+<th>Sample rate (Hz)↑</th>
+<th>Parameters (#)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DreamerV3</td>
+<td>106.8</td>
+<td>509.1</td>
+<td>0.173</td>
+<td>167.5</td>
+<td>733.7</td>
+<td>0.160</td>
+<td>266.7</td>
+<td>181M</td>
+</tr>
+<tr>
+<td>IRIS (K = 16)</td>
+<td>24.5</td>
+<td>110.1</td>
+<td>0.129</td>
+<td>51.4</td>
+<td>368.7</td>
+<td>0.188</td>
+<td>4.2</td>
+<td>123M</td>
+</tr>
+<tr>
+<td>IRIS (K = 64)</td>
+<td>22.8</td>
+<td>85.7</td>
+<td>0.116</td>
+<td>44.3</td>
+<td>276.9</td>
+<td>0.148</td>
+<td>1.5</td>
+<td>111M</td>
+</tr>
+<tr>
+<td>DIAMOND frame-stack (ours)</td>
+<td>9.6</td>
+<td>34.8</td>
+<td>0.107</td>
+<td>16.7</td>
+<td>80.3</td>
+<td>0.058</td>
+<td>7.4</td>
+<td>122M</td>
+</tr>
+<tr>
+<td>DIAMOND cross-attention (ours)</td>
+<td>11.6</td>
+<td>81.4</td>
+<td>0.125</td>
+<td>35.2</td>
+<td>299.9</td>
+<td>0.119</td>
+<td>2.5</td>
+<td>184M</td>
+</tr>
+</tbody>
+</table>
+<p>结论（L1193–1201）："DIAMOND outperforms the baselines across all visual quality metrics... The simpler frame-stacking architecture performs better than cross-attention, something surprising given the prevalence of cross-attention in the video generation literature."</p>
+<p><strong>(d) NFE 与实时性</strong>（L437–440）："Both world models are rendering frames at the same resolution (64 × 64), and DIAMOND requires only 3 NFE per frame compared to 16 NFE per frame for IRIS ." 采样率解读（L1203–1207）："In terms of sampling rate, DIAMOND frame-stack (with 20 denoising steps) is faster than IRIS (K = 16). IRIS suffers from a further 2.8× slow down for the K = 64 version, verifying its sample time is bottlenecked by the number of tokens K. On the other hand, DreamerV3 is an order of magnitude faster – this derives from its independent, rather than joint, sampling procedure, and the flip-side of this is the low visual quality of its trajectories."</p>
+<p><strong>(e) 训练时间剖面</strong>（Table 5，L1015–1034，逐字）："Single update Total 543 ms (88 + 115 + 340)；Diffusion model update 88；Reward/Termination model update 115；Actor-Critic model update 340（15 × 20.4 + 34）；Imagination step (x 15) 20.4（12.7 + 7.0 + 0.7）；Next observation prediction 12.7（3 × 4.2）；Denoising step (x 3) 4.2；Reward/Termination prediction 7.0；Action prediction 0.7；Loss computation and backward 34；Epoch Total 217 s（35 + 46 + 136）；Run Total 2.9 days（2.5 + 0.4）。"</p>
+<h2>7. 局限 / 未来工作（原文逐字）</h2>
+<p>L520–530："We identify three main limitations of our work for future research. First, our main evaluation is focused on discrete control environments, and applying DIAMOND to the continuous domain may provide additional insights. Second, the use of frame stacking for conditioning is a minimal mechanism to provide a memory of past observations. Integrating an autoregressive transformer over environment time, using an approach such as Peebles and Xie (2023), would enable longer-term memory and better scalability. We include an initial investigation into a potential cross-attention architecture in Appendix M, but found frame-stacking more effective in our early experiments. Third, we leave potential integration of the reward/termination prediction into the diffusion model for future work, since combining these objectives and extracting representations from a diffusion model is not trivial (Luo et al., 2023; Xu et al., 2023) and would make our world model unnecessarily complex."</p>
+<p>CS:GO 模型的具体局限（L466–474）："We find the model is able to generate stable trajectories over hundreds of timesteps, although is more likely to drift out-of-distribution in less frequently visited areas of the map. Due to the limited memory of the model, approaching walls or losing visibility may cause the model to forget the current state and instead generate a new weapon or area of map. Interestingly, we find the model wrongly enables successive jumps by generalizing the effect of a jump on the geometry of the scene, since multiple jumps do not appear often enough in the training gameplay for the model to learn that mid-air jumps should be ignored. We expect scaling the model and data to address many of these limitations, with the exception of the memory of the model. Quantitative measurements of the capabilities of the CS:GO world model and attempts to address these limitations are left to future work."</p>
+<h2>8. 叙事关联【推断】（≤5 条）</h2>
+<ol>
+<li>
+<p><strong>「可交互神经游戏引擎」的证据链</strong>：论文明确宣称该能力（L31–33 Abstract："We further demonstrate that DIAMOND ’s diffusion world model can stand alone as an interactive neural game engine by training on static Counter-Strike: Global Offensive gameplay."；L125–127："we trainDIAMOND ’s diffusion world model on87 hours of static Counter-Strike: Global Offensive (CSGO) gameplay (Pearce and Zhu, 2022) to produce an interactive neural game engine for the popular in-game map, Dust II."）。交互性有实物佐证：Figure 6 图注（L462–465）："Images captured from people playing with keyboard and mouse insideDIAMOND ’s diffusion world model."；实时性数据：L460 "with the model running at 10Hz on an RTX 3090"。结论部分（L538–539）："We further demonstrated DIAMOND ’s diffusion world model can successfully model 3D environments and serve as a real-time neural game engine by training on static Counter-Strike: Global Offensive gameplay."【推断：这是「可交互神经游戏引擎」最直接的第一手证据；论文同时把它作为扩散世界模型独立于 RL 的验收标准。】</p>
+</li>
+<li>
+<p><strong>扩散 vs 自回归的交互实时性对比</strong>：扩散世界模型每次观测仅 3 次网络前向（L437–440："DIAMOND requires only 3 NFE per frame compared to 16 NFE per frame for IRIS ."）；自回归 token 模型 IRIS 的采样率随 token 数下降（L1203–1205："In terms of sampling rate, DIAMOND frame-stack (with 20 denoising steps) is faster than IRIS (K = 16). IRIS suffers from a further 2.8× slow down for the K = 64 version, verifying its sample time is bottlenecked by the number of tokens K."）。Table 8 实测采样率：IRIS K=16 为 4.2 Hz、K=64 为 1.5 Hz，DIAMOND frame-stack 为 7.4 Hz、cross-attention 为 2.5 Hz（L1188–1192）。【推断：交互实时性叙事中，扩散（固定 NFE）在低步数下比 token 自回归（随 K 线性变慢）更具交互优势；但 DreamerV3 更快（266.7 Hz），代价是视觉质量差（L1205–1207："DreamerV3 is an order of magnitude faster – this derives from its independent, rather than joint, sampling procedure, and the flip-side of this is the low visual quality of its trajectories."），即「质量-速度」三角：扩散居中。】</p>
+</li>
+<li>
+<p><strong>视觉细节 → 策略性能的因果叙事</strong>：L123–124："In particular, we find the improved performance in some games follows from better modeling of critical visual details." 支撑：IRIS 生成的帧间不一致只有几个像素却能影响学习（L431–434）："These inconsistencies may only represent a few pixels in the generated images, but can have significant consequences for reinforcement learning. For example, since an agent should generally target rewards and avoid enemies, these small visual discrepancies can make it more challenging to learn an optimal policy."【推断：论文的因果链是「无离散压缩 → 视觉细节一致 → 信用分配更可靠 → 分数更高」，且用 L435–436 的消融式对照（agent 组件相似、差异只在世界模型）支撑："These improvements in the consistency of visual details are generally reflected by greater agent performance on these games, as shown in Table 1. Since the agent component of these methods is similar, this improvement can likely be attributed to the world model."】</p>
+</li>
+<li>
+<p><strong>生成视觉范式迁移叙事（token 自回归 → 扩散）</strong>：论文把图像生成领域「扩散挑战离散 token」的趋势直接迁移为世界模型的动机（L106–111）："diffusion models ... have become a dominant paradigm for high-resolution image generation ... This class of methods, in which the model learns to reverse a noising process, challenges well-established approaches modeling discrete tokens (Esser et al., 2021; Ramesh et al., 2021; Chang et al., 2023), and thereby offers a promising alternative to alleviate the need for discretization in world modeling."【推断：这是「潜在空间 → 扩散」叙事在世界模型侧的一次落地；但注意 DIAMOND 用的是像素空间 U-Net 2D 扩散，不是 latent diffusion，与叙事中 SDXL 类路线（L683、L695 仅出现在参考文献）不同源。】</p>
+</li>
+<li>
+<p><strong>世界模型作为环境的 drop-in 替身</strong>：L122–123："operating in image space has the benefit of enabling our diffusion world model to be a drop-in substitute for the environment, which provides greater insight into world model and agent behaviors."【推断：这与「可交互神经引擎」共用同一技术支点——像素空间输出使世界模型与真实环境接口一致，是「用世界模型直接替代游戏引擎」叙事成立的前提。】</p>
+</li>
+</ol>
+<h2>9. 图注 / 表注（主要，逐字抄录）</h2>
+<ul>
+<li>Figure 1（L84–101）："Unrolling imagination of DIAMOND over time. The top row depicts a policy πϕ taking a sequence of actions in the imagination of our learned diffusion world model Dθ. The environment time t flows along the horizontal axis, while the vertical axis represents the denoising time τ flowing backward from T to 0. Concretely, given (clean) past observations x0&lt;t, actions a&lt;t, and starting from an initial noisy sample xTt , we simulate a reverse noising process {xτt }τ =0τ =T by repeatedly calling Dθ, and obtain the (clean) next observation x0t . The imagination procedure is autoregressive in that the predicted observation x0t and the action at taken by the policy become part of the conditioning for the next time step. Animated visualizations of this procedure can be found at https://diamond-wm.github.io."</li>
+<li>Figure 2（L301–303）："Mean and interquartile mean human normalized scores. DIAMOND , in blue, obtains a mean HNS of 1.46 and an IQM of 0.64."</li>
+<li>Table 1（L314–316）："Returns on the 26 games of the Atari 100k benchmark after 2 hours of real-time experience, and human-normalized aggregate metrics. Bold numbers indicate the best performing methods. DIAMOND notably outperforms other world model baselines in terms of mean score over 5 seeds."</li>
+<li>Figure 3（L377–381）："Imagined trajectories with diffusion world models based on DDPM (left) and EDM (right). The initial observation at t = 0 is common, and each row corresponds to a decreasing number of denoising steps n. We observe that DDPM -based generation suffers from compounding error, and that the smaller the number of denoising steps, the faster the error accumulates. In contrast, our EDM-based world model appears much more stable, even for n = 1."</li>
+<li>Figure 4（L405–410）："Single-step (top row) versus multi-step (bottom row) sampling in Boxing. Movements of the black player are unpredictable, so that single-step denoising interpolates between possible outcomes and results in blurry predictions. In contrast, multi-step sampling produces a crisp image by driving the generation towards a particular mode. Interestingly, the policy controls the white player, so his actions are known to the world model. This information removes any ambiguity, and so we observe that both single-step and multi-step sampling correctly predict the white player’s position."</li>
+<li>Figure 5（L420–426）："Consecutive frames imagined with IRIS (left) and DIAMOND (right). The white boxes highlight inconsistencies between frames, which we see only arise in trajectories generated with IRIS . In Asterix (top row), an enemy (orange) becomes a reward (red) in the second frame, before reverting to an enemy in the third, and again to a reward in the fourth. In Breakout (middle row), the bricks and score are inconsistent between frames. In Road Runner (bottom row), the rewards (small blue dots on the road) are inconsistently rendered between frames. None of these inconsistencies occur with DIAMOND . In Breakout, the score is even reliably updated by +7 when a red brick is broken3."</li>
+<li>Figure 6（L462–465）："Images captured from people playing with keyboard and mouse insideDIAMOND ’s diffusion world model. This model was trained on 87 hours of static Counter-Strike: Global Offensive (CS:GO) gameplay (Pearce and Zhu, 2022) to produce an interactive neural game engine for the popular in-game map, Dust II. Best viewed as videos at https://diamond-wm.github.io."</li>
+<li>Table 4（L1003）："Number of parameters, training time, and mean human-normalized score (HNS)."</li>
+<li>Table 5（L1012–1014）："Detailed breakdown of training time. Profiling performed using a Nvidia RTX 4090 with the default hyperparameters specified in Appendices D and E These profiling measures are representative, since exact durations will depend on the machine, the environment, and the training stage."</li>
+<li>Figure 8（L1081–1087）："Average pixel drift between an imagined trajectory and the corresponding reference trajectory collected with an expert in Breakout. The trajectories are each 1000 timesteps, starting from the same frame and following the same sequence of actions. Each line displays the average and shaded standard deviation of 400 reference trajectories held out from training data. DDPM becomes more stable with increasing number of denoising steps, but is less stable than 1-step EDM, even with 10 denoising steps. The drift we observe for EDM corresponds to differences in the imagined trajectory rather than a pathological color shift as we see in Figure 3a."</li>
+<li>Table 7（L1095）："Quantitative ablation on reducing the number of denoising steps from 3 (default) to 1."</li>
+<li>Table 8（L1183–1185）："Results for 3D environments. These metrics compare observations from real trajectories and generated trajectories. The generated trajectories are conditioned on an initial set of L = 6 observations and a real sequence of actions."</li>
+<li>Figure 9（L1145–1147）："We tested two architectures for DIAMOND ’s diffusion model which condition on previous image observations in different ways. To illustrate differences with typical video generation models, we also visualize a U-Net 3D (Çiçek et al., 2016) which diffuses a block of frames simultaneously."</li>
+<li>Figure 10（L1214–1215）："Example trajectories sampled every 25 timesteps from DIAMOND (frame stack) for the modern 3D first-person shooter CS:GO (top row), and real-world motorway driving (bottom row)."</li>
+<li>Figure 11（L1228–1231）："Effect of fixed actions on sampled trajectories in motorway driving. Conditioned on the same initial observations, we rollout the model applying differing actions. Interestingly, the model has learnt to associate ’Slow down’ and ’Speed up’ actions to the whole traffic slowing down and speeding up."</li>
+<li>Figure 12（L1232–1237）："Effect of fixed actions on sampled trajectories in CS:GO. Conditioned on the same initial observation, we rollout the model applying differing actions. Whilst in immediate frames these have the intended effect, for longer roll-outs the observations can degenerate. For instance, it would have been very unlikely for the human demonstrator to look directly into ground in this game state, so the world model is unable to generate a plausible trajectory here, and instead snaps onto another area of the map when looking down does make sense."</li>
+</ul>
+<footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
+<a href="../index.html">返回首页</a></footer></div></main></body></html>

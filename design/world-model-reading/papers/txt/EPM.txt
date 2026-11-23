@@ -1,0 +1,1472 @@
+Perception into Imagination:
+Executable Memory for World Models
+Xianyao Li, Ruitong Tian, Rui Min, Fang Xu, Jing Du
+Abstract
+Physical agents must use what they previously saw or
+touched after visibility or contact is lost. Their actions
+change the implications of these remembered facts. We
+introduce executable perceptual memory (EPM), a world-
+model framework that advances explicit perceptual state
+alongside neural latent dynamics during imagination. Its
+evolving read-out informs reward prediction, value estima-
+tion and policy learning. We align reward inputs with the
+transitions that produced them and supervise the reward
+head on open-loop rollouts of recorded actions. On Memory
+Maze13×13, EPM reaches 30.37 return at 1M interactions,
+compared with 23.37 when the same evolving read-out in-
+forms only policy and value on a common perceptual front
+end: a gain of 7.00 [3.80, 10.21]. The complete method
+also improves control on9×9and in MiniWorld. Probes of
+remembered, out-of-view arrivals show stronger reward an-
+ticipation in both visual implementations. Concentration,
+tactile recovery and real tactile frames demonstrate com-
+plementary roles of remembered facts in imagined-policy
+training, motion-dependent decisions and sensory-content
+retention. EPM connects persistent perception to the pre-
+dicted consequences and learning signals of a world model
+for Physical AI.
+1. Introduction
+A robot can lose sight of a landmark when it turns, or lose
+tactile contact with an object when it withdraws. What it
+previously perceived remains useful, but the implications
+change with its actions: the landmark acquires a new bear-
+ing, and the remembered contact a new relative position.
+For Physical AI, using perception therefore requires both
+preserving facts and reasoning about their consequences in
+possible futures.
+World models provide a setting for this reasoning: they
+predict action consequences and train behaviors on imag-
+ined trajectories [17–19, 21, 23]. Recurrent states encode
+history, while spatial memories and maps maintain explicit
+structure [8, 29, 36]. A further question is how maintained
+facts enter the futures used for learning: their relations to
+the agent change along a rollout, and these changes must
+inform predicted rewards and values as well as actions.
+We introduceexecutable perceptual memory(EPM). A
+perceptual writer maintains explicit state during real inter-
+action. At an imagination anchor, a local state is initialized
+from that history and advanced using candidate actions and
+predicted motion. Its read-out complements the neural la-
+tent state in reward prediction, value estimation and policy
+learning (Fig. 1). A remembered fact can thus affect both
+the action under consideration and the return target used to
+learn that action.
+The learning interface connects this joint state to the sig-
+nals that train behavior. In our DreamerV3 implementation,
+a transition-aligned read-out refers to the fact relevant to
+each reward, before the next observation writes new evi-
+dence or changes the goal. An additional open-loop loss
+trains the reward head on prior rollouts of recorded actions.
+Together, these inputs and objectives make remembered re-
+lations available when learning rewards from real transi-
+tions and predicting them in imagination.
+EPM improves control over a policy/value-only memory
+interface on a common front end in Memory Maze9×9and
+13×13, and in MiniWorld. At13×13, it reaches 30.37 re-
+turn at 1M interactions, compared with 23.37 for that inter-
+face and 14.18 for observation-only memory access. Con-
+trolled probes in both visual implementations show stronger
+reward anticipation at remembered, out-of-view arrivals.
+Comparisons with DreamerV3 and R2I establish the ap-
+proach’s competitive context. Concentration, tactile re-
+covery and real tactile frames test the same perception–
+memory–decision principle through complementary tasks.
+We make three contributions. First, we formulate
+executable perceptual memory: explicit perceptual state
+that candidate actions advance alongside neural world-
+model dynamics, with its read-outs available throughout
+imagination. Second, we connect these read-outs to re-
+ward and actor–critic learning through transition-aligned re-
+ward inputs and open-loop supervision. Third, matched-
+information comparisons establish control gains and con-
+ditional component effects in two visual implementations,
+while symbolic and tactile tasks test complementary uses of
+persistent facts.
+1
+arXiv:2611.22294v1  [cs.LG]  17 Nov 2026
+a Perception b Joint imagination c Learning
+seen
+target fact
+Retain after visibility 
+is lost
+remembered target
+future A
+future B
+The fact persists; its action-relative consequences change.
+Remembered facts
+shape imagined returns
+reward value policy
+REAL HISTORY ACTION-CONDITIONED WORLD MODEL
+Posterior state  zt
+Perceptual state  mt
+Sensory writes +
+measured motion
+Initialize local memory
+z0
+m0
+u0
+a0
+G: predicted 
+      motion
+ 
+F
+z1
+m1
+u1
+a1
+G: predicted 
+      motion
+ 
+F
+zh
+mh
+uh
+⋯
+⋯
+Continue c(zh)
+zh
+uh
+Reward  q
+Value  v
+Policy  π
+Return
+targets
+Actor–critic
+learning
+Read-outs enter reward, value and policy
+Neural state Explicit perceptual state Candidate action Behavior learning
+Figure 1.Executable perceptual memory within a world model.Perception maintains facts beyond immediate visibility. Policy actions
+advance neural dynamics and explicit local state in parallel, coupled by predicted motion. The evolving read-out informs reward prediction
+and actor–critic learning; rewards, continuation and values form imagined return targets. Reward training uses transition-aligned inputs
+and open-loop supervision (Sec. 3). Above: an example observation and schematic futures for a remembered landmark. Below: the joint
+rollout and its evolving read-outu h.
+2. Related work
+World models and learning through imagination.
+World Models [17], PlaNet [18] and Dreamer [19–21] learn
+predictive representations for planning or imagined behav-
+ior learning. Value Prediction Networks [35], MuZero [42]
+and TD-MPC2 [23] emphasize reward and value predic-
+tions for control. Dreamer 4 [22], iVideoGPT [44], Nav-
+igation World Models [4], V-JEPA 2 [3] and Cosmos [1]
+extend predictive modeling toward video and physical in-
+teraction. Multi-step objectives shape latent dynamics and
+belief states [14, 18]; DreamSmooth studies reward predic-
+tion under sparse rewards [28]. EPM connects persistent
+perceptual facts to the predicted rewards and values used
+for learning.
+Memory under partial observability.Transformer poli-
+cies [37], structured sequence models [15], S4WM [11] and
+R2I [40] strengthen neural memory. Long-context video
+models preserve past observations [39, 45, 46]; concur-
+rent TT-MBRL encodes episode memory in model parame-
+ters at test time [6]. DIACRITIC studies recurrent mem-
+ory sufficient to reproduce expert behavior [31]. Cogni-
+tive Mapping and Planning [16], Neural Map [36], Active
+Neural SLAM [8] and MemoNav [29] organize spatial his-
+tory; Memoir retrieves history using imagined futures [47].
+GTM-SM couples spatial memory to agent dynamics [12],
+and FloWM transforms latent memory with self-motion
+and object motion [32]. Concurrent ScanDreamer advances
+pose over a frozen map and analytically computes selected
+reward and termination signals [13]. EPM instead supplies
+executed fact read-outs to a learned reward model, using
+transition-aligned and open-loop training. Our comparisons
+hold the memory observation common and isolate how its
+read-outs enter imagination and learning.
+Structured dynamics and grounded prediction.Inter-
+action Networks [5], SE3-Nets [7] and structured world
+models [27] exploit object and geometric structure. Code
+world models [10] and Programmable World Model [25]
+express transitions as executable structure. SearchWorld
+grounds search in spatial values [26]; DreamLedger uses
+execution outcomes to assess reliance on model predic-
+tions [30]. EPM specifies how perceptually maintained
+facts are executed and read by reward and behavior-learning
+interfaces.
+Touch as persistent perceptual evidence.Optical tac-
+tile sensors recover local geometry and contact informa-
+tion [48]. Tactile Gym [33], Taxim [43] and TacSL [2]
+2
+support simulation and learning, while Tactile MNIST [41]
+supplies real observations for active perception. Visuo-
+tactile world models improve object permanence in pre-
+dicted rollouts [24]. We study how tactile information per-
+sists beyond contact: explicit state advances along candi-
+date motions, and compact sensory memory preserves con-
+tent for later queries.
+3. Executable perceptual memory
+3.1. Persistent facts and action-dependent relations
+Consider a partially observed process with observationso t,
+actionsa t, rewardsy t and an optional goalg t. We represent
+history by a neural statez t and explicit perceptual statem t.
+The latter stores quantities with defined persistence and up-
+date rules: landmark estimates, object-relative poses or ob-
+served card identities. At interaction time, their values are
+estimated from the agent’s observation stream. Privileged
+simulator state is not supplied to the policy.
+Real interaction combines state propagation with a per-
+ceptual write:
+mt =W(C(m t−1, δt), E(ot)), u t =R(m t, gt).(1)
+HereEextracts sensory evidence,δ t is measured motion,
+Ccarries the stored state, andWincorporates new evi-
+dence. The queryRgives a task-relevant read-outu t. A
+landmark may remain fixed in world coordinates while its
+bearing changes with the agent’s pose. This distinction lets
+the model preserve a fact while executing its consequences
+under movement.
+3.2. Joint imagination
+At a real anchort, the posterior initializes˜z 0, and a projec-
+tion of history initializes local state˜m0 =P(m t, gt). The
+policy acts on their joint read-out. Each imagined step ad-
+vances both components:
+˜ah ∼π ψ(· |˜zh, uh),
+˜zh+1 ∼p θ(· |˜zh,˜ah),
+bδh =G θ(˜zh,˜ah),
+˜mh+1 =F( ˜mh, bδh,˜ah), u h+1 =R( ˜mh+1, gt).
+(2)
+The neural model learns dynamics from experience; the ex-
+ecutable update applies candidate actions to selected his-
+tory. The paths interact through policy actions and predicted
+motion. The neural transition is conditioned on the latent
+state and action.
+In navigation,Pextracts the current target’s relative ge-
+ometry and age. Predicted translation and rotation advance
+this local relation; new observations and target switches are
+outside that short-rollout update. A shared motion head
+learns the subsequent odometry measurement from the pre-
+action neural feature and action with a squared-error objec-
+tive. Motion predictions used byFare stopped-gradient.
+In the tactile instance, the carried quantity is object-relative
+pose; in Concentration, known identities constrain a sim-
+ulator of the public rules. The framework specifies where
+executable structure enters, while each instance defines the
+structure it can propagate.
+3.3. From imagined facts to learning signals
+The navigation method supplies[˜zh, uh]to both the reward
+headq ω and actor–critic. Continuationc θ reads neural fea-
+tures alone:
+ˆyh =q ω(˜zh, uh),ˆc h =c θ(˜zh),ˆv h =v ξ(˜zh, uh).(3)
+Predicted rewards, continuation and bootstrapped values
+form the usual Dreamer returns. The explicit state there-
+fore informs the learning target as well as the behavior be-
+ing optimized. Policy, critic, slow critic and replay value
+computation all retain direct read-out access.
+Aligning facts with rewards.Rewardy t+1 is produced
+by actiona t. Its replay-side read-out must refer to that
+transition, before the new observation writes evidence or
+switches the target. We obtain it by advancing the preced-
+ing memory with measured motion:
+¯ut+1 =R(F(P(m t, gt), δt+1, at), gt).(4)
+The posterior reward loss pairs(z t+1,¯ut+1)withy t+1. At
+episode starts and at the first replay-sequence position, the
+additional slots are zeroed. In imagination, the head instead
+uses the read-out advanced with predicted motion along the
+imagined trajectory.
+Training rewards on open-loop futures.From replay
+posterior anchorst∈ S, we roll the prior along the recorded
+actions forHsteps without further observations, and prop-
+agate the local memory in the same way. Letb t,h indicate
+that no episode reset has occurred between the anchor and
+steph. The added loss is
+LOL = 1|S| Xt∈S PHh=1 bt,h ℓω(yt+h; sg[˜zh, uh])max(1, PHh=1 bt,h) .(5)
+Hereℓ ω is the backbone reward-prediction loss. We use
+H= 15, anchors every four replay steps and weight 1.
+The stop-gradient boundary makes this term train only the
+reward head, leaving representation, dynamics and motion
+learning under their existing objectives. The posterior re-
+ward loss is retained; Appendix A illustrates both training
+paths.
+3
+Table 1.Navigation arms.All encode the same perceptual mem-
+ory. Entries specify direct imagined read-outs. R = reward access;
+OL = open-loop reward loss. Reward access is tested with OL.
+Arm Policy/value Reward OL
+Observation+OL – – Yes
+Held+OL Held – Yes
+Held+R+OL Held Held Yes
+Evolved Evolved – No
+Evolved+OL Evolved – Yes
+EPMEvolved Evolved Yes
+Perceptual implementation.A landmark detector and
+visual odometry maintain sparse target positions and agent
+pose. The read-out contains a known flag, sine/cosine bear-
+ing, log-distance and log-age. These perception networks
+are trained on separate calibration trajectories with simula-
+tor labels, then frozen; deployment uses images and actions.
+Memory Maze adds image-based heading correction, and
+MiniWorld models lateral motion. Every arm encodes and
+reconstructs the same memory observation and shares the
+same front end within an experiment. Appendix A details
+calibration, state updates and storage.
+4. Experimental setup
+Tasks and training.The principal learned-control tests
+use multi-goal Memory Maze [38] at9×9and13×13, and
+a MiniWorld [9]9×9implementation with different render-
+ing and kinematics. The DreamerV3-based agent uses the
+12M-parameter configuration, 16 environments and a 2M-
+transition replay capacity. All policies train from scratch.
+Memory Maze endpoints are 1M interactions, with twelve
+initialization labels at9×9and six at13×13; MiniWorld
+uses twelve initialization labels and a 2M endpoint. Each
+policy is evaluated on 48 common layout/target/spawn iden-
+tities. Episode budgets are 1,000 actions for both9×9
+implementations and 3,000 for13×13. Concentration, tac-
+tile simulation and real tactile frames test complementary
+stages of the framework (Sec. 6).
+Six integration choices.Table 1 names arms by their
+components. “Held” and “evolved” refer to direct read-outs
+during imagination. All arms have the same memory infor-
+mation in observation encoding, matched head dimensions
+and common initial parameters within a label. Zero-filled
+direct slots preserve parameter counts. The six-arm design
+is used at9×9and in MiniWorld; the13×13experi-
+ment trains the four non-held arms. “Evolved” supplies the
+evolving read-out to the policy and value only, without re-
+ward access or the open-loop loss.
+Comparisons and inference.The full-method contrast
+is EPM minus Evolved; reward access is EPM minus
+Evolved+OL; OL alone is Evolved+OL minus Evolved.
+The held arms measure reward access under holding. Re-
+turn differences use paired two-sided 95%tintervals over
+initialization labels, with positive-label counts and sign-
+flip sensitivity analyses in the appendix. Each task is in-
+ferred separately; secondary contrasts are not multiplicity-
+adjusted. Budgets and primary endpoints are fixed before
+evaluation. Interaction budgets count policy training and
+exclude the shared offline perception calibration.
+Reward-anticipation probes.Every arm is tested on
+common histories from EPM and Evolved+OL policies,
+with equal source-policy weight. We compare visible tar-
+gets (VIS) with remembered, out-of-view targets whose ar-
+rival is anticipated by explicit state (MEM and RA). RA is
+evaluated per model, so the retained event subsets can differ.
+Net reward anticipationAsubtracts predicted mass in non-
+arrival windows from mass around first arrivals, weighting
+eligible horizon bins equally. It is not an accuracy or prob-
+ability. The memory deficit isD=A VIS −A MEM∩RA;
+Appendix C gives the full definitions.
+5. Perceptual history improves learning and
+control
+5.1. The complete method improves control
+On the larger13×13task, EPM reaches 30.37 return at
+1M interactions, compared with 23.37 for the policy/value-
+only interface (Evolved) on the same front end. The gain
+is7.00[3.80,10.21], positive on all six initialization la-
+bels. Against observation-only memory access, the gain is
+16.19[12.67,19.72]: the same perceptual information is
+more useful when it participates directly in imagined pre-
+diction and learning. The9×9experiment independently
+gives6.08[4.46,7.71] over Evolved, positive on all twelve
+labels.
+The second visual implementation tests the learning de-
+sign with different rendering and planar motion. In Mini-
+World at 2M, EPM reaches 21.83 versus 18.09 for Evolved:
++3.74[2.51,4.97], positive on all twelve labels. The com-
+plete method also exceeds observation-only access in each
+experiment. Figure 2 shows learning progress, and Table 2
+gives endpoint returns and component effects.
+5.2. What do the components contribute?
+Reward access.Under common open-loop training, EPM
+exceeds Evolved+OL by5.51[4.46,6.57] on9×9and
+11.39[7.89,14.89] on13×13, positive on every label. In
+MiniWorld, this increment is1.00[−0.04,2.03] at 2M and
+remains unresolved. Thus the complete method improves
+4
+0.25M 0.5M 1M
+Environment interactions
+0
+10
+20
+30Return (targets reached)
++6.08
+12 labels
+a   Memory Maze 9×9
+0.25M 0.5M 1M
+Environment interactions
++7.00
+6 labels
+b   Memory Maze 13×13
+1M 2M
+Environment interactions
++3.74
+12 labels
+c   MiniWorld 9×9
+EPM Evolved Evolved+OL Observation+OL Held+OL Held+R+OL
+Figure 2.Control with executable perceptual memory.Mean return at evaluation checkpoints; bars show one standard error over
+initialization labels. Each panel is a separate experiment with a common front end across its arms. Brackets mark the paired endpoint gain
+of EPM over Evolved, which lacks reward access and the open-loop loss. Table 2 gives endpoint returns and component effects.
+Table 2.Control results and component effects.Upper: mean return at the endpoint. Lower: pre-specified paired differences∆with
+95%tintervals over initialization labels;n + is the number of labels with a positive difference. Each task is a separate experiment with a
+common front end across its arms. R denotes direct reward access and OL the open-loop reward loss. The13×13experiment trains the
+four non-held arms. The interaction is the reward-access effect for evolved minus held read-outs.
+Memory Maze9×9Memory Maze13×13MiniWorld9×9
+1M, 12 labels 1M, 6 labels 2M, 12 labels
+Observation+OL 17.32 14.18 20.74
+Held+OL 17.18 – 18.52
+Held+R+OL 12.08 – 3.37
+Evolved 19.12 23.37 18.09
+Evolved+OL 19.69 18.98 20.83
+EPM 25.20 30.37 21.83
+Paired difference∆95% CIn + ∆95% CIn + ∆95% CIn +
+EPM−Evolved+6.08[4.46,7.71] 12/12+7.00[3.80,10.21] 6/6+3.74[2.51,4.97] 12/12
+EPM−Evolved+OL+5.51[4.46,6.57] 12/12+11.39[7.89,14.89] 6/6+1.00[−0.04,2.03] 10/12
+EPM−Observation+OL+7.89[6.17,9.60] 12/12+16.19[12.67,19.72] 6/6+1.09[0.02,2.17] 9/12
+Evolved+OL−Evolved+0.57[−1.55,2.70] 7/12−4.39[−8.16,−0.61] 0/6+2.74[1.16,4.33] 11/12
+Evolved+OL−Held+OL+2.51[1.36,3.66] 11/12 –+2.31[1.10,3.52] 11/12
+Held+R+OL−Held+OL−5.10[−6.34,−3.86] 0/12 –−15.15[−17.95,−12.36] 0/12
+Reward access×evolution+10.61[9.35,11.86] 12/12 –+16.15[13.05,19.25] 12/12
+control across all three tasks, with the reward-access contri-
+bution established in both Memory Maze sizes.
+Action-dependent evolution.With common OL and no
+direct reward access, evolution improves return over hold-
+ing by2.51[1.36,3.66] on9×9and2.31[1.10,3.52]
+in MiniWorld. Reward access under holding lowers return
+by5.10[3.86,6.34] and15.15[12.36,17.95], respectively;
+Held+R+OL reaches 3.37 in MiniWorld. Both reward-
+access arms use transition-aligned replay inputs; holding
+changes the rollout-side read-out. Access-by-evolution in-
+teractions are 10.61 and 16.15; the latter mainly reflects the
+held arm’s degradation. These controls distinguish execut-
+ing remembered relations from repeatedly supplying an un-
+changed read-out.
+Open-loop supervision.Without direct reward access,
+OL gives+0.57[−1.55,2.70] on9×9,−4.39[−8.16,
+−0.61] on13×13, and+2.74[1.16,4.33] in MiniWorld.
+The large13×13reward-access gain occurs where OL
+alone lowers return. Appendix B provides full contrast ta-
+bles.
+5
+Visible
+target
+Remembered,
+out of view
+0
+0.25
+0.5
+0.75
+1
+Net reward anticipation A
+a   Memory Maze 9×9
++0.196
++0.434
+Visible
+target
+Remembered,
+out of view
+0
+0.25
+0.5
+0.75
+1
+b   MiniWorld 9×9
++0.278
++0.341
+Memory Maze
+9×9
+MiniWorld
+9×9
+0
+0.1
+0.2
+0.3
+0.4
+Memory deficit D
+c   Gap to visible targets
+−0.237
+−0.063
+Evolved+OL EPM
+Figure 3.Reward anticipation from perceptual history.(a,b) Net anticipation for visible targets and remembered, out-of-view targets
+satisfying each model’s arrival-anticipation condition (RA). (c) Their difference, the memory deficit. Points and bars are means and 95%
+tintervals over twelve labels per implementation. Both arms have evolved policy/value read-outs and OL training; EPM additionally
+supplies reward read-outs. Numbers give paired differences.
+5.3. Remembered facts inform predicted rewards
+For Memory Maze9×9, reward access raises remembered-
+arrival anticipation from 0.154 to 0.587. The paired incre-
+ment is0.434[0.376,0.491], positive on 12/12 labels. Vis-
+ible anticipation also increases, from 0.482 to 0.679; the
+memory deficit decreases from 0.329 to 0.092, a paired re-
+duction of 0.237 [0.211, 0.264]. The larger increase on re-
+membered arrivals narrows the deficit beyond the overall
+rise in anticipation.
+In MiniWorld, remembered-arrival anticipation rises
+from 0.447 to 0.787:+0.341[0.283,0.398], again posi-
+tive on 12/12 labels. Visible anticipation rises from 0.582 to
+0.860, and the deficit falls by 0.063 [0.024, 0.102]. Across
+both visual implementations, the interface increases pre-
+dicted reward at remembered arrivals and narrows the gap to
+visible arrivals, consistent with remembered facts reaching
+reward prediction.
+5.4. Comparison with DreamerV3 and R2I
+We compare with native DreamerV3 and R2I, and with R2I
+supplied with the same perception stream and maintained
+state (Table 3). A six-label experiment uses visual odome-
+try without heading correction and a direct policy/value in-
+terface. It reaches 11.17 at 1M, versus 5.93 with memory
+accessed only through observation encoding:+5.24[1.05,
+9.43]. Appendix E gives all checkpoints. Table 3 separates
+this setting from the heading-corrected experiments.
+This direct-interface agent has higher mean return than
+native DreamerV3 at 1M (2.90) and native R2I at 3M
+(6.74). R2I with the front end and maintained state reaches
+9.36 at 3M; the training-seed difference from 11.17 is un-
+resolved. With the shared heading-corrected front end,
+Evolved reaches 23.37 and EPM 30.37.
+Table 3.Comparison with external world-model agents on
+13×13.Mean returns with training budgets. External methods
+use three training seeds; our agents use six initialization labels.
+The upper group uses visual odometry without heading correction
+where a front end is supplied; the lower pair shares the heading-
+corrected front end and is a separate experiment.
+Method Interactions Return
+Native DreamerV3 1M 2.90
+Native R2I 3M 6.74
+R2I + front end 3M 6.08
+R2I + front end + state 3M 9.36
+Policy/value-only interface 1M 11.17
+With heading correction
+Policy/value-only interface (Evolved) 1M 23.37
+EPM1M30.37
+6. Remembered facts and physical interaction
+The following instances test complementary stages: re-
+specting facts during imagined training, carrying state
+through lost contact, and retaining real sensory content for
+later use.
+6.1. Remembered facts improve imagined-policy
+training
+ConcentrationHard [34] gives a discrete instance of the
+same question. A key–value memory stores observed card
+identities. During imagination, a simulator executes the
+public game rules while retaining those identities and sam-
+pling unknown cards. A matched control uses the same
+rules but resamples all identities. The policy is optimized
+entirely on imagined rollouts from public-observation pre-
+fixes, then deployed in the real game.
+6
+Facts
+resampled
+Facts
+kept
+Real-env.
+training
+0.0
+0.2
+0.4
+0.6Deployed return
+0.12
+0.44
+0.53
+imagined training reference
+a   Concentration
+0 5 10
+Recovery progress: evolved state minus reference (mm)
+State-free command, side-informed
+Held action
+Command table by side and length
+Dead reckoning, constant start
++10.47  [8.65, 12.29]
++10.32  [8.64, 12.00]
++6.04  [4.43, 7.66]
+−0.65  [−2.02, 0.71]
+difference [95% CI]b   Tactile recovery after contact loss
+Figure 4.History matters at different stages of decision making.(a) Deployed Concentration return of policies trained on imagined
+trajectories with remembered card identities resampled or kept, and of a policy trained in the real environment; dots are training seeds. (b)
+Tactile recovery progress of the evolved-state chooser minus each reference on 48 new worlds with varying excursions; bars show 95%
+pairedtintervals over worlds. The primary comparison uses a state-free command informed of excursion side; the hollow marker is a
+reference that also carries state by motion.
+Retaining remembered facts yields deployed returns of
+0.475, 0.367 and 0.490 over three training seeds, compared
+with 0.147, 0.181 and 0.027 when all identities are resam-
+pled. Real-environment training gives 0.541, 0.520 and
+0.542 (256 evaluation episodes per policy). The supplied
+rule simulator differs from the neural navigation model, but
+the comparison isolates a shared methodological point: the
+futures used for training should respect the facts already ac-
+quired by the agent.
+6.2. Tactile history supports future branches and
+recovery
+In Tactile Gym 2.0 [33], an estimator writes object-relative
+state from tactile observations while contact is available.
+Kinematic updates carry this state after contact is lost and
+advance it along candidate actions. On twelve previously
+unexposed worlds, explicit evolution reduces pre-contact
+prediction error by 0.51 mm [0.28, 0.73] and raises agree-
+ment with the best executed branch from 0.02 to 0.64.
+We next test recovery choices after a retreat and side-
+ways excursion. A chooser evaluates 128 fixed open-loop
+paths using an evolved state and a fitted outcome model,
+then hands over to a feedback law at re-contact. On 48 new
+worlds with varying excursion lengths, it achieves 34.80
+mm of progress per recovery window, versus 24.33 mm
+for a state-free command selected by excursion side. The
+primary difference is 10.47 [8.65, 12.29] mm, positive on
+46/48 worlds. It also exceeds a held-action reference by
+10.32 [8.64, 12.00] mm and a command table indexed by
+side and excursion length by 6.04 [4.43, 7.66] mm (Fig. 4).
+A constant-start dead-reckoning reference reaches 35.46
+mm; evolved minus this reference is−0.65[−2.02,0.71]
+mm and remains unresolved. The results support motion-
+carried state for candidate-path selection; this comparison
+does not isolate tactile initialization. Appendix I gives pro-
+tocols, splits and additional comparisons.
+6.3. Real tactile observations survive in compact
+memory
+Real Tactile MNIST contains GelSight Mini images col-
+lected with a robot manipulator [41]. We encode contact
+frames and their positions into eight slots with 48 bytes of
+payload plus up to 9 bytes of validity and age metadata. A
+late query asks for digit identity or material at a held-out
+position. Evaluation uses 100 held-out objects; background
+subtraction uses a per-round offline background computed
+from all 256 touches. Figure 5 shows original training-set
+frames and the held-out query results.
+After 32 touches, the byte memory achieves mean iden-
+tity accuracy 0.417, compared with 0.187 without history
+and 0.152 with proprioception and the shared image-derived
+write gate; individual-seed values appear in Fig. 5. Remov-
+ing content bytes returns accuracy to chance, and larger pay-
+loads improve retention. A 128-dimensional, non-quantized
+GRU reference reaches 0.485. For material queries, the byte
+memory exceeds this control on two of three seeds, with the
+third unresolved. Compact memory thus retains useful real
+sensory content.
+7. Discussion and conclusion
+Executable perceptual memory gives world models a way
+to use facts that outlast their immediate observation. Per-
+ception maintains the facts, candidate actions advance their
+local consequences, and reward and behavior-learning in-
+terfaces use the resulting state. Control gains in two visual
+implementations and improved anticipation of remembered
+arrivals support this connection from perceptual history to
+imagined learning signals.
+7
+touch 1
+ touch 9
+ touch 17
+ touch 25
+8 slots 48 B
+position bytes learned content bytes
+0.0 0.2 0.4 0.6
+Digit-identity accuracy after 32 touches
+Byte memory, 48 B
+No history
+Proprioception only
+128-dim. GRU (reference)
+0.417
+0.187
+0.152
+0.485
+chance
+Figure 5.Real perceptual content retained for later queries.
+Top: fixed-index, unmodified training-set GelSight Mini frames
+(Real Tactile MNIST, Schneider et al.; CC BY 2.0), written into
+eight six-byte slots. Bottom: digit-identity accuracy of a late query
+after 32 touches on held-out objects; dots are training seeds.
+The component experiments identify where this connec-
+tion matters. Action-dependent evolution improves on held
+read-outs, while open-loop supervision depends on the task
+and the information supplied to the reward head. The cur-
+rent local navigation state follows a remembered target dur-
+ing short rollouts. Extending it to anticipated observations,
+target changes and richer contact transitions is a natural di-
+rection for the framework.
+The symbolic and tactile instances show complemen-
+tary uses of the same principle: known facts constrain
+imagined-policy training, carried state supports recov-
+ery choices, and compact memory preserves real sen-
+sory content. These results motivate world models for
+Physical AI in which perceptual history remains avail-
+able as actionable state throughout imagination and learn-
+ing.
+References
+[1] Niket Agarwal, Arslan Ali, Maciej Bala, Yogesh Balaji, Erik
+Barker, et al. Cosmos world foundation model platform for
+physical AI.arXiv preprint arXiv:2501.03575, 2025. 2
+[2] Iretiayo Akinola, Jie Xu, Jan Carius, Dieter Fox, and Yashraj
+Narang. TacSL: A library for visuotactile sensor simula-
+tion and learning.IEEE Transactions on Robotics, 41:2645–
+2661, 2025. 2
+[3] Mido Assran, Adrien Bardes, David Fan, Quentin Garrido,
+Russell Howes, Mojtaba Komeili, Matthew Muckley, Am-
+mar Rizvi, Claire Roberts, Koustuv Sinha, Artem Zholus,
+Sergio Arnaud, Abha Gejji, Ada Martin, Francois Robert
+Hogan, Daniel Dugas, Piotr Bojanowski, Vasil Khalidov,
+Patrick Labatut, Francisco Massa, Marc Szafraniec, Kapil
+Krishnakumar, Yong Li, Xiaodong Ma, Sarath Chandar,
+Franziska Meier, Yann LeCun, Michael Rabbat, and Nico-
+las Ballas. V-JEPA 2: Self-supervised video models en-
+able understanding, prediction and planning.arXiv preprint
+arXiv:2506.09985, 2025. 2
+[4] Amir Bar, Gaoyue Zhou, Danny Tran, Trevor Darrell, and
+Yann LeCun. Navigation world models. InIEEE Conf. Com-
+put. Vis. Pattern Recog., pages 15791–15801, 2025. 2
+[5] Peter Battaglia, Razvan Pascanu, Matthew Lai,
+Danilo Jimenez Rezende, and Koray Kavukcuoglu.
+Interaction networks for learning about objects, relations
+and physics. InAdv. Neural Inform. Process. Syst., 2016. 2
+[6] Maxime Burchi, Fayaz Ali Dharejo, and Radu Timofte. En-
+coding memory in world models with test-time model-based
+reinforcement learning.arXiv preprint arXiv:2611.09625,
+2026. 2
+[7] Arunkumar Byravan and Dieter Fox. SE3-Nets: Learning
+rigid body motion using deep neural networks. InIEEE In-
+ternational Conference on Robotics and Automation, 2017.
+2
+[8] Devendra Singh Chaplot, Dhiraj Gandhi, Saurabh Gupta,
+Abhinav Gupta, and Ruslan Salakhutdinov. Learning to ex-
+plore using Active Neural SLAM. InInt. Conf. Learn. Rep-
+resent., 2020. 1, 2
+[9] Maxime Chevalier-Boisvert, Bolun Dai, Mark Towers, Ro-
+drigo de Lazcano, Lucas Willems, Salem Lahlou, Suman
+Pal, Pablo Samuel Castro, and Jordan Terry. Minigrid &
+Miniworld: Modular & customizable reinforcement learning
+environments for goal-oriented tasks. InAdvances in Neural
+Information Processing Systems, Datasets and Benchmarks
+Track, pages 73383–73394, 2023. 4
+[10] Nicola Dainese, Matteo Merler, Minttu Alakuijala, and
+Pekka Marttinen. Generating code world models with large
+language models guided by Monte Carlo tree search. InAdv.
+Neural Inform. Process. Syst., 2024. arXiv:2405.15383. 2
+[11] Fei Deng, Junyeong Park, and Sungjin Ahn. Facing off world
+model backbones: RNNs, Transformers, and S4. InAdv.
+Neural Inform. Process. Syst., 2023. arXiv:2307.02064. 2
+[12] Marco Fraccaro, Danilo Jimenez Rezende, Yori Zwols,
+Alexander Pritzel, S. M. Ali Eslami, and Fabio Viola. Gen-
+erative temporal models with spatial memory for partially
+observed environments. InInt. Conf. Mach. Learn., pages
+1549–1558, 2018. 2
+[13] Yunyi Gao, Yixing Shi, Yize Liu, Hai-Duong Tran, Nhat-
+Hoang P. Nguyen, Shuai Wang, Yi Deng, Shengming Liu,
+Sim Kuan Goh, Duc-Thinh Pham, and Sameer Alam. Scan-
+Dreamer: A map-grounded world model for quadrotor navi-
+gation.arXiv preprint arXiv:2611.11605, 2026. 2
+[14] Karol Gregor, Danilo Jimenez Rezende, Frederic Besse, Yan
+Wu, Hamza Merzic, and Aaron van den Oord. Shaping belief
+states with generative environment models for RL. InAdv.
+Neural Inform. Process. Syst., 2019. 2
+[15] Albert Gu, Karan Goel, and Christopher R´e. Efficiently mod-
+eling long sequences with structured state spaces. InInt.
+Conf. Learn. Represent., 2022. 2
+8
+[16] Saurabh Gupta, James Davidson, Sergey Levine, Rahul Suk-
+thankar, and Jitendra Malik. Cognitive mapping and plan-
+ning for visual navigation. InIEEE Conf. Comput. Vis. Pat-
+tern Recog., pages 7272–7281, 2017. 2
+[17] David Ha and J ¨urgen Schmidhuber. World models.arXiv
+preprint arXiv:1803.10122, 2018. 1, 2
+[18] Danijar Hafner, Timothy Lillicrap, Ian Fischer, Ruben Ville-
+gas, David Ha, Honglak Lee, and James Davidson. Learning
+latent dynamics for planning from pixels. InInt. Conf. Mach.
+Learn., pages 2555–2565, 2019. 2
+[19] Danijar Hafner, Timothy Lillicrap, Jimmy Ba, and Moham-
+mad Norouzi. Dream to control: Learning behaviors by
+latent imagination. InInt. Conf. Learn. Represent., 2020.
+arXiv:1912.01603. 1, 2
+[20] Danijar Hafner, Timothy Lillicrap, Mohammad Norouzi, and
+Jimmy Ba. Mastering Atari with discrete world models. In
+Int. Conf. Learn. Represent., 2021.
+[21] Danijar Hafner, Jurgis Pasukonis, Jimmy Ba, and Timothy
+Lillicrap. Mastering diverse control tasks through world
+models.Nature, 640:647–653, 2025. 1, 2
+[22] Danijar Hafner, Wilson Yan, and Timothy Lillicrap. Train-
+ing agents inside of scalable world models.arXiv preprint
+arXiv:2509.24527, 2025. 2
+[23] Nicklas Hansen, Hao Su, and Xiaolong Wang. TD-MPC2:
+Scalable, robust world models for continuous control. InInt.
+Conf. Learn. Represent., 2024. arXiv:2310.16828. 1, 2
+[24] Carolina Higuera, Sergio Arnaud, Byron Boots, Mustafa
+Mukadam, Francois Robert Hogan, and Franziska
+Meier. Visuo-tactile world models.arXiv preprint
+arXiv:2602.06001, 2026. 3
+[25] Zheng-Hui Huang, Guixu Lin, Jiacheng Lin, Yi-Chuan
+Huang, Ruihan Yu, Muyao Niu, Siqi Yang, Yu-Lun Liu,
+Yung-Yu Chuang, Kaipeng Zhang, and Zhixiang Wang. Pro-
+grammable world model.arXiv preprint arXiv:2609.10540,
+2026. 2
+[26] Yatai Ji, Zhengqiu Zhu, Yong Zhao, Yue Hu, Fanglong Yao,
+Chen Gao, Pengfei Zhu, and Quanjun Yin. SearchWorld:
+Spatial value-grounded imagination for UA V object search
+via world models.arXiv preprint arXiv:2610.09335, 2026.
+2
+[27] Thomas Kipf, Elise van der Pol, and Max Welling. Con-
+trastive learning of structured world models. InInt. Conf.
+Learn. Represent., 2020. 2
+[28] Vint Lee, Pieter Abbeel, and Youngwoon Lee.
+DreamSmooth: Improving model-based reinforcement
+learning via reward smoothing. InInt. Conf. Learn.
+Represent., 2024. 2
+[29] Hongxin Li, Zeyu Wang, Xu Yang, Yuran Yang, Shuqi Mei,
+and Zhaoxiang Zhang. MemoNav: Working memory model
+for visual navigation. InIEEE Conf. Comput. Vis. Pattern
+Recog., pages 17913–17922, 2024. 1, 2
+[30] Xianyao Li, Ruitong Tian, Rui Min, Fang Xu, and Eric Jing
+Du. DreamLedger: Where to refuse world-model imag-
+ination using execution-settled credit.arXiv preprint
+arXiv:2608.23863, 2026. 2
+[31] Xianyao Li, Fang Xu, Rui Min, Ruitong Tian, and Jing
+Du. Minimal recurrent behavioral memory for imitation un-
+der partial observability.arXiv preprint arXiv:2609.25757,
+2026. 2
+[32] Hansen Lillemark, Benhao Huang, Fangneng Zhan, Yilun
+Du, and T. Anderson Keller. Flow equivariant world models:
+Structured memory for dynamic environments. InInt. Conf.
+Mach. Learn., pages 73968–74002, 2026. 2
+[33] Yijiong Lin, John Lloyd, Alex Church, and Nathan F. Lep-
+ora. Tactile Gym 2.0: Sim-to-real deep reinforcement
+learning for comparing low-cost high-resolution robot touch.
+IEEE Robot. Autom. Lett., 7(4):10754–10761, 2022. 2, 7
+[34] Steven Morad, Ryan Kortvelesy, Matteo Bettini, Stephan Li-
+wicki, and Amanda Prorok. POPGym: Benchmarking par-
+tially observable reinforcement learning. InInt. Conf. Learn.
+Represent., 2023. arXiv:2303.01859. 6
+[35] Junhyuk Oh, Satinder Singh, and Honglak Lee. Value pre-
+diction network. InAdv. Neural Inform. Process. Syst., 2017.
+2
+[36] Emilio Parisotto and Ruslan Salakhutdinov. Neural Map:
+Structured memory for deep reinforcement learning. InInt.
+Conf. Learn. Represent., 2018. 1, 2
+[37] Emilio Parisotto, Francis Song, Jack Rae, Razvan Pas-
+canu, Caglar Gulcehre, Siddhant Jayakumar, Max Jaderberg,
+Rapha¨el Lopez Kaufman, Aidan Clark, Seb Noury, Matthew
+Botvinick, Nicolas Heess, and Raia Hadsell. Stabilizing
+transformers for reinforcement learning. InInt. Conf. Mach.
+Learn., 2020. 2
+[38] Jurgis Pasukonis, Timothy Lillicrap, and Danijar Hafner.
+Evaluating long-term memory in 3D mazes. InInt. Conf.
+Learn. Represent., 2023. arXiv:2210.13383. 4
+[39] Ryan Po, Yotam Nitzan, Richard Zhang, Berlin Chen, Tri
+Dao, Eli Shechtman, Gordon Wetzstein, and Xun Huang.
+Long-context state-space video world models. InInt. Conf.
+Comput. Vis., pages 8733–8744, 2025. 2
+[40] Mohammad Reza Samsami, Artem Zholus, Janarthanan Ra-
+jendran, and Sarath Chandar. Mastering memory tasks
+with world models. InInt. Conf. Learn. Represent., 2024.
+arXiv:2403.04253. 2
+[41] Tim Schneider, Guillaume Duret, Cristiana de Farias,
+Roberto Calandra, Liming Chen, and Jan Peters. Tactile
+MNIST: Benchmarking active tactile perception. InAd-
+vances in Neural Information Processing Systems, Evalua-
+tions and Datasets Track, 2026. arXiv:2506.06361. 3, 7
+[42] Julian Schrittwieser, Ioannis Antonoglou, Thomas Hubert,
+Karen Simonyan, Laurent Sifre, Simon Schmitt, Arthur
+Guez, Edward Lockhart, Demis Hassabis, Thore Graepel,
+Timothy Lillicrap, and David Silver. Mastering Atari, Go,
+chess and shogi by planning with a learned model.Nature,
+588:604–609, 2020. 2
+[43] Zilin Si and Wenzhen Yuan. Taxim: An example-based sim-
+ulation model for GelSight tactile sensors.IEEE Robot. Au-
+tom. Lett., 7(2):2361–2368, 2022. arXiv:2109.04027. 2
+[44] Jialong Wu, Shaofeng Yin, Ningya Feng, Xu He, Dong Li,
+Jianye Hao, and Mingsheng Long. iVideoGPT: Interactive
+VideoGPTs are scalable world models. InAdv. Neural In-
+form. Process. Syst., 2024. arXiv:2405.15223. 2
+[45] Tong Wu, Shuai Yang, Ryan Po, Yinghao Xu, Ziwei Liu,
+Dahua Lin, and Gordon Wetzstein. Video world models with
+9
+long-term spatial memory. InAdv. Neural Inform. Process.
+Syst., 2025. 2
+[46] Zeqi Xiao, Yushi Lan, Yifan Zhou, Wenqi Ouyang, Shuai
+Yang, Yanhong Zeng, and Xingang Pan. WorldMem: Long-
+term consistent world simulation with memory. InAdv. Neu-
+ral Inform. Process. Syst., 2025. 2
+[47] Yunzhe Xu, Yiyuan Pan, and Zhe Liu. Dream to re-
+call: Imagination-guided experience retrieval for memory-
+persistent vision-and-language navigation.IEEE Transac-
+tions on Pattern Analysis and Machine Intelligence, 48(8):
+9035–9049, 2026. 2
+[48] Wenzhen Yuan, Siyuan Dong, and Edward H. Adelson. Gel-
+Sight: High-resolution robot tactile sensors for estimating
+geometry and force.Sensors, 17(12):2762, 2017. 2
+10
+A. Implementation and memory accounting
+EPM couples explicit perceptual state to neural imagina-
+tion, reward prediction and actor–critic learning. Its nav-
+igation comparisons share the perception front end across
+all arms. An additional policy/value-only comparison uses
+visual odometry without heading correction, identified sep-
+arately below and in Table 3. This appendix specifies the
+state updates, learning objectives, evaluation protocols and
+complete results for the reported comparisons.
+Real-state update and local projection.The writer uses
+a calibrated detector and visual odometry to maintain seen
+landmarks and the estimated agent pose. A target query
+returns a known flag, cosine and sine of relative bearing,
+log-distance, and log-age. Unknown targets gate the geo-
+metric slots. The imagination initializer recovers a target
+vector from this query, starts the local position and yaw at
+zero, and carries the query age. It does not initialize an en-
+tire map rollout. For local positionp h, yawψ h and target
+vectorv, a predicted translation and rotation produce
+ph+1 =p h + Rot(ψh) bdh,(6)
+ψh+1 =ψ h +bωh,(7)
+vrelh+1 = Rot(−ψh+1)(v−p h+1).(8)
+The known flag is retained, age advances, and bear-
+ing/distance are read fromv rel. The neural model continues
+to handle dynamics not represented by this local state. The
+motion head predicts displacement and yaw change from
+the pre-action latent feature and candidate action; its super-
+vision is the subsequent measured motion.
+Perception calibration.The detector, odometry and
+heading networks are fitted offline using simulator-derived
+labels on calibration trajectories, and frozen before pol-
+icy training. At deployment they read images and actions.
+Memory Maze’s six-color detector uses pooled9×9,11×11
+and13×13calibration data, with a visibility half-angle of
+0.75 radians; odometry is trained on pooled9×9,11×11
+and13×13calibration walks. The heading network learns
+(cos 4θ,sin 4θ)from a single64×64frame, exploiting axis-
+aligned walls. It uses 87,000 training frames and 15,000
+validation frames from separate9×9calibration episodes,
+with 30 epochs, batch size 256 and Adam at initial learn-
+ing rate10 −3 with cosine decay. After integrating odom-
+etry, the writer corrects yaw to the predicted heading on
+the nearest90 ◦ branch. No heading correction is applied
+inside imagination, where no images are available. Mini-
+World uses a separately calibrated detector and a three-
+output odometry network for forward, lateral and angular
+displacement, trained on calibration layouts excluded from
+policy training and evaluation. It uses no heading correc-
+tion. Each experiment shares these frozen networks across
+arms; the reported interaction budgets exclude this offline
+calibration.
+Neural paths and parameter accounting.Memory
+Maze uses a 31-value memory observation: six target slots,
+eighteen detector-stream slots, five read-out slots and two
+motion slots. MiniWorld adds lateral motion, giving 32 val-
+ues and a three-output motion head. Every arm encodes
+and reconstructs the complete observation; absent direct
+channels are zero-filled. Reward receives five additional
+slots, continuation retains neural input, and actor, critic,
+slow critic and replay value consume their assigned read-
+outs. The trainable runtime groups contain 12,222,441 pa-
+rameters for Memory Maze and 12,223,211 for MiniWorld,
+identical across arms within an implementation and exclud-
+ing fixed perception networks. The five reward-input slots
+account for 1,280 weights, present in every arm. Batches
+contain 16 sequences of length 64, the training ratio is 32,
+the imagination horizon is 15, and the return horizon is 333.
+Gradients from the additional open-loop reward loss update
+only the reward head (Fig. 6).
+Memory storage.The sparse visual state’s serialized
+payload occupies 48 bytes. The neural recurrent state sepa-
+rately occupies 8,224 bytes (8,192 for deterministic float32
+state and 32 stochastic indices), while visual odometry re-
+tains the previous64×64×3image, or 12,288 bytes. Net-
+work parameters and replay are additional storage compo-
+nents. The real-tactile memory contains 48 payload bytes
+and up to 9 bytes of validity and age bookkeeping.
+B. Control experiments and complete contrasts
+Component design.Table 1 defines arms by their di-
+rect policy/value access, direct reward access and open-
+loop reward loss. Every arm receives the same memory
+observation; holding and evolution refer to imagination.
+Both reward-access arms use transition-aligned replay in-
+puts. The access-by-evolution interaction is measured un-
+der common OL training. Reward access without OL is not
+a tested cell.
+Training runs and evaluation checkpoints.Memory
+Maze9×9uses twelve initialization labels and13×13
+uses six, each evaluated at 250k, 500k and the 1M endpoint.
+MiniWorld uses twelve labels, evaluated at 1M and its 2M
+endpoint. Each return averages 48 fixed layout/target/spawn
+identities. Tables 4–6 give all pre-specified contrasts, paired
+95%tintervals, counts of positive labels and exact two-
+sided sign-flip sensitivity analyses; Table 7 gives label-level
+returns. The reward-access contrast is the designated pri-
+mary analysis at9×9; the remaining contrasts are pre-
+specified secondary analyses. Inference is separate for each
+11
+a Align remembered facts with the transition that produced the reward
+ANCHOR  t TRANSITION  t + 1 NEXT MEMORY QUERYrecorded action at
+Memory mt
+current target
+Propagate with
+measured motion
+Aligned read-out
+ūt+1
+Reward qω
+Posterior zt+1
+Loss
+Real reward 
+yt+1
+New evidence
+or a new target
+write the next state mt+1
+Advance the preceding fact before writing new evidence.
+b Supervise rewards on recorded-action imagination
+anchor
+zt
+mt
+Posterior
+initialization
+action
+t + 1
+neural state  z
+read-out  u
+qω · shared
+loss
+real reward
+action
+t + 2
+neural state  z
+read-out  u
+qω · shared
+loss
+real reward
+⋯
+after reset
+neural state  z
+read-out  u
+qω · shared
+masked
+real reward
+stop-gradient
+Open-loop reward loss
+15 predicted steps
+Recorded actions; no future 
+images
+Mask losses after episode reset
+Gradients update qω only
+Figure 6.Training the reward interface.(a) Posterior reward training pairs each reward with the read-out advanced from the preceding
+memory, not with the state stored after the next write or target switch. (b) The open-loop term rolls the prior along recorded actions,
+compares the shared reward head with real future rewards and masks steps after an episode reset. Double bars mark stopped gradients on
+features; dashed arrows show gradients into the reward head.
+experiment; shared arms make contrasts dependent. The
+13×13experiment trains all four non-held arms from
+scratch. Label-level endpoint returns are indexed within
+each experiment.
+MiniWorld endpoint.MiniWorld’s reward-access differ-
+ence is2.18[0.68,3.68] at 1M and1.00[−0.04,2.03] at
+the pre-specified 2M endpoint. At 2M, Evolved+OL minus
+Observation+OL is0.09[−0.84,1.03], while Evolved+OL
+minus Held+OL is2.31[1.10,3.52]. The pre-specified joint
+criterion, which requires EPM to exceed both Evolved+OL
+and Observation+OL with resolved intervals, is not met in
+MiniWorld because the first difference is unresolved; the
+difference from Observation+OL is1.09[0.02,2.17]. The
+complete-method contrast against Evolved is a separate pre-
+specified comparison.
+C. Reward-anticipation evaluation
+The evaluation filters each recorded episode with real obser-
+vations and actions, then rolls the prior along recorded con-
+tinuations for 15 steps. Predictions average four stochastic
+rollouts. Every tested arm reads common histories from the
+EPM and Evolved+OL source policies at the endpoint; esti-
+mates aggregate windows within episodes and give the two
+sources equal weight. VIS denotes a truly visible target at
+the anchor. MEM denotes a non-visible target that is known
+in memory, with bearing error at most 0.5 radians. A MEM
+event satisfies RA when the stepped read-out anticipates ar-
+rival: at the step before the first reward, its predicted dis-
+tance is at most the task’s reach distance plus one forward
+step (0.2 cells). RA uses each tested model’s predicted mo-
+tion, so MEM-and-RA subsets can differ across arms even
+on the same histories. The paired contrasts compare con-
+ditional anticipation scores, not pointwise errors on iden-
+tical events. Simulator truth defines diagnostic strata and
+is not policy input. Later rewards after a target switch are
+excluded from the first-arrival contrast.
+For a first reward at horizon indexk, event mass sums
+predicted reward atk−1throughk+ 1. Non-arrival mass
+is the predicted horizon total scaled to three steps. Their
+difference is net anticipationA. Eligible horizon bins (1–5,
+6–10, 11–15) have at least five distinct events in VIS and
+the compared memory set and receive equal weight. The
+assessability rule requires twenty distinct VIS and twenty
+MEM-and-RA events per cell; all twelve labels are assess-
+able in each experiment, with no exclusions.Acan ex-
+ceed one and is neither a probability nor an accuracy. Ta-
+ble 8 gives all-arm levels; the pre-specified paired contrast
+is EPM minus Evolved+OL forA MEM∩RA. Secondary dif-
+ferences inA VIS are0.196[0.148,0.244] in Memory Maze
+and0.278[0.215,0.340] in MiniWorld. The corresponding
+12
+Table 4.Memory Maze9×9: all pre-specified contrasts at every evaluation checkpoint.n= 12initialization labels;∆with paired
+95%tinterval, number of positive labelsn + and exact two-sided sign-flipp. The endpoint is 1M.
+0.25M 0.5M 1M
+Contrast∆95% CIn + p∆95% CIn + p∆95% CIn + p
+EPM−Evolved+OL+5.85[4.77,6.94] 12/12 0.0005+5.90[3.94,7.86] 11/12 0.0010+5.51[4.46,6.57] 12/12 0.0005
+EPM−Obs+OL+8.81[7.92,9.69] 12/12 0.0005+12.63[10.64,14.62] 12/12 0.0005+7.89[6.17,9.60] 12/12 0.0005
+EPM−Held+R+OL+8.20[7.08,9.33] 12/12 0.0005+12.07[10.24,13.89] 12/12 0.0005+13.12[12.01,14.23] 12/12 0.0005
+Evolved+OL−Held+OL+1.99[0.91,3.07] 11/12 0.0044+4.61[3.24,5.98] 12/12 0.0005+2.51[1.36,3.66] 11/12 0.0015
+Held+R+OL−Held+OL−0.36[−0.95,0.24] 4/12 0.2153−1.55[−3.19,0.08] 2/12 0.0635−5.10[−6.34,−3.86] 0/12 0.0005
+Evolved+OL−Obs+OL+2.95[2.20,3.70] 12/12 0.0005+6.73[4.86,8.59] 12/12 0.0005+2.37[0.21,4.54] 7/12 0.0366
+Held+OL−Obs+OL+0.96[0.21,1.71] 10/12 0.0200+2.12[0.53,3.70] 10/12 0.0176−0.14[−2.02,1.74] 7/12 0.8721
+Held+R+OL−Obs+OL+0.60[0.08,1.12] 9/12 0.0244+0.56[−1.25,2.38] 6/12 0.5005−5.24[−6.68,−3.79] 0/12 0.0005
+EPM−Evolved+3.52[1.50,5.53] 11/12 0.0024+4.32[2.46,6.18] 11/12 0.0015+6.08[4.46,7.71] 12/12 0.0005
+Evolved+OL−Evolved−2.34[−4.10,−0.57] 2/12 0.0098−1.58[−3.22,0.07] 3/12 0.0591+0.57[−1.55,2.70] 7/12 0.5659
+Evolved−Obs+OL+5.29[3.40,7.18] 12/12 0.0005+8.31[6.70,9.91] 12/12 0.0005+1.80[−0.38,3.98] 11/12 0.0967
+Reward access×evolution+6.21[5.22,7.20] 12/12 0.0005+7.45[5.19,9.72] 12/12 0.0005+10.61[9.35,11.86] 12/12 0.0005
+Table 5.Memory Maze13×13: all pre-specified contrasts at every evaluation checkpoint.n= 6initialization labels;∆with paired
+95%tinterval, number of positive labelsn + and exact two-sided sign-flipp. The endpoint is 1M.
+0.25M 0.5M 1M
+Contrast∆95% CIn + p∆95% CIn + p∆95% CIn + p
+EPM−Evolved+OL+1.76[−1.52,5.05] 4/6 0.3125+9.13[4.56,13.70] 6/6 0.0312+11.39[7.89,14.89] 6/6 0.0312
+EPM−Evolved+1.37[−0.96,3.70] 5/6 0.2188+0.83[−4.93,6.58] 3/6 0.7500+7.00[3.80,10.21] 6/6 0.0312
+EPM−Obs+OL+3.71[1.67,5.75] 6/6 0.0312+14.92[12.00,17.85] 6/6 0.0312+16.19[12.67,19.72] 6/6 0.0312
+Evolved+OL−Evolved−0.39[−2.81,2.03] 3/6 0.8125−8.30[−15.85,−0.76] 1/6 0.0625−4.39[−8.16,−0.61] 0/6 0.0312
+Evolved+OL−Obs+OL+1.95[−0.36,4.26] 4/6 0.1250+5.80[0.34,11.25] 6/6 0.0312+4.81[0.72,8.89] 6/6 0.0312
+Evolved−Obs+OL+2.34[0.56,4.11] 6/6 0.0312+14.10[7.98,20.22] 6/6 0.0312+9.19[6.69,11.69] 6/6 0.0312
+increases in the per-label ratioA MEM∩RA/AVIS are0.547
+[0.495,0.599] and0.146[0.097,0.195]. Ratios accompany
+absolute levels rather than replacing them.
+D. MiniWorld implementation
+The MiniWorld task uses the maze layout generator, tar-
+get identities and action budget of the navigation protocol,
+with its own renderer and wall-sliding kinematics. Each
+environment maintains an independent scene display list.
+Planar odometry includes forward, lateral and angular dis-
+placement. All arms use independent training runs from
+scratch, matched initialization within each label, and the
+same 1,000-action episode budget.
+E. Policy/value-only memory interface
+This comparison uses six initialization labels, common
+initial weights and identical parameter counts across the
+evolved, held and observation-only arms. Visual odome-
+try without heading correction supplies the same memory
+observations to all arms; direct read-outs enter policy and
+value heads, and reward training uses posterior neural fea-
+tures. Evaluation pairs the same 48 maze identities across
+arms and masking modes. Tables 9–11 give all checkpoints
+and per-label outcomes. Pairedtintervals and sign-flip sen-
+sitivity analyses use training labels as the unit. The primary
+sequence tests evolved against observation-only at 500k,
+then 1M; other contrasts are secondary and unadjusted.
+Masking removes the target read-out from the observa-
+tion vector and its direct path while retaining the remaining
+observation history and neural state. At 1M, the evolved
+arm’s additional masking loss over observation-only is pos-
+itive under both the pairedtinterval and sign-flip analysis.
+Its dependence contrast against held remains unresolved by
+thetinterval (Table 10).
+F. Alternative state updates
+Advancing age versus geometry.A clock-only compari-
+son, on the front end without heading correction, increments
+memory age during imagination while holding bearing and
+distance at the anchor. Table 12 reports evolved, held and
+clock-only arms at all three budgets on six initialization la-
+bels and 48 common evaluation mazes. At 1M, evolved ge-
+ometry exceeds clock-only on all six labels. The evolved–
+held difference is positive on five labels, with a seed-level
+bootstrap interval crossing zero. Thus this comparison dis-
+tinguishes spatial updates from merely advancing the clock,
+while the main six-arm experiments evaluate evolution un-
+der the reward-learning design.
+13
+Table 6.MiniWorld9×9: all pre-specified contrasts at every evaluation checkpoint.n= 12initialization labels;∆with paired 95%
+tinterval, number of positive labelsn + and exact two-sided sign-flipp. The endpoint is 2M.
+1M 2M
+Contrast∆95% CIn + p∆95% CIn + p
+EPM−Evolved+OL+2.18[0.68,3.68] 10/12 0.0098+1.00[−0.04,2.03] 10/12 0.0620
+EPM−Obs+OL+4.30[2.93,5.66] 12/12 0.0005+1.09[0.02,2.17] 9/12 0.0493
+EPM−Held+R+OL+16.89[15.43,18.36] 12/12 0.0005+18.46[16.04,20.89] 12/12 0.0005
+Evolved+OL−Held+OL+3.90[3.01,4.78] 12/12 0.0005+2.31[1.10,3.52] 11/12 0.0034
+Held+R+OL−Held+OL−10.82[−12.52,−9.11] 0/12 0.0005−15.15[−17.95,−12.36] 0/12 0.0005
+Evolved+OL−Obs+OL+2.12[0.93,3.30] 11/12 0.0039+0.09[−0.84,1.03] 5/12 0.8281
+Held+OL−Obs+OL−1.78[−2.90,−0.66] 1/12 0.0044−2.22[−3.63,−0.81] 1/12 0.0039
+Held+R+OL−Obs+OL−12.60[−14.37,−10.82] 0/12 0.0005−17.37[−19.58,−15.16] 0/12 0.0005
+EPM−Evolved+7.68[6.33,9.03] 12/12 0.0005+3.74[2.51,4.97] 12/12 0.0005
+Evolved+OL−Evolved+5.50[3.93,7.07] 12/12 0.0005+2.74[1.16,4.33] 11/12 0.0044
+Evolved−Obs+OL−3.38[−5.04,−1.73] 1/12 0.0010−2.65[−4.26,−1.04] 3/12 0.0059
+Reward access×evolution+13.00[11.23,14.76] 12/12 0.0005+16.15[13.05,19.25] 12/12 0.0005
+Table 7.Label-level mean returns at the endpoint(48 evaluation identities per label). Labels are indexed within each experiment.
+Memory Maze9×9, 1M
+Label Obs+OL Held+OL Held+R+OL Evolved Evolved+OL EPM
+1 17.50 16.17 11.54 20.35 16.31 24.88
+2 16.56 17.38 9.75 18.56 21.56 25.73
+3 20.81 17.54 14.23 12.77 19.60 25.25
+4 19.67 16.23 11.25 21.17 20.75 24.06
+5 15.12 19.29 11.38 18.96 21.33 25.38
+6 18.77 13.79 10.04 21.23 16.60 24.56
+7 19.83 20.15 13.65 20.21 19.48 25.40
+8 13.35 17.94 10.65 18.83 20.25 25.58
+9 18.29 16.54 14.62 19.88 17.75 24.19
+10 15.15 17.25 13.73 19.96 20.08 26.56
+11 15.88 16.02 12.35 17.35 21.85 25.50
+12 16.90 17.85 11.81 20.19 20.73 25.38
+Mean 17.32 17.18 12.08 19.12 19.69 25.20
+MiniWorld9×9, 2M
+Label Obs+OL Held+OL Held+R+OL Evolved Evolved+OL EPM
+1 19.29 18.79 4.38 15.52 21.46 19.52
+2 21.48 17.90 1.73 15.83 20.12 19.65
+3 21.31 18.15 2.12 21.71 22.02 23.04
+4 20.56 19.77 1.83 17.12 22.60 22.71
+5 21.27 16.29 1.65 18.56 20.77 22.08
+6 18.54 16.98 2.85 17.54 19.23 22.85
+7 21.23 19.94 1.65 17.12 20.90 23.60
+8 21.15 15.04 4.25 17.23 19.71 20.90
+9 21.40 17.00 13.48 19.92 21.08 21.52
+10 20.48 20.48 1.83 20.81 18.69 22.17
+11 22.77 21.25 1.94 15.48 21.71 22.00
+12 19.40 20.65 2.71 20.25 21.71 21.94
+Mean 20.74 18.52 3.37 18.09 20.83 21.83
+Memory Maze13×13, 1M
+Label Obs+OL Evolved Evolved+OL EPM
+1 11.04 23.98 22.62 32.29
+2 14.54 20.98 18.12 30.73
+3 16.69 26.56 17.35 31.67
+4 15.98 25.12 20.38 26.92
+5 14.19 24.12 16.21 31.67
+6 12.62 19.44 19.21 28.96
+Mean 14.18 23.37 18.98 30.37
+G. Shared-history branch diagnostics
+Using common histories from the policy/value-only com-
+parison, we measure posterior read-out reconstruction and
+the ranking of imagined branch consequences. At 1M, me-
+dian current-bearing errors are 0.325, 0.339 and 0.309 radi-
+ans (evolved, held, observation-only). Explicit branch rank-
+ing agreement is 0.534, 0.521 and 0.529, compared with
+0.221, 0.174 and 0.251 for decoded read-outs; the tie refer-
+ence is 0.170. The explicit state thus ranks branch conse-
+quences well above the decoded read-outs.
+H. External baselines and budgets
+The DreamerV3 and R2I baselines use their official im-
+plementations with 16 environments and a 2M-transition
+replay capacity. The R2I perception variant receives the
+same observation stream as the policy/value-only compar-
+ison; its state-equipped variant additionally receives main-
+tained memory through observation encoding. External-
+method results use three training seeds. Table 3 separates
+this front end from the heading-corrected one used in the
+main component comparisons.
+R2I returns at 1M/2M/3M are 0.778/3.326/6.743 with-
+14
+Table 8.Reward-anticipation levels.Means with 95%tintervals over twelve labels.D=A VIS −A MEM∩RA. Paired contrasts between
+EPM and Evolved+OL are given in the text.
+ArmA VIS AMEM∩RA D
+Memory Maze9×9, 1M
+Observation+OL0.351[0.307,0.394]0.055[0.035,0.075]0.295[0.261,0.329]
+Held+OL0.390[0.348,0.432]0.063[0.048,0.077]0.328[0.289,0.366]
+Held+R+OL0.439[0.404,0.474]0.146[0.120,0.172]0.293[0.262,0.323]
+Evolved0.454[0.405,0.503]0.053[0.041,0.065]0.401[0.353,0.449]
+Evolved+OL0.482[0.458,0.507]0.154[0.127,0.180]0.329[0.298,0.360]
+EPM0.679[0.631,0.727]0.587[0.539,0.636]0.092[0.064,0.119]
+MiniWorld9×9, 2M
+Observation+OL0.461[0.420,0.502]0.265[0.232,0.298]0.196[0.167,0.225]
+Held+OL0.423[0.377,0.468]0.222[0.180,0.264]0.201[0.175,0.227]
+Held+R+OL0.454[0.378,0.531]0.290[0.232,0.348]0.164[0.133,0.195]
+Evolved0.556[0.509,0.602]0.277[0.250,0.303]0.279[0.245,0.313]
+Evolved+OL0.582[0.527,0.638]0.447[0.403,0.490]0.136[0.106,0.165]
+EPM0.860[0.794,0.926]0.787[0.716,0.859]0.073[0.041,0.105]
+Table 9.Policy/value-only comparison on Memory Maze13×13.Six initialization labels, 48 identity-paired evaluation mazes per label.
+Return differences and 95% pairedtintervals use labels as the unit;p flip is the exact two-sided sign-flip sensitivity analysis. The primary
+sequence tests Evolved versus observation-only at 500k, then 1M. All other rows are secondary. †Thetinterval and sign-flip test disagree
+at the 0.05 level. Shared arms make the contrasts correlated.
+Comparison Steps Return difference [95% CI] Positivep flip Role
+Evolved−observation-only 250k +0.60 [−0.74, +1.94] 5/6 0.34375 secondary
+Evolved−observation-only 500k +2.72 [+0.61, +4.83] 6/6 0.03125 primary
+Evolved−observation-only 1M +5.24 [+1.05, +9.43] 6/6 0.03125 primary
+Evolved−held 250k +0.83 [−0.69, +2.36] 4/6 0.1875 secondary
+Evolved−held 500k +2.17 [−0.44, +4.77] 6/6 0.03125 † secondary
+Evolved−held 1M +5.35 [+0.31, +10.40] 5/6 0.0625 † secondary
+Held−observation-only 250k−0.23 [−0.60, +0.13] 1/6 0.15625 secondary
+Held−observation-only 500k +0.56 [−0.41, +1.52] 4/6 0.1875 secondary
+Held−observation-only 1M−0.12 [−3.00, +2.77] 3/6 0.84375 secondary
+out the added perception stream, 0.951/4.312/6.076 with
+it, and 0.840/3.472/9.361 with perception and maintained
+state. The six-label policy/value-only agent at 1M exceeds
+R2I with the front end at 3M by 5.09 [0.92, 9.27] under
+a training-seed Welch interval. Against the stronger state-
+equipped variant, the difference is 1.81 [−6.50, 10.12].
+These cross-method comparisons are descriptive; the EPM
+component effects use the matched controls in Table 2.
+I. Symbolic and tactile experiments
+Concentration.The rule simulator advances card obser-
+vations, phase, reward and termination according to the
+public rules. Known identities come from public history;
+unknown identities are sampled. The remembered-fact and
+resampled-fact learners and the real-training reference share
+policy architecture, learner and iteration count. Each de-
+ployed policy is evaluated for 256 episodes.
+Tactile branch evaluation.At lost-contact anchors, ten
+fixed eight-step action branches are executed from a physics
+snapshot and compared with predictions from an eight-byte
+object-relative state. All arms share candidates and cost.
+The twelve held-out worlds were excluded from estimator
+training and calibration. Table 13 retains all worlds, includ-
+ing three whose repeated executions were not bit-identical
+(largest deviation 5.1 mm). Both pre-specified outcomes,
+pre-contact prediction and branch selection, favor the evolv-
+ing state. A variant in which the object follows the tip af-
+ter predicted re-contact lowers post-contact error but ranks
+branches less well, so sensory prediction and decision util-
+ity are reported separately.
+Fixed-excursion recovery.Two fixed-excursion evalua-
+tions precede the varying-excursion protocol. The ini-
+tial evaluation achieved 12.2 mm for evolved state, 6.1
+15
+Table 10. Read-out dependence differences in the policy/value-only comparison (descriptive). Dependence is the intact-minus-masked
+return within an arm. Intervals are pairedtintervals over six labels; sign-flippvalues are sensitivity analyses. Masking affects the obser-
+vation read-out and, where present, its direct actor/critic path. These differences share intact returns with Table 9 and are not independent
+evidence.
+Comparison Steps Dependence difference [95% CI] Positivep flip
+Evolved−observation-only 250k +0.76 [−0.05, +1.56] 6/6 0.03125
+Evolved−observation-only 500k +1.57 [−0.24, +3.38] 5/6 0.0625
+Evolved−observation-only 1M +2.59 [+0.52, +4.67] 6/6 0.03125
+Evolved−held 250k +0.82 [−0.05, +1.69] 6/6 0.03125
+Evolved−held 500k +1.46 [−0.63, +3.54] 5/6 0.09375
+Evolved−held 1M +1.82 [−0.65, +4.29] 4/6 0.125
+Held−observation-only 250k−0.06 [−0.18, +0.06] 2/6 0.28125
+Held−observation-only 500k +0.12 [−0.31, +0.54] 3/6 0.5
+Held−observation-only 1M +0.77 [−0.32, +1.87] 5/6 0.125
+Table 11. Policy/value-only comparison, all initialization labels and budgets. Returns are means over 48 mazes. The three contrasts
+compare intact returns; dependence is intact minus masked return. O denotes observation-only and F denotes held.
+Label Evolved F O Evolved−O Evolved−F F−O Dep. Evolved Dep. F Dep. O
+250k
+1 1.229 0.250 0.625 +0.604 +0.979−0.375 0.708 0.000−0.083
+2 0.729 0.458 0.542 +0.188 +0.271−0.083 0.229−0.021 0.021
+3 3.875 0.250 0.854 +3.021 +3.625−0.604 2.417−0.021 0.167
+4 0.583 0.896 0.562 +0.021−0.312 +0.333 0.354 0.083 0.021
+5 0.562 0.750 1.292−0.729−0.188−0.542 0.312−0.083 0.042
+6 1.188 0.562 0.688 +0.500 +0.625−0.125 0.729−0.104 0.042
+500k
+1 8.375 1.438 1.979 +6.396 +6.938−0.542 5.062 0.042 0.167
+2 2.792 2.500 2.250 +0.542 +0.292 +0.250 0.604 0.375−0.125
+3 4.688 1.896 1.958 +2.729 +2.792−0.062 1.375 0.208 0.125
+4 3.250 2.375 1.688 +1.562 +0.875 +0.688 1.458 0.292 0.292
+5 4.250 3.292 1.167 +3.083 +0.958 +2.125−0.104 0.688 0.021
+6 3.979 2.833 1.958 +2.021 +1.146 +0.875 1.625−0.312 0.125
+1M
+1 14.417 8.021 6.917 +7.500 +6.396 +1.104 4.479 2.104−0.104
+2 8.146 3.208 7.583 +0.562 +4.938−4.375 0.188 1.125−0.042
+3 12.250 2.750 2.458 +9.792 +9.500 +0.292 4.542−0.271 0.688
+4 9.292 3.125 3.521 +5.771 +6.167−0.396 4.500 1.312 0.646
+5 9.500 13.292 9.333 +0.167−3.792 +3.958 3.083 4.167 3.062
+6 13.417 4.500 5.771 +7.646 +8.917−1.271 4.438 1.854 1.417
+mm for held and 4.8 mm for the feedback-law reference.
+Evolved minus held was 6.2 [2.3, 10.0] mm, positive
+on 8/12 worlds; the pre-specified criterion required 9/12.
+A forward-motion-conditioned write and a fitted outcome
+score were then selected using development worlds. Evalu-
+ation on twelve new worlds yielded 27.3 mm versus 3.4 mm
+for held and 0.2 mm for the law, a difference of 23.8 [21.4,
+26.3] mm against held. A subsequent state-free command
+achieved 18.8 mm, giving an exploratory evolved-state dif-
+ference of 8.5 [4.8, 12.7] mm. The varying-excursion pro-
+tocol below includes stronger state-free references from the
+outset.
+Varying-excursion evaluation.The subsequent study fits
+the chooser’s outcome model and searches state-free com-
+mands on 36 development worlds, then evaluates 48 new
+worlds with sideways lengths 24, 48 and 72 steps. The pri-
+mary reference receives excursion side; the stronger sec-
+ondary command table receives side and length. Of 432
+scanned conditions, 412 satisfy the validity and determin-
+ism checks, with at least one valid condition in every world.
+Differences are aggregated within world before comput-
+ing pairedtintervals. Secondary intervals are unadjusted.
+The primary evolved–side-informed contrast is positive on
+46/48 worlds. Against dead reckoning initialized at a con-
+stant pose, the difference is−0.65[−2.02,0.71] mm.
+Against the private-pose chooser it is+1.13[−0.22,2.48]
+mm; the private-pose chooser is a privileged reference, not
+an ordinary deployable baseline.
+Simulator and decision procedure.All arms select
+among a common stored set of candidate-path outcomes.
+16
+Table 12. Clock-only control on13×13without heading correction: six initialization labels and 48 common evaluation mazes. E =
+evolved geometry; H = held; C = clock-only (age advances, geometry is held). Returns and read-out dependence are listed as E / H / C.
+Within-label differences use paired-maze bootstrap 95% intervals; dependence is intact minus masked return.
+Label Return (E / H / C) E−C [95% CI] C−H [95% CI] Dependence (E / H / C)
+250k
+1 0.8 / 0.8 / 0.9−0.08 [−0.58, +0.48] +0.12 [−0.21, +0.46] +0.15 / +0.10 /−0.04
+2 2.1 / 1.5 / 0.6 +1.52 [+0.81, +2.35]−0.90 [−1.35,−0.46] +0.90 /−0.10 / 0.00
+3 2.1 / 0.8 / 0.4 +1.73 [+1.19, +2.33]−0.48 [−0.71,−0.25] +0.83 / 0.00 / +0.06
+4 1.1 / 1.1 / 0.5 +0.65 [+0.33, +0.96]−0.60 [−0.94,−0.27] +0.42 / +0.21 / +0.10
+5 1.7 / 1.0 / 1.6 +0.12 [−0.46, +0.71] +0.54 [+0.02, +1.02] +1.25 / +0.04 / +0.27
+6 3.3 / 1.0 / 0.8 +2.48 [+1.65, +3.46]−0.21 [−0.58, +0.12] +1.60 /−0.06 / +0.19
+500k
+1 5.9 / 4.6 / 2.2 +3.65 [+2.10, +5.29]−2.38 [−3.21,−1.54] +2.25 /−0.21 / +0.52
+2 6.2 / 1.5 / 1.6 +4.52 [+3.08, +6.04] +0.17 [−0.46, +0.77] +2.40 / +0.38 / +0.12
+3 9.0 / 1.6 / 3.1 +5.88 [+4.19, +7.67] +1.56 [+0.94, +2.17] +5.00 / +0.19 / 0.00
+4 4.8 / 3.6 / 2.9 +1.90 [+0.54, +3.42]−0.69 [−1.56, +0.21] +2.06 /−0.29 / +0.73
+5 8.7 / 5.1 / 1.6 +7.12 [+5.25, +9.23]−3.56 [−4.44,−2.75] +3.10 / +1.29 /−0.08
+6 8.9 / 2.7 / 1.4 +7.48 [+5.62, +9.42]−1.33 [−1.96,−0.71] +4.50 / +0.15 /−0.04
+1M
+1 8.2 / 13.8 / 2.9 +5.27 [+3.00, +7.77]−10.88 [−13.19,−8.60] +2.65 / +5.40 / +0.77
+2 10.0 / 5.2 / 7.2 +2.81 [+0.54, +5.08] +2.02 [+0.48, +3.69] +4.42 / +1.40 / +1.67
+3 18.5 / 5.6 / 6.7 +11.81 [+8.10, +15.46] +1.15 [−0.40, +2.83] +8.79 / +1.69 / +1.33
+4 18.9 / 13.4 / 6.6 +12.33 [+8.79, +15.96]−6.81 [−8.35,−5.27] +9.00 / +4.40 / +2.81
+5 13.6 / 13.0 / 4.7 +8.83 [+6.42, +11.42]−8.23 [−10.33,−6.08] +4.77 / +5.10 / +1.65
+6 16.1 / 13.8 / 5.7 +10.33 [+7.33, +13.42]−8.08 [−10.62,−5.67] +7.67 / +5.44 / +2.17
+Table 13.Tactile branch evaluation on twelve held-out worlds.At each lost-contact anchor, ten fixed eight-step branches are executed
+and predicted from the same history. Top-1 is agreement with the best real branch; lower prediction error and regret are better. Contrasts
+use world-level bootstrap 95% intervals. Two passes differ on three worlds (largest 5.1 mm); all worlds are retained.
+State update Error before (mm) Error after (mm) Top-1 Regret
+Evolving, object held after contact 2.44 4.36 0.64 0.0070
+Evolving, object follows tip 2.39 2.48 0.42 0.0201
+Frozen state 2.95 3.90 0.02 0.0658
+Comparison Quantity Difference [95% CI] Favorable worlds
+Evolving−frozen Pre-contact error (mm)−0.51[−0.73,−0.28] 10/12
+Evolving−frozen Top-1+0.62[+0.43,+0.79] 11/12
+Evolving−frozen Regret−0.0588[−0.0698,−0.0467] 12/12
+Follow−object held Post-contact error (mm)−1.87[−2.06,−1.70] 12/12
+Follow−object held Top-1−0.21[−0.30,−0.12] 1/12
+Repeated PyBullet branches can vary with collision-pair or-
+dering; the measured maximum deviation is 4.75 mm, typ-
+ically below 0.4 mm, affecting a few percent of branches.
+The 412 accepted conditions pass the protocol’s determin-
+ism check. Recovery executes the selected open-loop path
+and hands over to a feedback law at contact.
+Real frames and preprocessing.The public Real Tac-
+tile MNIST dataset contains 600 printed objects with 256
+touches each, collected with a GelSight Mini sensor on a
+robot manipulator. We retain its 500/100 train/test object
+split and use a fixed 50-round validation split for model
+selection. A median over all touches of a round supplies
+the offline background; the gate threshold is calibrated on
+training data. Consequently, “after 32 touches” describes
+the query sequence length, not a strictly causal preprocess-
+ing pipeline. Each slot stores two position bytes and four
+learned content bytes. A three-layer convolutional encoder
+with channels 16/32/64 and a 128-unit projection produces
+the code; normalized codes are quantized with a straight-
+through estimator and trained with the query heads. Writes
+merge within 4 mm, otherwise fill an empty slot or replace
+the oldest. The proprioception control keeps positions and
+the same image-derived write gate while zeroing the con-
+17
+Table 14. Real tactile frames (Real Tactile MNIST, GelSight Mini): late query afterTtouches using an offline background computed
+from all 256 touches of the round; 48-byte payload plus up to 9 bytes of validity/age metadata; 100 held-out objects, mean±std over
+3 seeds (model selection on a fixed 50-round validation split). Q1 = digit identity, Q2 = material at a held-out position. Identity-query
+improvements over no history and proprioception are supported on all three seeds; material-query improvements are supported on two,
+with one unresolved.Bdenotes the payload budget; six-byte slots occupy 12/48/126 bytes at budgets 16/48/128.
+Q1 accuracy Q2 accuracy
+ArmT=8T=16T=32T=8T=16T=32
+byte-state memory (B=48) 0.290±0.010 0.354±0.008 0.417±0.020 0.656±0.007 0.694±0.004 0.700±0.011
+128-dim. GRU (reference) 0.356±0.005 0.456±0.016 0.485±0.025 0.700±0.003 0.719±0.007 0.710±0.008
+no history 0.194±0.009 0.192±0.010 0.187±0.010 0.667±0.002 0.671±0.002 0.659±0.004
+proprioception only 0.142±0.005 0.152±0.003 0.152±0.006 0.636±0.003 0.673±0.001 0.683±0.001
+byte-state, B=16 0.271±0.030 0.292±0.025 0.305±0.024
+byte-state, B=48 0.290±0.010 0.354±0.008 0.417±0.020
+byte-state, B=128 0.311±0.011 0.389±0.019 0.452±0.016
+Table 15.Synthetic pretraining for real tactile memory.Differences in identity accuracy at 32 touches, in percentage points, over
+twenty initialization labels with paired 95%tintervals. Budgets are labeled real-training rounds; preprocessing uses within-window causal
+backgrounds.
+Budget Contrast∆95% CIn + Role
+25 Synthetic pretraining−none+2.06[0.70,3.43] 17/20 Primary
+25 Synthetic pretraining−Taxim+0.45[−0.74,1.64] 11/20 Secondary
+25 Taxim−none+1.61[0.01,3.22] 13/20 Secondary
+450 Synthetic pretraining−none+1.35[−0.54,3.24] 12/20 Secondary
+tent bytes. The GRU reference uses a fixed 128-dimensional
+hidden state without quantization or the byte-memory bud-
+get. The full recoverable byte memory includes validity and
+age metadata. Table 14 reports byte budgets, both query
+tasks and references. Illustrated frames are fixed-index sam-
+ples from the first training object, selected independently of
+predictions or query success.
+J. Synthetic pretraining for real tactile mem-
+ory
+A supplementary experiment tests synthetic pretraining of
+the tactile encoder before real-frame learning, using twenty
+initialization labels and budgets of 25 and 450 labeled ob-
+ject rounds. It uses a causal background computed from
+frames observed within the query window, whereas the re-
+tention experiment in Sec. 6 uses an offline background. At
+budget 25, synthetic tactile pretraining increases 32-touch
+identity accuracy over no pretraining by 2.06 [0.70, 3.43]
+percentage points, positive on 17/20 labels. Its difference
+from Taxim-frame pretraining [43] is 0.45 [−0.74, 1.64]
+points. At budget 450, its difference from no pretraining
+is 1.35 [−0.54, 3.24] points. Table 15 gives the primary
+and secondary comparisons.
+18

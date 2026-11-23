@@ -1,0 +1,394 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgentWorld 精读笔记 · 世界模型调研与精读</title>
+<link rel="stylesheet" href="../style.css"></head><body>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T5 决策/AD世界模型</div><h1>AgentWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.22880</span> <a href="https://arxiv.org/abs/2611.22880">arXiv 页面</a> · <a href="txt/AgentWorld.txt">提取正文 txt</a></div><blockquote>
+<p>数据源：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\AgentWorld.txt</code>（118,235 字符，34 页，共 1789 行，全文通读；附录 A.1–A.8 亦已读取以覆盖超参与伪代码）
+引文格式：英文逐字 + 行号（行号按 txt 提取文件计；提取文本中少数处有换行撕裂/上下标破损，引用时以 <code>〔OCR 破损〕</code> 注明，不擅自补字）</p>
+</blockquote>
+<hr />
+<h2>1) 原文信息</h2>
+<ul>
+<li><strong>标题</strong>：Learning Agent-Centric Vision-Language-Action World Models for Autonomous Driving（L1–2）</li>
+<li><strong>作者</strong>："Guoqing Wang Pin Tang Xiangxuan Ren Chao Ma ∗"（L3）；通讯作者标注："∗Corresponding author."（L43，即 Chao Ma）</li>
+<li><strong>机构</strong>："MoE Key Lab of Artificial Intelligence, Institute of AI / Shanghai Jiao Tong University, Shanghai, China"（L4–5）</li>
+<li><strong>邮箱</strong>："{guoqing.wang,pin.tang,bunny_renxiangxuan,chaoma}@sjtu.edu.cn"（L6）</li>
+<li><strong>项目页</strong>："Project page: https://AgentWorld-AD.github.io"（L7）</li>
+<li><strong>会议/ID</strong>："40th Conference on Neural Information Processing Systems (NeurIPS 2026)."（L44）；"arXiv:2611.22880v1 [cs.CV] 17 Nov 2026"（L45）</li>
+<li><strong>基金</strong>："This work was supported by the National Natural Science Foundation of China (Grant Nos. 62322113, 62376156), as well as the Shanghai Municipal Special Program for Basic Research on General AI Foundation Models (Grant No. 2025SHZDZX025G15)."（L630–632）</li>
+<li><strong>代码/数据</strong>：NeurIPS Checklist 5 "Open access to data and code" Answer: [Yes]，"Justification: The data and code will be publicly available."（L1569–1570）</li>
+</ul>
+<h2>2) Abstract 全文逐字（L8–30）</h2>
+<blockquote>
+<p>"Recent progress in integrating vision-language-action (VLA) models with world modeling has significantly advanced end-to-end autonomous driving by allowing systems to reason about imagined futures instead of merely reacting to current observations. However, most world VLA models generate future frames at the pixel level with plenty of dense visual tokens. Although such generated futures can be visually plausible, they preserve many driving-irrelevant appearance details, i.e., only a small portion of the tokens directly encode critical planning-relevant factors, such as agent geometry, motion dynamics, and interactions. This introduces a significant performance bottleneck. An important question thus arises:what world state should a world VLA model reason over to support planning beyond pixel-level prediction?We argue that planning-oriented world modeling should focus on a compact and structured agent-centric latent state that captures the interactions between objects in the driving scene over time. As such, we introduce AgentWorld, an agent-centric VLA world model that uses discrete agent tokens jointly for reasoning and trajectory planning. Each token is dynamically grounded to a surrounding agent associated with its object's state, such as semantic identity, 3D geometry, motion, and interaction context. AgentWorld learns these tokens through three key processes: explicit geometric grounding, reasoning-oriented supervised fine-tuning, and agent-oriented reinforcement learning. Extensive open-loop and closed-loop experiments under diverse driving scenarios show that AgentWorld enhances planning capabilities, fully exploits visual evidence and agent dynamics, and yields interpretable agent-centric world states."</p>
+</blockquote>
+<p>（注：L17–18 的 "arises:what" 与 L18–19 的 "prediction?We" 为提取文本粘连，非原文拼写错误；按提取文件逐字转录。）</p>
+<h2>3) 问题与动机</h2>
+<p><strong>核心对立：像素级世界状态 vs 紧凑 agent-centric 潜状态。</strong></p>
+<ul>
+<li>现状批评（像素级 VLA world model 的瓶颈）：</li>
+<li>"most prior VLA world models imagine the future frames through pixel-level generation with autoregressive or multi-step diffusion. Although such generated future frames can be visually plausible, they retain numerous task-irrelevant visual details, i.e., texture, lighting, background, and visual continuity."（L39–42）</li>
+<li>"Only a small portion of tokens explicitly encode / planning-relevant cues, including agent geometry, / motion dynamics, and interactive behaviors. This / introduces a significant bottleneck in VLA world / models."（L42–49；中间夹页眉页脚）</li>
+<li>定量证据（Fig. 2）：</li>
+<li>"existing VLA world models demand far more tokens than the fine-tuned base model, i.e., Qwen2-VL [35], yet bring only slight planning improvement. Moreover, the visual grounding ablation reveals that removing image cues only slightly degrades existing world VLA models, even with their heavy use of dense visual tokens."（L106–112）</li>
+<li>"This suggests that the visual inputs in these models are not yet fully transformed into planning-relevant reasoning, with many of the visual tokens instead being used for image generation."（L113–115）</li>
+<li>Fig. 2 数值（txt 中散落，模型-数值对应关系在提取文件中不可复原）："0.96 / 1.22 / 0.26 / 1.15 / 0.83 / 0.32 / 1.07 / 0.45 / 0.62 / 1.30 / 1.16 / 0.14 / 60 / 447 / 653 / 98"（L86–98），坐标轴标注 "Average planning L2 error (m)↓"（L99）、"Average sequences (tokens)↓"（L100）</li>
+<li>核心问题句：</li>
+<li>"As such, the core challenge is not simply how to generate visually plausible future frames, but how to integrate world modeling with VLA through a compact, structured, and task-aligned state. An important question thus arises: what world state should a VLA world model reason over to support planning beyond pixel-level prediction?"（L115–119）</li>
+<li>主张与 JEPA 关联：</li>
+<li>"Motivated by JEPA-style paradigms [36–38], which prioritize predictive abstraction over pixel reconstruction, we argue that planning-oriented world modeling should emphasize a latent world state that captures the temporal interactions among objects in driving scenes."（L120–122）</li>
+<li>"we align the latent world state with the causal structure of driving, shifting world modeling from future frame generation to structured reasoning about interacting agents."（L127–129）</li>
+<li>相关工作对三种现有表征的定性（BEV/occupancy、场景级 latent、语言对齐状态）："Consequently, existing representations either retain excessive low-level details, obscure agent-level causal factors, or lack explicit physical grounding, motivating a compact, interpretable, and agent-centric world state for driving-oriented reasoning."（L189–191）</li>
+<li>三大贡献（L149–157）：</li>
+<li>"We reveal that the bottleneck of existing world VLA models stems from the fact that a considerably large number of visual tokens for future generation are irrelevant to planning, which motivates our design of compact, structured, planning-oriented latent world modeling."（L149–151）</li>
+<li>"We introduce an agent-centric latent state for planning-oriented world modeling, which represents the driving scene as temporally evolving agents grounded in 3D geometry, motion, semantics, and interaction context."（L152–154）</li>
+<li>"We propose AgentWorld, an agent-centric world VLA model that instantiates this state with discrete agent tokens. Experiments on open-loop and closed-loop benchmarks show consistently improved planning performance and more interpretable world states."（L155–157）</li>
+</ul>
+<h2>4) 实现细节（重点）</h2>
+<h3>4.1 形式化与离散 agent token 定义</h3>
+<ul>
+<li>上下文与规划目标："Let Ht = {o1:t, g} denote the driving context at time t, where o1:t contains historical multi-view observations and ego-status, and g is the navigation goal. The goal of end-to-end autonomous driving is to predict a future ego trajectory τt:t+H."（L243–245）</li>
+<li>世界模型+策略分解（Eq. 1，L247）：<code>p(τt:t+H, Ŝ | Ht) = pw(Ŝ | Ht) pπ(τt:t+H | Ht, Ŝ). (1)</code>；"Here, pw denotes a world model that constructs an imagined world state Ŝ from the driving context, while pπ denotes a VLA that predicts the ego trajectory conditioned on both the current context and the imagined state."（L248–250）</li>
+<li>世界状态的接口性质："the world state is not merely an auxiliary prediction target, but the information interface through which predictive imagination influences decision-making."（L250–252）</li>
+<li>固定 token 集合（Eq. 2，L263–264）："we introduce a fixed set of special agent tokens into the MLLM sequence, Tagent = {⟨agent_1⟩, ⟨agent_2⟩, · · ·, ⟨agent_N⟩}, (2) where N is the maximum number of agent tokens."（L263–266）；<strong>N = 20</strong>："The number of agents is set to 20."（L1165–1166）</li>
+<li>agent-centric 潜状态（Eq. 3，L269–270）："S_agent_t = {h1_t, h2_t, · · ·, hN_t}, h_i_t ∈ R^{D_LLM}, (3) where hit is the MLLM hidden state at the position of ⟨agent_i⟩."</li>
+<li>动态接地定义："Each token acts as an addressable agent slot that can be dynamically grounded to a surrounding participant or assigned to a 'no-object' state. Through explicit physical grounding, active tokens are encouraged to encode semantic identity, 3D geometry, motion, and interaction context."（L270–273）</li>
+<li>规划式（Eq. 4，L275–277）：<code>p(τt:t+H | Ht) = pπ(τt:t+H | Ht, S_agent_t). (4)</code>；"The role of the world model is to construct S_agent_t as a compact, physically grounded, and interaction-aware state, rather than reconstructing all future visual details."（L278–279）</li>
+</ul>
+<h3>4.2 Agent token 初始化（来自特殊 token 的可学习嵌入）</h3>
+<ul>
+<li>"We initialize agent queries from the learnable embeddings of the special agent tokens, rather than introducing a separate object-query set."（L287–288）</li>
+<li>Eq. 5（L289）：<code>E_agent = Emb(Tagent) ∈ R^{N×D_LLM}, (5)</code>；Eq. 6（L291）：<code>Q0_t = E_agent Wq = [q^{1,0}_t; · · ·; q^{N,0}_t] ∈ R^{N×d}. (6)</code></li>
+<li>"Thus, each special token is itself a learnable agent query. At initialization, these queries are ungrounded latent slots that define where agent-centric world states will be formed in the MLLM sequence, without assuming any fixed correspondence to physical agents."（L292–294）</li>
+</ul>
+<h3>4.3 多模态路由锚定（Multimodal Routed Anchoring，Fig. 4）</h3>
+<ul>
+<li>两路互补特征："AgentWorld routes each slot to two complementary features: 4D geometry G0_t from offline VGGT-style features following [88–90] and 2D visual V0_t from the MLLM visual encoder. The geometry branch provides spatial layout, temporal consistency, and motion-related cues, while the vision branch provides appearance and semantic context."（L321–329）</li>
+<li>共享路由空间（Eq. 7，L331）：<code>Gt = φg(G0_t), Vt = φv(V0_t). (7)</code></li>
+<li>每层：先适配查询到该模态，再 token-wise 门控，再做交叉注意力（Eq. 8，L334）：<code>R^ℓ_m = CrossAttn_m(γ^ℓ_m ⊙ ψ_m(Q^ℓ_t), φ_m(M_m), φ_m(M_m)), γ^ℓ_m = σ(f_m(Q^ℓ_t)), (8)</code>〔提取文本作 "CrossAttnm"、"Qℓt"，下标粘连〕；"where m ∈ {g, v}, Mg = Gt, and Mv = Vt. The independent gates allow each token to decide how much geometry and vision to use, without forcing the two modalities to compete."（L335–336）</li>
+<li>融合更新（Eq. 9，L339）：<code>Q^{ℓ+1}_t = Fuse(Q^ℓ_t, R^ℓ_g, R^ℓ_v). (9)</code>；<strong>路由层数 L = 3</strong>："we use L = 3 routing layers by default."（L1163–1164）</li>
+<li>注入 MLLM："After L routing layers, the resulting grounded queries Q̃t are projected to the MLLM hidden space and inserted into the corresponding ⟨agent_i⟩ positions. The MLLM then contextualizes these tokens, and the hidden states at the corresponding positions serve as the grounded latent states {hit}Ni=1. These states are subsequently supervised by the shared agent head and Hungarian matching."（L340–343）</li>
+</ul>
+<h3>4.4 物理接地目标（training-time head + 匈牙利匹配）</h3>
+<ul>
+<li>"We ground each agent token by supervising its MLLM hidden state hit with a lightweight training-time head: h_agent(hit) = (p̂it, b̂it, τ̂it), (10) which predicts category/existence, 3D bbox, and future trajectory. Because token order is unordered, predicted slots are matched to ground-truth agents with DETR-style bipartite matching [91]; matched slots receive classification, box, and trajectory losses, while unmatched slots are trained as no-object. This training-time head makes active tokens physically verifiable, leaving the grounded hidden states as agent-centric world states."（L344–351）</li>
+<li>接地损失（Eq. 25，L1201）：<code>L_ground = λ_cls L_cls + λ_box L_box + λ_traj L_traj + λ_noobj L_noobj. (25)</code>；"We set λcls = 1.0, λbox = 1.0, λtraj = 1.0, and λnoobj = 0.1 by default. The no-object weight is kept small to avoid dominating the supervision when most agent slots are empty."（L1202–1204）</li>
+<li>接地数据格式（Stage 1 模板，Eq. 16 / Fig. 7，L989–991）：<code>&lt;perception&gt;⟨agent_1⟩ · · · ⟨agent_N⟩&lt;/perception&gt;. (16)</code>；"No textual description of object category, location, or motion is provided. The model must encode this information in the contextual hidden states of the agent tokens."（L990–992）；"The offline VGGT features are provided as geometry memory for routed anchoring, but the VGGT encoder itself is not trained."（L998–999）</li>
+</ul>
+<h3>4.5 策略接口与结构化输出</h3>
+<ul>
+<li>"AgentWorld exposes the learned slots through the <perception> field, <code>&lt;perception&gt;⟨agent_1⟩ · · · ⟨agent_N⟩&lt;/perception&gt;</code>, where the state of each participant is carried by the token hidden state rather than an explicit text description. The policy is trained to output a structured response y = (ξ, a, τ), consisting of a concise agent-grounded rationale <think>, a high-level driving action <action>, and future ego waypoints <answer>. This format forces planning to be expressed through addressable participants instead of dense perception text or image-level future prediction."（L353–360）</li>
+<li>输出示例（Fig. 5 右栏，L461–465，逐字）：<code>AgentWorld:&lt;perception&gt;&lt;agent_1&gt;&lt;agent_2&gt;&lt;agent_3&gt;…&lt;agent_20&gt;&lt;/perception&gt;&lt;think&gt;Main risk is &lt;agent_3&gt; and &lt;agent_5&gt;, two nearby cars on the right that narrow the ego passing space, with &lt;agent_3&gt; being the closest. &lt;agent_1&gt; is a pedestrian far ahead but has no immediate path conflict. Ego should slow slightly and keepextra right-side clearance.&lt;/think&gt;&lt;action&gt;KEEP_SPEED, KEEP_LANE&lt;/action&gt;&lt;answer&gt;[(0.75, 1.75),(0.82, 3.10),(0.90, 4.35),(1.00, 5.55),(1.10, 6.62),(1.22, 7.89)]&lt;/answer&gt;</code></li>
+<li>轨迹粒度：6 个路点、0.5s 间隔、3s 时域——"please plan waypoints (0.5s intervals) for the next 3 seconds…"（L452–453）</li>
+</ul>
+<h3>4.6 三阶段训练（各自损失与数据）</h3>
+<p><strong>Stage 1：Physical grounding SFT（显式几何接地）</strong>
+- 超参："We first train the agent-token grounding interface for 12 epochs. The trainable modules include the MLLM backbone, the special <agent_i> token embeddings, the multimodal routed anchoring module, and the auxiliary agent head. We use AdamW with a cosine decay schedule and a warmup ratio of 0.03. The learning rate is set to 1.0×10⁻⁴. The per-device batch size is 2 with 8 gradient accumulation steps, giving an effective batch size of 16 per device. Input images are processed with a maximum resolution of 524288 pixels. For multimodal routed anchoring, we use L = 3 routing layers by default. The grounding loss supervises category/existence, 3D bounding box, and future trajectory prediction after Hungarian matching. The number of agents is set to 20."（L1158–1166）
+- 数据与监督（A.1）："For each selected agent, we store its category, 3D bounding box, velocity or motion state, and future trajectory. During training, the predictions from the agent-token hidden states are matched to these targets using DETR-style bipartite matching. Matched tokens are supervised with classification, 3D box, and trajectory losses, while unmatched tokens are supervised as no-object."（L994–998）</p>
+<p><strong>Stage 2：Reasoning-oriented SFT（推理导向 SFT）</strong>
+- 损失（Eq. 11，L365–370）：<code>L_SFT = −Σ_k log p_θ(y⋆_k | y⋆_&lt;k, Ht, S_agent_t), S_agent_t = {hit}Ni=1. (11)</code>；"Each expert response is organized as y⋆ = (ξ⋆, a⋆, τ⋆), where ξ⋆ is a concise rationale over relevant agent tokens, a⋆ is a high-level driving action, and τ⋆ is the expert future trajectory."（L361–363）
+- rationale 设计："The rationale ξ⋆ is deliberately compact: it does not verbalize all perception results, but only identifies planning-relevant agent tokens, summarizes their interaction risk, and explains the resulting maneuver."（L371–373）
+- 超参："we train the MLLM to use grounded agent tokens for reasoning and planning for 12 epochs. The multimodal routed anchoring module and auxiliary agent head are frozen. The trainable parameters are the MLLM policy parameters and the special agent-token embeddings. We use AdamW with a learning rate of 5.0×10⁻⁵ and a cosine decay schedule. The batch configuration follows Stage 1, with a per-device batch size of 2 and 8 gradient accumulation steps. Each sample is trained with the structured output format consisting of <perception>, <think>, <action>, and <answer>."（L1167–1173）
+- 渐进去除接地脚手架："To reduce mismatch with the RL stage, we progressively drop the training-time grounding scaffold during SFT: early batches use full grounding inputs, middle batches use partial dropout, and the final SFT phase uses the same MLLM-only format as RL."（L1173–1176）；可选正则（Eq. 27，L1217）：<code>L_Stage2 = L_SFT + η L_ground, (27)</code>；"where η is linearly decayed from 0.1 to 0 as the training gradually shifts to the MLLM-only format. In the final SFT phase, η = 0."（L1218–1219）
+- Stage 2 数据（A.1）：rationale 由 Stage-1 接地模型的 slot-to-agent 指派生成——"we run the grounding model on the training set, match predicted slots to ground-truth agents, and obtain a mapping from ⟨agent_i⟩ to either a physical agent or no-object."（L1049–1051）；动作标签由专家轨迹派生——"The high-level action is derived from the expert ego trajectory. We classify longitudinal behavior into ACCELERATE, KEEP_SPEED, DECELERATE, or STOP, and lateral behavior into KEEP_LANE, CHANGE_LEFT, or CHANGE_RIGHT. The <answer> field contains the expert future waypoints."（L1052–1054）；"We optionally use strong MLLMs to generate concise, agent-grounded driving-risk rationales."（L1072，提示模板见 Fig. 8，L1016–1040）</p>
+<p><strong>Stage 3：Agent-oriented RL（GRPO）</strong>
+- 总体："We further optimize AgentWorld with GRPO [39]. Starting from the reasoning-oriented SFT checkpoint, the model samples multiple structured responses for each scene, each containing a concise rationale, a high-level action, and future ego waypoints. These candidates are evaluated by a composite reward that measures format, perception, action, trajectory, and interaction context."（L379–383）
+- 轨迹/交互奖励语义："The trajectory reward encourages smoothness and imitation of expert behavior following [30], while the interaction reward explicitly evaluates the ego rollout against surrounding agents and penalizes collisions, insufficient clearance, and short time-to-collision. This reward design makes the RL stage agent-oriented: improving the final trajectory requires the policy to account for the dynamic agents represented by the learned <agent_i> tokens."（L383–387）
+- GRPO 机制："GRPO ranks multiple responses sampled from the same scene by their relative rewards, using the SFT model as a reference to stabilize updates. During RL, only the MLLM policy is updated."（L388–389）
+- 超参："We further optimize the Stage-2 checkpoint with GRPO for 1 epoch. During RL, only the MLLM policy parameters are updated. The auxiliary agent head is kept frozen and used only as a reward-side generator to decode top-K agent trajectories from the learned <agent_i> tokens; it receives no gradients. The routed anchoring modules are also frozen and are not optimized during RL. We use a learning rate of 1.0×10⁻⁶ and a global batch size of 16. For each prompt, we sample 8 responses to estimate group-relative advantages. The KL coefficient to the SFT reference policy is set to 1.0×10⁻². The reward is a weighted sum of format reward, perception-slot reward, action reward, trajectory reward, and agent interaction reward, with all reward weights set to 1 unless otherwise specified."（L1177–1186）
+- 推理时去除训练脚手架："At inference time, the reward-side agent head is not required and can be discarded."（L427–428）；"At inference time, it is completely removed, and AgentWorld performs planning with the MLLM and the learned agent-token interface alone."（L1195–1196）；"the final SFT phase adopts the same MLLM-only input-output format used in RL, where the auxiliary grounding heads and routed anchoring modules are no longer required in inference."（L376–378）</p>
+<p><strong>RL 奖励明细（A.2，Eq. 20–24）</strong>
+- Format reward："A structural reward of 1.0 is assigned if the response strictly follows <perception>...</perception> <think>...</think> <action> ...</action> <answer> ...</answer>, and 0 otherwise."（L1086–1087）；"The <perception> field must contain only valid special agent tokens {⟨agent_i⟩}Ni=1, without free-form object descriptions or invalid tokens."（L1088–1089）
+- Perception（slot-alignment）reward（Eq. 20，L1098–1106）：<code>R_percep = I[|T̂_agent| = N] · I[T̂_agent = T_agent], (20)</code>；"where duplicate, missing, or invalid tokens receive zero reward."（L1106–1107）
+- Meta-Action reward："we compute an F1-based reward: R_action = 2·Prec(M̂, M⋆)·Rec(M̂, M⋆) / (Prec(M̂, M⋆) + Rec(M̂, M⋆) + ε)."〔提取文本分式粘连，L1115–1116；语义=多标签 F1〕；"This balances precision and recall over multi-label driving intents and prevents degenerate behaviors such as always predicting conservative or straight-driving actions."（L1116–1118）
+- Agent interaction reward（Eq. 21–23，L1119–1146）：最小未来距离 <code>d_min^i = min_m ||p̂^{t+Δm}_ego − p̂^{t+Δm}_i||₂, (21)</code>；TTC 风险 <code>TTC_i = min{Δm | ||p̂^{t+Δm}_ego − p̂^{t+Δm}_i||₂ &lt; d_safe}, (22)</code>；"If no unsafe distance occurs within the horizon, we set TTCi = ∞. The agent reward penalizes collision, insufficient clearance, and short TTC: R_agent = −(1/K) Σ_{i∈I_K} [λ_col I[d_min^i &lt; d_col] + λ_clear (1 − d_min^i/d_safe)₊ + λ_ttc (1 − TTC_i/T_safe)₊]. (23)"〔式中 <code>(·)₊</code> 为正部截断，提取文本作换行断开〕。"We use the frozen agent head as a reward-side probe to decode the top-K active agent trajectories from the learned <agent_i> tokens."（L1119–1120）
+- 总奖励（Eq. 24，L1148）：<code>R = λ_fmt R_fmt + λ_percep R_percep + λ_action R_action + λ_traj R_traj + λ_agent R_agent. (24)</code>
+- <strong>未写数值</strong>：λ_col、λ_clear、λ_ttc、d_col、d_safe、T_safe 的具体值——原文未写。<strong>轨迹奖励 R_traj 的具体公式</strong>——原文未写（仅 "encourages smoothness and imitation of expert behavior following [30]"，L383–384；正文指路 "Detailed rewards are provided in the appendix."，L429，但 A.2 未单列 R_traj 公式）。</p>
+<h3>4.7 数据管线（A.1）</h3>
+<ul>
+<li>三原则："First, physical agent states are used only as supervision or reward signals, and are never exposed as textual input to the policy. Second, the <perception> field only exposes special agent tokens, while the state of each participant is carried by the token hidden state. Third, the final SFT phase and the RL phase share the same MLLM-only input-output template."（L954–958）</li>
+<li>Influential agent selection（Top-K）：</li>
+<li>相对未来轨迹（Eq. 12，L965–966）：<code>r^{t+Δm}_i = p^{t+Δm}_i − p^{t+Δm}_ego. (12)</code>（时域 "within a horizon of H = 3 s"，L964）</li>
+<li>当前影响分（Eq. 13，L969）：<code>S_cur^i = w_ds s_dist^i + w_ls s_lane^i + w_cs s_close^i, (13)</code>；"where s_dist^i increases for nearby objects, s_lane^i indicates whether the object is in or close to the ego lane, and s_close^i measures relative closing speed."（L970–971）</li>
+<li>未来影响分（Eq. 14，L973）：<code>S_future^i = w_mins s_min^i + w_ttc s_ttc^i + w_corr s_corr^i, (14)</code></li>
+<li>总影响分（Eq. 15，L977–980）：<code>S_i = α_i (λ S_cur^i + (1−λ) S_future^i), (15)</code>；"<strong>λ is set to 0.45.</strong> We use larger weights for vulnerable road users such as pedestrians and cyclists, since they are safety-critical even when their current distance is not the smallest."（L980–982）</li>
+<li>"In our implementation, K ≤ N, where N is the number of available agent tokens. If fewer than K valid objects exist, the remaining slots are treated as no-object."（L983–984）；K 的具体数值——原文未写</li>
+<li>N=20 依据（Fig. 10 目标数分布）："Fig. 10 motivates the choice of the maximum agent-token number N=20. The object-count distribution is highly imbalanced: most scenes contain a moderate number of objects, while only a small fraction of samples fall into the long-tail high-density regime."（L1410–1412）；"Choosing N=20 provides a practical trade-off between coverage and efficiency."（L1416）</li>
+<li>Stage 3 RL 数据："The RL stage uses the same prompt template as the final SFT phase, but removes the supervised assistant response. The model observes images, ego status, navigation command, and the <perception> field containing the agent tokens. It then samples multiple structured responses: yk = (ξk, ak, τk), k = 1, . . . , K_RL. (19)"（L1077–1081）</li>
+</ul>
+<h3>4.8 架构与超参汇总</h3>
+<ul>
+<li>主干与输入："AgentWorld is initialized from Qwen2-VL and Qwen2.5-VL series models [35, 25], with multi-view images as visual inputs and frozen VGGT-style features as offline 4D geometry features."（L437–439）</li>
+<li>三阶段总述："We train the model in three stages: physical grounding SFT, reasoning-oriented SFT followed by agent-oriented RL. The SFT stages jointly supervise grounded agent tokens, high-level actions, reasoning traces, and future waypoints, while the RL stage optimizes sampled responses using format, perception, action, trajectory, and agent-interaction rewards."（L439–442）</li>
+<li>算力："All experiments are implemented in PyTorch on 4×80 GB NVIDIA A800 GPUs."（L443）</li>
+<li>数据集："We evaluate AgentWorld on nuScenes [92] and Bench2Drive [98], covering both open-loop planning and closed-loop driving."（L432–433）</li>
+<li>训练时长（epoch 数之外的墙钟时间）——原文未写。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>可训练模块</th>
+<th>冻结模块</th>
+<th>优化器/lr</th>
+<th>batch</th>
+<th>关键超参</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stage 1 接地 SFT（12 ep，L1158）</td>
+<td>MLLM 主干、<agent_i> 嵌入、路由锚定模块、agent head（L1158–1160）</td>
+<td>VGGT 编码器不训练（L998–999）</td>
+<td>AdamW，cosine，warmup 0.03，lr 1e-4（L1160–1161）</td>
+<td>每卡 2 × 8 累积 = 有效 16/卡（L1161–1162）</td>
+<td>L=3；最大分辨率 524288 px；N=20；λ_noobj=0.1（L1163–1166, L1202–1203）</td>
+</tr>
+<tr>
+<td>Stage 2 推理 SFT（12 ep，L1167–1168）</td>
+<td>MLLM 策略参数 + <agent_i> 嵌入（L1169–1170）</td>
+<td>路由锚定模块、agent head（L1168–1169）</td>
+<td>AdamW，cosine，lr 5e-5（L1170–1171）</td>
+<td>每卡 2 × 8 累积（L1171–1172）</td>
+<td>η 从 0.1 线性衰减到 0（L1217–1218）</td>
+</tr>
+<tr>
+<td>Stage 3 GRPO（1 ep，L1177）</td>
+<td>仅 MLLM 策略（L1178）</td>
+<td>agent head（冻结作奖励解码器）、路由锚定模块（L1178–1182）</td>
+<td>lr 1e-6；KL 系数 1e-2（L1182–1184）</td>
+<td>全局 batch 16；每 prompt 采样 8 响应（L1182–1183）</td>
+<td>奖励权重均 1（L1185–1186）</td>
+</tr>
+</tbody>
+</table>
+<h2>5) 伪代码</h2>
+<p><strong>规则判定</strong>：原文有 Algorithm 环境 → 逐字提取如下。</p>
+<h3>5.1 原文 Algorithm 1（逐字，L1290–1305）</h3>
+<pre><code>Algorithm 1 Top-K Influential Agent Selection
+Require: Current sample annotations, ego pose, future horizon H = 3s, number of selected agents K
+Ensure: Top-K influential agents AK
+1: for each object i in the current sample do
+2:   Transform the object box, velocity, and category into the current ego frame.
+3:   Extract the future object trajectory Ti from the annotation chain.
+4:   Extract the future ego trajectory Tego.
+5:   Compute the relative future trajectory r^{t+Δm}_i.
+6:   Compute current influence score S_cur^i.
+7:   Compute future trajectory influence score S_future^i.
+8:   Compute final score S_i = α_i(λS_cur^i + (1−λ)S_future^i).
+9: end for
+10: Sort all objects by S_i in descending order.
+11: Select the top-K objects as AK.
+12: return AK
+</code></pre>
+<h3>5.2 训练流水线 ⚠ 依据原文重建（非原文伪代码）</h3>
+<blockquote>
+<p>原文没有训练流程的 Algorithm 环境；以下按正文与附录 A.1/A.3 的明文描述重建，每步附行号。未在原文出现的内容一律不写。</p>
+</blockquote>
+<pre><code>⚠ AgentWorld 训练流水线（重建，行号=依据）
+输入：nuScenes 训练样本（多视图图像、ego-status、导航指令、标注）
+数据准备（A.1）：
+ 1. 对每个样本，用 Alg. 1 计算影响分并选出 Top-K 影响智能体（L983-986, L1290-1305）
+ 2. Stage 1 样本：&lt;perception&gt;&lt;agent_1&gt;…&lt;agent_N&gt;&lt;/perception&gt;，无对象文字描述（L987-992）
+ 3. Stage 2 样本：用 Stage-1 接地模型的 slot-to-agent 指派生成 rationale；
+    动作标签由专家轨迹分类（纵向 4 类、横向 3 类）；&lt;answer&gt;=专家未来路点（L1049-1054）
+ 4. Stage 3 样本：与最终 SFT 相同的 MLLM-only 模板，去掉监督回答（L1077-1081）
+Stage 1 物理接地 SFT（12 epochs）：
+ 5. 前向：路由锚定（L 层，几何门控+视觉门控交叉注意力）→ 注入 MLLM → 取 &lt;agent_i&gt; 位置隐状态（L332-343）
+ 6. 匈牙利匹配后监督 分类/3D框/未来轨迹/无对象；L_ground=λ_clsL_cls+λ_boxL_box+λ_trajL_traj+λ_noobjL_noobj（L344-351, L1201-1204）
+Stage 2 推理导向 SFT（12 epochs，冻结锚定模块与 agent head）：
+ 7. 训练 &lt;perception&gt;&lt;think&gt;&lt;action&gt;&lt;answer&gt; 结构化输出；L_SFT=−Σ_k log p_θ(y⋆_k|y⋆_&lt;k,Ht,S_agent_t)（L361-370）
+ 8. 渐进丢弃接地脚手架（全量→部分 dropout→MLLM-only），可选 η·L_ground，η:0.1→0（L1173-1176, L1217-1219）
+Stage 3 Agent 导向 RL（GRPO，1 epoch，仅更新 MLLM 策略）：
+ 9. 每 prompt 采样 8 条结构化响应；冻结 agent head 解码 top-K 智能体轨迹作奖励探针（L1177-1183）
+ 10. R=λ_fmtR_fmt+λ_percepR_percep+λ_actionR_action+λ_trajR_traj+λ_agentR_agent，权重均 1（L1148, L1184-1186）
+ 11. GRPO 以 SFT 模型为参考策略计算相对优势并更新（L388-389）
+推理：
+ 12. 丢弃辅助头与路由锚定模块，仅 MLLM + &lt;agent_i&gt; token 接口输出 ξ,a,τ（L376-378, L427-428, L1195-1196）
+</code></pre>
+<h2>6) 主结果数值表</h2>
+<p><strong>Table 1（L391–408）：nuScenes 开环轨迹规划。</strong> 协议："We evaluate L2 error and collision rate following the respective protocols of ST-P3 [93] and UniAD [18]. The ∗ indicates the use of additional ego-state information."（L392–393）</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>ST-P3 L2 1s/2s/3s/Avg↓</th>
+<th>ST-P3 Col 1s/2s/3s/Avg↓</th>
+<th>UniAD L2 1s/2s/3s/Avg↓</th>
+<th>UniAD Col 1s/2s/3s/Avg↓</th>
+<th>Backbone</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ELM [94]</td>
+<td>–</td>
+<td>–</td>
+<td>0.34/1.23/2.57/1.38</td>
+<td>0.12/0.50/2.36/0.99</td>
+<td>BLIP2-2.7B</td>
+</tr>
+<tr>
+<td>FeD* [95]</td>
+<td>–</td>
+<td>–</td>
+<td>0.27/0.53/0.94/0.58</td>
+<td>0.00/0.04/0.52/0.19</td>
+<td>LLaVA-7B</td>
+</tr>
+<tr>
+<td>OccWorld [56]</td>
+<td>0.39/0.73/1.18/0.77</td>
+<td>0.11/0.19/0.67/0.32</td>
+<td>0.52/1.27/2.41/1.40</td>
+<td>0.12/0.40/2.08/0.87</td>
+<td>GPT3-like</td>
+</tr>
+<tr>
+<td>Doe-1 [55]</td>
+<td>0.37/0.67/1.07/0.70</td>
+<td>0.02/0.14/0.47/0.21</td>
+<td>0.50/1.18/2.11/1.26</td>
+<td>0.04/0.37/1.19/0.53</td>
+<td>Lumina-mGPT-7B</td>
+</tr>
+<tr>
+<td>RDA-Driver* [96]</td>
+<td>0.17/0.37/0.69/0.40</td>
+<td>0.01/0.05/0.26/0.10</td>
+<td>0.23/0.73/1.54/0.83</td>
+<td>0.00/0.13/0.83/0.32</td>
+<td>LLaVA-7B</td>
+</tr>
+<tr>
+<td>EMMA* [97]</td>
+<td>0.14/0.29/0.54/0.32</td>
+<td>–</td>
+<td>–</td>
+<td>–</td>
+<td>Gemini 1.0 Nano-1</td>
+</tr>
+<tr>
+<td>OmniDrive* [71]</td>
+<td>0.14/0.29/0.55/0.33</td>
+<td>0.00/0.13/0.78/0.30</td>
+<td>–</td>
+<td>–</td>
+<td>LLaVA-7B</td>
+</tr>
+<tr>
+<td>FSDrive* [34]</td>
+<td>0.14/0.25/0.46/0.28</td>
+<td>0.03/0.06/0.21/0.10</td>
+<td>0.18/0.39/0.77/0.45</td>
+<td>0.00/0.06/0.42/0.16</td>
+<td>Qwen2-VL-2B</td>
+</tr>
+<tr>
+<td>VLA-World* [30]</td>
+<td>0.10/0.24/0.45/0.26</td>
+<td>0.02/0.05/0.18/0.08</td>
+<td>0.10/0.35/0.80/0.42</td>
+<td>0.01/0.05/0.30/0.12</td>
+<td>Qwen2-VL-2B</td>
+</tr>
+<tr>
+<td><strong>AgentWorld</strong></td>
+<td>0.10/0.25/0.47/<strong>0.27</strong></td>
+<td>0.01/0.04/0.18/<strong>0.08</strong></td>
+<td>0.13/0.38/0.85/<strong>0.45</strong></td>
+<td>0.01/0.05/0.31/<strong>0.12</strong></td>
+<td>Qwen2-VL-2B</td>
+</tr>
+<tr>
+<td><strong>AgentWorld</strong>*</td>
+<td><strong>0.09/0.23/0.44/0.25</strong></td>
+<td><strong>0.01/0.03/0.17/0.07</strong></td>
+<td><strong>0.09/0.34/0.77/0.40</strong></td>
+<td><strong>0.01/0.04/0.28/0.11</strong></td>
+<td>Qwen2-VL-2B</td>
+</tr>
+</tbody>
+</table>
+<p>（数值逐字，L394–408。）解读原句："AgentWorld achieves highly competitive results without additional ego-state input, outperforming most prior VLA and VLA world baselines in both L2 error and collision rate. When ego-status is further incorporated, AgentWorld obtains the best overall performance, reaching the lowest average L2 error and collision rate under both evaluation protocols."（L446–449）；"Compared with VLA-World, the improvement is especially clear in long-horizon prediction and safety-critical collision metrics, suggesting that the agent-centric world state provides more reliable cues for future motion reasoning."（L490–492）</p>
+<p><strong>Table 2（L409–417）：nuScenes val 3D 检测（mAP↑/NDS↑）。</strong> "We evaluate 3D object detection using both mAP and NDS metrics."（L410–411）
+CenterNet 0.306/0.328；FCOS3D 0.299/0.373；DETR3D 0.303/0.374；PGD 0.305/0.409；<strong>AgentWorld 0.318/0.416</strong>。
+解读："AgentWorld achieves the best performance on mAP and NDS."（L496）；"More importantly, AgentWorld improves detection while using agent tokens as the intermediate world state. This indicates that explicitly grounding each latent agent to physical participants provides a structured representation that benefits spatial understanding."（L499–501）</p>
+<p><strong>Table 3（L418–425）：nuScenes 元动作 F1（%）。</strong> "† denotes models trained on nuScenes."（L419–420）
+| Method | forward | left | right | keep | acc. | dec. | stop |
+|---|---|---|---|---|---|---|---|
+| Qwen2-VL-2B | 62.43 | 22.75 | 28.65 | 40.70 | 50.23 | 49.21 | 41.04 |
+| Qwen2-VL-2B† | 92.60 | 61.78 | 66.52 | 56.42 | 74.32 | 76.10 | 74.85 |
+| VLA-World | 95.88 | 74.22 | 75.06 | 60.98 | 81.42 | 80.04 | 81.24 |
+| <strong>AgentWorld</strong> | 95.14 | <strong>77.63</strong> | <strong>78.41</strong> | <strong>63.85</strong> | <strong>84.17</strong> | <strong>82.93</strong> | <strong>84.56</strong> |</p>
+<p>解读："AgentWorld achieves the best overall results across most lateral and longitudinal action categories. The gains are especially pronounced for turning, lane keeping, acceleration, deceleration, and stopping... Although VLA-World obtains a slightly higher score on the relatively saturated forward category, AgentWorld delivers more balanced improvements across interaction-sensitive actions."（L502–507）</p>
+<p><strong>Table 4（L517–526）：Bench2Drive（CARLA）闭环。</strong> "Closed-loop evaluation results on Bench2Drive (CARLA) with SOTA methods."（L517）
+| Method | Driving Score↑ | Success Rate (%)↑ | Efficiency↑ | Comfortness↑ |
+|---|---|---|---|---|
+| AD-MLP [103] | 18.05 | 0.00 | 48.45 | 22.63 |
+| UniAD-Base [18] | 45.81 | 16.36 | 129.21 | 43.58 |
+| VAD [19] | 42.35 | 15.00 | 157.94 | 46.01 |
+| TCP-traj [104] | 59.90 | 30.00 | 76.54 | 18.08 |
+| DriveAdapter [105] | 64.22 | 33.08 | 70.22 | 16.01 |
+| Orion [106] | 77.74 | 54.62 | 151.48 | 17.38 |
+| AutoVLA [1] | 78.84 | 57.73 | 146.93 | 39.33 |
+| <strong>AgentWorld</strong> | <strong>81.17</strong> | <strong>61.36</strong> | 147.82 | <strong>54.39</strong> |</p>
+<p>解读："AgentWorld achieves the highest driving score and success rate among all compared methods, demonstrating stronger robustness in interactive simulation. It also obtains the best comfort score... Although VAD has a slightly higher efficiency score, AgentWorld provides a better overall balance across safety, success, and comfort, validating the effectiveness of agent-centric world states for closed-loop driving."（L510–515）</p>
+<p><strong>可解释性证据：</strong>
+- 定性（Fig. 5，L461–465 示例输出，见 §4.5）：rationale 显式引用 <code>&lt;agent_3&gt;</code>、<code>&lt;agent_5&gt;</code> 等参与交通者。
+- 干预实验（Table 9，见 §7）：打乱 token–智能体对应显著恶化规划，证明规划依赖接地对应而非任意槽位。</p>
+<h2>7) 消融（全部）</h2>
+<p><strong>Tab. 5（L527–532）多模态路由锚定（Avg. L2 m↓）：</strong> w/o 4D geometry 0.30；w/o 2D visual 0.28；AgentWorld 0.27。
+- 原句："Removing either 4D geometry or 2D visual anchoring degrades planning performance, indicating that both geometric structure and visual evidence are necessary for reliable agent grounding."（L546–549）；"We also found that removing the 4D geometry features still yielded results comparable to the previous SOTA method [30], which proves the effectiveness of the agent-centric world state."（L550–552）</p>
+<p><strong>Tab. 6（L533–538）学习策略（Avg. L2 m↓）：</strong> Qwen2-VL-2B 1.37；Qwen2-VL-2B + SFT 0.32；Qwen2-VL-2B + SFT + RL 0.27。
+- 原句："Directly using Qwen2-VL-2B leads to poor planning performance, while SFT (AgentWorld w/o RL) substantially reduces the L2 error. Further applying RL (AgentWorld) improves performance, showing that agent-centric policy optimization helps align the learned world state with planning objectives."（L553–557）</p>
+<p><strong>Tab. 7（L539–544）效率/延迟（w/o ego）：</strong> FSDrive 0.53 / 0.36s；VLA-World 0.30 / 0.40s；<strong>AgentWorld 0.27 / 0.31s</strong>。
+- 原句："AgentWorld achieves the lowest L2 error while also having the shortest latency, outperforming both FSDrive and VLA-World."（L558–560）</p>
+<p><strong>Fig. 6（L564–569）agent-centric world state 尺度与 ego-status 依赖：</strong>
+- "Increasing the number of agent tokens consistently improves perception and reduces planning errors before saturation, indicating that AgentWorld benefits from modeling key surrounding agents."（L564–566）
+- "Moreover, removing ego-status causes only a small degradation compared to prior VLA world models, suggesting reduced reliance on ego-status shortcuts and stronger reasoning over grounded agent interactions when predicting the ego vehicle's future trajectory."（L566–569）
+- 图中数值（散落，L579–587）："0.45 / 0.40 / 0.05 / 0.83 / 0.42 / 0.41 / 0.96 / 0.45 / 0.51"；曲线-数值对应在提取文本中不可复原。</p>
+<p><strong>Tab. 8（L590–596）受控表征对比（同主干、同智能体信息、同监督、同 SFT+RL）：</strong> Global latent 0.49 / 0.23；Structured text 0.58 / 0.21；<strong>Agent tokens 0.27 / 0.08</strong>。
+- 原句："Agent tokens achieve the lowest planning L2 error and collision rate, substantially outperforming both global latents and structured text."（L572–574）；"Structured text yields fewer collisions than global latents but incurs higher L2 error, whereas agent tokens improve both metrics."（L576–577, L603–604）</p>
+<p><strong>Tab. 9（L597–603）agent-token 干预（L2 m↓ / Col. %↓）：</strong> None 0.27 / 0.08；Consistent perm. 0.27±0.01 / 0.08±0.03；Mismatched perm. <strong>0.63±0.04 / 0.74±0.09</strong>。
+- 原句："Consistent permutations preserve this correspondence and leave planning performance largely unchanged, whereas mismatched permutations substantially increase both trajectory error and collision rate. This contrast suggests that the planner relies on grounded token–agent associations rather than arbitrary slot indices."（L606–610）</p>
+<p><strong>Tab. 10（L1350–1355）agent head 在 SFT/RL 中的消融（Avg. L2 m↓）：</strong> SFT w/o head 0.31；RL w head 0.26；AgentWorld 0.27。
+- 原句："Removing the agent head during SFT leads to the weakest performance, showing that explicit physical grounding is important for turning special agent tokens into usable world-state representations."（L1348–1349, L1372–1373）；"In the default model, the auxiliary agent head remains frozen during RL and is used only as a reward-side decoder to compute agent-interaction rewards; only the MLLM policy parameters are updated through GRPO. At inference time, the auxiliary head is discarded."（L1377–1380）</p>
+<p><strong>Tab. 11（L1356–1361）不同主干（Avg. L2 m↓）：</strong> Qwen2-VL-2B 0.27；Qwen2-VL-7B 0.25；Qwen2.5-VL-3B 0.27。
+- 原句："The 7B variant achieves the best planning accuracy, indicating that stronger language-vision reasoning capacity improves the model's ability to use grounded agent tokens for decision-making."（L1383–1385）；"The results indicate that the proposed agent-token interface is broadly compatible across MLLM scales, while larger models can further exploit this structured interface for better planning."（L1389–1391）</p>
+<p><strong>Tab. 12（L1362–1367）RL 奖励项消融（Avg. L2 m↓）：</strong> w/o R_action 0.29；w/o R_agent 0.30；<strong>w/o R_traj 0.32</strong>。
+- 原句："Removing the trajectory reward causes the largest degradation, showing that waypoint-level feedback is the most direct signal for improving planning accuracy."（L1392–1394）；"Removing the agent-aware reward also hurts performance, confirming that interaction-level feedback is necessary for making RL consistent with the AgentWorld design."（L1400–1401）；"Removing the action reward produces a smaller but still clear degradation, indicating that high-level driving commands provide useful semantic guidance that stabilizes the policy before generating low-level waypoints."（L1404–1406）；"effective RL requires both trajectory-level optimization and agent-centric interaction feedback: the former improves waypoint accuracy, while the latter encourages the policy to preserve the learned agent-token reasoning interface."（L1407–1409）</p>
+<h2>8) 局限（逐字）</h2>
+<p><strong>正文 Conclusion（L623–628）：</strong></p>
+<blockquote>
+<p>"Despite these promising results, AgentWorld still relies on explicit geometric supervision to ground ⟨agent_i⟩ tokens to physical participants, rather than allowing agent tokens to emerge purely from end-to-end planning supervision. Future work will explore more scalable self-supervised grounding with stronger visual-semantic binding, aiming to maintain consistent agent identities, physical states, and interaction semantics over time. We hope AgentWorld provides a step toward physically grounded and interaction-aware world modeling for autonomous driving."</p>
+</blockquote>
+<p><strong>附录 A.8 Broader Impacts 中的局限（L1449–1458）：</strong></p>
+<blockquote>
+<p>"At the same time, autonomous driving is a safety-critical domain, and improvements in open-loop or closed-loop benchmarks should not be interpreted as sufficient evidence for real-world deployment. Failure cases may arise from imperfect perception, long-tail traffic behaviors, distribution shifts, sensor degradation, or ambiguous human intentions. In addition, agent-centric abstraction may underrepresent rare objects, vulnerable road users, or context factors that are not well captured by the predefined agent tokens. Therefore, AgentWorld should be used as a research step toward more structured and interpretable world modeling, rather than as a standalone deployable driving system. Practical deployment would require rigorous validation under diverse geographic, environmental, and social conditions, as well as careful integration with redundancy, uncertainty estimation, rule compliance, and human oversight mechanisms."</p>
+</blockquote>
+<p>（注：NeurIPS Checklist 第 2 项 Limitations 的 Justification 写 "The limitations are addressd in Section 5."〔原文拼写如此〕，L1480。）</p>
+<h2>9) 叙事关联【推断】（≤4 条）</h2>
+<ol>
+<li>【推断】AgentWorld 是该课题组自身 VLA world model 路线（[30] VLA-World，arXiv:2604.09059，同一作与第一作者 Guoqing Wang、Pin Tang）的自我超越：前作以像素级未来帧想象，本文以 Fig. 2 的 token 效率与视觉接地消融证明其瓶颈，并代之以紧凑 agent-centric 潜状态——证据：作者重合（L3 vs L722–724）+ 轨迹奖励 "following [30]"（L383–384）+ 通篇以 VLA-World 为头号基线。</li>
+<li>【推断】本文把 JEPA 式的「预测性抽象 &gt; 像素重构」（"prioritize predictive abstraction over pixel reconstruction"，L120–121）从视频自监督迁移到自动驾驶世界模型，属于「世界模型应预测什么状态」这一学术争论（像素 vs BEV/occupancy vs 场景 latent vs agent 状态）中的「agent 状态」阵营。</li>
+<li>【推断】Tab. 9 的 mismatched permutation 实验（碰撞率 0.08→0.74）是为「可解释性/因果性」叙事服务的证据工程：证明模型推理依赖 token–物理智能体对应关系而非槽位索引，呼应 Fig. 1(d) "enabling VLA reasoning over physically grounded 3D geometry, motion dynamics and agent interactions"（L84–85）的定位。</li>
+<li>【推断】效率叙事贯穿始终（Fig. 2 token 数、Tab. 7 延迟、A.6 复杂度 O(K(HP)²) vs O((HN)²)，L1327–1337），说明本文在与「大模型上车成本」相关的评估维度上预先布局了护城河；而 checklist 声称 "This work does not include theoretical results or proofs"（L1513–1514）与 A.6 存在理论动机的事实并存，提示 A.6 被作者定位为「动机」而非「理论贡献」。</li>
+</ol>
+<hr />
+<h3>附录速记（A.6 理论动机，供机制理解）</h3>
+<ul>
+<li>像素未来分解（Eq. 30，L1278）：<code>I_{t+1:t+H} = g(A_{t+1:t+H}, U_{t+1:t+H})</code>；A=交通参与者的物理/交互演化，U=纹理/光照/背景等 nuisance 视觉因素。</li>
+<li>关键假设（Eq. 31，L1283）：<code>C(τ, S) = C(τ, A)</code>，"where S is the full future scene state and A is the agent-centric latent state."（L1283–1284）；"Under this assumption, A serves as a sufficient statistic for planning."（L1285）</li>
+<li>悔恨界（Eq. 33–35，L1312–1321）：若规划代价关于 A 是 L-Lipschitz，则 <code>C(τ̂, A) − C(τ⋆, A) ≤ 2L·d(A, Â). (35)</code>；"This bound shows that reducing the agent-state prediction error directly reduces planning regret."（L1322）</li>
+<li>复杂度（Eq. 36–37，L1330–1337）：像素世界模型 <code>O(K(HP)²)</code> vs AgentWorld <code>O((HN)²)</code>，"where N ≪ P"（L1330），比例近似 <code>O(K(P/N)²)</code>。</li>
+<li>补充说明："This does not imply that images are unnecessary; visual evidence remains essential for grounding and estimating A. Rather, it shows that once the agent-centric state is available, reasoning over dense generated pixels is an indirect and inefficient interface for planning."（L1306–1310）</li>
+</ul>
+<h3>引用校对备注</h3>
+<ul>
+<li>L43–45 页眉页脚（"∗Corresponding author." / 会议名 / arXiv 号）插入在正文句子中间，引用 L42–49 时已注明。</li>
+<li>Eq. 8/11/15/26 等公式中上下标在提取文本中粘连（如 "CrossAttnm"、"Scuri"），笔记中按 LaTeX 惯例还原上下标并在首次出现处注明〔提取粘连〕；公式编号与符号含义均照原文。</li>
+<li>文中出现的 "w/oR action" 等（Tab. 12 行，L1364–1367）为提取文本无空格粘连，实为 "w/o R_action"。</li>
+</ul>
+<footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
+<a href="../index.html">返回首页</a></footer></div></main></body></html>

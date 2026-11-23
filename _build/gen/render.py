@@ -10,6 +10,7 @@ from .blog import parse_front_matter, render_markdown, plain, word_count
 from .data_core import PROFILE, STATS, FOCUS, CAREER, EDUCATION
 from .data_works import PAPERS, MANUSCRIPTS, PATENTS, PROJECT_PAGES, PROJECTS_INTRO
 from .data_repos import REPOS, REPO_GROUPS, FINANCE, FORKS
+from .data_design import DESIGN, DESIGN_INTRO
 from .layout import t, esc, url, icon, icon_solid, ui, page
 
 GITHUB_REPO = "https://github.com/lidongyv/"
@@ -364,7 +365,7 @@ def render_home(lang, posts):
         repo_cta=btn(url(lang, "opensource.html"),
                      "全部仓库" if lang == "zh" else "All repositories", "btn btn--ghost"),
         blog_head=section_head(lang, "笔记" if lang == "zh" else "Notes", level=2),
-        blog_list=blog_list_html(lang, posts[:3], external_links=(lang != "zh")),
+        blog_list=blog_list_html(lang, posts, limit=3),
         contact_title=esc("联系" if lang == "zh" else "Contact"),
         contact_ctas=(btn("mailto:" + PROFILE["email"], PROFILE["email"], "btn btn--primary", "mail")
                       + btn("/resume/Lidong-Yu-Resume-Detailed-EN.pdf", ui("resume", lang), "btn", "download")),
@@ -375,32 +376,57 @@ def render_home(lang, posts):
                 plain(t(PROFILE["lede"], lang)), "index.html", body, active="home", jsonld=jsonld)
 
 
-def blog_list_html(lang, posts, external_links=False):
-    if not posts:
+def _blog_rows(lang, posts, include_design=True):
+    """Normalise markdown posts and design subsites into one list of rows."""
+    rows = []
+    for p in posts:
+        rows.append({
+            "date": p["date"],
+            "href": "/blog/%s.html" % p["slug"],
+            "title": p["title"] if lang == "zh" else p["title_en"],
+            "summary": p["summary"] if lang == "zh" else p["summary_en"],
+            "tags": " / ".join(p["tags"] if lang == "zh" else (p.get("tags_en") or p["tags"])),
+            "minutes": p["minutes"],
+            "badge": "" if lang == "zh" else ("中文" if lang == "zh" else "中文"),
+        })
+    if include_design:
+        for d in DESIGN:
+            rows.append({
+                "date": d["date"],
+                "href": "/design/%s/" % d["slug"],
+                "title": d["title"] if lang == "zh" else d["title_en"],
+                "summary": d["summary"] if lang == "zh" else d["summary_en"],
+                "tags": " / ".join(d["tags"] if lang == "zh" else (d.get("tags_en") or d["tags"])),
+                "minutes": None,
+                "badge": "站" if lang == "zh" else "site",
+            })
+    rows.sort(key=lambda r: r["date"], reverse=True)
+    return rows
+
+
+def blog_list_html(lang, posts, limit=None, include_design=True):
+    rows = _blog_rows(lang, posts, include_design=include_design)
+    if limit:
+        rows = rows[:limit]
+    if not rows:
         return '<p class="muted">%s</p>' % esc(ui("empty_blog", lang))
     items = []
-    for p in posts:
-        title = p["title"] if lang == "zh" else p["title_en"]
-        summary = p["summary"] if lang == "zh" else p["summary_en"]
-        # Chinese-only posts: the English index links straight to the Chinese page
-        href = ("/blog/%s.html" % p["slug"]) if (external_links or lang == "zh") else url(lang, "blog/%s.html" % p["slug"])
-        tags = " / ".join(p["tags"] if lang == "zh" else p.get("tags_en") or p["tags"])
-        note = ""
-        if lang != "zh":
-            badge = "中文" if not external_links else "Chinese"
-            note = '<span class="tag tag--mono">%s</span>' % badge
+    for r in rows:
+        note = '<span class="tag tag--mono">%s</span>' % esc(r["badge"]) if r["badge"] else ""
+        meta = [note, "<span>%s</span>" % esc(r["tags"])]
+        if r["minutes"]:
+            meta.append("<span>·</span><span>%d %s</span>" % (r["minutes"], esc(ui("min_read", lang))))
         items.append("""
       <article class="post-item">
         <time datetime="{date}">{date}</time>
         <div>
           <h3><a href="{href}">{title}</a></h3>
           <p>{summary}</p>
-          <div class="post-item__meta">{note}<span>{tags}</span><span>·</span><span>{minutes} {min_label}</span></div>
+          <div class="post-item__meta">{meta}</div>
         </div>
       </article>""".format(
-            date=esc(p["date"]), href=esc(href), title=esc(title), summary=esc(summary),
-            note=note, tags=esc(tags), minutes=p["minutes"],
-            min_label=esc(ui("min_read", lang))))
+            date=esc(r["date"]), href=esc(r["href"]), title=esc(r["title"]),
+            summary=esc(r["summary"]), meta="".join(meta)))
     return '<div class="post-list">%s</div>' % "".join(items)
 
 
@@ -791,6 +817,10 @@ def render_blog_index(lang, posts):
     {head}
     {list}
     <div class="notice" style="margin-top:32px">
+      <div class="notice__title">{sites_title}</div>
+      <div>{sites_body} <a href="{sites_href}">{sites_link}</a></div>
+    </div>
+    <div class="notice" style="margin-top:12px">
       <div class="notice__title">RSS</div>
       <div>{rss_note} <a href="{feed}">{feed}</a></div>
     </div>
@@ -798,7 +828,12 @@ def render_blog_index(lang, posts):
 </section>
 """.format(
         head=section_head(lang, "博客" if lang == "zh" else "Blog", level=1),
-        list=blog_list_html(lang, posts, external_links=(lang != "zh")),
+        list=blog_list_html(lang, posts),
+        sites_title=esc("研究站" if lang == "zh" else "Research sites"),
+        sites_body=esc("%d 个独立成站的研究笔记与综述。" % len(DESIGN) if lang == "zh"
+                       else "%d standalone research sites and surveys." % len(DESIGN)),
+        sites_href=url(lang, "design/index.html"),
+        sites_link=esc("查看全部" if lang == "zh" else "See all"),
         rss_note=esc("订阅：" if lang == "zh" else "Subscribe: "),
         feed=("/blog/feed.xml" if lang == "zh" else "/en/blog/feed.xml"),
     )
@@ -809,6 +844,49 @@ def render_blog_index(lang, posts):
 def t_ui_desc(lang):
     return t({"zh": "关于 VLA、世界模型、数据闭环与感知工程落地的研究笔记。",
               "en": "Research notes on VLA, world models, data loops and perception engineering."}, lang)
+
+
+def render_design_index(lang):
+    cards = []
+    for d in DESIGN:
+        cards.append("""
+      <article class="card card--hover" data-reveal>
+        <div class="card__top">
+          <div class="links"><span class="tag tag--mono">{date}</span>{badge}</div>
+        </div>
+        <h3><a href="/design/{slug}/">{title}</a></h3>
+        <p style="margin-top:10px">{summary}</p>
+        <div class="card__tags">{tags}</div>
+        <div class="card__foot"><div class="links">
+          <a class="link-chip" href="/design/{slug}/">{arrow}<span>{open_l}</span></a>
+        </div></div>
+      </article>""".format(
+            date=esc(d["date"]),
+            badge='<span class="tag tag--mono">中文</span>' if lang != "zh" else "",
+            slug=esc(d["slug"]),
+            title=esc(d["title"] if lang == "zh" else d["title_en"]),
+            summary=esc(d["summary"] if lang == "zh" else d["summary_en"]),
+            tags="".join(tag(x) for x in (d["tags"] if lang == "zh" else d.get("tags_en") or d["tags"])),
+            arrow=icon("arrow"),
+            open_l=esc("打开" if lang == "zh" else "Open"),
+        ))
+    body = """
+<section class="section">
+  <div class="wrap">
+    {head}
+    <p class="muted" style="max-width:66ch;margin-bottom:28px">{intro}</p>
+    <div class="grid grid--2">{cards}</div>
+    <div class="cta-row" style="margin-top:32px">{back}</div>
+  </div>
+</section>
+""".format(
+        head=section_head(lang, "研究站" if lang == "zh" else "Research sites", level=1),
+        intro=esc(t(DESIGN_INTRO, lang)),
+        cards="".join(cards),
+        back=btn(url(lang, "blog/index.html"), "博客" if lang == "zh" else "Blog", "btn btn--ghost"),
+    )
+    return page(lang, ("研究站 · " if lang == "zh" else "Research sites · ") + t(PROFILE["name"], lang),
+                t(DESIGN_INTRO, lang), "design/index.html", body, active="blog")
 
 
 def render_post(lang, post, posts):
@@ -824,7 +902,7 @@ def render_post(lang, post, posts):
     <h2 style="font-size:1.1rem;margin-bottom:12px">%s</h2>
     %s
   </div>
-</section>""" % (esc("继续读" if lang == "zh" else "Keep reading"), blog_list_html(lang, others))
+</section>""" % (esc("继续读" if lang == "zh" else "Keep reading"), blog_list_html(lang, others, include_design=False))
 
     body = """
 <article>

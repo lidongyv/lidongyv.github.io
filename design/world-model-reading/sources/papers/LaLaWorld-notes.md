@@ -1,0 +1,92 @@
+# LaLa-World 精读笔记（正文前 700 行）
+
+> 数据源：`C:\Users\Admin\Desktop\design\auto_docs\papers\txt\LaLaWorld.txt`，仅精读第 1–700 行（Title → §4.2 开头）。第 6 节 Conclusion、§4.2 的匹配对照图表、以及附录 B/C/D 均在 700 行之外，未读，以「超出范围」标注。
+> 全部英文引用逐字复制自 txt（附行号）；txt 提取造成的缺空格（如「6×less」「up to5.5×」）保持原样。
+
+## 1. 原文信息
+- 标题（L1–2）：「LaLa-World: Scaling Latent World Models with Natural Language Actions」
+- 作者/机构（L3–6）：「Junha Song1* Geonmo Gu1 Jeongeun Park2 Heejeong Nam3 Lucas Maes4 / Byeongho Heo1 Dongyoon Han1 Sangdoo Yun1† / 1NA VER AI Lab 2Georgia Institute of Technology / 3Brown University 4Mila & Université de Montréal」
+- 版本（L29）：「arXiv:2610.27851v2  [cs.CV]  21 Oct 2026」；项目页与代码（L25–27）。
+
+## 2. Abstract 全文逐字（L8–24）
+「This paper shows that JEPA-style latent world models (LWMs) can learn across diverse domains and data sources by adopting the language-conditioned interface of video generation models. We establish this approach as an effective and efficient basis for planning with imagination and downstream policy fine-tuning. To this end, we introduceLaLa-World, aLanguage-conditionedLatentWorldmodel that learns from simulation and robot trajectories together with broader image and video data. Two designs make this work. First, we describe both numerical actions and visual changes in language, enabling joint training of a single future predictor across heterogeneous datasets. Second, we build the predictor on a language model, allowing it to interpret language conditions while predicting future latent states. The resulting predictor achieves higher average MPC planning performance than existing LWMs trained separately for each domain or task. Adding image and video data further improves average planning performance and robustness to action phrasing. In a matched comparison with an RAEv2-based video generation model baseline, LaLa-World reaches comparable planning performance with 6× less training cost and 13.9× faster planning. Beyond planning, the pretrained LaLa-World serves as an initialization forLaLa-Policy, which jointly predicts actions and future visual representations. LaLa-Policy performs competitively with Cosmos Policy on LIBERO and RoboCasa, with up to5.5×faster inference.」
+
+## 3. 问题与动机（逐字引用）
+- 世界模型的意义（L164–166）：「A central capability of an intelligent agent is to anticipate how the world will change in response to its actions. Before pushing a cup across a table, we know where it will end up and whether it might fall.」
+- 为何选 latent 路线（L169–171）：「A promising approach to making this predictive capability computationally efficient is to model how visual representations change under actions, without learning to reconstruct images at the pixel level. This motivates our focus on JEPA-style latent world models (LWMs), such as V-JEPA 2-AC (Assran et al., 2025) and DINO-WM (Zhou et al., 2025).」
+- 痛点一：数值动作域特化（L174–177）：「However, despite this advantage, the action-conditioned predictors in such LWMs have largely been trained on simulation or robotics datasets, where numerical actions have domain-specific dimensions and physical meanings. For example, [2,4] may encode horizontal and vertical displacement in one domain and [4] force in another, complicating the learning of shared dynamics.」
+- 痛点二：图像/视频缺动作标注（L178–180）：「Furthermore, image and video data, which provide a rich source of observations of the world, often lack these numerical action annotations, making them difficult to use for training action-conditioned future predictors.」
+- 由此推出需求（L180–182）：「Therefore, scaling LWMs across diverse control actions and broader image and video data requires a shared interface that accommodates heterogeneous data.」
+- 主张（L183）：「We suggest that language can serve as the shared interface.」
+- 定位（L482–484）：「For LWMs, however, learning jointly from heterogeneous control datasets and broader visual data remains underexplored, as does their use in downstream policy learning. We therefore explore an approach that retains the efficiency of LWMs while adopting the flexible language interface of generative world models.」
+
+## 4. 方法（逐组件引用）
+- 总定义（L488–490）：「We introduceLaLa-World, aLanguage-conditionedLatentWorldmodel whose predictor takes a language condition z instead of the numerical action condition c in Equation (1). Two components are needed: transition data that describes the change fromxt to xt+1 in language, and a predictor that understands it.」
+
+### 4.1 语言条件接口（Language-Conditioned Transition Data）
+- 数值动作→固定模板语言（L494–499）：「Language unifies the action spaces of multiple domains.Simulation and robotics datasets used to train LWMs record actions as numerical vectors. We convert these vectors into language conditions using fixed templates, as illustrated in Figure 3, retaining each domain's numerical values with their direction and magnitude. Language thus expresses actions across domains in a common form, allowing their control data to be pooled to train a single predictor.」
+- 图像/视频变化描述作条件（L504–506、L510–513）：「We also train the same future predictor on image and video transitions without numerical action annotations, using descriptions of visual change as conditions.」「We therefore supplement them with captioned videos from OpenVid (Nan et al., 2025) and image-editing pairs with instructions from OmniEdit (Wei et al., 2025) and ShareGPT (Chen et al., 2025b). In these data, the caption describing the change between frames or the editing instruction serves directly as the language condition, so no numerical action annotation is needed.」
+
+### 4.2 LLM 主干（Model Architecture and Objective）
+- 冻结观察编码器（L526–527）：「Following JEPA-WMs (Terver et al., 2025), we use DINOv2-S/14 or DINOv3-L/16 as the frozen observation encoder.」
+- 预测器=预训练语言模型（L535–543）：「LaLa-World addresses both limitations by using a pretrained language model as the predictor itself: it reads the language condition as text and predicts future latent representations in the same network. Specifically, we use Qwen3.5-0.8B (Qwen Team, 2026) as our default predictor backbone. The language condition z is tokenized using the model's tokenizer and mapped to token embeddings, which are passed to the predictor together with the visual latents. To map the visual latents into the same embedding space, we use a two-layer MLP and add 3D positional embeddings indexed by time and 2D spatial location (Wang et al., 2024). The output ˆet+1 is then read out from learned query tokens (Pan et al., 2025). We train the predictor by minimizing the squared error between the predicted and target future representations:L=∥ˆe t+1 −e t+1∥2.」
+- 不用 proprioception（L544–546）：「Notably, we use proprioceptive state neither as an input nor as a prediction target. While proprioception can benefit LWMs tailored to a specific domain, it is defined in a domain-specific manner, which limits its applicability to a domain-agnostic world model.」
+- 解码器仅用于可视化（L597–601）：「To visualize and interpret predicted futures, we build a 12-layer transformer decoder D that maps predicted latents to RGB images…It should be noted that the decoder is not used during world model training (Section 3.2).」（省略号处为 L1+LPIPS 损失细节，L598–599）
+
+### 4.3 训练数据
+- 数量（L499–500）：「We apply this conversion to seven simulation and robotics datasets described in Section 4.」
+- 清单（L587–590）：「We use seven control datasets from DINO-WM and JEPA-WMs (Terver et al., 2025): six simulation datasets–Wall (Zhou et al., 2025), PointMaze (Fu et al., 2020), Push-T (Chi et al., 2023), MetaWorld (Yu et al., 2020), Rope and Granular (Zhang et al., 2024)–and the real-robot dataset DROID (Khazatsky et al., 2024).」
+- 零样本评估域（L590–591）：「We also evaluate on RoboCasa (Nasiriany et al., 2024), a domain excluded from training, to assess zero-shot transfer.」
+
+## 5. 主结果（数值抄自正文）
+
+### 5.1 MPC 规划（Table 1，L550–562；成功率%，括号内标准误）
+上表（仿真）：
+| Method | Joint | Wall | PointMaze | Push-T | MetaWorld-R | MetaWorld-RW | Average |
+|---|---|---|---|---|---|---|---|
+| DINO-WM | ✗ | 90.6(3.0) | 59.4(5.0) | 65.6(4.8) | 52.1(7.2) | 43.8(7.2) | 62.3(2.5) |
+| JEPA-WMs | ✗ | 79.2(4.1) | 60.4(5.0) | 68.8(4.7) | 66.7(6.8) | 47.9(7.2) | 64.6(2.6) |
+| LaLa-World | ✓ | 95.8(2.0) | 56.2(5.1) | 81.2(4.0) | 75.0(6.2) | 52.1(7.2) | 72.1(2.3) |
+其余基线平均（L551–554）：DreamerV3 30.2(2.3)、TD-MPC2 17.7(2.0)、IRIS 26.0(2.2)、LeWorldModel 28.1(2.2)。
+
+下表（机器人）：
+| Method | Rope | Granular | RoboCasa-R | RoboCasa-P | DROID | Average |
+|---|---|---|---|---|---|---|
+| DINO-WM | 54.2(10.2) | 50.0(14.4) | 18.8(6.9) | 21.9(7.3) | 39.4(3.8) | 36.8(4.1) |
+| JEPA-WMs | 62.5(9.9) | 50.0(14.4) | 37.5(8.6) | 31.2(8.2) | 43.0(3.8) | 44.8(4.3) |
+| LaLa-World | 66.7(9.6) | 58.3(14.2) | 40.6(8.7) | 46.9(8.8) | 40.2(5.2) | 50.5(4.4) |
+V-JEPA 2-AC（L561）：Rope/Granular/Average 为「–」，RoboCasa-R 15.6(6.4)、RoboCasa-P 34.4(8.4)、DROID 42.9(2.5)。
+- 正文表述（L608–612）：「On the five simulation tasks in the upper table, LaLa-World reaches an average success rate of 72.1%, exceeding JEPA-WMs by 7.5 percentage points. The largest gain over the best baseline in this group is on Push-T, where success increases from 68.8% to 81.2%. LaLa-World also achieves the highest zero-shot success rates on both RoboCasa tasks, reaching 40.6% on Reach and 46.9% on Place.」
+- MPC 打分式（L579–581）：「…score it by the squared distance between the final predicted latent state and the encoded goal: C=∥ˆe t+H −e goal∥2 , e goal =E θ(xgoal).(2)」
+
+### 5.2 图像/视频数据的增益（L626–633）
+「Specifically, the average score increases from 59.3 with control trajectories alone to 61.6 with all data.」「LaLa-World remains robust when trained on all data, including image and video transitions, whereas paraphrasing lowers the average score by 6.8 points with control trajectories alone.」
+
+### 5.3 6× 训练成本 / 13.9× 推理（RAEv2 匹配对照）
+- 摘要（L19–21）：「In a matched comparison with an RAEv2-based video generation model baseline, LaLa-World reaches comparable planning performance with 6× less training cost and 13.9× faster planning.」
+- 引言（L284–287）：「We compare LaLa-World with an RAEv2-based generative world model (Singh et al., 2026), whose predictor uses a diffusion Transformer (DiT). With the same language conditions, training data, and visual encoder, LaLa-World outperforms this RAEv2 baseline in planning with 6×less training cost and13.9×faster inference.」
+- 匹配条件（L652–657）：「We use RAEv2 (Singh et al., 2026) as our generative world model baseline because it uses DINOv3-L/16 (Siméoni et al., 2025) rather than a V AE as its vision encoder.」「The full-depth predictors are comparable in size: LaLa-World's predictor and RAEv2's DiT (Peebles & Xie, 2023) each contain approximately 0.8B parameters.」训练成本对比图从 L663–664 开始（「…training the full-depth predictors on eight H100 GPUs with a」），数值在 L700 之后 → 超出范围，未读。
+
+### 5.4 LaLa-Policy（5.5× 推理）
+L288–289：「Beyond planning, we investigate whether the pretrained LWM can serve as a useful initialization for policy fine-tuning.」L292–293：「On LIBERO and RoboCasa, LaLa-Policy performs competitively with Cosmos Policy while reducing average inference time per trajectory by a factor of up to 5.5.」（第 5 节详细结果在 L700 之外，未读。）
+
+### 5.5 定性语言动作（L634–642）
+「We next ask whether LaLa-World can predict outcomes from qualitative descriptions such as move slightly down .」「Using the action ranges observed in the training data, we define a conversion function that replaces each numerical magnitude with one of three qualitative levels:slightly, no modifier, orfar.」「These examples indicate that the predictor can use qualitative descriptions to guide planning even when exact action magnitudes are unspecified.」
+
+## 6. 局限
+- **原文未写**：前 700 行正文内无 Limitations 段；第 6 节 Conclusion 位于 L700 之后，本次按指令未读。
+- 前 700 行内仅有两处自我限定（非作者声明的"局限"）：
+  - 术语范围脚注（L198–199）：「1Throughout this paper, LWMs refer to JEPA-style world models trained without DreamerV3's reconstruction loss (Hafner et al., 2025a) or TD-MPC2's reward supervision (Hansen et al., 2024).」
+  - 设计取舍（L544–546，见 §4.2）：不使用 proprioception，理由是域特化定义限制域无关适用性。
+
+## 7. 叙事关联【推断，3 条】
+1. 「效率优先」叙事：原句 L294–296「We hope these results draw greater attention to latent world models, showing that even without visually compelling outputs, they can offer practical advantages over generative world models in planning and downstream policy learning.」【推断】若叙事强调低成本训练/快推理的模型落地，6× 训练成本与 13.9× 推理（L287）可作为「latent 优于 generative」的核心论据。
+2. 「统一接口吃多源数据」叙事：原句 L183「We suggest that language can serve as the shared interface.」及 L180–182「Therefore, scaling LWMs across diverse control actions and broader image and video data requires a shared interface that accommodates heterogeneous data.」【推断】契合「一个模型、一套语言接口统合仿真+真实机器人+视频+图像编辑数据」的 scaling 叙事。
+3. 「零样本跨域」叙事：原句 L590–591「We also evaluate on RoboCasa (Nasiriany et al., 2024), a domain excluded from training, to assess zero-shot transfer.」【推断】该评测设定可直接用于「训练域之外新场景泛化」叙事，且 LaLa-World 在该域获最高零样本成功率（L611–612）。
+
+## 8. 图注抄录（主要）
+- Figure 1（L155–162）：「Figure 1:Overview of LaLa-World. (a)Language provides a shared interface for numerical actions and visual change, enabling joint training on control and video data.(b)A single predictor built on a language model uses encoded observations and language conditions to predict future visual representations. Fine-tuning the pretrained LaLa-World yields LaLa-Policy, which predicts actions as well as future visual representations.(c)The jointly trained predictor achieves higher average MPC planning performance than both separately trained LWM baselines and the generative world model baseline, RAEv2.(d)LaLa-Policy performs competitively with our adapted Cosmos Policy baseline on RoboCasa, while reducing average inference time per trajectory by a factor of5.5×.」
+- Figure 2（L275–280）：「Figure 2:MPC planning with language actions.LaLa-World imagines future representations under candidate actions with MPC and selects the most promising action toward the goal. Because all actions share one language interface, a single LaLa-World predictor can plan across multiple domains, despite differences in action dimensionality and physical meaning. The predictor also supports language-based actions without numerical values (bottom two rows), as detailed in Sec-tion D.4.3. The visualized observations result from executing the selected actions in the simulator.」
+- Figure 3（L459–462）：「Figure 3:Examples of language-conditioned transition data.Each example consists of past observations, a language condition, and the next observation. Language conditions describe either numerical control actions from simulation and robotics or visual changes in images and videos. This shared interface enables training a single LWM across different action spaces and data sources.」
+- Figure 4（L620–622）：「Fig. 4: Benefits of image /video data inclusion.」
+- Table 1（L563–569）：「Table 1:MPC planning results.We compare LaLa-World with existing world-model baselines across simulation and robot domains. LaLa-World achieves the highest average score in both tables. We report success rates (%), except for the DROID action score (Terver et al., 2025), with standard errors in parentheses. RoboCasa is evaluated zero-shot; -R, -RW, and -P denote Reach, Reach-Wall, and Place, respectively. Joint-training denotes a single predictor trained across domains. Additionally, scores in Figure 1(c) are averaged over the benchmarks used to compare LaLa-World with the generative world model baseline (Section 4.2).」
