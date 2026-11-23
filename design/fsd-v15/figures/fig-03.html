@@ -82,76 +82,65 @@ body{
 </style></head>
 <body><div class="frame">
   <div class="fig-head">
-    <div><div class="kicker">TOKEN INTERFACE / 表征接口</div><div class="title">从“实例列表”到“4D 场景” <span class="thin">/ From instance list to 4D scene</span></div><div class="sub">V15 可能弱化显式 instance token，把容量压到 implicit scene token 上；4D NVS 是逼出这种表征的手段。</div></div>
+    <div><div class="kicker">NETWORK ARCHITECTURE / 网络结构</div><div class="title">一个主干，两座塔 <span class="thin">/ One backbone, two towers</span></div><div class="sub">UVE 之后分叉：3B 动作塔（scene token → 多模态轨迹 → 控制）与 1B 渲染塔（conditional DiT → 新视角）。</div></div>
     <div class="fig-no">FIG.03</div>
   </div>
   <div class="body">
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:36px;height:690px">
-  <!-- V14 -->
-  <div style="border-right:1px dashed #cfc7b8;padding-right:34px">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div><div class="kicker" style="color:#6b7280">V14 / INSTANCE-CENTRIC</div><h3 style="font-size:24px;margin-top:6px">显式实例是接口</h3></div>
-      <span class="badge rep">V14 BASELINE</span>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:22px">
-      <div class="node" style="padding:10px 14px"><div class="tag">Input</div><h4 style="margin:4px 0 2px">7 cams · 36 Hz</h4><p>2B tokens → patchify</p></div>
-      <div class="arr down">↓</div>
-      <div class="node blue" style="padding:10px 14px"><div class="tag">Encoder</div><h4 style="margin:4px 0 2px">VLA backbone</h4><p>vision-language-action pretrain</p></div>
-      <div class="arr down">↓</div>
-      <div class="node" style="padding:10px 14px">
-        <div class="tag">Compact token</div>
-        <h4 style="margin:4px 0 2px">implicit scene + explicit instances</h4>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px">
-          <span class="pill purple" style="font-size:10.5px">scene</span>
-          <span class="pill" style="font-size:10.5px">car</span><span class="pill" style="font-size:10.5px">VRU</span>
-          <span class="pill" style="font-size:10.5px">TL</span><span class="pill" style="font-size:10.5px">lane</span>
-          <span class="pill" style="font-size:10.5px">occ</span>
-        </div>
-      </div>
-      <div class="arr down">↓</div>
-      <div class="node" style="padding:10px 14px"><div class="tag">Interaction</div><h4 style="margin:4px 0 2px">trajectory head ↔ instance tokens</h4><p>cross-attention over a variable-length list</p></div>
-      <div class="arr down">↓</div>
-      <div class="node dark" style="padding:10px 14px"><div class="tag">Action</div><h4 style="margin:4px 0 2px">steer + accel</h4><p>interpretable, but interface-limited</p></div>
-    </div>
-    <div class="callout" style="margin-top:14px;border-color:#9aa0aa;background:#fbfaf6">
-      <div class="lab" style="color:#6b7280">Bottleneck</div>
-      <p>“鸡 vs 鹅”问题：实例列表丢掉的语义，后面的网络再也拿不回来。显式接口可解释，但信息有损。</p>
-    </div>
-  </div>
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+  <span class="badge inf">INFERRED</span><span class="note">Solid blocks are on the inference path; dashed blocks are optional / prunable. Tensor shapes are symbolic.</span>
+  <span style="flex:1"></span><span class="pill green">shared UVE</span>
+</div>
 
-  <!-- V15 -->
+<!-- input + backbone -->
+<div class="flow">
+  <div class="node" style="flex:1"><div class="tag">Sensor</div><h4>7 × camera</h4><p>patchify · 36 Hz</p></div>
+  <div class="arr">→</div>
+  <div class="node" style="flex:1"><div class="tag">Sensor</div><h4>Nav / IMU / audio</h4><p>tokenized context</p></div>
+  <div class="arr">→</div>
+  <div class="node" style="flex:1"><div class="tag">Sensor</div><h4>Language / pose</h4><p>command + camera pose</p></div>
+  <div class="arr">→</div>
+  <div class="node green" style="flex:2.1;border-width:2px"><div class="tag">Backbone</div><h4>UVE × L blocks</h4><p>self-attention / FFN · output <span class="mono">F: N × D @ 18 Hz</span></p></div>
+</div>
+
+<div style="display:flex;justify-content:center;margin:7px 0 3px"><div class="arr down green">↓</div></div>
+
+<!-- two towers -->
+<div style="display:grid;grid-template-columns:1.18fr .82fr;gap:20px">
+  <!-- action tower -->
   <div>
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div><div class="kicker">V15 / SCENE-CENTRIC</div><h3 style="font-size:24px;margin-top:6px">隐式 4D 场景是接口</h3></div>
-      <span class="badge hyp">HYPOTHESIS</span>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="badge inf">ACTION TOWER / 3B</span><span class="note">planner + aux</span></div>
+    <div class="node green" style="border-width:2px"><div class="tag">Compress</div><h4>Scene tokenizer</h4><p>perceiver / query-based compressor → <span class="mono">S × D</span>；固定尺寸，供 planner 与 renderer 共享。</p></div>
+    <div style="display:flex;justify-content:center"><div class="arr down green">↓</div></div>
+    <div class="node blue"><div class="tag">Plan</div><h4>Trajectory head</h4><p>M 个多模态 query 对 <span class="mono">S × D</span> 做 cross-attention → <span class="mono">M × T × 2</span>；可加 interaction / value 头。</p></div>
+    <div style="display:flex;justify-content:center"><div class="arr down">↓</div></div>
+    <div class="node dark"><div class="tag">Act</div><h4>Control head → steer + accel</h4><p>2 个控制 token；安全选择器在外部或作为浅层 head。</p></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px">
+      <div class="node ghost" style="padding:9px 11px"><div class="tag">Optional</div><h4 style="font-size:16px;margin:4px 0 2px">Instance query decoder</h4><p>K 个 query → boxes / tracks / masks</p></div>
+      <div class="node ghost" style="padding:9px 11px"><div class="tag">Aux / prunable</div><h4 style="font-size:16px;margin:4px 0 2px">Perception · language</h4><p>det/track · seg/occ · caption / CoT</p></div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:22px">
-      <div class="node" style="padding:10px 14px"><div class="tag">Input</div><h4 style="margin:4px 0 2px">7 cams · 36 Hz</h4><p>same pixels, more general encoder</p></div>
-      <div class="arr down">↓</div>
-      <div class="node green" style="padding:10px 14px"><div class="tag">Encoder</div><h4 style="margin:4px 0 2px">UVE · general pretrain</h4><p>internet video + fleet + 4D NVS</p></div>
-      <div class="arr down green">↓</div>
-      <div class="node green" style="padding:10px 14px;border-width:2px">
-        <div class="tag">Compact token</div>
-        <h4 style="margin:4px 0 2px">one dominant 4D scene token</h4>
-        <p style="margin-bottom:5px">forced to carry geometry + appearance + dynamics</p>
-        <div style="display:flex;gap:5px;flex-wrap:wrap">
-          <span class="pill green" style="font-size:10.5px">4D NVS gradient</span>
-          <span class="pill" style="font-size:10.5px;opacity:.55">instance queries (optional)</span>
-        </div>
-      </div>
-      <div class="arr down green">↓</div>
-      <div class="node green" style="padding:10px 14px"><div class="tag">Interaction</div><h4 style="margin:4px 0 2px">trajectory head ↔ scene token</h4><p>fixed-size tensor, cheaper attention, easier fusion</p></div>
-      <div class="arr down green">↓</div>
-      <div class="node dark" style="padding:10px 14px"><div class="tag">Action</div><h4 style="margin:4px 0 2px">steer + accel</h4><p>aux heads can be dropped at inference</p></div>
-    </div>
-    <div class="callout" style="margin-top:14px;border-color:#0b8a5c;background:#f1faf6">
-      <div class="lab" style="color:#0b8a5c">Why it matters</div>
-      <p>如果场景 token 能重建任意新视角，它就必须编码遮挡、深度和动态一致性——这些恰好是规划需要的。</p>
-    </div>
+  </div>
+
+  <!-- render tower -->
+  <div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="badge rep">RENDER TOWER / 1B</span><span class="note">local world model</span></div>
+    <div class="node orange"><div class="tag">Condition</div><h4>Prev frame latent + pose + noise</h4><p>预测变化量，而不是从零重建整帧</p></div>
+    <div style="display:flex;justify-content:center"><div class="arr down orange">↓</div></div>
+    <div class="node orange" style="border-width:2px"><div class="tag">Generator</div><h4>Conditional DiT × L</h4><p>mean-flow · cross-attn to <span class="mono">S × D</span> · few NFEs</p></div>
+    <div style="display:flex;justify-content:center"><div class="arr down orange">↓</div></div>
+    <div class="node orange"><div class="tag">Output</div><h4><span class="mono">8 × h × w</span> low-res chunk</h4><p>8 帧 / 4 个 UVE 周期</p></div>
+    <div style="display:flex;justify-content:center"><div class="arr down orange">↓</div></div>
+    <div class="node dark"><div class="tag">Product</div><h4>Spatial / temporal SR → Reality View</h4><p>~36 fps UI；外部超分不改训练图</p></div>
+    <div class="note" style="margin-top:9px">1B 渲染器吃“剩余算力”：<b>½ TRIP / UVE frame</b>，不是半颗 AI4。</div>
   </div>
 </div>
 
-<div style="position:absolute;left:50%;top:390px;transform:translateX(-50%);width:54px;height:54px;border-radius:50%;background:var(--dark);color:#fff;display:flex;align-items:center;justify-content:center;font:800 12px/1 Consolas,monospace;letter-spacing:.04em">VS</div>
+<!-- budget band -->
+<div class="grid4" style="margin-top:13px">
+  <div class="kpi" style="padding:9px 12px"><div class="n" style="font-size:24px">3B + 1B</div><div class="l">action + renderer<br>4B deployed graph</div></div>
+  <div class="kpi" style="padding:9px 12px"><div class="n" style="font-size:24px">S × D</div><div class="l">fixed-size scene token<br>cheap cross-attention</div></div>
+  <div class="kpi" style="padding:9px 12px"><div class="n" style="font-size:24px">18 Hz</div><div class="l">UVE feature clock<br>55.6 ms / frame</div></div>
+  <div class="kpi" style="padding:9px 12px"><div class="n" style="font-size:24px">~222–300 ms</div><div class="l">render latency<br>community estimate</div></div>
 </div>
-  <div class="fig-foot"><div><b>Sources:</b> ICCV 2025 / CVPR 2026 Tesla talks (intermediate outputs: 3D occupancy, 3DGS, language); operator’s V14 compact-token note. &nbsp; <b>Note:</b> V15 token change is an inference.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
+</div>
+  <div class="fig-foot"><div><b>Sources:</b> Musk 3B/1B post; OFweek teardown (UVE 18 Hz, mean-flow, 8-frame chunk); CVPR 2026 intermediate outputs. &nbsp; <b>Note:</b> block diagram is inferred; shapes are symbolic.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
 </div></body></html>

@@ -1,6 +1,6 @@
 # FSD V15 / Technical Map
 
-A bilingual (Chinese / English), single-page technical teardown of Tesla FSD V15: the public facts, the engineering inferences, and the open hypotheses — with 9 original diagrams and a static WeChat edition.
+A bilingual (Chinese / English), single-page technical teardown of Tesla FSD V15: the public facts, the engineering inferences, and the open hypotheses — with 11 original diagrams and a static WeChat edition.
 
 **Live entry:** `index.html`
 
@@ -11,7 +11,7 @@ A bilingual (Chinese / English), single-page technical teardown of Tesla FSD V15
 | File | Purpose |
 |---|---|
 | `index.html` | The main bilingual, interactive article. Single file + `assets/` images. |
-| `assets/fig-01.png` … `fig-09.png` | The 9 original diagrams (1600×1000, 2× PNG). |
+| `assets/fig-01.png` … `fig-09.png` | The 11 original diagrams (1600×1000, 2× PNG). |
 | `wechat-zh.html` | Static, inline-styled Chinese edition for the WeChat editor. |
 | `wechat-en.html` | Static, inline-styled English edition for the WeChat editor. |
 | `sources.md` | Source list, evidence levels, and notes on conflicting numbers. |

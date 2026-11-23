@@ -244,7 +244,6 @@ def footer(lang):
             <span class="brand-text">{name}</span>
           </div>
           <p class="small muted" style="max-width:34ch">{tagline}</p>
-          <p class="small muted" style="margin-top:12px">{note}</p>
         </div>
         <div>
           <h4>{explore_l}</h4>
@@ -261,8 +260,7 @@ def footer(lang):
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© <span data-year>2026</span> {name} · {rights}</span>
-        <span class="vibe">static · no build · no tracking</span>
+        <span>© <span data-year>2026</span> {name}</span>
       </div>
     </div>
   </footer>
@@ -270,7 +268,6 @@ def footer(lang):
   <div class="toast" role="status" aria-live="polite" data-copied="{copied}" data-failed="{failed}"></div>""".format(
         name=esc(t(PROFILE["name"], lang)),
         tagline=esc(t(UI["footer_tagline"], lang)),
-        note=esc(t(UI["footer_note"], lang)),
         explore_l=esc(ui("footer_explore", lang)),
         explore=explore,
         elsewhere=esc(ui("footer_elsewhere", lang)),
@@ -279,7 +276,6 @@ def footer(lang):
         handle=esc(PROFILE["handle"]),
         scholar=esc(PROFILE["scholar"]),
         feed="/blog/feed.xml" if lang == "zh" else "/en/blog/feed.xml",
-        rights=esc("保留所有权利" if lang == "zh" else "All rights reserved"),
         top_l=esc("回到顶部" if lang == "zh" else "Back to top"),
         top_icon=icon("arrow-up"),
         copied=esc(ui("copied", lang)),

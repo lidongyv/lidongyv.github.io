@@ -82,85 +82,62 @@ body{
 </style></head>
 <body><div class="frame">
   <div class="fig-head">
-    <div><div class="kicker">INDUSTRY / 产业含义</div><div class="title">护城河正在上移 <span class="thin">/ The moat moves up the stack</span></div><div class="sub">竞争单位从“端到端模型”变成“通用预训练 + 蒸馏管线”；月投入 2 亿元量级是门槛，不是终点。</div></div>
+    <div><div class="kicker">POST-TRAIN / 后训练</div><div class="title">当仿真器变成同一个模型 <span class="thin">/ When the simulator is the model</span></div><div class="sub">RL、交互、闭环、外推不再是独立的 post-train 阶段，而是围绕多模态轨迹预测的辅助任务——前提是 4D 生成足够可信。</div></div>
     <div class="fig-no">FIG.08</div>
   </div>
   <div class="body">
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-  <span class="badge hyp">ANALYSIS / 作者判断</span>
-  <span class="note">Not a ranking of companies; a map of strategic routes. Cost/control/speed are qualitative.</span>
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+  <span class="badge hyp">HYPOTHESIS</span>
+  <span class="note">If the 4D generator is good enough to act as a simulator, post-training can be absorbed into a continued pretraining loop.</span>
 </div>
 
-<div class="grid3" style="margin-top:8px">
-  <div class="node blue" style="padding:17px 18px">
-    <div class="tag">ROUTE A</div>
-    <h4 style="font-size:22px;margin:7px 0 4px">全栈通用预训练</h4>
-    <p style="min-height:40px">Own foundation model + VLA + world model + distillation. Highest ceiling, highest fixed cost.</p>
-    <div style="margin:11px 0 9px;display:flex;gap:5px;flex-wrap:wrap">
-      <span class="pill blue">CAPEX ●●●●</span><span class="pill blue">CONTROL ●●●●</span><span class="pill">SPEED ●○○○</span>
-    </div>
-    <div class="note" style="line-height:1.7">
-      · 需要同时具备大模型预训练、驾驶数据、仿真/评测、车端芯片协同<br>
-      · 组织上是“一个模型团队”，不是“智驾团队 + 外采大模型”<br>
-      · 代表：Tesla；潜在：华为、小米（若能把自家大模型与 VLA 真正合并）
-    </div>
-    <div style="margin-top:9px;font-size:11.5px;line-height:1.5;color:#7a7163"><b>Requires:</b> GPU cluster · fleet data · sim/eval · chip co-design</div>
-    <div class="callout" style="margin-top:13px;border-color:#1f4fff;background:#f5f7ff">
-      <div class="lab">Why it wins</div>
-      <p>通用表征 + 联合蒸馏，能把“世界模型”的能力直接灌进驾驶策略，而不是外挂一个生成模型。</p>
+<div class="flow" style="margin-top:16px">
+  <div class="node blue" style="flex:1.05"><div class="tag">Policy</div><h4>3B action model</h4><p>multi-modal trajectory<br>+ value / uncertainty</p></div>
+  <div class="arr">→</div>
+  <div class="node blue" style="flex:.95"><div class="tag">Act</div><h4>Action</h4><p>steer, accel<br>candidate trajectories</p></div>
+  <div class="arr orange">→</div>
+  <div class="node orange" style="flex:1.2"><div class="tag">World model</div><h4>4D renderer</h4><p>1B NVS decoder<br>imagine the next 8 frames</p></div>
+  <div class="arr orange">→</div>
+  <div class="node orange" style="flex:1.1"><div class="tag">Rollout</div><h4>Imagined future</h4><p>novel views<br>counterfactual actions</p></div>
+  <div class="arr purple">→</div>
+  <div class="node purple" style="flex:1.05"><div class="tag">Evaluate</div><h4>Reward / safety</h4><p>collision, comfort<br>progress, rule compliance</p></div>
+</div>
+
+<!-- return path -->
+<div style="position:relative;height:92px;margin-top:10px">
+  <div style="position:absolute;left:4%;right:4%;top:16px;border-top:2px dashed #6d4aff"></div>
+  <div style="position:absolute;left:4%;top:8px;width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:11px solid #6d4aff"></div>
+  <div style="position:absolute;left:50%;top:5px;transform:translateX(-50%);background:var(--paper);padding:0 12px;font:700 11px/1.4 Consolas,monospace;letter-spacing:.1em;color:#6d4aff">POLICY UPDATE / GRADIENT / 策略更新</div>
+  <div style="position:absolute;left:50%;top:31px;transform:translateX(-50%);white-space:nowrap" class="note">RL · interaction · closed-loop · extrapolation — all become auxiliary tasks around the main trajectory prediction.</div>
+</div>
+
+<div style="display:grid;grid-template-columns:1.2fr .8fr;gap:24px;margin-top:8px">
+  <div>
+    <div class="kicker" style="color:#6b7280">WHAT CHANGES</div>
+    <div class="grid2" style="margin-top:9px">
+      <div class="node" style="padding:11px 13px"><div class="tag">Old</div><h4 style="font-size:17px;margin:5px 0 3px">仿真器是外挂</h4><p>policy → simulator → reward → update; separate stack</p></div>
+      <div class="node green" style="padding:11px 13px"><div class="tag">New</div><h4 style="font-size:17px;margin:5px 0 3px">仿真器是同一个模型</h4><p>renderer conditioned on the same scene token; shorter loop</p></div>
     </div>
   </div>
-
-  <div class="node green" style="padding:17px 18px">
-    <div class="tag">ROUTE B</div>
-    <h4 style="font-size:22px;margin:7px 0 4px">借大模型 + SFT + 蒸馏</h4>
-    <p style="min-height:40px">Use an external LLM/VLM/world model, SFT on driving data, distill to the car. Fastest path; dependency risk.</p>
-    <div style="margin:11px 0 9px;display:flex;gap:5px;flex-wrap:wrap">
-      <span class="pill green">CAPEX ●●○○</span><span class="pill green">CONTROL ●●○○</span><span class="pill green">SPEED ●●●●</span>
-    </div>
-    <div class="note" style="line-height:1.7">
-      · 用别人的基础模型，SFT 代替 pretrain，再做蒸馏/量化<br>
-      · 适合大多数国内车企与具身智能公司：先上车，再补基建<br>
-      · 风险：模型不可控、授权/合规、能力上限受制于人
-    </div>
-    <div style="margin-top:9px;font-size:11.5px;line-height:1.5;color:#7a7163"><b>Requires:</b> model access · strong SFT/data engine · distillation know-how</div>
-    <div class="callout" style="margin-top:13px;border-color:#0b8a5c;background:#f3fbf7">
-      <div class="lab">Why it spreads</div>
-      <p>这是“今年最后一个月到 Q1”最现实的动作：不需要重建 pretrain 基建，先把 distillation pipeline 跑通。</p>
-    </div>
-  </div>
-
-  <div class="node purple" style="padding:17px 18px">
-    <div class="tag">ROUTE C</div>
-    <h4 style="font-size:22px;margin:7px 0 4px">垂直数据 / 场景护城河</h4>
-    <p style="min-height:40px">Own the local data, safety, regulation and cost curve; accept a lower model ceiling.</p>
-    <div style="margin:11px 0 9px;display:flex;gap:5px;flex-wrap:wrap">
-      <span class="pill purple">CAPEX ●●○○</span><span class="pill purple">CONTROL ●●●○</span><span class="pill">SPEED ●●●○</span>
-    </div>
-    <div class="note" style="line-height:1.7">
-      · 区域数据、长尾场景、监管关系、成本控制<br>
-      · 在 L4 限定场景/城市仍然能形成壁垒<br>
-      · 但如果基础模型代差拉大，“场景壁垒”会被降维
-    </div>
-    <div style="margin-top:9px;font-size:11.5px;line-height:1.5;color:#7a7163"><b>Requires:</b> dense local data · safety ops · regulatory trust</div>
-    <div class="callout" style="margin-top:13px;border-color:#6d4aff;background:#faf8ff">
-      <div class="lab">The risk</div>
-      <p>当对手用通用世界模型做 zero-shot 长尾，垂直数据的边际价值会下降。</p>
-    </div>
+  <div class="node ghost" style="padding:12px 15px">
+    <div class="tag" style="color:#f05a28">REAL FLEET ANCHOR</div>
+    <h4 style="font-size:18px;margin:5px 0 4px">真实车队是锚</h4>
+    <p>闭环里跑久了会 reward hacking / 分布漂移；必须用真实接管、碰撞、舒适度数据做校准。</p>
   </div>
 </div>
 
-<div style="margin-top:22px;display:flex;align-items:center;gap:16px">
-  <div class="kicker" style="color:#6b7280">THE MOAT MOVES UP</div>
-  <div style="flex:1;height:2px;background:linear-gradient(90deg,#1f4fff,#0b8a5c,#6d4aff)"></div>
-  <div class="note" style="white-space:nowrap">数据 → 模型 → 预训练基建 → 蒸馏管线</div>
+<div class="grid4" style="margin-top:18px">
+  <div class="node" style="padding:9px 12px"><div class="tag">Aux 1</div><h4 style="font-size:16px;margin:4px 0 2px">RL</h4><p>reward, preference</p></div>
+  <div class="node" style="padding:9px 12px"><div class="tag">Aux 2</div><h4 style="font-size:16px;margin:4px 0 2px">Interaction</h4><p>other agents’ reactions</p></div>
+  <div class="node" style="padding:9px 12px"><div class="tag">Aux 3</div><h4 style="font-size:16px;margin:4px 0 2px">Closed-loop</h4><p>rollout consistency</p></div>
+  <div class="node" style="padding:9px 12px"><div class="tag">Aux 4</div><h4 style="font-size:16px;margin:4px 0 2px">Extrapolation</h4><p>counterfactual scenes</p></div>
 </div>
 
-<div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
-  <div class="note"><b>If Tesla is right / 如果特斯拉成立：</b> 拥有通用预训练能力的公司会把“世界模型”变成驾驶策略的一部分，外采模型的公司只能做应用层。</div>
-  <div class="note"><b>If not / 如果不成立：</b> 4D 渲染只是 UI 糖，25× 无法复现，行业回到数据闭环和成本竞争。</div>
-  <div class="note"><b>What to watch / 看什么：</b> 第三方干预数据、V16 是否继续扩大 NVS 权重、国内是否出现“蒸馏管线”招聘与论文。</div>
+<div class="grid3" style="margin-top:18px">
+  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">RISK 1</div><h4 style="font-size:17px;margin:5px 0 3px">仿真保真度</h4><p>渲染得好看 ≠ 物理正确；碰撞、遮挡、光照都可能骗过 policy。</p></div>
+  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">RISK 2</div><h4 style="font-size:17px;margin:5px 0 3px">Reward hacking</h4><p>策略会找到奖励漏洞；需要真实接管、舒适度和规则约束做锚。</p></div>
+  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">RISK 3</div><h4 style="font-size:17px;margin:5px 0 3px">算力成本</h4><p>闭环 rollout 比监督学习贵一个量级；“吸收”不等于免费。</p></div>
 </div>
 </div>
-  <div class="fig-foot"><div><b>Sources:</b> public V15 facts; V14.3.5 distillation reports; operator’s industry note. &nbsp; <b>Note:</b> company placements are illustrative, not measured; “御三家” here means 蔚小理.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
+  <div class="fig-foot"><div><b>Sources:</b> CVPR 2026 Tesla talk (World Sim NN ↔ Policy NN closed loop); operator’s V15 post-train hypothesis. &nbsp; <b>Note:</b> “absorbed” is a direction, not a confirmed fact.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
 </div></body></html>

@@ -82,80 +82,58 @@ body{
 </style></head>
 <body><div class="frame">
   <div class="fig-head">
-    <div><div class="kicker">INFERENCE GRAPH / 推理结构</div><div class="title">一个编码器，两条解码路径 <span class="thin">/ One encoder, two decoders</span></div><div class="sub">动作与渲染从同一份 UVE 特征 fork；这正是 V15 与“给旧模型加一个 UI 模型”的本质区别。</div></div>
+    <div><div class="kicker">ALGORITHM FLOW / 算法流程</div><div class="title">从像素到动作，再回到数据 <span class="thin">/ Pixels → action → data</span></div><div class="sub">V15 的一次前向：UVE 编码 → scene token → 多模态轨迹 → 安全选择 → 动作；渲染与辅助头是旁路，推理可裁剪。</div></div>
     <div class="fig-no">FIG.02</div>
   </div>
   <div class="body">
-<div style="display:flex;gap:14px;align-items:stretch">
-  <div class="node" style="flex:1.05"><div class="tag">Input</div><h4>7 × camera</h4><p>36 Hz · 5 MP · 30 s history<br>≈ 2B tokens before patchification</p></div>
-  <div class="node" style="flex:.9"><div class="tag">Input</div><h4>Nav · IMU · audio</h4><p>route, ego motion, 100 Hz kinematics, 48 kHz audio</p></div>
-  <div class="node" style="flex:.9"><div class="tag">Input</div><h4>Language / pose</h4><p>destination, command, camera pose for NVS</p></div>
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+  <span class="badge pub">RUNTIME</span><span class="note">Solid = inference path &nbsp;·&nbsp; dashed = optional / prunable &nbsp;·&nbsp; back arrow = training feedback</span>
+  <span style="flex:1"></span><span class="pill orange">one forward pass</span>
+</div>
+
+<!-- 01 inputs -->
+<div class="flow">
+  <div class="node" style="flex:1.1"><span class="num">01</span><div class="tag">Input</div><h4>7 × camera</h4><p>36 Hz · 5 MP · 30 s history</p></div>
+  <div class="node" style="flex:.9"><span class="num">01</span><div class="tag">Input</div><h4>Nav · IMU · audio</h4><p>route, ego motion, 100 Hz</p></div>
+  <div class="node" style="flex:.8"><span class="num">01</span><div class="tag">Input</div><h4>Language / pose</h4><p>command, NVS camera pose</p></div>
+</div>
+<div style="display:flex;justify-content:center"><div class="arr down">↓</div></div>
+
+<!-- 02 UVE -->
+<div class="node green" style="border-width:2px"><span class="num">02</span><div class="tag">Encode / 18 Hz</div><h4>UVE：通用视觉编码器 <span class="mono" style="font-size:12px;color:#5f6673">F = N × D</span></h4><p>把 7 路像素压成特征序列；FSD / Robotaxi / Optimus 共用。特征既给动作，也给渲染。</p></div>
+<div style="display:flex;justify-content:center"><div class="arr down">↓</div></div>
+
+<!-- 03 token -->
+<div style="display:grid;grid-template-columns:1.25fr .75fr;gap:14px">
+  <div class="node green" style="border-width:2px"><span class="num">03</span><div class="tag">Compress / interface</div><h4>Scene tokenizer → <span class="mono">S × D</span></h4><p>固定尺寸的 4D 场景 token：几何、外观、动态、遮挡都压在这里。它是 planner 与 renderer 的共享接口。</p></div>
+  <div class="node ghost"><span class="num">03b</span><div class="tag">Optional / dashed</div><h4>Instance queries → <span class="mono">K × D</span></h4><p>车、VRU、交通灯等显式 query；训练时需要，推理时可裁剪。</p></div>
+</div>
+<div style="display:flex;justify-content:center"><div class="arr down green">↓</div></div>
+
+<!-- 04 planner + decision + action -->
+<div class="flow">
+  <div class="node blue" style="flex:1.15"><span class="num">04</span><div class="tag">Plan</div><h4>Trajectory head</h4><p>M 个多模态 query × T 步<br><span class="mono">M × T × 2</span></p></div>
   <div class="arr">→</div>
-  <div class="node green" style="flex:1.35"><div class="tag">Shared encoder</div><h4>UVE · 18 Hz</h4><p>通用视觉编码器，输出特征序列；FSD / Robotaxi / Optimus 共用。网络只此一份，向下 fork。</p></div>
+  <div class="node purple" style="flex:1.05"><span class="num">04b</span><div class="tag">Decide</div><h4>Safety selector</h4><p>碰撞 / 规则 / 舒适度<br><span style="color:#0b8a5c;font-weight:700">YES → act</span> &nbsp; <span style="color:#dc2626;font-weight:700">NO → fallback</span></p></div>
+  <div class="arr">→</div>
+  <div class="node dark" style="flex:.85"><span class="num">05</span><div class="tag">Act</div><h4>2 tokens</h4><p>steer + accel<br>at control rate</p></div>
 </div>
 
-<div style="position:relative;height:40px;margin:2px 0 0">
-  <div style="position:absolute;left:8%;right:8%;top:8px;height:2px;background:#0b8a5c"></div>
-  <div style="position:absolute;left:27%;top:8px;width:2px;height:24px;background:#0b8a5c"></div>
-  <div style="position:absolute;left:78%;top:8px;width:2px;height:24px;background:#0b8a5c"></div>
-  <div style="position:absolute;left:27%;top:29px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #0b8a5c"></div>
-  <div style="position:absolute;left:78%;top:29px;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #0b8a5c"></div>
-  <div style="position:absolute;left:50%;top:3px;transform:translateX(-50%);background:var(--paper);padding:0 10px;font:700 10px/1 Consolas,monospace;letter-spacing:.14em;color:#0b8a5c">FORK / 分叉</div>
+<!-- 05 renderer / aux -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px">
+  <div class="node orange"><span class="num">06</span><div class="tag">Render / local world model</div><h4>1B NVS decoder → Reality View</h4><p>prev frame + noise + pose → DiT mean-flow → 8-frame chunk。它不参与主控制环，但和动作共享 UVE 特征。</p></div>
+  <div class="node ghost"><span class="num">06b</span><div class="tag">Aux / prunable</div><h4>Perception · language · 3DGS</h4><p>det/track、TL/TSR、seg/occ、caption、3DGS。训练时是监督，推理时按算力裁剪。</p></div>
 </div>
 
-<div style="display:grid;grid-template-columns:1.18fr .92fr;gap:22px">
-  <!-- action branch -->
-  <div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px"><span class="badge inf">ACTION / 动作</span><span class="note">3B backbone · one fork</span></div>
-    <div class="flow">
-      <div class="node blue" style="flex:1.1"><div class="tag">Policy</div><h4>3B action model</h4><p>compact scene token<br>trajectory head</p></div>
-      <div class="arr">→</div>
-      <div class="node blue" style="flex:1"><div class="tag">Interface</div><h4>Scene token</h4><p>implicit 4D<br>instance queries optional</p></div>
-      <div class="arr">→</div>
-      <div class="node blue" style="flex:.95"><div class="tag">Head</div><h4>Trajectory</h4><p>multi-modal<br>+ aux heads</p></div>
-      <div class="arr">→</div>
-      <div class="node dark" style="flex:.8"><div class="tag">Output</div><h4>2 tokens</h4><p>steer + accel<br>+ perception / language</p></div>
-    </div>
-    <div class="note" style="margin-top:8px">Aux heads are <b>prunable at inference</b>; only the main line must stay inside the latency budget.</div>
-  </div>
-
-  <!-- render branch -->
-  <div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px"><span class="badge rep">RENDER / 渲染</span><span class="note">1B · conditional mean-flow</span></div>
-    <div class="flow">
-      <div class="node orange" style="flex:1"><div class="tag">Condition</div><h4>prev frame + noise</h4><p>not a full-frame rebuild:<br>predict the change</p></div>
-      <div class="arr orange">→</div>
-      <div class="node orange" style="flex:1.25"><div class="tag">Decoder</div><h4>1B NVS decoder</h4><p>DiT · mean-flow, few NFEs<br>8-frame chunk</p></div>
-      <div class="arr orange">→</div>
-      <div class="node dark" style="flex:.95"><div class="tag">Product</div><h4>Reality View</h4><p>novel view<br>~36 fps UI</p></div>
-    </div>
-    <div class="note" style="margin-top:8px">The renderer is a <b>local world model</b>, not the cloud simulator: short horizon, conditional, view-consistent.</div>
-  </div>
-</div>
-
-<!-- timeline -->
-<div style="margin-top:20px;border-top:1px solid var(--line);padding-top:14px">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-    <div class="mono" style="font-size:11px;letter-spacing:.14em;color:#6b7280">LATENCY BUDGET / 时延预算</div>
-    <div class="note">Community arithmetic, not a Tesla disclosure</div>
-  </div>
-  <div style="position:relative;height:44px">
-    <div style="position:absolute;left:0;right:0;top:15px;height:6px;border-radius:3px;background:#e6dfd1"></div>
-    <div style="position:absolute;left:0;width:18.5%;top:15px;height:6px;border-radius:3px;background:#0b8a5c"></div>
-    <div style="position:absolute;left:18.5%;width:55.5%;top:15px;height:6px;border-radius:3px;background:#f05a28"></div>
-    <div style="position:absolute;left:74%;width:26%;top:15px;height:6px;border-radius:3px;background:#1f4fff"></div>
-    <div style="position:absolute;left:0;top:26px;font:700 11px/1 Consolas,monospace;color:#0b8a5c">0</div>
-    <div style="position:absolute;left:18.5%;top:26px;transform:translateX(-50%);font:700 11px/1 Consolas,monospace;color:#0b8a5c">55.6 ms / UVE frame</div>
-    <div style="position:absolute;left:74%;top:26px;transform:translateX(-50%);font:700 11px/1 Consolas,monospace;color:#f05a28">222 ms / 4 cycles</div>
-    <div style="position:absolute;right:0;top:26px;font:700 11px/1 Consolas,monospace;color:#1f4fff">~300 ms observed</div>
-  </div>
-</div>
-
-<div class="grid3" style="margin-top:16px">
-  <div class="kpi"><div class="n">18 Hz</div><div class="l">UVE feature rate<br>通用的“视觉节拍”</div></div>
-  <div class="kpi"><div class="n">8 → 4</div><div class="l">8-frame chunk spread over<br>4 UVE cycles</div></div>
-  <div class="kpi"><div class="n">½ TRIP</div><div class="l">per UVE frame, not half of AI4<br>不是“半颗 AI4”</div></div>
+<!-- 06 feedback -->
+<div style="margin-top:14px;border:1.5px dashed #9aa0aa;border-radius:10px;padding:9px 14px;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.35)">
+  <span class="badge inf">FEEDBACK</span>
+  <span class="mono" style="font-size:10.5px;letter-spacing:.1em;color:#6b7280">DEPLOY</span>
+  <span style="color:#9aa0aa">→</span><span class="note">fleet log / 接管与困难场景</span>
+  <span style="color:#9aa0aa">→</span><span class="note">data engine / 挖掘与标注</span>
+  <span style="color:#9aa0aa">→</span><span class="note">new training pairs</span>
+  <span style="flex:1"></span><span class="pill">↺ 回到 pretrain</span>
 </div>
 </div>
-  <div class="fig-foot"><div><b>Sources:</b> Musk post on UVE / 3B / 1B fork (2026-11-22, via Weibo screenshots); OFweek teardown; community latency analysis. &nbsp; <b>Note:</b> 18 Hz, 36 fps and 222–300 ms are reported/inferred, not official.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
+  <div class="fig-foot"><div><b>Sources:</b> V15 release notes; CVPR 2026 Tesla talk (intermediate outputs, closed loop); OFweek teardown; author’s reconstruction. &nbsp; <b>Note:</b> algorithm graph is inferred, not official.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
 </div></body></html>

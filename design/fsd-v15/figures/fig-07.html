@@ -82,53 +82,74 @@ body{
 </style></head>
 <body><div class="frame">
   <div class="fig-head">
-    <div><div class="kicker">DISTILLATION / 蒸馏</div><div class="title">从云端教师到 4B 车端 <span class="thin">/ From cloud teacher to a 4B student</span></div><div class="sub">“pretrain → distillation” 的核心不是把模型压小，而是把任务结构、数据配比和联合表征一起搬过去；量化是部署层的第二次压缩。</div></div>
+    <div><div class="kicker">TRAINING FRAMEWORK / 训练框架</div><div class="title">数据、任务、蒸馏，一个闭环 <span class="thin">/ Data, tasks, distillation — one loop</span></div><div class="sub">V15 的训练框架：数据引擎 → 四类任务配对 → 通用预训练（SFT 退化为高质量退火）→ 蒸馏/量化 → 车端。</div></div>
     <div class="fig-no">FIG.07</div>
   </div>
   <div class="body">
-<div style="display:grid;grid-template-columns:1.22fr .78fr;gap:30px;margin-top:2px">
+<div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
+  <span class="badge hyp">FRAMEWORK</span>
+  <span class="note">The V15 training stack as a single loop: data → pairing → general pretrain → distill → deploy → mine.</span>
+  <span style="flex:1"></span><span class="pill purple">SFT = anneal, not a stage</span>
+</div>
+
+<div style="display:grid;grid-template-columns:.92fr 1.3fr .9fr;gap:18px">
+  <!-- data -->
   <div>
-    <div class="flow" style="flex-direction:column;gap:0">
-      <div class="node purple" style="width:100%"><div class="tag">Teacher / cloud</div><h4>大模型：全任务、全分辨率、长时域</h4><p>general pretrain + 4D NVS + perception + planner + VLM · 10B-class (reported)</p></div>
+    <div class="kicker" style="color:#6b7280">01 / DATA ENGINE</div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-top:8px">
+      <div class="node" style="padding:9px 12px"><div class="tag">Fleet</div><h4 style="font-size:16px;margin:3px 0 2px">车队日志</h4><p>7 cams · 36 Hz · 30 s</p></div>
+      <div class="node" style="padding:9px 12px"><div class="tag">Internet</div><h4 style="font-size:16px;margin:3px 0 2px">互联网视频</h4><p>general visual priors</p></div>
+      <div class="node orange" style="padding:9px 12px"><div class="tag">Reconstruct</div><h4 style="font-size:16px;margin:3px 0 2px">3DGS / NVS</h4><p>novel views along trajectory</p></div>
+      <div class="node" style="padding:9px 12px"><div class="tag">Sim / language</div><h4 style="font-size:16px;margin:3px 0 2px">仿真 + caption</h4><p>counterfactual + debug</p></div>
+    </div>
+    <div class="arr down muted">↓</div>
+    <div class="node green"><div class="tag">Mine / label / pair</div><h4>Data engine</h4><p>hard-case mining · auto-label · human audit · privacy/compliance</p></div>
+    <div class="arr down green">↓</div>
+    <div class="node green" style="border-width:2px"><div class="tag">Task mixer</div><h4>四类任务，一张配对表</h4>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"><span class="pill orange">4D NVS</span><span class="pill green">perception</span><span class="pill blue">planner</span><span class="pill purple">language</span></div>
+    </div>
+  </div>
+
+  <!-- pretrain -->
+  <div>
+    <div class="kicker" style="color:#6b7280">02 / GENERAL PRETRAIN</div>
+    <div style="border:2px solid #1f4fff;border-radius:14px;padding:13px 14px;margin-top:8px;background:#f7f9ff">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span class="badge inf">ONE STAGE</span><span class="note">cloud · 10B-class teacher (reported)</span></div>
+      <div class="node" style="padding:10px 12px;margin-bottom:7px"><div class="tag">Stage 0</div><h4 style="font-size:16px;margin:3px 0 2px">General warm-up</h4><p>internet video + general NVS · world priors</p></div>
+      <div class="arr down" style="height:18px">↓</div>
+      <div class="node" style="padding:10px 12px;margin-bottom:7px"><div class="tag">Stage 1</div><h4 style="font-size:16px;margin:3px 0 2px">Fleet NVS + perception</h4><p>3DGS reconstruction · novel views · det/seg/occ</p></div>
+      <div class="arr down" style="height:18px">↓</div>
+      <div class="node" style="padding:10px 12px;margin-bottom:7px"><div class="tag">Stage 2</div><h4 style="font-size:16px;margin:3px 0 2px">Planner mixture</h4><p>multi-modal traj · interaction · closed-loop curriculum</p></div>
+      <div class="arr down" style="height:18px">↓</div>
+      <div class="node blue" style="padding:10px 12px"><div class="tag">Stage 3 / dashed</div><h4 style="font-size:16px;margin:3px 0 2px">High-quality anneal</h4><p>human driving · interventions · hard scenes — this is the SFT-like part</p></div>
+      <div class="note" style="margin-top:7px;border-top:1px dashed #bdc8ff;padding-top:6px">post-train curriculum：RL · interaction · closed-loop · extrapolation 作为辅助任务混入。 <b>SFT 不再单独成段。</b></div>
+    </div>
+  </div>
+
+  <!-- distill -->
+  <div>
+    <div class="kicker" style="color:#6b7280">03 / DISTILL + DEPLOY</div>
+    <div style="display:flex;flex-direction:column;gap:0;margin-top:8px">
+      <div class="node purple"><div class="tag">Teacher</div><h4>全任务 / 高分辨率 / 长时域</h4><p>features · logits · render · traj · language</p></div>
       <div class="arr down purple">↓</div>
-      <div class="node orange" style="width:100%"><div class="tag">Distillation</div><h4>蒸馏：不只 logits</h4><p>feature + render + trajectory + language + uncertainty · reuse the same task mix / data mix</p></div>
+      <div class="node orange"><div class="tag">Distill</div><h4>复用 task / data mix</h4><p>feature + output + uncertainty</p></div>
       <div class="arr down orange">↓</div>
-      <div class="node green" style="width:100%;border-width:2px"><div class="tag">Student / car</div><h4>4B：3B action + 1B renderer</h4><p>deep DiT, low output resolution; capacity goes to semantics + temporal consistency</p></div>
+      <div class="node green" style="border-width:2px"><div class="tag">Student</div><h4>4B：3B + 1B</h4><p>action + renderer</p></div>
       <div class="arr down green">↓</div>
-      <div class="node" style="width:100%"><div class="tag">Compression</div><h4>QAT / INT8 / FP8 + operator fusion</h4><p>quantization-aware training, pruning, KV/cache budget, deterministic latency</p></div>
+      <div class="node"><div class="tag">Compress</div><h4>QAT · INT8/FP8</h4><p>pruning · fusion · latency</p></div>
       <div class="arr down">↓</div>
-      <div class="node dark" style="width:100%"><div class="tag">Deploy</div><h4>AI4 · ½ TRIP per UVE frame</h4><p>3B + 1B on-vehicle; external SR / temporal SR / UI compositing</p></div>
-    </div>
-  </div>
-
-  <div>
-    <div class="kicker" style="color:#6b7280">PRODUCT LAYER / 产品层</div>
-    <div style="display:flex;flex-direction:column;gap:9px;margin-top:10px">
-      <div class="node" style="padding:10px 13px"><div class="tag">Render</div><h4 style="font-size:17px;margin:4px 0 2px">低分辨率生成</h4><p>semantics first, pixels later</p></div>
-      <div class="arr down muted">↓</div>
-      <div class="node orange" style="padding:10px 13px"><div class="tag">Spatial SR</div><h4 style="font-size:17px;margin:4px 0 2px">空间超分</h4><p>cheap, external, no retraining</p></div>
-      <div class="arr down orange">↓</div>
-      <div class="node orange" style="padding:10px 13px"><div class="tag">Temporal SR</div><h4 style="font-size:17px;margin:4px 0 2px">时序超分 / 插帧</h4><p>smooth 36 fps UI from chunks</p></div>
-      <div class="arr down orange">↓</div>
-      <div class="node" style="padding:10px 13px"><div class="tag">Compose</div><h4 style="font-size:17px;margin:4px 0 2px">UI 合成</h4><p>trajectory overlay, click-to-drive, fallback</p></div>
-    </div>
-    <div class="callout" style="margin-top:14px;border-color:#f05a28;background:#fffaf5">
-      <div class="lab">Product trick</div>
-      <p>超分/插帧是“纯工程”，但它决定了用户看到的是“糊的 4B”还是“像 GTA 的 4B”。</p>
+      <div class="node dark"><div class="tag">Deploy</div><h4>AI4</h4><p>½ TRIP / UVE frame</p></div>
     </div>
   </div>
 </div>
 
-<div style="display:flex;gap:14px;margin-top:22px;align-items:center">
-  <div style="flex:1;border-top:1px solid var(--line)"></div>
-  <div class="kicker" style="color:#6b7280">THE 4B TRADEOFF</div>
-  <div style="flex:1;border-top:1px solid var(--line)"></div>
-</div>
-<div class="grid3" style="margin-top:12px">
-  <div class="kpi"><div class="n">Capability</div><div class="l">大模型教师：更多任务、更长时域、更高分辨率<br>student must inherit the joint representation</div></div>
-  <div class="kpi"><div class="n">Latency</div><div class="l">18 Hz UVE, 8-frame chunks, ~300 ms<br>不能为了画质牺牲控制环</div></div>
-  <div class="kpi"><div class="n">Memory</div><div class="l">AI4 bandwidth / power / thermal<br>quantization + cache budget</div></div>
+<!-- eval loop -->
+<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:9px;display:flex;align-items:center;gap:12px">
+  <span class="badge pub">EVAL</span>
+  <span class="note">closed-loop · safety · NVS consistency · intervention rate</span>
+  <span style="flex:1"></span>
+  <span class="note" style="color:#1f4fff">↺ feedback to data engine</span>
 </div>
 </div>
-  <div class="fig-foot"><div><b>Sources:</b> V14.3.5 unified model / Robotaxi→HW4 distillation reports (2026-07); V15 3B+1B report; operator’s distillation hypothesis. &nbsp; <b>Note:</b> 10B scope is unconfirmed.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
+  <div class="fig-foot"><div><b>Sources:</b> V15 release notes; CVPR 2026 talk; V14.3.5 distillation report; operator’s training notes. &nbsp; <b>Note:</b> stage names and weights are a reconstruction, not official.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
 </div></body></html>

@@ -68,4 +68,4 @@
 
 | Date | Change |
 |---|---|
-| 2026-11-23 | v1.0: first public version; 14 sections, 9 figures, ZH/EN, print CSS, WeChat editions. |
+| 2026-11-23 | v1.0: first public version; 13 sections + appendix, 11 figures, ZH/EN, print CSS, WeChat editions. |

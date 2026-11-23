@@ -82,62 +82,97 @@ body{
 </style></head>
 <body><div class="frame">
   <div class="fig-head">
-    <div><div class="kicker">POST-TRAIN / 后训练</div><div class="title">当仿真器变成同一个模型 <span class="thin">/ When the simulator is the model</span></div><div class="sub">RL、交互、闭环、外推不再是独立的 post-train 阶段，而是围绕多模态轨迹预测的辅助任务——前提是 4D 生成足够可信。</div></div>
+    <div><div class="kicker">TASK TAXONOMY / 任务分类</div><div class="title">四类任务，一个主干 <span class="thin">/ Four families, one backbone</span></div><div class="sub">如果 SFT 被吸收，训练目标就不再是“驾驶 + 辅助”，而是四类任务的加权混合；关键是 data-task pairing。</div></div>
     <div class="fig-no">FIG.06</div>
   </div>
   <div class="body">
-<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
-  <span class="badge hyp">HYPOTHESIS</span>
-  <span class="note">If the 4D generator is good enough to act as a simulator, post-training can be absorbed into a continued pretraining loop.</span>
+<div style="display:flex;justify-content:center;margin:0 0 8px">
+  <div style="background:var(--dark);color:#fff;border-radius:999px;padding:8px 20px;box-shadow:0 8px 24px rgba(13,21,36,.18);white-space:nowrap">
+    <span style="font:700 9.5px/1 Consolas,monospace;letter-spacing:.14em;color:#8fb0ff">SHARED BACKBONE</span>
+    <span style="font-size:15px;font-weight:800;margin-left:9px">UVE + scene token</span>
+    <span style="font-size:10.5px;color:#c6d0e2;margin-left:9px">one encoder, four loss families</span>
+  </div>
 </div>
+<div style="position:relative;height:632px;margin-top:0">
+  <!-- axes -->
+  <div style="position:absolute;left:86px;right:34px;top:18px;bottom:44px;border-left:2px solid #b9b0a0;border-bottom:2px solid #b9b0a0"></div>
+  <div style="position:absolute;left:0;top:50%;transform:translateY(-50%) rotate(-90deg);transform-origin:center;font:700 11px/1 Consolas,monospace;letter-spacing:.12em;color:#7a7163">COMPUTE / GENERATION COST →</div>
+  <div style="position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font:700 11px/1 Consolas,monospace;letter-spacing:.12em;color:#7a7163">SUPERVISION DENSITY →</div>
 
-<div class="flow" style="margin-top:16px">
-  <div class="node blue" style="flex:1.05"><div class="tag">Policy</div><h4>3B action model</h4><p>multi-modal trajectory<br>+ value / uncertainty</p></div>
-  <div class="arr">→</div>
-  <div class="node blue" style="flex:.95"><div class="tag">Act</div><h4>Action</h4><p>steer, accel<br>candidate trajectories</p></div>
-  <div class="arr orange">→</div>
-  <div class="node orange" style="flex:1.2"><div class="tag">World model</div><h4>4D renderer</h4><p>1B NVS decoder<br>imagine the next 8 frames</p></div>
-  <div class="arr orange">→</div>
-  <div class="node orange" style="flex:1.1"><div class="tag">Rollout</div><h4>Imagined future</h4><p>novel views<br>counterfactual actions</p></div>
-  <div class="arr purple">→</div>
-  <div class="node purple" style="flex:1.05"><div class="tag">Evaluate</div><h4>Reward / safety</h4><p>collision, comfort<br>progress, rule compliance</p></div>
-</div>
-
-<!-- return path -->
-<div style="position:relative;height:92px;margin-top:10px">
-  <div style="position:absolute;left:4%;right:4%;top:16px;border-top:2px dashed #6d4aff"></div>
-  <div style="position:absolute;left:4%;top:8px;width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:11px solid #6d4aff"></div>
-  <div style="position:absolute;left:50%;top:5px;transform:translateX(-50%);background:var(--paper);padding:0 12px;font:700 11px/1.4 Consolas,monospace;letter-spacing:.1em;color:#6d4aff">POLICY UPDATE / GRADIENT / 策略更新</div>
-  <div style="position:absolute;left:50%;top:31px;transform:translateX(-50%);white-space:nowrap" class="note">RL · interaction · closed-loop · extrapolation — all become auxiliary tasks around the main trajectory prediction.</div>
-</div>
-
-<div style="display:grid;grid-template-columns:1.2fr .8fr;gap:24px;margin-top:8px">
-  <div>
-    <div class="kicker" style="color:#6b7280">WHAT CHANGES</div>
-    <div class="grid2" style="margin-top:9px">
-      <div class="node" style="padding:11px 13px"><div class="tag">Old</div><h4 style="font-size:17px;margin:5px 0 3px">仿真器是外挂</h4><p>policy → simulator → reward → update; separate stack</p></div>
-      <div class="node green" style="padding:11px 13px"><div class="tag">New</div><h4 style="font-size:17px;margin:5px 0 3px">仿真器是同一个模型</h4><p>renderer conditioned on the same scene token; shorter loop</p></div>
+  <!-- quadrants -->
+  <div style="position:absolute;left:108px;top:18px;width:calc(50% - 126px);height:calc(50% - 36px)">
+    <div class="node blue" style="height:100%;padding:16px 18px;display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div class="tag">C / PLANNER · MAIN LINE</div><h4 style="font-size:22px;margin:7px 0 4px">多模态轨迹预测</h4><p>sparse reward, high interaction complexity</p></div>
+        <span class="badge inf">MAIN</span>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px">
+        <span class="pill blue">multi-modal traj</span><span class="pill blue">interaction</span>
+        <span class="pill blue">RL</span><span class="pill blue">closed-loop</span>
+        <span class="pill blue">extrapolation</span>
+      </div>
+      <div class="note" style="margin-top:10px">主线任务，但监督最稀疏；靠仿真/闭环补足。</div>
+      <div style="margin-top:auto;border-top:1px dashed #b9c6ff;padding-top:7px;font-size:11.2px;line-height:1.55;color:#5f6673">
+        <b>Loss</b> multi-modal NLL + reward &nbsp;·&nbsp; <b>Data</b> human trajectories + sim &nbsp;·&nbsp; <b>Eval</b> closed-loop, comfort, progress
+      </div>
     </div>
   </div>
-  <div class="node ghost" style="padding:12px 15px">
-    <div class="tag" style="color:#f05a28">REAL FLEET ANCHOR</div>
-    <h4 style="font-size:18px;margin:5px 0 4px">真实车队是锚</h4>
-    <p>闭环里跑久了会 reward hacking / 分布漂移；必须用真实接管、碰撞、舒适度数据做校准。</p>
+
+  <div style="position:absolute;right:34px;top:18px;width:calc(50% - 126px);height:calc(50% - 36px)">
+    <div class="node orange" style="height:100%;padding:16px 18px;display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div class="tag">A / DENSE GENERATIVE</div><h4 style="font-size:22px;margin:7px 0 4px">4D 视频生成 / 世界模型</h4><p>dense pixels, heaviest compute</p></div>
+        <span class="badge rep">HEAVY</span>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px">
+        <span class="pill orange">4D NVS</span><span class="pill orange">video gen</span>
+        <span class="pill orange">future prediction</span><span class="pill orange">simulation</span>
+      </div>
+      <div class="note" style="margin-top:10px">V15 新增的“重任务”；也是把 scene token 逼成 4D 的引擎。</div>
+      <div style="margin-top:auto;border-top:1px dashed #ffc7b5;padding-top:7px;font-size:11.2px;line-height:1.55;color:#5f6673">
+        <b>Loss</b> RGB + perceptual + temporal &nbsp;·&nbsp; <b>Data</b> GS / NVS pairs &nbsp;·&nbsp; <b>Eval</b> consistency + planning gain
+      </div>
+    </div>
   </div>
+
+  <div style="position:absolute;left:108px;bottom:44px;width:calc(50% - 126px);height:calc(50% - 36px)">
+    <div class="node purple" style="height:100%;padding:16px 18px;display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div class="tag">D / LANGUAGE &amp; DEBUG</div><h4 style="font-size:22px;margin:7px 0 4px">语言 / 调试</h4><p>sparse, broad, cheap</p></div>
+        <span class="badge hyp">LIGHT</span>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px">
+        <span class="pill purple">caption</span><span class="pill purple">VQA</span>
+        <span class="pill purple">CoT</span><span class="pill purple">data engine</span>
+      </div>
+      <div class="note" style="margin-top:10px">不是主线，但决定可解释性、数据检索和失败归因。</div>
+      <div style="margin-top:auto;border-top:1px dashed #cfc5ff;padding-top:7px;font-size:11.2px;line-height:1.55;color:#5f6673">
+        <b>Loss</b> caption / QA &nbsp;·&nbsp; <b>Data</b> auto-labels + VLM &nbsp;·&nbsp; <b>Eval</b> explanation quality, retrieval
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute;right:34px;bottom:44px;width:calc(50% - 126px);height:calc(50% - 36px)">
+    <div class="node green" style="height:100%;padding:16px 18px;display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div class="tag">B / PERCEPTION</div><h4 style="font-size:22px;margin:7px 0 4px">驾驶感知任务</h4><p>dense labels, moderate compute</p></div>
+        <span class="badge pub">MEDIUM</span>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px">
+        <span class="pill green">det / track</span><span class="pill green">TL / TSR</span>
+        <span class="pill green">seg / occ</span><span class="pill green">depth / flow</span>
+      </div>
+      <div class="note" style="margin-top:10px">最成熟的监督来源；也是推理时最容易被裁剪的辅助头。</div>
+      <div style="margin-top:auto;border-top:1px dashed #a9dcc8;padding-top:7px;font-size:11.2px;line-height:1.55;color:#5f6673">
+        <b>Loss</b> det / track / seg / occ &nbsp;·&nbsp; <b>Data</b> auto-labels + human audit &nbsp;·&nbsp; <b>Eval</b> mAP / IoU, rare recall
+      </div>
+    </div>
+  </div>
+
+  <!-- center badge removed; shared backbone is shown above -->
 </div>
 
-<div class="grid4" style="margin-top:18px">
-  <div class="node" style="padding:9px 12px"><div class="tag">Aux 1</div><h4 style="font-size:16px;margin:4px 0 2px">RL</h4><p>reward, preference</p></div>
-  <div class="node" style="padding:9px 12px"><div class="tag">Aux 2</div><h4 style="font-size:16px;margin:4px 0 2px">Interaction</h4><p>other agents’ reactions</p></div>
-  <div class="node" style="padding:9px 12px"><div class="tag">Aux 3</div><h4 style="font-size:16px;margin:4px 0 2px">Closed-loop</h4><p>rollout consistency</p></div>
-  <div class="node" style="padding:9px 12px"><div class="tag">Aux 4</div><h4 style="font-size:16px;margin:4px 0 2px">Extrapolation</h4><p>counterfactual scenes</p></div>
+<div class="note" style="text-align:center;margin-top:2px">定性坐标，不是测量值 / qualitative map, not measured. The four families share one encoder but differ in label cost, compute and evaluation.</div>
 </div>
-
-<div class="grid3" style="margin-top:18px">
-  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">RISK 1</div><h4 style="font-size:17px;margin:5px 0 3px">仿真保真度</h4><p>渲染得好看 ≠ 物理正确；碰撞、遮挡、光照都可能骗过 policy。</p></div>
-  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">RISK 2</div><h4 style="font-size:17px;margin:5px 0 3px">Reward hacking</h4><p>策略会找到奖励漏洞；需要真实接管、舒适度和规则约束做锚。</p></div>
-  <div class="node ghost" style="padding:11px 13px"><div class="tag" style="color:#dc2626">RISK 3</div><h4 style="font-size:17px;margin:5px 0 3px">算力成本</h4><p>闭环 rollout 比监督学习贵一个量级；“吸收”不等于免费。</p></div>
-</div>
-</div>
-  <div class="fig-foot"><div><b>Sources:</b> CVPR 2026 Tesla talk (World Sim NN ↔ Policy NN closed loop); operator’s V15 post-train hypothesis. &nbsp; <b>Note:</b> “absorbed” is a direction, not a confirmed fact.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
+  <div class="fig-foot"><div><b>Sources:</b> CVPR 2026 Tesla talk (perception / occupancy / 3DGS / language outputs); V15 release notes (NVS, captions); author’s taxonomy. &nbsp; <b>Note:</b> weights are illustrative.</div><div><b>FSD V15 / Technical Map</b> &nbsp;·&nbsp; 2026.11</div></div>
 </div></body></html>

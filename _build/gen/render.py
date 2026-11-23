@@ -10,7 +10,7 @@ from .blog import parse_front_matter, render_markdown, plain, word_count
 from .data_core import PROFILE, STATS, FOCUS, CAREER, EDUCATION
 from .data_works import PAPERS, MANUSCRIPTS, PATENTS, PROJECT_PAGES, PROJECTS_INTRO
 from .data_repos import REPOS, REPO_GROUPS, FINANCE, FORKS
-from .data_design import DESIGN, DESIGN_INTRO
+from .data_design import DESIGN
 from .layout import t, esc, url, icon, icon_solid, ui, page
 
 GITHUB_REPO = "https://github.com/lidongyv/"
@@ -607,11 +607,10 @@ def render_publications(lang):
         th_link=esc("链接" if lang == "zh" else "Links"),
         rows="".join(rows),
         ms_head=section_head(lang, "投稿存档" if lang == "zh" else "Manuscript archive", level=2),
-        ms_notice_title=esc("关于诚实" if lang == "zh" else "A note on honesty"),
-        ms_notice=esc("我把它们单独存档、明确标注「未发表」，而不是混进论文列表。"
+        ms_notice_title=esc("未发表" if lang == "zh" else "Unpublished"),
+        ms_notice=esc("以下稿件未见录用记录，因此不列入上方论文列表。"
                       if lang == "zh" else
-                      "They are archived separately and clearly marked as unpublished rather than mixed into the "
-                      "publication list."),
+                      "No acceptance record exists for these drafts, so they are not listed as publications above."),
         mcards="".join(mcards),
     )
     return page(lang, ("论文 · " if lang == "zh" else "Publications · ") + t(PROFILE["name"], lang),
@@ -816,11 +815,10 @@ def render_blog_index(lang, posts):
   <div class="wrap wrap--narrow">
     {head}
     {list}
-    <div class="notice" style="margin-top:32px">
-      <div class="notice__title">{sites_title}</div>
-      <div>{sites_body} <a href="{sites_href}">{sites_link}</a></div>
+    <div style="margin-top:32px" class="small">
+      <a href="{sites_href}">{sites_link}</a>
     </div>
-    <div class="notice" style="margin-top:12px">
+    <div class="notice" style="margin-top:20px">
       <div class="notice__title">RSS</div>
       <div>{rss_note} <a href="{feed}">{feed}</a></div>
     </div>
@@ -829,11 +827,9 @@ def render_blog_index(lang, posts):
 """.format(
         head=section_head(lang, "博客" if lang == "zh" else "Blog", level=1),
         list=blog_list_html(lang, posts),
-        sites_title=esc("研究站" if lang == "zh" else "Research sites"),
-        sites_body=esc("%d 个独立成站的研究笔记与综述。" % len(DESIGN) if lang == "zh"
-                       else "%d standalone research sites and surveys." % len(DESIGN)),
         sites_href=url(lang, "design/index.html"),
-        sites_link=esc("查看全部" if lang == "zh" else "See all"),
+        sites_link=esc("研究站（%d）→" % len(DESIGN) if lang == "zh"
+                       else "Research sites (%d) →" % len(DESIGN)),
         rss_note=esc("订阅：" if lang == "zh" else "Subscribe: "),
         feed=("/blog/feed.xml" if lang == "zh" else "/en/blog/feed.xml"),
     )
@@ -874,19 +870,21 @@ def render_design_index(lang):
 <section class="section">
   <div class="wrap">
     {head}
-    <p class="muted" style="max-width:66ch;margin-bottom:28px">{intro}</p>
     <div class="grid grid--2">{cards}</div>
     <div class="cta-row" style="margin-top:32px">{back}</div>
   </div>
 </section>
 """.format(
         head=section_head(lang, "研究站" if lang == "zh" else "Research sites", level=1),
-        intro=esc(t(DESIGN_INTRO, lang)),
         cards="".join(cards),
         back=btn(url(lang, "blog/index.html"), "博客" if lang == "zh" else "Blog", "btn btn--ghost"),
     )
     return page(lang, ("研究站 · " if lang == "zh" else "Research sites · ") + t(PROFILE["name"], lang),
-                t(DESIGN_INTRO, lang), "design/index.html", body, active="blog")
+                "世界模型、3D Gaussian Splatting、具身智能、蒸馏、FSD 与 VLA/RL 的调研与阅读笔记。"
+                if lang == "zh" else
+                "Survey and reading notes on world models, 3D Gaussian Splatting, embodied AI, distillation, "
+                "FSD and VLA/RL.",
+                "design/index.html", body, active="blog")
 
 
 def render_post(lang, post, posts):
@@ -995,19 +993,6 @@ def render_about(lang):
     {timeline}
   </div>
 </section>
-<section class="section">
-  <div class="wrap wrap--narrow">
-    {build_head}
-    <div class="prose" style="font-size:15px">
-      <p>{build_p}</p>
-      <ul>
-        <li>{build_li1}</li>
-        <li>{build_li2}</li>
-        <li>{build_li3}</li>
-      </ul>
-    </div>
-  </div>
-</section>
 """.format(
         head=section_head(lang, "关于" if lang == "zh" else "About", level=1),
         p1=esc("我是于立冬，自动驾驶算法负责人，现在在新石器负责 AD 算法团队（38 人、约 8,700 张 GPU）。"
@@ -1045,22 +1030,6 @@ def render_about(lang):
         rbuttons=rbuttons,
         timeline_head=section_head(lang, "经历速览" if lang == "zh" else "Career at a glance", level=2),
         timeline=career_timeline(lang, limit=6, show_bullets=False),
-        build_head=section_head(lang, "关于这个站点" if lang == "zh" else "About this site", level=2),
-        build_p=esc("这是一个纯静态站点：生成脚本在 Python 标准库上运行，页面是预先渲染好的 HTML，"
-                    "没有任何前端框架、外部字体或追踪脚本。旧版主页的内容全部保留在 archive 里。"
-                    if lang == "zh" else
-                    "A fully static site: the generator runs on the Python standard library, pages are pre-rendered "
-                    "HTML, and there is no front-end framework, external font or tracking script. Everything from the "
-                    "previous version of the site is preserved under archive."),
-        build_li1=esc("语义化 HTML + 手写 CSS，零运行时依赖，首屏无阻塞资源。"
-                      if lang == "zh" else
-                      "Semantic HTML and hand-written CSS with zero runtime dependencies and no blocking first-paint assets."),
-        build_li2=esc("同时输出中英文两套页面，双语互链并标注 hreflang。"
-                      if lang == "zh" else
-                      "Bilingual output with cross-links and hreflang annotations."),
-        build_li3=esc("提供 RSS 与结构化数据（JSON-LD），便于被检索与分享。"
-                      if lang == "zh" else
-                      "RSS plus JSON-LD structured data, so it is easy to index and share."),
     )
     return page(lang, ("关于 · " if lang == "zh" else "About · ") + t(PROFILE["name"], lang),
                 "于立冬（Lidong Yu）：自动驾驶算法负责人，VLA 与世界模型落地。简历下载、联系方式与经历速览。"

@@ -92,9 +92,3 @@ DESIGN = [
         "tags_en": ["VLA", "RL", "Post-training"],
     },
 ]
-
-DESIGN_INTRO = {
-    "zh": "下面这些是独立成站的研究笔记与综述，内容是自建的；论文 PDF、抓取的会议页面和第三方文章不随站点发布。",
-    "en": "Standalone research sites and surveys. The writing is mine; paper PDFs, scraped conference pages and "
-          "third-party articles are not republished here.",
-}
