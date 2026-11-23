@@ -1,0 +1,1796 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>地图、无图Lane数据握手 — TLD/OCC黑白名单工作机制</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0d12;--bg-2:#11141b;--bg-3:#161a23;--bg-4:#1c2230;
+  --border:#1f242e;--border-2:#2a3142;
+  --text:#e5e7eb;--text-2:#9ca3af;--text-3:#6b7280;
+  --primary:#5b9eff;--primary-2:#3d7dd4;
+  --black:#ff6b6b;--white:#5dd39e;--hot:#ffd166;--orange:#ff9f4a;--purple:#b794f6;
+  --radius:12px;--shadow:0 8px 24px rgba(0,0,0,.35);
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Inter,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--primary);text-decoration:none}
+a:hover{text-decoration:underline}
+b{color:var(--text);font-weight:600}
+code{font-family:"SF Mono",Menlo,Consolas,monospace;background:var(--bg-3);padding:1px 6px;border-radius:4px;font-size:.9em;color:#ffd166}
+hr{border:0;border-top:1px solid var(--border);margin:24px 0}
+
+.topbar{position:sticky;top:0;z-index:100;background:rgba(11,13,18,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.topbar-inner{max-width:1480px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:24px}
+.brand{font-weight:600;font-size:15px;color:var(--text);white-space:nowrap}
+.brand .tag{margin-left:8px;font-size:11px;padding:2px 8px;background:rgba(91,158,255,.15);color:var(--primary);border-radius:4px;font-weight:500;vertical-align:middle}
+.topnav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap}
+.topnav button{background:transparent;border:0;color:var(--text-2);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;transition:all .15s;font-family:inherit}
+.topnav button:hover{background:var(--bg-3);color:var(--text)}
+.topnav button.active{background:rgba(91,158,255,.15);color:var(--primary)}
+
+.app{display:grid;grid-template-columns:240px 1fr;max-width:1480px;margin:0 auto;padding:24px;gap:8px}
+.sidebar{position:sticky;top:72px;align-self:start;max-height:calc(100vh - 96px);overflow-y:auto;padding-right:8px}
+.sidebar h5{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 6px 12px;font-weight:600}
+.sidebar ul{list-style:none}
+.sidebar a{display:block;padding:6px 12px;color:var(--text-2);border-radius:6px;font-size:13px;transition:all .15s;border-left:2px solid transparent}
+.sidebar a:hover{color:var(--text);text-decoration:none}
+.sidebar a.active{color:var(--primary);border-left-color:var(--primary);background:rgba(91,158,255,.06)}
+.sidebar a.lv2{margin-left:14px;font-size:12px;color:var(--text-3)}
+
+.main{padding:0 24px;min-width:0;border-left:1px solid var(--border)}
+.section{margin-bottom:80px;scroll-margin-top:72px}
+.section h1{font-size:28px;margin-bottom:8px;font-weight:600;letter-spacing:-.5px}
+.section h2{font-size:20px;margin:36px 0 12px;font-weight:600;letter-spacing:-.3px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.section h3{font-size:15px;margin:20px 0 8px;font-weight:600;color:var(--text)}
+.section h4{font-size:13px;margin:16px 0 6px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.4px}
+.section p{margin:8px 0;color:var(--text);font-size:14px}
+.section ul,.section ol{margin:8px 0 8px 24px}
+.section li{margin:4px 0}
+
+.card{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin:14px 0;box-shadow:var(--shadow)}
+.callout{background:rgba(91,158,255,.07);border-left:3px solid var(--primary);padding:12px 16px;border-radius:8px;margin:12px 0;color:var(--text)}
+.callout.warn{background:rgba(255,209,102,.07);border-left-color:var(--hot)}
+.callout.danger{background:rgba(255,107,107,.07);border-left-color:var(--black)}
+.callout.ok{background:rgba(93,211,158,.07);border-left-color:var(--white)}
+.callout .em{font-size:18px;margin-right:8px;vertical-align:-2px}
+
+.hero{padding:8px 0 0}
+.hero h1{font-size:32px;margin-bottom:4px;background:linear-gradient(135deg,#5b9eff 0%,#b794f6 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.8px}
+.hero .subtitle{color:var(--text-2);font-size:14px;margin-bottom:18px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}
+.kpi{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.kpi .v{font-size:22px;font-weight:600;color:var(--primary);font-family:"SF Mono",Menlo,monospace}
+.kpi .l{font-size:12px;color:var(--text-2);margin-top:4px}
+
+.table-wrap{background:var(--bg-2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:12px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--bg-3);font-weight:600;color:var(--text-2);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--bg-3)}
+
+.ch{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap}
+.ch-ldhd{background:rgba(91,158,255,.18);color:#7eb6ff}
+.ch-tldt{background:rgba(183,148,246,.18);color:#c8b1f8}
+.ch-tldp{background:rgba(255,159,74,.18);color:#ffb578}
+.ch-occ{background:rgba(255,107,107,.18);color:#ff8c8c}
+.ch-local{background:rgba(93,211,158,.18);color:#7fdfb1}
+
+.mermaid{background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:18px;margin:14px 0;overflow-x:auto;text-align:center}
+.mermaid svg{max-width:100%;height:auto}
+.mermaid-fallback{background:var(--bg-3);padding:12px;border-radius:6px;font-family:"SF Mono",monospace;font-size:12px;white-space:pre;color:var(--text-2);overflow:auto}
+
+details.collapse{background:var(--bg-2);border:1px solid var(--border);border-radius:8px;margin:8px 0;overflow:hidden;transition:border-color .15s}
+details.collapse[open]{border-color:var(--border-2)}
+details.collapse>summary{padding:14px 18px;cursor:pointer;display:flex;align-items:center;gap:10px;font-weight:500;user-select:none;list-style:none}
+details.collapse>summary::-webkit-details-marker{display:none}
+details.collapse>summary::before{content:"▸";color:var(--text-2);transition:transform .2s;font-size:10px}
+details[open]>summary::before{transform:rotate(90deg)}
+details>div.body{padding:0 18px 18px;border-top:1px solid var(--border);padding-top:14px}
+
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin:14px 0 0}
+.tabs button{background:transparent;border:0;color:var(--text-2);padding:10px 16px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;font-family:inherit;font-weight:500}
+.tabs button:hover{color:var(--text)}
+.tabs button.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tabpanel{display:none;background:var(--bg-2);border:1px solid var(--border);border-top:0;border-radius:0 0 8px 8px;padding:18px;margin-top:-1px}
+.tabpanel.active{display:block}
+
+.gis{display:grid;grid-template-columns:1fr 340px;gap:14px;margin:16px 0;background:var(--bg-2);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow)}
+.gis-stack{display:flex;flex-direction:column;gap:10px;min-width:0}
+.map-bar{display:flex;gap:10px;align-items:center;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;flex-wrap:wrap}
+.map-bar .lbl{font-size:12px;color:var(--text-2);white-space:nowrap}
+.gis-map{background:#06080d;border-radius:8px;border:1px solid var(--border);overflow:hidden;position:relative;min-height:480px}
+.gis-map #lmap{width:100%;height:480px;background:#0c0f15}
+#mapError{display:none;position:absolute;inset:0;background:rgba(11,13,18,.92);z-index:500;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:24px}
+#mapError.show{display:flex}
+#mapError .me-icon{font-size:42px;opacity:.7}
+#mapError .me-title{font-size:16px;font-weight:600;color:var(--text)}
+#mapError .me-msg{font-size:13px;color:var(--text-2);max-width:520px;line-height:1.6}
+.gis-map .map-label{position:absolute;top:8px;left:10px;font-size:11px;color:var(--text-3);font-family:"SF Mono",monospace;letter-spacing:.4px;z-index:401;background:rgba(11,13,18,.7);padding:3px 8px;border-radius:4px}
+.bd-legend{position:absolute;right:8px;bottom:8px;background:rgba(11,13,18,.78);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--text-2);z-index:401;display:flex;gap:10px}
+.bd-legend .legend-dot{width:18px;height:3px;border-radius:2px}
+.leaflet-container{background:#0c0f15;font-family:inherit}
+.leaflet-popup-content-wrapper{background:var(--bg-2);color:var(--text);border:1px solid var(--border);border-radius:8px}
+.leaflet-popup-tip{background:var(--bg-2)}
+.leaflet-popup-content{margin:8px 12px;font-size:12px;line-height:1.5}
+.leaflet-control-attribution{background:rgba(11,13,18,.7)!important;color:var(--text-3)!important;font-size:10px!important}
+.leaflet-control-attribution a{color:var(--text-2)!important}
+.leaflet-control-zoom a{background:var(--bg-2)!important;color:var(--text)!important;border:1px solid var(--border)!important}
+.leaflet-control-zoom a:hover{background:var(--bg-3)!important}
+.gis-controls{display:flex;flex-direction:column;gap:14px}
+.gis-controls h4{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--bg-3);border:1px solid var(--border);padding:5px 10px;border-radius:14px;font-size:12px;cursor:pointer;color:var(--text-2);transition:all .15s;font-family:inherit}
+.chip:hover{color:var(--text);border-color:var(--border-2)}
+.chip.active{background:rgba(91,158,255,.18);border-color:var(--primary);color:var(--primary)}
+.gis-toggle{display:flex;gap:0;background:var(--bg-3);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.gis-toggle button{flex:1;background:transparent;border:0;padding:6px 10px;font-size:12px;color:var(--text-2);cursor:pointer;font-family:inherit;transition:all .15s}
+.gis-toggle button.active{background:var(--primary);color:#fff}
+.gis-list{max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:var(--bg-3)}
+.gis-list table{margin:0;font-size:12px;background:transparent}
+.gis-list th,.gis-list td{padding:6px 8px;font-size:11px}
+.gis-list th{background:var(--bg-4)}
+.gis-list tr.row-hot td{color:var(--hot)}
+.gis-list tr.row-hot td:first-child{font-weight:600}
+.gis-list tr{cursor:pointer;transition:background .12s}
+.gis-list tr:hover td{background:var(--bg-4)}
+.gis-list tr.row-sel td{background:rgba(91,158,255,.12);color:var(--primary)}
+.gis-list tr .sel-mark{color:var(--text-3);font-weight:600}
+.gis-list tr.row-sel .sel-mark{color:var(--primary)}
+.btn{background:var(--primary);color:#fff;border:0;padding:8px 14px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:500;transition:all .15s;font-family:inherit}
+.btn:hover{background:var(--primary-2)}
+.btn.ghost{background:var(--bg-3);color:var(--text);border:1px solid var(--border)}
+.btn.ghost:hover{background:var(--bg-4)}
+.btn-row{display:flex;gap:8px}
+
+.legend{display:flex;gap:12px;font-size:11px;padding:4px 0 8px;color:var(--text-2);align-items:center;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:18px;height:3px;border-radius:2px}
+
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg-3);color:var(--text);padding:10px 18px;border-radius:8px;border:1px solid var(--border-2);font-size:13px;opacity:0;transition:all .25s;pointer-events:none;z-index:200;box-shadow:var(--shadow)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.muted{color:var(--text-2)}
+.small{font-size:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.manual-card{background:var(--bg-2);border:1px solid var(--border);border-radius:10px;padding:16px;transition:all .15s;display:flex;flex-direction:column;gap:8px}
+.manual-card:hover{border-color:var(--border-2);transform:translateY(-2px)}
+.manual-card .icon{font-size:22px}
+.manual-card h4{font-size:14px;font-weight:600;color:var(--text)}
+.manual-card p{font-size:12px;color:var(--text-2);margin:0;flex:1}
+.manual-card a{font-size:12px;color:var(--primary);margin-top:4px}
+
+.kfield{font-family:"SF Mono",Menlo,monospace;font-size:12px;color:#ffd166;background:rgba(255,209,102,.08);padding:1px 6px;border-radius:4px}
+
+@media (max-width:1024px){
+  .app{grid-template-columns:1fr;padding:14px}
+  .sidebar{display:none}
+  .main{padding:0;border-left:0}
+  .gis{grid-template-columns:1fr}
+  .kpis{grid-template-columns:1fr 1fr}
+  .row3,.row4{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">黑白名单工作机制 <span class="tag">v1.0</span></div>
+    <nav class="topnav">
+      <button data-target="overview" class="active">概览</button>
+      <button data-target="blacklist">刷黑机制</button>
+      <button data-target="whitelist">刷白机制</button>
+      <button data-target="handshake">数据握手</button>
+      <button data-target="appendix">附录</button>
+    </nav>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar">
+    <h5>章节</h5>
+    <ul id="sidenav">
+      <li><a href="#overview" class="active">1. 概览</a></li>
+      <li><a href="#overview-1-1" class="lv2">1.1 为什么需要</a></li>
+      <li><a href="#overview-1-2" class="lv2">1.2 五条通道</a></li>
+      <li><a href="#overview-1-3" class="lv2">1.3 端到端数据流</a></li>
+      <li><a href="#blacklist">2. 刷黑机制</a></li>
+      <li><a href="#black-2-1" class="lv2">2.1 五种刷黑场景</a></li>
+      <li><a href="#black-2-2" class="lv2">2.2 刷黑流程图</a></li>
+      <li><a href="#black-2-3" class="lv2">2.3 刷黑细则</a></li>
+      <li><a href="#whitelist">3. 刷白机制</a></li>
+      <li><a href="#white-3-1" class="lv2">3.1 五种刷白场景</a></li>
+      <li><a href="#white-3-2" class="lv2">3.2 刷白流程图</a></li>
+      <li><a href="#white-3-3" class="lv2">3.3 字段速查</a></li>
+      <li><a href="#white-3-4" class="lv2">3.4 状态机</a></li>
+      <li><a href="#white-3-5" class="lv2">3.5 4 份手册详情</a></li>
+      <li><a href="#handshake">4. 数据握手</a></li>
+      <li><a href="#hand-4-1" class="lv2">4.1 统一管理</a></li>
+      <li><a href="#hand-4-2" class="lv2">4.2 GIS 可视化</a></li>
+      <li><a href="#hand-4-3" class="lv2">4.3 大盘口径</a></li>
+      <li><a href="#hand-4-4" class="lv2">4.4 发版数据集</a></li>
+      <li><a href="#appendix">5. 附录</a></li>
+    </ul>
+  </aside>
+
+  <main class="main">
+
+<!-- ============ §1 概览 ============ -->
+<section id="overview" class="section">
+  <div class="hero">
+    <h1>地图、无图Lane 数据握手</h1>
+    <div class="subtitle">TLD / OCC / Lane 黑白名单工作机制 — 刷黑、刷白、数据闭环与发版水位管理</div>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><div class="v">5</div><div class="l">黑白名单通道</div></div>
+    <div class="kpi"><div class="v">4</div><div class="l">Triage 手册</div></div>
+    <div class="kpi"><div class="v">link 级</div><div class="l">能力声明粒度</div></div>
+    <div class="kpi"><div class="v">点位数</div><div class="l">大盘核心口径</div></div>
+  </div>
+
+  <h2 id="overview-1-1">1.1 为什么需要黑白名单</h2>
+  <ul>
+    <li>自动驾驶系统的能力 ≠ 全域能力，存在"会的路段" vs "不会的路段"</li>
+    <li>黑白名单是 <b>link 级别</b> 的能力声明 — 一条 link 在某个模块（LD / HD / TLD / OCC / Local）上是否可信</li>
+    <li>黑白名单驱动两件事：
+      <ol>
+        <li><b>运行时</b>：路径规划层面是否允许走这条 link、是否切到 HD、是否依赖 OCC</li>
+        <li><b>数据闭环</b>：高热 black link 优先采集 → 优先 triage → 优先刷白</li>
+      </ol>
+    </li>
+  </ul>
+
+  <h2 id="overview-1-2">1.2 五条黑白名单通道</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th style="width:140px">通道</th><th style="width:110px">数据来源</th><th>黑名单含义</th><th>白名单含义</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ch ch-ldhd">LD/HD black</span></td><td>地图几何</td><td>该 link 上 LD 无法正确行驶，需切 HD</td><td>HD 几何已修复且 centerline 居中</td></tr>
+      <tr><td><span class="ch ch-tldt">TLD black (topo)</span></td><td>地图拓扑</td><td>路口 entry/inner link 的红绿灯关联错误</td><td>HD topo 修复 + tld.status 正确</td></tr>
+      <tr><td><span class="ch ch-tldp">TLD black (感知)</span></td><td>感知模型</td><td>TLD 模型识别错误或停止点异常</td><td>模型/后处理更新 + tld.status 正确</td></tr>
+      <tr><td><span class="ch ch-occ">OCC black</span></td><td>感知模型</td><td>OCC 漏检 / 检出晚</td><td>模型/后处理更新 + occ_fusion_status 正确</td></tr>
+      <tr><td><span class="ch ch-local">Local black (无图)</span></td><td>Lane Model</td><td>Ref path 投影偏差大 / 断连 / 路口不可过</td><td>lane 后处理更新 + ref path 居中</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="overview-1-3">1.3 端到端数据握手</h2>
+  <pre class="mermaid">flowchart LR
+    A[路测/真实接管] --&gt; B[Issue 入库]
+    B --&gt; C{分类}
+    C --&gt;|几何| D1[LD-&gt;HD black]
+    C --&gt;|topo| D2[TLD black topo]
+    C --&gt;|TLD 感知| D3[TLD black 感知]
+    C --&gt;|OCC| D4[OCC black]
+    C --&gt;|Lane| D5[Local black]
+    D1 --&gt; E[(Black link 统一仓库)]
+    D2 --&gt; E
+    D3 --&gt; E
+    D4 --&gt; E
+    D5 --&gt; E
+    E --&gt; F[GIS 聚类 按点位排序]
+    F --&gt; G[发版数据集采集 高热优先]
+    G --&gt; H[版本迭代 HD更新/模型更新]
+    H --&gt; I[SIL 仿真复测]
+    I --&gt; J{按手册 Triage}
+    J --&gt;|通过| K[刷白]
+    J --&gt;|不通过| L[保留 black]
+    K --&gt; E</pre>
+  <div class="callout"><span class="em">💡</span>整个数据闭环以 <b>black link 仓库</b> 为中心：5 条通道产生 black → GIS 聚类 → 指导采集与迭代 → 仿真复测 → 通过则刷白回流，不通过保留。</div>
+</section>
+
+<!-- ============ §2 刷黑机制 ============ -->
+<section id="blacklist" class="section">
+  <h1>2. 刷黑机制 (Blacklist Generation)</h1>
+  <p class="muted">"刷黑"是把一条 link 在某个通道上标记为不可信。不同模块的问题产生不同通道的 black、刷黑的粒度也不同。</p>
+
+  <h2 id="black-2-1">2.1 五种刷黑场景</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th style="width:32px">#</th><th>触发源</th><th style="width:130px">影响通道</th><th>刷黑粒度</th><th>关键判据</th></tr></thead>
+    <tbody>
+      <tr><td>1.1</td><td>地图几何偏移</td><td><span class="ch ch-ldhd">LD→HD black</span></td><td>Issue 涉及的 link id 刷黑；<b>整个 issue 刷黑</b></td><td>LD 投影偏差大 + HD 也偏差/无 HD/HD 中断</td></tr>
+      <tr><td>1.2</td><td>地图拓扑 / 挂接错误</td><td><span class="ch ch-tldt">TLD black</span></td><td>该路口 <b>entry link + inner link</b> 全部刷黑</td><td>TLD 与车道的挂接关系错误</td></tr>
+      <tr><td>1.3</td><td>TLD 识别 / 后处理</td><td><span class="ch ch-tldp">TLD black</span></td><td>该路口 <b>entry link + inner link</b> 全部刷黑</td><td><span class="kfield">tld.status</span> 错误 / 停止点异常</td></tr>
+      <tr><td>1.4</td><td>OCC 识别 / 后处理</td><td><span class="ch ch-occ">OCC black</span></td><td>Issue 涉及的 link id 刷黑；<b>整个 issue 刷黑</b></td><td>25~30m 内未检出红色占据栅格</td></tr>
+      <tr><td>1.5</td><td>Lane Model 识别 / 后处理</td><td><span class="ch ch-local">Local black</span></td><td>Issue 涉及的 link id 刷黑；<b>整个 issue 刷黑</b></td><td>Ref path 偏差 / 折线 / 断连 / 不过路口</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="black-2-2">2.2 刷黑流程图</h2>
+  <pre class="mermaid">flowchart TD
+    S[路测接管 issue] --&gt; T[Triage 分类]
+    T --&gt; U1{接管类型}
+    U1 --&gt;|闯红灯| TLD[转 TLD 流程]
+    U1 --&gt;|其他| LANE[转 LANE 流程]
+    TLD --&gt; TLD1{几何 / topo / 感知}
+    TLD1 --&gt;|几何| BG[LD-&gt;HD black<br/>link 刷黑]
+    TLD1 --&gt;|topo/挂接| BT1[TLD black<br/>路口 entry+inner 刷黑]
+    TLD1 --&gt;|识别/后处理| BT2[TLD black<br/>路口 entry+inner 刷黑]
+    LANE --&gt; LANE1{几何 / OCC / Lane}
+    LANE1 --&gt;|地图几何| BG
+    LANE1 --&gt;|OCC| BO[OCC black<br/>link 刷黑 整个issue]
+    LANE1 --&gt;|Lane model| BL[Local black<br/>link 刷黑 整个issue]
+    BG --&gt; R[(Black link 统一仓库)]
+    BT1 --&gt; R
+    BT2 --&gt; R
+    BO --&gt; R
+    BL --&gt; R</pre>
+
+  <h2 id="black-2-3">2.3 各场景刷黑细则</h2>
+
+  <details class="collapse" open>
+    <summary><span class="ch ch-ldhd">1.1</span> &nbsp; LD→HD black（地图几何偏移）</summary>
+    <div class="body">
+      <ul>
+        <li>仿真模板见 Map 手册（<a href="https://r3c0qt6yjw.feishu.cn/wiki/PVYjwFkGTisBdNk7Ga2cHnoLnyh" target="_blank">LD黑名单刷HD白Triage指南</a>）</li>
+        <li>先看 <span class="kfield">goline</span> 是否完整；再看是否压线 / 压路沿</li>
+        <li>若 LD 偏差大且 HD 也偏差 / 无 HD / HD goline 中断 → 视为 HD 不可解，<b>整个 issue 刷黑</b>，所有涉及 link id 进入 LD/HD black 仓库</li>
+      </ul>
+      <div class="callout warn"><span class="em">⚠️</span>典型不可解：①HD 投影同样偏差大；②此处无 HD 显示；③HD goline 中断（导航到辅路而辅路无 HD）；④HD 投影正常但无 goline。</div>
+    </div>
+  </details>
+
+  <details class="collapse">
+    <summary><span class="ch ch-tldt">1.2</span> &nbsp; TLD black — 地图拓扑 / 挂接错误</summary>
+    <div class="body">
+      <ul>
+        <li>拓扑挂接错误导致车道未关联到正确的红绿灯</li>
+        <li>影响范围更大：issue 所在路口的 <b>entry link + inner link 全部刷黑</b></li>
+        <li>路口结构相关 link 一并影响，粒度更粗，目的是覆盖整片路口</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="collapse">
+    <summary><span class="ch ch-tldp">1.3</span> &nbsp; TLD black — 识别 / 后处理问题</summary>
+    <div class="body">
+      <ul>
+        <li>红灯期间 <span class="kfield">tld.status</span> 错给了 <code>1</code>（放行）→ 闯红灯接管</li>
+        <li>或停止点异常（停止点位置与实际停止线偏差大）</li>
+        <li>同样 <b>路口 entry + inner link 全部刷黑</b></li>
+      </ul>
+      <div class="callout danger"><span class="em">🚫</span>仿真复测窗口：距停止线 15m 内 / 过停止线 5m 内，<span class="kfield">tld.status</span> 必须稳定为 0，抖动到 1 也算不通过。</div>
+    </div>
+  </details>
+
+  <details class="collapse">
+    <summary><span class="ch ch-occ">1.4</span> &nbsp; OCC black — 识别 / 后处理问题</summary>
+    <div class="body">
+      <ul>
+        <li>车端原始结果在自车前方 <b>25~30 米</b> 范围内未及时检出红色占据栅格</li>
+        <li>OCC 漏检 或 检出晚 都会导致接管 → 该 issue 涉及 link 全部刷黑，<b>整个 issue 刷黑</b></li>
+        <li>核心视图：<span class="kfield">occ_fusion_status</span>（红 = 占据，蓝 = OD 动目标）</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="collapse">
+    <summary><span class="ch ch-local">1.5</span> &nbsp; Local black — Lane Model 识别 / 后处理问题（无图模式）</summary>
+    <div class="body">
+      <ul>
+        <li>自车经过该 link 的过程中，ref path 投影出现偏差 / 回折 / 断连</li>
+        <li>路口不可过：参考线无法穿过路口、或与路沿/栅栏相交</li>
+        <li>该 link 刷黑，<b>整个 issue 刷黑</b></li>
+      </ul>
+      <div class="callout"><span class="em">📌</span>判定字段：<span class="kfield">/maprouter/operation_area_on_path.operation_areas[0].link_id</span> 配合 <span class="kfield">/perception/static_3d/ref_lanes</span>。</div>
+    </div>
+  </details>
+</section>
+
+<!-- ============ §3 刷白机制 ============ -->
+<section id="whitelist" class="section">
+  <h1>3. 刷白机制 (Whitelist Promotion)</h1>
+  <p class="muted">"刷白"是当新版本（HD 更新或模型更新）已修复某 black link 时，按对应手册做 SIL 仿真复测，通过则把 link 从 black 状态升级为 white。</p>
+
+  <h2 id="white-3-1">3.1 五种刷白场景与对应手册</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th style="width:32px">#</th><th>触发条件</th><th>关键验证字段</th><th>刷白手册</th><th>刷白粒度</th></tr></thead>
+    <tbody>
+      <tr><td>2.1</td><td>地图几何修复 + HD 更新</td><td>HD goline 完整 + centerline 居中</td><td><a href="https://r3c0qt6yjw.feishu.cn/wiki/PVYjwFkGTisBdNk7Ga2cHnoLnyh" target="_blank">Map 手册</a></td><td>Issue link id 刷白；<b>整个 issue 刷白</b></td></tr>
+      <tr><td>2.2</td><td>地图 topo / 挂接修复 + HD 更新</td><td><span class="kfield">ego_line.tld.status</span> 红灯期间稳定为 0</td><td><a href="https://r3c0qt6yjw.feishu.cn/wiki/CXLCwTxYWiqTkjk1NwWcrWVLn1d" target="_blank">TLD 手册</a></td><td>TLD black 刷白；路口 entry + inner 刷白</td></tr>
+      <tr><td>2.3</td><td>TLD 模型 / 后处理更新</td><td><span class="kfield">ego_line.tld.status</span> 红灯期间稳定为 0</td><td><a href="https://r3c0qt6yjw.feishu.cn/wiki/CXLCwTxYWiqTkjk1NwWcrWVLn1d" target="_blank">TLD 手册</a></td><td>TLD black 刷白；路口 entry + inner 刷白</td></tr>
+      <tr><td>2.4</td><td>OCC 模型 / 后处理更新</td><td><span class="kfield">occ_fusion_status</span> 25~30m 内检出红色占据</td><td><a href="https://r3c0qt6yjw.feishu.cn/wiki/D2JfwHO3IiS8BukTa7zc7bfgndd" target="_blank">OCC 手册</a></td><td>OCC black 刷白；<b>整个 issue 刷白</b></td></tr>
+      <tr><td>2.5</td><td>Lane 后处理更新（无图）</td><td><span class="kfield">/perception/static_3d/ref_lanes</span> 居中 + 完整经过 link</td><td><a href="https://r3c0qt6yjw.feishu.cn/wiki/APKEwmlgZi8bG5kttKCcJUxqnJf" target="_blank">Local 手册</a></td><td><b>只有完整展示的 link 刷白</b></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="white-3-2">3.2 统一刷白流程图</h2>
+  <pre class="mermaid">flowchart TD
+    A[版本迭代<br/>HD更新/模型更新] --&gt; B[触发 SIL 仿真复测<br/>原 issue 数据集]
+    B --&gt; C{按 issue 类型选模板}
+    C --&gt;|LD-&gt;HD 几何| M1[Map 模板<br/>maprouter/maps_3d/hd_map]
+    C --&gt;|TLD| M2[TLD-SIL 模板]
+    C --&gt;|OCC| M3[OCC展示&amp;PNC纵向]
+    C --&gt;|无图 Lane| M4[Local 模板]
+    M1 --&gt; V1{goline完整<br/>centerline居中?}
+    M2 --&gt; V2{tld.status红灯期=0?<br/>15m内/过停5m内稳定}
+    M3 --&gt; V3{25~30m内检出<br/>红色占据栅格?}
+    M4 --&gt; V4{ref_path居中<br/>且完整经过link?}
+    V1 --&gt;|通过| P[评论填 jobid+链接+结论]
+    V2 --&gt;|通过| P
+    V3 --&gt;|通过| P
+    V4 --&gt;|通过| P
+    P --&gt; P1[飞书任务状态 CLOSED/RESOLVED]
+    P1 --&gt; P2[刷白结论字段: 可刷白]
+    P2 --&gt; P3[link 进入 white 仓库]
+    V1 --&gt;|不通过| F[评论填 jobid+结论<br/>保留 black]
+    V2 --&gt;|不通过| F
+    V3 --&gt;|不通过| F
+    V4 --&gt;|不通过| F</pre>
+
+  <h2 id="white-3-3">3.3 关键字段速查表</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>模板 / 手册</th><th>webviz 视图</th><th>关键字段</th><th>通过判据</th><th>失败判据</th></tr></thead>
+    <tbody>
+      <tr><td>Map (LANE)</td><td><span class="kfield">/maprouter/maps_3d/hd_map</span></td><td>goline 完整性 / centerline 居中</td><td>HD goline 无中断 + 不压路沿</td><td>HD 也偏差 / 无 HD / 无 goline</td></tr>
+      <tr><td>Map (TLD)</td><td><span class="kfield">/sim/neo_map_router/router_output</span></td><td><span class="kfield">is_in_tld_area</span> / <span class="kfield">stoppoint.x</span></td><td><code>is_in_tld_area=true</code> 且 <code>stoppoint.x</code> 与到路口距离一致</td><td><code>is_in_tld_area=false</code> 或自车已在路口内</td></tr>
+      <tr><td>TLD-SIL</td><td><span class="kfield">ego_line.tld</span></td><td><span class="kfield">ego_line.tld.status</span></td><td>红灯期间 = 0 且稳定（距停 15m 内 / 过停 5m 内）</td><td>红灯期间 = 1 或抖动</td></tr>
+      <tr><td>OCC</td><td><span class="kfield">/sim/perception/occ_fusion_map/occ_status</span></td><td><span class="kfield">occ_fusion_status</span> 红色占据栅格</td><td>自车前 25~30m 及时检出</td><td>漏检 / 检出晚</td></tr>
+      <tr><td>Local</td><td><span class="kfield">/perception/static_3d/ref_lanes</span></td><td><span class="kfield">operation_areas[0].link_id</span> + ref path 投影</td><td>完整经过 link（begin/end ≤5m 误差）+ ref path 居中</td><td>偏差 &gt; 1/4 车道宽 / 折线 / 断连 / 不过路口</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="white-3-4">3.4 刷白后状态机</h2>
+  <pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Open: Issue 入库
+    Open --&gt; SIL_Testing: 版本更新触发仿真
+    SIL_Testing --&gt; Pass: 按手册验证通过
+    SIL_Testing --&gt; Fail: 验证不通过
+    Pass --&gt; Closed: 状态 CLOSED/RESOLVED, 评论填 jobid, 刷白结论:可刷白
+    Fail --&gt; Open: 状态不变, 评论填 jobid, 刷白结论:不可刷白
+    Closed --&gt; WhiteListed: link 进入 white 仓库
+    WhiteListed --&gt; [*]</pre>
+
+  <h2 id="white-3-5">3.5 四份手册关键步骤</h2>
+  <div class="tabs" role="tablist">
+    <button class="active" data-tab="m-map">📐 Map</button>
+    <button data-tab="m-tld">🚦 TLD</button>
+    <button data-tab="m-occ">🟥 OCC</button>
+    <button data-tab="m-local">🛣 Local (无图)</button>
+  </div>
+
+  <div class="tabpanel active" id="m-map">
+    <h3>LD 黑名单刷 HD 白 Triage 指南</h3>
+    <p><a href="https://r3c0qt6yjw.feishu.cn/wiki/PVYjwFkGTisBdNk7Ga2cHnoLnyh" target="_blank">📎 原始手册</a> &nbsp; · &nbsp; docx: <code>CKlidYPOmoqIQTxTE6YcsNAynTc</code></p>
+    <h4>模板及可视化设置</h4>
+    <ul>
+      <li>webviz layout 模板见手册附件</li>
+      <li>左侧可视化：原 LD 模式看 <span class="kfield">/maprouter/maps_3d</span>；HD 模式看 <span class="kfield">/maprouter/maps_3d/hd_map</span></li>
+      <li>右侧可视化：<span class="kfield">/sim/maprouter/maps_3d/hd_map</span></li>
+    </ul>
+    <h4>TLD 子分支</h4>
+    <ul>
+      <li>看 <span class="kfield">/sim/neo_map_router/router_output</span> 的停止点信息</li>
+      <li><span class="kfield">is_in_tld_area</span> 必须 <code>= true</code></li>
+      <li><span class="kfield">stoppoint.x</span> 与可视化中自车到路口的距离基本一致</li>
+      <li>仿真前后视频不会变，<b>只关注这两个字段</b></li>
+    </ul>
+    <h4>LANE 子分支</h4>
+    <ul>
+      <li>先看 HD goline 是否完整</li>
+      <li>再看 goline 是否压线 / 压路沿</li>
+    </ul>
+    <div class="callout ok"><span class="em">✅</span><b>通过</b>：飞书任务状态改 <b>CLOSED</b>；"刷白结论 / HD刷白状态" 改 <b>可刷白</b>；填 jobid + 仿真任务链接。</div>
+    <div class="callout danger"><span class="em">🚫</span><b>不通过</b>：状态不变；填 jobid + 链接；"HD刷白状态" 改 <b>不可刷白</b>。</div>
+    <h4>典型不可解（仿真也救不了）</h4>
+    <ul>
+      <li>HD 投影同样偏差大 → 切 HD 无效</li>
+      <li>此处无 HD 显示 → 无 HD 可切</li>
+      <li>HD goline 中断（如辅路无 HD）</li>
+      <li>HD 投影正常但无 goline</li>
+    </ul>
+  </div>
+
+  <div class="tabpanel" id="m-tld">
+    <h3>TLD 刷白 Triage 指南</h3>
+    <p><a href="https://r3c0qt6yjw.feishu.cn/wiki/CXLCwTxYWiqTkjk1NwWcrWVLn1d" target="_blank">📎 原始手册</a> &nbsp; · &nbsp; docx: <code>QHQAdOYyqobzHaxcDeNcilXAn7p</code></p>
+    <div class="callout warn"><span class="em">⚠️</span>只处理 TLD <b>"闯红灯"</b> 接管类型的 issue。</div>
+    <h4>核心字段</h4>
+    <p>在 webviz 看 <span class="kfield">ego_line.tld.status</span>：</p>
+    <div class="row2">
+      <div class="callout ok"><b>红灯期间 = 0</b><br/>已拦停 → 🟢 <b>刷白通过</b>（新版本正确拦下来了）</div>
+      <div class="callout danger"><b>红灯期间 = 1</b><br/>还会闯红灯 → 🔴 <b>刷白失败</b></div>
+    </div>
+    <h4>判定窗口</h4>
+    <p>距停止线 <b>15 米内</b>，或过停止线 <b>不超 5 米</b>；窗口内 <span class="kfield">tld.status</span> 必须 <b>稳定</b> 为 0，中间不能抖动到 1。</p>
+    <h4>背景</h4>
+    <p>原 issue = 闯红灯接管 = 原版本 <span class="kfield">tld.status</span> 在红灯期间错给了 1（放行）。所以新版本只要这个字段稳定为 0，问题就修复了。</p>
+    <h4>判定流程</h4>
+    <ol>
+      <li>评论里填：仿真 <b>jobid</b> + 仿真任务链接 + 测试结论</li>
+      <li>飞书任务状态改 <b>CLOSED</b></li>
+      <li>"刷白结论 / TLD刷白状态" 改 <b>可刷白</b></li>
+    </ol>
+    <h4>正反向案例</h4>
+    <ul>
+      <li><b>正向</b>：<code>0ba21c2a-50d2-49bd-8612-00b676d57013</code> — 原 <code>status=1</code> → 新模型 <code>status=0</code>，判通过</li>
+      <li><b>反向</b>：<code>fb28e280-83f4-4725-950f-dc8a7a5e2d7d</code> — 模型输出正确但停止点异常导致 <code>status</code> 仍 = 1，判不通过</li>
+    </ul>
+  </div>
+
+  <div class="tabpanel" id="m-occ">
+    <h3>OCC 刷白 Triage 指南</h3>
+    <p><a href="https://r3c0qt6yjw.feishu.cn/wiki/D2JfwHO3IiS8BukTa7zc7bfgndd" target="_blank">📎 原始手册</a> &nbsp; · &nbsp; docx: <code>VLbNdqJBSoECLExwpw8cd19nnjf</code></p>
+    <div class="callout warn"><span class="em">⚠️</span>只处理 <b>OCC 漏检</b> 和 <b>检出晚</b> 两类 issue。</div>
+    <h4>模板</h4>
+    <p>使用模板：<b>OCC展示 &amp; PNC纵向</b></p>
+    <h4>核心视图</h4>
+    <ul>
+      <li><span class="kfield">occ_fusion_status</span>：红色 = 占据栅格，蓝色 = OD 动目标</li>
+      <li>详细图层：<span class="kfield">/sim/perception/occ_fusion_map/occ_status</span></li>
+    </ul>
+    <h4>通过判据</h4>
+    <p>在 webviz 看 <span class="kfield">occ_fusion_status</span>，自车前方 <b>25~30 米</b> 范围内 <b>及时</b> 检出红色占据栅格。</p>
+    <p>对比方式：原始车端结果 <code>vs</code> SIL 仿真结果；如果车端漏检 / 检出晚 & SIL 仿真及时检出 → <b>刷白通过</b>。</p>
+    <h4>判定流程</h4>
+    <ol>
+      <li>评论里填：仿真 <b>jobid</b> + 仿真任务链接 + 测试结论</li>
+      <li>飞书任务状态改 <b>RESOLVED</b></li>
+      <li>"刷白结论 / OCC刷白状态" 改 <b>可刷白</b></li>
+    </ol>
+    <div class="callout"><span class="em">🛠</span>辅助工具：①选择 SIL 仿真界面；②尺子测量距离。</div>
+  </div>
+
+  <div class="tabpanel" id="m-local">
+    <h3>拓路数据 Local 黑白名单 Triage 指南</h3>
+    <p><a href="https://r3c0qt6yjw.feishu.cn/wiki/APKEwmlgZi8bG5kttKCcJUxqnJf" target="_blank">📎 原始手册</a> &nbsp; · &nbsp; docx: <code>Pg3JdjPzCodhPIxDUxsckFZNnuc</code></p>
+    <h4>定位自车在哪条 link</h4>
+    <ul>
+      <li>topic: <span class="kfield">/maprouter/operation_area_on_path</span></li>
+      <li><span class="kfield">operation_areas[0]</span> = 自车所处的 link</li>
+      <li><span class="kfield">.link_id</span> = 当前 link id（即刷白刷黑对象）</li>
+      <li><span class="kfield">.begin_distance</span> = 自车系下 link 起点到自车的距离</li>
+      <li><span class="kfield">.end_distance</span> = 自车系下 link 终点到自车的距离</li>
+    </ul>
+    <h4>核心可视化 topic</h4>
+    <p><span class="kfield">/perception/static_3d/ref_lanes</span>（感知静态参考线，"3d"是可视化平台加的）</p>
+    <h4>三种场景判据</h4>
+    <div class="row3">
+      <div class="card">
+        <h4>直道场景</h4>
+        <ul>
+          <li>ref path 与道路中心线贴合，误差 ≤ <b>1/4 车道宽</b></li>
+          <li>没有回折线，未断连</li>
+          <li>必须看自车在 <b>整段 link</b> 上的视频</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>路口前停止线场景</h4>
+        <ul>
+          <li>ref path 居中</li>
+          <li>停止点已生成且偏差不大</li>
+          <li>停止点在停止线后 ≤1m、前 ≤3m</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>路口场景</h4>
+        <ul>
+          <li>ref path 必须能通过路口</li>
+          <li>不与路沿 / 栅栏相交</li>
+          <li>无折线、未断连</li>
+        </ul>
+      </div>
+    </div>
+    <h4>完整经过 link</h4>
+    <p><span class="kfield">begin_distance</span> / <span class="kfield">end_distance</span> 在 <b>5m 误差</b> 内算"完整经过"。</p>
+    <h4>正反例</h4>
+    <ul>
+      <li><b>正例</b>：link <code>16367577190</code> 自车完整经过 + ref path 居中 → 刷白</li>
+      <li><b>反例（直道）</b>：数据起始 begin_distance = -75m，无法完整经过 link <code>16367605620</code> → 刷黑</li>
+      <li><b>反例（路口）</b>：绿色 ref path 与护栏相交 → link <code>15612901941</code> 刷黑</li>
+    </ul>
+    <div class="callout"><span class="em">📝</span>记录方式：平台 ready 前手动记录 Job ID − issue − 黑名单 link − 白名单 link 关系。</div>
+  </div>
+</section>
+
+<!-- ============ §4 数据握手 ============ -->
+<section id="handshake" class="section">
+  <h1>4. 数据握手与管理</h1>
+
+  <h2 id="hand-4-1">4.1 统一管理 Black / White Link</h2>
+  <ul>
+    <li><b>统一仓库</b>：5 个通道的 black/white link 全部沉淀到统一表 — <code>(link_id, channel, status, issue_id, jobid, timestamp)</code></li>
+    <li><b>聚类口径</b>：按 black link 的 <b>点位数量</b>（occurrences）聚类，<b>而不是按 issue 数量</b>
+      <ul><li>一个高频 link 可能对应多个 issue → 必须看点位数才能反映真实热度</li></ul>
+    </li>
+    <li><b>高热点位高优刷白</b>：按点位 Top-N 排序，driving release / 模型迭代时优先修复</li>
+  </ul>
+
+  <h2 id="hand-4-2">4.2 GIS 可视化界面（演示）</h2>
+  <p class="muted">下方是一个 GIS Mock Panel，模拟实际控制台的四类操作：聚类查看、采集路线生成、高优 link 筛选、CSV 导出。</p>
+
+  <div class="gis">
+    <div class="gis-stack">
+      <div class="map-bar">
+        <span class="lbl">地图源：</span>
+        <div class="gis-toggle" id="mapSrcToggle">
+          <button class="active" data-src="osm">OpenStreetMap</button>
+          <button data-src="gaode">高德路网</button>
+          <button data-src="gaode-sat">高德卫星</button>
+        </div>
+        <span class="lbl muted small" id="mapHint">默认 OSM (WGS84 坐标对齐) · 点击 link 选中后"生成采集路线"</span>
+      </div>
+      <div class="gis-map">
+        <div class="map-label" id="mapLabel">GIS · 初始化中…</div>
+        <div id="lmap"></div>
+        <div id="mapError">
+          <div class="me-icon">🗺</div>
+          <div class="me-title">地图加载失败</div>
+          <div class="me-msg" id="mapErrorMsg">未能加载 Leaflet</div>
+          <button class="btn" id="btnRetry">重试</button>
+        </div>
+        <div class="bd-legend">
+          <div class="legend-item"><span class="legend-dot" style="background:#5dd39e"></span>低</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ffd166"></span>中</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ff9f4a"></span>高</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ff6b6b"></span>极高</div>
+        </div>
+      </div>
+    </div>
+    <div class="gis-controls">
+      <div>
+        <h4>通道筛选</h4>
+        <div class="chips" id="chipChannels">
+          <button class="chip active" data-ch="ALL">全部</button>
+          <button class="chip" data-ch="ldhd">LD/HD</button>
+          <button class="chip" data-ch="tldt">TLD topo</button>
+          <button class="chip" data-ch="tldp">TLD 感知</button>
+          <button class="chip" data-ch="occ">OCC</button>
+          <button class="chip" data-ch="local">Local</button>
+        </div>
+        <div class="legend" style="margin-top:8px">
+          <div class="legend-item"><span class="legend-dot" style="background:#5dd39e"></span>低 (1~5)</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ffd166"></span>中 (6~15)</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ff9f4a"></span>高 (16~30)</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#ff6b6b"></span>极高 (31+)</div>
+        </div>
+      </div>
+      <div>
+        <h4>Top 10 高热 link <span class="small muted" style="text-transform:none;letter-spacing:0;font-weight:400">(✓=已选，点击切换)</span></h4>
+        <div class="gis-list">
+          <table>
+            <thead><tr><th style="width:24px"></th><th>#</th><th>link_id</th><th>通道</th><th>点位 (↗飞书)</th></tr></thead>
+            <tbody id="gisRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h4>已选 link · <span id="selCount" style="color:var(--primary);text-transform:none;letter-spacing:0">0</span></h4>
+        <div class="btn-row">
+          <button class="btn ghost" id="btnTop8" style="padding:6px 10px;font-size:12px">⚡ 自动选 Top8</button>
+          <button class="btn ghost" id="btnClear" style="padding:6px 10px;font-size:12px">✕ 清空选择</button>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="btnRoute">🛣 生成采集路线</button>
+        <button class="btn ghost" id="btnExportRoute" title="导出当前采集路线 GeoJSON">📥 导出路线</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn ghost" id="btnFeishu" title="跳转飞书 black/white link 看板 (待配置)">🌐 跳转飞书</button>
+        <button class="btn ghost" id="btnSil" title="将采集路线提交到 SIL 仿真 (待配置)">🚀 跑 SIL</button>
+      </div>
+    </div>
+  </div>
+  <div class="callout small"><span class="em">ℹ️</span>实际系统中：底图为 HD 地图渲染、link 段来自统一 black 仓库、采集路线优化用最短路径或贪心拼接、CSV 含 <code>link_id, channel, hot, issue_count</code> 字段。</div>
+
+  <h2 id="hand-4-3">4.3 大盘口径</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>指标</th><th>口径</th><th>关注什么</th></tr></thead>
+    <tbody>
+      <tr><td>Black link 总数</td><td>link 维度，<b>按通道分</b></td><td>真实能力盲区面积</td></tr>
+      <tr><td>刷白进度</td><td>(白名单 link 数 / 总 link 数) × 100%</td><td>数据迭代速度</td></tr>
+      <tr><td>刷黑进度</td><td>(新增 black link / 周)</td><td>是否回退 / 新场景暴露</td></tr>
+      <tr><td>高热点位 Top-N</td><td>按 link 点位数排序</td><td>高优修复目标</td></tr>
+      <tr><td><b>不看 issue 数</b></td><td>—</td><td>issue 是事件，link 才是能力单元</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="hand-4-4">4.4 发版数据集（水位数据集）</h2>
+  <ul>
+    <li><b>录制完整路线</b>：每次发版前录制完整路线数据，作为 <b>水位数据集</b></li>
+    <li>作用：
+      <ol>
+        <li><b>回归基准</b>：确认 release 版本在水位数据集上 <b>没有回退</b></li>
+        <li><b>能力背书</b>：水位数据集 = 当前版本承诺可走的全部 link</li>
+        <li><b>触发条件</b>：刷白后 link 进入水位数据集，下一版本继续验证</li>
+      </ol>
+    </li>
+  </ul>
+  <div class="callout ok"><span class="em">🏁</span>发版水位 = 当前能力的"承诺地图"，每次发版前用它做回归，<b>只增不减</b>。</div>
+</section>
+
+<!-- ============ §5 附录 ============ -->
+<section id="appendix" class="section">
+  <h1>5. 附录</h1>
+
+  <h2>5.1 完整字段速查表</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>分类</th><th>字段 / topic</th><th>含义</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="2">Map / TLD</td><td><span class="kfield">is_in_tld_area</span></td><td>仿真后停止点是否落在路口 TLD 区域</td></tr>
+      <tr><td><span class="kfield">stoppoint.x</span></td><td>停止点到自车的纵向距离</td></tr>
+      <tr><td>TLD-SIL</td><td><span class="kfield">ego_line.tld.status</span></td><td>0 = 已拦停（红灯应停）；1 = 放行</td></tr>
+      <tr><td rowspan="2">OCC</td><td><span class="kfield">occ_fusion_status</span></td><td>红 = 占据栅格 / 蓝 = OD 动目标</td></tr>
+      <tr><td><span class="kfield">/sim/perception/occ_fusion_map/occ_status</span></td><td>OCC 详细图层</td></tr>
+      <tr><td rowspan="4">Local / Lane</td><td><span class="kfield">/maprouter/operation_area_on_path</span></td><td>自车附近 link 信息列表</td></tr>
+      <tr><td><span class="kfield">operation_areas[0].link_id</span></td><td>当前自车所在 link 的 id（刷白/刷黑对象）</td></tr>
+      <tr><td><span class="kfield">begin_distance / end_distance</span></td><td>link 起/终点到自车的距离（5m 内算"完整经过"）</td></tr>
+      <tr><td><span class="kfield">/perception/static_3d/ref_lanes</span></td><td>感知静态参考线（后处理之后的结果）</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>5.2 引用手册</h2>
+  <div class="row4">
+    <div class="manual-card">
+      <div class="icon">📐</div>
+      <h4>Map 刷白手册</h4>
+      <p>LD 黑名单刷 HD 白 Triage 指南</p>
+      <a href="https://r3c0qt6yjw.feishu.cn/wiki/PVYjwFkGTisBdNk7Ga2cHnoLnyh" target="_blank">查看手册 →</a>
+    </div>
+    <div class="manual-card">
+      <div class="icon">🚦</div>
+      <h4>TLD 刷白手册</h4>
+      <p>TLD 闯红灯接管刷白 Triage 指南</p>
+      <a href="https://r3c0qt6yjw.feishu.cn/wiki/CXLCwTxYWiqTkjk1NwWcrWVLn1d" target="_blank">查看手册 →</a>
+    </div>
+    <div class="manual-card">
+      <div class="icon">🟥</div>
+      <h4>OCC 刷白手册</h4>
+      <p>OCC 漏检 / 检出晚 Triage 指南</p>
+      <a href="https://r3c0qt6yjw.feishu.cn/wiki/D2JfwHO3IiS8BukTa7zc7bfgndd" target="_blank">查看手册 →</a>
+    </div>
+    <div class="manual-card">
+      <div class="icon">🛣</div>
+      <h4>Local 刷白手册</h4>
+      <p>拓路数据 Local 黑白名单 Triage 指南</p>
+      <a href="https://r3c0qt6yjw.feishu.cn/wiki/APKEwmlgZi8bG5kttKCcJUxqnJf" target="_blank">查看手册 →</a>
+    </div>
+  </div>
+
+  <h2>5.3 术语</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th style="width:140px">术语</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><b>LD</b></td><td>Lite Map（轻地图），覆盖广但精度低</td></tr>
+      <tr><td><b>HD</b></td><td>High Definition Map（高精地图），精度高但覆盖窄</td></tr>
+      <tr><td><b>TLD</b></td><td>Traffic Light Detection（交通灯检测）</td></tr>
+      <tr><td><b>OCC</b></td><td>Occupancy（占据栅格）</td></tr>
+      <tr><td><b>Goline</b></td><td>导航参考线，PNC 模块依据它规划路径</td></tr>
+      <tr><td><b>Ref path</b></td><td>感知静态参考线（lane model 后处理输出）</td></tr>
+      <tr><td><b>Link</b></td><td>地图原子单元，lane 级路段</td></tr>
+      <tr><td><b>Entry link / Inner link</b></td><td>路口前导入 link / 路口内 link</td></tr>
+      <tr><td><b>SIL</b></td><td>Software In the Loop（软件在环仿真）</td></tr>
+      <tr><td><b>水位数据集</b></td><td>每个 release 录制的完整路线数据，作为能力承诺基线</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <hr/>
+  <p class="small muted" style="text-align:center;padding:18px 0">© 2026 · 内部技术文档 · 单文件 HTML 演示，离线可打开</p>
+</section>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" onerror="window.__mermaidFailed=true"></script>
+<script>
+(function(){
+  // ===== Mermaid init with dark theme + fallback =====
+  function initMermaid(){
+    if(window.mermaid && !window.__mermaidFailed){
+      try{
+        mermaid.initialize({
+          startOnLoad:true,
+          theme:'dark',
+          securityLevel:'loose',
+          themeVariables:{
+            fontFamily:'-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif',
+            primaryColor:'#1c2230',
+            primaryTextColor:'#e5e7eb',
+            primaryBorderColor:'#2a3142',
+            lineColor:'#5b9eff',
+            secondaryColor:'#161a23',
+            tertiaryColor:'#0b0d12',
+            mainBkg:'#161a23',
+            nodeBorder:'#2a3142',
+            clusterBkg:'#11141b',
+            clusterBorder:'#1f242e',
+            edgeLabelBackground:'#11141b',
+            stateBkg:'#1c2230',
+            stateBorder:'#5b9eff',
+            altBackground:'#161a23',
+            actorBkg:'#161a23'
+          }
+        });
+        mermaid.run();
+      }catch(e){fallbackMermaid()}
+    }else{
+      fallbackMermaid();
+    }
+  }
+  function fallbackMermaid(){
+    document.querySelectorAll('pre.mermaid').forEach(function(el){
+      el.classList.remove('mermaid');
+      el.classList.add('mermaid-fallback');
+      el.setAttribute('aria-label','mermaid diagram (text fallback)');
+    });
+  }
+  setTimeout(function(){
+    if(!window.mermaid || window.__mermaidFailed){fallbackMermaid()}else{initMermaid()}
+  },120);
+
+  // ===== Top nav: smooth scroll + active =====
+  var topBtns = document.querySelectorAll('.topnav button');
+  topBtns.forEach(function(b){
+    b.addEventListener('click',function(){
+      var t = document.getElementById(b.dataset.target);
+      if(t){t.scrollIntoView({behavior:'smooth',block:'start'})}
+    });
+  });
+
+  // ===== Sidebar + Top active state via IntersectionObserver =====
+  var sections = document.querySelectorAll('.section');
+  var sideLinks = document.querySelectorAll('#sidenav a');
+  var hMap = {};
+  document.querySelectorAll('.section h2[id]').forEach(function(h){hMap[h.id]=h});
+  function setActiveTopByCurrentSection(id){
+    topBtns.forEach(function(b){
+      b.classList.toggle('active', b.dataset.target===id);
+    });
+  }
+  function setActiveSideLink(href){
+    sideLinks.forEach(function(a){
+      a.classList.toggle('active', a.getAttribute('href')==='#'+href);
+    });
+  }
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting && e.intersectionRatio>0){
+        var id = e.target.id;
+        if(['overview','blacklist','whitelist','handshake','appendix'].indexOf(id)>=0){
+          setActiveTopByCurrentSection(id);
+        }
+        setActiveSideLink(id);
+      }
+    });
+  },{rootMargin:'-30% 0px -60% 0px',threshold:[0,0.25,0.5]});
+  document.querySelectorAll('.section, .section h2[id]').forEach(function(el){obs.observe(el)});
+
+  // ===== Tabs (manual cards) =====
+  document.querySelectorAll('.tabs').forEach(function(tg){
+    var btns = tg.querySelectorAll('button');
+    btns.forEach(function(b){
+      b.addEventListener('click',function(){
+        btns.forEach(function(x){x.classList.remove('active')});
+        b.classList.add('active');
+        var name = b.dataset.tab;
+        document.querySelectorAll('.tabpanel').forEach(function(p){
+          if(['m-map','m-tld','m-occ','m-local'].indexOf(p.id)>=0){
+            p.classList.toggle('active', p.id===name);
+          }
+        });
+      });
+    });
+  });
+
+  // ===== Toast =====
+  var toast = document.getElementById('toast');
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toast.__t);
+    toast.__t = setTimeout(function(){toast.classList.remove('show')},2200);
+  }
+
+  // ===== GIS Panel — 黄岛区真实道路 + 百度地图 (可选) + SVG fallback =====
+  var CHANNELS = [
+    {k:'ldhd',  name:'LD/HD',     ch:'ch-ldhd'},
+    {k:'tldt',  name:'TLD topo',  ch:'ch-tldt'},
+    {k:'tldp',  name:'TLD 感知',  ch:'ch-tldp'},
+    {k:'occ',   name:'OCC',       ch:'ch-occ'},
+    {k:'local', name:'Local',     ch:'ch-local'}
+  ];
+
+  // 黄岛区 (西海岸新区) 36 条主干道 mock — 坐标采用百度 BD09 近似 (供百度地图直接用)
+  // 道路名为黄岛区实际主干道；hot 值为模拟点位数
+  var links = [
+    {id:'16367010101', name:'长江西路 西段',   ch:'ldhd',  hot:42, pts:[[120.1612,35.9758],[120.1742,35.9758]]},
+    {id:'16367010102', name:'长江西路 东段',   ch:'tldp',  hot:21, pts:[[120.1742,35.9758],[120.1872,35.9758]]},
+    {id:'16367010103', name:'长江中路',        ch:'tldt',  hot:38, pts:[[120.1872,35.9758],[120.2010,35.9758]]},
+    {id:'16367010104', name:'长江东路 西段',   ch:'local', hot:8,  pts:[[120.2010,35.9758],[120.2152,35.9758]]},
+    {id:'16367010105', name:'长江东路 东段',   ch:'local', hot:4,  pts:[[120.2152,35.9758],[120.2295,35.9758]]},
+    {id:'16367020201', name:'滨海大道 西段',   ch:'occ',   hot:35, pts:[[120.1480,35.9248],[120.1740,35.9320]]},
+    {id:'16367020202', name:'滨海大道 中段',   ch:'occ',   hot:19, pts:[[120.1740,35.9320],[120.2080,35.9340]]},
+    {id:'16367020203', name:'滨海大道 东段',   ch:'local', hot:6,  pts:[[120.2080,35.9340],[120.2480,35.9270]]},
+    {id:'16367030301', name:'香江路 北段',     ch:'tldt',  hot:24, pts:[[120.1968,35.9780],[120.1968,35.9888]]},
+    {id:'16367030302', name:'香江路 南段',     ch:'ldhd',  hot:11, pts:[[120.1968,35.9670],[120.1968,35.9780]]},
+    {id:'16367040401', name:'江山路 北段',     ch:'local', hot:5,  pts:[[120.1830,35.9800],[120.1830,35.9920]]},
+    {id:'16367040402', name:'江山路 南段',     ch:'tldp',  hot:14, pts:[[120.1830,35.9700],[120.1830,35.9800]]},
+    {id:'16367050501', name:'嘉陵江路 西段',   ch:'local', hot:3,  pts:[[120.1810,35.9610],[120.1980,35.9610]]},
+    {id:'16367050502', name:'嘉陵江路 东段',   ch:'local', hot:9,  pts:[[120.1980,35.9610],[120.2200,35.9610]]},
+    {id:'16367060601', name:'富春江路',        ch:'ldhd',  hot:16, pts:[[120.2080,35.9650],[120.2080,35.9760]]},
+    {id:'16367060602', name:'钱塘江路',        ch:'tldt',  hot:7,  pts:[[120.2150,35.9650],[120.2150,35.9760]]},
+    {id:'16367070701', name:'紫金山路',        ch:'occ',   hot:51, pts:[[120.1960,35.9780],[120.1960,35.9880]]},
+    {id:'16367070702', name:'武当山路',        ch:'tldp',  hot:13, pts:[[120.1900,35.9590],[120.1900,35.9700]]},
+    {id:'16367070703', name:'阿里山路',        ch:'local', hot:6,  pts:[[120.1840,35.9590],[120.1840,35.9700]]},
+    {id:'16367070704', name:'银屏山路',        ch:'local', hot:2,  pts:[[120.2025,35.9590],[120.2025,35.9700]]},
+    {id:'16367070705', name:'玉地山路',        ch:'tldt',  hot:8,  pts:[[120.2090,35.9590],[120.2090,35.9700]]},
+    {id:'16367070706', name:'九顶山路',        ch:'ldhd',  hot:25, pts:[[120.2155,35.9590],[120.2155,35.9700]]},
+    {id:'16367070707', name:'莲花山路',        ch:'local', hot:4,  pts:[[120.2220,35.9590],[120.2220,35.9700]]},
+    {id:'16367070708', name:'庐山路',          ch:'occ',   hot:33, pts:[[120.1780,35.9590],[120.1780,35.9700]]},
+    {id:'16367070709', name:'峨眉山路',        ch:'tldp',  hot:18, pts:[[120.1875,35.9530],[120.1875,35.9650]]},
+    {id:'16367080801', name:'齐长城路 北段',   ch:'ldhd',  hot:14, pts:[[120.1640,35.9800],[120.1640,35.9920]]},
+    {id:'16367080802', name:'齐长城路 南段',   ch:'tldt',  hot:6,  pts:[[120.1640,35.9680],[120.1640,35.9800]]},
+    {id:'16367090901', name:'黄河路 东段',     ch:'occ',   hot:42, pts:[[120.1900,35.8950],[120.2110,35.8920]]},
+    {id:'16367090902', name:'黄河路 西段',     ch:'local', hot:11, pts:[[120.1660,35.8980],[120.1900,35.8950]]},
+    {id:'16367091001', name:'灵山卫南路',      ch:'tldp',  hot:9,  pts:[[120.1810,35.8800],[120.1810,35.8950]]},
+    {id:'16367100101', name:'唐岛湾大桥',      ch:'local', hot:3,  pts:[[120.2300,35.9450],[120.2480,35.9460]]},
+    {id:'16367100102', name:'金沙滩路',        ch:'ldhd',  hot:7,  pts:[[120.2480,35.9460],[120.2750,35.9320]]},
+    {id:'16367100201', name:'薛家岛西路',      ch:'tldt',  hot:5,  pts:[[120.2480,35.9460],[120.2360,35.9520]]},
+    {id:'16367110101', name:'凤凰岛环岛',      ch:'occ',   hot:12, pts:[[120.2640,35.9120],[120.2780,35.9050]]},
+    {id:'16367120101', name:'红石崖外环',      ch:'local', hot:4,  pts:[[120.1280,36.0420],[120.1480,36.0380]]},
+    {id:'16367130101', name:'前湾港疏港路',    ch:'ldhd',  hot:28, pts:[[120.1820,36.0180],[120.2050,36.0150]]},
+    {id:'16367130102', name:'唐岛湾东侧通道',  ch:'tldp',  hot:36, pts:[[120.2280,35.9780],[120.2280,35.9920]]}
+  ];
+
+  // 把经纬度映射到 SVG (fallback)；SVG viewBox 800x480
+  var GEO = {lngMin:120.12, lngMax:120.29, latMin:35.86, latMax:36.06};
+  function svgX(lng){return 40 + (lng-GEO.lngMin)/(GEO.lngMax-GEO.lngMin)*720}
+  function svgY(lat){return 440 - (lat-GEO.latMin)/(GEO.latMax-GEO.latMin)*400}
+  links.forEach(function(l){
+    // 派生 issue 数 (按 hot * 0.35 + 噪声)
+    var n = parseInt(l.id.slice(-4),10);
+    l.issues = Math.max(1, Math.round(l.hot*0.35 + (n%5)));
+    l.x1 = svgX(l.pts[0][0]); l.y1 = svgY(l.pts[0][1]);
+    l.x2 = svgX(l.pts[1][0]); l.y2 = svgY(l.pts[1][1]);
+  });
+
+  function colorOf(hot){
+    if(hot>=31) return '#ff6b6b';
+    if(hot>=16) return '#ff9f4a';
+    if(hot>=6)  return '#ffd166';
+    return '#5dd39e';
+  }
+  function widthOf(hot){
+    if(hot>=31) return 6;
+    if(hot>=16) return 5;
+    if(hot>=6)  return 4;
+    return 3;
+  }
+
+  var state = {channel:'ALL', sort:'hot', selectedIds:[], routeOn:false, routeGeom:null, routeMeta:null, mode:'svg', lmap:null, tileLayer:null, tileSrc:'osm', lOverlays:[]};
+
+  function isSelected(id){ return state.selectedIds.indexOf(id) >= 0 }
+  function toggleSelect(id){
+    var i = state.selectedIds.indexOf(id);
+    if(i>=0) state.selectedIds.splice(i,1); else state.selectedIds.push(id);
+    state.routeOn = false; state.routeGeom = null; // 选择变了路径要重算
+    updateSelCount();
+    renderMap(); renderRows();
+  }
+  function clearSelect(){
+    state.selectedIds = []; state.routeOn = false; state.routeGeom = null;
+    updateSelCount(); renderMap(); renderRows();
+  }
+  function updateSelCount(){
+    var el = document.getElementById('selCount');
+    if(el) el.textContent = state.selectedIds.length;
+    var btn = document.getElementById('btnRoute');
+    if(btn) btn.textContent = '🛣 生成采集路线 ('+state.selectedIds.length+')';
+  }
+
+  function filtered(){return links.filter(function(l){return state.channel==='ALL' || l.ch===state.channel})}
+
+  // ===== OSM Overpass (真实路网) + OSRM (路径规划) =====
+  var HUANGDAO_BBOX = [35.85, 120.10, 36.10, 120.30]; // [south, west, north, east]
+  var OVERPASS_ENDPOINTS = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://lz4.overpass-api.de/api/interpreter',
+    'https://overpass.openstreetmap.fr/api/interpreter'
+  ];
+  var OSRM_ENDPOINT = 'https://router.project-osrm.org/route/v1/driving/';
+  var CACHE_KEY = 'huangdao_osm_ways_v1';
+  var CACHE_TTL = 72 * 3600 * 1000; // 72h
+
+  function buildOverpassQuery(){
+    return '[out:json][timeout:25];' +
+      '(way["highway"~"^(primary|secondary|tertiary|trunk|primary_link|secondary_link)$"]' +
+      '(' + HUANGDAO_BBOX.join(',') + ');' +
+      ');out body;>;out skel qt;';
+  }
+
+  function fetchOverpassWays(){
+    // 1) 试 localStorage 缓存
+    try{
+      var raw = localStorage.getItem(CACHE_KEY);
+      if(raw){
+        var p = JSON.parse(raw);
+        if(p && p.expire > Date.now() && Array.isArray(p.data) && p.data.length>0){
+          return Promise.resolve(p.data);
+        }
+      }
+    }catch(e){}
+    // 2) 多 endpoint fallback
+    var eps = OVERPASS_ENDPOINTS.slice();
+    var body = 'data=' + encodeURIComponent(buildOverpassQuery());
+    function tryNext(){
+      if(eps.length===0) return Promise.reject(new Error('Overpass 全部节点不可达'));
+      var ep = eps.shift();
+      return fetch(ep, {method:'POST', body:body, headers:{'Content-Type':'application/x-www-form-urlencoded'}})
+        .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+        .catch(function(){ return tryNext(); });
+    }
+    return tryNext().then(function(data){
+      var nodeMap = {};
+      data.elements.forEach(function(e){
+        if(e.type==='node') nodeMap[e.id] = [e.lon, e.lat];
+      });
+      var ways = [];
+      data.elements.forEach(function(e){
+        if(e.type==='way' && e.nodes && e.nodes.length>=2){
+          var pts = [];
+          for(var i=0;i<e.nodes.length;i++){
+            var n = nodeMap[e.nodes[i]];
+            if(n) pts.push(n);
+          }
+          if(pts.length>=2){
+            ways.push({
+              id: 'osm-' + e.id,
+              osmId: e.id,
+              name: (e.tags && e.tags.name) || ('Way '+e.id),
+              highway: (e.tags && e.tags.highway) || 'road',
+              pts: pts
+            });
+          }
+        }
+      });
+      try{ localStorage.setItem(CACHE_KEY, JSON.stringify({expire: Date.now()+CACHE_TTL, data:ways})); }catch(e){}
+      return ways;
+    });
+  }
+
+  function assignMockAttrs(ways){
+    // 用 OSM way id 作种子稳定分配 channel/hot，issue 数 = hot (合并)
+    var CHS = ['ldhd','tldt','tldp','occ','local'];
+    function rnd(s){ var x=Math.sin(s)*10000; return x-Math.floor(x); }
+    ways.forEach(function(w){
+      var seed = (typeof w.osmId === 'number' ? w.osmId : 1) + (w._segIdx||0)*7919;
+      var r = rnd(seed);
+      if(r<0.55)      w.hot = Math.floor(rnd(seed+1)*5)+1;       // 1-5 低
+      else if(r<0.82) w.hot = Math.floor(rnd(seed+2)*10)+6;      // 6-15 中
+      else if(r<0.93) w.hot = Math.floor(rnd(seed+3)*15)+16;     // 16-30 高
+      else            w.hot = Math.floor(rnd(seed+4)*30)+31;     // 31+ 极高
+      w.ch = CHS[Math.floor(rnd(seed+5)*CHS.length)];
+      w.issues = w.hot;
+    });
+    // 按 hot 排序后分配短 link_id (L0001 ~ L00NN)
+    var sorted = ways.slice().sort(function(a,b){return b.hot-a.hot});
+    sorted.forEach(function(w, i){
+      w.shortId = 'L' + String(i+1).padStart(4,'0');
+    });
+    return ways;
+  }
+
+  // === road link 切片 (一条 link 控制在 ~400m，贴合实际道路 link 长度) ===
+  var LINK_TARGET_LEN_M = 400; // 目标每段长度
+  function haversineM(a, b){
+    // a,b: [lng,lat]
+    var R = 6371000;
+    var dLat = (b[1]-a[1]) * Math.PI/180;
+    var dLng = (b[0]-a[0]) * Math.PI/180;
+    var la1 = a[1]*Math.PI/180, la2 = b[1]*Math.PI/180;
+    var x = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)*Math.sin(dLng/2);
+    return 2*R*Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
+  }
+  function polylineLengthM(pts){
+    var n = 0;
+    for(var i=1;i<pts.length;i++) n += haversineM(pts[i-1], pts[i]);
+    return n;
+  }
+  function splitPolylineByLen(pts, target){
+    // 按累积距离切片，每段约 target 米；最后一段如果 < 0.5*target 则并入上一段
+    if(pts.length < 2) return [pts];
+    var segs = [];
+    var cur = [pts[0]];
+    var accum = 0;
+    for(var i=1;i<pts.length;i++){
+      var d = haversineM(pts[i-1], pts[i]);
+      if(accum + d > target && cur.length >= 2){
+        cur.push(pts[i-1]); // 边界点重复，确保连续
+        if(cur[cur.length-1][0]===cur[cur.length-2][0] && cur[cur.length-1][1]===cur[cur.length-2][1]) cur.pop();
+        segs.push(cur);
+        cur = [pts[i-1]];
+        accum = 0;
+      }
+      cur.push(pts[i]);
+      accum += d;
+    }
+    if(cur.length>=2) segs.push(cur);
+    // 合并尾部太短的段
+    if(segs.length>=2){
+      var last = segs[segs.length-1];
+      if(polylineLengthM(last) < target*0.5){
+        var prev = segs[segs.length-2];
+        // last 起点 == prev 终点 → 拼接时去重
+        if(prev[prev.length-1][0]===last[0][0] && prev[prev.length-1][1]===last[0][1]){
+          segs[segs.length-2] = prev.concat(last.slice(1));
+        } else {
+          segs[segs.length-2] = prev.concat(last);
+        }
+        segs.pop();
+      }
+    }
+    return segs;
+  }
+  function chunkLinksByLen(srcLinks, target){
+    // srcLinks: 已经 snap 过、含真实 pts 的 link 数组
+    // 返回切片后的 newLinks
+    var out = [];
+    srcLinks.forEach(function(l){
+      if(!l.realGeom || !l.pts || l.pts.length<2){ out.push(l); return; }
+      var segs = splitPolylineByLen(l.pts, target);
+      if(segs.length <= 1){ out.push(l); return; }
+      segs.forEach(function(pts, i){
+        out.push({
+          id: l.id + '-seg' + (i+1),
+          osmId: l.osmId,
+          _segIdx: i,
+          name: (l.name||'未命名') + ' 段' + (i+1),
+          highway: l.highway,
+          pts: pts,
+          realGeom: true
+        });
+      });
+    });
+    return out;
+  }
+
+  // === 飞书 / SIL 跳转占位 (待业务方提供真实 URL) ===
+  var FEISHU_ISSUE_URL = ''; // e.g. 'https://r3c0qt6yjw.feishu.cn/wiki/xxx?link_id=' + linkId
+  var FEISHU_DASHBOARD_URL = ''; // black/white link 看板
+  var SIL_SUBMIT_URL = '';   // SIL 仿真提交平台
+
+  function openFeishuForLink(linkId, linkName){
+    if(FEISHU_ISSUE_URL){
+      window.open(FEISHU_ISSUE_URL + encodeURIComponent(linkId), '_blank');
+    } else {
+      showToast('跳转飞书 · '+linkId+' '+(linkName||'')+'  (URL 待配置)');
+    }
+  }
+  function openFeishuDashboard(){
+    if(FEISHU_DASHBOARD_URL){
+      window.open(FEISHU_DASHBOARD_URL, '_blank');
+    } else {
+      showToast('跳转飞书 black/white link 看板  (URL 待配置)');
+    }
+  }
+  function submitToSil(selectedLinks, routeGeom){
+    if(SIL_SUBMIT_URL){
+      // 真实场景: POST 到 SIL 平台
+      window.open(SIL_SUBMIT_URL, '_blank');
+    } else {
+      showToast('提交 SIL 仿真 · '+selectedLinks.length+' 条 link'+(routeGeom?' · 含路线':'')+'  (URL 待配置)');
+    }
+  }
+
+  function routeOSRM(coords){
+    // coords: [[lng,lat], ...]
+    if(coords.length < 2) return Promise.reject(new Error('需 ≥ 2 个坐标'));
+    if(coords.length > 25) coords = coords.slice(0, 25); // OSRM 限制
+    var path = coords.map(function(c){ return c[0].toFixed(6)+','+c[1].toFixed(6); }).join(';');
+    var url = OSRM_ENDPOINT + path + '?overview=full&geometries=geojson&continue_straight=false&steps=false';
+    return fetch(url).then(function(r){
+      if(!r.ok) throw new Error('OSRM HTTP '+r.status);
+      return r.json();
+    }).then(function(data){
+      if(data.code !== 'Ok' || !data.routes || !data.routes[0]) throw new Error(data.message || 'no route');
+      return data.routes[0]; // {distance, duration, geometry:{coordinates:[[lng,lat]...]}}
+    });
+  }
+
+  // ===== Leaflet 多 CDN 动态加载 + 黄岛区 GIS 渲染 =====
+  var TILE_SOURCES = {
+    'gaode':     {url:'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', subdomains:['1','2','3','4'], attribution:'高德地图', maxZoom:18, label:'高德路网'},
+    'gaode-sat': {url:'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', subdomains:['1','2','3','4'], attribution:'高德地图卫星', maxZoom:18, label:'高德卫星'},
+    'osm':       {url:'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.webp', subdomains:'abc', attribution:'OpenStreetMap', maxZoom:19, label:'OpenStreetMap'}
+  };
+
+  // 多 CDN 顺序尝试 (主 jsdelivr，备 unpkg / staticfile)，避免单点不可达
+  var LEAFLET_CDNS = [
+    'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/',
+    'https://cdn.staticfile.org/leaflet/1.9.4/',
+    'https://unpkg.com/leaflet@1.9.4/dist/'
+  ];
+
+  function loadCssOnce(url){
+    return new Promise(function(resolve){
+      var l = document.createElement('link');
+      l.rel='stylesheet'; l.href=url;
+      l.onload = function(){resolve(true)};
+      l.onerror = function(){resolve(false)};
+      document.head.appendChild(l);
+      setTimeout(function(){resolve(true)}, 4000);
+    });
+  }
+  function loadScriptOnce(url){
+    return new Promise(function(resolve, reject){
+      var s = document.createElement('script');
+      s.src=url;
+      s.onload = function(){ window.L ? resolve() : reject(new Error('loaded but no L')); };
+      s.onerror = function(){reject(new Error('script error: '+url))};
+      document.head.appendChild(s);
+      setTimeout(function(){ if(!window.L) reject(new Error('script timeout: '+url)); }, 7000);
+    });
+  }
+  function loadLeaflet(){
+    if(window.L) return Promise.resolve();
+    var cdns = LEAFLET_CDNS.slice();
+    return (function tryNext(){
+      if(cdns.length===0) return Promise.reject(new Error('所有 CDN 均不可达 (jsdelivr / staticfile / unpkg 都连不上)'));
+      var base = cdns.shift();
+      var host = base.split('/')[2];
+      document.getElementById('mapLabel').textContent = 'GIS · 加载 Leaflet · '+host+'…';
+      return loadCssOnce(base+'leaflet.css')
+        .then(function(){ return loadScriptOnce(base+'leaflet.js'); })
+        .catch(function(){ return tryNext(); });
+    })();
+  }
+
+  function showMapError(msg){
+    document.getElementById('mapLabel').textContent = 'GIS · 地图加载失败';
+    document.getElementById('mapErrorMsg').textContent = msg + ' — 浏览器无法访问 jsdelivr / staticfile / unpkg。请检查网络/代理后点击重试。';
+    document.getElementById('mapError').classList.add('show');
+  }
+  function hideMapError(){ document.getElementById('mapError').classList.remove('show'); }
+
+  function initLeaflet(){
+    if(state.lmap) return;
+    state.lmap = L.map('lmap', {
+      center: [35.96, 120.198],
+      zoom: 12,
+      zoomControl: true,
+      attributionControl: false   // 关闭默认 attribution，避免 Leaflet 链接跳转
+    });
+    L.control.attribution({prefix:'GIS 演示 · 黄岛区 (西海岸新区)'}).addTo(state.lmap);
+    state.mode = 'leaflet';
+    bindPopupBtns();
+    setTileSrc(state.tileSrc || 'osm');
+    // 关键: 等 map ready + size 就绪后再加 polyline (否则 _pixelOrigin 未定义会报 Bounds 错)
+    state.lmap.whenReady(function(){
+      var attempts = 0;
+      function tryRender(){
+        attempts++;
+        if(!state.lmap) return;
+        state.lmap.invalidateSize();
+        var sz = state.lmap.getSize();
+        if((!sz || sz.x===0 || sz.y===0) && attempts<20){
+          setTimeout(tryRender, 100);
+          return;
+        }
+        // 自动适应 link 包围盒
+        var allLatlngs = [];
+        links.forEach(function(l){
+          (l.pts||[]).forEach(function(p){
+            if(Array.isArray(p) && typeof p[0]==='number' && typeof p[1]==='number'){
+              allLatlngs.push([p[1], p[0]]);
+            }
+          });
+        });
+        if(allLatlngs.length>=2){
+          try{ state.lmap.fitBounds(allLatlngs, {padding:[40,40], maxZoom:13}); }catch(e){}
+        }
+        renderLeaflet();
+      }
+      setTimeout(tryRender, 60);
+    });
+  }
+
+  function setTileSrc(srcKey){
+    if(!state.lmap) return;
+    if(state.tileLayer){ state.lmap.removeLayer(state.tileLayer); state.tileLayer = null; }
+    var def = TILE_SOURCES[srcKey] || TILE_SOURCES.gaode;
+    state.tileSrc = srcKey;
+    state._tileWarned = false;
+    state.tileLayer = L.tileLayer(def.url, {
+      subdomains: def.subdomains, attribution: def.attribution, maxZoom: def.maxZoom
+    });
+    state.tileLayer.on('tileerror', function(){
+      if(state._tileWarned) return;
+      state._tileWarned = true;
+      showToast('该地图源部分瓦片加载失败，可尝试切换其他源');
+    });
+    state.tileLayer.addTo(state.lmap);
+    document.getElementById('mapLabel').textContent = 'GIS · '+def.label+' · '+links.length+' 条 link · '+state.selectedIds.length+' 已选';
+  }
+
+  function clearLeafletOverlays(){
+    if(!state.lmap) return;
+    (state.lOverlays||[]).forEach(function(o){state.lmap.removeLayer(o)});
+    state.lOverlays = [];
+  }
+
+  function renderLeaflet(){
+    if(!state.lmap || !window.L) return;
+    // Guard: map 必须 _loaded 且有 size，否则 polyline._update 会读到 undefined min/max
+    if(!state.lmap._loaded){
+      state.lmap.whenReady(function(){ setTimeout(renderLeaflet, 50); });
+      return;
+    }
+    var sz = state.lmap.getSize();
+    if(!sz || sz.x===0 || sz.y===0){
+      setTimeout(renderLeaflet, 80);
+      return;
+    }
+    clearLeafletOverlays();
+    var fl = filtered();
+    var added = 0, skipped = 0, pending = 0;
+    fl.forEach(function(l){
+      try{
+        if(!l.pts || l.pts.length<2){ skipped++; return; }
+        // 只渲染已 snap 到真实道路的 link，mock 直线不显示
+        if(!l.realGeom){ pending++; return; }
+        var latlngs = [];
+        for(var i=0;i<l.pts.length;i++){
+          var p = l.pts[i];
+          if(Array.isArray(p) && typeof p[0]==='number' && typeof p[1]==='number' && !isNaN(p[0]) && !isNaN(p[1])){
+            latlngs.push([p[1], p[0]]);
+          }
+        }
+        if(latlngs.length<2){ skipped++; return; }
+        var sel = isSelected(l.id);
+        var col = colorOf(l.hot), w = widthOf(l.hot) + 1;
+        // 白色衬底 (单层即可)
+        var outline = L.polyline(latlngs, {
+          color:'#ffffff', weight:(sel?w+5:w+3), opacity:0.85, lineCap:'round', interactive:false
+        });
+        outline.addTo(state.lmap);
+        state.lOverlays.push(outline);
+        // 彩色实体
+        var sidPop = l.shortId || l.id;
+        var pl = L.polyline(latlngs, {
+          color: col, weight:(sel?w+3:w+1), opacity:1, lineCap:'round'
+        }).bindPopup(
+          '<div style="min-width:220px"><div style="font-weight:600;color:#111;font-size:13px">'+(l.name||'未命名道路')+'</div>'+
+          '<div style="color:#666;font-size:11px;margin:4px 0">link_id: <b>'+sidPop+'</b></div>'+
+          '<div style="font-size:12px;color:#333">通道: <b>'+l.ch+'</b> · 点位 <a href="javascript:void(0)" class="lf-feishu-btn" data-id="'+l.id+'" data-name="'+(l.name||'').replace(/"/g,'')+'" style="color:'+col+';font-weight:700;text-decoration:none">'+l.hot+' ↗</a></div>'+
+          '<div style="margin-top:8px"><button class="lf-sel-btn" data-id="'+l.id+'" style="background:'+(sel?'#ffd166':'#5b9eff')+';color:'+(sel?'#000':'#fff')+';border:0;padding:6px 12px;border-radius:5px;font-size:12px;cursor:pointer;font-weight:600">'+(sel?'✓ 已选 (再点取消)':'＋ 添加到采集路线')+'</button></div></div>'
+        );
+        pl.addTo(state.lmap);
+        state.lOverlays.push(pl);
+        if(sel){
+          var midLat=(latlngs[0][0]+latlngs[1][0])/2, midLng=(latlngs[0][1]+latlngs[1][1])/2;
+          var c = L.circleMarker([midLat,midLng], {
+            radius:12, color:'#ffd166', weight:3, fillColor:'#ffd166', fillOpacity:0.3, interactive:false
+          }).addTo(state.lmap);
+          state.lOverlays.push(c);
+        }
+        added++;
+      }catch(e){
+        skipped++;
+        if(window.console) console.warn('[GIS] link render skipped:', l.id, e.message);
+      }
+    });
+    // 采集路线: 优先用 OSRM 真实驾驶路径，否则直线兜底
+    if(state.routeOn && state.selectedIds.length>=2){
+      try{
+        var pathLatLngs = null; // [lat,lng] for Leaflet
+        var stops = null;       // 采集点 (链端)
+        if(state.routeGeom && state.routeGeom.length>=2){
+          // OSRM geometry: [[lng,lat],...] -> [[lat,lng],...]
+          pathLatLngs = state.routeGeom.map(function(c){return [c[1], c[0]]});
+        } else {
+          // 直线兜底
+          pathLatLngs = state.selectedIds.map(function(id){
+            var l = links.find(function(x){return x.id===id});
+            if(!l || !l.pts || l.pts.length<2) return null;
+            return [(l.pts[0][1]+l.pts[l.pts.length-1][1])/2, (l.pts[0][0]+l.pts[l.pts.length-1][0])/2];
+          }).filter(function(ll){return ll});
+        }
+        // 计算采集 stops (每条 link 的中点)
+        stops = state.selectedIds.map(function(id){
+          var l = links.find(function(x){return x.id===id});
+          if(!l || !l.pts || l.pts.length<2) return null;
+          var mid = Math.floor(l.pts.length/2);
+          var p = l.pts[mid];
+          return [p[1], p[0]];
+        }).filter(function(ll){return ll});
+
+        if(pathLatLngs && pathLatLngs.length>=2){
+          // 路径外圈
+          var ro = L.polyline(pathLatLngs, {color:'#000', weight:9, opacity:0.55, interactive:false}).addTo(state.lmap);
+          state.lOverlays.push(ro);
+          // 路径主体 (实线，因为是真实驾驶路径)
+          var rl = L.polyline(pathLatLngs, {color:'#ffd166', weight:5, opacity:1, interactive:false, lineCap:'round', lineJoin:'round'}).addTo(state.lmap);
+          state.lOverlays.push(rl);
+        }
+        // 采集点编号标记
+        stops.forEach(function(latlng, i){
+          var icon = L.divIcon({
+            html:'<div style="background:#ffd166;color:#000;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.6)">'+(i+1)+'</div>',
+            iconSize:[28,28], iconAnchor:[14,14], className:''
+          });
+          var m = L.marker(latlng, {icon:icon, interactive:false, zIndexOffset:1000}).addTo(state.lmap);
+          state.lOverlays.push(m);
+        });
+        // 飞到路径包围盒
+        try{ state.lmap.flyToBounds(pathLatLngs, {padding:[60,60], duration:0.6, maxZoom:14}); }catch(e){}
+      }catch(e){
+        if(window.console) console.warn('[GIS] route render error:', e.message);
+      }
+    }
+    // 状态条
+    var lbl = document.getElementById('mapLabel');
+    if(lbl){
+      var def = TILE_SOURCES[state.tileSrc] || TILE_SOURCES.osm;
+      var part = 'GIS · '+def.label+' · '+added+' 真实 link';
+      if(pending>0) part += ' · 待 snap '+pending;
+      if(state.selectedIds.length>0) part += ' · '+state.selectedIds.length+' 已选';
+      if(state.routeOn) part += ' · 路线已绘制';
+      lbl.textContent = part;
+    }
+  }
+
+  function bindPopupBtns(){
+    if(!state.lmap) return;
+    state.lmap.on('popupopen', function(e){
+      var el = e.popup.getElement();
+      var selBtn = el.querySelector('.lf-sel-btn');
+      if(selBtn){
+        selBtn.addEventListener('click', function(ev){
+          ev.stopPropagation();
+          toggleSelect(selBtn.getAttribute('data-id'));
+          state.lmap.closePopup();
+        });
+      }
+      var fsBtn = el.querySelector('.lf-feishu-btn');
+      if(fsBtn){
+        fsBtn.addEventListener('click', function(ev){
+          ev.stopPropagation();
+          openFeishuForLink(fsBtn.getAttribute('data-id'), fsBtn.getAttribute('data-name'));
+        });
+      }
+    });
+  }
+
+  function renderMap(){ if(state.lmap) renderLeaflet(); }
+
+  function renderRows(){
+    var tbody = document.getElementById('gisRows');
+    var fl = filtered().slice().sort(function(a,b){ return b.hot - a.hot; }).slice(0,10);
+    tbody.innerHTML = fl.map(function(l,i){
+      var ch = CHANNELS.find(function(x){return x.k===l.ch});
+      var sel = isSelected(l.id);
+      var cls = (l.hot>=31?'row-hot ':'')+(sel?'row-sel':'');
+      var mark = sel ? '✓' : '·';
+      var sid = l.shortId || l.id;
+      return '<tr class="'+cls+'" data-link-id="'+l.id+'" title="'+(l.name||'')+' · 点击切换选中">'+
+             '<td class="sel-mark">'+mark+'</td>'+
+             '<td>'+(i+1)+'</td>'+
+             '<td title="'+(l.name||'')+'"><b>'+sid+'</b></td>'+
+             '<td><span class="ch '+ch.ch+'" style="font-size:10px;padding:1px 5px">'+ch.name+'</span></td>'+
+             '<td><a href="javascript:void(0)" class="issue-link" data-link-id="'+l.id+'" data-link-name="'+(l.name||'').replace(/"/g,'')+'" title="跳转飞书查看该 link 的 '+l.hot+' 个 issue 详情" style="color:'+(l.hot>=31?'#ff8c8c':l.hot>=16?'#ffb578':l.hot>=6?'#ffd166':'#7fdfb1')+';text-decoration:none;font-weight:600">'+l.hot+' ↗</a></td>'+
+             '</tr>';
+    }).join('');
+    // 行点击 → 切换选中
+    tbody.querySelectorAll('tr').forEach(function(tr){
+      tr.addEventListener('click', function(ev){
+        // issue 链接点击不触发选中
+        if(ev.target && (ev.target.classList.contains('issue-link') || ev.target.closest('.issue-link'))) return;
+        toggleSelect(tr.getAttribute('data-link-id'));
+      });
+    });
+    // issue 链接 → 跳转飞书 (阻止冒泡)
+    tbody.querySelectorAll('.issue-link').forEach(function(a){
+      a.addEventListener('click', function(ev){
+        ev.stopPropagation();
+        openFeishuForLink(a.getAttribute('data-link-id'), a.getAttribute('data-link-name'));
+      });
+    });
+  }
+
+  // ===== 控件事件 =====
+  document.querySelectorAll('#chipChannels .chip').forEach(function(c){
+    c.addEventListener('click',function(){
+      document.querySelectorAll('#chipChannels .chip').forEach(function(x){x.classList.remove('active')});
+      c.classList.add('active');
+      state.channel = c.dataset.ch;
+      // 清掉那些已不在 filter 范围内的选中
+      state.selectedIds = state.selectedIds.filter(function(id){
+        var l = links.find(function(x){return x.id===id});
+        return l && (state.channel==='ALL' || l.ch===state.channel);
+      });
+      updateSelCount();
+      renderMap(); renderRows();
+    });
+  });
+  document.getElementById('btnTop8').addEventListener('click',function(){
+    var fl = filtered().slice().sort(function(a,b){return b.hot-a.hot}).slice(0,8);
+    state.selectedIds = fl.map(function(l){return l.id});
+    state.routeOn = false;
+    updateSelCount();
+    renderMap(); renderRows();
+    showToast('已按热度自动选中 Top 8 — 点"生成采集路线"画路线');
+  });
+  document.getElementById('btnClear').addEventListener('click',function(){
+    if(state.selectedIds.length===0){ showToast('无已选 link'); return; }
+    clearSelect();
+    showToast('已清空选择');
+  });
+  document.getElementById('btnRoute').addEventListener('click',function(){
+    if(state.selectedIds.length<2){
+      showToast('请先选 ≥ 2 条 link (点击地图 link / 表格行 / Top8 按钮)');
+      return;
+    }
+    // 收集每条选中 link 的中点作为 waypoints (OSRM)
+    var waypoints = [];
+    state.selectedIds.forEach(function(id){
+      var l = links.find(function(x){return x.id===id});
+      if(l && l.pts && l.pts.length>=2){
+        var mid = Math.floor(l.pts.length/2);
+        waypoints.push(l.pts[mid]); // [lng,lat]
+      }
+    });
+    if(waypoints.length<2){ showToast('选中的 link 缺少有效坐标'); return; }
+    var btn = document.getElementById('btnRoute');
+    var orig = btn.textContent; btn.textContent = '⏳ 计算路径中…'; btn.disabled = true;
+    showToast('调用 OSRM 计算真实驾驶路径…');
+    routeOSRM(waypoints).then(function(route){
+      state.routeGeom = route.geometry && route.geometry.coordinates;
+      state.routeMeta = {distance: route.distance, duration: route.duration};
+      state.routeOn = true;
+      renderMap();
+      showToast('✓ 真实路径已生成 · 长度 '+(route.distance/1000).toFixed(1)+'km · 预计 '+Math.round(route.duration/60)+' 分钟');
+    }).catch(function(err){
+      state.routeGeom = null;
+      state.routeOn = true;
+      renderMap();
+      showToast('⚠️ OSRM 失败 ('+err.message+')，已用直线兜底');
+    }).then(function(){
+      btn.disabled = false; updateSelCount(); // 恢复文字 (updateSelCount 会重写)
+    });
+  });
+  // 导出当前采集路线 (GeoJSON FeatureCollection)
+  document.getElementById('btnExportRoute').addEventListener('click', function(){
+    if(!state.routeOn || (!state.routeGeom && state.selectedIds.length<2)){
+      showToast('请先选 ≥ 2 条 link 并点"生成采集路线"');
+      return;
+    }
+    var selected = state.selectedIds.map(function(id){return links.find(function(x){return x.id===id})}).filter(Boolean);
+    var features = [];
+    // 路线本身
+    if(state.routeGeom && state.routeGeom.length>=2){
+      features.push({
+        type:'Feature',
+        properties:{
+          kind:'collection-route',
+          length_m: state.routeMeta ? state.routeMeta.distance : null,
+          duration_s: state.routeMeta ? state.routeMeta.duration : null,
+          waypoint_count: selected.length,
+          waypoint_link_ids: selected.map(function(l){return l.shortId||l.id})
+        },
+        geometry:{type:'LineString', coordinates: state.routeGeom}
+      });
+    }
+    // 每条选中 link
+    selected.forEach(function(l){
+      features.push({
+        type:'Feature',
+        properties:{
+          kind:'link',
+          link_id: l.shortId || l.id,
+          osm_way_id: l.osmId || null,
+          name: l.name,
+          channel: l.ch,
+          hot: l.hot,
+          issue_count: l.issues,
+          highway: l.highway || null
+        },
+        geometry:{type:'LineString', coordinates: l.pts}
+      });
+    });
+    var geojson = {type:'FeatureCollection', features:features, properties:{
+      generated_at: new Date().toISOString(),
+      region: '青岛黄岛区 (西海岸新区)',
+      generator: 'huangdao-gis-demo'
+    }};
+    var blob = new Blob([JSON.stringify(geojson, null, 2)],{type:'application/geo+json;charset=utf-8'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    var stamp = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    a.download = 'collection_route_'+stamp+'.geojson';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href); a.remove()},200);
+    showToast('✓ 已导出采集路线 GeoJSON · '+features.length+' 个 feature ('+selected.length+' link + 1 route)');
+  });
+
+  document.getElementById('btnFeishu').addEventListener('click', function(){
+    openFeishuDashboard();
+  });
+
+  document.getElementById('btnSil').addEventListener('click', function(){
+    if(state.selectedIds.length<1 && !state.routeOn){
+      showToast('请先选中 link 或生成采集路线再提交 SIL');
+      return;
+    }
+    var selected = state.selectedIds.map(function(id){return links.find(function(x){return x.id===id})}).filter(Boolean);
+    submitToSil(selected, state.routeGeom);
+  });
+
+  // ===== 地图源切换 (仅 Leaflet 多瓦片源) =====
+  function switchTo(srcKey){
+    hideMapError();
+    state.tileSrc = srcKey; // 提前设，initLeaflet 会用
+    loadLeaflet().then(function(){
+      if(!state.lmap){
+        initLeaflet();   // 内部 whenReady 会自动 render，不要在这里 render
+        return;
+      }
+      setTileSrc(srcKey);
+      state.lmap.whenReady(function(){
+        setTimeout(function(){
+          if(state.lmap){
+            state.lmap.invalidateSize();
+            renderLeaflet();
+          }
+        }, 80);
+      });
+    }).catch(function(err){
+      showMapError(err.message);
+    });
+  }
+
+  document.querySelectorAll('#mapSrcToggle button').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('#mapSrcToggle button').forEach(function(x){x.classList.remove('active')});
+      b.classList.add('active');
+      switchTo(b.dataset.src);
+    });
+  });
+
+  document.getElementById('btnRetry').addEventListener('click', function(){
+    hideMapError();
+    // 重置 L 检测，强制重试
+    switchTo(state.tileSrc || 'gaode');
+  });
+
+  // 启动：先用 mock 直线快速渲染，再异步拉 OSM 真实路网替换
+  renderRows();
+  updateSelCount();
+  switchTo('osm');
+
+  // 异步用 OSRM 把每条 link 的两端点 snap 到真实道路 (file:// 下 Overpass 受 CORS 限制，OSRM 可用)
+  // 一次性把 mock 直线替换成沿真实道路的几何
+  setTimeout(function(){
+    snapAllLinksToRoads();
+  }, 1500);
+
+  function applyChunkAndReassign(){
+    // 把已 snap 的 link 按距离切成 ~LINK_TARGET_LEN_M 的短段，重新分配 shortId/通道/hot
+    var newLinks = chunkLinksByLen(links, LINK_TARGET_LEN_M);
+    // 清空 + 替换
+    links.length = 0;
+    newLinks.forEach(function(l){ links.push(l); });
+    assignMockAttrs(links);
+    // 重置选中/路线 (link id 变了)
+    state.selectedIds = [];
+    state.routeOn = false;
+    state.routeGeom = null;
+    updateSelCount();
+  }
+
+  function snapAllLinksToRoads(){
+    var CACHE_KEY_SNAP = 'huangdao_snap_v2';
+    // 先从 localStorage 恢复
+    try{
+      var raw = localStorage.getItem(CACHE_KEY_SNAP);
+      if(raw){
+        var c = JSON.parse(raw);
+        if(c && c.expire > Date.now() && c.data){
+          var snapped = 0;
+          links.forEach(function(l){
+            if(c.data[l.id]){
+              l.pts = c.data[l.id];
+              l.realGeom = true;
+              snapped++;
+            }
+          });
+          if(snapped>0){
+            applyChunkAndReassign();
+            showToast('✓ 缓存命中 — '+snapped+' 条 OSM way → 切成 '+links.length+' 条短 link (~'+LINK_TARGET_LEN_M+'m/条)');
+            renderMap();
+            renderRows();
+            return;
+          }
+        }
+      }
+    }catch(e){}
+
+    showToast('首次加载：正在用 OSRM 拉取 '+links.length+' 条真实路网…');
+    var lbl = document.getElementById('mapLabel');
+    if(lbl) lbl.textContent = 'GIS · '+(TILE_SOURCES[state.tileSrc]||TILE_SOURCES.osm).label+' · 加载真实路网 0/'+links.length;
+
+    var idx = 0, ok = 0, fail = 0, cacheData = {};
+    var totalWays = links.length;
+    function next(){
+      if(idx >= links.length){
+        try{ localStorage.setItem(CACHE_KEY_SNAP, JSON.stringify({expire: Date.now()+72*3600*1000, data:cacheData})); }catch(e){}
+        if(ok>0){
+          applyChunkAndReassign();
+          showToast('✓ '+ok+'/'+totalWays+' 条 OSM way → 切成 '+links.length+' 条短 link (~'+LINK_TARGET_LEN_M+'m/条)，已缓存 72h');
+          renderMap(); renderRows();
+        } else {
+          showToast('⚠️ OSRM 全部失败 — 浏览器无法访问 router.project-osrm.org，请检查网络');
+        }
+        return;
+      }
+      var l = links[idx++];
+      if(lbl) lbl.textContent = 'GIS · '+(TILE_SOURCES[state.tileSrc]||TILE_SOURCES.osm).label+' · 加载真实路网 '+idx+'/'+links.length+' (已 snap '+ok+')';
+      var p1 = l.pts[0], p2 = l.pts[l.pts.length-1];
+      var url = OSRM_ENDPOINT + p1[0].toFixed(6)+','+p1[1].toFixed(6)+';'+p2[0].toFixed(6)+','+p2[1].toFixed(6) +
+                '?overview=full&geometries=geojson';
+      fetch(url).then(function(r){
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        return r.json();
+      }).then(function(data){
+        if(data.code==='Ok' && data.routes && data.routes[0] && data.routes[0].geometry){
+          var coords = data.routes[0].geometry.coordinates;
+          if(coords && coords.length>=2){
+            l.pts = coords;
+            l.realGeom = true;
+            cacheData[l.id] = coords;
+            ok++;
+            // 每条 snap 完成立即增量渲染（用户看到 link 一条条出现）
+            renderMap();
+          } else { fail++; }
+        } else { fail++; }
+      }).catch(function(){
+        fail++;
+      }).then(function(){
+        // 间隔 100ms 避免 OSRM rate limit
+        setTimeout(next, 100);
+      });
+    }
+    next();
+  }
+})();
+</script>
+<!-- demo-nav-back (injected by scripts/inject_nav.py) -->
+<div id="demo-nav-back">
+  <a href="javascript:void(0)" id="demo-nav-up" title="回到上一层">↑ 上一层</a>
+  <a href="#" id="demo-nav-home" title="返回 Demo 主页">⌂ 主页</a>
+</div>
+<style>
+#demo-nav-back{position:fixed;top:14px;left:14px;z-index:2147483600;display:flex;gap:8px;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+#demo-nav-back a{text-decoration:none;font-size:13px;line-height:1;color:#e7eaf6;background:rgba(20,28,52,.82);border:1px solid #2a3157;padding:7px 12px;border-radius:999px;box-shadow:0 2px 10px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:border-color .15s,color .15s}
+#demo-nav-back a:hover{border-color:#7ee0ff;color:#7ee0ff}
+@media print{#demo-nav-back{display:none}}
+</style>
+<script>
+(function(){var up=document.getElementById('demo-nav-up'),home=document.getElementById('demo-nav-home');
+if(home){var h=location.href,i=h.indexOf('/demos/');home.href=(i>=0?h.slice(0,i)+'/index.html':'../../index.html');}
+if(up){up.addEventListener('click',function(){if(history.length>1){history.back();}else if(home){location.href=home.href;}});}})();
+</script>
+<!-- /demo-nav-back -->
+
+</body>
+</html>

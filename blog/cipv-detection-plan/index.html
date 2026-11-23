@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CIPV 物体漏检 · 技术方案 (基于 TEP)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0:#05070d;
+    --bg-1:#0a0e1a;
+    --bg-2:#0f1424;
+    --bg-3:#141a2e;
+    --line:#1f2740;
+    --line-2:#2a3357;
+    --text:#e7eaf6;
+    --text-2:#aab1d0;
+    --text-3:#7f87a8;
+    --text-4:#5a6488;
+
+    --cyan:#67e8f9;
+    --blue:#60a5fa;
+    --violet:#a78bfa;
+    --emerald:#34d399;
+    --amber:#fbbf24;
+    --pink:#f472b6;
+    --red:#f87171;
+
+    --dense:#a78bfa;
+    --dense-bg:rgba(167,139,250,.08);
+    --dense-border:rgba(167,139,250,.30);
+    --sparse:#34d399;
+    --sparse-bg:rgba(52,211,153,.08);
+    --sparse-border:rgba(52,211,153,.30);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background:
+      radial-gradient(1200px 700px at 15% -10%, rgba(167,139,250,.20), transparent 55%),
+      radial-gradient(1000px 600px at 85% 0%, rgba(103,232,249,.16), transparent 55%),
+      radial-gradient(800px 500px at 50% 100%, rgba(52,211,153,.10), transparent 60%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .noise::after {
+    content:""; position:absolute; inset:0;
+    background-image: radial-gradient(rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 3px 3px;
+    pointer-events:none; opacity:.4;
+  }
+
+  /* ---- Glassmorphism card ---- */
+  .glass {
+    background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+  }
+  .glass::before {
+    content: ""; position: absolute; top:0; left:0; right:0; height:1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+  }
+  .glass:hover { border-color: var(--line-2); }
+  .glass-dense {
+    background: linear-gradient(180deg, rgba(167,139,250,.10), rgba(167,139,250,.02));
+    border-color: var(--dense-border);
+  }
+  .glass-sparse {
+    background: linear-gradient(180deg, rgba(52,211,153,.08), rgba(52,211,153,.02));
+    border-color: var(--sparse-border);
+  }
+  .glass-cyan {
+    background: linear-gradient(180deg, rgba(103,232,249,.08), rgba(103,232,249,.02));
+    border-color: rgba(103,232,249,.30);
+  }
+
+  /* ---- Chip / Badge ---- */
+  .chip {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:4px 11px; border-radius:999px;
+    font-size:11.5px; font-weight:600;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.10);
+    color: var(--text-2);
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .chip-cyan { background: rgba(103,232,249,.10); color: var(--cyan); border-color: rgba(103,232,249,.30); }
+  .chip-blue { background: rgba(96,165,250,.10); color: var(--blue); border-color: rgba(96,165,250,.30); }
+  .chip-dense { background: rgba(167,139,250,.12); color: var(--dense); border-color: rgba(167,139,250,.30); }
+  .chip-sparse { background: rgba(52,211,153,.12); color: var(--sparse); border-color: rgba(52,211,153,.30); }
+  .chip-amber { background: rgba(251,191,36,.10); color: var(--amber); border-color: rgba(251,191,36,.30); }
+  .chip-pink { background: rgba(244,114,182,.10); color: var(--pink); border-color: rgba(244,114,182,.30); }
+
+  /* ---- Section ---- */
+  section { scroll-margin-top: 80px; }
+  .section-eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .section-eyebrow::after {
+    content:""; display:inline-block; width:48px; height:1px;
+    background: linear-gradient(90deg, currentColor, transparent);
+  }
+  .h-display {
+    font-size: clamp(36px, 5.5vw, 60px); font-weight: 800;
+    line-height: 1.05; letter-spacing: -0.02em; margin: 0;
+    background: linear-gradient(180deg, #fff 30%, rgba(255,255,255,.6));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .h-section {
+    font-size: clamp(28px, 3.5vw, 40px); font-weight: 800;
+    line-height: 1.1; letter-spacing: -0.01em;
+    color: #fff; margin: 0;
+  }
+  .h-card { font-size: 17px; font-weight: 700; color: #fff; margin: 0; }
+
+  /* ---- Step number ---- */
+  .step-num {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:34px; height:34px; padding: 0 8px; border-radius:10px;
+    font-family: 'JetBrains Mono', monospace; font-weight:700; font-size:13px;
+    background: rgba(103,232,249,.12); color: var(--cyan);
+    border: 1px solid rgba(103,232,249,.30);
+    flex-shrink:0;
+  }
+  .step-num.dense { background: rgba(167,139,250,.15); color: var(--dense); border-color: rgba(167,139,250,.30); }
+  .step-num.sparse { background: rgba(52,211,153,.15); color: var(--sparse); border-color: rgba(52,211,153,.30); }
+
+  /* ---- Person ---- */
+  .person {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:3px 10px; border-radius:999px;
+    font-size:12px; font-weight:600;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    color: var(--text);
+  }
+  .person::before { content:"@"; color: var(--text-3); }
+  .person.dense { background: rgba(167,139,250,.12); color: var(--dense); border-color: rgba(167,139,250,.30); }
+  .person.sparse { background: rgba(52,211,153,.12); color: var(--sparse); border-color: rgba(52,211,153,.30); }
+
+  /* ---- Sticky nav ---- */
+  .nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,14,26,.75); backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-link {
+    padding: 10px 16px; border-radius: 10px;
+    font-size: 13px; font-weight: 500;
+    color: var(--text-3);
+    transition: all .15s;
+    position: relative;
+  }
+  .nav-link:hover { color: var(--text); background: rgba(255,255,255,.04); }
+  .nav-link.active {
+    color: #fff;
+    background: linear-gradient(135deg, rgba(167,139,250,.15), rgba(103,232,249,.10));
+  }
+  .nav-link.active::after {
+    content:""; position:absolute; left:16px; right:16px; bottom: -1px; height:2px;
+    background: linear-gradient(90deg, var(--violet), var(--cyan));
+    border-radius: 2px;
+  }
+
+  /* ---- Tab control ---- */
+  .seg {
+    display:inline-flex; padding: 4px; gap: 4px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .seg button {
+    padding: 8px 18px; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+    color: var(--text-3); background: transparent; border: 0;
+    cursor: pointer; transition: all .2s;
+  }
+  .seg button:hover { color: var(--text); }
+  .seg button.active.dense {
+    background: linear-gradient(135deg, rgba(167,139,250,.22), rgba(167,139,250,.08));
+    color: #fff;
+    box-shadow: 0 0 0 1px rgba(167,139,250,.40), inset 0 0 20px rgba(167,139,250,.10);
+  }
+  .seg button.active.sparse {
+    background: linear-gradient(135deg, rgba(52,211,153,.22), rgba(52,211,153,.08));
+    color: #fff;
+    box-shadow: 0 0 0 1px rgba(52,211,153,.40), inset 0 0 20px rgba(52,211,153,.10);
+  }
+
+  .subtab {
+    display:inline-flex; gap: 6px;
+    padding: 3px; border-radius: 10px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--line);
+  }
+  .subtab button {
+    padding: 6px 14px; border-radius: 7px;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--text-3); background: transparent; border: 0;
+    cursor: pointer; transition: all .15s;
+  }
+  .subtab button:hover { color: var(--text); }
+  .subtab button.active { background: rgba(255,255,255,.08); color: #fff; }
+
+  /* ---- Mermaid container ---- */
+  .mermaid-wrap {
+    background: rgba(0,0,0,.30);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    overflow-x: auto;
+  }
+  .mermaid { font-family: 'JetBrains Mono', monospace !important; }
+  .mermaid svg { max-width: 100% !important; height: auto !important; }
+
+  /* ---- Fade-in animation ---- */
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity .7s cubic-bezier(.16,.84,.44,1), transform .7s cubic-bezier(.16,.84,.44,1); }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* ---- Tab content fade ---- */
+  .tab-content { display: none; opacity: 0; transition: opacity .3s; }
+  .tab-content.active { display: block; }
+  .tab-content.shown { opacity: 1; }
+
+  /* ---- Hero buttons ---- */
+  .btn-primary {
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 10px 18px; border-radius: 12px;
+    font-size: 14px; font-weight: 600;
+    color: var(--bg-0);
+    background: linear-gradient(135deg, #fff, rgba(255,255,255,.85));
+    border: 0;
+    transition: all .2s;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(255,255,255,.15); }
+  .btn-ghost {
+    display:inline-flex; align-items:center; gap:8px;
+    padding: 10px 18px; border-radius: 12px;
+    font-size: 14px; font-weight: 600;
+    color: var(--text);
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.12);
+    transition: all .2s;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.20); }
+
+  /* ---- KPI stat ---- */
+  .stat { padding: 18px 20px; border-radius: 16px; }
+  .stat-num { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; color: #fff; line-height: 1; }
+  .stat-num .unit { font-size: 14px; color: var(--text-3); margin-left: 4px; }
+  .stat-label { font-size: 11px; font-weight: 600; color: var(--text-3); letter-spacing: 1.2px; text-transform: uppercase; margin-top: 10px; }
+
+  /* ---- BEV svg interactive ---- */
+  .bev-svg { user-select: none; }
+  .bev-q { cursor: pointer; transition: filter .15s, transform .15s; transform-origin: center; transform-box: fill-box; }
+  .bev-q:hover { filter: drop-shadow(0 0 8px currentColor); transform: scale(1.5); }
+  .bev-q.muted { opacity: .25; }
+
+  /* ---- Table ---- */
+  .matrix { width: 100%; border-collapse: collapse; }
+  .matrix th, .matrix td {
+    padding: 12px 14px; font-size: 13px;
+    text-align: left; vertical-align: middle;
+    border-bottom: 1px solid var(--line);
+  }
+  .matrix thead th {
+    font-weight: 700; color: var(--text-2);
+    background: rgba(255,255,255,.025);
+    font-size: 11.5px; letter-spacing: .8px; text-transform: uppercase;
+  }
+  .matrix tbody tr:hover { background: rgba(255,255,255,.025); }
+  .matrix .col-dim { color: var(--text); font-weight: 600; width: 18%; }
+  .matrix .group-dense { color: var(--dense); }
+  .matrix .group-sparse { color: var(--sparse); }
+
+  /* ---- Float orbs (背景光斑) ---- */
+  .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .35; pointer-events: none; }
+  @keyframes float1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(40px,-30px); } }
+  @keyframes float2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-30px,40px); } }
+  .orb-1 { width: 480px; height: 480px; background: radial-gradient(circle, #a78bfa, transparent 60%); top: -100px; left: -80px; animation: float1 16s ease-in-out infinite; }
+  .orb-2 { width: 420px; height: 420px; background: radial-gradient(circle, #67e8f9, transparent 60%); top: 50px; right: -80px; animation: float2 18s ease-in-out infinite; }
+
+  /* ---- Code block (diff 风格) ---- */
+  .codeblock {
+    background: #06090f;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 0;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #c9d1d9;
+  }
+  .codeblock pre { margin: 0; padding: 0 16px; white-space: pre; }
+  .codeblock .com { color: #6e7681; font-style: italic; }
+  .codeblock .add { color: #56d364; }
+  .codeblock .mod { color: #fbbf24; }
+  .codeblock .del { color: #f85149; }
+  .codeblock .kw { color: #ff7b72; }
+  .codeblock .str { color: #a5d6ff; }
+  .codeblock .var { color: #ffa657; }
+  .codeblock .num { color: #79c0ff; }
+  .codeblock .fn { color: #d2a8ff; }
+  .codeblock .com2 { color: #7ee787; }
+  .codeblock .hl-add { background: rgba(86,211,100,.08); display:block; margin:0 -16px; padding: 0 16px; border-left: 2px solid #56d364; }
+  .codeblock .hl-mod { background: rgba(251,191,36,.08); display:block; margin:0 -16px; padding: 0 16px; border-left: 2px solid #fbbf24; }
+  .codeblock .hl-del { background: rgba(248,81,73,.08); display:block; margin:0 -16px; padding: 0 16px; border-left: 2px solid #f85149; text-decoration: line-through; opacity:.7; }
+
+  /* ---- File tag ---- */
+  .file-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px; font-weight: 600;
+    background: rgba(96,165,250,.10);
+    color: #93c5fd;
+    border: 1px solid rgba(96,165,250,.25);
+  }
+  .file-tag .ln { color: var(--text-3); margin-left: 4px; font-weight: 400; }
+
+  /* ---- Expandable details ---- */
+  details.exp-card { transition: all .2s; }
+  details.exp-card summary {
+    cursor: pointer; list-style: none;
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 12px;
+    border-radius: 12px;
+    transition: background .15s;
+  }
+  details.exp-card summary:hover { background: rgba(255,255,255,.03); }
+  details.exp-card summary::-webkit-details-marker { display: none; }
+  details.exp-card summary .arrow { transition: transform .2s; color: var(--text-3); }
+  details.exp-card[open] summary .arrow { transform: rotate(90deg); }
+  details.exp-card[open] summary { border-bottom: 1px solid var(--line); border-radius: 12px 12px 0 0; }
+  details.exp-card .exp-body { padding: 18px; }
+  .change-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .change-add { background: rgba(86,211,100,.15); color: #4ade80; border: 1px solid rgba(86,211,100,.3); }
+  .change-mod { background: rgba(251,191,36,.15); color: #fbbf24; border: 1px solid rgba(251,191,36,.3); }
+  .change-new { background: rgba(167,139,250,.15); color: #c4b5fd; border: 1px solid rgba(167,139,250,.3); }
+
+  /* Back button override (主页风格) */</style>
+</head>
+<body>
+
+<!-- ========================== Hero ========================== -->
+<header class="relative overflow-hidden">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="absolute inset-0 grid-bg opacity-50"></div>
+  <div class="relative max-w-6xl mx-auto px-6 pt-24 pb-16">
+    <div class="flex items-center gap-3 mb-6">
+      <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)] animate-pulse"></span>
+      <span class="mono text-xs font-semibold text-cyan-300 tracking-[0.2em]">TECHNICAL SPEC · BASED ON TEP · 2026-05-29</span>
+    </div>
+    <h1 class="h-display">
+      CIPV 物体漏检 <span style="background:linear-gradient(90deg,#67e8f9,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent">技术方案</span>
+    </h1>
+    <p class="mt-5 text-base md:text-lg max-w-2xl" style="color:var(--text-2)">
+      在 TEP 已有 OD 头基础上,新增 <b style="color:#fff">CIPV Query</b> 机制 — 补检 · 保 Recall · 作为 NMS Base
+    </p>
+
+    <div class="mt-7 flex flex-wrap gap-2">
+      <span class="chip chip-cyan">📐 4 类 × 8 Query / 类</span>
+      <span class="chip chip-blue">📏 y ∈ [-3, 3]  ·  x ∈ [0, 80] m</span>
+      <span class="chip chip-amber">🎯 每类最多激活 1 个</span>
+      <span class="chip chip-pink">🧰 NMS Base 保 Recall</span>
+    </div>
+
+    <div class="mt-8 flex flex-wrap items-center gap-3">
+      <a href="https://www.feishu.cn/docx/W76Pd4a7GoOYmKxh4RQcR1csnNh" target="_blank" rel="noopener" class="btn-primary">
+        📄 打开飞书文档
+        <span style="opacity:.5">→</span>
+      </a>
+      <a href="#design" class="btn-ghost">查看方案 ↓</a>
+      <div class="ml-2 flex gap-2 items-center">
+        <span class="person dense">张达 · Dense</span>
+        <span class="person sparse">陈昌 · Sparse</span>
+      </div>
+    </div>
+
+    <!-- KPI 一行 -->
+    <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="glass stat">
+        <div class="stat-num">32<span class="unit">queries</span></div>
+        <div class="stat-label">CIPV Query 总数</div>
+      </div>
+      <div class="glass stat">
+        <div class="stat-num">4 × 8</div>
+        <div class="stat-label">类别 × 距离 bin</div>
+      </div>
+      <div class="glass stat">
+        <div class="stat-num">10<span class="unit">m / bin</span></div>
+        <div class="stat-label">x 方向步长</div>
+      </div>
+      <div class="glass stat">
+        <div class="stat-num">[-3, 3]<span class="unit">m</span></div>
+        <div class="stat-label">y 方向范围</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ========================== Sticky Nav ========================== -->
+<nav class="nav">
+  <div class="max-w-6xl mx-auto px-6 flex flex-wrap gap-1 py-2" id="navlinks">
+    <a href="#overview" class="nav-link" data-target="overview">总览流程</a>
+    <a href="#design" class="nav-link" data-target="design">§1 方案设计</a>
+    <a href="#bev" class="nav-link" data-target="bev">BEV 可视化</a>
+    <a href="#impl" class="nav-link" data-target="impl">§2/§3 实现</a>
+    <a href="#codemap" class="nav-link" data-target="codemap">§4 代码落地</a>
+    <a href="#variants" class="nav-link" data-target="variants">变体对照</a>
+  </div>
+</nav>
+
+<main class="max-w-6xl mx-auto px-6 py-12 space-y-20">
+
+<!-- ========================== Overview Flow ========================== -->
+<section id="overview" class="reveal">
+  <div class="section-eyebrow" style="color:var(--cyan)">Pipeline · Overview</div>
+  <h2 class="h-section mt-3">总览流程</h2>
+  <p class="mt-2 text-sm" style="color:var(--text-3)">CIPV Query 在现有 TEP OD pipeline 中的注入点 — 从 Query 设置到 NMS 输出</p>
+  <div class="mt-6 mermaid-wrap">
+    <div class="mermaid">
+flowchart LR
+  subgraph IN[" "]
+    direction TB
+    FW["前视 fw"]:::cam
+    FN["前窄 fn"]:::cam
+  end
+  subgraph TEP["TEP 既有 pipeline"]
+    direction TB
+    BB["Backbone + Neck"]:::tep
+    ODQ["OD Query<br/>原有 N 个"]:::tep
+    DEC["Decoder"]:::tep
+    HEAD["OD Head"]:::tep
+  end
+  subgraph NEW["新增 · CIPV"]
+    direction TB
+    MONO["3D Mono Det<br/>(1-2v)"]:::new
+    CIPVQ["CIPV Query<br/>4 × 8 = 32"]:::new
+    LOSS["CIPV Loss<br/>仅匹配 CIPV GT"]:::new
+  end
+  NMS["NMS<br/>CIPV → base"]:::nms
+  OUT[["最终 OD 输出"]]:::out
+
+  FW --> BB
+  FN --> BB
+  BB --> MONO
+  BB --> DEC
+  ODQ --> DEC
+  CIPVQ --> DEC
+  DEC --> HEAD
+  HEAD --> NMS
+  MONO --> NMS
+  CIPVQ -.->|loss| LOSS
+  NMS --> OUT
+
+  classDef cam fill:#0f1424,stroke:#60a5fa,stroke-width:1.5px,color:#60a5fa
+  classDef tep fill:#0f1424,stroke:#5a6488,stroke-width:1.5px,color:#aab1d0
+  classDef new fill:#1a1430,stroke:#a78bfa,stroke-width:2px,color:#c4b5fd
+  classDef nms fill:#2a1f0a,stroke:#fbbf24,stroke-width:2px,color:#fcd34d
+  classDef out fill:#0a2920,stroke:#34d399,stroke-width:2px,color:#6ee7b7
+    </div>
+  </div>
+</section>
+
+<!-- ========================== §1 方案设计 ========================== -->
+<section id="design" class="reveal">
+  <div class="section-eyebrow" style="color:var(--cyan)">§1 · Design</div>
+  <h2 class="h-section mt-3">方案设计</h2>
+  <p class="mt-2 text-sm" style="color:var(--text-3)">四点核心 — Query 分布、激活策略、GT 生产、保 Recall</p>
+
+  <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+    <!-- 1.1 -->
+    <div class="glass glass-cyan p-6">
+      <div class="flex items-start gap-4">
+        <span class="step-num">1.1</span>
+        <div class="flex-1 min-w-0">
+          <h3 class="h-card">补充基于 1-2V 的 3D Mono 检测</h3>
+          <p class="mt-2 text-sm" style="color:var(--text-2)">在现有 TEP pipeline 上叠加 3D Mono 检测分支(单视 / 双视),作为 CIPV Query 的补检来源。</p>
+          <div class="mt-3 flex flex-wrap gap-1.5">
+            <span class="chip chip-cyan">输入: 1-2V</span>
+            <span class="chip chip-cyan">输出: 3D Mono Det</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1.2 -->
+    <div class="glass glass-cyan p-6">
+      <div class="flex items-start gap-4">
+        <span class="step-num">1.2</span>
+        <div class="flex-1 min-w-0">
+          <h3 class="h-card">CIPV Query 空间分布</h3>
+          <ul class="mt-2 text-sm space-y-1.5" style="color:var(--text-2)">
+            <li class="flex gap-2"><span style="color:var(--cyan)">▸</span> 横向 <span class="mono" style="color:#fff">y ∈ [-3, 3]</span> m</li>
+            <li class="flex gap-2"><span style="color:var(--cyan)">▸</span> 纵向 <span class="mono" style="color:#fff">x ∈ [0, 80]</span> m, 步长 <span class="mono" style="color:#fff">10</span> m</li>
+            <li class="flex gap-2"><span style="color:var(--cyan)">▸</span> 4 类: <span class="mono" style="color:#fff">vehicle / large_vehicle / cyclist / pedestrian</span></li>
+            <li class="flex gap-2"><span style="color:var(--cyan)">▸</span> <b style="color:#fff">每类 8 个 Query</b>(0-10 / 10-20 / ... / 70-80 m)</li>
+          </ul>
+          <div class="mt-3"><span class="chip chip-cyan">共 4 × 8 = 32 query</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1.3 -->
+    <div class="glass glass-cyan p-6">
+      <div class="flex items-start gap-4">
+        <span class="step-num">1.3</span>
+        <div class="flex-1 min-w-0">
+          <h3 class="h-card">匹配策略 · 最近 + 单激活</h3>
+          <ul class="mt-2 text-sm space-y-1.5" style="color:var(--text-2)">
+            <li class="flex gap-2"><span style="color:var(--cyan)">▸</span> CIPV Query 只匹配<b style="color:#fff">最近</b>的物体</li>
+            <li class="flex gap-2"><span style="color:var(--cyan)">▸</span> 每个类别同时<b style="color:#fff">最多激活 1 个</b> Query</li>
+            <li class="flex gap-2"><span style="color:var(--cyan)">▸</span> GT 生产时 <b style="color:#fff">pick CIPV 物体</b></li>
+            <li class="flex gap-2"><span style="color:var(--cyan)">▸</span> 大部分帧没有 → <b style="color:#fff">给空 GT</b></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1.4 -->
+    <div class="glass glass-cyan p-6">
+      <div class="flex items-start gap-4">
+        <span class="step-num">1.4</span>
+        <div class="flex-1 min-w-0">
+          <h3 class="h-card">保 Recall · 作为 NMS Base</h3>
+          <p class="mt-2 text-sm" style="color:var(--text-2)">CIPV Query 作为<b style="color:#fff">新增检出</b>,与原有 OD 头并列输出;后处理 NMS 阶段以 CIPV 检测为 <b style="color:#fff">base</b>,优先保留 CIPV 再 NMS 其他检测。</p>
+          <div class="mt-3 flex flex-wrap gap-1.5">
+            <span class="chip chip-amber">CIPV → NMS base</span>
+            <span class="chip chip-amber">保 recall</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GT 生产流程 -->
+  <div class="mt-6 glass p-6">
+    <div class="flex items-center gap-3 mb-3">
+      <span class="text-lg">🏷️</span>
+      <h3 class="h-card">GT 生产 &amp; Loss 匹配流程</h3>
+    </div>
+    <div class="mermaid-wrap">
+      <div class="mermaid">
+flowchart LR
+  GT[("原始 GT 物体")]:::gt
+  FILT["筛选<br/>4 类 · y∈[-3,3] · x∈[0,80]"]:::p
+  PICK["按类别 pick<br/>最近物体"]:::p
+  BIN["落 bin<br/>(x // 10) → Qk"]:::p
+  EMPTY["该类无 CIPV<br/>→ 空 GT"]:::warn
+  ASSIGN["分配给对应 Qk<br/>(类别 + 距离 bin)"]:::ok
+  LOSS["CIPV Loss<br/>仅 CIPV GT 参与"]:::ok
+
+  GT --> FILT --> PICK
+  PICK -- 存在最近物体 --> BIN --> ASSIGN --> LOSS
+  PICK -- 无 --> EMPTY --> LOSS
+
+  classDef gt fill:#0f1424,stroke:#aab1d0,color:#e7eaf6
+  classDef p fill:#0f1a2e,stroke:#60a5fa,color:#93c5fd
+  classDef warn fill:#2a1f0a,stroke:#fbbf24,color:#fcd34d
+  classDef ok fill:#0a2920,stroke:#34d399,color:#6ee7b7
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================== BEV Visualization ========================== -->
+<section id="bev" class="reveal">
+  <div class="section-eyebrow" style="color:var(--blue)">BEV · Bird's Eye View</div>
+  <h2 class="h-section mt-3">CIPV Query BEV 分布</h2>
+  <p class="mt-2 text-sm" style="color:var(--text-3)">俯视图:自车在底部,前向 x 轴向上 ·  hover 看每个 Query 的覆盖范围</p>
+
+  <div class="mt-6 grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+
+    <!-- BEV svg -->
+    <div class="glass p-6">
+      <div class="flex flex-wrap gap-2 mb-4">
+        <button class="chip chip-blue cls-toggle active mono" data-cls="vehicle" style="cursor:pointer;background:rgba(96,165,250,.25);border-color:#60a5fa;color:#fff">● vehicle</button>
+        <button class="chip cls-toggle active mono" data-cls="large_vehicle" style="cursor:pointer;background:rgba(244,114,182,.25);border-color:#f472b6;color:#fff">● large_vehicle</button>
+        <button class="chip cls-toggle active mono" data-cls="cyclist" style="cursor:pointer;background:rgba(52,211,153,.25);border-color:#34d399;color:#fff">● cyclist</button>
+        <button class="chip cls-toggle active mono" data-cls="pedestrian" style="cursor:pointer;background:rgba(251,191,36,.25);border-color:#fbbf24;color:#fff">● pedestrian</button>
+      </div>
+      <svg id="bev" viewBox="0 0 720 440" class="bev-svg w-full h-auto">
+        <!-- 背景渐变 -->
+        <defs>
+          <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0a1020" />
+            <stop offset="100%" stop-color="#05070d" />
+          </linearGradient>
+          <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="rgba(96,165,250,0.08)" />
+            <stop offset="100%" stop-color="rgba(96,165,250,0.18)" />
+          </linearGradient>
+          <radialGradient id="ego" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0%" stop-color="#67e8f9" stop-opacity="1" />
+            <stop offset="100%" stop-color="#67e8f9" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+        <rect x="0" y="0" width="720" height="440" fill="url(#bg)" />
+
+        <!-- 横向 query 范围带 y∈[-3,3] -->
+        <!-- 坐标映射: x 轴: 物理 0~80m → svg x: 80 → 700, y 轴: 物理 -10~+10m → svg y: 380 → 60 -->
+        <!-- 即 svg_x = 80 + (phys_x/80)*620, svg_y = 220 - (phys_y/10)*160 -->
+        <!-- y=3m → svg_y = 220 - 48 = 172; y=-3m → svg_y = 220 + 48 = 268 -->
+        <rect x="80" y="172" width="620" height="96" fill="url(#band)" stroke="rgba(96,165,250,0.45)" stroke-dasharray="4 4" stroke-width="1" />
+        <text x="710" y="218" fill="#60a5fa" font-size="11" text-anchor="end" font-family="JetBrains Mono">y ∈ [-3, 3] m</text>
+
+        <!-- x 轴网格 (每 10m 一条虚线) -->
+        <g stroke="rgba(255,255,255,0.07)" stroke-dasharray="2 4" stroke-width="1">
+          <line x1="80" y1="60" x2="80" y2="380" />
+          <line x1="157.5" y1="60" x2="157.5" y2="380" />
+          <line x1="235" y1="60" x2="235" y2="380" />
+          <line x1="312.5" y1="60" x2="312.5" y2="380" />
+          <line x1="390" y1="60" x2="390" y2="380" />
+          <line x1="467.5" y1="60" x2="467.5" y2="380" />
+          <line x1="545" y1="60" x2="545" y2="380" />
+          <line x1="622.5" y1="60" x2="622.5" y2="380" />
+          <line x1="700" y1="60" x2="700" y2="380" />
+        </g>
+        <!-- x 轴标尺 -->
+        <g fill="#7f87a8" font-size="10" text-anchor="middle" font-family="JetBrains Mono">
+          <text x="80" y="398">0</text>
+          <text x="157.5" y="398">10</text>
+          <text x="235" y="398">20</text>
+          <text x="312.5" y="398">30</text>
+          <text x="390" y="398">40</text>
+          <text x="467.5" y="398">50</text>
+          <text x="545" y="398">60</text>
+          <text x="622.5" y="398">70</text>
+          <text x="700" y="398">80</text>
+        </g>
+        <text x="390" y="420" fill="#aab1d0" font-size="11" text-anchor="middle" font-family="JetBrains Mono">x (m) → 前向</text>
+
+        <!-- y 轴标尺 -->
+        <g fill="#7f87a8" font-size="10" text-anchor="end" font-family="JetBrains Mono">
+          <text x="72" y="64">+10</text>
+          <text x="72" y="144">+5</text>
+          <text x="72" y="176">+3</text>
+          <text x="72" y="224">0</text>
+          <text x="72" y="272">-3</text>
+          <text x="72" y="304">-5</text>
+          <text x="72" y="384">-10</text>
+        </g>
+        <text x="20" y="220" fill="#aab1d0" font-size="11" text-anchor="middle" font-family="JetBrains Mono" transform="rotate(-90 20 220)">y (m)</text>
+
+        <!-- 自车 (egop) -->
+        <ellipse cx="40" cy="220" rx="22" ry="22" fill="url(#ego)" />
+        <rect x="22" y="208" width="36" height="24" rx="4" fill="#67e8f9" stroke="#0a0e1a" stroke-width="1.5" />
+        <text x="40" y="223" fill="#0a0e1a" font-size="9" font-weight="700" text-anchor="middle" font-family="JetBrains Mono">EGO</text>
+
+        <!-- Bin 高亮 (每 10m bin 一个透明矩形,hover 后高亮) -->
+        <g id="bins"></g>
+
+        <!-- CIPV Query 点 -->
+        <g id="queries"></g>
+
+        <!-- 边框 -->
+        <rect x="80" y="60" width="620" height="320" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1" />
+
+        <!-- 类别标签 (左侧) -->
+        <g font-family="JetBrains Mono" font-size="9.5" font-weight="600">
+          <!-- 4 行类别 y 位置: 100, 180, 240, 340  (y 轴上下偏移示意类别带) -->
+        </g>
+      </svg>
+    </div>
+
+    <!-- 旁注 / 信息卡 -->
+    <div class="space-y-3">
+      <div class="glass p-5">
+        <div class="text-xs mono" style="color:var(--cyan);letter-spacing:1.5px">SELECTED QUERY</div>
+        <div id="bev-info-title" class="mt-2 text-base font-bold" style="color:#fff">Hover 一个 Query 点</div>
+        <div id="bev-info-body" class="mt-2 text-xs" style="color:var(--text-3);line-height:1.7">
+          类别 · 距离 bin · 横向范围 · 触发条件
+        </div>
+      </div>
+      <div class="glass p-5 text-sm" style="color:var(--text-2)">
+        <div class="text-xs mono" style="color:var(--text-3);letter-spacing:1.5px;margin-bottom:8px">LEGEND</div>
+        <div class="space-y-2">
+          <div class="flex items-center gap-2"><span style="color:#60a5fa">●</span> vehicle</div>
+          <div class="flex items-center gap-2"><span style="color:#f472b6">●</span> large_vehicle</div>
+          <div class="flex items-center gap-2"><span style="color:#34d399">●</span> cyclist</div>
+          <div class="flex items-center gap-2"><span style="color:#fbbf24">●</span> pedestrian</div>
+          <div class="mt-3 pt-3 border-t" style="border-color:var(--line)">
+            <div class="text-xs" style="color:var(--text-3)">蓝色虚线带 = y ∈ [-3, 3] m,query 仅在此横向范围内激活</div>
+          </div>
+        </div>
+      </div>
+      <div class="glass p-5 text-xs" style="color:var(--text-3);line-height:1.7">
+        每类 8 个 query,每 query 覆盖 10m 距离 bin。匹配时<b style="color:#fff">每类同时最多激活 1 个</b>(最近物体所在 bin)。
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================== §2 / §3 实现方案 (Tab) ========================== -->
+<section id="impl" class="reveal">
+  <div class="section-eyebrow" style="color:var(--violet)">§2 / §3 · Implementation</div>
+  <h2 class="h-section mt-3">实现方案 — Dense / Sparse 双路径</h2>
+  <p class="mt-2 text-sm" style="color:var(--text-3)">两条独立实现路径,每条又分"高优 Query" / "单独 Query"两种形态</p>
+
+  <!-- 主 Tab: Dense / Sparse -->
+  <div class="mt-6 flex flex-wrap items-center gap-4">
+    <div class="seg" role="tablist" id="branch-tab">
+      <button class="active dense" data-branch="dense">§2 Dense · 张达</button>
+      <button data-branch="sparse">§3 Sparse · 陈昌</button>
+    </div>
+    <span id="branch-owner" class="person dense">张达 · Dense</span>
+  </div>
+
+  <!-- Tab Content: Dense -->
+  <div class="tab-content active shown mt-6" data-branch-content="dense">
+    <!-- 2.1 -->
+    <div class="glass glass-dense p-6">
+      <div class="flex items-start gap-4">
+        <span class="step-num dense">2.1</span>
+        <div class="flex-1 min-w-0">
+          <h3 class="h-card">Set CIPV Query</h3>
+          <ul class="mt-2 text-sm space-y-1.5" style="color:var(--text-2)">
+            <li class="flex gap-2"><span style="color:var(--dense)">▸</span> 每个类别新增 <b style="color:#fff">8 个 Query</b></li>
+            <li class="flex gap-2"><span style="color:var(--dense)">▸</span> <b style="color:#fff">纯视觉分支</b> query 数量增加</li>
+            <li class="flex gap-2"><span style="color:var(--dense)">▸</span> <b style="color:#fff">Fusion 分支</b> 可以带 (看实现难度,能带上就带)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2.2 sub tab -->
+    <div class="mt-6 flex items-center justify-between flex-wrap gap-3">
+      <h3 class="text-xl font-bold" style="color:#fff">2.2 CIPV Query 的实现</h3>
+      <div class="subtab" data-mode-tab="dense">
+        <button class="active" data-mode="hi">2.2.1 高优 Query</button>
+        <button data-mode="solo">2.2.2 单独 Query</button>
+      </div>
+    </div>
+
+    <!-- 2.2.1 -->
+    <div class="mode-content mt-4 active shown" data-mode-content="dense-hi">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-4">
+        <div class="glass glass-dense p-6">
+          <div class="flex items-start gap-3">
+            <span class="step-num dense">2.2.1</span>
+            <div>
+              <h4 class="h-card">只作为高优 Query</h4>
+              <span class="chip chip-dense mt-2">低改动 · 复用 Decoder</span>
+            </div>
+          </div>
+          <ol class="mt-4 space-y-2.5 text-sm" style="color:var(--text-2)">
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(167,139,250,.15);color:var(--dense)">2.2.1.1</span>加入当前 query group, 作为<b style="color:#fff">正常的 query</b> 走 decoder</li>
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(167,139,250,.15);color:var(--dense)">2.2.1.2</span>Loss 匹配时只匹配 <b style="color:#fff">CIPV 物体</b></li>
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(167,139,250,.15);color:var(--dense)">2.2.1.3</span>NMS 时 CIPV 作为 <b style="color:#fff">base</b> 去 NMS 其他检测</li>
+          </ol>
+        </div>
+        <div class="mermaid-wrap">
+          <div class="mermaid">
+flowchart TB
+  Q1["原 OD Query"]:::od --> G["Query Group<br/>concat"]:::g
+  Q2["新增 CIPV Query<br/>4 × 8"]:::cipv --> G
+  G --> D["Decoder"]:::dec
+  D --> H["OD Head"]:::head
+  H --> M["Loss 匹配<br/>CIPV 仅匹配 CIPV GT"]:::cipv
+  H --> N["NMS<br/>CIPV 作为 base"]:::nms
+  classDef od fill:#0f1424,stroke:#5a6488,color:#aab1d0
+  classDef cipv fill:#1a1430,stroke:#a78bfa,stroke-width:2px,color:#c4b5fd
+  classDef g fill:#0f1424,stroke:#67e8f9,color:#67e8f9
+  classDef dec fill:#0f1424,stroke:#60a5fa,color:#93c5fd
+  classDef head fill:#0f1424,stroke:#60a5fa,color:#93c5fd
+  classDef nms fill:#2a1f0a,stroke:#fbbf24,color:#fcd34d
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2.2.2 -->
+    <div class="mode-content mt-4" data-mode-content="dense-solo">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-4">
+        <div class="glass glass-dense p-6">
+          <div class="flex items-start gap-3">
+            <span class="step-num dense">2.2.2</span>
+            <div>
+              <h4 class="h-card">作为单独 Query (单 V / 多 V)</h4>
+              <span class="chip chip-dense mt-2">独立 DCA · 新增 Head</span>
+            </div>
+          </div>
+          <ol class="mt-4 space-y-2.5 text-sm" style="color:var(--text-2)">
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(167,139,250,.15);color:var(--dense)">2.2.2.1</span><b style="color:#fff">单 V</b>: CIPV query <b>单独跟 fw</b> 做 DCA → Mono3D 结果 (给 OD 新增一路 head)</li>
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(167,139,250,.15);color:var(--dense)">2.2.2.2</span><b style="color:#fff">多 V</b>: CIPV query <b>单独跟 fw, fn</b> 做 DCA → MV3D 结果 (给 OD 新增一路 head)</li>
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(167,139,250,.15);color:var(--dense)">2.2.2.3</span>Loss 匹配只匹配 <b style="color:#fff">CIPV 物体</b></li>
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(167,139,250,.15);color:var(--dense)">2.2.2.4</span>NMS 时 CIPV 作为 <b style="color:#fff">base</b> 去 NMS 其他检测</li>
+          </ol>
+        </div>
+        <div class="mermaid-wrap">
+          <div class="mermaid">
+flowchart TB
+  CIPV["CIPV Query"]:::cipv
+  CIPV -->|单V: 仅 fw| DCA1["DCA<br/>(单V → Mono3D)"]:::dca
+  CIPV -->|多V: fw + fn| DCA2["DCA<br/>(多V → MV3D)"]:::dca
+  DCA1 --> H1["新增 OD Head"]:::head
+  DCA2 --> H1
+  H1 --> LOSS["Loss<br/>仅匹配 CIPV GT"]:::cipv
+  H1 --> NMS["NMS<br/>CIPV 作为 base"]:::nms
+  classDef cipv fill:#1a1430,stroke:#a78bfa,stroke-width:2px,color:#c4b5fd
+  classDef dca fill:#14102a,stroke:#a78bfa,color:#a78bfa
+  classDef head fill:#0f1424,stroke:#60a5fa,color:#93c5fd
+  classDef nms fill:#2a1f0a,stroke:#fbbf24,color:#fcd34d
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Content: Sparse -->
+  <div class="tab-content mt-6" data-branch-content="sparse">
+    <!-- 3.1 -->
+    <div class="glass glass-sparse p-6">
+      <div class="flex items-start gap-4">
+        <span class="step-num sparse">3.1</span>
+        <div class="flex-1 min-w-0">
+          <h3 class="h-card">Set CIPV Query</h3>
+          <ul class="mt-2 text-sm space-y-1.5" style="color:var(--text-2)">
+            <li class="flex gap-2"><span style="color:var(--sparse)">▸</span> 每个类别新增 <b style="color:#fff">8 个 Query</b></li>
+            <li class="flex gap-2"><span style="color:var(--sparse)">▸</span> <b style="color:#fff">纯视觉分支</b> query 数量增加</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 flex items-center justify-between flex-wrap gap-3">
+      <h3 class="text-xl font-bold" style="color:#fff">3.2 CIPV Query 的实现</h3>
+      <div class="subtab" data-mode-tab="sparse">
+        <button class="active" data-mode="hi">3.2.1 高优 Query</button>
+        <button data-mode="solo">3.2.2 单独 Query</button>
+      </div>
+    </div>
+
+    <!-- 3.2.1 -->
+    <div class="mode-content mt-4 active shown" data-mode-content="sparse-hi">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-4">
+        <div class="glass glass-sparse p-6">
+          <div class="flex items-start gap-3">
+            <span class="step-num sparse">3.2.1</span>
+            <div>
+              <h4 class="h-card">只作为高优 Query</h4>
+              <span class="chip chip-sparse mt-2">低改动 · 复用 Decoder</span>
+            </div>
+          </div>
+          <ol class="mt-4 space-y-2.5 text-sm" style="color:var(--text-2)">
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(52,211,153,.15);color:var(--sparse)">3.2.1.1</span>加入当前 query group, 作为<b style="color:#fff">正常的 query</b> 走 decoder</li>
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(52,211,153,.15);color:var(--sparse)">3.2.1.2</span>Loss 匹配只匹配 <b style="color:#fff">CIPV 物体</b></li>
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(52,211,153,.15);color:var(--sparse)">3.2.1.3</span>NMS 时 CIPV 作为 <b style="color:#fff">base</b> 去 NMS 其他检测</li>
+          </ol>
+        </div>
+        <div class="mermaid-wrap">
+          <div class="mermaid">
+flowchart TB
+  Q1["原 OD Query"]:::od --> G["Query Group<br/>concat"]:::g
+  Q2["新增 CIPV Query<br/>4 × 8"]:::cipv --> G
+  G --> D["Sparse Decoder"]:::dec
+  D --> H["OD Head"]:::head
+  H --> M["Loss 匹配<br/>CIPV 仅匹配 CIPV GT"]:::cipv
+  H --> N["NMS<br/>CIPV 作为 base"]:::nms
+  classDef od fill:#0f1424,stroke:#5a6488,color:#aab1d0
+  classDef cipv fill:#0e2a20,stroke:#34d399,stroke-width:2px,color:#6ee7b7
+  classDef g fill:#0f1424,stroke:#67e8f9,color:#67e8f9
+  classDef dec fill:#0f1424,stroke:#60a5fa,color:#93c5fd
+  classDef head fill:#0f1424,stroke:#60a5fa,color:#93c5fd
+  classDef nms fill:#2a1f0a,stroke:#fbbf24,color:#fcd34d
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3.2.2 -->
+    <div class="mode-content mt-4" data-mode-content="sparse-solo">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-4">
+        <div class="glass glass-sparse p-6">
+          <div class="flex items-start gap-3">
+            <span class="step-num sparse">3.2.2</span>
+            <div>
+              <h4 class="h-card">作为单独 Query (单 V / 多 V)</h4>
+              <span class="chip chip-sparse mt-2">独立 DCA · 新增 Head</span>
+            </div>
+          </div>
+          <ol class="mt-4 space-y-2.5 text-sm" style="color:var(--text-2)">
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(52,211,153,.15);color:var(--sparse)">3.2.2.1</span><b style="color:#fff">单 V</b>: CIPV query <b>只跟 fw</b> 做 DCA → Mono3D 结果 (给 OD 新增一路 head)</li>
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(52,211,153,.15);color:var(--sparse)">3.2.2.2</span><b style="color:#fff">多 V</b>: CIPV query <b>只跟 fw, fn</b> 做 DCA → MV3D 结果 (给 OD 新增一路 head)</li>
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(52,211,153,.15);color:var(--sparse)">3.2.2.3</span>Loss 匹配只匹配 <b style="color:#fff">CIPV 物体</b></li>
+            <li class="flex gap-3"><span class="mono text-xs px-2 py-0.5 rounded" style="background:rgba(52,211,153,.15);color:var(--sparse)">3.2.2.4</span>NMS 时 CIPV 作为 <b style="color:#fff">base</b> 去 NMS 其他检测</li>
+          </ol>
+        </div>
+        <div class="mermaid-wrap">
+          <div class="mermaid">
+flowchart TB
+  CIPV["CIPV Query"]:::cipv
+  CIPV -->|单V: 只跟 fw| DCA1["DCA<br/>(单V → Mono3D)"]:::dca
+  CIPV -->|多V: 只跟 fw, fn| DCA2["DCA<br/>(多V → MV3D)"]:::dca
+  DCA1 --> H1["新增 OD Head"]:::head
+  DCA2 --> H1
+  H1 --> LOSS["Loss<br/>仅匹配 CIPV GT"]:::cipv
+  H1 --> NMS["NMS<br/>CIPV 作为 base"]:::nms
+  classDef cipv fill:#0e2a20,stroke:#34d399,stroke-width:2px,color:#6ee7b7
+  classDef dca fill:#0a1e16,stroke:#34d399,color:#34d399
+  classDef head fill:#0f1424,stroke:#60a5fa,color:#93c5fd
+  classDef nms fill:#2a1f0a,stroke:#fbbf24,color:#fcd34d
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ========================== §4 TEP Code Map ========================== -->
+<section id="codemap" class="reveal">
+  <div class="section-eyebrow" style="color:var(--amber)">§4 · TEP Code Map</div>
+  <h2 class="h-section mt-3">TEP 现状扫描 &amp; 落地参考</h2>
+  <p class="mt-2 text-sm" style="color:var(--text-3)">基于实际代码扫描 · 函数级伪代码 · 全部带文件路径与行号</p>
+
+  <!-- 4.1 现状速览 -->
+  <h3 class="mt-7 text-xl font-bold" style="color:#fff">4.1 现状速览 — TEP OD 已经是 grouped-query 架构</h3>
+  <p class="mt-1 text-sm" style="color:var(--text-3)">CIPV 方案 §2.2.1 / §3.2.1 "加入当前 query group" 与现状<b style="color:var(--emerald)">天然契合</b>;§1.4 "NMS Base 保 recall" 是<b style="color:var(--amber)">现状缺失</b>,需新增组间合并逻辑。</p>
+
+  <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div class="glass p-5">
+      <div class="text-xs mono mb-3" style="color:var(--cyan);letter-spacing:1.5px">CURRENT STATE</div>
+      <table class="w-full text-sm">
+        <tbody class="divide-y" style="border-color:var(--line)">
+          <tr><td class="py-2 pr-3" style="color:var(--text-3)">架构</td><td style="color:#fff">BEVFormer + Grouped Query + Hungarian</td></tr>
+          <tr><td class="py-2 pr-3" style="color:var(--text-3)">类别数</td><td><span class="mono" style="color:#fff">4</span> · Vehicle / Pedestrian / Cyclist / Large Vehicle</td></tr>
+          <tr><td class="py-2 pr-3" style="color:var(--text-3)">Query 总数</td><td><span class="mono" style="color:#fff">900</span> = [540, 108, 180, 72]</td></tr>
+          <tr><td class="py-2 pr-3" style="color:var(--text-3)">Query 宿主</td><td><span class="mono" style="color:#a5d6ff">_od_query: nn.Embedding(900, 512)</span></td></tr>
+          <tr><td class="py-2 pr-3" style="color:var(--text-3)">Decoder DCA</td><td><span class="mono" style="color:#ffa657">CustomMSDeformableAttention</span> on BEV (1 level)</td></tr>
+          <tr><td class="py-2 pr-3" style="color:var(--text-3)">Loss</td><td>组独立 Hungarian + <span class="mono">BCE×6.0</span> + <span class="mono">L1×0.75</span></td></tr>
+          <tr><td class="py-2 pr-3" style="color:var(--text-3)">NMS</td><td><b style="color:var(--emerald)">组内</b> 轴对齐 IoU 贪心 · <b style="color:var(--amber)">组间</b> 仅 top-k</td></tr>
+          <tr><td class="py-2 pr-3" style="color:var(--text-3)">单视/多视</td><td>多视在 <b style="color:#fff">BEV 阶段</b> <span class="mono">_pv2bev_dynamic</span> 已融合;Decoder 不区分 fw/fn</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="glass p-5">
+      <div class="text-xs mono mb-3" style="color:var(--violet);letter-spacing:1.5px">SCAN EVIDENCE (with line numbers)</div>
+      <div class="space-y-2 text-xs" style="color:var(--text-2);line-height:1.7">
+        <div class="flex gap-2"><span class="file-tag">model_configs/od.py<span class="ln">L11-L20</span></span></div>
+        <div style="color:var(--text-3);padding-left:8px">→ <code class="mono" style="color:#a5d6ff">CLASSES</code> dict, <code class="mono" style="color:#a5d6ff">OBJECT_NUM_QUERY=900</code>, <code class="mono" style="color:#a5d6ff">GROUP_NUM_QUERIES=[540,108,180,72]</code></div>
+
+        <div class="flex gap-2 mt-3"><span class="file-tag">model/task/task_model/bev_task_model.py<span class="ln">L410-L412</span></span></div>
+        <div style="color:var(--text-3);padding-left:8px">→ <code class="mono" style="color:#a5d6ff">self._od_query = nn.Embedding(num_query, embed_dims * 2)</code></div>
+
+        <div class="flex gap-2 mt-3"><span class="file-tag">model/head/grouped_bevformer_head.py<span class="ln">L617-L717</span></span></div>
+        <div style="color:var(--text-3);padding-left:8px">→ <code class="mono" style="color:#a5d6ff">GroupedBEVFormerHead.train_forward</code> 按 <code class="mono">group_num_queries</code> 自动循环</div>
+
+        <div class="flex gap-2 mt-3"><span class="file-tag">model/layer/transformer_layer.py<span class="ln">L2331-L2403</span></span></div>
+        <div style="color:var(--text-3);padding-left:8px">→ <code class="mono" style="color:#a5d6ff">ODTransformerGroupAttnMask</code> · block-diagonal self-attn mask 按 group_num_queries 自动构造</div>
+
+        <div class="flex gap-2 mt-3"><span class="file-tag">model/loss/grouped_od_loss.py<span class="ln">L150-L279</span></span></div>
+        <div style="color:var(--text-3);padding-left:8px">→ <code class="mono" style="color:#a5d6ff">GroupedHungarianAssigner3D</code> 每组独立 Hungarian; 空 GT → <code class="mono">bbox_weights=0</code></div>
+
+        <div class="flex gap-2 mt-3"><span class="file-tag">model/postprocessing/grouped_bbox_decoder.py<span class="ln">L91-L237</span></span></div>
+        <div style="color:var(--text-3);padding-left:8px">→ <code class="mono" style="color:#a5d6ff">_process_single_group</code> 组内 NMS, <code class="mono">decode_grouped</code> 跨组 top-k (<b style="color:var(--amber)">无 base det 优先</b>)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4.2 真实 pipeline 代码图 -->
+  <h3 class="mt-10 text-xl font-bold" style="color:#fff">4.2 真实 OD Pipeline 代码图</h3>
+  <p class="mt-1 text-sm" style="color:var(--text-3)">每个节点都标有真实文件路径,可对照源码定位</p>
+
+  <div class="mt-4 mermaid-wrap">
+    <div class="mermaid">
+flowchart TB
+  IN["batch_data['images']<br/>(B, N_cam, C, H, W)"]:::input
+  PV["forward_pv_module<br/>━━━━━━━━━━━━<br/>bev_task_model.py L977-L1054"]:::tep
+  BEV["forward_dynamic_bev_module<br/>━━━━━━━━━━━━<br/>bev_task_model.py L1169-L1186<br/>(多视 fw/fn 在此融合)"]:::tep
+  QEMB["_od_query: nn.Embedding<br/>━━━━━━━━━━━━<br/>bev_task_model.py L410-L412<br/>weight (900, 512)"]:::query
+  HEAD["GroupedBEVFormerHead.train_forward<br/>━━━━━━━━━━━━<br/>grouped_bevformer_head.py L617-L717"]:::tep
+  DEC["ODTransformerGroupAttnMask<br/>━━━━━━━━━━━━<br/>transformer_layer.py L2328-L2509<br/>self-attn block-mask + DCA"]:::tep
+  CLSREG["per-group cls / bbox heads<br/>━━━━━━━━━━━━<br/>(B, Q_g, 1) / (B, Q_g, 10)"]:::tep
+  LOSS["GroupedODLoss + Hungarian<br/>━━━━━━━━━━━━<br/>grouped_od_loss.py L21-L279<br/>BCE x6 + L1 x0.75"]:::loss
+  POST["GroupedBBoxDecoder<br/>━━━━━━━━━━━━<br/>grouped_bbox_decoder.py L91-L237<br/>组内 NMS + 跨组 top-k"]:::post
+  OUT["od_bboxes / od_scores / od_types"]:::output
+
+  IN --> PV --> BEV --> HEAD
+  QEMB --> HEAD
+  HEAD --> DEC --> CLSREG
+  CLSREG --> LOSS
+  CLSREG --> POST --> OUT
+
+  classDef input fill:#0a1828,stroke:#60a5fa,color:#93c5fd
+  classDef tep fill:#0f1424,stroke:#5a6488,color:#aab1d0
+  classDef query fill:#1a1430,stroke:#a78bfa,stroke-width:2px,color:#c4b5fd
+  classDef loss fill:#1a1024,stroke:#f472b6,color:#f9a8d4
+  classDef post fill:#2a1f0a,stroke:#fbbf24,color:#fcd34d
+  classDef output fill:#0a2920,stroke:#34d399,color:#6ee7b7
+    </div>
+  </div>
+
+  <!-- 4.3 落地改动清单 -->
+  <div class="mt-10 flex items-center justify-between flex-wrap gap-3">
+    <h3 class="text-xl font-bold" style="color:#fff">4.3 落地改动清单</h3>
+    <div class="flex gap-2 flex-wrap">
+      <span class="change-tag change-add">＋ NEW</span>
+      <span class="change-tag change-mod">~ MOD</span>
+      <span class="change-tag change-new">★ KEY</span>
+    </div>
+  </div>
+  <p class="mt-1 text-sm" style="color:var(--text-3)">按文件粒度列出,默认展开关键改动。点击展开/折叠每张卡。</p>
+
+  <div class="mt-5 space-y-3">
+
+    <!-- 1. od.py config -->
+    <details class="glass exp-card" open>
+      <summary>
+        <span class="arrow">▶</span>
+        <span class="change-tag change-mod">~ MOD</span>
+        <span class="file-tag">model_configs/od.py<span class="ln">L11-L20</span></span>
+        <span class="text-sm" style="color:var(--text-2)">扩展 group + 新增 CIPV 类</span>
+      </summary>
+      <div class="exp-body">
+        <div class="codeblock"><pre><span class="com"># --- 现状 (L11-20) ---</span>
+<span class="kw">CLASSES</span> = {
+    <span class="str">"Vehicle"</span>: <span class="num">0</span>,
+    <span class="str">"Pedestrian"</span>: <span class="num">1</span>,
+    <span class="str">"Cyclist"</span>: <span class="num">2</span>,
+    <span class="str">"Large Vehicle"</span>: <span class="num">3</span>,
+}
+<span class="var">OBJECT_NUM_QUERY</span> = <span class="num">900</span>
+<span class="var">GROUP_NUM_QUERIES</span> = [<span class="num">540</span>, <span class="num">108</span>, <span class="num">180</span>, <span class="num">72</span>]
+
+<span class="com">--- CIPV 落地 patch ---</span>
+<span class="com"># 选项 A: 共用类标签, 新增第 5 组 (32 = 4 类 × 8 bin) 视为"CIPV"</span>
+<span class="hl-add"><span class="var">CIPV_GROUP_IDX</span> = <span class="num">4</span>           <span class="com"># 新组序号</span></span>
+<span class="hl-add"><span class="var">CIPV_NUM_QUERY</span> = <span class="num">32</span>          <span class="com"># 4 类 × 8 距离 bin</span></span>
+<span class="hl-mod"><span class="var">OBJECT_NUM_QUERY</span> = <span class="num">900</span> + <span class="num">32</span></span>
+<span class="hl-mod"><span class="var">GROUP_NUM_QUERIES</span> = [<span class="num">540</span>, <span class="num">108</span>, <span class="num">180</span>, <span class="num">72</span>, <span class="num">32</span>]</span>
+<span class="hl-add"><span class="var">CIPV_BIN_EDGES</span> = [<span class="num">0</span>, <span class="num">10</span>, <span class="num">20</span>, <span class="num">30</span>, <span class="num">40</span>, <span class="num">50</span>, <span class="num">60</span>, <span class="num">70</span>, <span class="num">80</span>]</span>
+<span class="hl-add"><span class="var">CIPV_Y_RANGE</span> = [<span class="num">-3.0</span>, <span class="num">3.0</span>]</span>
+<span class="hl-add"><span class="var">CIPV_CLS_LIST</span> = [<span class="str">"Vehicle"</span>, <span class="str">"Large Vehicle"</span>, <span class="str">"Cyclist"</span>, <span class="str">"Pedestrian"</span>]</span></pre></div>
+        <p class="mt-3 text-xs" style="color:var(--text-3)">✓ 现状 <code class="mono" style="color:#a5d6ff">group_num_queries</code> 已是 List[int],只改 config 即可让 Head/Decoder/Loss 自动按新组数运转。</p>
+      </div>
+    </details>
+
+    <!-- 2. bev_task_model.py -->
+    <details class="glass exp-card">
+      <summary>
+        <span class="arrow">▶</span>
+        <span class="change-tag change-mod">~ MOD</span>
+        <span class="file-tag">model/task/task_model/bev_task_model.py<span class="ln">L410-L412</span></span>
+        <span class="text-sm" style="color:var(--text-2)">_od_query 跟随 num_query 自动扩</span>
+      </summary>
+      <div class="exp-body">
+        <div class="codeblock"><pre><span class="com"># --- 现状 (L410-412) ---</span>
+<span class="kw">if</span> enable_task == <span class="str">"od"</span>:
+    self.<span class="var">_od_query</span> = nn.<span class="fn">Embedding</span>(
+        task_head.<span class="var">num_query</span>,             <span class="com"># 配置驱动: 900 → 932</span>
+        task_head.<span class="var">embed_dims</span> * <span class="num">2</span>,         <span class="com"># 512 = pos + content</span>
+    )
+
+<span class="com">--- CIPV 落地 ---</span>
+<span class="com"># 选项 1: 不改代码, config 中 num_query 自动驱动 weight shape</span>
+<span class="hl-add"><span class="com"># 选项 2: 给 CIPV query 注入 BEV bin 中心位置先验 (推荐, 加速收敛)</span></span>
+<span class="hl-add"><span class="kw">def</span> <span class="fn">init_cipv_query_with_prior</span>(self, cipv_start_idx=<span class="num">900</span>):</span>
+<span class="hl-add">    <span class="com"># 按 (cls_idx, bin_idx) 二维网格初始化 reference point</span></span>
+<span class="hl-add">    bin_edges = <span class="var">CIPV_BIN_EDGES</span>     <span class="com"># [0,10,...,80]</span></span>
+<span class="hl-add">    cls_y = [<span class="num">-1.5</span>, <span class="num">-0.5</span>, <span class="num">0.5</span>, <span class="num">1.5</span>]   <span class="com"># 4 类在 y 维微偏移避免重合</span></span>
+<span class="hl-add">    pos_init = torch.<span class="fn">zeros</span>(<span class="num">32</span>, self._od_query.embedding_dim // <span class="num">2</span>)</span>
+<span class="hl-add">    <span class="kw">for</span> ci, y <span class="kw">in</span> <span class="fn">enumerate</span>(cls_y):</span>
+<span class="hl-add">        <span class="kw">for</span> bi <span class="kw">in</span> <span class="fn">range</span>(<span class="num">8</span>):</span>
+<span class="hl-add">            x_center = (bin_edges[bi] + bin_edges[bi+<span class="num">1</span>]) / <span class="num">2</span></span>
+<span class="hl-add">            <span class="com"># reference 3D 经 encode_layer.weight 反推 (sigmoid 反函数)</span></span>
+<span class="hl-add">            pos_init[ci*<span class="num">8</span>+bi] = <span class="fn">make_pos_embed</span>(x_center, y, z=<span class="num">0.5</span>)</span>
+<span class="hl-add">    <span class="kw">with</span> torch.<span class="fn">no_grad</span>():</span>
+<span class="hl-add">        self._od_query.weight[cipv_start_idx:, :self.embed_dims] = pos_init</span></pre></div>
+      </div>
+    </details>
+
+    <!-- 3. GT 生产 -->
+    <details class="glass exp-card" open>
+      <summary>
+        <span class="arrow">▶</span>
+        <span class="change-tag change-add">＋ NEW</span>
+        <span class="file-tag">data/transform/pipeline/<span class="ln">+ cipv_target.py</span></span>
+        <span class="text-sm" style="color:var(--text-2)">CIPV GT 生产 (§1.3: pick 最近 + 空 GT)</span>
+      </summary>
+      <div class="exp-body">
+        <div class="codeblock"><pre><span class="com"># 新增 transform: 在 GT collate 阶段 pick CIPV 物体</span>
+<span class="hl-add"><span class="kw">class</span> <span class="fn">CIPVTargetBuilder</span>:</span>
+<span class="hl-add">    <span class="kw">def</span> <span class="fn">__init__</span>(self, y_range=<span class="var">CIPV_Y_RANGE</span>,</span>
+<span class="hl-add">                 bin_edges=<span class="var">CIPV_BIN_EDGES</span>,</span>
+<span class="hl-add">                 cls_list=<span class="var">CIPV_CLS_LIST</span>):</span>
+<span class="hl-add">        self.y_lo, self.y_hi = y_range</span>
+<span class="hl-add">        self.bin_edges = bin_edges</span>
+<span class="hl-add">        self.cls2idx = {c: i <span class="kw">for</span> i, c <span class="kw">in</span> <span class="fn">enumerate</span>(cls_list)}</span>
+<span class="hl-add"></span>
+<span class="hl-add">    <span class="kw">def</span> <span class="fn">__call__</span>(self, results):</span>
+<span class="hl-add">        gt_bboxes = results[<span class="str">"gt_bboxes_3d"</span>]   <span class="com"># (M, 9), 第 0,1 列是 x,y</span></span>
+<span class="hl-add">        gt_labels = results[<span class="str">"gt_labels_3d"</span>]   <span class="com"># (M,)</span></span>
+<span class="hl-add"></span>
+<span class="hl-add">        <span class="com"># 1) 横向 + 纵向 + 类别过滤</span></span>
+<span class="hl-add">        x, y = gt_bboxes[:, <span class="num">0</span>], gt_bboxes[:, <span class="num">1</span>]</span>
+<span class="hl-add">        in_y = (y >= self.y_lo) & (y <= self.y_hi)</span>
+<span class="hl-add">        in_x = (x >= <span class="num">0</span>) & (x <= <span class="num">80</span>)</span>
+<span class="hl-add">        valid = in_y & in_x</span>
+<span class="hl-add"></span>
+<span class="hl-add">        cipv_bboxes, cipv_labels = [], []   <span class="com"># 输出空也合法</span></span>
+<span class="hl-add">        <span class="kw">for</span> cls_name, cls_idx <span class="kw">in</span> self.cls2idx.<span class="fn">items</span>():</span>
+<span class="hl-add">            <span class="com"># 该类别在 valid 范围内的物体</span></span>
+<span class="hl-add">            cls_mask = valid & (gt_labels == <span class="fn">map_cls</span>(cls_name))</span>
+<span class="hl-add">            <span class="kw">if</span> <span class="kw">not</span> cls_mask.<span class="fn">any</span>(): <span class="kw">continue</span></span>
+<span class="hl-add"></span>
+<span class="hl-add">            <span class="com"># 2) pick 最近 (§1.3) — argmin x</span></span>
+<span class="hl-add">            cand = x[cls_mask]</span>
+<span class="hl-add">            nearest_i = cls_mask.<span class="fn">nonzero</span>(as_tuple=<span class="kw">True</span>)[<span class="num">0</span>][cand.<span class="fn">argmin</span>()]</span>
+<span class="hl-add">            cipv_bboxes.<span class="fn">append</span>(gt_bboxes[nearest_i])</span>
+<span class="hl-add"></span>
+<span class="hl-add">            <span class="com"># 3) 落 bin → Qk (类内同时最多激活 1)</span></span>
+<span class="hl-add">            bin_idx = <span class="fn">find_bin</span>(x[nearest_i], self.bin_edges)   <span class="com"># 0..7</span></span>
+<span class="hl-add">            q_global_idx = <span class="var">CIPV_GROUP_IDX</span>  <span class="com"># group 标签</span></span>
+<span class="hl-add">            cipv_labels.<span class="fn">append</span>(cls_idx * <span class="num">8</span> + bin_idx)  <span class="com"># 用 within-group id</span></span>
+<span class="hl-add"></span>
+<span class="hl-add">        results[<span class="str">"cipv_gt_bboxes"</span>] = <span class="fn">stack_or_empty</span>(cipv_bboxes)</span>
+<span class="hl-add">        results[<span class="str">"cipv_gt_within_group_idx"</span>] = cipv_labels   <span class="com"># [] OK</span></span>
+<span class="hl-add">        <span class="kw">return</span> results</span></pre></div>
+        <p class="mt-3 text-xs" style="color:var(--text-3)">⚠ <b>§1.3 关键</b>:大部分帧无 CIPV → 输出空 list,GroupedHungarianAssigner3D <code class="mono">L96-L100</code> 已支持 <code class="mono">num_gts==0</code> 路径(全 background)。</p>
+      </div>
+    </details>
+
+    <!-- 4. Hungarian assigner: 单激活约束 -->
+    <details class="glass exp-card">
+      <summary>
+        <span class="arrow">▶</span>
+        <span class="change-tag change-mod">~ MOD</span>
+        <span class="file-tag">model/layer/bbox_assigner/grouped_hungarian_assigner_3d.py<span class="ln">L68-L120</span></span>
+        <span class="text-sm" style="color:var(--text-2)">CIPV 组按 (类×bin) 强制匹配,而非自由 Hungarian</span>
+      </summary>
+      <div class="exp-body">
+        <div class="codeblock"><pre><span class="com"># --- 现状: GroupedHungarianAssigner3D.assign ---</span>
+<span class="kw">def</span> <span class="fn">assign</span>(self, bbox_pred, cls_pred, gt_bboxes, gt_labels, ...):
+    <span class="com"># 标准 Hungarian: scipy.linear_sum_assignment</span>
+    cost = <span class="fn">build_cost_matrix</span>(bbox_pred, cls_pred, gt_bboxes, gt_labels)
+    matched_row, matched_col = <span class="fn">linear_sum_assignment</span>(cost)
+    <span class="kw">return</span> <span class="fn">AssignResult</span>(matched_row, matched_col, ...)
+
+<span class="com">--- CIPV 落地 patch: 增加 group_id 分支 ---</span>
+<span class="hl-add"><span class="kw">def</span> <span class="fn">assign_cipv</span>(self, bbox_pred, cls_pred,</span>
+<span class="hl-add">                 cipv_gt_bboxes, cipv_gt_within_group_idx):</span>
+<span class="hl-add">    <span class="com"># 不做 Hungarian, 直接 (类×bin) → query 索引</span></span>
+<span class="hl-add">    <span class="com"># cipv_gt_within_group_idx[i] = cls_idx * 8 + bin_idx ∈ [0, 32)</span></span>
+<span class="hl-add">    assigned = torch.<span class="fn">zeros</span>(bbox_pred.<span class="fn">size</span>(<span class="num">0</span>), dtype=torch.long)  <span class="com"># 0=bg</span></span>
+<span class="hl-add">    <span class="kw">for</span> gt_i, q_idx <span class="kw">in</span> <span class="fn">enumerate</span>(cipv_gt_within_group_idx):</span>
+<span class="hl-add">        assigned[q_idx] = gt_i + <span class="num">1</span>   <span class="com"># 1-indexed, 0=bg</span></span>
+<span class="hl-add">    <span class="kw">return</span> <span class="fn">AssignResult</span>(assigned, ...)</span>
+<span class="hl-add"></span>
+<span class="hl-add"><span class="com"># 在 GroupedODLoss.forward 里按 group_idx 分发:</span></span>
+<span class="hl-add"><span class="kw">if</span> group_idx == <span class="var">CIPV_GROUP_IDX</span>:</span>
+<span class="hl-add">    res = self._assigner.<span class="fn">assign_cipv</span>(...)</span>
+<span class="hl-add"><span class="kw">else</span>:</span>
+<span class="hl-add">    res = self._assigner.<span class="fn">assign</span>(...)  <span class="com"># 原逻辑不变</span></span></pre></div>
+        <p class="mt-3 text-xs" style="color:var(--text-3)">⚠ <b>§1.3 "每类同时最多激活 1 个"</b>:由于 CIPV GT 生产端每类只 pick 1 个,Hungarian 已天然满足,但强制 (类×bin)→query 映射可<b>避免训练初期匹配震荡</b>。</p>
+      </div>
+    </details>
+
+    <!-- 5. ★ KEY: NMS Base 新增 -->
+    <details class="glass exp-card" open style="border-color:rgba(251,191,36,.40);box-shadow:0 0 0 1px rgba(251,191,36,.20),0 4px 30px rgba(251,191,36,.08);">
+      <summary>
+        <span class="arrow">▶</span>
+        <span class="change-tag change-new">★ KEY</span>
+        <span class="file-tag">model/postprocessing/grouped_bbox_decoder.py<span class="ln">L150-L237</span></span>
+        <span class="text-sm" style="color:#fff"><b>§1.4 CIPV 作为 NMS Base — 现状缺失,必新增</b></span>
+      </summary>
+      <div class="exp-body">
+        <div class="codeblock"><pre><span class="com"># --- 现状 _process_single_sample (跨组合并) ---</span>
+<span class="kw">def</span> <span class="fn">_process_single_sample</span>(self, cls_dict, bbox_dict, ...):
+    bboxes_list, scores_list, labels_list = [], [], []
+    <span class="kw">for</span> g <span class="kw">in</span> <span class="fn">range</span>(self.num_groups):
+        s, b, l = self.<span class="fn">_process_single_group</span>(...)   <span class="com"># 组内 NMS</span>
+        bboxes_list.<span class="fn">append</span>(b); ...
+    <span class="com"># 合并 + 全局 top-k (⚠ 没有组间 NMS, 不保 CIPV 优先)</span>
+    bboxes_cat = torch.<span class="fn">cat</span>(bboxes_list)
+    <span class="kw">if</span> bboxes_cat.<span class="fn">size</span>(<span class="num">0</span>) > self.max_detections:
+        topk = scores_cat.<span class="fn">topk</span>(self.max_detections)
+        ...
+
+<span class="com">--- CIPV 落地 patch ---</span>
+<span class="hl-add"><span class="kw">def</span> <span class="fn">_process_single_sample</span>(self, cls_dict, bbox_dict, ...):</span>
+<span class="hl-add">    <span class="com"># 1) 先处理 CIPV 组,作为 base</span></span>
+<span class="hl-add">    cipv_s, cipv_b, cipv_l = self.<span class="fn">_process_single_group</span>(</span>
+<span class="hl-add">        cls_dict[<span class="var">CIPV_GROUP_IDX</span>], bbox_dict[<span class="var">CIPV_GROUP_IDX</span>],</span>
+<span class="hl-add">        group_idx=<span class="var">CIPV_GROUP_IDX</span>, score_thr=self.cipv_score_thr,</span>
+<span class="hl-add">    )</span>
+<span class="hl-add"></span>
+<span class="hl-add">    <span class="com"># 2) CIPV label 映射回真实类 (within-group idx // 8)</span></span>
+<span class="hl-add">    cipv_l_real = (self.<span class="fn">_cipv_query_to_cls</span>(cipv_l)).long()</span>
+<span class="hl-add"></span>
+<span class="hl-add">    base_bboxes, base_scores, base_labels = cipv_b, cipv_s, cipv_l_real</span>
+<span class="hl-add"></span>
+<span class="hl-add">    <span class="com"># 3) 其他组 NMS,但要先剔除与 CIPV 重叠的 (CIPV 作 base)</span></span>
+<span class="hl-add">    other_bboxes, other_scores, other_labels = [], [], []</span>
+<span class="hl-add">    <span class="kw">for</span> g <span class="kw">in</span> <span class="fn">range</span>(self.num_groups):</span>
+<span class="hl-add">        <span class="kw">if</span> g == <span class="var">CIPV_GROUP_IDX</span>: <span class="kw">continue</span></span>
+<span class="hl-add">        s, b, l = self.<span class="fn">_process_single_group</span>(</span>
+<span class="hl-add">            cls_dict[g], bbox_dict[g], group_idx=g, score_thr=self.score_thr[g],</span>
+<span class="hl-add">        )</span>
+<span class="hl-add">        <span class="com"># ⭐ 关键: 以 CIPV 为 base,NMS 抑制其他组中与 CIPV 同类重叠的</span></span>
+<span class="hl-add">        keep = self.<span class="fn">_nms_against_base</span>(</span>
+<span class="hl-add">            cand_bboxes=b, cand_labels=l,</span>
+<span class="hl-add">            base_bboxes=base_bboxes, base_labels=base_labels,</span>
+<span class="hl-add">            iou_thr=self.nms_iou_thr_cipv,</span>
+<span class="hl-add">        )</span>
+<span class="hl-add">        other_bboxes.<span class="fn">append</span>(b[keep])</span>
+<span class="hl-add">        other_scores.<span class="fn">append</span>(s[keep])</span>
+<span class="hl-add">        other_labels.<span class="fn">append</span>(l[keep])</span>
+<span class="hl-add"></span>
+<span class="hl-add">    <span class="com"># 4) 最终合并: CIPV (保留) ++ 其他组 (被 CIPV NMS 剩下的)</span></span>
+<span class="hl-add">    bboxes_cat = torch.<span class="fn">cat</span>([base_bboxes] + other_bboxes)</span>
+<span class="hl-add">    scores_cat = torch.<span class="fn">cat</span>([base_scores] + other_scores)</span>
+<span class="hl-add">    labels_cat = torch.<span class="fn">cat</span>([base_labels] + other_labels)</span>
+<span class="hl-add">    <span class="kw">return</span> bboxes_cat, scores_cat, labels_cat</span>
+<span class="hl-add"></span>
+<span class="hl-add"><span class="kw">def</span> <span class="fn">_nms_against_base</span>(self, cand_bboxes, cand_labels,</span>
+<span class="hl-add">                       base_bboxes, base_labels, iou_thr):</span>
+<span class="hl-add">    <span class="com"># 同类 IoU 大于阈值 → 抑制(认为是 base 已检出)</span></span>
+<span class="hl-add">    keep = torch.<span class="fn">ones</span>(cand_bboxes.<span class="fn">size</span>(<span class="num">0</span>), dtype=torch.bool)</span>
+<span class="hl-add">    <span class="kw">for</span> i, (bb, bl) <span class="kw">in</span> <span class="fn">enumerate</span>(<span class="fn">zip</span>(base_bboxes, base_labels)):</span>
+<span class="hl-add">        same_cls = (cand_labels == bl)</span>
+<span class="hl-add">        ious = <span class="fn">bbox_iou_axis_aligned</span>(cand_bboxes, bb)</span>
+<span class="hl-add">        keep &= ~(same_cls & (ious > iou_thr))</span>
+<span class="hl-add">    <span class="kw">return</span> keep</span></pre></div>
+        <p class="mt-3 text-xs" style="color:var(--text-3)">⭐ <b>核心增量</b>:这是方案 §1.4 / §2.2.x.3 / §3.2.x.3 "CIPV 作为 NMS base 去 NMS 其他检测"的具体实现位置。<b>现有代码完全没有此逻辑</b>,跨组只做全局 top-k。</p>
+      </div>
+    </details>
+
+    <!-- 6. 可选: 单独 head (2.2.2 / 3.2.2) -->
+    <details class="glass exp-card">
+      <summary>
+        <span class="arrow">▶</span>
+        <span class="change-tag change-add">＋ NEW</span>
+        <span class="file-tag">model/head/<span class="ln">+ cipv_head.py</span></span>
+        <span class="text-sm" style="color:var(--text-2)">§2.2.2 / §3.2.2 单独 Query (单V/多V) — 可选方案</span>
+      </summary>
+      <div class="exp-body">
+        <div class="codeblock"><pre><span class="com"># 现状: GroupedBEVFormerHead 走 BEV (已融合多视), 不区分 fw/fn</span>
+<span class="com"># 单独 head 需新增 PV-level DCA (绕过 BEV 融合)</span>
+
+<span class="hl-add">@HEAD.<span class="fn">register_module</span>()</span>
+<span class="hl-add"><span class="kw">class</span> <span class="fn">CIPVHead</span>(<span class="fn">BaseModule</span>):</span>
+<span class="hl-add">    <span class="kw">def</span> <span class="fn">__init__</span>(self, embed_dims=<span class="num">256</span>, num_query=<span class="num">32</span>,</span>
+<span class="hl-add">                 mode=<span class="str">"mono3d"</span>,    <span class="com"># "mono3d" (单V) | "mv3d" (多V)</span></span>
+<span class="hl-add">                 cam_keys=[<span class="str">"fw"</span>],    <span class="com"># mv3d: ["fw","fn"]</span></span>
+<span class="hl-add">                 ...):</span>
+<span class="hl-add">        self.mode = mode</span>
+<span class="hl-add">        self.cam_keys = cam_keys</span>
+<span class="hl-add">        self.dca = <span class="fn">CustomMSDeformableAttention</span>(  <span class="com"># 同 transformer_layer.py</span></span>
+<span class="hl-add">            embed_dims=embed_dims, num_levels=<span class="fn">len</span>(cam_keys), ...)</span>
+<span class="hl-add">        self.cls_branch = <span class="fn">_make_fc</span>(embed_dims, num_classes=<span class="num">4</span>)  <span class="com"># 直接出 4 类</span></span>
+<span class="hl-add">        self.reg_branch = <span class="fn">_make_fc</span>(embed_dims, <span class="num">10</span>)            <span class="com"># bbox code</span></span>
+<span class="hl-add"></span>
+<span class="hl-add">    <span class="kw">def</span> <span class="fn">forward</span>(self, mlvl_feats_per_cam: <span class="fn">Dict</span>[str, Tensor], cipv_query):</span>
+<span class="hl-add">        <span class="com"># 1) 选 cam: mono3d=只 fw; mv3d=fw+fn 拼 multi-level</span></span>
+<span class="hl-add">        value = torch.<span class="fn">stack</span>([mlvl_feats_per_cam[k] <span class="kw">for</span> k <span class="kw">in</span> self.cam_keys], dim=<span class="num">1</span>)</span>
+<span class="hl-add">        <span class="com"># 2) 单独 DCA (绕过 BEV)</span></span>
+<span class="hl-add">        hs = self.dca(query=cipv_query, value=value, ...)</span>
+<span class="hl-add">        <span class="kw">return</span> {</span>
+<span class="hl-add">            <span class="str">"cipv_cls"</span>: self.cls_branch(hs),</span>
+<span class="hl-add">            <span class="str">"cipv_bbox"</span>: self.reg_branch(hs),</span>
+<span class="hl-add">        }</span>
+<span class="hl-add"></span>
+<span class="hl-add"><span class="com"># 在 BEVTaskModel.__init__ 内增 _cipv_head, train_forward 内并行调用:</span></span>
+<span class="hl-add">cipv_out = self.<span class="fn">_cipv_head</span>(mlvl_feats_per_cam, self._cipv_query.weight)</span>
+<span class="hl-add"><span class="com"># 后处理用同样的 _nms_against_base 逻辑合并</span></span></pre></div>
+        <p class="mt-3 text-xs" style="color:var(--text-3)">⚠ "单独 query" 路径 (§2.2.2 / §3.2.2) 需新增 PV-level DCA — 比"高优 query" (§2.2.1 / §3.2.1) 改动量大,建议<b style="color:var(--emerald)">先验证高优 query 路径</b>。</p>
+      </div>
+    </details>
+
+  </div>
+
+  <!-- 4.4 改动影响面 -->
+  <h3 class="mt-10 text-xl font-bold" style="color:#fff">4.4 改动影响面速览</h3>
+  <div class="mt-4 glass overflow-x-auto">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>文件</th>
+          <th>类型</th>
+          <th>改动量</th>
+          <th>对应方案条目</th>
+          <th>风险</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-dim mono text-xs">model_configs/od.py</td>
+          <td><span class="change-tag change-mod">~ MOD</span></td>
+          <td><span class="chip chip-sparse">小 · 7 行</span></td>
+          <td>§1.2 query 数 / §1.3 4 类</td>
+          <td><span style="color:var(--text-3)">配置改动,影响面可控</span></td>
+        </tr>
+        <tr>
+          <td class="col-dim mono text-xs">bev_task_model.py</td>
+          <td><span class="change-tag change-mod">~ MOD</span></td>
+          <td><span class="chip chip-sparse">小 · 0~20 行</span></td>
+          <td>§1.2 query 初始化先验</td>
+          <td><span style="color:var(--text-3)">不改也能跑,加先验加速收敛</span></td>
+        </tr>
+        <tr>
+          <td class="col-dim mono text-xs">+ data/.../cipv_target.py</td>
+          <td><span class="change-tag change-add">＋ NEW</span></td>
+          <td><span class="chip chip-amber">中 · ~50 行</span></td>
+          <td>§1.3 GT 生产 pick 最近</td>
+          <td><span style="color:var(--text-3)">新文件,独立 unit test 可验证</span></td>
+        </tr>
+        <tr>
+          <td class="col-dim mono text-xs">grouped_hungarian_assigner_3d.py</td>
+          <td><span class="change-tag change-mod">~ MOD</span></td>
+          <td><span class="chip chip-sparse">小 · ~15 行</span></td>
+          <td>§1.3 单激活约束</td>
+          <td><span style="color:var(--text-3)">仅 CIPV 组分支,不影响其他组</span></td>
+        </tr>
+        <tr style="background:rgba(251,191,36,0.04)">
+          <td class="col-dim mono text-xs">★ grouped_bbox_decoder.py</td>
+          <td><span class="change-tag change-new">★ KEY</span></td>
+          <td><span class="chip chip-amber">中 · ~40 行</span></td>
+          <td><b style="color:#fff">§1.4 NMS Base 保 recall</b></td>
+          <td><span style="color:var(--amber)">现状无此能力,需新增 + 充分测试</span></td>
+        </tr>
+        <tr>
+          <td class="col-dim mono text-xs">+ model/head/cipv_head.py</td>
+          <td><span class="change-tag change-add">＋ NEW (可选)</span></td>
+          <td><span class="chip chip-amber">大 · ~150 行</span></td>
+          <td>§2.2.2 / §3.2.2 单独 Query</td>
+          <td><span style="color:var(--text-3)">仅当选择"单独 query"方案;先做高优 query</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 4.5 推荐落地顺序 -->
+  <div class="mt-6 glass p-5" style="border-color:rgba(52,211,153,.30);background:linear-gradient(180deg,rgba(52,211,153,.06),rgba(52,211,153,.01));">
+    <div class="flex items-center gap-3 mb-3">
+      <span class="text-lg">🎯</span>
+      <h3 class="text-base font-bold" style="color:#fff">推荐落地顺序 (基于代码扫描的 owner 建议)</h3>
+    </div>
+    <ol class="space-y-2 text-sm" style="color:var(--text-2)">
+      <li class="flex gap-3"><span class="mono font-bold" style="color:var(--emerald);min-width:24px">1.</span> 先 <b style="color:#fff">改 config + 加 GT 生产 transform</b>(2 个文件)→ 跑通数据 pipeline 单测,确保空帧/有帧 GT 都能正确生成</li>
+      <li class="flex gap-3"><span class="mono font-bold" style="color:var(--emerald);min-width:24px">2.</span> 走 <b style="color:#fff">§2.2.1 / §3.2.1 高优 Query 路径</b>(改动最小,基本零模型代码改动)→ 验证 CIPV 组能学到检测</li>
+      <li class="flex gap-3"><span class="mono font-bold" style="color:var(--emerald);min-width:24px">3.</span> 加 <b style="color:var(--amber)">★ grouped_bbox_decoder NMS Base</b>(§1.4 关键增量)→ 验证整体 recall 提升</li>
+      <li class="flex gap-3"><span class="mono font-bold" style="color:var(--emerald);min-width:24px">4.</span> 视效果决定是否走 <b style="color:#fff">§2.2.2 / §3.2.2 单独 Head</b>(改动大,优先级靠后)</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ========================== Variant Matrix ========================== -->
+<section id="variants" class="reveal">
+  <div class="section-eyebrow" style="color:var(--emerald)">Comparison Matrix</div>
+  <h2 class="h-section mt-3">变体对照</h2>
+  <p class="mt-2 text-sm" style="color:var(--text-3)">Dense / Sparse × 高优 / 单独 — 4 种实现路径关键差异速览</p>
+
+  <div class="mt-6 glass overflow-x-auto">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>维度</th>
+          <th class="group-dense">Dense · 高优</th>
+          <th class="group-dense">Dense · 单独</th>
+          <th class="group-sparse">Sparse · 高优</th>
+          <th class="group-sparse">Sparse · 单独</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-dim">Query 注入</td>
+          <td>原 group 内</td>
+          <td>独立分支</td>
+          <td>原 group 内</td>
+          <td>独立分支</td>
+        </tr>
+        <tr>
+          <td class="col-dim">DCA 输入</td>
+          <td>共享 (随原 query)</td>
+          <td>单V: fw  /  多V: fw + fn</td>
+          <td>共享 (随原 query)</td>
+          <td>单V: fw  /  多V: fw + fn</td>
+        </tr>
+        <tr>
+          <td class="col-dim">是否新增 Head</td>
+          <td><span class="chip">否</span></td>
+          <td><span class="chip chip-cyan">是 · Mono3D / MV3D</span></td>
+          <td><span class="chip">否</span></td>
+          <td><span class="chip chip-cyan">是 · Mono3D / MV3D</span></td>
+        </tr>
+        <tr>
+          <td class="col-dim">Fusion 支持</td>
+          <td>视实现难度可带</td>
+          <td>视实现难度可带</td>
+          <td>— 纯视觉</td>
+          <td>— 纯视觉</td>
+        </tr>
+        <tr>
+          <td class="col-dim">Loss 匹配</td>
+          <td colspan="4" style="color:var(--cyan);font-weight:600">统一 · 仅匹配 CIPV 物体</td>
+        </tr>
+        <tr>
+          <td class="col-dim">NMS 策略</td>
+          <td colspan="4" style="color:var(--amber);font-weight:600">统一 · CIPV 作为 base 去 NMS 其他检测</td>
+        </tr>
+        <tr>
+          <td class="col-dim">改动量</td>
+          <td><span class="chip chip-sparse">小</span></td>
+          <td><span class="chip chip-amber">中</span></td>
+          <td><span class="chip chip-sparse">小</span></td>
+          <td><span class="chip chip-amber">中</span></td>
+        </tr>
+        <tr>
+          <td class="col-dim">Owner</td>
+          <td colspan="2"><span class="person dense">张达</span></td>
+          <td colspan="2"><span class="person sparse">陈昌</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ========================== Footer ========================== -->
+<footer class="mt-20 pt-8 pb-12 border-t" style="border-color:var(--line)">
+  <div class="max-w-6xl mx-auto px-6 flex flex-wrap items-center justify-between gap-4 text-xs" style="color:var(--text-3)">
+    <div class="flex flex-wrap items-center gap-4">
+      <span class="mono font-semibold" style="color:var(--text-2)">CIPV Detection Plan</span>
+      <span>·</span>
+      <span>基于 TEP</span>
+      <span>·</span>
+      <span>2026-05-29</span>
+      <span>·</span>
+      <a href="https://www.feishu.cn/docx/W76Pd4a7GoOYmKxh4RQcR1csnNh" target="_blank" rel="noopener" style="color:var(--cyan)" class="hover:underline">📄 飞书文档</a>
+    </div>
+    <div class="flex gap-2">
+      <span class="person dense">张达</span>
+      <span class="person sparse">陈昌</span>
+    </div>
+  </div>
+</footer>
+
+</main>
+
+<!-- ========================== Scripts ========================== -->
+<script>
+  // ===== Mermaid dark init =====
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    flowchart: { curve: 'basis', htmlLabels: true, useMaxWidth: true },
+    securityLevel: 'loose',
+    themeVariables: {
+      darkMode: true,
+      background: 'transparent',
+      primaryColor: '#1a1430',
+      primaryTextColor: '#e7eaf6',
+      primaryBorderColor: '#5a6488',
+      lineColor: '#7f87a8',
+      fontFamily: 'JetBrains Mono, monospace',
+      fontSize: '13px',
+      mainBkg: '#0f1424',
+      secondaryColor: '#1a2030',
+      tertiaryColor: '#0f1424'
+    }
+  });
+
+  // ===== BEV SVG: draw queries =====
+  const classes = [
+    { id: 'vehicle',       label: 'vehicle',       color: '#60a5fa', y_offset: -1.5 },
+    { id: 'large_vehicle', label: 'large_vehicle', color: '#f472b6', y_offset: -0.5 },
+    { id: 'cyclist',       label: 'cyclist',       color: '#34d399', y_offset:  0.5 },
+    { id: 'pedestrian',    label: 'pedestrian',    color: '#fbbf24', y_offset:  1.5 }
+  ];
+  // 坐标映射函数
+  const px = (mx) => 80 + (mx / 80) * 620;
+  const py = (my) => 220 - (my / 10) * 160;
+
+  const queriesG = document.getElementById('queries');
+  const binsG = document.getElementById('bins');
+
+  // 画距离 bin 高亮矩形 (默认透明,hover 用)
+  for (let i = 0; i < 8; i++) {
+    const bin = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bin.setAttribute('x', px(i * 10));
+    bin.setAttribute('y', 172);
+    bin.setAttribute('width', px(10) - px(0));
+    bin.setAttribute('height', 96);
+    bin.setAttribute('fill', 'rgba(103,232,249,0)');
+    bin.setAttribute('class', `bin bin-${i}`);
+    bin.style.pointerEvents = 'none';
+    binsG.appendChild(bin);
+  }
+
+  // 画每个类别的 8 个 query 点
+  classes.forEach((cls, ci) => {
+    for (let bin = 0; bin < 8; bin++) {
+      const cx = px(bin * 10 + 5); // bin 中心
+      const cy = py(cls.y_offset);
+
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', cx);
+      c.setAttribute('cy', cy);
+      c.setAttribute('r', 6);
+      c.setAttribute('fill', cls.color);
+      c.setAttribute('stroke', '#fff');
+      c.setAttribute('stroke-width', 1.5);
+      c.setAttribute('class', `bev-q cls-${cls.id}`);
+      c.style.color = cls.color;
+      c.dataset.cls = cls.id;
+      c.dataset.bin = bin;
+      c.dataset.label = cls.label;
+
+      c.addEventListener('mouseenter', () => {
+        document.getElementById('bev-info-title').textContent =
+          `${cls.label} · Q${bin + 1}`;
+        document.getElementById('bev-info-body').innerHTML = `
+          <div>类别: <span class="mono" style="color:${cls.color};font-weight:600">${cls.label}</span></div>
+          <div>距离 bin: <span class="mono" style="color:#fff">x ∈ [${bin * 10}, ${(bin + 1) * 10}]</span> m</div>
+          <div>横向: <span class="mono" style="color:#fff">y ∈ [-3, 3]</span> m</div>
+          <div>激活: 该类最近物体落入此 bin 时</div>
+          <div>未匹配: 输出空 GT</div>
+        `;
+        // 高亮对应 bin
+        document.querySelectorAll('.bin').forEach(b => b.setAttribute('fill', 'rgba(103,232,249,0)'));
+        document.querySelector(`.bin-${bin}`).setAttribute('fill', 'rgba(103,232,249,0.10)');
+      });
+      queriesG.appendChild(c);
+
+      // bin 标签 (Q1...Q8) 仅在第一行画一次
+      if (ci === 0) {
+        const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        t.setAttribute('x', cx);
+        t.setAttribute('y', 78);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('fill', '#7f87a8');
+        t.setAttribute('font-size', 10);
+        t.setAttribute('font-family', 'JetBrains Mono');
+        t.textContent = `Q${bin + 1}`;
+        queriesG.appendChild(t);
+      }
+    }
+
+    // 类别标签 (左侧)
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    lbl.setAttribute('x', 95);
+    lbl.setAttribute('y', py(cls.y_offset) - 10);
+    lbl.setAttribute('fill', cls.color);
+    lbl.setAttribute('font-size', 10);
+    lbl.setAttribute('font-family', 'JetBrains Mono');
+    lbl.setAttribute('font-weight', 600);
+    lbl.textContent = cls.label;
+    queriesG.appendChild(lbl);
+  });
+
+  // 类别 toggle (显示 / 隐藏)
+  document.querySelectorAll('.cls-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cls = btn.dataset.cls;
+      btn.classList.toggle('active');
+      const isActive = btn.classList.contains('active');
+      btn.style.opacity = isActive ? '1' : '0.4';
+      document.querySelectorAll(`.cls-${cls}`).forEach(c => {
+        c.classList.toggle('muted', !isActive);
+      });
+    });
+  });
+
+  // ===== Branch (Dense / Sparse) Tab =====
+  const branchTab = document.getElementById('branch-tab');
+  const ownerEl = document.getElementById('branch-owner');
+  branchTab.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const branch = btn.dataset.branch;
+      branchTab.querySelectorAll('button').forEach(b => {
+        b.classList.remove('active', 'dense', 'sparse');
+      });
+      btn.classList.add('active', branch);
+
+      document.querySelectorAll('[data-branch-content]').forEach(c => {
+        const match = c.dataset.branchContent === branch;
+        c.classList.toggle('active', match);
+        setTimeout(() => c.classList.toggle('shown', match), 10);
+      });
+
+      ownerEl.className = `person ${branch}`;
+      ownerEl.textContent = branch === 'dense' ? '张达 · Dense' : '陈昌 · Sparse';
+    });
+  });
+
+  // ===== Mode (高优 / 单独) Tab =====
+  document.querySelectorAll('[data-mode-tab]').forEach(tab => {
+    const branch = tab.dataset.modeTab;
+    tab.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.mode;
+        tab.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        document.querySelectorAll(`[data-mode-content^="${branch}-"]`).forEach(c => {
+          const match = c.dataset.modeContent === `${branch}-${mode}`;
+          c.classList.toggle('active', match);
+          setTimeout(() => c.classList.toggle('shown', match), 10);
+        });
+      });
+    });
+  });
+
+  // ===== Scroll Reveal =====
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // ===== Scroll Spy nav active =====
+  const sections = ['overview', 'design', 'bev', 'impl', 'codemap', 'variants'];
+  const navLinks = document.querySelectorAll('.nav-link');
+  const spyObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const link = document.querySelector(`.nav-link[data-target="${e.target.id}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px' });
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) spyObserver.observe(el);
+  });
+
+  // 默认初始 reveal (避免首屏 hero 下方第一节没动)
+  setTimeout(() => {
+    document.querySelectorAll('.reveal').forEach(el => {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight) el.classList.add('visible');
+    });
+  }, 100);
+</script>
+<!-- demo-nav-back (injected by scripts/inject_nav.py) -->
+<div id="demo-nav-back">
+  <a href="javascript:void(0)" id="demo-nav-up" title="回到上一层">↑ 上一层</a>
+  <a href="#" id="demo-nav-home" title="返回 Demo 主页">⌂ 主页</a>
+</div>
+<style>
+#demo-nav-back{position:fixed;top:14px;left:14px;z-index:2147483600;display:flex;gap:8px;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+#demo-nav-back a{text-decoration:none;font-size:13px;line-height:1;color:#e7eaf6;background:rgba(20,28,52,.82);border:1px solid #2a3157;padding:7px 12px;border-radius:999px;box-shadow:0 2px 10px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:border-color .15s,color .15s}
+#demo-nav-back a:hover{border-color:#7ee0ff;color:#7ee0ff}
+@media print{#demo-nav-back{display:none}}
+</style>
+<script>
+(function(){var up=document.getElementById('demo-nav-up'),home=document.getElementById('demo-nav-home');
+if(home){var h=location.href,i=h.indexOf('/demos/');home.href=(i>=0?h.slice(0,i)+'/index.html':'../../index.html');}
+if(up){up.addEventListener('click',function(){if(history.length>1){history.back();}else if(home){location.href=home.href;}});}})();
+</script>
+<!-- /demo-nav-back -->
+
+</body>
+</html>

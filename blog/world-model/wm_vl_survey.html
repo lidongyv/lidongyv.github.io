@@ -1,0 +1,345 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><script>try{if(sessionStorage.getItem('wm_auth')!=='1'){sessionStorage.setItem('wm_after_login',location.pathname.split('/').pop());location.replace('index.html');}}catch(e){}</script>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>WM 视觉生成 · VL 条件 · Marr 分层选项 Survey</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--red:#fb7185;--blue:#60a5fa;--pink:#f0abfc}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 18% -10%,rgba(167,139,250,.18),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.7;min-height:100vh}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 18px 90px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.backlink:hover{border-color:var(--accent2);color:#fff}
+.hero{padding:22px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(126,224,255,.16),rgba(167,139,250,.1));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--accent);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(20px,3vw,30px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 30%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13.5px}
+.badge{display:inline-block;margin-top:10px;font-size:11px;color:var(--amber);border:1px solid rgba(255,211,92,.4);background:rgba(255,211,92,.1);border-radius:999px;padding:3px 11px}
+.callout{background:rgba(126,224,255,.07);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:13px 17px;margin:14px 0;font-size:13.5px;color:var(--text2)}.callout b{color:var(--text)}
+.callout.key{background:rgba(240,171,252,.08);border-left-color:var(--pink)}
+.callout.warn{background:rgba(255,211,92,.07);border-left-color:var(--amber)}
+.callout.ntm{background:rgba(167,139,250,.08);border-left-color:var(--accent2)}
+h2.sec{font-size:18px;font-weight:800;margin:28px 0 6px;display:flex;align-items:center;gap:8px;scroll-margin-top:12px}
+h2.sec .bar{width:4px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:8px 0}
+.card{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:13px;padding:13px 15px}
+.card h4{font-size:14px;color:var(--accent);font-weight:800;margin-bottom:5px}
+.card p{font-size:12.5px;color:var(--text2)}
+.card .tag{display:inline-block;font-size:10.5px;color:var(--amber);border:1px solid rgba(255,211,92,.35);border-radius:6px;padding:1px 7px;margin-bottom:6px}
+.hl{color:var(--accent);font-weight:700}.hlp{color:var(--pink);font-weight:700}.hlg{color:var(--green);font-weight:700}
+.steps{counter-reset:s;display:flex;flex-direction:column;gap:10px;margin:10px 0}
+.step{position:relative;background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:12px;padding:12px 15px 12px 46px}
+.step:before{counter-increment:s;content:counter(s);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0b1020;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.step h4{font-size:13.5px;color:var(--text);font-weight:700;margin-bottom:3px}.step p{font-size:12.5px;color:var(--text2)}
+figure.fig{margin:14px 0;background:#0a0e1c;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+figcaption{padding:10px 14px;font-size:12px;color:var(--text3);border-top:1px solid var(--line)}figcaption b{color:var(--text2)}
+.pa{list-style:none;display:flex;flex-direction:column;gap:7px;margin:8px 0}
+.pa li{font-size:12.8px;color:var(--text2);background:rgba(0,0,0,.2);border:1px solid var(--line);border-left:3px solid var(--green);border-radius:9px;padding:9px 13px}
+.pa li b{color:var(--text)}
+table.tbl{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.3px}
+table.tbl th,table.tbl td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+table.tbl th{background:rgba(126,224,255,.08);color:var(--accent);font-weight:700}
+table.tbl td b{color:var(--text)}
+table.tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+.eq{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#080c18;border:1px solid var(--line);border-left:3px solid var(--accent2);border-radius:10px;padding:11px 15px;margin:9px 0;font-size:13px;color:var(--text);overflow-x:auto;line-height:2}
+.eq .lbl{color:var(--text3);font-size:11px;float:right}
+.eq b{color:var(--accent)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:rgba(126,224,255,.1);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px;color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+.tocwrap{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 2px}
+.toc{font-size:11.5px;color:var(--text2);border:1px solid var(--line);border-radius:999px;padding:4px 11px;text-decoration:none;background:rgba(0,0,0,.15)}
+.toc:hover{border-color:var(--accent);color:#fff}
+.note2{margin-top:22px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+h3.sub{font-size:14.5px;font-weight:800;color:var(--accent2);margin:18px 0 4px;display:flex;align-items:center;gap:7px;scroll-margin-top:12px}
+h3.sub .n{font-size:10.5px;font-weight:700;color:var(--text3);border:1px solid var(--line);border-radius:6px;padding:1px 7px;background:rgba(0,0,0,.2);white-space:nowrap}
+</style></head><body><div class=wrap>
+<a href="index.html" class=backlink>← 返回 World Model 主页（发展路线图）</a>
+
+<header class=hero><div class=kick>Marr 三层 · Vision-Base ⊕ Language · 零推荐枚举</div>
+<h1>WM 视觉生成 · VL 条件 · Marr 分层选项 Survey</h1>
+<p class=sub>系统对象：面向<b>自驾 + 机器人</b>的统一世界模型 —— <b>vision 为 base、language 为 addition</b>。全文严格按 <b>Marr 三层</b>（L1 计算理论 / L2 表征与算法 / L3 实现）组织，<b>只枚举可选项 + 出处</b>，不做任何推荐 / 排序 / 打分 / "最佳" / "建议"。</p>
+<div class=badge>⚠ 本页零推荐、仅枚举选项，2026-08-11 引用已逐一核实</div></header>
+
+<div class=tocwrap>
+<a class=toc href="#tldr">TL;DR · 纪律</a>
+<a class=toc href="#s0">§0 全局 L1 + 8 问映射</a>
+<a class=toc href="#s1">§1 Vision Base（4D + Memory）</a>
+<a class=toc href="#s2">§2 Language / 条件</a>
+<a class=toc href="#s3">§3 可控编辑 + GT 构造</a>
+<a class=toc href="#s4">§4 OOD 生成</a>
+<a class=toc href="#s5">§5 已核实引用 + Nano Banana</a>
+</div>
+
+<h2 class=sec id=tldr><span class=bar></span>TL;DR · 纪律</h2>
+<div class=secsub>零推荐、仅枚举选项 + 出处；严格 Marr 三层。</div>
+<div class=callout key><b>纪律说明（本会话硬约束）</b>：本文<b>只枚举所有可选项 + 出处</b>，<b>不做任何推荐 / 排序 / 打分 / "最佳" / "建议"</b>；中性 trade-off 仅作事实陈述。严格按 <b>Marr 三层</b>：L1=计算理论（要算什么/为什么/天然约束）、L2=表征与算法、L3=实现。带"需核实"者为子 Agent 记忆中的 arXiv 号但未逐一二次联网确认。</div>
+<div class=callout><b>来源</b>：4 份 Opus 子 Agent survey（vision-base / language-条件 / 可控编辑+GT / OOD）+ 已精读 GenCeption(2607.09024) 与已拉取的 3 篇综述（可控视频 2507.16869、驾驶世界模型 2502.10498、未来物理世界生成）。<br><b>最近更新</b>：2026-08-07；<b>引用核实</b>：2026-08-11（详见 §5）。</div>
+
+<h2 class=sec id=s0><span class=bar></span>§0 · 层级声明 + 全局 L1（计算理论）</h2>
+<div class=secsub>系统对象 · 全局要算什么 · 全局天然约束 · 用户 8 问映射。</div>
+<div class=callout><b>系统对象</b>：面向自驾 + 机器人的统一世界模型 —— <b>vision 为 base、language 为 addition</b>。</div>
+<ul class=pa>
+<li><b>vision base：</b>GenCeption 式（生成式视频扩散 backbone 反用为<b>前馈感知</b>）做<b>时序预测 + 3D 感知（4D）</b>，特征<b>结构化进 memory bank</b>；flow-matching 只是 refine/sampler，不是 vision-base 的核心表征。</li>
+<li><b>language（广义条件）：</b>文本描述 + bbox + 3D 描述 + layout(BEV/HDMap) + 轨迹 + 动作/command。</li>
+</ul>
+<div class=callout key><b>全局要算什么（L1）</b>：学条件生成 <code>p(未来观测 | 历史观测, 条件)</code>，其中历史观测经 vision-base 压成 4D 世界状态并进 memory，条件 = vision(base) ⊕ language(addition)。</div>
+
+<h3 class=sub><span class=n>L1 · 约束</span>全局天然约束（汇总 4 份 L1；属问题本身、非算法选择）</h3>
+<ul class=pa>
+<li><b>1.</b> 世界是 <b>4D 连续体 + 物体恒存 + 物理因果</b>；部分可观测 + 自车运动；单目<b>尺度歧义</b>。</li>
+<li><b>2. 成对可得性：</b>能用哪种条件取决于训练集能否提供与观测对齐的该条件（所有"条件获取"路径的根约束）。</li>
+<li><b>3. 时序对齐：</b>几何条件逐帧、文本整段；3D-VAE 把 T 帧压成 T/f latent 后逐帧条件与 latent 错位。</li>
+<li><b>4. 标注成本 ↔ 可控性：</b>结构化条件(框/HDMap)精确但贵；自由文本便宜但粗、噪声大 → prompt following 差。</li>
+<li><b>5. 反事实无真值：</b>真实数据没有"同一场景+被编辑后"的天然对；"编辑后"只能由<b>可重演前向过程</b>(仿真/3D 重建重渲染/资产合成)或<b>一段真实替身片段</b>提供。</li>
+<li><b>6. OOD 无真值：</b>使"无 GT 的 OOD"仍良定义的约束 = 组合性 / 构造性真值(仿真) / 物理几何不变量 / 临界性判据 / "训练内组合、推理外推"。</li>
+<li><b>7.</b> <b>跨本体统一</b>（自驾↔机器人）、<b>人写 prompt 与训练 caption 分布差</b>、<b>实时时延</b>、<b>长时序记忆一致性</b>。</li>
+</ul>
+
+<h3 class=sub><span class=n>映射</span>用户 8 问 → 模块映射</h3>
+<table class=tbl>
+<tr><th>用户问题</th><th>模块</th></tr>
+<tr><td>Q1 训练时 language input 如何得到</td><td>§2（获取路径）</td></tr>
+<tr><td>Q2 language 含 bbox/描述/3d/layout</td><td>§2（条件构成/表征）</td></tr>
+<tr><td>Q3 控制生成 + GT 构造（增物体/移20m/更快）</td><td>§3</td></tr>
+<tr><td>Q4 language 产 OOD + 训练数据构造</td><td>§4</td></tr>
+<tr><td>Q5 flow-matching = refine/sampler</td><td>§1.4</td></tr>
+<tr><td>Q6 vision base = GenCeption + 结构化进 memory</td><td>§1.1 / §1.3</td></tr>
+<tr><td>Q7 vision branch = 时序预测+3D感知（genception+4d）</td><td>§1.2</td></tr>
+<tr><td>Q8 caption 训练问题</td><td>§2.4</td></tr>
+</table>
+
+<h2 class=sec id=s1><span class=bar></span>§1 · 模块一 · Vision Base（GenCeption + 4D）+ Memory 结构化 [Q5/Q6/Q7]</h2>
+<div class=secsub>L1 问题框定 → L2 预训练范式 / Memory 结构化 / Flow-Matching 分工 → L3 实现。</div>
+
+<h3 class=sub><span class=n>L1 · 1.1</span>问题框定（互不排斥，全列，不排序）</h3>
+<table class=tbl>
+<tr><th>框定</th><th>要算什么 / 为什么</th><th>代表出处</th></tr>
+<tr><td><b>F1 预测式表征</b></td><td>以"预测未来观测/潜变量"为 pretext 内化时空因果再迁移</td><td>GenCeption 2607.09024、V-JEPA2 2506.09985、ViDAR 2312.17655</td></tr>
+<tr><td><b>F2 几何重建式</b></td><td>前馈直出稠密几何(depth/normal/pose/occupancy)作 4D 状态</td><td>VGGT(CVPR'25)、VGGT-Ω 2605.15195、DepthAnything3 2511.10647、D4RT 2512.08924</td></tr>
+<tr><td><b>F3 生成式世界模型</b></td><td>学 p(未来|历史,动作) 供 rollout/仿真/planning</td><td>GAIA-1 2309.17080(需核实)、Vista 2405.17398、OccWorld 2311.16038</td></tr>
+<tr><td><b>F4 判别式感知读出</b></td><td>det/seg/track 作 4D 状态显式读出</td><td>SAM3 2511.16719、StreamPETR 2303.11926</td></tr>
+<tr><td><b>F5 感知-预测-规划联合</b></td><td>端到端统一目标</td><td>UniAD 2212.10156</td></tr>
+</table>
+<div class=callout>天然约束（L1）：见 §0 第 1、7 条（4D 连续/物体恒存/物理因果、单目尺度歧义、标注稀缺→自监督/合成、多模态对齐、长时记忆一致）。GenCeption 归纳基座三要件：时空演化、视觉-语言对齐、可 scale。</div>
+
+<h3 class=sub><span class=n>L2 · 1.2</span>视觉基座预训练范式（枚举）</h3>
+<table class=tbl>
+<tr><th>范式</th><th>目标/机制</th><th>出处</th></tr>
+<tr><td><b>生成式视频扩散反用为前馈感知</b></td><td>固定 t=0、rectified-flow velocity 取负、单步、text-steered</td><td>GenCeption 2607.09024</td></tr>
+<tr><td><b>逐图扩散反用为感知</b></td><td>微调扩散先验做稠密预测</td><td>Marigold(CVPR'24)、GenPercept 2403.06090、Diception 2502.17157</td></tr>
+<tr><td><b>视频扩散做几何/4D</b></td><td>时序一致 depth/normal、4D 重建</td><td>DepthCrafter 2409.02095、NormalCrafter 2504.11427、Geo4D 2504.07961</td></tr>
+<tr><td><b>JEPA 潜空间预测</b></td><td>掩码潜特征预测(含动作条件/稠密变体)</td><td>V-JEPA 2404.08471、V-JEPA2 2506.09985、V-JEPA2.1 2603.14482</td></tr>
+<tr><td><b>Masked AutoEncoding</b></td><td>像素重建</td><td>VideoMAE / VideoMAE V2、RVM 2512.13684</td></tr>
+<tr><td><b>特征自蒸馏</b></td><td>teacher–student 一致性</td><td>DINOv2 2304.07193、DINOv3 2508.10104</td></tr>
+<tr><td><b>视觉-语言对比</b></td><td>跨模态对齐</td><td>CLIP、SigLIP</td></tr>
+<tr><td><b>前馈几何大模型</b></td><td>多视/单目直出几何</td><td>VGGT、VGGT-Ω 2605.15195、MapAnything 2509.13414</td></tr>
+<tr><td><b>驾驶 4D/occupancy 预训练</b></td><td>未来点云/occupancy 预测、渲染式</td><td>ViDAR 2312.17655、UniPAD 2310.08370、Occupancy-MAE/ALSO/UniWorld(需核实)</td></tr>
+<tr><td><b>point/BEV 自监督</b></td><td>对比/掩码</td><td>PointContrast、Point-MAE、BEV-MAE(需核实)</td></tr>
+</table>
+<div class=callout>中性实证：GenCeption 报告同等微调数据下扩散基座在 depth 上优于 V-JEPA/VideoMAE V2（2607.09024 Tab.2）——单点实证，不作排序。</div>
+<ul class=pa>
+<li><b>4D 表征轴：</b>像素/潜视频；BEV 平面；voxel/occupancy 栅格；点云序列；object/slot；query/token；3DGS/NeRF 场；raymap（相机位姿编入 3 通道）。</li>
+<li><b>4D 训练目标轴：</b>未来帧生成(FID/FVD)、未来点云(CD)、未来 occupancy(mIoU)、潜变量预测(JEPA)、稠密几何回归(尺度不变 L2)、光流/scene-flow、轨迹 L2/碰撞率。驾驶综述(2502.10498)按预测模态分 video/point-cloud/occupancy/latent/traffic-map 五类，可与两轴自由组合。</li>
+</ul>
+
+<h3 class=sub><span class=n>L2 · 1.3</span>视觉特征结构化进 Memory Bank（枚举）</h3>
+<table class=tbl>
+<tr><th>结构</th><th>机制</th><th>出处</th></tr>
+<tr><td><b>object-centric slot</b></td><td>槽注意力/时序槽</td><td>Slot Attention 2006.15055、SAVi 2111.12594、SlotFormer 2210.05861(需核实)</td></tr>
+<tr><td><b>BEV 栅格时序记忆</b></td><td>BEV query 时序自注意力/对齐</td><td>BEVFormer 2203.17270、BEVDet4D(需核实)</td></tr>
+<tr><td><b>voxel/occupancy 栅格记忆</b></td><td>显式体素状态</td><td>OccWorld 2311.16038、Occ3D</td></tr>
+<tr><td><b>稀疏 query/token 记忆</b></td><td>实例 query 跨帧传播</td><td>StreamPETR 2303.11926、Sparse4D v2/v3(需核实)、track queries</td></tr>
+<tr><td><b>streaming 队列/循环状态</b></td><td>定长记忆队列/循环潜状态</td><td>StreamPETR memory queue、GAIA-1 latent、V-JEPA2 predictor rollout</td></tr>
+<tr><td><b>持久场景 3DGS/NeRF</b></td><td>显式可微场作长期记忆</td><td>3DGS 2308.04079、驾驶 3DGS</td></tr>
+<tr><td><b>显式地图记忆</b></td><td>在线矢量地图/地图先验</td><td>MapTR 2208.14437、StreamMapNet 2308.12570、NMP 2304.08481(需核实)、HDMapNet(需核实)</td></tr>
+<tr><td><b>序列模型 KV/检索记忆</b></td><td>KV-cache 长上下文/外部检索</td><td>transformer KV；检索式记忆(需核实)</td></tr>
+</table>
+<div class=callout>中性 trade-off：稠密栅格(voxel/BEV) 空间完整但内存随分辨率平方/立方增长；稀疏 query 省内存但受检测召回制约；slot 可组合但实例数/绑定受限；3DGS/NeRF 几何持久但更新成本高。</div>
+
+<h3 class=sub><span class=n>L2 · 1.4</span>Flow-Matching 与 vision-base 的分层分工（枚举，不选一）[Q5]</h3>
+<table class=tbl>
+<tr><th>分工</th><th>描述</th></tr>
+<tr><td><b>(a) FM/RF 仅作预训练目标</b></td><td>训练用 rectified flow，推理反用为前馈特征（GenCeption 路线）</td></tr>
+<tr><td><b>(b) FM 作 world-model 采样器</b></td><td>rollout 未来 latent/帧，表征由独立 encoder 提供</td></tr>
+<tr><td><b>(c) FM 作 refine head</b></td><td>粗前馈预测 → flow 细化(depth/occupancy)</td></tr>
+<tr><td><b>(d) FM 作记忆空间动力学采样器</b></td><td>在 memory 状态上做动作条件采样，记忆本体保持确定性</td></tr>
+<tr><td><b>(e) FM/扩散作数据引擎</b></td><td>合成训练数据，与 vision-base 解耦</td></tr>
+<tr><td><b>(f) 一致性/蒸馏压成 1 步</b></td><td>去掉推理期迭代采样</td></tr>
+</table>
+<div class=callout>出处：Flow Matching 2210.02747、Rectified Flow 2209.03003；反用为前馈见 GenCeption 2607.09024。</div>
+
+<h3 class=sub><span class=n>L3 · 1.5</span>实现选项（枚举）</h3>
+<ul class=pa>
+<li><b>骨干：</b>开源视频 DiT(WAN2.1 2503.20314)/ViT(V-JEPA/DINO)/sparse-conv(点云)/混合。</li>
+<li><b>采样步数：</b>单步前馈 / 少步 / 多步；t 条件：固定 t=0 vs 采样噪声；输出参数化：velocity(取负)/x₀/ε。</li>
+<li><b>稀疏任务接口：</b>learnable token + 原生 3D RoPE + 位置插值 + MLP head（GenCeption）。</li>
+<li><b>任务统一：</b>稠密任务塞进 RGB[0,1] + 单一 L2 loss + 数据配比平衡多任务（GenCeption）。</li>
+<li><b>数据：</b>合成(Blender/RenderPeople/CMU-mocap)+公开合成(TartanAir/Virtual KITTI/MVS-Synth)。</li>
+<li><b>训练稳定：</b>梯度裁剪 + 梯度丢弃；RGB/文本嵌入离线缓存为 latent。</li>
+<li><b>记忆落地：</b>定长队列 / 环形缓冲 / KV-cache / 显存内 voxel-grid vs 外部检索库。算力：TPU v6e / GPU。</li>
+</ul>
+
+<h2 class=sec id=s2><span class=bar></span>§2 · 模块二 · Language/条件的构成、训练获取、caption 训练 [Q1/Q2/Q8]</h2>
+<div class=secsub>L1 界定 → L2 条件表征 / 获取路径 / 统一注入 + caption 训练 → L3 实现。</div>
+
+<h3 class=sub><span class=n>L1 · 2.1</span>界定与约束</h3>
+<div class=callout>本子域不负责生成器 G 本身，只负责条件 c 侧两个子问题：(i) <b>条件获取</b>（训练时如何得到与观测成对的 c）；(ii) <b>条件编码与融合</b>。MagicDriveDiT 把驾驶条件形式化为逐帧描述子 <code>S_t={相机位姿 C, BEV道路图 M_t, 3D框 B_t, 整段文本 L, ego轨迹 Tr_t}</code> —— "广义 language = 一组并列条件通道"的典型。为什么需多样条件：纯文本对细粒度/多智能体/几何精度<b>欠定</b>（可控视频综述 2507.16869；驾驶综述 2502.10498 把 command 细分为 Angle/Trajectory/Map/GoalPoint/Text/3DBox）。约束见 §0 第 2/3/4/6/7 条。</div>
+
+<h3 class=sub><span class=n>L2 · 2.2</span>条件表征选项 [Q2]</h3>
+<table class=tbl>
+<tr><th>表征</th><th>形式</th><th>出处</th></tr>
+<tr><td><b>自由文本</b></td><td>整段场景描述(天气/时间)</td><td>MagicDrive/nuScenes 原生、GR-1 语言指令</td></tr>
+<tr><td><b>自由语言编辑指令</b></td><td>"删/加/移物体、改属性/光照"式局部编辑指令</td><td>Nano Banana=Gemini 2.5 Flash Image(闭源,机制未公开)、InstructPix2Pix 2211.09800</td></tr>
+<tr><td><b>Structured 帧描述子</b></td><td>{C,M,B,L,Tr} 并列集合</td><td>MagicDrive 2310.02601 / MagicDriveDiT 2411.13807</td></tr>
+<tr><td><b>2D/3D bbox</b></td><td>类别+8角点 / bbox track</td><td>MagicDrive、DriveDreamer 2309.09777、Boximator 2402.01566</td></tr>
+<tr><td><b>BEV/HDMap layout</b></td><td>栅格语义图 或 矢量车道</td><td>MagicDrive、Panacea、DriveDreamer-2</td></tr>
+<tr><td><b>ego/agent 轨迹</b></td><td>坐标序列/转角·速度/goal/command</td><td>驾驶综述、DriveDreamer-2</td></tr>
+<tr><td><b>structured caption</b></td><td>多模态被解释成的结构化描述</td><td>Any2Caption、Cosmos prompt upsampler</td></tr>
+<tr><td><b>action token</b></td><td>机器人动作(离散/连续)</td><td>GR-1/GR-2、UniPi</td></tr>
+</table>
+
+<h3 class=sub><span class=n>L2 · 2.3</span>训练时条件"从哪来"——获取路径（核心）[Q1]</h3>
+<table class=tbl>
+<tr><th>路径</th><th>做法</th><th>出处</th></tr>
+<tr><td><b>A. GT 标注直取</b></td><td>从标注抽 bbox/3D/HDMap/ego-traj；低频插值到高频</td><td>MagicDrive；MagicDriveDiT 用 ASAP 把 nuScenes 2Hz→12Hz</td></tr>
+<tr><td><b>B. VLM/MLLM 自动打 caption (recaption)</b></td><td>大模型给图/视频重写描述</td><td>MagicDriveDiT 用 GPT-4o；CogVideoX 密集 caption 2408.06072；PixArt-α 用 LLaVA；Recap-DataComp-1B 2406.08478；DALL·E3 专用 captioner</td></tr>
+<tr><td><b>C. LLM 文本→结构化条件</b></td><td>微调 LLM 把自由语言解析成几何/轨迹/layout</td><td>DriveDreamer-2 2403.06845(功能库→轨迹→HDMap)；LVD 2309.17444；Any2Caption</td></tr>
+<tr><td><b>D. 规则/模板/命令离散化</b></td><td>轨迹函数库、command 量化</td><td>DriveDreamer-2；驾驶综述 vectorized/Trafficbots</td></tr>
+<tr><td><b>E. 人工标注 / QA 语言</b></td><td>数据集标签、驾驶 QA</td><td>DriveLM 2312.14150(需核实)、nuScenes-QA(需核实)</td></tr>
+<tr><td><b>F. 仿真器导出</b></td><td>从 CARLA/nuPlan 拿特权 GT layout/轨迹</td><td>驾驶综述仿真章节</td></tr>
+</table>
+<div class=callout>机器人侧成对来源：GR-2 2410.06158(3800万视频预训练+re-caption)、UniPi 2302.00111(task ID 当文本，需核实)、VPP 2412.14803(SVD 增广为吃语言指令)。</div>
+
+<h3 class=sub><span class=n>L2 · 2.4</span>多模态条件的统一/组合与注入；caption 侧训练 [Q8]</h3>
+<div class=callout><b>注入方式</b>：cross-attn(文本/框/camera/traj)；加性/ControlNet(BEV/HDMap/depth 栅格)；gated self-attn(DriveDreamer)；训练-free 注意力引导(LVD)。<b>时序对齐</b>：MagicDriveDiT 为 box/traj 设 spatial-temporal encoder(temporal transformer+RoPE 下采样)对齐 T/f latent；文本时序维=1 后 repeat。<b>组合与解耦</b>：条件当集合一起喂；CFG 独立随机 drop 各条件(MagicDriveDiT 15%)。<b>structured caption 作统一中间层</b>：Any2Caption/FullDiT；Cosmos prompt upsampler 归一人写 prompt。</div>
+<div class=secsub>caption 侧训练做法（枚举）[Q8]</div>
+<ul class=pa>
+<li><b>冻结预训练文本编码器</b>(T5/CLIP 冻结，只训生成器)；GR-1 冻结 CLIP+MAE。</li>
+<li><b>联合/自训文本塔：</b>StepVideo 双语 Hunyuan-CLIP+Step-LLM。</li>
+<li><b>Recaption + 合成/真值混采：</b>DALL·E3 训练用 95%合成+5%GT 并消融混比；SD3 约 50% VLM 合成 caption。</li>
+<li><b>structured vs free-form：</b>几何条件由结构化通道承担、文本只补几何未覆盖语义(MagicDriveDiT 特意约束 caption 范围)。</li>
+<li><b>instruction 化/prompt 改写：</b>Cosmos prompt upsampler(Mistral-NeMo-12B long-to-short 微调)、Video2World 用 Pixtral-12B。</li>
+<li><b>中性 trade-off：</b>密集 caption 提升 prompt following 但引入幻觉；混采防过拟合合成模式。</li>
+</ul>
+
+<h3 class=sub><span class=n>L3 · 2.5</span>实现选项</h3>
+<ul class=pa>
+<li><b>文本编码器：</b>CLIP ViT-L/H/B、T5、<b>T5-XXL/t5-11b</b>(Cosmos, cross-attn 注入冻结)、umT5(Wan/CausVid)、双语 Hunyuan-CLIP+Step-LLM、驾驶微调 LLM(DriveDreamer-2)、caption 蒸馏用 LLaMA2/3。</li>
+<li><b>Captioner/LLM：</b>GPT-4o、CogVLM2-Caption+Panda70M+GPT-4、LLaVA、Pixtral-12B、专用 captioner。</li>
+<li><b>注入模块：</b>cross-attn 层、ControlNet 加性分支、gated self-attn、ST box/traj encoder、3D-VAE 对齐下采样。</li>
+<li><b>训练细节：</b>条件独立 dropout+CFG、null 条件、标注插值(ASAP)、"先内容后可控性"渐进训练。</li>
+<li><b>条件来源数据集：</b>nuScenes/Waymo/OpenDV-YouTube 1700h；机器人 RT-1/Bridge/Ego4D/HowTo100M/Something-Something。</li>
+</ul>
+
+<h2 class=sec id=s3><span class=bar></span>§3 · 模块三 · 可控编辑生成 + 训练 GT 构造 [Q3]</h2>
+<div class=secsub>L1 核心 tension → L2 控制注入 / GT 配对构造 / 定量控制 → L3 实现。</div>
+
+<h3 class=sub><span class=n>L1 · 3.1</span>核心 tension</h3>
+<div class=callout key>任务：给定描述子 <code>S_t</code> 与噪声生成视频 <code>{I_{c,t}}=G({S_t},z)</code>；"编辑"= 对条件施加扰动 ΔS（增框 / 平移框+20m / 增大帧间位移=更快）。<b>正确性判据</b>不是像素重建，而是"生成内容是否服从注入条件"——在生成视频上跑感知模型反测(mAP/mIoU)+FID/FVD+跨帧跨视一致。<b>GT 良定义来源</b>：①条件↔视频天然对齐(真实日志标注=条件、采集视频=GT，唯一零成本全真)；②<b>"编辑后"无天然真值</b>，只能由可重演过程(仿真/NeRF·3DGS 重建重渲染/3D 资产合成)或"另一段真实片段"补 after；③定量语义(+20m/更快)良定义 = BEV 米制可测量。<b>关键 tension</b>：反事实无真值 ⇒ 要么牺牲"精确成对"(只用真实日志、编辑无 GT，靠分布/可控性间接评)，要么牺牲"全真"(引入仿真/合成/重建换精确 before-after 对)。</div>
+
+<h3 class=sub><span class=n>L2 · 3.2</span>控制注入机制（枚举）</h3>
+<table class=tbl>
+<tr><th>机制</th><th>代表工作</th><th>条件表征</th><th>中性 trade-off</th></tr>
+<tr><td><b>Cross-attn(box/text 当 token)</b></td><td>MagicDrive 2310.02601、Delphi 2406.01349、MagicDriveDiT 2411.13807</td><td>变长 token(框角点+类别)</td><td>对变长/稀疏灵活；空间定位隐式</td></tr>
+<tr><td><b>加性/ControlNet(网格相加)</b></td><td>ControlNet 2302.05543、Panacea、DreamForge 2409.04003、DiVE 2409.01595、HoloDrive 2412.01407</td><td>栅格(BEV map/投影 layout)</td><td>像素级对齐强；要求网格条件</td></tr>
+<tr><td><b>Gated self-attn</b></td><td>DriveDreamer 2309.09777</td><td>框↔视觉门控融合</td><td>可学融合；早期分辨率/帧数受限</td></tr>
+<tr><td><b>Box+ID token(新增 self-attn)</b></td><td>Boximator 2402.01566</td><td>Fourier 框坐标+物体 ID</td><td>显式绑定"哪框=哪物"；需多阶段训练</td></tr>
+<tr><td><b>Layout→透视投影+ControlNet</b></td><td>Panacea、DreamForge(Perspective Guidance+OPE)</td><td>3D layout 投影多通道控制图</td><td>几何一致好；依赖内外参/遮挡</td></tr>
+<tr><td><b>两阶段 bbox 生成器</b></td><td>Ctrl-V 2406.05630</td><td>先生成"框轨迹视频"→Box2Video</td><td>解耦轨迹与外观、天然处理出入画；两段误差级联</td></tr>
+<tr><td><b>时空 box/traj 编码</b></td><td>MagicDriveDiT</td><td>temporal transformer+RoPE 下采样</td><td>支持长/高清；专为时序压缩潜变量</td></tr>
+<tr><td><b>轨迹/自车轨迹条件</b></td><td>MagicDriveDiT、Vista 2405.17398、DriVerse 2504.18576</td><td>每帧→首帧位姿/waypoint</td><td>直接表达运动；密集轨迹贵</td></tr>
+<tr><td><b>LLM-grounded + 训练-free 能量引导</b></td><td>LVD 2309.17444、TrailBlazer</td><td>LLM 布局+推理期注意力引导</td><td>免训练、语言可达；精度弱</td></tr>
+<tr><td><b>语言指令编辑(P2P/InstructPix2Pix 式)</b></td><td>Prompt-to-Prompt 2208.01626、InstructPix2Pix 2211.09800、AID 2406.06465、<b class=hlp>Nano Banana</b>=Gemini 2.5 Flash Image(闭源,无掩码局部编辑,机制未公开)</td><td>指令文本+交叉注意力借用</td><td>语言直改；配对需合成、定量弱；闭源模型 GT/机制不可复现</td></tr>
+<tr><td><b>通用/动作条件</b></td><td>Cosmos 2501.03575、GAIA-1 2309.17080、Drive-OccWorld</td><td>动作 token/条件归一化</td><td>统一多条件；精确几何间接</td></tr>
+</table>
+
+<h3 class=sub><span class=n>L2 · 3.3</span>训练 GT / 配对数据构造（重点，枚举）</h3>
+<table class=tbl>
+<tr><th>配对路子</th><th>before/after 来源</th><th>出处</th><th>中性 trade-off</th></tr>
+<tr><td><b>真实日志天然对(条件↔视频)</b></td><td>无 before/after：标注=条件、采集=GT，"编辑"=改条件重生成(无对应真值)</td><td>MagicDrive/DiT、Panacea、DrivingDiffusion、TrackDiffusion</td><td>海量零成本全真；编辑结果无 GT</td></tr>
+<tr><td><b>仿真器渲染成对</b></td><td>仿真同场景渲染 before/after</td><td>SimGen(NeurIPS24 需核实)、DrivingDiffusion(CARLA)、Cosmos</td><td>精确可控；sim-real gap</td></tr>
+<tr><td><b>copy-paste/物体插入/资产重投影</b></td><td>after=真图插渲染资产，before=原图</td><td>GeoSim 2101.06543</td><td>像素级配对可控插入；合成痕迹/光照遮挡需神经融合</td></tr>
+<tr><td><b>重建+编辑(反事实重渲染)</b></td><td>日志 NeRF/3DGS 重建→移/增删 actor→重渲染=after</td><td>UniSim 2308.01898、DriveDreamer-4D 2410.13571、ReconDreamer 2411.19548(需核实)</td><td>几何/传感一致、可给"+20m"精确真值；重建质量/动态物/外插视角受限</td></tr>
+<tr><td><b>指令-编辑合成对</b></td><td>GPT 造(指令+前后 caption)→SD+P2P 生成前后图(45万对)</td><td>InstructPix2Pix 2211.09800 + Prompt-to-Prompt 2208.01626</td><td>规模大指令多样；生成域偏移、几何非精确</td></tr>
+<tr><td><b>自监督:真未来帧当"移动后/更快"</b></td><td>after=同日志真未来帧/另一真片段，条件从标注读</td><td>Vista 2405.17398、GAIA-1、MaskGWM(需核实)、ViDAR(需核实)</td><td>全真零合成；只覆盖"真实发生过"的编辑，无法造反事实</td></tr>
+<tr><td><b>LLM/脚本生成条件→交通仿真→视频</b></td><td>条件由 LLM 造、视频由生成器产(无真视频对)</td><td>DriveDreamer-2 2403.06845、LVD 2309.17444</td><td>长尾/自定义可达；无 after 真值</td></tr>
+</table>
+
+<h3 class=sub><span class=n>L2 · 3.4</span>"+20m / 更快"定量控制 → 条件 + GT</h3>
+<ul class=pa>
+<li><b>表征：</b>BEV 米制坐标把位移写成 box 轨迹/waypoint（MagicDriveDiT 框=8角点×3坐标于 LiDAR 系、ego-traj=每帧→首帧位姿变换）；"更快"=增大帧间框位移或<b>速度 token</b>（Drive-OccWorld 速度归一化、Boximator 关键帧框、Direct-a-Video 2402.03162 运动幅度、Ctrl-V 起止框补全）；通用运动控制 DragNUWA 2308.08089、MotionCtrl 2312.03641、Tora 2407.21705。</li>
+<li><b>GT 三来源：</b>(i) 重建/仿真按"+20m/更高速"精确重渲染=精确成对(UniSim/GeoSim/DriveDreamer-4D)；(ii) 自监督挖掘真实日志中"确前移≈20m/车速更高"片段，真片段即 GT；(iii) 轨迹生成器(Ctrl-V)把起止(+20m)补成完整轨迹再生成。</li>
+</ul>
+
+<h3 class=sub><span class=n>L3 · 3.5</span>实现</h3>
+<div class=callout>时序错位→时空条件编码(temporal transformer+RoPE)；挂载 cross-attn + ControlNet/T2I-Adapter 加性 + gated self-attn；CFG 15% 条件 dropout、map 零 null；标注对齐 ASAP 插值；数据管线：像素空间框渲染作控制信号(Ctrl-V)、资产库+遮挡感知渲染+神经融合(GeoSim)、NeRF/3DGS 重建+在线修复(ReconDreamer)、GPT-3+SD+P2P 造 45 万指令对(InstructPix2Pix)、渐进训练 图→短视频→长视频。</div>
+
+<h2 class=sec id=s4><span class=bar></span>§4 · 模块四 · language 驱动 OOD 生成 + 训练数据构造 [Q4]</h2>
+<div class=secsub>L1 无 GT 悖论 → L2 生成路子 / 数据构造 → L3 系统与评价。</div>
+
+<h3 class=sub><span class=n>L1 · 4.1</span>目标与"无 GT 悖论"</h3>
+<div class=callout key>目标：产出<b>经验支撑集之外</b>的样本使下游在长尾/OOD 更鲁棒；效用由<b>下游指标</b>定义(检测/规划/策略成功率)，非逐像素保真。核心悖论：OOD 本无真值。使"无 GT 的 OOD"良定义的天然约束(每类对应一种替代监督)：①<b>组合性</b>(世界=已知 primitive；OOD=新组合，标签由构造给出)；②<b>构造性真值</b>(仿真/图形学自带标签)；③<b>物理/几何不变量</b>(深度一致/多视几何/运动学可行/地图合规跨域不变，作域不变监督)；④<b>临界性判据</b>(critic/对抗/碰撞率定义"有用 corner case")；⑤<b>支撑集外推界定</b>(primitive 空间内插=像素空间外推)。中性 trade-off：保真↔可控、覆盖↔真实、分布匹配↔安全临界、标注成本↔sim-real gap。GenCeption(2607.09024)证据点：纯合成单人视频训练→零样本泛化到真实/多实例/OOD 类别(动物/机器人)+sim2real。</div>
+
+<h3 class=sub><span class=n>L2 · 4.2</span>OOD/长尾"生成路子"（枚举）</h3>
+<table class=tbl>
+<tr><th>路子</th><th>机制</th><th>代表工作</th></tr>
+<tr><td><b>组合泛化</b></td><td>in-domain 元素重组成未见组合</td><td>Composable Diffusion 2206.01714、Causal Composition Diffusion(CVPR25)、GEM(CVPR25)</td></tr>
+<tr><td><b>仿真→真实域迁移</b></td><td>sim 布局/条件→真实外观</td><td>SimGen 2406.09386、Dreamland 2506.08006、Cosmos-Transfer1 2503.14492、UniSim 2310.06114</td></tr>
+<tr><td><b>counterfactual/corner-case</b></td><td>对抗/因果扰动生成事故临界</td><td>STRIVE 2112.05077(需核实)、AdvSim、KING、CAT、TeraSim-World 2509.13164</td></tr>
+<tr><td><b>语言指令驱动稀有场景</b></td><td>LLM/文本条件生成罕见场景</td><td>DriveDreamer-2、LCTGen 2307.07947(需核实)、CTG++ 2306.06344(需核实)、Talk2Traffic(需核实)</td></tr>
+<tr><td><b>程序化/规则合成</b></td><td>引擎构造+随机化</td><td>Domain Randomization 1703.06907、Meta-Sim、RoboGen 2311.01455、GenSim 2310.01361(需核实)、Gen2Sim 2310.18308(需核实)</td></tr>
+<tr><td><b>跨域(天气/时间/地域)迁移</b></td><td>改写天气/光照/城市风格</td><td>SimGen、驾驶综述 2502.10498</td></tr>
+<tr><td><b>asset 插入/语义增广</b></td><td>文本引导 inpaint 插入新物体/背景</td><td>GenAug 2302.06671、ROSIE 2302.11550、MagicDrive/MagicDrive3D</td></tr>
+</table>
+
+<h3 class=sub><span class=n>L2 · 4.3</span>训练数据"如何构造"（解 OOD 无 GT 悖论，枚举）</h3>
+<table class=tbl>
+<tr><th>构造策略</th><th>替代 OOD 真值的监督来源</th><th>出处</th></tr>
+<tr><td><b>in-domain 训"可组合"条件生成</b></td><td>只学 primitive→条件映射，推理组合外推</td><td>Composable Diffusion 2206.01714、GenCeption 单类→多类涌现(需核实)</td></tr>
+<tr><td><b>仿真真值当 GT</b></td><td>引擎构造即带标签</td><td>Domain Randomization 1703.06907、RoboGen 2311.01455、SimGen 2406.09386</td></tr>
+<tr><td><b>自训练/伪标签/蒸馏</b></td><td>从生成视频反解动作/标签</td><td>DreamGen 2505.12705(IDM/latent-action)</td></tr>
+<tr><td><b>循环一致/重建约束</b></td><td>reconstruction/cross-view/sim↔real cycle</td><td>SimGen cascade、Dreamland Layered World Abstraction</td></tr>
+<tr><td><b>物理/几何约束替代逐像素 GT</b></td><td>深度/多视/运动学/地图合规</td><td>未来物理世界综述"重建+生成质量"目标</td></tr>
+<tr><td><b>判别器/critic 打分替代 GT</b></td><td>对抗/临界性打分定义"有用样本"</td><td>STRIVE/AdvSim/KING/CAT；GAN 质量项</td></tr>
+<tr><td><b>"训练内组合、推理外推"界定</b></td><td>primitive 内插=像素外推</td><td>UniSim 2310.06114、GenCeption 涌现(需核实)</td></tr>
+</table>
+<div class=callout>条件"抓手"(language 之外)：BEV/layout、3D box、轨迹、scene graph、occupancy、raymap、depth/semantic map —— 语言作高层意图、结构化条件作低层约束。</div>
+
+<h3 class=sub><span class=n>L3 · 4.4</span>系统与评价</h3>
+<ul class=pa>
+<li><b>驾驶侧：</b>GAIA-1 2309.17080、DriveDreamer-2、MagicDrive、Panacea、Vista 2405.17398、SimGen、Cosmos-Transfer1、TeraSim-World；数据集 DIVA(73地点147.5h)、D3Sim。</li>
+<li><b>机器人/通用侧：</b>GenAug/ROSIE(文本 inpaint)、RoboGen/GenSim/Gen2Sim(生成式仿真 propose-generate-learn)、UniSim(动作条件模拟器 sim→real 零样本)、DreamGen(单一 pick-and-place 遥操→22 新行为)、Cosmos WFM 平台。</li>
+<li><b>评价：</b>分布匹配(FID/FVD、precision-recall)；下游有用性(train-on-synth→real：BEV det/seg、planning L2/collision、policy success；DreamGen Bench↔策略成功率相关)；可控一致性(detection consistency、ADE/FDE 指令跟随，ACT-Bench/WorldSimBench 需核实)；物理合理性(collision/kinematic、VideoPhy 2406.03520 需核实)；覆盖/多样性(SimGen DIVA；两综述均列长尾覆盖为开放挑战)。</li>
+</ul>
+
+<h2 class=sec id=s5><span class=bar></span>§5 · 汇总参考（已逐一核实，2026-08-11）</h2>
+<div class=secsub>核实状态 · 分组引用 · 补号 · Nano Banana 诚实标注。</div>
+<div class=callout warn><b>核实状态</b>：经 3 组 WebSearch 逐条核对——<b>原有编号 0 更正</b>（含 GenCeption 2607.09024、V-JEPA2.1 2603.14482、VGGT-Ω 2605.15195、D4RT 2512.08924、RVM 2512.13684 等未来号均真实）；原"需核实"项均已确认；原无号项已补号（见文末「补号」）。§1–§4 表内旧"(需核实)"一律以本节为准、视为已核实。无 arXiv 者：DALL·E3(OpenAI 2023 报告)、Talk2Traffic(CVPRW 2025)、Nano Banana(产品，见文末)。</div>
+
+<h3 class=sub><span class=n>组</span>基座 / 综述</h3>
+<div class=callout>GenCeption 2607.09024（已精读）· 可控视频生成综述 2507.16869（已读）· 驾驶世界模型综述 2502.10498（已读）· 未来物理世界生成综述（标题/号需核实）。</div>
+
+<h3 class=sub><span class=n>组</span>vision-base / 4D / memory</h3>
+<div class=callout>V-JEPA 2404.08471 · V-JEPA2 2506.09985 · V-JEPA2.1 2603.14482 · VideoMAE V2 · RVM 2512.13684 · DINOv2 2304.07193 · DINOv3 2508.10104 · VGGT(CVPR'25) · VGGT-Ω 2605.15195 · DepthAnything3 2511.10647 · D4RT 2512.08924 · MapAnything 2509.13414 · SAM3 2511.16719 · Marigold(CVPR'24) · GenPercept 2403.06090 · Diception 2502.17157 · DepthCrafter 2409.02095 · NormalCrafter 2504.11427 · Geo4D 2504.07961 · ViDAR 2312.17655 · UniPAD 2310.08370 · OccWorld 2311.16038 · UniAD 2212.10156 · Slot Attention 2006.15055 · SAVi 2111.12594 · SlotFormer 2210.05861(需核实) · BEVFormer 2203.17270 · StreamPETR 2303.11926 · Sparse4D v2/v3(需核实) · 3DGS 2308.04079 · MapTR 2208.14437 · StreamMapNet 2308.12570 · NMP 2304.08481(需核实) · Flow Matching 2210.02747 · Rectified Flow 2209.03003 · WAN2.1 2503.20314 · Genie 2402.15391(需核实) · Occupancy-MAE/ALSO/UniWorld/BEV-MAE/BEVDet4D/HDMapNet（需核实）。</div>
+
+<h3 class=sub><span class=n>组</span>language / 条件 / caption</h3>
+<div class=callout>MagicDrive 2310.02601 · MagicDriveDiT 2411.13807 · DriveDreamer 2309.09777 · DriveDreamer-2 2403.06845 · CogVideoX 2408.06072 · Cosmos 2501.03575 · PixArt-α 2310.00426 · SD3 2403.03206 · Recap-DataComp-1B 2406.08478 · PixelProse 2406.10328 · DALL·E3《Better Captions》(OpenAI 2023) · GR-1 2312.13139 · GR-2 2410.06158 · VPP 2412.14803 · UniPi 2302.00111(需核实) · UniSim 2310.06114 · Any2Caption/FullDiT/StepVideo/Wan/CausVid（arXiv 需核实）· DriveLM 2312.14150(需核实) · nuScenes-QA(需核实) · GEM 2412.11198(需核实) · LVD 2309.17444(需核实) · Boximator 2402.01566(需核实)。</div>
+
+<h3 class=sub><span class=n>组</span>可控编辑 / GT / 运动控制</h3>
+<div class=callout>ControlNet 2302.05543 · Prompt-to-Prompt 2208.01626 · InstructPix2Pix 2211.09800 · AID 2406.06465 · GeoSim 2101.06543 · DriveDreamer-4D 2410.13571 · ReconDreamer 2411.19548(需核实) · Delphi 2406.01349 · Ctrl-V 2406.05630 · Panacea 2311.16813(需核实) · DreamForge 2409.04003 · DiVE 2409.01595 · HoloDrive 2412.01407 · DriveScape 2409.05463 · Vista 2405.17398 · DriVerse 2504.18576 · Drive-OccWorld(AAAI25) · DragNUWA 2308.08089 · MotionCtrl 2312.03641 · Tora 2407.21705 · Direct-a-Video 2402.03162 · TrackDiffusion(WACV25) · DrivingDiffusion(ECCV24) · MaskGWM(需核实)。</div>
+
+<h3 class=sub><span class=n>组</span>OOD / 数据构造 / 评价</h3>
+<div class=callout>Composable Diffusion 2206.01714 · SimGen 2406.09386 · Dreamland 2506.08006 · Cosmos-Transfer1 2503.14492 · DreamGen 2505.12705 · GenAug 2302.06671 · ROSIE 2302.11550 · RoboGen 2311.01455 · GAIA-1 2309.17080 · TeraSim-World 2509.13164 · Domain Randomization 1703.06907 · STRIVE 2112.05077(需核实) · LCTGen 2307.07947(需核实) · CTG++ 2306.06344(需核实) · GenSim 2310.01361(需核实) · Gen2Sim 2310.18308(需核实) · VideoPhy 2406.03520(需核实) · Talk2Traffic / ACT-Bench / WorldSimBench（需核实）· AdvSim / KING / CAT / Meta-Sim（venue 见综述，号需核实）。</div>
+
+<h3 class=sub><span class=n>补号</span>原无 arXiv 号，已核实补全</h3>
+<div class=callout>VideoMAE V2 2303.16727 · VGGT 2503.11651 · Marigold 2312.02145 · Sparse4D v2 2305.14018 / v3 2311.11722（v1 2211.10581）· Occupancy-MAE 2206.09900 · BEV-MAE 2212.05758 · BEVDet4D 2203.17054 · HDMapNet 2107.06307 · Any2Caption 2503.24379 · FullDiT 2503.19907 · Step-Video-T2V 2502.10248 · Wan2.1 2503.20314 · CausVid 2412.07772 · nuScenes-QA 2305.14836 · TrackDiffusion 2312.00651 · DrivingDiffusion 2310.07771 · MaskGWM 2502.11663 · ACT-Bench 2412.05337 · WorldSimBench 2410.18072 · AdvSim 2101.06549 · KING 2204.13683 · CAT 2310.12432 · Meta-Sim 1904.11621。</div>
+
+<h3 class=sub><span class=n>闭源 · 信息有限</span>Nano Banana = Google Gemini 2.5 Flash Image</h3>
+<div class=callout warn>（Google DeepMind；2025-08 preview → 2025-10 stable；代号 gemini-2.5-flash-image）：多模态原生图像<b>生成 + 自然语言指令编辑</b>（无掩码局部编辑：删/加/移物体、改姿态/背景/光照；多图合成；多轮对话式编辑；跨编辑角色/语义一致；SynthID+C2PA 水印；输入≤3 图、输出≤10 图、约 1290 token/图）。<b>无专属技术报告/arXiv</b>（Gemini 2.5 报告 2507.06261 未覆盖图像生成机制）；<b class=hlp>编辑注入与训练/GT 构造未公开 —— 信息有限、闭源、非同行评审</b>。落位：§2.2（NL 指令式编辑接口）、§3.2（无掩码语言局部编辑实例）。</div>
+
+<div class=callout><b>引用规范提示</b>：MagicDriveDiT 现题 MagicDrive-V2（同号 2411.13807）；官方拼写 DriveDreamer4D（无连字符）。</div>
+<div class=callout key><b>纪律</b>：全文仅枚举选项 + 中性 trade-off，<b>未做任何推荐 / 排序 / 打分</b>。</div>
+
+<div class=note2><b>渲染说明：</b>本页为源文档 <b>auto_docs/wm_vl_survey_marr.md</b>（2026-08-07 定稿、2026-08-11 引用核实）的<b>忠实静态渲染</b>——仅排版，未增删内容、未做取舍、未改动任何结论；"零推荐、仅枚举"的原文纪律原样保留。样式与 <a href="wm_vtm.html" style="color:var(--accent2)">VTM 页</a> 一致，返回 <a href="index.html" style="color:var(--accent2)">World Model 主页</a>。</div>
+
+</div></body></html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>训练框架基础介绍 · 第 5 节 Post-train</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  :root { --bg:#0f1220; --panel:#171a2b; --fg:#e6e8f0; --muted:#9aa0b5; --accent:#6ea8fe; --border:#262a40; --code:#1e2238; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; line-height:1.7; }
+  .layout { display:flex; min-height:100vh; }
+  nav.sidebar { width:248px; flex:0 0 248px; background:var(--panel); border-right:1px solid var(--border); padding:22px 16px; position:sticky; top:0; height:100vh; overflow-y:auto; }
+  nav.sidebar .brand { font-weight:700; font-size:16px; margin-bottom:18px; color:var(--fg); letter-spacing:.5px; }
+  nav.sidebar a { display:block; padding:9px 12px; margin:3px 0; border-radius:8px; color:var(--muted); text-decoration:none; font-size:14px; transition:.15s; }
+  nav.sidebar a:hover { background:var(--code); color:var(--fg); }
+  nav.sidebar a.active { background:var(--accent); color:#0f1220; font-weight:600; }
+  main { flex:1; min-width:0; padding:40px 56px 90px; max-width:1000px; }
+  main h1 { font-size:30px; border-bottom:2px solid var(--border); padding-bottom:12px; margin-top:8px; }
+  main h2 { font-size:23px; margin-top:38px; border-left:4px solid var(--accent); padding-left:12px; }
+  main h3 { font-size:18px; margin-top:26px; color:var(--fg); }
+  main a { color:var(--accent); }
+  main code { background:var(--code); padding:2px 6px; border-radius:5px; font-size:.9em; font-family:"SFMono-Regular",Consolas,monospace; }
+  main pre { background:var(--code); padding:16px; border-radius:10px; overflow-x:auto; border:1px solid var(--border); }
+  main pre code { background:none; padding:0; }
+  main table { border-collapse:collapse; width:100%; margin:18px 0; font-size:14px; }
+  main th, main td { border:1px solid var(--border); padding:9px 12px; text-align:left; }
+  main th { background:var(--code); }
+  main blockquote { border-left:4px solid var(--muted); margin:16px 0; padding:6px 16px; color:var(--muted); background:var(--panel); border-radius:0 8px 8px 0; }
+  pre.mermaid { background:#f7f8fc; border:1px solid var(--border); border-radius:10px; padding:18px; text-align:center; overflow-x:auto; }
+  .foot { margin-top:60px; padding-top:18px; border-top:1px solid var(--border); color:var(--muted); font-size:13px; }
+  @media(max-width:820px){ .layout{flex-direction:column} nav.sidebar{width:100%;height:auto;position:static;flex-basis:auto} main{padding:24px} }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="brand">训练框架基础介绍</div>
+    <a href="index.html">总览</a>
+    <a href="01_single_task.html">1 单任务训练</a>
+    <a href="02_multi_task.html">2 多任务训练</a>
+    <a href="03_pretrain.html">3 Pretrain</a>
+    <a href="04_finetune.html">4 Finetune</a>
+    <a href="05_posttrain.html" class="active">5 Post-train</a>
+    <a href="06_worldmodel.html">6 World Model</a>
+  </nav>
+  <main>
+    <article id="content"></article>
+    <div class="foot">本页由 build_site.py 自动生成 · Markdown + Mermaid 前端渲染</div>
+  </main>
+</div>
+<script id="md-b64" type="application/base64">IyDnrKwgNSDoioIgUG9zdC10cmFpbgoKIyMg5LiA5Y+l6K+d5a6a5LmJCgpQb3N0LXRyYWluIOaYr+WcqCBwcmV0cmFpbiAvIGZpbmV0dW5lIOW+l+WIsOeahOaooeWei+S5i+S4iu+8jOeUqOW8uuWMluWtpuS5oCAvIOWBj+WlveS8mOWMlui/m+S4gOatpeWvuem9kOS4juWinuW8uuiDveWKm+eahOmYtuaute+8m+acrOiKguS4u+S9k+WunuaImOS4uiAqKlZBTE9SIFBoYXNlNCBHUlBPIFJMKirigJTigJTku6Xpl63njq/lpZblirHnm7TmjqXkvJjljJbnq6/liLDnq6/ovajov7njgIIKCiMjIOmAmueUqOiMg+W8j++8mlNGVCDihpIgUkxIRiAvIERQTyAvIEdSUE8g6LCx57O7Cgrnm5HnnaPlvq7osIPvvIhTRlTvvInkuYvlkI7vvIzkuLvmtYHlkI7orq3nu4PliIbljJbkuLrkuInmnaHlr7npvZDot6/nur/vvIzmoLjlv4PljLrliKvlnKjkuo4i5piv5ZCm6ZyA6KaB5aWW5Yqx5qih5Z6LIuWSjCLmmK/lkKbpnIDopoEgdmFsdWUg572R57ucIu+8mgoKLSAqKlNGVCoq77ya55uR552j5a+56b2Q77yM55So5qCH5rOo5pWw5o2u5pyA5aSn5Ly854S25ouf5ZCI77yM5piv5omA5pyJ5YGP5aW9L1JMIOaWueazleeahOi1t+eCueOAggotICoqUkxIRioq77ya5aWW5Yqx5qih5Z6LICsgUFBP77yM5Zyo57q/IHJvbGxvdXQg5omT5YiG77yMKirpnIDpop3lpJborq3nu4PkuI4gcG9saWN5IOetieWkp+eahCB2YWx1Ze+8iGNyaXRpY++8iee9kee7nCoq5Lyw6K6h5LyY5Yq/44CCCi0gKipEUE8qKu+8muWFjeWlluWKseaooeWei++8jOebtOaOpeWcqOWBj+WlveWvue+8iGNob3Nlbi9yZWplY3RlZO+8ieS4iuWBmumakOW8j+S8mOWMlu+8jOemu+e6v+OAgei9u+mHj+OAggotICoqR1JQTyoq77ya5Zyo57q/IHJvbGxvdXTvvIzkvYbnlKgqKuWQjOS4gCBwcm9tcHQg6YeH5qC35LiA57uE5qC35pys55qE57uE5YaF55u45a+55LyY5Yq/Kirmm7/ku6MgY3JpdGlj77yMKirlhY0gdmFsdWUg572R57ucKirvvIzlhbzpob4gUkxIRiDnmoTlnKjnur/mjqLntKLkuI4gRFBPIOeahOi9u+mHj+OAggoKYGBgbWVybWFpZApmbG93Y2hhcnQgTFIKICAgIGJhc2VbIumihOiuree7gy/lvq7osIPmqKHlnosiXSAtLT4gc2Z0WyJTRlQgKOebkeedo+Wvuem9kCkiXQogICAgc2Z0IC0tPiBybGhmWyJSTEhGICjlpZblirHmqKHlnosgKyBQUE8sIOmcgCB2YWx1ZSDnvZHnu5wpIl0KICAgIHNmdCAtLT4gZHBvWyJEUE8gKOWFjeWlluWKseaooeWeiywg5YGP5aW95a+555u05o6l5LyY5YyWKSJdCiAgICBzZnQgLS0+IGdycG9bIkdSUE8gKOWcqOe6vyByb2xsb3V0LCDnu4Tnm7jlr7nkvJjlir8sIOWFjSB2YWx1ZSDnvZHnu5wpIl0KYGBgCgojIyDmtYHnqIvlm74KClZBTE9SIFBoYXNlNCDnmoQgR1JQTyDpl63njq/vvJrku6UgZmluZXR1bmUg5ZCO5qih5Z6L5Li6IHBvbGljee+8jOWvueavj+S4quWcuuaZr+mHh+agt+S4gOe7hOi9qOi/ue+8jOWlluWKseaJk+WIhuWQjuWBmue7hOWGheebuOWvueS8mOWKv+S8sOiuoe+8jOWPoOWKoOWvuSByZWZlcmVuY2Ug55qEIEtMIOe6puadn+abtOaWsCBwb2xpY3nvvIzov63ku6Pmu5rliqjjgIIKCmBgYG1lcm1haWQKZmxvd2NoYXJ0IFRCCiAgICBwb2xpY3lbIkZpbmV0dW5lIOWQjuaooeWeiyAoUG9saWN5LCBWQUxPUiBQMS1QMyDkuqfniakpIl0gLS0+IHJvbGxvdXRbIlJvbGxvdXQg6YeH5qC3ICjmr4/nu4Qgbj04IOadoei9qOi/uSkiXQogICAgcm9sbG91dCAtLT4gcmV3YXJkWyLlpZblirHmiZPliIYgKOmXreeOr+i9qOi/uSBSZXdhcmQpIl0KICAgIHJld2FyZCAtLT4gYWR2WyLnu4Tnm7jlr7nkvJjlir/kvLDorqEgKOe7hOWGheW9kuS4gOWMliwg5YWNIHZhbHVlKSJdCiAgICByZWZbIlJlZmVyZW5jZSDmqKHlnosgKOWGu+e7kykiXSAtLT4ga2xbIktMIOe6puadnyAoYmV0YT0wLjA1KSJdCiAgICBwb2xpY3kgLS0+IGtsCiAgICBhZHYgLS0+IHVwZGF0ZVsi5pu05pawIFBvbGljeSAoR1JQTyDnrZbnlaXmoq/luqYpIl0KICAgIGtsIC0tPiB1cGRhdGUKICAgIHVwZGF0ZSAtLT58Iui/reS7o+S4i+S4gOe7hCByb2xsb3V0Inwgcm9sbG91dApgYGAKCiMjIOaetuaehOWbvgoK5LiJ5qih5Z6L6KeS6Imy77yIcG9saWN5IOWPr+iureOAgXJld2FyZC9yZWZlcmVuY2Ug5Ya757uT77yJKyBhY3Rvci1sZWFybmVyIOWIhuW4g+W8j++8mmFjdG9yIOmbhue+pOi0n+i0o+W5tuihjOmHh+agt++8jGxlYXJuZXIg6ZuG576k6LSf6LSj5LyY5Yq/6K6h566X5LiO5qKv5bqm5pu05paw77yM5Lik6ICF6Kej6ICm44CB54us56uL5omp57yp5a6544CCCgpgYGBtZXJtYWlkCmZsb3djaGFydCBMUgogICAgc3ViZ3JhcGggcm9sZXMgWyLkuInmqKHlnovop5LoibIiXQogICAgICAgIHBvbGljeU1bIlBvbGljeSDmqKHlnosgKOW+heS8mOWMliwg5Y+v6K6t57uDKSJdCiAgICAgICAgcmV3YXJkTVsiUmV3YXJkIOaooeWeiyAo5omT5YiGLCDlhrvnu5MpIl0KICAgICAgICByZWZNWyJSZWZlcmVuY2Ug5qih5Z6LIChLTCDplJrngrksIOWGu+e7kykiXQogICAgZW5kCiAgICBzdWJncmFwaCBhY3RvckdycCBbIkFjdG9yIOmbhue+pCAxNTAwIOWNoSJdCiAgICAgICAgYWN0WyLlubbooYwgUm9sbG91dCwg55Sf5oiQIG49OCDovajov7kiXQogICAgZW5kCiAgICBzdWJncmFwaCBsZWFybmVyR3JwIFsiTGVhcm5lciDpm4bnvqQgMjUwMCDljaEiXQogICAgICAgIGxyblsi57uE55u45a+55LyY5Yq/ICsgR1JQTyDmoq/luqbmm7TmlrAiXQogICAgZW5kCiAgICBwb2xpY3lNIC0tPiBhY3QKICAgIHJld2FyZE0gLS0+IGFjdAogICAgcmVmTSAtLT4gbHJuCiAgICBhY3QgLS0+fCLovajov7nkuI7lpZblirHnu4/pqowifCBscm4KICAgIGxybiAtLT58IuWQjOatpeaWsCBQb2xpY3kg5p2D6YeNInwgYWN0CmBgYAoKIyMg5qC45b+D5qaC5b+1CgotICoq5LiJ5qih5Z6L6KeS6ImyKirvvJpQb2xpY3nvvIjlvoXkvJjljJbvvIzllK/kuIDlj6/orq3nu4PvvInjgIFSZXdhcmTvvIjlr7kgcm9sbG91dCDovajov7nmiZPliIbvvIzlhrvnu5PvvInjgIFSZWZlcmVuY2XvvIhLTCDplJrngrnvvIzlhrvnu5PvvInjgIJHUlBPIOebuOavlCBSTEhGICoq5bCR5LqG5LiA5bygIHZhbHVlIOe9kee7nCoq44CCCi0gKirnu4Tnm7jlr7nkvJjlir8qKu+8muWQjOS4gOWcuuaZr+mHhyBgbj04YCDmnaHovajov7nkuLrkuIDnu4TvvIznlKjnu4TlhoXlnYflgLwv5pa55beu5b2S5LiA5YyW5aWW5Yqx5b6X5Yiw5LyY5Yq/77yM5aSp54S25raI6ZmkIHJld2FyZCDlsLrluqbmvILnp7vvvIzmm7/ku6MgY3JpdGljIOeahCBiYXNlbGluZeOAggotICoqS0wg57qm5p2fKirvvJrlr7kgcmVmZXJlbmNlIOaWveWKoCBgYmV0YT0wLjA1YCDnmoQgS0wg5oOp572a77yM5oqKIHBvbGljeSDplIHlnKggZmluZXR1bmUgbWFuaWZvbGQg6ZmE6L+R77yM5oqR5Yi2IHJld2FyZCBoYWNraW5nIOS4jueBvumavuaAp+mBl+W/mOOAggotICoqUm9sbG91dO+8iOWcqOe6v+mHh+agt++8iSoq77ya5Yy65Yir5LqOIERQTyDnmoTnprvnur/lgY/lpb3lr7nvvIxHUlBPIOWcqOe6v+eUn+aIkOagt+acrO+8jOS/neeVmSBSTCDnmoTmjqLntKLog73lipvjgIIKLSAqKkFjdG9yLUxlYXJuZXIg5YiG56a7KirvvJrph4fmoLfvvIhhY3Rvcu+8ieS4juS8mOWMlu+8iGxlYXJuZXLvvInmi4bmiJDkuKTkuKrpm4bnvqTni6znq4vmiannvKnlrrnvvIzph4fmoLflkJ7lkJDkuI7orq3nu4PlkJ7lkJDliIbliKvosIPkvJjjgIIKCiMjIOWunuaImAoK5Li75L2T5qGI5L6L77yaKipWQUxPUiBQaGFzZTQgR1JQTyBSTCoq4oCU4oCU55yf5q2j55qEIFJMIOWQjuiuree7g++8jOmXreeOr+S8mOWMluerr+WIsOerr+i9qOi/ueOAguWIneWniyBwb2xpY3kg5Li6IFZBTE9SIFAxLVAzIGZpbmV0dW5lIOS6p+eJqe+8iEFUTEFTIGJhY2tib25lIOWGu+e7kyArIOaEn+efpSBIZWFkcyArIEFSIFRyYWplY3RvcnkgRGVjb2Rlcu+8jOi+k+WHuiBgSz01IG1vZGUgw5cgVD0xMCB3YXlwb2ludGDvvInvvIzlnKjlhbbkuIrlgZrlnKjnur8gR1JQT+OAggoK5YWz6ZSu6LaF5Y+C5LiO6KeE5qih77yaCgpgYGB0ZXh0CiMgVkFMT1IgUGhhc2U0IOKAlCBHUlBPIFJMIOWFs+mUrumFjee9rgpwb2xpY3kgICAgICAgICA9IFZBTE9SIFAxLVAzIGZpbmV0dW5lIOS6p+eJqSAoQVIgVHJhamVjdG9yeSBEZWNvZGVyLCBLPTUgw5cgVD0xMCkKcmVmZXJlbmNlICAgICAgPSDlhrvnu5Plia/mnKwgKEtMIOmUmueCuSkKcmV3YXJkICAgICAgICAgPSDpl63njq/nq6/liLDnq6/ovajov7nlpZblirEgKOWGu+e7kykKcm9sbG91dF9uICAgICAgPSA4ICAgICAgICAgICAgIyDmr4/kuKrlnLrmma/ph4fmoLcgOCDmnaHlgJnpgInovajov7nkuLrkuIDnu4QKa2xfYmV0YSAgICAgICAgPSAwLjA1ICAgICAgICAgIyDlr7kgcmVmZXJlbmNlIOeahCBLTCDnuqbmnZ/ns7vmlbAKdmFsdWVfbmV0d29yayAgPSBOb25lICAgICAgICAgIyBHUlBPIOWFjSB2YWx1ZSDnvZHnu5wsIOeUqOe7hOWGheebuOWvueS8mOWKv+abv+S7oyBjcml0aWMKY2x1c3RlciAgICAgICAgPSA0MDAwIMOXIEExMDAgICMgMTUwMCBhY3RvciAocm9sbG91dCkgKyAyNTAwIGxlYXJuZXIgKOS8mOWMlikKdGFyZ2V0X01GVSAgICAgPSA+PSA0NSUKYGBgCgotICoq6YeH5qC357uE5aSn5bCPKiogYG49OGDvvJrljZXlnLrmma8gOCDmnaHovajov7nmnoTmiJDkuIDkuKrnm7jlr7nkvJjlir/nu4TjgIIKLSAqKktMKiogYGJldGE9MC4wNWDvvJrlr7kgcmVmZXJlbmNlIOe6puadn++8jOWFvOmhvuaOoue0ouS4jueos+WumuOAggotICoq566X5YqbKiogNDAwMCDlvKAgQTEwMO+8jOaMiSAqKjE1MDAgYWN0b3IgLyAyNTAwIGxlYXJuZXIqKiDliIfliIbvvIxhY3RvciDkvqcgcm9sbG91dOOAgWxlYXJuZXIg5L6n5LyY5YyW44CCCi0gKirmlYjnjocqKiBNRlUg4omlIDQ1Je+8jGFjdG9yLWxlYXJuZXIg5rWB5rC05LiO5p2D6YeN5ZCM5q2l5L+d6K+B6auY5Yip55So546H44CCCgojIyDorr7orqHnmoTlkIjnkIbmgKfkuI7lhYjov5vmgKcKCi0gKipHUlBPIOWFjSB2YWx1ZSDnvZHnu5wqKu+8mueUqOe7hOWGhSBgbj04YCDnm7jlr7nkvJjlir/mm7/ku6MgY3JpdGlj77yM55yB5Y675LiA5byg5LiOIHBvbGljeSDnrYnlpKfnmoQgdmFsdWUg572R57ucIOKGkiDmmL7lrZjkuI7nrpflipvlvIDplIDov5HkuY7lh4/ljYrvvIzkuJTop4Tpgb8gdmFsdWUg5Lyw6K6h5YGP5beu77yM6K6t57uD5pu056iz44CCCi0gKirnu4Tnm7jlr7nkvJjlir/mm7TnqLMqKu+8mue7hOWGheW9kuS4gOWMluWkqeeEtua2iOmZpCByZXdhcmQg5bC65bqm5ryC56e75LiOIGJhc2VsaW5lIOWBj+e9ru+8jOair+W6puaWueW3ruS9juOAgeaUtuaVm+eos+WumuOAggotICoqS0wg6ZSa5a6aIHJlZmVyZW5jZSoq77yaYGJldGE9MC4wNWAg5oqKIHBvbGljeSDnuqbmnZ/lnKggZmluZXR1bmUgbWFuaWZvbGQg6ZmE6L+R77yM5Zyo5o6i57Si5LiO56iz5a6a44CB6IO95Yqb5aKe5by65LiO6Ziy6YGX5b+Y5LmL6Ze05Y+W5b6X5bmz6KGh44CCCi0gKipBY3Rvci1MZWFybmVyIOWIhuemu+aJqeWxleaAp+WlvSoq77ya6YeH5qC35LiO5LyY5YyW6Kej6ICm77yMMTUwMC8yNTAwIOS4pOS4qumbhue+pOeLrOeri+aJqee8qeWuue+8jDQwMDAg5Y2h6KeE5qih5LiL5LuN57u05oyBIE1GVSDiiaUgNDUl44CCCi0gKirlr7nmoIfkuJrnlYzliY3msr8qKu+8mumHh+eUqCBHUlBPIOe7hOebuOWvueiMg+W8j++8iERlZXBTZWVrIOezu+WJjeayv+Wunui3te+8ie+8jOW5tuiQveWcsOS4uuerr+WIsOerr+i9qOi/ueeahOmXreeOryBSTCDlkI7orq3nu4PjgIIKCiMjIFJvYWRtYXDvvIh0b2RvIOW8gOWPkeS4re+8iQoKLSDlpZblirHmqKHlnovnsr7nu4bljJbvvJrlpJrnu7QgcmV3YXJk77yI5a6J5YWoIC8g6IiS6YCCIC8g5ZCI6KeE5YiG6aG55Yqg5p2D77yJ4oCU4oCUdG9kbyDlvIDlj5HkuK3jgIIKLSDlvJXlhaUgRFBPIC8g56a757q/5YGP5aW95LyY5YyW5L2c5Li6IEdSUE8g55qE5L2O5oiQ5pys6KGl5YWF6Lev5b6E4oCU4oCUdG9kbyDlvIDlj5HkuK3jgIIKLSDmm7TlpKfph4fmoLfnu4TvvIhgbj44YO+8ieS4juiHqumAguW6lCBLTCDosIPluqbigJTigJR0b2RvIOW8gOWPkeS4reOAggotIOmXreeOr+S7v+ecnyByZXdhcmQg5LiO55yf5a6e5pWw5o2u5re35ZCI44CBcmV3YXJkIOWPjeS9nOW8iuajgOa1i+KAlOKAlHRvZG8g5byA5Y+R5Lit44CCCi0gQWN0b3ItTGVhcm5lciDlvLnmgKfosIPluqbkuI7ot6jpm4bnvqTlrrnplJnigJTigJR0b2RvIOW8gOWPkeS4reOAggo=</script>
+<script>
+  const b64 = document.getElementById('md-b64').textContent.trim();
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const md = new TextDecoder('utf-8').decode(bytes);
+  const container = document.getElementById('content');
+  container.innerHTML = marked.parse(md);
+  container.querySelectorAll('code.language-mermaid').forEach(function(code){
+    const box = document.createElement('pre');
+    box.className = 'mermaid';
+    box.textContent = code.textContent;
+    code.parentElement.replaceWith(box);
+  });
+  mermaid.initialize({ startOnLoad:false, theme:'default', securityLevel:'loose', flowchart:{ htmlLabels:true, useMaxWidth:true } });
+  mermaid.run({ querySelector:'.mermaid' });
+</script>
+</body>
+</html>

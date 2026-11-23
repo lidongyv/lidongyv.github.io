@@ -368,7 +368,7 @@ def _blog_rows(lang, posts, include_design=True):
         for d in DESIGN:
             rows.append({
                 "date": d.get("date", ""),
-                "href": "/design/%s/" % d["slug"],
+                "href": d.get("href") or ("/blog/%s/" % d["slug"]),
                 "title": d["title"] if lang == "zh" else d["title_en"],
                 "summary": d["summary"] if lang == "zh" else d["summary_en"],
                 "tags": " / ".join(d["tags"] if lang == "zh" else (d.get("tags_en") or d["tags"])),
@@ -789,9 +789,6 @@ def render_blog_index(lang, posts):
   <div class="wrap wrap--narrow">
     {head}
     {list}
-    <div style="margin-top:32px" class="small">
-      <a href="{sites_href}">{sites_link}</a>
-    </div>
     <div class="notice" style="margin-top:20px">
       <div class="notice__title">RSS</div>
       <div>{rss_note} <a href="{feed}">{feed}</a></div>
@@ -801,9 +798,6 @@ def render_blog_index(lang, posts):
 """.format(
         head=section_head(lang, "博客" if lang == "zh" else "Blog", level=1),
         list=blog_list_html(lang, posts),
-        sites_href=url(lang, "design/index.html"),
-        sites_link=esc("研究站（%d）→" % len(DESIGN) if lang == "zh"
-                       else "Research sites (%d) →" % len(DESIGN)),
         rss_note=esc("订阅：" if lang == "zh" else "Subscribe: "),
         feed=("/blog/feed.xml" if lang == "zh" else "/en/blog/feed.xml"),
     )
@@ -814,51 +808,6 @@ def render_blog_index(lang, posts):
 def t_ui_desc(lang):
     return t({"zh": "关于 VLA、世界模型、数据闭环与感知工程落地的研究笔记。",
               "en": "Research notes on VLA, world models, data loops and perception engineering."}, lang)
-
-
-def render_design_index(lang):
-    cards = []
-    for d in DESIGN:
-        cards.append("""
-      <article class="card card--hover" data-reveal>
-        <div class="card__top">
-          <div class="links"><span class="tag tag--mono">{date}</span>{badge}</div>
-        </div>
-        <h3><a href="/design/{slug}/">{title}</a></h3>
-        <p style="margin-top:10px">{summary}</p>
-        <div class="card__tags">{tags}</div>
-        <div class="card__foot"><div class="links">
-          <a class="link-chip" href="/design/{slug}/">{arrow}<span>{open_l}</span></a>
-        </div></div>
-      </article>""".format(
-            date=esc(d.get("date", "")),
-            badge='<span class="tag tag--mono">中文</span>' if lang != "zh" else "",
-            slug=esc(d["slug"]),
-            title=esc(d["title"] if lang == "zh" else d["title_en"]),
-            summary=esc(d["summary"] if lang == "zh" else d["summary_en"]),
-            tags="".join(tag(x) for x in (d["tags"] if lang == "zh" else d.get("tags_en") or d["tags"])),
-            arrow=icon("arrow"),
-            open_l=esc("打开" if lang == "zh" else "Open"),
-        ))
-    body = """
-<section class="section">
-  <div class="wrap">
-    {head}
-    <div class="grid grid--2">{cards}</div>
-    <div class="cta-row" style="margin-top:32px">{back}</div>
-  </div>
-</section>
-""".format(
-        head=section_head(lang, "研究站" if lang == "zh" else "Research sites", level=1),
-        cards="".join(cards),
-        back=btn(url(lang, "blog/index.html"), "博客" if lang == "zh" else "Blog", "btn btn--ghost"),
-    )
-    return page(lang, ("研究站 · " if lang == "zh" else "Research sites · ") + t(PROFILE["name"], lang),
-                "世界模型、3D Gaussian Splatting、具身智能、蒸馏、FSD 与 VLA/RL 的调研与阅读笔记。"
-                if lang == "zh" else
-                "Survey and reading notes on world models, 3D Gaussian Splatting, embodied AI, distillation, "
-                "FSD and VLA/RL.",
-                "design/index.html", body, active="blog")
 
 
 def render_post(lang, post, posts):

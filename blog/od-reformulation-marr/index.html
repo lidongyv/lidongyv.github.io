@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OD 检测 Reformulation · Marr 三层 · per-view Perceiver → unified BEV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#05070d; --bg-1:#080b14;
+    --line:#1b2333; --line-2:#28324a;
+    --text:#eef2fb; --text-2:#c2cbe0; --text-3:#8b96b4; --text-4:#5c667f;
+    --violet:#a78bfa; --cyan:#22d3ee; --amber:#fbbf24; --emerald:#34d399; --blue:#60a5fa; --red:#f87171; --pink:#f472b6;
+    --l1:var(--violet); --l2:var(--cyan); --l3:var(--amber);
+    --accent:var(--cyan);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+    background:
+      radial-gradient(1200px 700px at 12% -10%, rgba(167,139,250,.16), transparent 55%),
+      radial-gradient(1000px 620px at 88% 0%, rgba(34,211,238,.12), transparent 55%),
+      radial-gradient(900px 560px at 50% 112%, rgba(251,191,36,.06), transparent 60%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%);
+    color:var(--text); min-height:100vh; line-height:1.65; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  .mono{font-family:'JetBrains Mono',monospace}
+  .wrap{max-width:1140px; margin:0 auto; padding:0 22px}
+  a{color:inherit; text-decoration:none}
+  code{font-family:'JetBrains Mono',monospace; font-size:.9em; background:rgba(255,255,255,.06); padding:1px 6px; border-radius:6px; color:var(--cyan)}
+
+  .nav{position:sticky; top:0; z-index:50; backdrop-filter:blur(16px);
+    background:linear-gradient(180deg, rgba(5,7,13,.92), rgba(5,7,13,.55)); border-bottom:1px solid var(--line)}
+  .nav-in{max-width:1140px; margin:0 auto; padding:11px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+  .nav-brand{font-weight:800; font-size:14.5px; display:flex; align-items:center; gap:9px}
+  .nav-dot{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,var(--violet));box-shadow:0 0 14px rgba(167,139,250,.7)}
+  .nav-links{display:flex; gap:4px; margin-left:auto; flex-wrap:wrap}
+  .nav-links a{font-size:12.5px; font-weight:600; color:var(--text-3); padding:6px 11px; border-radius:9px; border:1px solid transparent; transition:.15s; white-space:nowrap}
+  .nav-links a:hover{color:var(--text); background:rgba(255,255,255,.05); border-color:var(--line-2)}
+
+  .hero{padding:58px 0 24px}
+  .eyebrow{display:inline-flex; align-items:center; gap:10px; font-size:11px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--accent)}
+  .eyebrow::before,.eyebrow::after{content:""; width:30px; height:1px; background:linear-gradient(90deg,transparent,currentColor)}
+  h1.title{font-size:clamp(30px,5vw,54px); font-weight:900; line-height:1.06; letter-spacing:-.02em; margin:16px 0 0;
+    background:linear-gradient(180deg,#fff 35%,rgba(255,255,255,.6)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .lede{margin:16px 0 0; max-width:820px; font-size:15.5px; color:var(--text-2)}
+  .lede b{color:var(--text)}
+  .stats{display:flex; gap:14px; flex-wrap:wrap; margin-top:28px}
+  .stat{flex:1; min-width:150px; padding:16px 18px; border-radius:15px; background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015)); border:1px solid var(--line)}
+  .stat .n{font-size:26px; font-weight:800; line-height:1}
+  .stat .l{margin-top:7px; font-size:12px; color:var(--text-3); font-weight:600}
+
+  section{scroll-margin-top:70px; padding:36px 0}
+  .sec-head{display:flex; align-items:baseline; gap:13px; flex-wrap:wrap}
+  .sec-kicker{font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:var(--accent)}
+  h2.sec-title{font-size:clamp(22px,3vw,31px); font-weight:800; color:#fff; margin:0}
+  .sec-sub{color:var(--text-2); font-size:14px; max-width:880px; margin:11px 0 20px}
+
+  .glass{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.014)); border:1px solid var(--line); border-radius:15px; position:relative; overflow:hidden}
+  .glass::before{content:""; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.1),transparent)}
+
+  /* L-level chips */
+  .lchip{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+  .lchip.l1{color:var(--l1);background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.34)}
+  .lchip.l2{color:var(--l2);background:rgba(34,211,238,.12);border:1px solid rgba(34,211,238,.34)}
+  .lchip.l3{color:var(--l3);background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.34)}
+
+  /* timeline */
+  .tl{position:relative;margin-top:8px;padding-left:26px}
+  .tl::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,var(--violet),var(--cyan),var(--amber))}
+  .tlitem{position:relative;padding:0 0 20px 0}
+  .tlitem::before{content:"";position:absolute;left:-23px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--bg-1);border:2px solid var(--cyan);box-shadow:0 0 10px rgba(34,211,238,.5)}
+  .tlitem.bad::before{border-color:var(--red);box-shadow:0 0 10px rgba(248,113,113,.5)}
+  .tlitem.good::before{border-color:var(--emerald);box-shadow:0 0 10px rgba(52,211,153,.5)}
+  .tlitem .th{font-weight:700;font-size:14.5px;color:#fff;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .tlitem .tg{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-3)}
+  .tlitem .td{margin-top:5px;font-size:13.5px;color:var(--text-2);max-width:840px}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px}
+  @media(max-width:900px){.grid3{grid-template-columns:1fr}}
+  @media(max-width:820px){.grid2{grid-template-columns:1fr}}
+  .sub{padding:18px 20px}
+  .sub h4{margin:0 0 8px; font-size:16px; font-weight:800; color:#fff; display:flex; align-items:center; gap:9px}
+  .sub p{margin:0; font-size:13.5px; color:var(--text-2)}
+  .sub ul{margin:8px 0 0;padding-left:18px} .sub li{font-size:13.5px;color:var(--text-2);margin:5px 0}
+  .sub li b{color:var(--text)}
+
+  /* pipeline */
+  .pipe{display:flex;flex-direction:column;gap:0;margin-top:6px}
+  .stage{padding:15px 18px;border-radius:14px}
+  .stage .sh{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+  .stage .snum{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;color:var(--accent);width:26px;flex-shrink:0}
+  .stage .stt{font-weight:800;font-size:15px;color:#fff}
+  .stage .sd{margin:7px 0 0 37px;font-size:13px;color:var(--text-2)}
+  .stage .sd .mini{color:var(--text-3);font-size:12.5px}
+  .arrow{align-self:center;color:var(--text-4);font-size:18px;line-height:1;padding:5px 0}
+
+  .pt{padding:14px 16px; border-radius:12px; background:rgba(255,255,255,.03); border:1px solid var(--line)}
+  .pt .k{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:var(--accent)}
+  .pt .t{margin-top:5px; font-size:14px; font-weight:700; color:#fff}
+  .pt .d{margin-top:5px; font-size:12.5px; color:var(--text-2)}
+
+  /* polish cards */
+  .pcards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:820px){.pcards{grid-template-columns:1fr}}
+  .pcard{padding:16px 18px}
+  .pcard .ph{font-weight:800;font-size:14.5px;color:#fff;display:flex;gap:9px;align-items:baseline}
+  .pcard .pnum{font-family:'JetBrains Mono',monospace;color:var(--pink);font-size:12px;font-weight:700}
+  .pcard .risk{margin:9px 0 0;font-size:13px;color:var(--text-2)}
+  .pcard .rec{margin:9px 0 0;font-size:13px;color:var(--text);padding:9px 12px;border-radius:9px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.24)}
+  .pcard .rec b{color:var(--emerald)}
+
+  .callout{padding:16px 20px;border-radius:14px;border-left:3px solid var(--violet);background:rgba(167,139,250,.07);margin:4px 0}
+  .callout .ct{font-weight:800;color:#fff;font-size:14.5px}
+  .callout p{margin:7px 0 0;font-size:13.5px;color:var(--text-2)}
+  .callout.cy{border-left-color:var(--cyan);background:rgba(34,211,238,.06)}
+  .callout.rd{border-left-color:var(--red);background:rgba(248,113,113,.06)}
+
+  .qlist{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:820px){.qlist{grid-template-columns:1fr}}
+  .q{padding:14px 16px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+  .q .qq{font-weight:700;color:#fff;font-size:14px}
+  .q .qa{margin-top:6px;font-size:13px;color:var(--text-2)}
+
+  .footer{padding:40px 0 66px; border-top:1px solid var(--line); margin-top:26px; color:var(--text-3); font-size:13px}
+  .reveal{opacity:0; transform:translateY(14px); transition:opacity .6s, transform .6s}
+  .reveal.in{opacity:1; transform:none}
+</style>
+</head>
+<body>
+
+<nav class="nav"><div class="nav-in">
+  <div class="nav-brand"><span class="nav-dot"></span>OD Reformulation · Marr 三层</div>
+  <div class="nav-links">
+    <a href="#journey">讨论历程</a><a href="#marr">Marr 框架</a><a href="#l1">OD 的 L1</a>
+    <a href="#scheme">方案定稿</a><a href="#analysis">L1/L2/L3</a><a href="#polish">Polish</a><a href="#open">开放问题</a>
+  </div>
+</div></nav>
+
+<header class="hero wrap">
+  <div class="eyebrow">David Marr · Levels of Analysis · 3D Detection</div>
+  <h1 class="title">OD 检测任务的 Reformulation</h1>
+  <p class="lede">从 <b>grid sparse-OD 扩到行人/骑行（小、扎堆）</b> 的算力困境出发，用 <b>David Marr《Vision》三层分析</b> 把讨论从"门控/算力/TRT"（实现层）拉回"检测到底要算什么、为什么"（计算理论层），再落到用户提出的 <b>per-view Perceiver mono3d → unified sparse BEV query</b> 方案。本页记录讨论历程、OD 的 L1 计算理论、方案定稿，及其 L1/L2/L3 分析与实现 polish。</p>
+  <div class="stats">
+    <div class="stat"><div class="n" style="color:var(--violet)">L1→L2→L3</div><div class="l">Marr 三层贯穿</div></div>
+    <div class="stat"><div class="n" style="color:var(--cyan)">per-view → unified</div><div class="l">方案主干</div></div>
+    <div class="stat"><div class="n" style="color:var(--amber)">~200</div><div class="l">定长 BEV unified token</div></div>
+    <div class="stat"><div class="n" style="color:var(--emerald)">8</div><div class="l">polish 设计决策/风险</div></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ JOURNEY ============ -->
+  <section id="journey">
+    <div class="sec-head"><span class="sec-kicker">00</span><h2 class="sec-title">讨论历程 · 从实现层被拉回计算理论层</h2></div>
+    <p class="sec-sub">这次 reformulation 的价值一半在结论、一半在"怎么纠偏"。完整保留走过的弯路。</p>
+    <div class="tl">
+      <div class="tlitem"><div class="th">起点 · 窄任务 <span class="tg">grid sparse-OD</span></div>
+        <div class="td">单类 Vehicle 的 grid sparse-OD 想扩到行人/骑行——它们小、且扎堆，加密 grid 后 dense decoder 算力爆炸。缩检测范围治标不治本（骑行移动快、不能缩距离）。</div></div>
+      <div class="tlitem bad"><div class="th">弯路 · 主 Agent 一头扎进实现层 <span class="lchip l3">L3</span><span class="lchip l2">L2</span></div>
+        <div class="td">上来就谈"两段式门控 / 复用 exist 做 gate / 冻结 ckpt 离线证伪 / 省算力-召回曲线 / top-K vs score-mask / TRT"——全是算法层与实现层的机制。用户纠偏 ①"train 一定是 sparse 的"（不能在 dense ckpt 上推理期证伪 formulation）②"召回代价这些已经在实现层"。</div></div>
+      <div class="tlitem good"><div class="th">纠偏 · 以 Marr 视角重来 <span class="lchip l1">L1</span></div>
+        <div class="td">放弃机制执念，上到计算理论层：先回答"驾驶感知/检测到底要算什么、为什么、有哪些天然约束"。并把这套纪律蒸馏成 <code>marr-levels</code> skill：任何算法讨论 <b>Step 0 先定 L1/L2/L3</b>，防止层级坍缩。</div></div>
+      <div class="tlitem"><div class="th">L1 收敛 · 用户给 OD 划边界</div>
+        <div class="td">OD = 检测<b>所有可见物体</b>（可见即在 scope、可交互；完全遮挡=出 scope）；<b>意图</b>归 e2e、<b>交互</b>归 eval 专门 metric、<b>occupancy/stuff</b> 另属任务。主 Agent 一度把"无上限基数/必须捞回每个"的 imposed L1 扣上去，被用户纠正：<b>基数由可见性/分辨率封顶</b>。</div></div>
+      <div class="tlitem good"><div class="th">方案定稿 · 用户 proposal <span class="lchip l2">L2</span><span class="lchip l3">L3</span></div>
+        <div class="td">per-view Perceiver mono3d（存在→geo、adaptive compress = topk+group）→ 跨 view SA → 定长 N 个 BEV unified token 去重关联 + 时序传播 → 与 lidar/radar SA。轻量、可升级 e2e。</div></div>
+    </div>
+  </section>
+
+  <!-- ============ MARR ============ -->
+  <section id="marr">
+    <div class="sec-head"><span class="sec-kicker">01</span><h2 class="sec-title">Marr 三层分析 · 讨论纪律</h2></div>
+    <p class="sec-sub">蒸馏自 David Marr《Vision》(1982)。最致命的误读：把 L1 的 "computational" 当成"怎么算/算力/算子"——那是 L3。L1 是<b>问题的理论，不是解法</b>。</p>
+    <div class="grid3">
+      <div class="sub glass"><h4><span class="lchip l1">L1</span> 计算理论</h4>
+        <p>要算的<b>是什么</b>、<b>为什么</b>、哪些<b>天然约束</b>使问题良定义。</p>
+        <ul><li>例：感知为行动服务，恢复"可见物体实例集"</li><li>Marr：只看机制看不清问题，"像研究羽毛理解飞行"</li></ul></div>
+      <div class="sub glass"><h4><span class="lchip l2">L2</span> 表征与算法</h4>
+        <p>用什么<b>表征</b> + 什么<b>算法</b>实现 L1。</p>
+        <ul><li>框 / 占用 / query / token</li><li>匈牙利 / 门控 / Perceiver / SA / slot</li></ul></div>
+      <div class="sub glass"><h4><span class="lchip l3">L3</span> 实现</h4>
+        <p>如何在<b>硬件</b>上物理实现。</p>
+        <ul><li>CUDA 算子 / 稀疏 kernel / 显存</li><li>TRT / 定长静态 shape</li></ul></div>
+    </div>
+    <div class="callout" style="margin-top:16px"><div class="ct">纪律：只有上一层谈拢，才允许下沉一层</div><p>在 L1 就只谈目标/为什么/输出本体/天然约束，把表征、算法、算力全挡在门外；发现层级坍缩（用机制冒充目标、用算力冒充计算理论）当场点名、抬回正确层级。</p></div>
+  </section>
+
+  <!-- ============ L1 ============ -->
+  <section id="l1">
+    <div class="sec-head"><span class="sec-kicker">02</span><h2 class="sec-title">OD 的 L1 · 计算理论</h2></div>
+    <p class="sec-sub">从用户 proposal 反读出的 OD 计算理论（不臆测、以用户划的边界为准）。</p>
+    <div class="grid2">
+      <div class="sub glass"><h4>🎯 目标 &amp; 范围</h4>
+        <ul>
+          <li><b>恢复所有可见物体实例</b>：ego/BEV 帧下统一、时序持存的实例集。</li>
+          <li><b>可见=in-scope=必检</b>；完全遮挡=不可交互=出 scope。可见性本身即"可度量、自然"的 relevance 判据。</li>
+          <li><b>基数由可见性/分辨率封顶</b>——一视图可分辨个体有限，固定但足量的 query 预算是有原理的。</li>
+        </ul></div>
+      <div class="sub glass"><h4>🧭 边界（划给别人的）</h4>
+        <ul>
+          <li><b>意图/行为</b> → 是 L1 输出没错，但归 <b>e2e</b>，非 OD。</li>
+          <li><b>交互</b> → 非 OD 核心，放到 <b>evaluation 专门 metric</b>，不进核心 loss。</li>
+          <li><b>occupancy / stuff</b>（地面/墙）→ 另属任务；OD 只管 <b>thing / instance 这一侧</b>。</li>
+        </ul></div>
+    </div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="sub glass"><h4>⚙️ 因子分解 · 存在→geo（what→where）</h4>
+        <p><b>存在/类别</b>是召回关键、便宜（全类别召回）；<b>geo</b> 是精修、昂贵。先廉价保召回、后昂贵定位——与"安全非对称：漏是灾难"一致。</p></div>
+      <div class="sub glass"><h4>🌐 利用的天然约束</h4>
+        <p><b>多视几何一致性</b>（同物体在重叠视里 3D 须一致 → 去重/定深）；<b>时序连续性</b>（物体持存 → 时序传播/tracking）。</p></div>
+    </div>
+    <div class="callout rd" style="margin-top:16px"><div class="ct">扎堆难点，在这套 L1 里不是"数量"</div><p>基数被可见性封顶（遮挡出 scope），固定 query 预算即够。真正的难点是 <b>群内相互部分遮挡 / 可分辨性</b>（以及部分可见个体要不要 amodal 补全）——这才是 per-view 检测 + 融合真正要扛的。</p></div>
+  </section>
+
+  <!-- ============ SCHEME ============ -->
+  <section id="scheme">
+    <div class="sec-head"><span class="sec-kicker">03</span><h2 class="sec-title">方案定稿 · 端到端管线</h2></div>
+    <p class="sec-sub">一句话本质：<b>per-view 观测（可见性为根）→ 显著集自适应压缩（有界基数）→ 存在优先·geo 其次 → 跨 view/时序在定长 BEV 槽上关联去重 → 多模态补强</b>；用<b>有界 token 集 + SA 关联</b>取代 <b>dense grid + NMS</b>。</p>
+    <div class="pipe">
+      <div class="stage glass"><div class="sh"><span class="snum">01</span><span class="stt">共享权重 backbone（view-兼容 CNN）</span><span class="lchip l2">L2</span></div>
+        <div class="sd">多相机 images → 每 view 各自出特征；<b>权重共享</b>，故 backbone 须兼容不同 view 下的物体检出。</div></div>
+      <div class="arrow">↓</div>
+      <div class="stage glass"><div class="sh"><span class="snum">02</span><span class="stt">per-view Perceiver · adaptive compress</span><span class="lchip l1">L1</span><span class="lchip l2">L2</span></div>
+        <div class="sd">view 特征 → 有界的显著物体 query 集。<span class="mini">"像 mono3d 但不是 mono3d"：Perceiver 帮压缩+提取最显著物体 = mono 里做了 <b>topk</b> + <b>group detection</b>。基数有界是计算理论层的性质，非工程 hack。</span></div></div>
+      <div class="arrow">↓</div>
+      <div class="stage glass"><div class="sh"><span class="snum">03</span><span class="stt">两段头 · 存在-类别（what）→ geo（where）</span><span class="lchip l1">L1</span></div>
+        <div class="sd">先出<b>检出信号（存在+类别）</b>，再 push query 从 mono3d 出发算<b>3D 属性</b>。存在优先=召回优先。</div></div>
+      <div class="arrow">↓</div>
+      <div class="stage glass"><div class="sh"><span class="snum">04</span><span class="stt">per-view temporal fusion</span><span class="lchip l2">L2</span></div>
+        <div class="sd">每 view 的 token 做时序稳定（抗闪烁），提升单 view 检出的时序一致性。</div></div>
+      <div class="arrow">↓</div>
+      <div class="stage glass"><div class="sh"><span class="snum">05</span><span class="stt">跨 view SA · 关联 + 压缩</span><span class="lchip l2">L2</span></div>
+        <div class="sd">把带 3D geo 的 perceiver token 做 self-attention，跨重叠视做关联与压缩（多视几何一致性）。</div></div>
+      <div class="arrow">↓</div>
+      <div class="stage glass"><div class="sh"><span class="snum">06</span><span class="stt">定长 N(~200) BEV unified token · 去重 + 关联 + 时序传播</span><span class="lchip l2">L2</span><span class="lchip l3">L3</span></div>
+        <div class="sd">一组定长 BEV unified token 与 perceiver token 做 SA（可与 05 联合一步做）完成<b>去重+关联</b>（slot-attention 味）；unified token 可从<b>上一帧时序传入</b> → 4D tracking。<span class="mini">定长 = 静态 shape = TRT 友好（早先担心的"固定 K"在这里翻转成优点）。</span></div></div>
+      <div class="arrow">↓</div>
+      <div class="stage glass"><div class="sh"><span class="snum">07</span><span class="stt">多模态 · unified token ←SA→ lidar/radar</span><span class="lchip l2">L2</span></div>
+        <div class="sd">~200 个 unified query 与 lidar/radar 做 SA 提信息。整套轻量，unified token 是接下游的干净接口 → 可升级 e2e。</div></div>
+    </div>
+  </section>
+
+  <!-- ============ ANALYSIS ============ -->
+  <section id="analysis">
+    <div class="sec-head"><span class="sec-kicker">04</span><h2 class="sec-title">L1 / L2 / L3 分析</h2></div>
+    <p class="sec-sub">把方案摆到三层上，逐层看它"要算什么/怎么表征算/怎么落地"。</p>
+    <div class="grid3">
+      <div class="sub glass" style="border-color:rgba(167,139,250,.3)"><h4><span class="lchip l1">L1</span> 计算理论</h4>
+        <ul>
+          <li><b>per-view 为根</b>：visibility 本质 per-camera，检测生于 per-view，世界模型从各视图证据拼装（Marr 自底向上）。</li>
+          <li><b>存在→geo</b>：召回关键量先算、精修量后算。</li>
+          <li><b>基数有界</b>：Perceiver 压出有界显著集（+group 处理簇）。</li>
+          <li><b>持存在 scope</b>：per-view token 稳定 + unified token 传播 = tracking。</li>
+        </ul></div>
+      <div class="sub glass" style="border-color:rgba(34,211,238,.3)"><h4><span class="lchip l2">L2</span> 表征与算法</h4>
+        <ul>
+          <li><b>表征</b>：per-view Perceiver 物体 token；全局定长 N(~200) BEV unified token。</li>
+          <li><b>算法</b>：共享 backbone、Perceiver 交叉注意力压缩、两段头、per-view temporal、跨 view SA、unified SA 去重、时序传播、多模态 SA。</li>
+          <li><b>SA 关联取代 NMS；有界 token 取代 dense grid。</b></li>
+        </ul></div>
+      <div class="sub glass" style="border-color:rgba(251,191,36,.3)"><h4><span class="lchip l3">L3</span> 实现</h4>
+        <ul>
+          <li><b>轻量</b>：有界 token→有界算力；共享 backbone→省显存；~200 token 上 SA→便宜。</li>
+          <li><b>部署</b>：定长 token = 静态 shape = TRT 友好；Perceiver 固定 query = 静态。</li>
+          <li><b>e2e 可升级</b>：unified token = 接预测/规划的接口。</li>
+        </ul></div>
+    </div>
+  </section>
+
+  <!-- ============ POLISH ============ -->
+  <section id="polish">
+    <div class="sec-head"><span class="sec-kicker">05</span><h2 class="sec-title">Polish · 设计决策 / 缺口 / 风险</h2></div>
+    <p class="sec-sub">把方案打磨到可实现：每条给出<b>风险/缺口</b>与<b>推荐</b>。粗体绿框为推荐决策。</p>
+    <div class="pcards">
+      <div class="pcard glass"><div class="ph"><span class="pnum">P1</span>单目深度歧义</div>
+        <div class="risk">per-view geo 深度病态；若各 view 先各自钉死 3D，深度误差在融合前 baked-in。</div>
+        <div class="rec"><b>推荐</b>：per-view 只出<b>深度分布/不确定度</b>，交给 unified 融合用<b>多视几何</b>定深。</div></div>
+      <div class="pcard glass"><div class="ph"><span class="pnum">P2</span>group token 语义</div>
+        <div class="risk">"group detection" 须定义 token = 1 物体 还是 1 组；若为组，何时/是否解成个体。</div>
+        <div class="rec"><b>推荐</b>：group 作为<b>可分辨性不足时的降级表示</b>，可分则解成个体（扎堆=群内部分遮挡的落点）。</div></div>
+      <div class="pcard glass"><div class="ph"><span class="pnum">P3</span>跨 view 关联正确性</div>
+        <div class="risk">unified token 抢 perceiver token 去重时的 split/merge 错误（同物→两 token，或两物→一 token）。</div>
+        <div class="rec"><b>推荐</b>：unified token 作<b>竞争 slot</b>；用几何一致性 + set loss 监督关联。</div></div>
+      <div class="pcard glass"><div class="ph"><span class="pnum">P4</span>定长 N 容量</div>
+        <div class="risk">N(~200) 若小于极端稠密场景的可分辨物体数 → 饱和。</div>
+        <div class="rec"><b>推荐</b>：N 按 ego 范围最坏可分辨数定；<b>birth/death + slot 回收</b>做时序；饱和时退化到 group。</div></div>
+      <div class="pcard glass"><div class="ph"><span class="pnum">P5</span>存在优先 &amp; 全类别召回</div>
+        <div class="risk">类无关显著+后分类会让稀有类被常见类淹掉。</div>
+        <div class="rec"><b>推荐</b>：<b>类条件 query 先验</b> + recall-first 损失，保稀有类召回。</div></div>
+      <div class="pcard glass"><div class="ph"><span class="pnum">P6</span>两套 temporal</div>
+        <div class="risk">per-view（抗闪烁）与 unified（身份跟踪）职责需分清；unified 传播要处理自车运动。</div>
+        <div class="rec"><b>推荐</b>：unified 传播做 <b>ego-motion 补偿</b>；两套互补而非冗余。</div></div>
+      <div class="pcard glass"><div class="ph"><span class="pnum">P7</span>监督设计</div>
+        <div class="risk">per-view 与 unified 两级的监督如何配合，避免早期 unified 学不到东西。</div>
+        <div class="rec"><b>推荐</b>：per-view mono3d 监督（存在/类别/geo）+ unified <b>set loss</b>（匈牙利或 slot）+ 时序一致性。</div></div>
+      <div class="pcard glass"><div class="ph"><span class="pnum">P8</span>相关工作定位（诚实）</div>
+        <div class="risk">避免把已有范式当新意；需明确借鉴与差异。</div>
+        <div class="rec"><b>定位</b>：Perceiver-IO + DETR3D/PETR/Sparse4D（但那是 where-first BEV query）+ slot-attention + StreamPETR 时序 + MV2D "detect-in-view-then-fuse"。<b>新意</b>=per-view 自适应压缩前端(topk+group)+存在→geo 因子化+unified 4D token。</div></div>
+    </div>
+  </section>
+
+  <!-- ============ OPEN ============ -->
+  <section id="open">
+    <div class="sec-head"><span class="sec-kicker">06</span><h2 class="sec-title">开放问题 / 下一步</h2></div>
+    <p class="sec-sub">L1 已闭合、L2/L3 方案已整理+分析+polish。进 L3 真代码前，待拍板的设计决策：</p>
+    <div class="qlist">
+      <div class="q"><div class="qq">① group 语义</div><div class="qa">token = 物体 or 组？何时解成个体？降级策略的触发条件？</div></div>
+      <div class="q"><div class="qq">② 深度不确定度</div><div class="qa">per-view 出分布还是点估计？unified 处如何用多视几何定深？</div></div>
+      <div class="q"><div class="qq">③ 类条件先验</div><div class="qa">per-view Perceiver query 是否类条件化以保全类别召回？</div></div>
+      <div class="q"><div class="qq">④ N 与 birth/death</div><div class="qa">定长 N 取值 + 时序 slot 回收/新生机制？</div></div>
+      <div class="q"><div class="qq">⑤ 05/06 是否合一</div><div class="qa">跨 view SA 与 unified 去重是否联合一步 SA 完成？</div></div>
+      <div class="q"><div class="qq">⑥ 监督与 e2e 路径</div><div class="qa">两级监督配比；unified token 接下游 e2e 的时机？</div></div>
+    </div>
+    <div class="callout cy" style="margin-top:18px"><div class="ct">下一步</div><p>从上述 ①②③ 先定关键决策 → 才进 L3 真代码。工程约束（TRT 定长、稀疏算子）确认可行后落地；训练必须实例化两段/融合的稀疏结构（train 一定 sparse），不在 dense ckpt 上推理期证伪。</p></div>
+  </section>
+
+</main>
+
+<footer class="footer"><div class="wrap">
+  <div style="font-weight:700;color:var(--text-2);font-size:14px">OD 检测任务 Reformulation · Marr 三层视角</div>
+  <p style="margin-top:12px">讨论落盘：<code>tep-v300-smallobj/auto_docs/perception_L1_reformulation.md</code> · 讨论纪律 skill：<code>~/.cursor/skills/marr-levels</code> · 本页记录讨论历程 + OD 计算理论 + 方案定稿 + L1/L2/L3 分析 + 实现 polish。</p>
+</div></footer>
+
+<script>
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add("in")}),{threshold:.06});
+document.querySelectorAll("section, .sub, .pt, .stat, .stage, .pcard, .tlitem, .q").forEach(el=>{el.classList.add("reveal");io.observe(el)});
+</script>
+</body>
+</html>

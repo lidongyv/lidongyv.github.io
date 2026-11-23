@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⑧ Hybrid A* 泊车 · Planning 算法详解</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/planning.css">
+</head>
+<body>
+
+<nav class="nav"><div class="nav-in">
+  <div class="nav-brand"><span class="nav-dot"></span>Planning 算法详解</div>
+  <div class="nav-links">
+    <a href="../index.html">← 总览</a>
+    <a href="cilqr-path.html">CiLQR</a><a href="speed-qp.html">速度QP</a><a href="refpath.html">参考路径</a><a href="hts-speed.html">HTS</a><a href="path-corridor.html">横向走廊</a><a href="speed-corridor.html">纵向走廊</a><a href="lane-decision.html">变道决策</a><a href="hybrid-astar.html" class="cur">泊车HA*</a>
+  </div>
+</div></nav>
+
+<header class="hero wrap">
+  <div class="crumb"><a href="../index.html">🧭 算法详解</a><span class="sep">/</span><span class="cur">⑧ Hybrid A* 泊车</span></div>
+  <div class="eyebrow">泊车 · 几何搜索 · 自行车模型 + Reeds-Shepp</div>
+  <h1 class="title">Hybrid A* 泊车搜索</h1>
+  <p class="lede">泊车场景独立于行车主链路：在狭窄空间、含<b>倒车 / 换向</b>的非完整约束下，用 Hybrid A* 在 <code>(x,y,θ)</code> 连续空间做运动学扩展 + Reeds-Shepp 解析连接，搜出无碰撞几何路径。由 <code>ParkingRefLineGenerator</code> 调用，<b>不经 CiLQR / QP 横向优化</b>。</p>
+  <div class="stats">
+    <div class="stat"><div class="n" style="color:var(--amber)">(x,y,θ)</div><div class="l">连续状态 + 网格</div></div>
+    <div class="stat"><div class="n" style="color:var(--cyan)">自行车模型</div><div class="l">运动学扩展</div></div>
+    <div class="stat"><div class="n" style="color:var(--violet)">Reeds-Shepp</div><div class="l">启发 + 解析展开</div></div>
+    <div class="stat"><div class="n" style="color:var(--emerald)">ESDF</div><div class="l">净空代价</div></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section><div class="panel why">
+    <div class="panel-head"><span class="ic">🎯</span><h2>解决的问题</h2></div>
+    <p>泊车与行车是两类问题：行车沿车道走、横纵解耦即可；泊车要在<b>极窄空间</b>里精确对位，且往往必须<b>倒车、来回打方向（换向）</b>。这让普通的车道参考线 + 横向优化失效：</p>
+    <ul>
+      <li><b>非完整约束</b>：车不能横向平移，转弯半径受限，路径必须满足自行车模型。</li>
+      <li><b>离散机动</b>：前进/倒车、多次换向是组合搜索问题，凸优化无法表达。</li>
+      <li><b>强碰撞约束</b>：车位四周都是墙/车，要逐点检查车体多边形不碰撞。</li>
+    </ul>
+    <p>因此泊车用 <b>Hybrid A*</b>：在栅格化的 <code>(x,y,θ)</code> 空间用运动学可行的弧段扩展节点，配 Reeds-Shepp 解析段在近目标时一蹴而就。</p>
+  </div></section>
+
+  <section><div class="panel how">
+    <div class="panel-head"><span class="ic">⚙️</span><h2>实现</h2><span class="tag ha">HybridAStar</span></div>
+    <div class="grid2">
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">状态扩展（自行车模型）</div>
+        <div class="eq">
+<span class="c">// 状态：连续 (x,y,θ) + 网格索引</span>
+Δθ = Δs · tan(δ) / L_wb
+x' = x + 圆弧/直线积分(Δs, θ, δ)
+<span class="c">// 前进/倒车 ±step，多档转向角 δ</span>
+        </div>
+        <div class="note" style="font-weight:700;color:var(--text-2);margin-top:10px">代价 g</div>
+        <div class="eq">
+g = 路径长
+  × (倒车 / 换向 / 转向 / 转向变化 惩罚)
+  + ESDF clearance 净空惩罚
+        </div>
+      </div>
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">启发 + 解析展开 + 碰撞</div>
+        <ul>
+          <li><b>启发</b>：优先 <b>Reeds-Shepp</b> 距离（含倒车的最短曲线），否则 Manhattan。</li>
+          <li><b>解析展开</b>：近目标时用 RS / LineArc 一段直接 shot 到终点（<code>shot_distance</code> 内触发）。</li>
+          <li><b>碰撞</b>：<code>GridMapCollisionDetector</code> + lidar freespace + OCC + 静态障碍 + 车位 U 型约束。</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note"><b>与主链路关系</b>：Hybrid A* <b>不在</b> proc_ppl Optimizer 内，由 <code>ParkingRefLineGenerator::RunSearch</code> 调用，搜索结果转成 parking_reference_line 后再进 DataPreprocessor → CoarseTrajectoryGenerator → <code>ParkingRefPathGenerator</code>，且 Optimizer 横向<b>跳过 CiLQR</b>，直接透传搜索路径。</p>
+    <div class="note" style="font-weight:700;color:var(--text-2);margin-top:12px">代码锚点</div>
+    <table class="t fileidx">
+      <tbody>
+        <tr><td>Hybrid A* 核心</td><td class="path">common/search/hybrid_a_star/hybrid_a_star.cpp <span class="ln">:549-719</span></td></tr>
+        <tr><td>配置 / 常量</td><td class="path">common/search/hybrid_a_star/hybrid_a_star.h <span class="ln">:34-84</span></td></tr>
+        <tr><td>调用 / 注入配置</td><td class="path">…/reference_path/parking_refline/parking_refline_generator.cpp <span class="ln">:1249-1487</span></td></tr>
+      </tbody>
+    </table>
+  </div></section>
+
+  <section><div class="panel params">
+    <div class="panel-head"><span class="ic">🎚️</span><h2>超参设置</h2><span class="tag" style="background:rgba(91,157,255,.14);color:var(--blue);border:1px solid rgba(91,157,255,.32)">parking_assist_conf + HybridAStarConfig</span></div>
+    <div class="grid2">
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">搜索 / 净空（planning_config.json）</div>
+        <table class="t blue">
+          <thead><tr><th>参数</th><th style="width:80px">值</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">search_step_size</td><td class="mono">0.2 m</td><td>扩展步长</td></tr>
+            <tr><td class="mono">steering_discrete_num</td><td class="mono">5</td><td>转向离散档</td></tr>
+            <tr><td class="mono">search_long_v</td><td class="mono">1.0 m/s</td><td>搜索纵向速度</td></tr>
+            <tr><td class="mono">search_time_step_dt / num</td><td class="mono">0.2 / 25</td><td>时间离散</td></tr>
+            <tr><td class="mono">clearance soft / w / cap</td><td class="mono">0.8 / 4 / 20</td><td>ESDF 净空代价</td></tr>
+            <tr><td class="mono">line_arc 解析展开</td><td class="mono">on</td><td>线弧 shot</td></tr>
+            <tr><td class="mono">RS 解析(泊入)</td><td class="mono">off</td><td>泊入不用 RS shot</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">代价惩罚（HybridAStarConfig 代码默认）</div>
+        <table class="t blue">
+          <thead><tr><th>参数</th><th style="width:80px">值</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">x/y_grid_resolution</td><td class="mono">0.2 m</td><td>栅格</td></tr>
+            <tr><td class="mono">heading_grid_num</td><td class="mono">63</td><td>航向离散</td></tr>
+            <tr><td class="mono">reversing_penalty</td><td class="mono">2.0</td><td>倒车惩罚</td></tr>
+            <tr><td class="mono">direction_change_penalty</td><td class="mono">5.0</td><td>换向惩罚（最重）</td></tr>
+            <tr><td class="mono">steering / change_penalty</td><td class="mono">1.05 / 1.5</td><td>转向 / 转向变化</td></tr>
+            <tr><td class="mono">rs_path_penalty</td><td class="mono">0.8</td><td>RS 启发/解析</td></tr>
+            <tr><td class="mono">heuristic_weight</td><td class="mono">2.0</td><td>启发权重</td></tr>
+            <tr><td class="mono">max_search_iter / time</td><td class="mono">500 / 500ms</td><td>搜索上限</td></tr>
+            <tr><td class="mono">shot_distance</td><td class="mono">10 m</td><td>RS shot 触发</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div></section>
+
+  <section><div class="panel opt">
+    <div class="panel-head"><span class="ic">🔧</span><h2>后续优化点</h2></div>
+    <div class="opt-item"><div class="ot">设计文档列 6 项性能/质量债 <span class="badge todo">文档明确</span></div><div class="od">源码无 TODO，但重构笔记列出已知债务。</div><div class="oimp">实例复用、自适应 stride、动态 heuristic、2D grid heuristic、增量搜索、ESDF 加速。</div><div class="src">docs/src/hybrid-astar-refactor-notes.md:312-321</div></div>
+    <div class="opt-item"><div class="ot">泊车 goal 帧间抖动导致频繁 replan <span class="badge todo">文档记录</span></div><div class="od">目标车位每帧微动会触发重新搜索，靠成功缓存缓解。</div><div class="oimp">成功即缓存路径；仅场景切换才 replan。</div><div class="src">hybrid-astar-refactor-notes.md:59-67</div></div>
+    <div class="opt-item"><div class="ot">Analytic expansion 碰撞检查与 stride 权衡敏感 <span class="badge todo">文档记录</span></div><div class="od">解析展开触发频率与碰撞精度需平衡。</div><div class="oimp">分层 analytic 触发；近场全检、远场 stride。</div><div class="src">hybrid-astar-refactor-notes.md:69-80</div></div>
+    <div class="opt-item"><div class="ot">大量调参常量堆在匿名 namespace <span class="badge infer">推断局限</span></div><div class="od">泊车常量散落在 cpp 匿名命名空间，难按场景调。</div><div class="oimp">迁入 planning_config + 分场景 profile。</div><div class="src">hybrid_a_star.cpp:17-45</div></div>
+    <div class="opt-item"><div class="ot">泊出成功判定简化 <span class="badge todo">注释 TODO</span></div><div class="od">泊出判定注释自标「简化版」，脱困上报待完善。</div><div class="oimp">完善判定与 ErrorManager 联动。</div><div class="src">parking_common_utils.cpp:402,667,970</div></div>
+  </div></section>
+
+  <div class="algonav">
+    <a href="lane-decision.html"><div class="d">← 上一个</div><div class="n">⑦ 借道 / 换道 / Gap</div></a>
+    <a class="next" href="../index.html"><div class="d">完成 ✓</div><div class="n">返回算法总览</div></a>
+  </div>
+</main>
+
+<footer class="footer"><div class="wrap">
+  <p style="margin:0">Hybrid A* 泊车 · 源自 <code>ad-/pnc/planning @ delivery/release_candidate_260403</code> 静态解读 · 超参取自 <code>planning_config.json</code> 与代码默认值。</p>
+</div></footer>
+
+<script src="../assets/planning.js"></script>
+</body>
+</html>

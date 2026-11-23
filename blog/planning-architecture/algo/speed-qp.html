@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>② OSQP 纵向速度优化 · Planning 算法详解</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/planning.css">
+</head>
+<body>
+
+<nav class="nav"><div class="nav-in">
+  <div class="nav-brand"><span class="nav-dot"></span>Planning 算法详解</div>
+  <div class="nav-links">
+    <a href="../index.html">← 总览</a>
+    <a href="cilqr-path.html">CiLQR</a><a href="speed-qp.html" class="cur">速度QP</a><a href="refpath.html">参考路径</a><a href="hts-speed.html">HTS</a><a href="path-corridor.html">横向走廊</a><a href="speed-corridor.html">纵向走廊</a><a href="lane-decision.html">变道决策</a><a href="hybrid-astar.html">泊车HA*</a>
+  </div>
+</div></nav>
+
+<header class="hero wrap">
+  <div class="crumb"><a href="../index.html">🧭 算法详解</a><span class="sep">/</span><span class="cur">② OSQP 纵向速度优化</span></div>
+  <div class="eyebrow">纵向 · 速度曲线 · 分段-jerk · 凸二次规划</div>
+  <h1 class="title">OSQP 分段-jerk 纵向速度优化</h1>
+  <p class="lede">路径形状定下来后，在这条路径上求<b>速度曲线</b> <code>s(t)</code>：状态 <code>[s,v,a]</code>、jerk 为段间控制，在 5&nbsp;s / 51 点上解一个凸二次规划（OSQP），同时满足舒适、跟车安全（RSS / IDM）、限速与准时停车。是 <code>SpeedOptimizer</code> 阶段。</p>
+  <div class="stats">
+    <div class="stat"><div class="n" style="color:var(--emerald)">OSQP</div><div class="l">凸 QP 求解器</div></div>
+    <div class="stat"><div class="n" style="color:var(--violet)">0.1s × 51</div><div class="l">Δt × 点数 (5s)</div></div>
+    <div class="stat"><div class="n" style="color:var(--cyan)">RSS+IDM</div><div class="l">双重跟车软界</div></div>
+    <div class="stat"><div class="n" style="color:var(--amber)">4000</div><div class="l">OSQP 最大迭代</div></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section><div class="panel why">
+    <div class="panel-head"><span class="ic">🎯</span><h2>解决的问题</h2></div>
+    <p>横向只决定了「车走哪条线」，但「在这条线上多快走、何时让、何时停」是另一个维度。纵向速度规划要同时满足：</p>
+    <ul>
+      <li><b>舒适</b>：加速度、jerk 在限内，避免顿挫。</li>
+      <li><b>跟车安全</b>：与前车保持安全距离 —— 用 <b>RSS</b>（最坏制动假设）+ <b>IDM</b>（期望车头时距）双重软上界，更鲁棒。</li>
+      <li><b>限速 / 让行 / 停车</b>：服从地图与曲率限速，对让行/停车障碍按时减速到点。</li>
+      <li><b>实时</b>：10&nbsp;Hz 必须毫秒级出解 —— 建成<b>凸 QP</b>，OSQP 保证快且全局最优。</li>
+    </ul>
+  </div></section>
+
+  <section><div class="panel how">
+    <div class="panel-head"><span class="ic">⚙️</span><h2>实现</h2><span class="tag osqp">PiecewiseJerkSpeedProblem · OSQP</span></div>
+    <p><b>调用链</b>：<code>SpeedCorridorConstructor</code> 给出 SVT 边界 + 沿 s 的限速 → <code>SpeedOptimizer</code> 逐时刻从 SVT 取可通行 <code>[s_lower, s_upper]</code>，按障碍决策算出三组上界（硬 / RSS 软 / IDM 软）和 v 上界，构造 QP 交 OSQP。</p>
+    <div class="grid2">
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">决策变量与目标（min ½zᵀPz+qᵀz）</div>
+        <div class="eq lon">
+z = [ s₀..sₙ₋₁, v₀.., a₀.., e(slack) ]
+<span class="c">// 目标逐项</span>
+∑ 10·(sᵢ−s_ref)²     <span class="c">贴合参考 s</span>
+∑ |κ(sᵢ)|·vᵢ²         <span class="c">曲率限速</span>
+∑ aᵢ²  +  ∑ jᵢ²       <span class="c">加速度/jerk 平滑</span>
+∑ (RSS/IDM/v/a slack)² <span class="c">软约束惩罚</span>
+        </div>
+      </div>
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">约束</div>
+        <div class="eq lon">
+<span class="c">// 初始状态(来自 stitch 末点)</span>
+s₀,v₀,a₀ = 固定
+<span class="c">// 运动学连续性(梯形积分)</span>
+vᵢ₊₁−vᵢ−½Δt(aᵢ+aᵢ₊₁)=0
+sᵢ₊₁−sᵢ−Δt·vᵢ−Δt²/3·aᵢ−Δt²/6·aᵢ₊₁=0
+<span class="c">// 盒约束 + 软上界</span>
+sᵢ∈[s_lo,s_hi]  0≤vᵢ≤v_max
+a,j∈[min,max]   sᵢ+eₖ≤s_follow
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>跟车上界</b>：YIELD/FOLLOW/STOP 时硬上界 <code>s_upper−basic_buffer</code>；RSS 软上界含反应时间 ρ 与前后车制动距离差；IDM 软上界 <code>s₀+v·T+v·Δv/(2√(ab))</code>。<b>输出后处理</b>：强制单调 <code>sᵢ=max(sᵢ,sᵢ₋₁), vᵢ=max(vᵢ,0)</code>；低速到点触发滞回 → <code>GenerateComfortStopProfile</code> 直接给停车曲线、<b>绕过 QP</b>。</p>
+    <div class="note" style="font-weight:700;color:var(--text-2);margin-top:12px">代码锚点</div>
+    <table class="t fileidx">
+      <tbody>
+        <tr><td>速度 QP 主流程</td><td class="path">proc_ppl/optimizer/speed_optimizer/speed_optimizer.cpp <span class="ln">:92-97, 192-269, 335-382</span></td></tr>
+        <tr><td>QP 内核 / 连续性</td><td class="path">common/math/piecewise_jerk_problem/piecewise_jerk_problem.cpp <span class="ln">:654-685</span></td></tr>
+        <tr><td>speed 特化</td><td class="path">common/math/piecewise_jerk_problem/piecewise_jerk_speed_problem.cpp</td></tr>
+      </tbody>
+    </table>
+  </div></section>
+
+  <section><div class="panel params">
+    <div class="panel-head"><span class="ic">🎚️</span><h2>超参设置</h2><span class="tag" style="background:rgba(91,157,255,.14);color:var(--blue);border:1px solid rgba(91,157,255,.32)">speed_optimizer_conf + speed_conf</span></div>
+    <div class="grid2">
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">QP 权重 / 跟车（speed_optimizer_conf）</div>
+        <table class="t blue">
+          <thead><tr><th>参数</th><th style="width:70px">值</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">ref_x_weight</td><td class="mono">10.0</td><td>参考 s 跟踪</td></tr>
+            <tr><td class="mono">dx/ddx/dddx_weight</td><td class="mono">1.0</td><td>曲率/加速度/jerk</td></tr>
+            <tr><td class="mono">rss_soft_weight</td><td class="mono">400</td><td>RSS 软上界</td></tr>
+            <tr><td class="mono">idm_soft_weight</td><td class="mono">20</td><td>IDM 软上界</td></tr>
+            <tr><td class="mono">dx_soft / ddx_soft</td><td class="mono">1000 / 250</td><td>速度/加速度软界</td></tr>
+            <tr><td class="mono">max_iter</td><td class="mono">4000</td><td>OSQP 迭代</td></tr>
+            <tr><td class="mono">basic_buffer</td><td class="mono">3.0 m</td><td>硬停车缓冲</td></tr>
+            <tr><td class="mono">rss/idm_basic_buffer</td><td class="mono">4.0 / 6.0 m</td><td>RSS/IDM 间距</td></tr>
+            <tr><td class="mono">rho / idm_rho</td><td class="mono">0.9 / 1.35 s</td><td>RSS 反应时 / IDM 时距</td></tr>
+            <tr><td class="mono">comfort_stop jerk/dec</td><td class="mono">-2 / -3</td><td>舒适停车剖面</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">运动学上下限（speed_conf）</div>
+        <table class="t blue">
+          <thead><tr><th>参数</th><th style="width:96px">值</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">det_t / total</td><td class="mono">0.1 / 5.0 s</td><td>51 点<span class="tag" style="margin-left:4px;background:rgba(126,135,173,.16);color:var(--text-3);border:1px solid var(--line-2)">代码默认</span></td></tr>
+            <tr><td class="mono">max_v</td><td class="mono">11.11 m/s</td><td>40 km/h</td></tr>
+            <tr><td class="mono">max_acc</td><td class="mono">1.25</td><td>名义（用速度分段表）</td></tr>
+            <tr><td class="mono">min_acc</td><td class="mono">-10.0</td><td>最大制动</td></tr>
+            <tr><td class="mono">max/min_jerk</td><td class="mono">9 / -18</td><td>jerk 硬限</td></tr>
+            <tr><td class="mono">软 acc 行车</td><td class="mono">[-3, 2]</td><td>代码默认</td></tr>
+            <tr><td class="mono">软 acc 借道/泊车</td><td class="mono">-1 / [-2,0.8]</td><td>场景减速</td></tr>
+            <tr><td class="mono">brake_max_obs</td><td class="mono">8.0</td><td>前车最大制动(RSS)</td></tr>
+            <tr><td class="mono">enable_stop_hysteresis</td><td class="mono">true</td><td>停走滞回</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div></section>
+
+  <section><div class="panel opt">
+    <div class="panel-head"><span class="ic">🔧</span><h2>后续优化点</h2></div>
+    <div class="opt-item"><div class="ot">s 单调性不在 QP 内 <span class="badge infer">推断局限</span></div><div class="od">QP 只有逐点 <code>sᵢ∈[lo,hi]</code>，解出后用 <code>max(sᵢ,sᵢ₋₁)</code> 钳位，理论上可能产生需后处理修正的非单调解。</div><div class="oimp">加线性单调约束 <code>sᵢ₊₁≥sᵢ</code> 或 slack + 高权重。</div><div class="src">speed_optimizer.cpp:377-382</div></div>
+    <div class="opt-item"><div class="ot">EnforceKinematicFeasibility 写了却被注释 <span class="badge infer">推断局限</span></div><div class="od">求解前收紧 s_bounds 的逻辑存在但停用，依赖后处理兜底。</div><div class="oimp">启用以减少后处理修正、提升可行性。</div><div class="src">speed_optimizer.cpp:311</div></div>
+    <div class="opt-item"><div class="ot">速度超限仅 WARN、不回调 <span class="badge infer">推断局限</span></div><div class="od">解超限只打日志，无二次投影。</div><div class="oimp">QP 后二次投影或提高 <code>dx_soft</code> 权重。</div><div class="src">speed_optimizer.cpp:412-417</div></div>
+    <div class="opt-item"><div class="ot">场景减速度 / ST 上界魔法数硬编码 <span class="badge todo">注释 TODO</span></div><div class="od">借道/泊车减速度边界、ST/s 上界 100.0 写死在代码。</div><div class="oimp">迁入 speed_corridor / speed_optimizer 配置。</div><div class="src">speed_optimizer.cpp:352-364 · st_boundary.cpp:147</div></div>
+  </div></section>
+
+  <div class="algonav">
+    <a href="cilqr-path.html"><div class="d">← 上一个</div><div class="n">① CiLQR 横向路径</div></a>
+    <a class="next" href="refpath.html"><div class="d">下一个 →</div><div class="n">③ 粗参考路径</div></a>
+  </div>
+</main>
+
+<footer class="footer"><div class="wrap">
+  <p style="margin:0">OSQP 纵向速度优化 · 源自 <code>ad-/pnc/planning @ delivery/release_candidate_260403</code> 静态解读 · 超参取自 <code>planning_config.json</code> 与代码默认值。</p>
+</div></footer>
+
+<script src="../assets/planning.js"></script>
+</body>
+</html>

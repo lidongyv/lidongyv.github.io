@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TLD 红绿灯模型方案设计 · Deformable DETR · 2V e2e</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0a0700; --bg-1:#0f0b03;
+    --line:#2a2410; --line-2:#3a3318;
+    --text:#f4efe2; --text-2:#cdc4a8; --text-3:#9a9170; --text-4:#6b6448;
+    --amber:#fbbf24; --emerald:#34d399; --cyan:#67e8f9; --blue:#60a5fa; --red:#f87171; --violet:#a78bfa;
+    --accent:var(--amber);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+    background:
+      radial-gradient(1200px 700px at 12% -10%, rgba(251,191,36,.18), transparent 55%),
+      radial-gradient(1000px 600px at 88% 0%, rgba(248,113,113,.12), transparent 55%),
+      radial-gradient(900px 560px at 50% 110%, rgba(52,211,153,.08), transparent 60%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%);
+    color:var(--text); min-height:100vh; line-height:1.6; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  .mono{font-family:'JetBrains Mono',monospace}
+  .wrap{max-width:1120px; margin:0 auto; padding:0 22px}
+  a{color:inherit; text-decoration:none}
+
+  .nav{position:sticky; top:0; z-index:50; backdrop-filter:blur(16px);
+    background:linear-gradient(180deg, rgba(10,7,0,.9), rgba(10,7,0,.55)); border-bottom:1px solid var(--line)}
+  .nav-in{max-width:1120px; margin:0 auto; padding:11px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+  .nav-brand{font-weight:800; font-size:14.5px; display:flex; align-items:center; gap:9px}
+  .nav-dot{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,var(--amber));box-shadow:0 0 14px rgba(251,191,36,.7)}
+  .nav-links{display:flex; gap:4px; margin-left:auto; flex-wrap:wrap}
+  .nav-links a{font-size:12.5px; font-weight:600; color:var(--text-3); padding:6px 11px; border-radius:9px; border:1px solid transparent; transition:.15s; white-space:nowrap}
+  .nav-links a:hover{color:var(--text); background:rgba(255,255,255,.05); border-color:var(--line-2)}
+
+  .hero{padding:60px 0 26px}
+  .eyebrow{display:inline-flex; align-items:center; gap:10px; font-size:11px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--accent)}
+  .eyebrow::before,.eyebrow::after{content:""; width:30px; height:1px; background:linear-gradient(90deg,transparent,currentColor)}
+  h1.title{font-size:clamp(32px,5.2vw,56px); font-weight:900; line-height:1.05; letter-spacing:-.02em; margin:16px 0 0;
+    background:linear-gradient(180deg,#fff 35%,rgba(255,255,255,.62)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .lede{margin:16px 0 0; max-width:760px; font-size:15.5px; color:var(--text-2)}
+  .hero-cta{margin-top:24px; display:flex; flex-wrap:wrap; gap:13px; align-items:center}
+  .doc-cta{display:inline-flex; align-items:center; gap:10px; padding:12px 18px; border-radius:12px; font-weight:700; font-size:14px; color:#1a1400;
+    background:linear-gradient(110deg, var(--amber), #f59e0b); border:1px solid rgba(251,191,36,.5); transition:.15s}
+  .doc-cta:hover{transform:translateY(-1px); box-shadow:0 8px 24px rgba(251,191,36,.25)}
+  .stats{display:flex; gap:14px; flex-wrap:wrap; margin-top:28px}
+  .stat{flex:1; min-width:140px; padding:16px 18px; border-radius:15px; background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015)); border:1px solid var(--line)}
+  .stat .n{font-size:29px; font-weight:800; line-height:1}
+  .stat .l{margin-top:7px; font-size:12px; color:var(--text-3); font-weight:600}
+
+  section{scroll-margin-top:72px; padding:38px 0}
+  .sec-head{display:flex; align-items:baseline; gap:13px; flex-wrap:wrap}
+  .sec-kicker{font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:var(--accent)}
+  h2.sec-title{font-size:clamp(23px,3.1vw,32px); font-weight:800; color:#fff; margin:0}
+  .sec-sub{color:var(--text-2); font-size:14px; max-width:820px; margin:11px 0 18px}
+
+  .glass{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.014)); border:1px solid var(--line); border-radius:15px; position:relative; overflow:hidden}
+  .glass::before{content:""; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.1),transparent)}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media(max-width:820px){.grid2{grid-template-columns:1fr}}
+  .sub{padding:18px 20px}
+  .sub h4{margin:0 0 6px; font-size:16px; font-weight:800; color:#fff; display:flex; align-items:center; gap:9px}
+  .sub p{margin:0; font-size:13.5px; color:var(--text-2)}
+  .sub.blue{border-color:rgba(96,165,250,.32)} .sub.blue h4{color:var(--blue)}
+  .sub.red{border-color:rgba(248,113,113,.32)} .sub.red h4{color:var(--red)}
+
+  .points{display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-top:4px}
+  @media(max-width:820px){.points{grid-template-columns:1fr}}
+  .pt{padding:14px 16px; border-radius:12px; background:rgba(255,255,255,.03); border:1px solid var(--line)}
+  .pt .k{font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:var(--accent)}
+  .pt .t{margin-top:5px; font-size:14px; font-weight:700; color:#fff}
+  .pt .d{margin-top:5px; font-size:12.5px; color:var(--text-2)}
+
+  table.io{width:100%; border-collapse:collapse; font-size:13px; border:1px solid var(--line); border-radius:12px; overflow:hidden}
+  table.io th,table.io td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top}
+  table.io thead th{background:rgba(251,191,36,.1); color:var(--amber); font-weight:700; font-size:12px}
+  table.io tbody tr:last-child td{border-bottom:none}
+  table.io td.mono{font-family:'JetBrains Mono',monospace; color:var(--text); font-size:12px}
+  table.io tbody tr:hover{background:rgba(255,255,255,.02)}
+
+  .cards{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media(max-width:820px){.cards{grid-template-columns:1fr}}
+  .card{padding:16px 17px}
+  .card .ct{display:flex; align-items:flex-start; justify-content:space-between; gap:10px}
+  .card h4{margin:0; font-size:15px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px}
+  .card h4 .seq{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--accent); opacity:.85}
+  .card p{margin:9px 0 0; font-size:13px; color:var(--text-2); line-height:1.6}
+  .st{flex-shrink:0; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap}
+  .st-online{background:rgba(52,211,153,.14); color:var(--emerald); border:1px solid rgba(52,211,153,.34)}
+  .st-dev{background:rgba(251,191,36,.14); color:var(--amber); border:1px solid rgba(251,191,36,.34)}
+  .st-pending{background:rgba(96,165,250,.14); color:var(--blue); border:1px solid rgba(96,165,250,.34)}
+  .st-blocked{background:rgba(248,113,113,.13); color:var(--red); border:1px solid rgba(248,113,113,.34)}
+
+  .docs{display:flex; flex-wrap:wrap; gap:6px; margin-top:11px}
+  .doc{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; color:var(--text-2);
+    padding:4px 10px 4px 8px; border-radius:8px; background:rgba(255,255,255,.04); border:1px solid var(--line); transition:.15s; max-width:100%}
+  .doc:hover{color:#fff; border-color:rgba(251,191,36,.5); background:rgba(251,191,36,.1); transform:translateY(-1px)}
+  .doc .ic{width:13px;height:13px;flex-shrink:0;opacity:.8}
+  .doc .tt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px}
+
+  .vrow{display:grid; grid-template-columns:78px 96px 1fr auto; gap:14px; align-items:center; padding:13px 16px; border-bottom:1px solid var(--line)}
+  .vrow:last-child{border-bottom:none}
+  .vrow .v{font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--amber); font-size:13px}
+  .vrow .dt{font-size:12px; color:var(--text-3)}
+  .vrow .ft{font-size:13px; color:var(--text-2)}
+  @media(max-width:820px){.vrow{grid-template-columns:1fr; gap:5px}}
+
+  .footer{padding:42px 0 70px; border-top:1px solid var(--line); margin-top:26px; color:var(--text-3); font-size:13px}
+  .reveal{opacity:0; transform:translateY(14px); transition:opacity .6s, transform .6s}
+  .reveal.in{opacity:1; transform:none}
+</style>
+</head>
+<body>
+
+<nav class="nav"><div class="nav-in">
+  <div class="nav-brand"><span class="nav-dot"></span>TLD 红绿灯模型方案设计</div>
+  <div class="nav-links">
+    <a href="#design">设计</a><a href="#io">输入输出</a><a href="#status">现状任务</a>
+    <a href="#improve">改进方案</a><a href="#versions">版本进展</a>
+  </div>
+</div></nav>
+
+<header class="hero wrap">
+  <div class="eyebrow">Deformable DETR · 2V · E2E · 找灯 + 识别</div>
+  <h1 class="title">TLD 红绿灯模型方案设计</h1>
+  <p class="lede">基于 <b>Deformable DETR</b> 的 e2e 方案，2V（Fn + Fw）输入，剔除 bbox 分支、以 reference point 定位灯位，直接输出四方向灯的 2D 点位与颜色；拆为<b>找灯 + 识别</b>两个子任务，2V 各识别四向、模型融合 + 后处理多重校验。<b>当前最 Top 问题：ISP 导致灯色不识别</b>。</p>
+  <div class="hero-cta" id="heroCta"></div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<main class="wrap">
+  <section id="design">
+    <div class="sec-head"><span class="sec-kicker">01</span><h2 class="sec-title">模型概述与设计</h2></div>
+    <p class="sec-sub">decoder 起对 Fn / Fw feature 区分隔离；head 分 <code>reg_branch</code>（找灯）与 <code>cls_branch</code>（灯色）；颜色分类用两个单视图 cross attention 出单项后，再用独立 <code>dir_query</code> cross attention 融合出 2V e2e 结果。</p>
+    <div class="grid2" style="margin-bottom:16px">
+      <div class="sub glass blue"><h4>🔍 子任务 1 · 找灯（reg_branch）</h4><p>使用 DCN 方式直接监督和学习 dcn reference point 的点位；目前收敛得不错，<b>几乎没有找不到灯的情况</b>，仅剩特殊 corner case。</p></div>
+      <div class="sub glass red"><h4>🎨 子任务 2 · 识别（cls_branch）</h4><p>DCN 之后的结果直接进分类头做灯色识别。<b>当前最 Top 问题</b>：找到灯但 ISP 导致视觉特征太差、不识别灯色。</p></div>
+    </div>
+    <div class="points" id="designPoints"></div>
+  </section>
+
+  <section id="io">
+    <div class="sec-head"><span class="sec-kicker">02</span><h2 class="sec-title">模型输入 / 输出</h2></div>
+    <p class="sec-sub">灯色 label 统一：<b>0 green · 1 red · 2 unknown · 3 no-tld</b>；四向维度对应 <b>直行 · 右转 · 左转 · 掉头</b>。</p>
+    <div class="grid2">
+      <div><div style="font-weight:700;color:var(--text-2);font-size:13px;margin:0 2px 9px">输入</div><table class="io" id="ioIn"></table></div>
+      <div><div style="font-weight:700;color:var(--text-2);font-size:13px;margin:0 2px 9px">输出</div><table class="io" id="ioOut"></table></div>
+    </div>
+  </section>
+
+  <section id="status">
+    <div class="sec-head"><span class="sec-kicker">03</span><h2 class="sec-title">现状任务设计</h2></div>
+    <p class="sec-sub">四项现状任务，每项关联对应飞书设计 / 评测文档。</p>
+    <div class="cards" id="statusCards"></div>
+  </section>
+
+  <section id="improve">
+    <div class="sec-head"><span class="sec-kicker">04</span><h2 class="sec-title">后续改进方案 · 7 项</h2></div>
+    <p class="sec-sub">recon / prior 两项模型侧已验证有效，分别卡在缺 MIL 集 support、缺数据 + 车端链路 + 地图标注，是最值得补齐支撑的两项。</p>
+    <div class="cards" id="improveCards"></div>
+  </section>
+
+  <section id="versions">
+    <div class="sec-head"><span class="sec-kicker">05</span><h2 class="sec-title">版本与 Feature 进展</h2></div>
+    <p class="sec-sub">近期版本演进（v5.4 → v7.2）。</p>
+    <div class="glass" id="versionList" style="padding:4px 4px"></div>
+  </section>
+</main>
+
+<footer class="footer"><div class="wrap">
+  <div style="font-weight:700;color:var(--text-2);font-size:14px">配套飞书文档</div>
+  <a class="doc-cta" id="feishuCta2" href="#" target="_blank" rel="noopener" style="margin-top:13px">📄 打开飞书版「TLD 红绿灯模型方案设计」<span style="opacity:.6">↗</span></a>
+  <p style="margin-top:18px">本页由 TLD 模块从《感知模型整体方案 Review》单独抽出并展开 · 任务设计 ↔ 飞书设计/实验/评测文档双向对照 · 暗色展示页。</p>
+</div></footer>
+
+<script>
+const FS="https://r3c0qt6yjw.feishu.cn";
+const TLDDOC="https://r3c0qt6yjw.feishu.cn/docx/KedId0YAyoNJArx02K2c5QyvnTf";
+const REVIEWDOC="https://r3c0qt6yjw.feishu.cn/docx/CRbbdtf55oVncxxCX9wcYzVunph";
+const d=(t,u)=>({t,u});
+
+const DESIGN_POINTS=[
+  {k:"BASE",t:"Deformable DETR 基座",d:"剔除原 bbox 相关分支，通过 reference point 实现红绿灯坐标定位。"},
+  {k:"VIEW",t:"Fn / Fw 视角隔离",d:"从 decoder 部分开始对不同视角图像 feature 进行区分隔离。"},
+  {k:"HEAD",t:"双分支 head",d:"reg_branch 负责参考点搜寻匹配（找灯），cls_branch 负责颜色分类（识别）。"},
+  {k:"E2E",t:"2V 融合 e2e",d:"单视图 ca 出单项结果后，用独立 dir_query 与单项结果 ca，生成融合 2V 的 e2e 结果。"},
+];
+
+const IO_IN=[
+  {n:"images",s:"[2, 3, 750, 1333]",dt:"float32",r:"严格顺序 front_narrow、front_wide（Fn、Fw 两路）"},
+];
+const IO_OUT=[
+  {n:"empty_labels",s:"[1]",dt:"int32",r:"0 empty / 1 unempty（图中是否有灯箱）"},
+  {n:"empty_scores",s:"[1]",dt:"float32",r:"empty 置信度"},
+  {n:"tld_scores_fn / labels_fn",s:"[4]",dt:"float32 / int32",r:"Fn 单视角，四向"},
+  {n:"tld_scores_fw / labels_fw",s:"[4]",dt:"float32 / int32",r:"Fw 单视角，四向"},
+  {n:"tld_labels_e2e",s:"[4]",dt:"int32",r:"2V 融合 e2e，四向可通行状态"},
+  {n:"tld_references",s:"[4, 2, 10, 2]",dt:"float32",r:"四向 × 相机 × 10 参考点 × 2D 坐标"},
+];
+
+const STATUS=[
+  {seq:"3.1",h:"找灯 · DCN reference point",desc:"使用 DCN 方式，直接监督和学习 dcn reference point 的点位；目前找灯收敛得不错，几乎没有找不到灯的情况。",
+   docs:[d("TLD_v4",FS+"/wiki/JstfwKNV2iMp6ykrf9wcnur6nIe"),d("TLD 模型 OnePage",FS+"/wiki/Rr2iwbK27iQUvck8TxEcD9psnXb")]},
+  {seq:"3.2",h:"灯色识别 · ISP Top 问题",desc:"灯色识别是 DCN 之后的结果直接进分类头；存在「有找到灯，但视觉特征太差不识别」的问题（ISP 导致），是当前 TLD 识别的最 Top 问题。",
+   docs:[d("ISP 问题对 TLD 模型的影响",FS+"/wiki/VFpBwlT0Jiejj5kM6CVcgnsUnJh"),d("TLD · ISP 问题汇总",FS+"/wiki/Qhorw8d4Rij0ntkmxwAc0qrHn2e"),d("1.0 TLD ISP 调整方案",FS+"/wiki/RXECw08fhiOZsjkyPWEc8TERnUf")]},
+  {seq:"3.3",h:"E2E 四方向 + 后处理校验",desc:"e2e 涉及前行/左转/右转/掉头，分别找自己的灯并识别灯色；2V 分别识别四向，模型融合 + 2V 结果后处理多重校验。",
+   docs:[d("TLD Benchmark 评测逻辑",FS+"/docx/NXXPdTcR4oOcIHxFZybcDPoPnXg"),d("TLD Issue 评测逻辑",FS+"/docx/KKHWdAXA8oyh57xrbFkcdcSHnhb"),d("TLD 数据合成方案(FN/FW)",FS+"/wiki/MXShwUinxiBh36kU8KycEPejnfg")]},
+  {seq:"3.4",h:"抬杆识别 · bbox + e2e",desc:"抬杆识别作为 bbox + e2e 任务，检测抬杆的 bbox + e2e 的 depth 和开启状态，后处理融合使用。",
+   docs:[d("rod 抬杆模型 · 交付",FS+"/wiki/JDEvwj1RyiHJjzkWbR3cc5RJnGg"),d("ROD 模型 OnePage",FS+"/wiki/KvqywErdbi1Ig0kI1KOclQuTn9e"),d("3d 抬杆 v1.4 标注规则",FS+"/wiki/JYm6w5GzRitBYMkIEbVctBhcnfh")]},
+];
+
+const IMPROVE=[
+  {seq:"4.6.1",h:"Recon · 灯色重建",st:"blocked",stx:"缺支撑",desc:"head 中增加小型 WM aug head，直接做灯色重建（GT 为正确颜色）提高弱灯色识别，解 ISP。方案验证完毕、issue 回灌有收益，但缺少 MIL 集 support。",
+   docs:[d("TLD · ISP 问题汇总",FS+"/wiki/Qhorw8d4Rij0ntkmxwAc0qrHn2e"),d("MIL 场景与类别数据分配(总量500)",FS+"/wiki/NEK4wvjcWiCZ2bkBhUMcfhHXn3g"),d("QwenGen FN 天气改造验证",FS+"/docx/IGTDdlrcUoZ1agxLoN6cK8c9ntb")]},
+  {seq:"4.6.2",h:"Prior · Map Prior bbox",st:"blocked",stx:"缺支撑",desc:"模型接收 map 输入的 prior bbox，解决找灯 / 异形位置 / 特殊位置临时灯问题。模型验证完毕、有效，但缺数据、车端链路未串通，需地图配合标注。",
+   docs:[d("接入动态图层红绿灯 Reference Point 需求",FS+"/docx/RbWldzzmGocrYsxdD69ckNYznke"),d("末端先验图层(PRIOR_MAP) OTA 方案",FS+"/docx/AEdpdzGI1oweQAx0D4ScvYhpnac"),d("prior_head + soft prior_weight 设计",FS+"/wiki/QvbswwnOWi5qXLkT4Lqcnxmznac"),d("R+padding 关联策略验证",FS+"/docx/HHI6dks72ocvlVxjyG4cI9FNnkg")]},
+  {seq:"4.6.3",h:"时序方案",st:"dev",stx:"验证中",desc:"为解决 fw 灯小于 5pix 导致的识别不稳定，增加时序信息，减少灯色跳变。",
+   docs:[d("TLD 时序数据需求",FS+"/wiki/FvPswxQ0Wi4PPykm5r7c7WQkncg"),d("时序模型进展",FS+"/wiki/Z0dRw2QKtiQ392kGHlucvacynPg")]},
+  {seq:"4.6.4",h:"倒计时识别",st:"pending",stx:"待联调",desc:"已上线，等待联调测试。",
+   docs:[d("add_countdown_head 实验",FS+"/wiki/A7ypwm831iPeoIkVQZJciB15nEK"),d("数采需求 · 倒计时(P0)",FS+"/wiki/QBFbwgA6GicJIfkNtvZcIZjan4e"),d("接入百度交通灯倒计时讨论",FS+"/docx/LFjCdMa7Moc464xf4yLcuOwEnjd")]},
+  {seq:"4.6.5",h:"最优灯识别",st:"dev",stx:"验证中",desc:"去掉 e2e 方案，2V 中选择 confidence 最大的灯色识别结果。",
+   docs:[d("TLD Benchmark 评测逻辑",FS+"/docx/NXXPdTcR4oOcIHxFZybcDPoPnXg"),d("TLD 模型 OnePage",FS+"/wiki/Rr2iwbK27iQUvck8TxEcD9psnXb")]},
+  {seq:"4.6.6",h:"Depth 识别",st:"pending",stx:"待联调",desc:"已上线，等待联调；识别对应 2D reference point 的距离，解决路口多灯问题。",
+   docs:[d("tld_depth_head 需求",FS+"/wiki/JEWmwohymiOuJfk6upKc2luQnDg")]},
+  {seq:"4.6.7",h:"Junction 识别",st:"pending",stx:"等刷白",desc:"已联调，解决地图漏 junction 信息问题；未上线，等待刷白。",
+   docs:[d("junction_dynamic_layer 表结构 & 下发协议",FS+"/docx/LvPGdMEfZo1GZNxLTiucZX2Wnpe"),d("路口 TLD 响应问题 triage 手册",FS+"/wiki/TNo7wbfxCic46QkjDSjcwMXznLe")]},
+];
+
+const VERSIONS=[
+  {v:"v7.2.0",dt:"2026.2.9",f:"Head 颜色分类：单视图 ca 出单项后，用第三个 cross attention 生成 e2e 结果",st:"pending",stx:"已合入·未上线"},
+  {v:"v7.1.0",dt:"2026.2.4",f:"灯色 gt 从单项扩展为 fn / fw / e2e 三项",st:"online",stx:"已上线 1.54/1.56"},
+  {v:"v7.0.0",dt:"2026.1.28",f:"输出改为 3 项（fw / fn / e2e），bugfix",st:"online",stx:"已上线 1.52"},
+  {v:"v6.0.0",dt:"2026.1.23",f:"改为 2V 输入，冻结 fw 部分 backbone + encoder 参数",st:"online",stx:"已上线"},
+  {v:"v5.6.0",dt:"2025.12.28",f:"新建 empty_ca 与灯色分类 ca 参数区分，detach 防污染",st:"online",stx:"已上线"},
+  {v:"v5.5.0",dt:"2025.12.18",f:"新增 empty_head；query 聚合 attention pooling → cross attention",st:"online",stx:"已上线"},
+  {v:"v5.4.0",dt:"2025.12.10",f:"新增 no_tld 数据约 1w；清理 val_night 无效数据",st:"online",stx:"已上线"},
+];
+
+/* render */
+const docIcon='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+const stCls={online:"st-online",dev:"st-dev",pending:"st-pending",blocked:"st-blocked"};
+const docChips=(docs)=>!docs||!docs.length?"":'<div class="docs">'+docs.map(x=>`<a class="doc" href="${x.u}" target="_blank" rel="noopener" title="${x.t}">${docIcon}<span class="tt">${x.t}</span></a>`).join("")+'</div>';
+
+document.getElementById("heroCta").innerHTML=
+  `<a class="doc-cta" href="${TLDDOC}" target="_blank" rel="noopener">📄 飞书文档 · TLD 红绿灯模型方案设计 <span style="opacity:.55">↗</span></a>`+
+  `<a class="doc" href="${REVIEWDOC}" target="_blank" rel="noopener" title="感知模型整体方案 Review">${docIcon}<span class="tt">返回·感知模型整体方案 Review</span></a>`;
+document.getElementById("feishuCta2").href=TLDDOC;
+
+const STATS=[
+  {n:"2",l:"子任务 找灯 · 识别",c:"var(--amber)"},
+  {n:STATUS.length,l:"现状任务设计",c:"var(--blue)"},
+  {n:IMPROVE.length,l:"后续改进方案",c:"var(--emerald)"},
+  {n:"2",l:"待补支撑 recon · prior",c:"var(--red)"},
+];
+document.getElementById("stats").innerHTML=STATS.map(s=>`<div class="stat"><div class="n" style="color:${s.c}">${s.n}</div><div class="l">${s.l}</div></div>`).join("");
+
+document.getElementById("designPoints").innerHTML=DESIGN_POINTS.map(p=>`<div class="pt"><div class="k">${p.k}</div><div class="t">${p.t}</div><div class="d">${p.d}</div></div>`).join("");
+
+const ioRows=(rows)=>`<thead><tr><th>Name</th><th>Shape</th><th>DType</th><th>备注</th></tr></thead><tbody>`+rows.map(r=>`<tr><td class="mono">${r.n}</td><td class="mono">${r.s}</td><td class="mono">${r.dt}</td><td>${r.r}</td></tr>`).join("")+`</tbody>`;
+document.getElementById("ioIn").innerHTML=ioRows(IO_IN);
+document.getElementById("ioOut").innerHTML=ioRows(IO_OUT);
+
+const statusCard=(it)=>`<div class="card glass"><div class="ct"><h4><span class="seq">${it.seq}</span>${it.h}</h4></div><p>${it.desc}</p>${docChips(it.docs)}</div>`;
+document.getElementById("statusCards").innerHTML=STATUS.map(statusCard).join("");
+
+const improveCard=(it)=>`<div class="card glass"><div class="ct"><h4><span class="seq">${it.seq}</span>${it.h}</h4><span class="st ${stCls[it.st]}">${it.stx}</span></div><p>${it.desc}</p>${docChips(it.docs)}</div>`;
+document.getElementById("improveCards").innerHTML=IMPROVE.map(improveCard).join("");
+
+document.getElementById("versionList").innerHTML=VERSIONS.map(v=>`<div class="vrow"><div class="v">${v.v}</div><div class="dt">${v.dt}</div><div class="ft">${v.f}</div><span class="st ${stCls[v.st]}">${v.stx}</span></div>`).join("");
+
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add("in")}),{threshold:.08});
+document.querySelectorAll("section, .card, .pt, .stat, .sub").forEach(el=>{el.classList.add("reveal");io.observe(el)});
+</script>
+</body>
+</html>

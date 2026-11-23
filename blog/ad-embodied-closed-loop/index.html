@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>自动驾驶 & 具身智能 — 研发闭环流程方案</title>
+<style>
+  :root {
+    --ink: #1e293b;
+    --ink-soft: #475569;
+    --ink-mute: #94a3b8;
+    --line: #e2e8f0;
+    --bg: #ffffff;
+    --bg-alt: #f8fafc;
+    --bg-hero: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+    --accent: #3b82f6;
+    --accent-light: #dbeafe;
+    --accent-dark: #1d4ed8;
+    --green: #10b981;
+    --green-light: #d1fae5;
+    --purple: #8b5cf6;
+    --purple-light: #ede9fe;
+    --orange: #f59e0b;
+    --orange-light: #fef3c7;
+    --red: #ef4444;
+    --red-light: #fee2e2;
+    --cyan: #06b6d4;
+    --cyan-light: #cffafe;
+    --rose: #f43f5e;
+    --rose-light: #ffe4e6;
+    --radius: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 14px rgba(0,0,0,0.08);
+    --shadow-lg: 0 10px 30px rgba(0,0,0,0.12);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg-alt);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Navigation */
+  .nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+    padding: 0 2rem;
+    display: flex; align-items: center; height: 56px;
+    transition: box-shadow 0.3s;
+  }
+  .nav.scrolled { box-shadow: var(--shadow-sm); }
+  .nav-brand { font-weight: 700; font-size: 1rem; color: var(--accent-dark); white-space: nowrap; }
+  .nav-links { display: flex; gap: 4px; margin-left: 2rem; overflow-x: auto; }
+  .nav-links a {
+    color: var(--ink-soft); text-decoration: none; font-size: 0.82rem; font-weight: 500;
+    padding: 6px 12px; border-radius: 6px; white-space: nowrap; transition: all 0.2s;
+  }
+  .nav-links a:hover, .nav-links a.active { color: var(--accent-dark); background: var(--accent-light); }
+
+  /* Hero */
+  .hero {
+    background: var(--bg-hero);
+    padding: 120px 2rem 80px;
+    text-align: center; color: #fff; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 30% 40%, rgba(59,130,246,0.15) 0%, transparent 50%),
+                radial-gradient(circle at 70% 60%, rgba(139,92,246,0.1) 0%, transparent 50%);
+  }
+  .hero > * { position: relative; z-index: 1; }
+  .hero h1 { font-size: 2.8rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  .hero h1 .gradient {
+    background: linear-gradient(90deg, #60a5fa, #a78bfa, #34d399);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero .subtitle { font-size: 1.15rem; color: rgba(255,255,255,0.7); max-width: 700px; margin: 0 auto 2rem; }
+  .hero .pills { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .hero .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 16px; border-radius: 999px; font-size: 0.82rem; font-weight: 500;
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.9);
+  }
+  .hero .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* Sections */
+  .section { padding: 4rem 2rem; max-width: 1200px; margin: 0 auto; }
+  .section-header { text-align: center; margin-bottom: 3rem; }
+  .section-header .tag {
+    display: inline-block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; padding: 4px 14px; border-radius: 999px; margin-bottom: 0.75rem;
+  }
+  .section-header h2 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .section-header p { font-size: 1rem; color: var(--ink-soft); max-width: 700px; margin: 0 auto; }
+
+  /* Cards */
+  .card {
+    background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1.5rem; box-shadow: var(--shadow-sm); transition: box-shadow 0.3s, transform 0.3s;
+  }
+  .card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px; }
+  .card p, .card li { font-size: 0.88rem; color: var(--ink-soft); }
+  .card ul { padding-left: 1.2em; }
+  .card ul li { margin-bottom: 0.3em; }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+  @media (max-width: 900px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  }
+
+  /* Flow diagrams */
+  .flow-container {
+    background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 2rem; box-shadow: var(--shadow-sm); overflow-x: auto;
+  }
+  .flow-row {
+    display: flex; align-items: center; gap: 0; justify-content: center;
+    flex-wrap: nowrap; min-width: max-content; margin: 0 auto;
+  }
+  .flow-node {
+    padding: 14px 20px; border-radius: 10px; text-align: center;
+    font-size: 0.82rem; font-weight: 600; white-space: nowrap;
+    border: 2px solid; min-width: 120px; position: relative;
+  }
+  .flow-node .sub { font-size: 0.72rem; font-weight: 400; margin-top: 4px; opacity: 0.8; }
+  .flow-arrow {
+    width: 36px; height: 2px; position: relative; flex-shrink: 0;
+  }
+  .flow-arrow::before {
+    content: ''; position: absolute; left: 0; top: 0; right: 8px; height: 2px;
+    background: var(--ink-mute);
+  }
+  .flow-arrow::after {
+    content: ''; position: absolute; right: 0; top: -4px;
+    width: 0; height: 0;
+    border-left: 8px solid var(--ink-mute);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+
+  /* Cycle diagram */
+  .cycle-diagram { position: relative; width: 600px; height: 600px; margin: 0 auto; }
+  .cycle-center {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 140px; height: 140px; border-radius: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 1rem; text-align: center;
+    z-index: 2;
+  }
+  .cycle-ring {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    border-radius: 50%; border: 2px dashed;
+  }
+
+  /* Phase Cards */
+  .phase-card {
+    border-radius: var(--radius); padding: 2rem; position: relative; overflow: hidden;
+  }
+  .phase-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  }
+  .phase-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .phase-card .phase-num {
+    font-size: 3rem; font-weight: 800; position: absolute; top: 1rem; right: 1.5rem; opacity: 0.08;
+  }
+
+  /* Big loop SVG */
+  .svg-container { text-align: center; margin: 2rem 0; overflow-x: auto; }
+  .svg-container svg { max-width: 100%; height: auto; }
+
+  /* Tags/badges */
+  .tag-inline {
+    display: inline-block; font-size: 0.7rem; font-weight: 600;
+    padding: 2px 8px; border-radius: 4px; margin-right: 4px;
+  }
+  .tag-ad { background: var(--accent-light); color: var(--accent-dark); }
+  .tag-em { background: var(--purple-light); color: #6d28d9; }
+  .tag-shared { background: #f0fdf4; color: #166534; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 2rem; }
+  .timeline::before {
+    content: ''; position: absolute; left: 11px; top: 0; bottom: 0; width: 2px;
+    background: var(--line);
+  }
+  .timeline-item { position: relative; margin-bottom: 1.5rem; }
+  .timeline-dot {
+    position: absolute; left: -2rem; top: 4px;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 3px solid; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .timeline-dot .inner { width: 8px; height: 8px; border-radius: 50%; }
+  .timeline-content h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.25rem; }
+  .timeline-content p { font-size: 0.85rem; color: var(--ink-soft); }
+
+  /* Comparison table */
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .compare-table th, .compare-table td {
+    padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line);
+  }
+  .compare-table th { background: var(--bg-alt); font-weight: 600; color: var(--ink-soft); font-size: 0.8rem; }
+  .compare-table tr:hover td { background: #f8faff; }
+
+  /* Icon circles */
+  .icon-circle {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; flex-shrink: 0;
+  }
+
+  /* Footer */
+  .footer-section {
+    background: var(--ink); color: rgba(255,255,255,0.6);
+    padding: 3rem 2rem; text-align: center; font-size: 0.85rem;
+  }
+  .footer-section strong { color: rgba(255,255,255,0.9); }
+
+  /* Separator */
+  .sep { height: 1px; background: var(--line); margin: 0 2rem; max-width: 1200px; margin-left: auto; margin-right: auto; }
+
+  /* Closed loop big ring */
+  .bigloop-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 2rem;
+    padding: 2rem;
+  }
+
+  /* Animated gradient border */
+  .glow-card {
+    position: relative; border-radius: var(--radius); padding: 2px;
+    background: linear-gradient(135deg, var(--accent), var(--purple), var(--green));
+    background-size: 200% 200%;
+    animation: gradientShift 6s ease infinite;
+  }
+  .glow-card > .inner { background: var(--bg); border-radius: calc(var(--radius) - 2px); padding: 1.5rem; }
+  @keyframes gradientShift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* Mini stat */
+  .stat-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .stat-box {
+    flex: 1; min-width: 120px; text-align: center; padding: 1rem;
+    background: var(--bg); border-radius: var(--radius); border: 1px solid var(--line);
+  }
+  .stat-box .num { font-size: 1.8rem; font-weight: 800; }
+  .stat-box .label { font-size: 0.78rem; color: var(--ink-mute); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; border-bottom: 2px solid var(--line); padding-bottom: 0; }
+  .tab-btn {
+    padding: 10px 20px; border: none; background: none; cursor: pointer;
+    font-size: 0.9rem; font-weight: 600; color: var(--ink-mute);
+    border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s;
+  }
+  .tab-btn:hover { color: var(--ink-soft); }
+  .tab-btn.active { color: var(--accent-dark); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Scroll fade-in */
+  .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.6s, transform 0.6s; }
+  .fade-in.visible { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav" id="nav">
+  <div class="nav-brand">AD & Embodied AI</div>
+  <div class="nav-links">
+    <a href="#top">愿景总览</a>
+    <a href="#wm">World Model</a>
+    <a href="#wm-action">WM→VA/WAM</a>
+    <a href="#overview">三大闭环 Infra</a>
+    <a href="#brain-arch">三层大脑</a>
+    <a href="#embodied">具身特色</a>
+    <a href="#platform">平台底座</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero" id="top">
+  <div style="font-size:0.8rem;letter-spacing:0.12em;text-transform:uppercase;color:#a78bfa;font-weight:700;margin-bottom:0.8rem;">Company Vision · 愿景总览</div>
+  <h1>在物流这个巨大的 <span class="gradient">Physical AI</span> 行业<br/>打磨第一个 <span class="gradient">行业规模世界模型</span></h1>
+  <p class="subtitle">感知 / 自驾 / 具身只是单点方向；真正的定位 = 让"对世界的理解"泛化到任意物理场景、把交互变成可编程接口。本 demo 讲这个 vision 如何一步步实现</p>
+  <div class="pills">
+    <div class="pill"><span class="dot" style="background:#8b5cf6"></span>① World Model</div>
+    <div class="pill"><span class="dot" style="background:#06b6d4"></span>② WM → VA / WAM（AD · 具身）</div>
+    <div class="pill"><span class="dot" style="background:#3b82f6"></span>③ 三大闭环 Infra</div>
+  </div>
+  <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:1.75rem auto 0;max-width:920px;">
+    <div style="flex:1;min-width:210px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);border-radius:10px;padding:1rem;">
+      <div style="font-size:1.4rem;">🌍</div><div style="font-weight:700;font-size:0.88rem;margin:0.35rem 0 0.25rem;color:#fff;">泛化任意物理场景</div><div style="font-size:0.76rem;color:rgba(255,255,255,0.62);">不再受限单一领域 / 本体</div>
+    </div>
+    <div style="flex:1;min-width:210px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);border-radius:10px;padding:1rem;">
+      <div style="font-size:1.4rem;">🧩</div><div style="font-weight:700;font-size:0.88rem;margin:0.35rem 0 0.25rem;color:#fff;">交互 = 可编程接口</div><div style="font-size:0.76rem;color:rgba(255,255,255,0.62);">造数据 · 试方案 · 部署实体如写软件</div>
+    </div>
+    <div style="flex:1;min-width:210px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);border-radius:10px;padding:1rem;">
+      <div style="font-size:1.4rem;">📈</div><div style="font-weight:700;font-size:0.88rem;margin:0.35rem 0 0.25rem;color:#fff;">成本可控 · 规模化</div><div style="font-size:0.76rem;color:rgba(255,255,255,0.62);">物理世界自动化像部署软件一样廉价可复制</div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================== PART 1: World Model ======================== -->
+<section class="section" id="wm">
+  <div class="section-header fade-in">
+    <div class="tag" style="background:var(--purple-light);color:#6d28d9;">PART 1 · WORLD MODEL</div>
+    <h2>World Model：对世界的理解</h2>
+    <p>世界模型 = 学「条件未来预测」 P(未来观测 | 历史观测, [动作]) 的环境动态模型；差别只在"预测什么、在哪一层 latent 预测"</p>
+  </div>
+
+  <div class="grid-2 fade-in">
+    <div class="card">
+      <h3><span style="font-size:1.2rem;">🧩</span> 本质 · 条件未来预测</h3>
+      <p>先用 tokenizer / VAE / 自监督 encoder 把观测压成 <b>latent</b>，再在 latent 上学时序动态。主干收敛到四类：<b>扩散 DiT</b> / <b>自回归 Transformer</b> / <b>RSSM</b> / <b>JEPA</b>。</p>
+    </div>
+    <div class="card">
+      <h3><span style="font-size:1.2rem;">🏗️</span> 统一形态 · 一个 backbone + 多 head</h3>
+      <p>backbone（Sampler）预测未来 latent z′；再按<b>消费方</b>分叉：<b>head-M</b>（机器 → latent 直供决策，不渲染）与 <b>head-H</b>（人类 → 扩散 decoder 补细节出像素）。</p>
+    </div>
+  </div>
+
+  <h3 style="text-align:center;margin:2.2rem 0 0.4rem;font-size:1.12rem;">📈 发展路线图 · WM 正在重走 LLM 的路</h3>
+  <p style="text-align:center;max-width:840px;margin:0 auto 1.1rem;font-size:0.9rem;color:var(--ink-soft);">双泳道对标下，WM 沿「统一感知 → 数据飞轮 → 自驾 → 具身 → Physical AI」演进，当前处于 ①「GPT 时刻」，终局是 Physical AI（而非 AGI）</p>
+  <div class="flow-container fade-in">
+    <svg viewBox="0 0 980 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:980px;margin:0 auto;display:block;font-family:'PingFang SC',sans-serif;">
+      <defs>
+        <marker id="wmEvo2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#06b6d4"/></marker>
+      </defs>
+      <text x="14" y="74" fill="#8b5cf6" font-size="13" font-weight="700">LLM</text>
+      <text x="14" y="90" fill="#94a3b8" font-size="10">已发生</text>
+      <text x="14" y="236" fill="#0891b2" font-size="13" font-weight="700">WM</text>
+      <text x="14" y="252" fill="#94a3b8" font-size="10">进行中</text>
+      <line x1="70" y1="82" x2="960" y2="82" stroke="#e2e8f0" stroke-width="2"/>
+      <line x1="70" y1="226" x2="960" y2="226" stroke="#e2e8f0" stroke-width="2"/>
+      <g stroke="#e2e8f0" stroke-dasharray="4 4">
+        <line x1="150" y1="82" x2="150" y2="226"/>
+        <line x1="330" y1="82" x2="330" y2="226"/>
+        <line x1="510" y1="82" x2="510" y2="226"/>
+        <line x1="690" y1="82" x2="690" y2="226"/>
+        <line x1="880" y1="82" x2="880" y2="226"/>
+      </g>
+      <line x1="70" y1="154" x2="958" y2="154" stroke="#06b6d4" stroke-width="1.2" stroke-dasharray="2 6" opacity="0.55" marker-end="url(#wmEvo2)"/>
+      <g font-size="11" text-anchor="middle" font-family="PingFang SC,sans-serif">
+        <circle cx="150" cy="82" r="8" fill="#8b5cf6"/><text x="150" y="50" fill="#1e293b" font-weight="700">GPT 时刻</text><text x="150" y="66" fill="#94a3b8" font-size="10">2020 GPT-3 涌现</text>
+        <circle cx="330" cy="82" r="8" fill="#8b5cf6"/><text x="330" y="50" fill="#1e293b" font-weight="700">LLM 时刻</text><text x="330" y="66" fill="#94a3b8" font-size="10">2022 ChatGPT 对齐</text>
+        <circle cx="510" cy="82" r="8" fill="#8b5cf6"/><text x="510" y="50" fill="#1e293b" font-weight="700">vibe coding</text><text x="510" y="66" fill="#94a3b8" font-size="10">2023-24 Copilot·Cursor</text>
+        <circle cx="690" cy="82" r="8" fill="#8b5cf6"/><text x="690" y="50" fill="#1e293b" font-weight="700">agent 时刻</text><text x="690" y="66" fill="#94a3b8" font-size="10">2024-25 自主执行</text>
+        <circle cx="880" cy="82" r="8" fill="#8b5cf6"/><text x="880" y="50" fill="#1e293b" font-weight="700">通用化</text><text x="880" y="66" fill="#94a3b8" font-size="10">→ AGI</text>
+      </g>
+      <g font-size="11" text-anchor="middle" font-family="PingFang SC,sans-serif">
+        <circle cx="150" cy="226" r="10" fill="#10b981" stroke="#fff" stroke-width="2"/><text x="150" y="252" fill="#059669" font-weight="800">① 统一感知</text><text x="150" y="268" fill="#94a3b8" font-size="10">刷 SOTA · 开环仿真数据</text><text x="150" y="286" fill="#10b981" font-size="10" font-weight="800">● 当前所处</text>
+        <circle cx="330" cy="226" r="8" fill="#fff" stroke="#06b6d4" stroke-width="2"/><text x="330" y="252" fill="#334155" font-weight="700">② 数据飞轮</text><text x="330" y="268" fill="#94a3b8" font-size="10">车队真实 + 生成</text>
+        <circle cx="510" cy="226" r="8" fill="#fff" stroke="#06b6d4" stroke-width="2"/><text x="510" y="252" fill="#334155" font-weight="700">③ 解决自驾</text><text x="510" y="268" fill="#94a3b8" font-size="10">垂直大规模闭环</text>
+        <circle cx="690" cy="226" r="8" fill="#fff" stroke="#06b6d4" stroke-width="2"/><text x="690" y="252" fill="#334155" font-weight="700">④ 解决具身</text><text x="690" y="268" fill="#94a3b8" font-size="10">teleop · 机器人自主</text>
+        <circle cx="880" cy="226" r="8" fill="#fff" stroke="#06b6d4" stroke-width="2"/><text x="880" y="252" fill="#334155" font-weight="700">⑤ Physical AI</text><text x="880" y="268" fill="#94a3b8" font-size="10">泛化 · 交互变软件</text>
+      </g>
+    </svg>
+  </div>
+
+  <h3 style="text-align:center;margin:2.2rem 0 0.8rem;font-size:1.12rem;">🧬 WM 方法谱系 · 生成派 / 预测派 / 预测价值</h3>
+  <div class="flow-container fade-in" style="padding:1rem;">
+    <table class="compare-table">
+      <thead><tr><th>路线</th><th>Backbone</th><th>Head / 输出</th><th>Task</th><th>Pretrain</th><th>Post-train</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Cosmos</strong><br><span style="color:var(--ink-mute);font-size:0.72rem;">生成派</span></td><td>扩散 DiT + 自回归 双族</td><td>去噪 / next-token → RGB 视频</td><td>未来帧 + 文/控制条件</td><td>~千万小时视频自监督</td><td>自驾 / 机器人微调</td></tr>
+        <tr><td><strong>Sora</strong><br><span style="color:var(--ink-mute);font-size:0.72rem;">生成派</span></td><td>DiT on 时空 latent patch</td><td>去噪 → 视频</td><td>文本条件视频扩散</td><td>互联网视频 + 图</td><td>未公开</td></tr>
+        <tr><td><strong>GAIA-1/2</strong><br><span style="color:var(--ink-mute);font-size:0.72rem;">自驾生成</span></td><td>AR token + 视频扩散 / 多相机 latent 扩散</td><td>AR + 扩散 → 驾驶视频</td><td>P(future | past, ego 动作)</td><td>数千小时驾驶</td><td>安全关键场景生成</td></tr>
+        <tr><td><strong>V-JEPA 2</strong><br><span style="color:var(--ink-mute);font-size:0.72rem;">预测派</span></td><td>ViT enc + 预测器 + EMA teacher</td><td>预测被 mask 的<b>表征</b>(不重建)</td><td>masked 联合嵌入；AC 版给动作</td><td>海量视频特征预测</td><td>AC 后训 → zero-shot MPC</td></tr>
+        <tr><td><strong>DreamerV3</strong><br><span style="color:var(--ink-mute);font-size:0.72rem;">预测价值</span></td><td>RSSM (GRU + 随机隐态)</td><td>重建 + <b>reward + value</b>；actor-critic</td><td>latent 想象 rollout P(z′|z,a)</td><td>无（在线 RL）</td><td>端到端 RL</td></tr>
+        <tr><td><strong>Genie 3</strong><br><span style="color:var(--ink-mute);font-size:0.72rem;">可玩</span></td><td>视频 VQ + 隐动作 LAM + MaskGIT</td><td>masked token → 下一帧</td><td>无监督隐动作、逐帧动作条件</td><td>互联网视频（无动作标）</td><td>promptable events</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="max-width:900px;margin:0.75rem auto 0;font-size:0.82rem;color:var(--ink-mute);text-align:center;">三分野本质：Head 处<b>生成像素/3D（Cosmos/Sora/GAIA）vs 预测表征（V-JEPA2）vs 预测价值（Dreamer）</b>；Task 的共同演进方向 = 从纯生成走向 <b>action-conditioned</b>。</p>
+</section>
+
+<div class="sep"></div>
+
+<!-- ======================== PART 2: WM → VA / WAM ======================== -->
+<section class="section" id="wm-action">
+  <div class="section-header fade-in">
+    <div class="tag" style="background:var(--cyan-light);color:#0e7490;">PART 2 · WM → VA / WAM</div>
+    <h2>从 WM 到 VA / WAM：AD 与具身如何使用</h2>
+    <p>给 WM 加上 action，就从"预测世界"变成"驱动决策"—— 一阶段读出得 VA，闭环 rollout 得 WAM；同一底座接不同 action，分流为自动驾驶与具身</p>
+  </div>
+
+  <h3 style="text-align:center;margin:1rem 0 0.8rem;font-size:1.12rem;">🔗 WM → +action → VA → WAM · 四步演进</h3>
+  <div class="flow-container fade-in" style="padding:1rem;">
+    <table class="compare-table">
+      <thead><tr><th style="width:12%;">步骤</th><th style="width:24%;">加了什么</th><th style="width:30%;">变成什么</th><th>关键区别</th></tr></thead>
+      <tbody>
+        <tr><td><strong>① WM</strong></td><td>无 action，只有观测</td><td>世界预测器 P(z′|z_past)，Sampler 预测未来 latent</td><td>只"理解/预测世界会怎样"，与动作无关</td></tr>
+        <tr><td><strong>② +action 条件</strong></td><td>把动作 a 作为条件注入 Sampler</td><td>action-conditioned WM：P(z′|z_past, a)</td><td>从"看未来"变"看<b>某动作导致的</b>未来"，动作可控</td></tr>
+        <tr><td><strong>③ VA</strong><br><span style="color:var(--ink-mute);font-size:0.72rem;">vision→action</span></td><td>在 latent 上加 <b>action head</b></td><td>一阶段视觉→动作：z →(head-M)→ 动作/规划</td><td>反应式前馈读出；"检测即预测"、E2E，不走感知→跟踪→预测→规划级联</td></tr>
+        <tr><td><strong>④ WAM</strong><br><span style="color:var(--ink-mute);font-size:0.72rem;">world-action model</span></td><td>把②的可控预测放进<b>闭环</b>（策略在环）</td><td>预测"动作→未来" <b>且</b> 用内部 rollout 做前瞻规划</td><td>先在"脑内沙盘"试走再择优执行；WAM <b>内含</b> WM 的可控 rollout</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="max-width:900px;margin:0.75rem auto 1.5rem;font-size:0.85rem;color:var(--ink-soft);text-align:center;"><b>三者关系：</b>WM ⊂ WAM；<b>VA</b> = latent→action 的快反应读出头（一阶段前馈、无显式 rollout），<b>WAM</b> = 把 WM 当可控仿真器在环规划（model-based）—— 只差"加不加 action、action 是被<b>读出</b>还是被 <b>rollout</b>"。</p>
+
+  <h3 style="text-align:center;margin:1.5rem 0 0.8rem;font-size:1.12rem;">📊 WM vs VA vs WAM · 三者对比</h3>
+  <div class="flow-container fade-in" style="padding:1rem;">
+    <table class="compare-table">
+      <thead><tr><th>维度</th><th>WM</th><th>VA (vision-action)</th><th>WAM (world-action model)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>输入</strong></td><td>历史观测</td><td>观测</td><td>观测 + 动作</td></tr>
+        <tr><td><strong>输出</strong></td><td>未来 latent / 像素</td><td>动作 / 规划</td><td>动作 + 可控未来预测</td></tr>
+        <tr><td><strong>是否含 action</strong></td><td>否</td><td>有 action head（读出）</td><td>action 条件 + 在环 rollout</td></tr>
+        <tr><td><strong>建模对象</strong></td><td>世界动态 P(z′|z)</td><td>视觉 → 动作映射</td><td>世界动态 + 策略（闭环）</td></tr>
+        <tr><td><strong>典型代表</strong></td><td>Sora · Cosmos · V-JEPA2</td><td>UniAD/E2E · head-M policy</td><td>Dreamer · V-JEPA2-AC · TD-MPC2</td></tr>
+        <tr><td><strong>主要用途</strong></td><td>数据引擎 / 仿真 / 表征</td><td>一阶段端到端决策</td><td>model-based 规划 / 闭环仿真</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="text-align:center;margin:1.5rem 0 0.8rem;font-size:1.12rem;">🧠 一个 backbone + 双 head · 按消费方分叉</h3>
+  <div class="flow-container fade-in">
+    <svg viewBox="0 0 1000 380" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:1000px;margin:0 auto;display:block;font-family:'PingFang SC',sans-serif;">
+      <defs>
+        <marker id="ha" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#64748b"/></marker>
+        <marker id="hm" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#3b82f6"/></marker>
+        <marker id="hh" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#8b5cf6"/></marker>
+        <marker id="hfb" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f59e0b"/></marker>
+      </defs>
+      <rect x="24" y="150" width="140" height="60" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.4"/>
+      <text x="94" y="176" text-anchor="middle" font-size="12" font-weight="700" fill="#1d4ed8">真实数据 + 动作 a</text>
+      <text x="94" y="194" text-anchor="middle" font-size="9.5" fill="#64748b">观测流 + 控制</text>
+      <line x1="164" y1="180" x2="202" y2="180" stroke="#64748b" stroke-width="2" marker-end="url(#ha)"/>
+      <rect x="204" y="150" width="140" height="60" rx="10" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.4"/>
+      <text x="274" y="176" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">共享 Encoder</text>
+      <text x="274" y="194" text-anchor="middle" font-size="9.5" fill="#64748b">JEPA 式自监督</text>
+      <line x1="344" y1="180" x2="382" y2="180" stroke="#64748b" stroke-width="2" marker-end="url(#ha)"/>
+      <rect x="384" y="142" width="150" height="76" rx="12" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2.4"/>
+      <text x="459" y="172" text-anchor="middle" font-size="13" font-weight="800" fill="#6d28d9">共享 latent z</text>
+      <text x="459" y="190" text-anchor="middle" font-size="9.5" fill="#7c3aed">预测/真实同一空间</text>
+      <line x1="534" y1="180" x2="572" y2="180" stroke="#64748b" stroke-width="2" marker-end="url(#ha)"/>
+      <rect x="574" y="150" width="160" height="60" rx="10" fill="#cffafe" stroke="#06b6d4" stroke-width="1.6"/>
+      <text x="654" y="176" text-anchor="middle" font-size="12.5" font-weight="800" fill="#0e7490">WM backbone</text>
+      <text x="654" y="194" text-anchor="middle" font-size="9.5" fill="#0891b2">Sampler → 预测 z′</text>
+      <line x1="734" y1="168" x2="782" y2="122" stroke="#3b82f6" stroke-width="2.2" marker-end="url(#hm)"/>
+      <rect x="784" y="72" width="204" height="80" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="886" y="98" text-anchor="middle" font-size="12.5" font-weight="800" fill="#1d4ed8">head-M · 机器消费</text>
+      <text x="886" y="116" text-anchor="middle" font-size="10" fill="#1e40af">z′ 直供 规划 / 控制 / 感知</text>
+      <text x="886" y="132" text-anchor="middle" font-size="10" fill="#1e40af">不渲染 · 不丢信息</text>
+      <text x="886" y="147" text-anchor="middle" font-size="9" font-weight="800" fill="#059669">＝ VA / WAM 接口</text>
+      <line x1="734" y1="192" x2="782" y2="256" stroke="#8b5cf6" stroke-width="2.2" marker-end="url(#hh)"/>
+      <rect x="784" y="238" width="204" height="80" rx="12" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="2"/>
+      <text x="886" y="266" text-anchor="middle" font-size="12.5" font-weight="800" fill="#6d28d9">head-H · 人类消费</text>
+      <text x="886" y="284" text-anchor="middle" font-size="10" fill="#7c3aed">z′ → 扩散 decoder → 像素</text>
+      <text x="886" y="300" text-anchor="middle" font-size="10" fill="#7c3aed">按需渲染 · 细节合理幻觉</text>
+      <path d="M654,150 L654,40 L459,40 L459,140" fill="none" stroke="#f59e0b" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#hfb)"/>
+      <text x="556" y="32" text-anchor="middle" font-size="10" font-weight="700" fill="#b45309">预测 z′ 与真实 z 混训 · latent 数据引擎</text>
+    </svg>
+  </div>
+  <p style="max-width:900px;margin:0.75rem auto 0;font-size:0.82rem;color:var(--ink-mute);text-align:center;">输出模态由<b>消费方</b>决定：可预测内容（共享 latent）与感知细节（只为人渲染）干净解耦；<b>head-M 即 VA/WAM 的接口</b>，机器不必先渲染成像素再理解。</p>
+
+  <h3 style="text-align:center;margin:1.8rem 0 0.5rem;font-size:1.12rem;">🔗 WM→WAM ≡ 二阶段 E2E→一阶段 VA · 同构分流</h3>
+  <p style="text-align:center;max-width:860px;margin:0 auto 1.1rem;font-size:0.88rem;color:var(--ink-soft);"><b>WM→WAM</b> 等价于 AD 从「感知–规划 二阶段 E2E」走向「一阶段 Vision-Action」—— 两领域<b>同构</b>。<b>Foundation World Model</b> 是共识底座：接不同 action 分流为 AD / Robotics，叠加 language 则在数据闭环中做 caption / mining / triage / auto-label。</p>
+  <div class="flow-container fade-in">
+    <svg viewBox="0 0 1100 560" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:1100px;margin:0 auto;display:block;">
+      <defs>
+        <marker id="pA" markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#3b82f6"/></marker>
+        <marker id="pR" markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f43f5e"/></marker>
+        <marker id="pG" markerWidth="8" markerHeight="6" refX="7.5" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#10b981"/></marker>
+      </defs>
+      <rect x="28" y="62" width="104" height="46" rx="10" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.6"/>
+      <text x="80" y="90" text-anchor="middle" font-size="13" font-weight="800" fill="#1d4ed8" font-family="PingFang SC,sans-serif">🚗 AD</text>
+      <rect x="168" y="60" width="300" height="50" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.6"/>
+      <text x="318" y="90" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1d4ed8" font-family="PingFang SC,sans-serif">感知 → 规划 · 二阶段 E2E</text>
+      <line x1="470" y1="85" x2="616" y2="85" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#pA)"/>
+      <text x="543" y="77" text-anchor="middle" font-size="10.5" font-weight="600" fill="#1d4ed8" font-family="PingFang SC,sans-serif">一阶段化 · 端到端</text>
+      <rect x="620" y="60" width="300" height="50" rx="10" fill="#bfdbfe" stroke="#3b82f6" stroke-width="1.6"/>
+      <text x="770" y="90" text-anchor="middle" font-size="12.5" font-weight="800" fill="#1e3a8a" font-family="PingFang SC,sans-serif">一阶段 Vision-Action (VA)</text>
+      <rect x="28" y="150" width="104" height="46" rx="10" fill="#ffe4e6" stroke="#f43f5e" stroke-width="1.6"/>
+      <text x="80" y="178" text-anchor="middle" font-size="12" font-weight="800" fill="#be123c" font-family="PingFang SC,sans-serif">🤖 Robotics</text>
+      <rect x="168" y="148" width="300" height="50" rx="10" fill="#fff1f2" stroke="#f43f5e" stroke-width="1.6"/>
+      <text x="318" y="178" text-anchor="middle" font-size="12.5" font-weight="700" fill="#be123c" font-family="PingFang SC,sans-serif">World Model (WM)</text>
+      <line x1="470" y1="173" x2="616" y2="173" stroke="#f43f5e" stroke-width="2.5" marker-end="url(#pR)"/>
+      <text x="543" y="165" text-anchor="middle" font-size="10.5" font-weight="600" fill="#be123c" font-family="PingFang SC,sans-serif">+ Action</text>
+      <rect x="620" y="148" width="300" height="50" rx="10" fill="#ffd0d8" stroke="#f43f5e" stroke-width="1.6"/>
+      <text x="770" y="178" text-anchor="middle" font-size="12" font-weight="800" fill="#9f1239" font-family="PingFang SC,sans-serif">World Action Model (WAM)</text>
+      <line x1="318" y1="110" x2="318" y2="148" stroke="#8b5cf6" stroke-width="1.4" stroke-dasharray="4 3"/>
+      <line x1="770" y1="110" x2="770" y2="148" stroke="#8b5cf6" stroke-width="1.4" stroke-dasharray="4 3"/>
+      <text x="332" y="134" font-size="15" font-weight="800" fill="#8b5cf6" font-family="PingFang SC,sans-serif">≡</text>
+      <text x="784" y="134" font-size="15" font-weight="800" fill="#8b5cf6" font-family="PingFang SC,sans-serif">≡</text>
+      <text x="544" y="133" text-anchor="middle" font-size="12" font-weight="700" fill="#7c3aed" font-family="PingFang SC,sans-serif">≡ 等价同构 · 同一条演进路线</text>
+      <text x="550" y="232" text-anchor="middle" font-size="11" fill="#7c3aed" font-family="PingFang SC,sans-serif">↓ VA 与 WAM 共享的内核 · 同一个 Foundation</text>
+      <rect x="150" y="248" width="800" height="66" rx="14" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2.5"/>
+      <text x="550" y="278" text-anchor="middle" font-size="17" font-weight="800" fill="#6d28d9" font-family="PingFang SC,sans-serif">Foundation World Model</text>
+      <text x="550" y="300" text-anchor="middle" font-size="11.5" fill="#7c3aed" font-family="PingFang SC,sans-serif">两个领域共识的必备 Infra · 对世界的理解</text>
+      <line x1="290" y1="316" x2="290" y2="426" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#pA)"/>
+      <line x1="550" y1="316" x2="550" y2="426" stroke="#f43f5e" stroke-width="2.5" marker-end="url(#pR)"/>
+      <line x1="810" y1="316" x2="810" y2="426" stroke="#10b981" stroke-width="2.5" marker-end="url(#pG)"/>
+      <rect x="206" y="352" width="168" height="26" rx="7" fill="#fff" stroke="#3b82f6" stroke-width="1.3"/>
+      <text x="290" y="369" text-anchor="middle" font-size="11" font-weight="700" fill="#1d4ed8" font-family="PingFang SC,sans-serif">+ Driving Action</text>
+      <rect x="466" y="352" width="168" height="26" rx="7" fill="#fff" stroke="#f43f5e" stroke-width="1.3"/>
+      <text x="550" y="369" text-anchor="middle" font-size="11" font-weight="700" fill="#be123c" font-family="PingFang SC,sans-serif">+ Robot Action</text>
+      <rect x="726" y="352" width="168" height="26" rx="7" fill="#fff" stroke="#10b981" stroke-width="1.3"/>
+      <text x="810" y="369" text-anchor="middle" font-size="11" font-weight="700" fill="#047857" font-family="PingFang SC,sans-serif">+ Language</text>
+      <rect x="190" y="428" width="200" height="86" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="290" y="466" text-anchor="middle" font-size="14" font-weight="800" fill="#1d4ed8" font-family="PingFang SC,sans-serif">🚗 自动驾驶</text>
+      <text x="290" y="490" text-anchor="middle" font-size="11.5" fill="#1e40af" font-family="PingFang SC,sans-serif">AD</text>
+      <rect x="450" y="428" width="200" height="86" rx="12" fill="#fff1f2" stroke="#f43f5e" stroke-width="2"/>
+      <text x="550" y="466" text-anchor="middle" font-size="14" font-weight="800" fill="#be123c" font-family="PingFang SC,sans-serif">🤖 具身机器人</text>
+      <text x="550" y="490" text-anchor="middle" font-size="11.5" fill="#9f1239" font-family="PingFang SC,sans-serif">Robotics</text>
+      <rect x="710" y="428" width="200" height="86" rx="12" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+      <text x="810" y="458" text-anchor="middle" font-size="13" font-weight="800" fill="#047857" font-family="PingFang SC,sans-serif">🔤 数据闭环</text>
+      <text x="810" y="480" text-anchor="middle" font-size="9.5" fill="#059669" font-family="PingFang SC,sans-serif">caption · mining</text>
+      <text x="810" y="497" text-anchor="middle" font-size="9.5" fill="#059669" font-family="PingFang SC,sans-serif">triage · auto-label</text>
+    </svg>
+  </div>
+
+  <h3 style="text-align:center;margin:1.8rem 0 0.8rem;font-size:1.12rem;">⚖️ 二阶段 E2E vs 一阶段 Vision-Action</h3>
+  <div class="flow-container fade-in" style="padding:1rem;">
+    <table class="compare-table">
+      <thead><tr><th style="width:16%;">维度</th><th>二阶段（检测→跟踪→预测→规划）</th><th>一阶段（Vision-Action / 检测即预测）</th></tr></thead>
+      <tbody>
+        <tr><td><strong>模块结构</strong></td><td>模块化级联，每级独立</td><td>同一 latent 内 readout，端到端</td></tr>
+        <tr><td><strong>误差传播</strong></td><td>逐级累积、级联误差</td><td>无中间硬边界，联合优化</td></tr>
+        <tr><td><strong>监督/评测</strong></td><td>每帧有 GT，可监督可评测</td><td>监督/评测难、误差累积</td></tr>
+        <tr><td><strong>时序/遮挡</strong></td><td>丢时序先验，单帧歧义难解</td><td>query 跨帧传播，利用运动先验、抗遮挡</td></tr>
+        <tr><td><strong>与 WM 关系</strong></td><td>传统起点（左下象限）</td><td>右上象限 ＝ 世界模型/E2E，检测＝latent 一个出口</td></tr>
+        <tr><td><strong>优劣</strong></td><td>可解释、好调试；泛化弱</td><td>统一、省数据；难监督</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="text-align:center;margin:1.8rem 0 0.8rem;font-size:1.12rem;">🚗🤖 同一 WM 底座 · AD 用法 vs 具身用法</h3>
+  <div class="flow-container fade-in" style="padding:1rem;">
+    <table class="compare-table">
+      <thead><tr><th style="width:16%;">维度</th><th>自动驾驶（AD）</th><th>具身（embodied）</th></tr></thead>
+      <tbody>
+        <tr><td><strong>action 空间</strong></td><td>转向/油门/刹车/轨迹/ego 位姿</td><td>末端/关节/灵巧手位姿；<b>接触帧相对表述</b></td></tr>
+        <tr><td><strong>数据来源</strong></td><td>车队真实路采（<b>自带动作标注</b>）+ 生成补长尾</td><td>teleop 遥操（贵/慢）+ 人类 egocentric 视频（<b>手锚定尺度</b>）</td></tr>
+        <tr><td><strong>动作可控性来源</strong></td><td>车队数据自带驾驶控制，不靠 teleop</td><td>无现成大规模数据，靠 teleop 采"动作↔后果"</td></tr>
+        <tr><td><strong>输出</strong></td><td>多视图驾驶视频/占用/规划轨迹</td><td>机器人动作/操作策略；手-物 metric 相对 3D</td></tr>
+        <tr><td><strong>部署</strong></td><td>量产车端</td><td>机器人本体（跨本体不变）</td></tr>
+        <tr><td><strong>评测</strong></td><td>闭环仿真/占用/规划指标</td><td>抓取成功率/HOI/操作任务成功率</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="text-align:center;margin:1.8rem 0 1rem;font-size:1.12rem;">🤖 具身侧落地 · 物流末端场景</h3>
+  <div class="grid-3 fade-in">
+    <div class="card" style="border-top:3px solid var(--accent);">
+      <h3><span style="font-size:1.3rem;">🏪</span> 商户端装卸</h3>
+      <p>末端商户的货物装卸 —— 从车到店的最后搬运，标准化、高频、可规模化复制。</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--green);">
+      <h3><span style="font-size:1.3rem;">🏢</span> 消费者端上楼配送</h3>
+      <p>上楼送快递、送外卖 —— 打通"最后 100 米 / 最后一层楼"，直达消费者门口。</p>
+    </div>
+    <div class="card" style="border-top:3px solid var(--purple);">
+      <h3><span style="font-size:1.3rem;">🚪</span> 开门进店上架</h3>
+      <p>潜在需求：为客户开门、进入店内、货架上架（星巴克式补货）—— 从"送到门口"到"进门作业"。</p>
+    </div>
+  </div>
+
+  <div class="glow-card fade-in" style="margin-top:2rem;">
+    <div class="inner">
+      <h3 style="margin-bottom:0.5rem;"><span style="font-size:1.2rem;">🎮</span> 快慢机遥操 · 人在环的中间形态<span style="font-size:0.8rem;font-weight:500;color:var(--ink-mute);">（teleop 数据引擎 & 面向具身投资人的重点 Demo）</span></h3>
+      <p style="font-size:0.9rem;color:var(--ink-soft);margin-bottom:1rem;">机器人操作没有现成大规模动作数据，靠人遥操采集"动作↔后果"（贵、慢，但可与自驾并行积累）—— 这是具身 WM 动作可控性的燃料。</p>
+      <svg viewBox="0 0 860 210" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:860px;margin:0 auto;display:block;">
+        <defs>
+          <marker id="levArrow2" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8" fill="#f43f5e"/></marker>
+        </defs>
+        <rect x="50" y="40" width="250" height="96" rx="14" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+        <text x="175" y="82" text-anchor="middle" font-size="15" font-weight="800" fill="#1d4ed8" font-family="PingFang SC,sans-serif">🧠 人脑 · 高级智能</text>
+        <text x="175" y="108" text-anchor="middle" font-size="10.5" fill="#1e40af" font-family="PingFang SC,sans-serif">决策 · 把复杂交互拆成简单机操</text>
+        <rect x="560" y="40" width="250" height="96" rx="14" fill="#ffe4e6" stroke="#f43f5e" stroke-width="2"/>
+        <text x="685" y="82" text-anchor="middle" font-size="15" font-weight="800" fill="#be123c" font-family="PingFang SC,sans-serif">🦾 具身脑 · 执行器</text>
+        <text x="685" y="108" text-anchor="middle" font-size="10.5" fill="#9f1239" font-family="PingFang SC,sans-serif">执行一连串简单机操</text>
+        <line x1="300" y1="88" x2="558" y2="88" stroke="#f43f5e" stroke-width="3" marker-end="url(#levArrow2)"/>
+        <text x="429" y="72" text-anchor="middle" font-size="12.5" font-weight="700" fill="#e11d48" font-family="PingFang SC,sans-serif">放大决策 · 人机比 &gt;1:100</text>
+        <text x="429" y="112" text-anchor="middle" font-size="10.5" fill="#94a3b8" font-family="PingFang SC,sans-serif">机器人放大人的决策</text>
+        <rect x="120" y="162" width="620" height="34" rx="8" fill="#fff1f2" stroke="#fda4af" stroke-width="1"/>
+        <text x="430" y="184" text-anchor="middle" font-size="11.5" font-weight="600" fill="#be123c" font-family="PingFang SC,sans-serif">人机比越高 → 人的产出 / 收入 与机器人市场 同涨（共赢）</text>
+      </svg>
+    </div>
+  </div>
+
+  <h3 style="text-align:center;margin:2rem 0 1rem;font-size:1.12rem;">🧠 通用具身智能 · 世界模型驱动</h3>
+  <div class="grid-2 fade-in">
+    <div class="card">
+      <h3><span style="font-size:1.2rem;">🔮</span> 脑内仿真 · 前瞻规划</h3>
+      <p>先在世界模型里"试走"，再到真实世界执行择优动作 —— WAM 不只预测画面，而是驱动机器人在开放环境里自主完成长程、多步任务。</p>
+    </div>
+    <div class="card">
+      <h3><span style="font-size:1.2rem;">🌐</span> 跨本体 · 跨任务泛化</h3>
+      <p>同一套世界模型不再为每个任务单独训练，可跨机械臂 / 人形 / 四足本体、跨任务迁移。</p>
+    </div>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ======================== SECTION 1: 全局总览 ======================== -->
+<section class="section" id="overview">
+  <div class="section-header fade-in">
+    <div class="tag" style="background:var(--accent-light);color:var(--accent-dark);">PART 3 · INFRA</div>
+    <h2>支撑 Infra · 三大闭环</h2>
+    <p>自动驾驶与具身智能共享同一套研发闭环体系：数据驱动模型进化，工程保障快速交付，测试验证安全可靠</p>
+  </div>
+
+  <!-- Big SVG Ring Diagram -->
+  <div class="flow-container fade-in">
+    <svg viewBox="0 0 1060 640" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:1060px;margin:0 auto;display:block;">
+      <defs>
+        <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#3b82f6"/></marker>
+        <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#10b981"/></marker>
+        <marker id="arrowOrange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#f59e0b"/></marker>
+        <marker id="arrowPurple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#8b5cf6"/></marker>
+        <linearGradient id="gradCenter" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#1e3a5f"/><stop offset="100%" style="stop-color:#0f172a"/>
+        </linearGradient>
+        <filter id="shadowSm" x="-4%" y="-4%" width="108%" height="108%">
+          <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.06"/>
+        </filter>
+      </defs>
+
+      <!-- ========== CENTER HUB ========== -->
+      <circle cx="530" cy="310" r="68" fill="url(#gradCenter)" stroke="#60a5fa" stroke-width="2.5" filter="url(#shadowSm)"/>
+      <circle cx="530" cy="310" r="82" fill="none" stroke="#60a5fa" stroke-width="1" stroke-dasharray="4 4" opacity="0.35"/>
+      <text x="530" y="300" text-anchor="middle" fill="#fff" font-size="15" font-weight="700" font-family="PingFang SC,Microsoft YaHei,sans-serif">研发闭环</text>
+      <text x="530" y="320" text-anchor="middle" fill="rgba(255,255,255,0.65)" font-size="11" font-family="PingFang SC,Microsoft YaHei,sans-serif">AD & Embodied AI</text>
+
+      <!-- ========== DATA LOOP (LEFT) ========== -->
+      <!-- Group background panel -->
+      <rect x="30" y="70" width="260" height="310" rx="16" fill="#f0f7ff" stroke="#bfdbfe" stroke-width="1.2" filter="url(#shadowSm)"/>
+      <!-- Title bar -->
+      <rect x="30" y="70" width="260" height="44" rx="16" fill="#dbeafe" stroke="#93c5fd" stroke-width="1"/>
+      <rect x="30" y="98" width="260" height="16" fill="#dbeafe"/>
+      <text x="160" y="97" text-anchor="middle" fill="#1d4ed8" font-size="14" font-weight="700" font-family="PingFang SC,Microsoft YaHei,sans-serif">📊 数据闭环</text>
+
+      <!-- Nodes inside panel -->
+      <rect x="70" y="130" width="180" height="36" rx="8" fill="#fff" stroke="#93c5fd" stroke-width="1.2"/>
+      <text x="160" y="152" text-anchor="middle" fill="#1e40af" font-size="12" font-weight="600" font-family="PingFang SC,sans-serif">数据采集</text>
+
+      <rect x="70" y="180" width="180" height="36" rx="8" fill="#fff" stroke="#93c5fd" stroke-width="1.2"/>
+      <text x="160" y="202" text-anchor="middle" fill="#1e40af" font-size="12" font-weight="600" font-family="PingFang SC,sans-serif">数据处理</text>
+
+      <rect x="70" y="230" width="180" height="36" rx="8" fill="#fff" stroke="#93c5fd" stroke-width="1.2"/>
+      <text x="160" y="252" text-anchor="middle" fill="#1e40af" font-size="12" font-weight="600" font-family="PingFang SC,sans-serif">数据标注</text>
+
+      <rect x="70" y="280" width="180" height="36" rx="8" fill="#fff" stroke="#93c5fd" stroke-width="1.2"/>
+      <text x="160" y="302" text-anchor="middle" fill="#1e40af" font-size="12" font-weight="600" font-family="PingFang SC,sans-serif">场景数据集</text>
+
+      <!-- Down arrows inside panel -->
+      <line x1="160" y1="166" x2="160" y2="180" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+      <line x1="160" y1="216" x2="160" y2="230" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+      <line x1="160" y1="266" x2="160" y2="280" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+      <!-- Loop-back arrow -->
+      <path d="M 70,298 Q 42,298 42,215 Q 42,132 70,132" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#arrowBlue)"/>
+      <text x="32" y="220" text-anchor="middle" fill="#3b82f6" font-size="8" font-weight="600" font-family="PingFang SC,sans-serif" transform="rotate(-90,32,220)">数据反馈驱动</text>
+
+      <!-- Sub-label -->
+      <text x="160" y="345" text-anchor="middle" fill="#93c5fd" font-size="9" font-family="PingFang SC,sans-serif">采集 → 处理 → 标注 → 场景集 → 训练</text>
+      <text x="160" y="362" text-anchor="middle" fill="#93c5fd" font-size="9" font-family="PingFang SC,sans-serif">↻ 数据飞轮持续转动</text>
+
+      <!-- Connector data → center -->
+      <path d="M 290,220 C 350,220 400,280 448,300" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrowBlue)"/>
+      <text x="365" y="242" fill="#3b82f6" font-size="9" font-weight="600" font-family="PingFang SC,sans-serif">驱动训练</text>
+
+      <!-- ========== ENGINEERING LOOP (RIGHT) ========== -->
+      <!-- Group background panel -->
+      <rect x="770" y="70" width="260" height="310" rx="16" fill="#f0fdf8" stroke="#a7f3d0" stroke-width="1.2" filter="url(#shadowSm)"/>
+      <rect x="770" y="70" width="260" height="44" rx="16" fill="#d1fae5" stroke="#6ee7b7" stroke-width="1"/>
+      <rect x="770" y="98" width="260" height="16" fill="#d1fae5"/>
+      <text x="900" y="97" text-anchor="middle" fill="#065f46" font-size="14" font-weight="700" font-family="PingFang SC,Microsoft YaHei,sans-serif">⚙️ 工程研发闭环</text>
+
+      <rect x="810" y="130" width="180" height="32" rx="8" fill="#fff" stroke="#6ee7b7" stroke-width="1.2"/>
+      <text x="900" y="150" text-anchor="middle" fill="#065f46" font-size="12" font-weight="600" font-family="PingFang SC,sans-serif">模型训练</text>
+
+      <rect x="810" y="174" width="180" height="32" rx="8" fill="#fff" stroke="#6ee7b7" stroke-width="1.2"/>
+      <text x="900" y="194" text-anchor="middle" fill="#065f46" font-size="12" font-weight="600" font-family="PingFang SC,sans-serif">模型评测</text>
+
+      <rect x="810" y="218" width="180" height="32" rx="8" fill="#fff" stroke="#6ee7b7" stroke-width="1.2"/>
+      <text x="900" y="238" text-anchor="middle" fill="#065f46" font-size="12" font-weight="600" font-family="PingFang SC,sans-serif">CI/CD 构建</text>
+
+      <rect x="810" y="262" width="180" height="32" rx="8" fill="#fff" stroke="#6ee7b7" stroke-width="1.2"/>
+      <text x="900" y="282" text-anchor="middle" fill="#065f46" font-size="12" font-weight="600" font-family="PingFang SC,sans-serif">版本发布</text>
+
+      <rect x="810" y="306" width="180" height="32" rx="8" fill="#fff" stroke="#6ee7b7" stroke-width="1.2"/>
+      <text x="900" y="326" text-anchor="middle" fill="#065f46" font-size="12" font-weight="600" font-family="PingFang SC,sans-serif">OTA 部署</text>
+
+      <line x1="900" y1="162" x2="900" y2="174" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+      <line x1="900" y1="206" x2="900" y2="218" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+      <line x1="900" y1="250" x2="900" y2="262" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+      <line x1="900" y1="294" x2="900" y2="306" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrowGreen)"/>
+
+      <text x="900" y="360" text-anchor="middle" fill="#6ee7b7" font-size="9" font-family="PingFang SC,sans-serif">训练 → 评测 → 构建 → 发布 → OTA</text>
+      <text x="900" y="374" text-anchor="middle" fill="#6ee7b7" font-size="9" font-family="PingFang SC,sans-serif">↻ 持续集成与交付</text>
+
+      <!-- Connector eng → center -->
+      <path d="M 810,240 C 750,240 660,280 612,300" fill="none" stroke="#10b981" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrowGreen)"/>
+      <text x="705" y="253" fill="#10b981" font-size="9" font-weight="600" font-family="PingFang SC,sans-serif">版本交付</text>
+
+      <!-- ========== TEST LOOP (BOTTOM) ========== -->
+      <!-- Group background panel -->
+      <rect x="300" y="440" width="460" height="175" rx="16" fill="#fffcf0" stroke="#fde68a" stroke-width="1.2" filter="url(#shadowSm)"/>
+      <rect x="300" y="440" width="460" height="44" rx="16" fill="#fef3c7" stroke="#fcd34d" stroke-width="1"/>
+      <rect x="300" y="468" width="460" height="16" fill="#fef3c7"/>
+      <text x="530" y="467" text-anchor="middle" fill="#92400e" font-size="14" font-weight="700" font-family="PingFang SC,Microsoft YaHei,sans-serif">🧪 测试闭环（三阶段验证）</text>
+
+      <!-- Phase nodes -->
+      <rect x="325" y="500" width="120" height="40" rx="10" fill="#fff" stroke="#fcd34d" stroke-width="1.2"/>
+      <text x="385" y="516" text-anchor="middle" fill="#92400e" font-size="11" font-weight="700" font-family="PingFang SC,sans-serif">Phase 1</text>
+      <text x="385" y="531" text-anchor="middle" fill="#b45309" font-size="10" font-family="PingFang SC,sans-serif">LogSim</text>
+
+      <rect x="470" y="500" width="120" height="40" rx="10" fill="#fff" stroke="#fdba74" stroke-width="1.2"/>
+      <text x="530" y="516" text-anchor="middle" fill="#92400e" font-size="11" font-weight="700" font-family="PingFang SC,sans-serif">Phase 2</text>
+      <text x="530" y="531" text-anchor="middle" fill="#c2410c" font-size="10" font-family="PingFang SC,sans-serif">场景编辑</text>
+
+      <rect x="615" y="500" width="120" height="40" rx="10" fill="#fff" stroke="#fca5a5" stroke-width="1.2"/>
+      <text x="675" y="516" text-anchor="middle" fill="#92400e" font-size="11" font-weight="700" font-family="PingFang SC,sans-serif">Phase 3</text>
+      <text x="675" y="531" text-anchor="middle" fill="#dc2626" font-size="10" font-family="PingFang SC,sans-serif">WorldSim</text>
+
+      <line x1="445" y1="520" x2="470" y2="520" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrowOrange)"/>
+      <line x1="590" y1="520" x2="615" y2="520" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrowOrange)"/>
+
+      <!-- Fidelity bar -->
+      <text x="385" y="556" text-anchor="middle" fill="#d97706" font-size="8" font-family="PingFang SC,sans-serif">保真度 ★☆☆</text>
+      <text x="530" y="556" text-anchor="middle" fill="#d97706" font-size="8" font-family="PingFang SC,sans-serif">保真度 ★★☆</text>
+      <text x="675" y="556" text-anchor="middle" fill="#d97706" font-size="8" font-family="PingFang SC,sans-serif">保真度 ★★★</text>
+
+      <text x="530" y="582" text-anchor="middle" fill="#fcd34d" font-size="9" font-family="PingFang SC,sans-serif">LogSim → 场景编辑 → WorldSim → 路测/真机</text>
+      <text x="530" y="600" text-anchor="middle" fill="#fcd34d" font-size="9" font-family="PingFang SC,sans-serif">↻ 问题回流数据闭环</text>
+
+      <!-- Connector test → center -->
+      <path d="M 530,440 C 530,415 530,390 530,378" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrowOrange)"/>
+      <text x="545" y="415" fill="#f59e0b" font-size="9" font-weight="600" font-family="PingFang SC,sans-serif">验证反馈</text>
+
+      <!-- ========== CROSS-LOOP CONNECTIONS ========== -->
+      <!-- Data → Test (场景回灌) -->
+      <path d="M 250,316 C 280,400 320,450 380,500" fill="none" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#arrowPurple)"/>
+      <text x="282" y="420" fill="#8b5cf6" font-size="9" font-weight="600" font-family="PingFang SC,sans-serif" transform="rotate(-50,282,420)">场景回灌</text>
+
+      <!-- Test → Eng (问题触发迭代) -->
+      <path d="M 735,510 C 780,470 810,420 820,338" fill="none" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#arrowPurple)"/>
+      <text x="790" y="440" fill="#8b5cf6" font-size="9" font-weight="600" font-family="PingFang SC,sans-serif">问题触发迭代</text>
+
+      <!-- Eng → Data (数据需求) -->
+      <path d="M 810,148 C 600,40 350,40 250,130" fill="none" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#arrowPurple)"/>
+      <text x="530" y="55" fill="#8b5cf6" font-size="9" font-weight="600" font-family="PingFang SC,sans-serif">数据需求反馈</text>
+
+      <!-- Outer orbit ring (decorative) -->
+      <circle cx="530" cy="310" r="200" fill="none" stroke="#e2e8f0" stroke-width="1" stroke-dasharray="3 6" opacity="0.5"/>
+    </svg>
+  </div>
+
+  <!-- Dual domain badges -->
+  <div class="grid-2 fade-in" style="margin-top:2rem;">
+    <div class="card" style="border-left: 4px solid var(--accent);">
+      <h3><span style="font-size:1.3rem;">🚗</span> 自动驾驶 (AD)</h3>
+      <p>L4 级自动驾驶：感知、预测、规划、控制的全栈算法研发，覆盖城区/高速/泊车场景。数据来源为车载传感器（Camera / LiDAR / Radar / IMU），通过端到端或模块化架构实现安全可靠的自动驾驶能力。</p>
+    </div>
+    <div class="card" style="border-left: 4px solid var(--purple);">
+      <h3><span style="font-size:1.3rem;">🤖</span> 具身智能 (Embodied AI)</h3>
+      <p>具身智能体：机械臂操作、移动抓取、双足/四足运动控制。数据来源为 RGB-D 相机、力矩传感器、触觉传感器、关节编码器，通过基础模型（VLA/VLM）+强化学习实现通用操作与移动能力。</p>
+    </div>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ======================== SECTION 1.5: 三层大脑架构 ======================== -->
+<section class="section" id="brain-arch">
+  <div class="section-header fade-in">
+    <div class="tag" style="background:var(--cyan-light);color:#0e7490;">SYSTEM ARCHITECTURE</div>
+    <h2>三层大脑架构 · 数据飞轮驱动自迭代</h2>
+    <p>车端小脑保安全、云端大脑强算力、后台 Foundation Model 可蒸馏 —— 车队规模化数据持续回流，驱动整套系统自我迭代升级</p>
+  </div>
+
+  <div class="flow-container fade-in">
+    <svg viewBox="0 0 920 500" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:920px;margin:0 auto;display:block;">
+      <defs>
+        <marker id="brDown" markerWidth="9" markerHeight="7" refX="4.5" refY="6" orient="auto"><path d="M0,0 L9,0 L4.5,7 Z" fill="#8b5cf6"/></marker>
+        <marker id="brUp" markerWidth="9" markerHeight="7" refX="4.5" refY="1" orient="auto"><path d="M0,7 L9,7 L4.5,0 Z" fill="#10b981"/></marker>
+      </defs>
+
+      <!-- Layer 3: 后台 Foundation Model -->
+      <rect x="220" y="40" width="480" height="92" rx="14" fill="#ede9fe" stroke="#8b5cf6" stroke-width="2"/>
+      <text x="240" y="66" font-size="11" font-weight="700" fill="#8b5cf6" font-family="PingFang SC,sans-serif">第三层 · 后台</text>
+      <text x="460" y="82" text-anchor="middle" font-size="17" font-weight="800" fill="#6d28d9" font-family="PingFang SC,sans-serif">后台 Foundation Model</text>
+      <text x="460" y="108" text-anchor="middle" font-size="11.5" fill="#7c3aed" font-family="PingFang SC,sans-serif">可被蒸馏 · 世界知识大而全 · 驱动车端持续自我升级</text>
+
+      <!-- Layer 2: 云端大脑 -->
+      <rect x="220" y="204" width="480" height="92" rx="14" fill="#cffafe" stroke="#06b6d4" stroke-width="2"/>
+      <text x="240" y="230" font-size="11" font-weight="700" fill="#06b6d4" font-family="PingFang SC,sans-serif">第二层 · 云端</text>
+      <text x="460" y="246" text-anchor="middle" font-size="17" font-weight="800" fill="#0e7490" font-family="PingFang SC,sans-serif">云端大脑</text>
+      <text x="460" y="272" text-anchor="middle" font-size="11.5" fill="#0891b2" font-family="PingFang SC,sans-serif">大参数 · 强算力 · 复杂长尾场景决策</text>
+
+      <!-- Layer 1: 车端系统 -->
+      <rect x="150" y="360" width="620" height="116" rx="14" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+      <text x="170" y="384" font-size="11" font-weight="700" fill="#3b82f6" font-family="PingFang SC,sans-serif">第一层 · 车端系统</text>
+      <rect x="180" y="396" width="270" height="62" rx="10" fill="#fff" stroke="#f59e0b" stroke-width="1.6"/>
+      <text x="315" y="421" text-anchor="middle" font-size="14" font-weight="700" fill="#b45309" font-family="PingFang SC,sans-serif">🛡️ MCU 安全小脑</text>
+      <text x="315" y="443" text-anchor="middle" font-size="10.5" fill="#92400e" font-family="PingFang SC,sans-serif">功能安全兜底 · 失效保护</text>
+      <rect x="470" y="396" width="270" height="62" rx="10" fill="#fff" stroke="#3b82f6" stroke-width="1.6"/>
+      <text x="605" y="421" text-anchor="middle" font-size="14" font-weight="700" fill="#1d4ed8" font-family="PingFang SC,sans-serif">🧠 AD 算法</text>
+      <text x="605" y="443" text-anchor="middle" font-size="10.5" fill="#1e40af" font-family="PingFang SC,sans-serif">实时 感知-预测-规控</text>
+
+      <!-- Arrows FM <-> 云端 -->
+      <line x1="410" y1="136" x2="410" y2="198" stroke="#8b5cf6" stroke-width="2.5" marker-end="url(#brDown)"/>
+      <line x1="510" y1="198" x2="510" y2="136" stroke="#10b981" stroke-width="2.5" marker-end="url(#brUp)"/>
+      <!-- Arrows 云端 <-> 车端 -->
+      <line x1="410" y1="300" x2="410" y2="356" stroke="#8b5cf6" stroke-width="2.5" marker-end="url(#brDown)"/>
+      <line x1="510" y1="356" x2="510" y2="300" stroke="#10b981" stroke-width="2.5" marker-end="url(#brUp)"/>
+
+      <!-- side labels -->
+      <text x="330" y="172" text-anchor="middle" font-size="11.5" font-weight="700" fill="#8b5cf6" font-family="PingFang SC,sans-serif">⬇ 蒸馏 / OTA</text>
+      <text x="592" y="172" text-anchor="middle" font-size="11.5" font-weight="700" fill="#10b981" font-family="PingFang SC,sans-serif">数据回流 ⬆</text>
+      <text x="330" y="336" text-anchor="middle" font-size="11.5" font-weight="700" fill="#8b5cf6" font-family="PingFang SC,sans-serif">⬇ 蒸馏 / 下发</text>
+      <text x="592" y="336" text-anchor="middle" font-size="11.5" font-weight="700" fill="#10b981" font-family="PingFang SC,sans-serif">数据回流 ⬆</text>
+    </svg>
+  </div>
+
+  <div class="grid-3 fade-in" style="margin-top:2rem;">
+    <div class="card">
+      <h3><span style="font-size:1.2rem;">🚐</span> 车队规模化数据</h3>
+      <p>规模化车队 7×24 运营，每天回流海量真实路况数据 —— 这是数据飞轮的燃料，车队越大、飞轮转得越快。</p>
+    </div>
+    <div class="card">
+      <h3><span style="font-size:1.2rem;">🎯</span> SD = 云端大脑的"标定员"</h3>
+      <p>安全员（SD）的接管与纠正，本质是对云端大脑的在线"标定" —— 每一次人工介入都是高价值监督信号。</p>
+    </div>
+    <div class="card">
+      <h3><span style="font-size:1.2rem;">♻️</span> 车端 ↔ 机模 互哺</h3>
+      <p>车端产出素材喂给机模（Foundation Model），机模变强后再蒸馏回车端 —— 越跑越好的正向循环。</p>
+    </div>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ======================== SECTION 2: 数据闭环 ======================== -->
+<section class="section" id="data-loop">
+  <div class="section-header fade-in">
+    <div class="tag" style="background:var(--accent-light);color:var(--accent-dark);">DATA LOOP</div>
+    <h2>数据闭环</h2>
+    <p>从真实世界采集 → 高效处理 → 精准标注 → 场景数据集 → 驱动模型进化，形成数据飞轮</p>
+  </div>
+
+  <!-- Data Flow -->
+  <div class="flow-container fade-in" style="margin-bottom:2rem;">
+    <div class="flow-row">
+      <div class="flow-node" style="background:#dbeafe;border-color:#3b82f6;color:#1e40af;">
+        数据采集
+        <div class="sub">车端/机器人端</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node" style="background:#e0f2fe;border-color:#0ea5e9;color:#0c4a6e;">
+        数据回传
+        <div class="sub">4G/5G/WiFi</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node" style="background:#dbeafe;border-color:#6366f1;color:#3730a3;">
+        数据处理
+        <div class="sub">清洗/解析/质检</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node" style="background:#ede9fe;border-color:#8b5cf6;color:#5b21b6;">
+        数据标注
+        <div class="sub">2D/3D/语义</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node" style="background:#d1fae5;border-color:#10b981;color:#065f46;">
+        场景数据集
+        <div class="sub">训练/评测/仿真</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs: AD vs Embodied data -->
+  <div class="fade-in">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab(event, 'data-ad')">🚗 自动驾驶数据</button>
+      <button class="tab-btn" onclick="switchTab(event, 'data-em')">🤖 具身智能数据</button>
+      <button class="tab-btn" onclick="switchTab(event, 'data-shared')">🔗 共享基座</button>
+    </div>
+
+    <div id="data-ad" class="tab-panel active">
+      <div class="grid-4">
+        <div class="card">
+          <div class="icon-circle" style="background:var(--accent-light);color:var(--accent-dark);margin-bottom:0.75rem;">📡</div>
+          <h3>数据采集</h3>
+          <ul>
+            <li>在线采集：运营车辆实时回传</li>
+            <li>离线采集：专项路测批量采集</li>
+            <li>触发式采集：issue/corner case 定向采集</li>
+            <li>传感器：Camera×8, LiDAR×1-5, Radar×5, IMU, GPS</li>
+          </ul>
+          <div style="margin-top:0.5rem;"><span class="tag-inline tag-ad">AD</span></div>
+        </div>
+        <div class="card">
+          <div class="icon-circle" style="background:var(--cyan-light);color:#0e7490;margin-bottom:0.75rem;">⚙️</div>
+          <h3>数据处理</h3>
+          <ul>
+            <li>RawData 解包、传感器时间同步</li>
+            <li>点云/图像预处理与质检</li>
+            <li>数据切片（1min/10s clip）</li>
+            <li>Meta 信息提取（标定、定位）</li>
+            <li>数据去重/场景分类</li>
+          </ul>
+          <div style="margin-top:0.5rem;"><span class="tag-inline tag-ad">AD</span></div>
+        </div>
+        <div class="card">
+          <div class="icon-circle" style="background:var(--purple-light);color:#6d28d9;margin-bottom:0.75rem;">🏷️</div>
+          <h3>数据标注</h3>
+          <ul>
+            <li>2D/3D 目标检测框</li>
+            <li>车道线/路沿语义分割</li>
+            <li>Occupancy Grid 标注</li>
+            <li>多模态联合标注</li>
+            <li>预标注 + 人工校验</li>
+          </ul>
+          <div style="margin-top:0.5rem;"><span class="tag-inline tag-ad">AD</span></div>
+        </div>
+        <div class="card">
+          <div class="icon-circle" style="background:var(--green-light);color:#065f46;margin-bottom:0.75rem;">📦</div>
+          <h3>场景数据集</h3>
+          <ul>
+            <li>训练集/验证集/测试集拆分</li>
+            <li>Corner Case 场景集</li>
+            <li>仿真回灌场景集</li>
+            <li>场景分布分析与补采</li>
+            <li>版本化管理</li>
+          </ul>
+          <div style="margin-top:0.5rem;"><span class="tag-inline tag-ad">AD</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="data-em" class="tab-panel">
+      <div class="grid-4">
+        <div class="card">
+          <div class="icon-circle" style="background:var(--purple-light);color:#6d28d9;margin-bottom:0.75rem;">🦾</div>
+          <h3>数据采集</h3>
+          <ul>
+            <li>遥操作示教采集（VR/手柄）</li>
+            <li>仿真环境自动采集</li>
+            <li>人类视频学习采集</li>
+            <li>传感器：RGB-D, 力矩, 触觉, 关节编码器</li>
+          </ul>
+          <div style="margin-top:0.5rem;"><span class="tag-inline tag-em">Embodied</span></div>
+        </div>
+        <div class="card">
+          <div class="icon-circle" style="background:var(--purple-light);color:#6d28d9;margin-bottom:0.75rem;">🔄</div>
+          <h3>数据处理</h3>
+          <ul>
+            <li>轨迹平滑与重采样</li>
+            <li>传感器-动作配对对齐</li>
+            <li>Demo 质量筛选过滤</li>
+            <li>观察-动作序列标准化</li>
+            <li>Sim-to-Real 数据适配</li>
+          </ul>
+          <div style="margin-top:0.5rem;"><span class="tag-inline tag-em">Embodied</span></div>
+        </div>
+        <div class="card">
+          <div class="icon-circle" style="background:var(--purple-light);color:#6d28d9;margin-bottom:0.75rem;">✍️</div>
+          <h3>数据标注</h3>
+          <ul>
+            <li>动作语义标注（抓/放/推/拉）</li>
+            <li>任务阶段标注（接触/抓握/搬运）</li>
+            <li>自然语言指令对齐</li>
+            <li>成功/失败标签</li>
+            <li>关键帧/接触点标注</li>
+          </ul>
+          <div style="margin-top:0.5rem;"><span class="tag-inline tag-em">Embodied</span></div>
+        </div>
+        <div class="card">
+          <div class="icon-circle" style="background:var(--purple-light);color:#6d28d9;margin-bottom:0.75rem;">🗃️</div>
+          <h3>场景数据集</h3>
+          <ul>
+            <li>操作技能数据集（pick/place/pour）</li>
+            <li>导航任务数据集</li>
+            <li>多任务混合数据集</li>
+            <li>跨本体迁移数据集</li>
+            <li>开放词汇指令数据集</li>
+          </ul>
+          <div style="margin-top:0.5rem;"><span class="tag-inline tag-em">Embodied</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="data-shared" class="tab-panel">
+      <div class="grid-3">
+        <div class="card" style="border-top: 3px solid var(--green);">
+          <h3>🏗️ 数据管理平台</h3>
+          <ul>
+            <li>全局唯一数据 ID（carID/robotID + timestamp + 占位）</li>
+            <li>数据血缘追踪</li>
+            <li>数据分布看板（场景/时间/行为）</li>
+            <li>数据生命周期管理与定期清理</li>
+          </ul>
+        </div>
+        <div class="card" style="border-top: 3px solid var(--green);">
+          <h3>⚡ 产线编排引擎</h3>
+          <ul>
+            <li>Argo Workflow + Volcano 调度</li>
+            <li>原子节点容器化</li>
+            <li>GPU/CPU 混合资源弹性调度</li>
+            <li>高优任务插队与自动扩容</li>
+          </ul>
+        </div>
+        <div class="card" style="border-top: 3px solid var(--green);">
+          <h3>📊 数据质量体系</h3>
+          <ul>
+            <li>自动化数据质检流水线</li>
+            <li>标注质量抽检与回退</li>
+            <li>数据分布偏差检测</li>
+            <li>成本/效率漏斗看板</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data metrics -->
+  <div class="stat-row fade-in" style="margin-top:2rem;">
+    <div class="stat-box"><div class="num" style="color:var(--accent);">PB+</div><div class="label">总数据量</div></div>
+    <div class="stat-box"><div class="num" style="color:var(--green);">&lt; 3天</div><div class="label">数据需求消费周期</div></div>
+    <div class="stat-box"><div class="num" style="color:var(--purple);">99.5%</div><div class="label">标注准确率</div></div>
+    <div class="stat-box"><div class="num" style="color:var(--orange);">100万+</div><div class="label">场景集规模</div></div>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ======================== SECTION 3: 工程研发闭环 ======================== -->
+<section class="section" id="eng-loop">
+  <div class="section-header fade-in">
+    <div class="tag" style="background:var(--green-light);color:#065f46;">ENGINEERING LOOP</div>
+    <h2>工程研发闭环</h2>
+    <p>从模型训练到 OTA 部署的全链路自动化，实现快速迭代与持续交付</p>
+  </div>
+
+  <!-- Pipeline Flow -->
+  <div class="flow-container fade-in" style="margin-bottom:2rem;">
+    <div class="flow-row">
+      <div class="flow-node" style="background:#d1fae5;border-color:#10b981;color:#065f46;">
+        模型训练
+        <div class="sub">分布式 GPU 集群</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node" style="background:#d1fae5;border-color:#059669;color:#065f46;">
+        模型评测
+        <div class="sub">开环/闭环 Benchmark</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node" style="background:#ecfdf5;border-color:#34d399;color:#065f46;">
+        CI/CD
+        <div class="sub">自动构建 + 集成测试</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node" style="background:#ecfdf5;border-color:#6ee7b7;color:#065f46;">
+        版本发布
+        <div class="sub">Bundle 打包</div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node" style="background:#d1fae5;border-color:#10b981;color:#065f46;">
+        OTA 部署
+        <div class="sub">灰度发布 → 全量</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Details grid -->
+  <div class="grid-3 fade-in">
+    <div class="card">
+      <h3>🧠 模型训练 & 评测</h3>
+      <table class="compare-table" style="font-size:0.8rem;">
+        <tr><th>维度</th><th>自动驾驶</th><th>具身智能</th></tr>
+        <tr>
+          <td>训练框架</td>
+          <td>PyTorch / MMDet3D<br/>BEVFormer, UniAD</td>
+          <td>PyTorch / Isaac Lab<br/>VLA, Diffusion Policy</td>
+        </tr>
+        <tr>
+          <td>算力需求</td>
+          <td>A100/H100 × 10,000+</td>
+          <td>A100/H100 × 1,000+<br/>+ Sim GPU</td>
+        </tr>
+        <tr>
+          <td>评测指标</td>
+          <td>mAP, NDS, L2 Error<br/>规划安全率</td>
+          <td>成功率, 完成时间<br/>泛化评分</td>
+        </tr>
+        <tr>
+          <td>评测方式</td>
+          <td>开环 + 闭环仿真</td>
+          <td>Sim Benchmark<br/>+ 真机成功率</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>🔧 CI/CD 流水线</h3>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot" style="border-color:var(--accent);"><div class="inner" style="background:var(--accent);"></div></div>
+          <div class="timeline-content">
+            <h4>代码提交 & MR</h4>
+            <p>极狐 GitLab 代码管理，MR 触发自动化流水线</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="border-color:var(--green);"><div class="inner" style="background:var(--green);"></div></div>
+          <div class="timeline-content">
+            <h4>自动构建</h4>
+            <p>Docker 容器化构建，依赖管理，编译资源调度</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="border-color:var(--orange);"><div class="inner" style="background:var(--orange);"></div></div>
+          <div class="timeline-content">
+            <h4>集成测试</h4>
+            <p>单元测试 → 集成测试 → LogSim 冒烟 → 准入门禁</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="border-color:var(--purple);"><div class="inner" style="background:var(--purple);"></div></div>
+          <div class="timeline-content">
+            <h4>版本打包</h4>
+            <p>Bundle 打包、ATF 资源管理、版本号生成</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🚀 OTA & 部署</h3>
+      <div style="margin-bottom:1rem;">
+        <strong style="color:var(--accent);font-size:0.85rem;">自动驾驶 OTA</strong>
+        <ul style="font-size:0.82rem;color:var(--ink-soft);margin-top:0.3rem;">
+          <li>灰度策略：1 → 5 → 20 → 全量</li>
+          <li>车端版本管理与回滚</li>
+          <li>算法模块独立 OTA（Patch 小包）</li>
+          <li>远程监控 + 异常自动回退</li>
+        </ul>
+      </div>
+      <div>
+        <strong style="color:var(--purple);font-size:0.85rem;">具身智能部署</strong>
+        <ul style="font-size:0.82rem;color:var(--ink-soft);margin-top:0.3rem;">
+          <li>模型权重 OTA 推送</li>
+          <li>技能包热更新</li>
+          <li>边缘端推理优化（TensorRT/ONNX）</li>
+          <li>多本体适配（机械臂/人形/四足）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key metrics -->
+  <div class="stat-row fade-in" style="margin-top:2rem;">
+    <div class="stat-box"><div class="num" style="color:var(--green);">&lt; 7天</div><div class="label">版本发版周期</div></div>
+    <div class="stat-box"><div class="num" style="color:var(--accent);">万卡</div><div class="label">GPU 训练集群</div></div>
+    <div class="stat-box"><div class="num" style="color:var(--purple);">99.9%</div><div class="label">系统稳定性</div></div>
+    <div class="stat-box"><div class="num" style="color:var(--orange);">&lt; 1h</div><div class="label">全量构建时长</div></div>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ======================== SECTION 4: 测试闭环 ======================== -->
+<section class="section" id="test-loop">
+  <div class="section-header fade-in">
+    <div class="tag" style="background:var(--orange-light);color:#92400e;">TEST LOOP</div>
+    <h2>测试闭环 · 三阶段验证</h2>
+    <p>从日志回灌到世界模型仿真，逐级提升验证保真度，最终在路测/真机中闭环验证</p>
+  </div>
+
+  <!-- Three Phases Overview SVG -->
+  <div class="flow-container fade-in" style="margin-bottom:2.5rem;">
+    <svg viewBox="0 0 1000 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:1000px;margin:0 auto;display:block;">
+      <defs>
+        <linearGradient id="p1grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#fef3c7"/><stop offset="100%" style="stop-color:#fde68a"/>
+        </linearGradient>
+        <linearGradient id="p2grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#fed7aa"/><stop offset="100%" style="stop-color:#fdba74"/>
+        </linearGradient>
+        <linearGradient id="p3grad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#fecaca"/><stop offset="100%" style="stop-color:#fca5a5"/>
+        </linearGradient>
+        <marker id="arrowDark" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#475569"/>
+        </marker>
+      </defs>
+
+      <!-- Phase 1 -->
+      <rect x="20" y="30" width="290" height="250" rx="16" fill="url(#p1grad)" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="165" y="62" text-anchor="middle" font-size="15" font-weight="700" fill="#92400e" font-family="PingFang SC,sans-serif">Phase 1: LogSim</text>
+      <text x="165" y="80" text-anchor="middle" font-size="11" fill="#b45309" font-family="PingFang SC,sans-serif">日志回灌仿真</text>
+      <line x1="60" y1="92" x2="270" y2="92" stroke="#f59e0b" stroke-width="0.5" opacity="0.5"/>
+      <!-- sub items -->
+      <text x="45" y="115" font-size="11" fill="#78350f" font-family="PingFang SC,sans-serif">🔹 真实传感器数据回放</text>
+      <text x="45" y="138" font-size="11" fill="#78350f" font-family="PingFang SC,sans-serif">🔹 算法模块替换回灌</text>
+      <text x="45" y="161" font-size="11" fill="#78350f" font-family="PingFang SC,sans-serif">🔹 自动化 Metric 对比</text>
+      <text x="45" y="184" font-size="11" fill="#78350f" font-family="PingFang SC,sans-serif">🔹 大规模并发回灌</text>
+      <text x="45" y="207" font-size="11" fill="#78350f" font-family="PingFang SC,sans-serif">🔹 回归测试准入门禁</text>
+      <!-- tags -->
+      <rect x="45" y="225" width="30" height="18" rx="4" fill="#dbeafe" stroke="#93c5fd" stroke-width="0.5"/>
+      <text x="60" y="238" text-anchor="middle" font-size="8" fill="#1e40af" font-family="PingFang SC,sans-serif">AD</text>
+      <rect x="80" y="225" width="60" height="18" rx="4" fill="#ede9fe" stroke="#c4b5fd" stroke-width="0.5"/>
+      <text x="110" y="238" text-anchor="middle" font-size="8" fill="#5b21b6" font-family="PingFang SC,sans-serif">Embodied</text>
+      <!-- Fidelity bar -->
+      <rect x="180" y="228" width="80" height="14" rx="4" fill="rgba(0,0,0,0.06)"/>
+      <rect x="180" y="228" width="25" height="14" rx="4" fill="#f59e0b"/>
+      <text x="270" y="239" font-size="8" fill="#92400e" font-family="PingFang SC,sans-serif">保真度 ★☆☆</text>
+
+      <!-- Arrow 1→2 -->
+      <line x1="318" y1="155" x2="348" y2="155" stroke="#475569" stroke-width="2" marker-end="url(#arrowDark)"/>
+      <text x="333" y="145" text-anchor="middle" font-size="9" fill="#64748b" font-family="PingFang SC,sans-serif">准入</text>
+
+      <!-- Phase 2 -->
+      <rect x="356" y="30" width="290" height="250" rx="16" fill="url(#p2grad)" stroke="#ea580c" stroke-width="1.5"/>
+      <text x="501" y="62" text-anchor="middle" font-size="15" font-weight="700" fill="#7c2d12" font-family="PingFang SC,sans-serif">Phase 2: 场景编辑</text>
+      <text x="501" y="80" text-anchor="middle" font-size="11" fill="#c2410c" font-family="PingFang SC,sans-serif">参数化场景仿真</text>
+      <line x1="396" y1="92" x2="606" y2="92" stroke="#ea580c" stroke-width="0.5" opacity="0.5"/>
+      <text x="381" y="115" font-size="11" fill="#7c2d12" font-family="PingFang SC,sans-serif">🔸 可视化场景编辑器</text>
+      <text x="381" y="138" font-size="11" fill="#7c2d12" font-family="PingFang SC,sans-serif">🔸 参数化场景泛化（天气/光照/交通流）</text>
+      <text x="381" y="161" font-size="11" fill="#7c2d12" font-family="PingFang SC,sans-serif">🔸 OpenSCENARIO 2.0 标准</text>
+      <text x="381" y="184" font-size="11" fill="#7c2d12" font-family="PingFang SC,sans-serif">🔸 对抗场景自动生成</text>
+      <text x="381" y="207" font-size="11" fill="#7c2d12" font-family="PingFang SC,sans-serif">🔸 交互式 3D 轨迹编辑</text>
+      <rect x="381" y="225" width="30" height="18" rx="4" fill="#dbeafe" stroke="#93c5fd" stroke-width="0.5"/>
+      <text x="396" y="238" text-anchor="middle" font-size="8" fill="#1e40af" font-family="PingFang SC,sans-serif">AD</text>
+      <rect x="416" y="225" width="60" height="18" rx="4" fill="#ede9fe" stroke="#c4b5fd" stroke-width="0.5"/>
+      <text x="446" y="238" text-anchor="middle" font-size="8" fill="#5b21b6" font-family="PingFang SC,sans-serif">Embodied</text>
+      <rect x="516" y="228" width="80" height="14" rx="4" fill="rgba(0,0,0,0.06)"/>
+      <rect x="516" y="228" width="50" height="14" rx="4" fill="#ea580c"/>
+      <text x="606" y="239" font-size="8" fill="#7c2d12" font-family="PingFang SC,sans-serif">保真度 ★★☆</text>
+
+      <!-- Arrow 2→3 -->
+      <line x1="654" y1="155" x2="684" y2="155" stroke="#475569" stroke-width="2" marker-end="url(#arrowDark)"/>
+      <text x="669" y="145" text-anchor="middle" font-size="9" fill="#64748b" font-family="PingFang SC,sans-serif">准入</text>
+
+      <!-- Phase 3 -->
+      <rect x="692" y="30" width="290" height="250" rx="16" fill="url(#p3grad)" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="837" y="62" text-anchor="middle" font-size="15" font-weight="700" fill="#7f1d1d" font-family="PingFang SC,sans-serif">Phase 3: WorldSim</text>
+      <text x="837" y="80" text-anchor="middle" font-size="11" fill="#b91c1c" font-family="PingFang SC,sans-serif">世界模型仿真</text>
+      <line x1="732" y1="92" x2="942" y2="92" stroke="#dc2626" stroke-width="0.5" opacity="0.5"/>
+      <text x="717" y="115" font-size="11" fill="#7f1d1d" font-family="PingFang SC,sans-serif">🔺 神经渲染 / 生成式世界模型</text>
+      <text x="717" y="138" font-size="11" fill="#7f1d1d" font-family="PingFang SC,sans-serif">🔺 NeRF/3DGS 场景重建</text>
+      <text x="717" y="161" font-size="11" fill="#7f1d1d" font-family="PingFang SC,sans-serif">🔺 物理引擎闭环仿真</text>
+      <text x="717" y="184" font-size="11" fill="#7f1d1d" font-family="PingFang SC,sans-serif">🔺 端到端闭环 Sensor-in-Loop</text>
+      <text x="717" y="207" font-size="11" fill="#7f1d1d" font-family="PingFang SC,sans-serif">🔺 大规模随机场景涌现</text>
+      <rect x="717" y="225" width="30" height="18" rx="4" fill="#dbeafe" stroke="#93c5fd" stroke-width="0.5"/>
+      <text x="732" y="238" text-anchor="middle" font-size="8" fill="#1e40af" font-family="PingFang SC,sans-serif">AD</text>
+      <rect x="752" y="225" width="60" height="18" rx="4" fill="#ede9fe" stroke="#c4b5fd" stroke-width="0.5"/>
+      <text x="782" y="238" text-anchor="middle" font-size="8" fill="#5b21b6" font-family="PingFang SC,sans-serif">Embodied</text>
+      <rect x="852" y="228" width="80" height="14" rx="4" fill="rgba(0,0,0,0.06)"/>
+      <rect x="852" y="228" width="75" height="14" rx="4" fill="#dc2626"/>
+      <text x="942" y="239" font-size="8" fill="#7f1d1d" font-family="PingFang SC,sans-serif">保真度 ★★★</text>
+    </svg>
+  </div>
+
+  <!-- Detailed Phase Cards -->
+  <div class="grid-3 fade-in" style="margin-bottom:2rem;">
+    <!-- Phase 1 Detail -->
+    <div class="phase-card" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 1px solid #fcd34d;">
+      <div class="phase-num" style="color:#f59e0b;">01</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:0.5rem;">
+        <div style="width:36px;height:36px;border-radius:8px;background:#f59e0b;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">L</div>
+        <div>
+          <h3 style="margin:0;">LogSim 日志回灌</h3>
+          <span style="font-size:0.78rem;color:#92400e;">保真度 ★☆☆ · 吞吐量 ★★★</span>
+        </div>
+      </div>
+      <p style="font-size:0.85rem;color:#78350f;margin-bottom:0.75rem;">
+        使用真实采集数据开环回放，替换待测算法模块，大规模并发验证算法迭代效果。
+      </p>
+      <div style="font-size:0.82rem;">
+        <strong style="color:#92400e;">🚗 AD 场景</strong>
+        <ul style="color:#78350f;padding-left:1em;margin:0.3rem 0 0.6rem;">
+          <li>感知/预测/规划模块独立回灌</li>
+          <li>4900+ 并发（MIG 7×700 GPU）</li>
+          <li>自动 Metric Diff（mAP/NDS/L2）</li>
+        </ul>
+        <strong style="color:#6d28d9;">🤖 具身场景</strong>
+        <ul style="color:#78350f;padding-left:1em;margin:0.3rem 0;">
+          <li>示教轨迹开环回放</li>
+          <li>策略网络输出 vs 示教对比</li>
+          <li>关节跟踪误差评估</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Phase 2 Detail -->
+    <div class="phase-card" style="background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border: 1px solid #fdba74;">
+      <div class="phase-num" style="color:#ea580c;">02</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:0.5rem;">
+        <div style="width:36px;height:36px;border-radius:8px;background:#ea580c;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">S</div>
+        <div>
+          <h3 style="margin:0;">场景编辑器</h3>
+          <span style="font-size:0.78rem;color:#7c2d12;">保真度 ★★☆ · 灵活性 ★★★</span>
+        </div>
+      </div>
+      <p style="font-size:0.85rem;color:#7c2d12;margin-bottom:0.75rem;">
+        通过可视化工具编辑参数化场景，支持天气/光照/交通流变量组合泛化，高效构建测试矩阵。
+      </p>
+      <div style="font-size:0.82rem;">
+        <strong style="color:#92400e;">🚗 AD 场景</strong>
+        <ul style="color:#7c2d12;padding-left:1em;margin:0.3rem 0 0.6rem;">
+          <li>OpenSCENARIO 2.0 场景描述</li>
+          <li>3D 可视化轨迹编辑</li>
+          <li>交通流 + 天气参数化泛化</li>
+          <li>对抗场景自动生成</li>
+        </ul>
+        <strong style="color:#6d28d9;">🤖 具身场景</strong>
+        <ul style="color:#7c2d12;padding-left:1em;margin:0.3rem 0;">
+          <li>桌面/货架/厨房场景参数化</li>
+          <li>物体位姿随机化</li>
+          <li>材质/光照/干扰物泛化</li>
+          <li>多步任务流程编排</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Phase 3 Detail -->
+    <div class="phase-card" style="background: linear-gradient(135deg, #fff1f2 0%, #fecaca 100%); border: 1px solid #fca5a5;">
+      <div class="phase-num" style="color:#dc2626;">03</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:0.5rem;">
+        <div style="width:36px;height:36px;border-radius:8px;background:#dc2626;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">W</div>
+        <div>
+          <h3 style="margin:0;">WorldSim 世界模型</h3>
+          <span style="font-size:0.78rem;color:#7f1d1d;">保真度 ★★★ · 前沿性 ★★★</span>
+        </div>
+      </div>
+      <p style="font-size:0.85rem;color:#7f1d1d;margin-bottom:0.75rem;">
+        基于生成式世界模型 + 物理引擎，实现高保真闭环仿真，支持端到端模型的 Sensor-in-Loop 验证。
+      </p>
+      <div style="font-size:0.82rem;">
+        <strong style="color:#92400e;">🚗 AD 场景</strong>
+        <ul style="color:#7f1d1d;padding-left:1em;margin:0.3rem 0 0.6rem;">
+          <li>NeRF/3DGS 驾驶场景重建</li>
+          <li>生成式世界模型（GAIA-1, DriveDreamer）</li>
+          <li>端到端 Sensor-in-Loop 闭环</li>
+          <li>长尾场景自动涌现</li>
+        </ul>
+        <strong style="color:#6d28d9;">🤖 具身场景</strong>
+        <ul style="color:#7f1d1d;padding-left:1em;margin:0.3rem 0;">
+          <li>Isaac Sim 物理级仿真</li>
+          <li>触觉/力反馈高保真建模</li>
+          <li>Domain Randomization</li>
+          <li>Sim-to-Real 迁移验证</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test loop → Real world -->
+  <div class="flow-container fade-in">
+    <h3 style="text-align:center;margin-bottom:1rem;color:var(--ink-soft);">仿真三阶段后 → 实车/真机并行验证</h3>
+    <div style="display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:nowrap;min-width:max-content;margin:0 auto;">
+      <div class="flow-node" style="background:#fef3c7;border-color:#f59e0b;color:#92400e;">
+        LogSim<br/><span style="font-size:0.7rem;">大规模回灌</span>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node" style="background:#fed7aa;border-color:#ea580c;color:#7c2d12;">
+        场景编辑<br/><span style="font-size:0.7rem;">参数化泛化</span>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-node" style="background:#fecaca;border-color:#dc2626;color:#7f1d1d;">
+        WorldSim<br/><span style="font-size:0.7rem;">闭环仿真</span>
+      </div>
+      <div class="flow-arrow"></div>
+      <!-- 并行分支容器 -->
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="flow-node" style="background:#d1fae5;border-color:#10b981;color:#065f46;">
+          🚗 路测验证<br/><span style="font-size:0.7rem;">Shadow / Takeover</span>
+        </div>
+        <div class="flow-node" style="background:#ede9fe;border-color:#8b5cf6;color:#5b21b6;">
+          🤖 真机验证<br/><span style="font-size:0.7rem;">Lab / 半结构化场景</span>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:1rem;">
+      <span style="font-size:0.82rem;color:var(--ink-mute);">问题数据回流 → 数据闭环（采集 → 标注 → 场景集） → 模型迭代 → 重新进入测试闭环</span>
+    </div>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ======================== SECTION 5: 具身智能专题 ======================== -->
+<section class="section" id="embodied">
+  <div class="section-header fade-in">
+    <div class="tag" style="background:var(--purple-light);color:#6d28d9;">EMBODIED AI</div>
+    <h2>具身智能 · 研发闭环特色</h2>
+    <p>与自动驾驶共享闭环框架，在数据形态、模型架构、仿真环境和部署方式上具有独特特征</p>
+  </div>
+
+  <!-- AD vs Embodied comparison -->
+  <div class="flow-container fade-in" style="margin-bottom:2rem;">
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th style="width:15%;">闭环环节</th>
+          <th style="width:42%;">🚗 自动驾驶</th>
+          <th style="width:42%;">🤖 具身智能</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>数据形态</strong></td>
+          <td>高帧率多传感器同步流（Camera/LiDAR/Radar），数据量 PB 级，以 clip（10s~60s）为最小单元</td>
+          <td>示教轨迹（观察-动作序列）、力矩曲线、视频 demo，数据量 TB 级，以 episode 为最小单元</td>
+        </tr>
+        <tr>
+          <td><strong>标注重点</strong></td>
+          <td>3D 检测框、语义分割、Occupancy、车道线、可行驶区域</td>
+          <td>动作语义、任务阶段、接触点、成功/失败标签、自然语言指令</td>
+        </tr>
+        <tr>
+          <td><strong>模型架构</strong></td>
+          <td>BEV 感知（BEVFormer）、端到端（UniAD）、Occupancy 网络</td>
+          <td>VLA（RT-2, Octo）、Diffusion Policy、ACT、RL + Foundation Model</td>
+        </tr>
+        <tr>
+          <td><strong>仿真环境</strong></td>
+          <td>CARLA、自研 LogSim、场景编辑器、NeRF/3DGS 世界模型</td>
+          <td>Isaac Sim、MuJoCo、SAPIEN、RFUniverse、Habitat</td>
+        </tr>
+        <tr>
+          <td><strong>评测指标</strong></td>
+          <td>mAP、NDS、ADE/FDE、L2 Error、碰撞率、规划安全率</td>
+          <td>任务成功率、完成时间、泛化评分、Sim-to-Real Gap</td>
+        </tr>
+        <tr>
+          <td><strong>部署目标</strong></td>
+          <td>车载 Orin/Thor，多模块或端到端推理</td>
+          <td>边缘计算单元（Jetson/Orin），多本体适配（臂/人形/四足）</td>
+        </tr>
+        <tr>
+          <td><strong>OTA/更新</strong></td>
+          <td>整包 OTA + Patch 小包，灰度策略 1→5→20→全量</td>
+          <td>模型权重 OTA + 技能包热更新，按本体/场景灰度</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Embodied specific modules -->
+  <div class="grid-2 fade-in">
+    <div class="glow-card">
+      <div class="inner">
+        <h3 style="margin-bottom:0.75rem;"><span style="font-size:1.2rem;">🧠</span> 基础模型（Foundation Model）</h3>
+        <p style="font-size:0.88rem;color:var(--ink-soft);margin-bottom:0.75rem;">
+          具身智能研发的核心在于训练通用的 Vision-Language-Action (VLA) 模型，实现从自然语言指令到机器人动作的端到端映射。
+        </p>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <span class="tag-inline" style="background:#f0fdf4;color:#166534;">视觉编码器</span>
+          <span class="tag-inline" style="background:#eff6ff;color:#1e40af;">语言理解</span>
+          <span class="tag-inline" style="background:#fdf4ff;color:#86198f;">动作解码</span>
+          <span class="tag-inline" style="background:#fef3c7;color:#92400e;">世界模型</span>
+        </div>
+        <ul style="margin-top:0.75rem;font-size:0.85rem;color:var(--ink-soft);">
+          <li><strong>预训练</strong>：大规模互联网视频 + 机器人数据联合预训练</li>
+          <li><strong>微调</strong>：特定任务/本体的 LoRA/Adapter 微调</li>
+          <li><strong>推理</strong>：实时动作预测（10~50 Hz）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="glow-card">
+      <div class="inner">
+        <h3 style="margin-bottom:0.75rem;"><span style="font-size:1.2rem;">🔄</span> Sim-to-Real 迁移</h3>
+        <p style="font-size:0.88rem;color:var(--ink-soft);margin-bottom:0.75rem;">
+          仿真到真实的迁移是具身智能的核心挑战。通过 Domain Randomization、系统辨识和自适应策略弥合 Sim-Real Gap。
+        </p>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <span class="tag-inline" style="background:#ecfdf5;color:#065f46;">Domain Rand</span>
+          <span class="tag-inline" style="background:#ede9fe;color:#5b21b6;">System ID</span>
+          <span class="tag-inline" style="background:#fef3c7;color:#92400e;">Adaptive</span>
+        </div>
+        <ul style="margin-top:0.75rem;font-size:0.85rem;color:var(--ink-soft);">
+          <li><strong>视觉随机化</strong>：纹理/光照/背景/相机参数随机化</li>
+          <li><strong>物理随机化</strong>：摩擦力/质量/惯量/阻尼参数随机化</li>
+          <li><strong>动态随机化</strong>：延迟/噪声/执行误差注入</li>
+          <li><strong>评估闭环</strong>：Sim 成功率 → Real 成功率对比追踪</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Embodied data flywheel -->
+  <div class="flow-container fade-in" style="margin-top:2rem;">
+    <h3 style="text-align:center;margin-bottom:1.5rem;color:var(--ink-soft);">具身智能数据飞轮</h3>
+    <svg viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:800px;margin:0 auto;display:block;">
+      <defs>
+        <marker id="arrowP" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#8b5cf6"/>
+        </marker>
+      </defs>
+      <!-- Flywheel nodes -->
+      <circle cx="400" cy="150" r="110" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="8 4"/>
+
+      <rect x="340" y="20" width="120" height="40" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="400" y="45" text-anchor="middle" font-size="12" font-weight="600" fill="#5b21b6" font-family="PingFang SC,sans-serif">示教采集</text>
+
+      <rect x="520" y="80" width="120" height="40" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="580" y="105" text-anchor="middle" font-size="12" font-weight="600" fill="#5b21b6" font-family="PingFang SC,sans-serif">模型训练</text>
+
+      <rect x="520" y="190" width="120" height="40" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="580" y="215" text-anchor="middle" font-size="12" font-weight="600" fill="#5b21b6" font-family="PingFang SC,sans-serif">仿真评测</text>
+
+      <rect x="340" y="250" width="120" height="40" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="400" y="275" text-anchor="middle" font-size="12" font-weight="600" fill="#5b21b6" font-family="PingFang SC,sans-serif">真机部署</text>
+
+      <rect x="160" y="190" width="120" height="40" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="220" y="215" text-anchor="middle" font-size="12" font-weight="600" fill="#5b21b6" font-family="PingFang SC,sans-serif">失败分析</text>
+
+      <rect x="160" y="80" width="120" height="40" rx="10" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="220" y="105" text-anchor="middle" font-size="12" font-weight="600" fill="#5b21b6" font-family="PingFang SC,sans-serif">定向补采</text>
+
+      <!-- Arrows -->
+      <line x1="460" y1="40" x2="520" y2="85" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arrowP)"/>
+      <line x1="580" y1="120" x2="580" y2="190" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arrowP)"/>
+      <line x1="520" y1="220" x2="460" y2="260" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arrowP)"/>
+      <line x1="340" y1="270" x2="280" y2="225" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arrowP)"/>
+      <line x1="220" y1="190" x2="220" y2="120" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arrowP)"/>
+      <line x1="280" y1="90" x2="340" y2="45" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arrowP)"/>
+
+      <!-- Center label -->
+      <circle cx="400" cy="150" r="40" fill="#8b5cf6" opacity="0.1"/>
+      <text x="400" y="146" text-anchor="middle" font-size="11" font-weight="700" fill="#5b21b6" font-family="PingFang SC,sans-serif">数据飞轮</text>
+      <text x="400" y="161" text-anchor="middle" font-size="9" fill="#7c3aed" font-family="PingFang SC,sans-serif">持续进化</text>
+    </svg>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- ======================== SECTION 6: 平台底座 ======================== -->
+<section class="section" id="platform">
+  <div class="section-header fade-in">
+    <div class="tag" style="background:#f0fdf4;color:#166534;">PLATFORM</div>
+    <h2>平台底座 & 基础设施</h2>
+    <p>为三大闭环提供统一的计算资源、工具链与管理能力</p>
+  </div>
+
+  <div class="grid-3 fade-in">
+    <div class="card" style="border-top:3px solid var(--accent);">
+      <h3>☁️ 混合云资源</h3>
+      <ul>
+        <li>公有云（百度）：训练/评测/仿真</li>
+        <li>私有 IDC：原始数据存储与备份</li>
+        <li>GPU 集群：A100/H100 × 10,000+</li>
+        <li>CPU：300,000+ cores</li>
+        <li>专线带宽：IDC ↔ 公有云</li>
+        <li>弹性调度：MIG / HAMI GPU 虚拟化</li>
+      </ul>
+    </div>
+    <div class="card" style="border-top:3px solid var(--green);">
+      <h3>🔧 通用工具链</h3>
+      <ul>
+        <li>Workflow 引擎：Argo + Volcano</li>
+        <li>可视化工具：WebViz（云端/车端/本地）</li>
+        <li>标注工具：自研 + 三方标注平台</li>
+        <li>数据集管理与检索</li>
+        <li>Issue 管理与 AutoTriage</li>
+        <li>成本核算与资源看板</li>
+      </ul>
+    </div>
+    <div class="card" style="border-top:3px solid var(--purple);">
+      <h3>📋 运营管理</h3>
+      <ul>
+        <li>采集任务管理（在线/离线/专项）</li>
+        <li>标注运营（质量/进度/成本）</li>
+        <li>版本发布管理（ATF）</li>
+        <li>车辆/机器人 OTA 管理</li>
+        <li>权限系统（数据/系统/资源）</li>
+        <li>飞书项目管理集成</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Architecture layers -->
+  <div class="flow-container fade-in" style="margin-top:2rem;">
+    <h3 style="text-align:center;margin-bottom:1.5rem;color:var(--ink-soft);">平台分层架构</h3>
+    <svg viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:900px;margin:0 auto;display:block;">
+      <!-- Layer 5: Application -->
+      <rect x="50" y="10" width="800" height="60" rx="12" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="450" y="35" text-anchor="middle" font-size="14" font-weight="700" fill="#1e40af" font-family="PingFang SC,sans-serif">应用层</text>
+      <text x="450" y="55" text-anchor="middle" font-size="10" fill="#3b82f6" font-family="PingFang SC,sans-serif">数据闭环 | 模型训练评测 | CI/CD 构建发布 | 仿真测试 | 路测管理 | Issue管理</text>
+
+      <!-- Layer 4: Workflow -->
+      <rect x="50" y="85" width="800" height="55" rx="12" fill="#d1fae5" stroke="#10b981" stroke-width="1.5"/>
+      <text x="450" y="108" text-anchor="middle" font-size="14" font-weight="700" fill="#065f46" font-family="PingFang SC,sans-serif">Workflow 编排层</text>
+      <text x="450" y="128" text-anchor="middle" font-size="10" fill="#10b981" font-family="PingFang SC,sans-serif">Argo Workflow + Volcano 调度 | 原子节点编排 | 业务接入接口 | 任务监控</text>
+
+      <!-- Layer 3: Service -->
+      <rect x="50" y="155" width="800" height="55" rx="12" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="450" y="178" text-anchor="middle" font-size="14" font-weight="700" fill="#5b21b6" font-family="PingFang SC,sans-serif">通用服务层</text>
+      <text x="450" y="198" text-anchor="middle" font-size="10" fill="#8b5cf6" font-family="PingFang SC,sans-serif">数据管理 | 标注平台 | WebViz | 场景编辑器 | Issue系统 | 数据集 | 成本中心</text>
+
+      <!-- Layer 2: Infra -->
+      <rect x="50" y="225" width="800" height="55" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="450" y="248" text-anchor="middle" font-size="14" font-weight="700" fill="#92400e" font-family="PingFang SC,sans-serif">基础设施层</text>
+      <text x="450" y="268" text-anchor="middle" font-size="10" fill="#f59e0b" font-family="PingFang SC,sans-serif">K8S + Docker | GPU 虚拟化 (MIG/HAMI) | 文件服务 | ES | 结构化存储 | 网络/专线</text>
+
+      <!-- Layer 1: Resource -->
+      <rect x="50" y="295" width="800" height="55" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+      <text x="450" y="318" text-anchor="middle" font-size="14" font-weight="700" fill="#475569" font-family="PingFang SC,sans-serif">资源层</text>
+      <text x="450" y="338" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="PingFang SC,sans-serif">百度公有云 | 苏州 IDC | 海外云 (UAE) | GPU 集群 | 存储集群 | 专线网络</text>
+
+      <!-- Side: Monitoring -->
+      <rect x="870" y="10" width="20" height="340" rx="6" fill="#fee2e2" stroke="#ef4444" stroke-width="1"/>
+      <text x="880" y="190" text-anchor="middle" font-size="9" fill="#991b1b" font-family="PingFang SC,sans-serif" transform="rotate(90,880,190)">监控 · 告警 · 日志 · 安全</text>
+
+      <!-- Arrows between layers -->
+      <line x1="450" y1="70" x2="450" y2="85" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 2"/>
+      <line x1="450" y1="140" x2="450" y2="155" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 2"/>
+      <line x1="450" y1="210" x2="450" y2="225" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 2"/>
+      <line x1="450" y1="280" x2="450" y2="295" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 2"/>
+    </svg>
+  </div>
+</section>
+
+<div class="sep"></div>
+
+<!-- Footer -->
+<section class="footer-section">
+  <strong>自动驾驶 & 具身智能 · 研发闭环流程方案</strong><br/>
+  <span>数据驱动 · 三环联动 · 持续进化</span><br/>
+  <span style="font-size:0.75rem;margin-top:0.5rem;display:inline-block;">AD Platform Engineering | 平台研发部</span>
+</section>
+
+<script>
+// Smooth scroll for nav links
+document.querySelectorAll('.nav-links a').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+
+// Nav scroll effect + active link
+const nav = document.getElementById('nav');
+const sections = document.querySelectorAll('.section');
+const navLinks = document.querySelectorAll('.nav-links a');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 10);
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 100) current = s.id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+});
+
+// Tab switching
+function switchTab(e, panelId) {
+  const parent = e.target.closest('.fade-in') || e.target.parentElement.parentElement;
+  parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  parent.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+
+// Fade-in on scroll
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

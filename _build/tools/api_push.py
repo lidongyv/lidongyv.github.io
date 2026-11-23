@@ -107,8 +107,16 @@ def main():
     i = 0
     while i < len(diff):
         state = diff[i]
-        path = diff[i + 1] if i + 1 < len(diff) else ""
-        i += 2 if not state.startswith("R") else 3
+        if state.startswith(("R", "C")):
+            # rename/copy: "R100\0old\0new\0" — drop the old path, add the new one
+            old, new = diff[i + 1], diff[i + 2]
+            i += 3
+            entries.append({"path": old, "mode": "100644", "type": "blob", "sha": None})
+            print("  delete %s (renamed)" % old)
+            state, path = "A", new
+        else:
+            path = diff[i + 1] if i + 1 < len(diff) else ""
+            i += 2
         if state.startswith("D"):
             entries.append({"path": path, "mode": "100644", "type": "blob", "sha": None})
             print("  delete %s" % path)

@@ -1,0 +1,1005 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><script>try{if(sessionStorage.getItem('wm_auth')!=='1'){sessionStorage.setItem('wm_after_login',location.pathname.split('/').pop());location.replace('index.html');}}catch(e){}</script>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>多模态交互机制 · 语言↔图像 Survey</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--red:#fb7185;--blue:#60a5fa;--pink:#f0abfc}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 18% -10%,rgba(167,139,250,.18),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.7;min-height:100vh}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 18px 90px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.backlink:hover{border-color:var(--accent2);color:#fff}
+.hero{padding:22px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(126,224,255,.16),rgba(167,139,250,.1));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--accent);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(20px,3vw,30px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 30%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13.5px}
+.badge{display:inline-block;margin-top:10px;font-size:11px;color:var(--amber);border:1px solid rgba(255,211,92,.4);background:rgba(255,211,92,.1);border-radius:999px;padding:3px 11px}
+.callout{background:rgba(126,224,255,.07);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:13px 17px;margin:14px 0;font-size:13.5px;color:var(--text2)}.callout b{color:var(--text)}
+.callout.key{background:rgba(240,171,252,.08);border-left-color:var(--pink)}
+.callout.warn{background:rgba(255,211,92,.07);border-left-color:var(--amber)}
+.callout.ntm{background:rgba(167,139,250,.08);border-left-color:var(--accent2)}
+h2.sec{font-size:18px;font-weight:800;margin:28px 0 6px;display:flex;align-items:center;gap:8px;scroll-margin-top:12px}
+h2.sec .bar{width:4px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--accent),var(--accent2))}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:8px 0}
+.card{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:13px;padding:13px 15px}
+.card h4{font-size:14px;color:var(--accent);font-weight:800;margin-bottom:5px}
+.card p{font-size:12.5px;color:var(--text2)}
+.card .tag{display:inline-block;font-size:10.5px;color:var(--amber);border:1px solid rgba(255,211,92,.35);border-radius:6px;padding:1px 7px;margin-bottom:6px}
+.hl{color:var(--accent);font-weight:700}.hlp{color:var(--pink);font-weight:700}.hlg{color:var(--green);font-weight:700}
+.steps{counter-reset:s;display:flex;flex-direction:column;gap:10px;margin:10px 0}
+.step{position:relative;background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:12px;padding:12px 15px 12px 46px}
+.step:before{counter-increment:s;content:counter(s);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0b1020;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.step h4{font-size:13.5px;color:var(--text);font-weight:700;margin-bottom:3px}.step p{font-size:12.5px;color:var(--text2)}
+figure.fig{margin:14px 0;background:#0a0e1c;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+figure.fig img{width:100%;display:block}
+figcaption{padding:10px 14px;font-size:12px;color:var(--text3);border-top:1px solid var(--line)}figcaption b{color:var(--text2)}
+.pa{list-style:none;display:flex;flex-direction:column;gap:7px;margin:8px 0}
+.pa li{font-size:12.8px;color:var(--text2);background:rgba(0,0,0,.2);border:1px solid var(--line);border-left:3px solid var(--green);border-radius:9px;padding:9px 13px}
+.pa li b{color:var(--text)}
+table.tbl{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.3px}
+table.tbl th,table.tbl td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+table.tbl th{background:rgba(126,224,255,.08);color:var(--accent);font-weight:700}
+table.tbl td b{color:var(--text)}
+table.tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+.eq{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#080c18;border:1px solid var(--line);border-left:3px solid var(--accent2);border-radius:10px;padding:11px 15px;margin:9px 0;font-size:13px;color:var(--text);overflow-x:auto;line-height:2}
+.eq .lbl{color:var(--text3);font-size:11px;float:right}
+.eq b{color:var(--accent)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:rgba(126,224,255,.1);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px;color:var(--accent)}
+pre{background:#080c18;border:1px solid var(--line);border-left:3px solid var(--green);border-radius:10px;padding:12px 15px;margin:10px 0;overflow-x:auto}
+pre code{background:none;border:none;padding:0;color:var(--text);font-size:12px;line-height:1.75;display:block;white-space:pre}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}
+@media(max-width:720px){.grid2{grid-template-columns:1fr}}
+.tocwrap{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 2px}
+.toc{font-size:11.5px;color:var(--text2);border:1px solid var(--line);border-radius:999px;padding:4px 11px;text-decoration:none;background:rgba(0,0,0,.15)}
+.toc:hover{border-color:var(--accent);color:#fff}
+.note2{margin-top:22px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+h3.sub{font-size:14.5px;font-weight:800;color:var(--accent2);margin:18px 0 4px;display:flex;align-items:center;gap:7px;scroll-margin-top:12px}
+h3.sub .n{font-size:10.5px;font-weight:700;color:var(--text3);border:1px solid var(--line);border-radius:6px;padding:1px 7px;background:rgba(0,0,0,.2);white-space:nowrap}
+.wip{background:rgba(255,211,92,.06);border:1px dashed rgba(255,211,92,.4);border-radius:12px;padding:13px 17px;margin:12px 0;font-size:13px;color:var(--amber)}
+</style></head><body><div class=wrap>
+<a href="index.html" class=backlink>← 返回 World Model 主页</a>
+<a href="wm_vtm.html" class=backlink>← 视觉图灵机 VTM</a>
+<a href="wm_vl_survey.html#s2" class=backlink>生成侧条件枚举见 VL Survey §2 →</a>
+
+<header class=hero><div class=kick>Multimodal Interaction · Language ⇄ Vision · 机制 / 原理 / 代码</div>
+<h1>多模态交互机制：语言↔图像的训练、推理、编辑与统一</h1>
+<p class=sub>综合 <b>Wan · Cosmos · Sora · Gemini · Kimi-VL · VLA · GenCeption · Chameleon · Janus</b> 等方法，检索 CVPR/ICCV/NeurIPS/ICML/ICLR/ACL 顶会文献，系统回答：语言与图像<b>训练时如何交互、为什么 work、infer 时如何双向控制、如何基于文字做编辑/inpainting</b>，并给出 <b>代码粒度</b> 的 SOTA + 经典方法分类。</p>
+<div class=badge>⚠ 生成侧「语言作条件」在自驾/机器人 WM 语境的选项枚举见 <a href="wm_vl_survey.html#s2" style="color:var(--accent2)">VL Survey §2</a>；本页聚焦通用机制原理 + 双向 + 编辑 + 系统分类 + 代码</div></header>
+
+<div class=tocwrap>
+<a class=toc href="#tldr">TL;DR · 7问速答</a>
+<a class=toc href="#s0">§0 分类学总览</a>
+<a class=toc href="#s1">§1 训练时融合机制</a>
+<a class=toc href="#s2">§2 为何 work（对齐本质）</a>
+<a class=toc href="#s3">§3 infer·语言控制图像</a>
+<a class=toc href="#s4">§4 infer·图像反推语言</a>
+<a class=toc href="#s5">§5 训练↔infer 的因果</a>
+<a class=toc href="#s6">§6 文字编辑·inpainting</a>
+<a class=toc href="#s7">§7 系统方法分类</a>
+<a class=toc href="#s8">§8 代码速查</a>
+<a class=toc href="#s9">§9 选型 + 参考文献</a>
+</div>
+
+<h2 class=sec id=tldr><span class=bar></span>TL;DR · 7 问速答</h2>
+<div class=secsub>先给结论；每问对应详细章节。所有论文引用在各章逐一核实、标注会议/年份/arXiv。</div>
+<div class=callout key><b>一句话主旨</b>：多模态交互的本质是 <b>把两种模态映射进一个可互相注意（attend）或共享的表征空间</b>，再用一个 <b>条件生成目标</b>（diffusion / flow / autoregressive）把「一个模态的信息」灌进「另一个模态的生成过程」。<b>训练</b>建立对齐与条件依赖；<b>推理</b>只是把这份已学到的条件依赖在采样时放大（如 CFG）或展开（AR 解码）。</div>
+<table class=tbl>
+<tr><th>用户问题</th><th>一句话答案</th><th>详见</th></tr>
+<tr><td><b>Q1</b> 训练时如何实现语言↔图像交互</td><td>五大类注入机制（§1 细分 7 类 A0–A6）：对比对齐、cross-attention（文本作 K/V）、双流 MM-DiT、AdaLN 调制、projection 进 LLM、Q-Former/Resampler 压缩、early-fusion token 拼接；配 diffusion/flow/AR/对比 四类目标</td><td><a href="#s1">§1</a></td></tr>
+<tr><td><b>Q2</b> 交互工作原理 / 为何 work</td><td>大规模图文对 + 共享表征空间 + 注意力对齐，使「跨模态相关性」被编码进权重；条件建模让 p(x|c) 可学</td><td><a href="#s2">§2</a></td></tr>
+<tr><td><b>Q3</b> infer 时语言控制图像 &amp; 图像反推语言</td><td>控制图像＝去噪采样 + <b>Classifier-Free Guidance</b> 外推；反推语言＝视觉 token 入 LLM 上下文后自回归解码</td><td><a href="#s3">§3</a> · <a href="#s4">§4</a></td></tr>
+<tr><td><b>Q4</b> 为何 infer 有此能力 / 训练如何得到</td><td>训练目标（denoising、next-token、condition-dropout）直接决定 infer 行为；CFG 靠训练时随机置空条件学到「有/无条件」两分支</td><td><a href="#s5">§5</a></td></tr>
+<tr><td><b>Q5</b> 基于文字做 inpainting / 编辑</td><td>四类：mask-based 重绘、instruction 微调（InstructPix2Pix）、training-free attention 操纵（Prompt-to-Prompt）、结构条件（ControlNet）</td><td><a href="#s6">§6</a></td></tr>
+<tr><td><b>Q6</b> SOTA + 经典方法分类</td><td>按「交互方向 × 生成范式 × 融合位置」三维归类；系统方法专题见 §7、代码见 §8</td><td><a href="#s7">§7</a> · <a href="#s8">§8</a></td></tr>
+<tr><td><b>Q7</b> survey 页面挂 wm_vtm</td><td>本页即是，挂在 <a href="wm_vtm.html" style="color:var(--accent2)">VTM</a> 下</td><td>—</td></tr>
+</table>
+
+<h2 class=sec id=s0><span class=bar></span>§0 · 分类学总览（三维坐标系）</h2>
+<div class=secsub>把所有方法放进一个统一坐标系：交互方向 × 生成范式 × 融合位置。后续各章是这张表的展开。<b>§1/§3/§4/§6 的每个核心机制均按「① 为什么能 work → ② 工作原理 → ③ 怎么实现 → ④ 为什么这么实现」四问递进详述</b>；§2/§5 是跨机制的共性总纲（各机制 ① / ③④ 的上位归纳）。</div>
+<div class=callout><b>三个正交维度</b>：<br>① <b>交互方向</b>：text→image（生成）/ image→text（理解）/ 双向统一（any-to-any，同一模型两头都能）。<br>② <b>生成范式</b>：diffusion（连续去噪）/ flow-matching（连续速度场）/ autoregressive（离散 token 逐个预测）/ masked（并行掩码预测）。<br>③ <b>融合位置</b>（另一模态的信息从哪里进入）：early-fusion（同一 token 序列）/ cross-attention（外挂交叉注意力）/ AdaLN（调制归一化）/ projection（线性投影进 LLM）/ resampler（Q-Former 压缩）。</div>
+<table class=tbl>
+<tr><th>代表方法</th><th>方向</th><th>生成范式</th><th>融合位置</th><th>类别</th></tr>
+<tr><td><b>Sora / Wan2.2 / Cosmos</b></td><td>text→video</td><td>diffusion / flow</td><td>DiT + cross-attn/AdaLN</td><td>🔥视频/世界模型</td></tr>
+<tr><td><b>Janus-Pro / Emu3 / Chameleon</b></td><td>双向统一</td><td>AR（离散/解耦）</td><td>early-fusion / 双路径</td><td>🔥统一理解+生成</td></tr>
+<tr><td><b>Transfusion / Show-o</b></td><td>双向统一</td><td>AR文本 + diffusion图</td><td>early-fusion + 混合目标</td><td>统一(混合范式)</td></tr>
+<tr><td><b>SD3 / FLUX</b></td><td>text→image</td><td>flow-matching</td><td>MM-DiT（拼接+joint attn）</td><td>🥇SOTA T2I</td></tr>
+<tr><td><b>π0 / OpenVLA / RT-2</b></td><td>image+text→action</td><td>flow / AR</td><td>混合目标 / early-fusion</td><td>🔥VLA 机器人</td></tr>
+<tr><td><b>ControlNet / InstructPix2Pix</b></td><td>image+text→image</td><td>diffusion（外挂/微调）</td><td>zero-conv / 三元组微调</td><td>可控编辑</td></tr>
+<tr><td><b>Qwen-VL / Kimi-VL / LLaVA</b></td><td>image→text</td><td>autoregressive</td><td>projection 进 LLM</td><td>VLM 理解</td></tr>
+<tr><td><b>BLIP-2 / Flamingo</b></td><td>image→text</td><td>autoregressive</td><td>Q-Former / Resampler</td><td>VLM（定长压缩）</td></tr>
+<tr><td><b>Stable Diffusion / Imagen</b></td><td>text→image</td><td>diffusion</td><td>cross-attention</td><td>经典 T2I</td></tr>
+<tr><td><b>DiT</b></td><td>class/text→image</td><td>diffusion</td><td>AdaLN-Zero</td><td>架构地基</td></tr>
+<tr><td><b>CLIP / SigLIP</b></td><td>对齐（双向基座）</td><td>—（对比）</td><td>双塔 + 对比</td><td>对齐地基</td></tr>
+</table>
+<div class=callout warn><b>注</b>：上表为全局定位框架（主 Agent 汇总），各方法的精确 arXiv/会议/年份与机制细节在下方对应章节由专题调研逐一核实给出。</div>
+
+<h2 class=sec id=s1><span class=bar></span>§1 · 训练时 语言↔图像 融合机制 [Q1]</h2>
+<div class=secsub>七类条件注入机制 + <b>「注入之后怎么训练」总论</b>（GT 来源 / 图文冗余怎么办 / 怎么保证 condition 真的 work）+ 四类训练目标；每机制四问 + 公式 + 代码 + 论文原图。<b>⚠ 本章及全文均按 Best First 排序（最新最好 → 基础地基）</b>：编号 <b>A0–A6 是机制"类型 ID"</b>（按 how-condition-enters 逻辑命名，<b>不代表先后</b>），故下面从 A2(MM-DiT 当前 T2I SOTA) 起、A0(CLIP 地基) 收尾。</div>
+<!-- FILL:s1 -->
+<div class=callout key><b>统一视角</b>：训练时"语言↔图像交互" = 先把两模态放进一个<b>可对比 / 可互相 attend</b> 的表征空间，再用一个<b>条件似然 loss</b>（denoising / flow / next-token / contrastive）把"另一模态"的信息压进权重。架构的<b>全部分歧只在一件事——条件（condition）以什么结构"进入"模型</b>。据此分 7 类（记作 A0–A6）。</div>
+
+<h3 class=sub><span class=n>框架</span>『How Condition Enters the Model』7 类注入结构</h3>
+<table class=tbl>
+<tr><th>注入结构</th><th>数学动作</th><th>Q / K,V（若用注意力）</th><th>信息流向</th><th>代表</th></tr>
+<tr><td><b>A2 双流联合 self-attn</b> 🥇</td><td>两模态拼接后一起 attend</td><td>Q,K,V=两模态拼接</td><td><b>双向</b></td><td>MM-DiT（SD3/FLUX）</td></tr>
+<tr><td><b>A6 Early-fusion 拼接</b> 🔥</td><td>两模态 token 同序列统一 self-attn</td><td>Q,K,V=同一混合序列</td><td><b>双向</b></td><td>Chameleon、Emu3、Fuyu</td></tr>
+<tr><td><b>A4 Projection 前缀</b></td><td>视觉特征线性/MLP 投进 LLM 空间</td><td>（进 LLM 后随 self-attn）</td><td>单向（视觉→LLM）</td><td>LLaVA、MiniGPT-4、Fuyu</td></tr>
+<tr><td><b>A5 Resampler/Q-Former</b></td><td>learnable query cross-attend 视觉压定长</td><td>Q=query, K,V=视觉</td><td>单向（视觉→query→LLM）</td><td>BLIP-2、Flamingo</td></tr>
+<tr><td><b>A1 Cross-attention 注入</b></td><td>主模态 attend 条件序列</td><td>Q=主模态, K,V=条件</td><td>单向（条件→主）</td><td>LDM/SD、Imagen</td></tr>
+<tr><td><b>A3 AdaLN 调制</b></td><td>条件→回归 LN 的 scale/shift/gate</td><td>无注意力，逐通道仿射</td><td>单向（全局向量→主）</td><td>DiT、PixArt-α、Sora/Wan</td></tr>
+<tr><td><b>A0 不注入，只对齐</b>（地基）</td><td>双塔各自编码 + 对比拉近</td><td>无注意力，靠余弦相似度</td><td>对称对齐</td><td>CLIP/ALIGN/SigLIP</td></tr>
+</table>
+<div class=callout warn><b>关键洞察</b>：A1/A5 单向、A2/A6 双向对称、A3 只能注入全局向量（逐 token 文本弱）、A0 是"对齐而非注入"（为其它机制提供地基）。<b>真实系统常组合</b>：SD3 = A3(AdaLN pooled) + A2(MM-DiT 逐 token)；Flamingo = A5(Resampler) + A1(gated cross-attn)；MiniGPT-4 = A5(Q-Former) + A4(线性投影)。</div>
+
+<h3 class=sub><span class=n>核心 ⭐</span>注入之后：用什么信号训练？（GT 来源 · 图文冗余怎么办 · 怎么保证 condition 真的 work）</h3>
+<div class=callout key><b>一句话</b>：无论哪种注入结构，<b>condition（另一模态）始终是"输入 / 前缀"，从不是被监督的 target</b>；<b>GT 永远是"被生成 / 被预测的那个模态的真值本身"，或"图文配对关系"</b>。所以"图和文信息一致 / 冗余"<b>不是问题、反而是最好的训练信号</b>——它意味着 condition 与 target 的<b>互信息高</b>、condition 成为强先验、训练更易收敛。真正"没有天然 GT"的只有<b>反事实编辑</b>（同一场景被改后的图现实中不存在），需另造 GT（见 ②）。</div>
+<table class=tbl>
+<tr><th>训练范式</th><th>被监督的 target = GT（从哪来）</th><th>condition 角色</th><th>损失</th><th>梯度如何逼 condition 被"用起来"</th></tr>
+<tr><td>生成·Diffusion（A1/A3）</td><td><b>真实图像</b>加噪的噪声 ε（或 x₀/v）—— 数据集里那张图本身</td><td>文本（输入）</td><td>‖ε − ε_θ(x_t,t,c)‖²</td><td>loss 只在 ε 上算，但 ε_θ <b>依赖 c</b>；梯度反传经 cross-attn/AdaLN/文本 encoder，逼"文本→去噪方向"</td></tr>
+<tr><td>生成·Flow（A2）</td><td>速度场 <b>v = x₁ − x₀</b>（x₁=真实图 latent）</td><td>文本</td><td>‖v_θ(x_t,t,c) − (x₁−x₀)‖²</td><td>同上，梯度经 joint-attn 双流回文本流</td></tr>
+<tr><td>生成·AR-image（A6 生成向）</td><td><b>真实图像的离散 token</b>（teacher-forcing next-token）</td><td>文本前缀</td><td>−Σ log p(tok_i | tok_&lt;i, text)</td><td>文本前缀改变每步 token 分布</td></tr>
+<tr><td>理解·AR-text（A4/A5/A6 理解向）</td><td><b>真实 caption / 答案</b>的文本 token</td><td>图像视觉 token</td><td>−Σ log p(x_i | image, x_&lt;i)</td><td>梯度<b>反传穿过 projector / Q-Former</b>，逼视觉 token"可被语言解码"</td></tr>
+<tr><td>对齐·Contrastive（A0）</td><td><b>配对关系</b>：in-batch"第 i 图配第 i 文"（自监督，无人工标注）</td><td>双向对称</td><td>对称 InfoNCE</td><td>正例点积拉大、负例推小</td></tr>
+</table>
+<div class=callout><b>① 图文"一致 / 冗余"时用什么做 GT？</b>　—— <b>不需要为"冗余"额外造 GT</b>。<b>生成方向</b>：GT 就是训练集里那张<b>真实图像</b>（的去噪 ε / 速度 v / token 目标），文本只是 condition；文本越准确描述该图（越冗余），p(image|text) 的条件熵越低、越好学。<b>理解方向</b>：GT 就是那段<b>真实文本</b> token。<b>对齐方向</b>：GT 是数据天然的<b>配对信号</b>（自监督），冗余的正例对正是要拉近的目标。<b>结论</b>：冗余 = 高互信息 = condition 强 = 训练信号好，绝非"不知道学什么"。（真正的困难不是冗余，而是 ② 的"无天然配对"。）</div>
+<div class=callout warn><b>② 真正"无 GT"的硬骨头：反事实编辑</b>（你问的"用什么做结果训练"在这里最尖锐）　"同一场景 + 被编辑后"的配对图<b>现实不存在</b>。三条造 GT 路线：<b>(a) 合成三元组</b> —— InstructPix2Pix 用 GPT-3 造指令、Prompt-to-Prompt + SD 造"结构对齐的原图/目标图对"，得 45 万 (指令, 原图, 目标图)（详见 <a href="#s6" style="color:var(--accent)">§6②</a>）；<b>(b) 人工标注</b> —— MagicBrush 用 DALL·E 界面人工编辑 1 万真三元组；<b>(c) 可重演前向过程</b> —— 仿真 / 3D 重建重渲染 / 资产合成，得"编辑前后"天然配对（自驾/机器人 WM，见 <a href="wm_vl_survey.html#s3" style="color:var(--accent2)">VL Survey §3 GT 构造</a>）。</div>
+<div class=callout ntm><b>③ 怎么保证 condition 的信息"真的被用"（不被忽略 / 退化）</b><br>· <b>condition dropout（CFG 训练，最关键）</b>：训练以 p≈0.1 随机置空 c，强迫<b>同一网络</b>既学 p(x|c) 又学 p(x)——模型若想偷懒忽略 c，无条件那支的 loss 无法降到条件水平；infer 再用 CFG 外推放大 c 的边际贡献（见 <a href="#s3" style="color:var(--accent)">§3.2</a>）。这既是训练技巧、也是"逼 condition work"的机制。<br>· <b>condition collapse 风险</b>：若 target 本身易建模、或 condition 被"抄近路"，模型会忽略 c（生成与 c 无关）。对策：dropout、cross-attn 强耦合逐 token 文本、<b>先用 CLIP 把 condition 表征对齐好</b>（<a href="#s1" style="color:var(--accent)">A0</a> 地基）再注入。<br>· <b>对齐地基让 condition"可用"</b>：c 若来自已对齐空间（CLIP/T5）本身携带可利用语义、梯度更易接入；Imagen 实证"放大文本 encoder 比放大扩散模型更提升图文对齐"——反证 condition 确被用、且其质量决定上限。<br>· <b>理解向的梯度桥</b>：VLM 语言 loss 梯度<b>必须穿过 projector</b>，逼视觉 token 编码"可被语言解码"的信息（LLaVA 阶段一<b>只训 projector</b> 即为此，见 <a href="#s1" style="color:var(--accent)">A4</a>）。</div>
+
+<h3 class=sub><span class=n>A2</span>双流联合注意力 MM-DiT：SD3 / FLUX（ICML24）</h3>
+<figure class=fig><img src="assets/mmi/sd3_fig2.webp" alt="SD3 MM-DiT dual-stream architecture"><figcaption><b>SD3 MM-DiT Figure 2</b>（arXiv 2403.03206）：Our model architecture. 左＝整体 pipeline（Caption→CLIP-G/CLIP-L/T5-XXL 三文本塔、Noised Latent→Patching、MM-DiT-Block×d）；右＝MM-DiT block <b>双流</b>结构（文本流 c 与图像流 x 各自独立权重、汇入联合 Attention 的 Q/K/V）。RMS-Norm for Q,K 可稳定训练。</figcaption></figure>
+<div class=callout key><b>① 为什么能 work</b>　MM-DiT 把 <a href="#s1" style="color:var(--accent)">A1</a> 的"图像单向 attend 文本"升级成<b>双向联合注意力</b>，关键在<b>文本表征也被精炼</b>：A1 里文本 K,V 由外部 encoder 一次算好、整个去噪过程<b>冻结不变</b>，图像只能被动"查"这串死文本；MM-DiT 把文图 token 拼成一条序列做 joint self-attention，<b>文本 token 也会被图像 attend、也逐层被更新</b>——文本表征在去噪中被当前噪声图"反向精炼"，实测让<b>属性绑定</b>（哪个物体是红的/蓝的）与<b>图内文字拼写</b>显著变好。<b>一手证据（证其必要）</b>：SD3 原论文在同一配方下正面消融 DiT / CrossDiT / UViT / <b>MM-DiT</b>，MM-DiT 在 validation loss、CLIP score、FID <b>三项全胜</b>（与 <a href="#s1" style="color:var(--accent)">A3</a> 四注入实验同理，都在说"条件怎么进决定质量"）。<b>为何还要"双流"</b>：文本 token 与图像 patch 分布本就不同，全共享一套权重会互相将就 → 各模态<b>独立权重</b>(双流) 处理分布差异、<b>联合注意</b>负责信息交换，两者兼得。</div>
+<div class=callout><b>② 工作原理是什么</b>　两模态各自 AdaLN 调制(见 <a href="#s1" style="color:var(--accent)">A3</a>)、各自投影出 Q,K,V（两套权重=双流），再把 Q/K/V <b>沿序列维拼接</b>后做一次 self-attention，最后切回各自部分：</div>
+<div class=eq>Q = [Q_txt ; Q_img]，K = [K_txt ; K_img]，V = [V_txt ; V_img]；　A = softmax(Q·Kᵀ/√d)·V ∈ ℝ^{(N_t+N_i)×d}，再 split 回 (N_t, N_i)<span class=lbl>MM-DiT 2403.03206</span></div>
+<div class=secsub>· 拼接后注意力矩阵是 <b>(N_t+N_i)×(N_t+N_i)</b>，含四个块：txt→txt、img→img（各模态内），以及 <b>txt→img、img→txt（两个跨模态块=双向交互的灵魂）</b>；· 全局条件(时间步 + CLIP-pooled 文本)只经 AdaLN 逐流调制，<b>逐 token 文本靠 joint-attention 喂</b>——这正是"AdaLN 全局 + MM-DiT 逐 token"的分工；· 各模态独立的 LN/QKV/MLP 权重 = "两个独立 transformer 只在 attention 处交汇"。</div>
+<div class=callout><b>③ 怎么实现的</b>　双流 + 联合注意 + 各自 AdaLN 的一个 block（伪代码，含 QK-Norm）；训练用 rectified flow 并配若干稳定性/编码器工程：</div>
+<pre><code>def mmdit_block(x_img, x_txt, c):     # c=全局条件(时间步 + CLIP-pooled 文本)
+    hi = modulate(norm_i(x_img), *adaLN_img(c))   # 各自 AdaLN 调制（独立权重→双流）
+    ht = modulate(norm_t(x_txt), *adaLN_txt(c))
+    qi,ki,vi = to_qkv_img(hi).chunk(3, -1)
+    qt,kt,vt = to_qkv_txt(ht).chunk(3, -1)
+    qi,ki = rmsnorm(qi),rmsnorm(ki);  qt,kt = rmsnorm(qt),rmsnorm(kt)  # ★QK-Norm 稳住高分辨率
+    Q = cat([qt,qi],1); K = cat([kt,ki],1); V = cat([vt,vi],1)  # ★拼接两模态
+    A = softmax(Q @ K.transpose(-1,-2)/sqrt(d)) @ V             # 联合注意→双向互相 attend
+    at, ai = A.split([Nt, Ni], 1)                               # 切回文本/图像
+    x_txt = x_txt + out_txt(at);  x_img = x_img + out_img(ai)   # 各自残差 + MLP
+    return x_img, x_txt</code></pre>
+<div class=secsub>· <b>训练目标</b>：rectified flow（回归"噪声→数据"直线速度场，见 <a href="#s3" style="color:var(--accent)">§3.4</a>），SD3 关键在 <b>logit-normal 时间步采样</b>——把训练信号偏置到轨迹<b>中段</b>(感知最难的噪声档)，正是这个 reweighting 让 RF 终于压过普通扩散。· <b>QK-Norm</b>：256²→1024² 微调时注意力 logit 爆炸、熵坍缩、bf16 发散 → 对两流的 Q,K 各加 <b>RMSNorm</b>（借鉴大 ViT 训练）压住 logit。· <b>三文本 encoder</b>：CLIP-L/14 + OpenCLIP-bigG/14 + <b>T5-XXL(4.7B)</b>；infer 可丢 T5 省显存（美学 win 50%、排版仅 38% → 生成文字建议保留 T5）。· <b>scaling</b>：15 blocks 450M → 38 blocks <b>8B</b>，validation loss 平滑下降；主模型用<b>两套</b>权重（三套仅微涨却更贵）。· <b>FLUX.1</b>（12B，<b>无正式论文，需核实</b>）：双流 MM-DiT 块 + 单流块混合、用 RoPE。</div>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>· <b>为何双向而非 A1 单向</b>：让文本随图像迭代精炼，长 prompt 组合性/图内文字更好；<b>为何双流而非 A6 单流</b>：保留模态特异权重、避免文图分布互相将就，又不失信息交换。三条路对比：<br>
+<table class=tbl>
+<tr><th>维度</th><th>A2 MM-DiT 双流</th><th>A1 Cross-attn</th><th>A6 单流 early-fusion</th></tr>
+<tr><td>信息流向</td><td><b>双向</b>(文↔图)</td><td>单向(文→图)</td><td><b>双向</b>(文↔图)</td></tr>
+<tr><td>模态权重</td><td>各自独立(双流)</td><td>图/文各一套但文本冻结</td><td>完全共享一套</td></tr>
+<tr><td>文本是否被精炼</td><td><b>是</b>(逐层更新)</td><td>否(K,V 一次算好)</td><td>是</td></tr>
+<tr><td>attention 复杂度</td><td>(N_t+N_i)²</td><td>N_i×N_t(较省)</td><td>(N_t+N_i)²</td></tr>
+<tr><td>代表</td><td>SD3 / FLUX</td><td>SD1.x / Imagen</td><td>Chameleon / Fuyu</td></tr>
+</table>
+· <b>代价</b>：文图 token 一起做 attention，计算随 <b>(N_t+N_i)²</b> 增长（比 A1 的 N_i×N_t 贵）；<b>参数量近翻倍</b>(两套 QKV/MLP)；高分辨率训练需 QK-Norm 兜稳定性。SD3 完整配方 = <b>A3(AdaLN 喂 pooled 文本/时间步) + A2(MM-DiT 喂逐 token 文本)</b> 组合。</div>
+
+<h3 class=sub><span class=n>A6</span>Early-Fusion Token 拼接：Chameleon / Emu3 / Fuyu</h3>
+<div class=callout key><b>① 为什么能 work</b>　early-fusion 把图像也变成 token、与文本<b>同处一条序列</b>，从第一层起用<b>同一个 Transformer、同一套 self-attention、同一个 AR next-token 目标</b>——不分主/条件模态，完全对称。双向能力"白送"的根子：单条混合序列里，<b>同一个 loss 靠 token 先后顺序自动训两个方向</b>——文本前缀+图像 token 在后 = text→image（生成）；图像 token 前缀+文本在后 = image→text（理解）。self-attention 让任一后位 token attend 到<b>所有</b>前位 token（不管哪个模态），跨模态依赖与文本内依赖用的是<b>同一套机制</b>。本质：它直接建模<b>联合分布</b> p(混合序列)=∏ p(t_i|t_&lt;i)，两个方向只是从同一个联合里读出的条件。<b>反例</b>：若给图像单独 encoder/单独注意力流（如 A4 的独立 ViT、A2 的双流独立权重），就丢了"一个模型、双向、任意交错"的性质；且若不稳训（无 QK-Norm），共享 softmax 面对文本(离散)与图像(量化)<b>迥异的熵</b>会发散（logit drift），大规模根本训不起来。</div>
+<div class=callout><b>② 工作原理是什么</b>　混合序列用图像分隔符 ⟨img⟩…⟨/img⟩ 包住图像 token，统一 next-token 目标。图像 token 两种来源：<b>离散量化</b>（Chameleon/Emu3：VQ 编码器把图变成 codebook 索引，这些索引<b>并入文本 BPE 词表</b>，图像码就成了字面意义的"额外单词"）或<b>连续投影</b>（Fuyu：patch 线性投影成连续向量直接入序列，不量化）。离散方案下，一个覆盖 |V|=词表+码本 的 softmax <b>同时预测下一个 token 是文字还是图像码</b>——这就是"一个模型通吃理解+生成"的根源。</div>
+<div class=eq>序列 = [ t₁ᵗˣᵗ,…, ⟨img⟩, c₁,…, c₁₀₂₄, ⟨/img⟩, t₃ᵗˣᵗ,… ]　；　L = −Σ_i log p_θ( t_i | t_&lt;i )<br>图像码 cⱼ ∈ 码本(8192)，与文本 BPE 合并成统一词表 |V|=65,536<span class=lbl>Chameleon 2405.09818</span></div>
+<div class=callout><b>③ 怎么实现的</b>　图像先经 VQ 编码成离散码、与文本 id 拼成一条序列，单个 decoder 做 AR；稳训靠 QK-Norm：</div>
+<pre><code># —— Chameleon 式 early-fusion（离散量化）——
+img_codes = vqgan_encode(image)          # 512×512 → 1024 个 codebook 索引（码本 8192）
+seq = [*txt_ids, BOI, *img_codes, EOI, *more_txt_ids]   # 图文同处一条序列
+logits = decoder(embed(seq))             # 一个 decoder 做 AR：词 or 图像码 通吃
+loss = cross_entropy(logits[:-1], seq[1:])              # 混合模态统一 next-token
+
+# ★稳训关键 QK-Norm：Q/K 进 softmax 前 LayerNorm，压 logits 范数、防 logit drift
+def attn(x):
+    q, k, v = to_qkv(x).chunk(3, -1)
+    q, k = ln_q(q), ln_k(k)              # ← QK-Norm（Chameleon 核心）
+    return softmax(q @ k.transpose(-1,-2) / sqrt(d)) @ v</code></pre>
+<div class=secsub><b>数值与配方（已核实）</b>：· <b>Chameleon</b> 图像 tokenizer：512×512 → <b>1024</b> 离散 token，<b>码本 8192</b>；新训 BPE 词表 <b>65,536</b>（含 8192 图像码）。Chameleon-<b>7B/34B</b>，训练 <b>9.2T token</b>（2.1 epoch，约 Llama-2 2T 的 4.6×）。稳训：<b>QK-Norm</b>（Q/K 进 softmax 前 LayerNorm 控 logit drift）+ Z-loss；34B 另做 <b>LN 重排</b>（Swin-v2 式 norm 前置，界定 SwiGLU 的范数增长）。底座沿用 Llama-2（RMSNorm/SwiGLU/RoPE）。· <b>Emu3</b>：文本/图/视频全离散 token、纯 next-token 一统（2409.18869）。· <b>Fuyu</b>：不量化、线性投 patch，A4×A6 混合（见 <a href="#s1" style="color:var(--accent)">A4</a>）。</div>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 对比 + 权衡）</b><br>· <b>为何离散量化（Chameleon/Emu3）而非连续投影（Fuyu）</b>：离散码是字面 token，一个 softmax 就能<b>采样生成图像</b>（真正统一生成）；连续投影更简单、无码本重建上限，但无法靠采样离散词表"生成"图 → Fuyu 偏理解。<br>· <b>为何要 early-fusion 而非 late-fusion（A4/A5）</b>：换来对称双向、单一架构通吃理解+生成、任意图文交错。<br>· <b>核心代价</b>：训练不稳（须 QK-Norm/LN 重排/Z-loss）；量化<b>丢信息</b>（Chameleon 明说 tokenizer 重建富文本图弱 → OCR 受限）；图像 token 长（1024/图）拉长序列、注意力 O(N²)。<br>
+<table class=tbl><tr><th>维度</th><th>离散量化（Chameleon/Emu3）</th><th>连续投影（Fuyu）</th></tr>
+<tr><td>图像→token</td><td>VQ 编码 → codebook 索引</td><td>patch 线性投影 → 连续向量</td></tr>
+<tr><td>能否 AR 生成图像</td><td><b>能</b>（采样离散图像码）</td><td>不能（无离散图像词表）</td></tr>
+<tr><td>词表</td><td>文本 BPE + 图像码本（合并 65,536）</td><td>仅文本词表（图像走连续嵌入）</td></tr>
+<tr><td>信息损失 / 稳定性</td><td>量化有损、须 QK-Norm 稳训</td><td>无量化损、实现更简，偏理解</td></tr></table></div>
+
+<h3 class=sub><span class=n>A4</span>投影进 LLM：LLaVA / MiniGPT-4 / Frozen / Fuyu（NeurIPS23 等）</h3>
+<div class=callout key><b>① 为什么能 work</b>　把视觉特征投进 LLM 就能"看图说话"，靠<b>三件事叠加</b>：(a) 视觉 encoder（CLIP/SigLIP ViT）已被对比学习<b>对齐到语言语义空间</b>（地基见 <a href="#s2" style="color:var(--accent)">§2</a>），patch 特征 Z_v 天然落在"词所指概念"附近；(b) Transformer 的 self-attention <b>只认嵌入向量、不认它从查表还是投影来</b>——projector 只需把 Z_v <b>换基</b>到 LLM 词嵌入子空间、量纲对齐，视觉就成了可被 LLM 解码的"软 token（soft prompt）"；(c) 语言 next-token CE 的梯度<b>反传穿过 projector</b>，强制视觉 token 只携带"能被语言解码"的语义。<b>反例</b>：用未对齐的随机 ViT、或让 projector 停在随机初始化，LLM 看到的前缀就是噪声、无法 grounding；密集 OCR / 精确计数常翻车，正因这些语义无法从 CLIP 特征稳定解码（<a href="#s4" style="color:var(--accent)">§4</a> GenCeption 证据）。</div>
+<div class=callout><b>② 工作原理是什么</b>　视觉 encoder 产 patch 特征 Z_v，投影器 Proj_W 映到 LLM 词嵌入维 d_llm 得"视觉 token" H_v，与文本 token 拼成一条序列做自回归，训练目标是<b>只对答案 token</b> 的 next-token 交叉熵。关键直觉：LLM 正常输入是 <code>inputs_embeds = Embed(ids)</code>，这里对图像槽位<b>跳过 embedding 查表</b>、直接塞连续的 H_v——因为注意力作用在嵌入上，只要 H_v 落在同一个 d_llm 空间、范数量纲相近，它就被当"普通 token"处理。这正是<b>线性/MLP 换基就够用</b>的原因。</div>
+<div class=eq>Z_v = ViT(image) ∈ ℝ^(n×d_v)　；　H_v = Proj_W(Z_v) ∈ ℝ^(n×d_llm)<br>序列 = [ H_txt^pre , H_v , H_txt^post ]　；　L_VLM = −Σ_i log p_Φ( x_i | H_v, x_&lt;i )<span class=lbl>LLaVA 2304.08485</span></div>
+<div class=secsub>· <b>数值实例（LLaVA-1.5）</b>：336×336 图 → CLIP ViT-L/14 出 24×24=<b>576</b> 个 patch，d_v=1024；projector 1024→d_llm（Vicuna-13B d_llm=5120）⇒ H_v ∈ ℝ^(576×5120)。<b>一张图吃掉 576 个上下文 token</b>。· LLaVA-1.0（224px）→ 16×16=<b>256</b> token。· 自回归分解 p(answer|image,question)=∏_i p(x_i|H_v,question,x_&lt;i)，梯度回流至 W（及阶段二的 LLM）。</div>
+<div class=callout><b>③ 怎么实现的</b>　projector 极简（LLaVA-1.5=2 层 MLP+GELU，1.0=单线性），Fuyu 连独立 encoder 都省掉、直接线性投 patch 像素进 decoder 第一层：</div>
+<pre><code>class LlavaProjector(nn.Module):        # LLaVA-1.5 = 2 层 MLP（1.0 是单线性层）
+    def __init__(self, d_vision, d_llm):
+        self.proj = nn.Sequential(nn.Linear(d_vision, d_llm), nn.GELU(),
+                                  nn.Linear(d_llm, d_llm))
+    def forward(self, Z_v): return self.proj(Z_v)   # patch特征 → LLM 词嵌入空间的"软token"
+
+def build_inputs(image, prompt_ids, vit, projector, llm):
+    H_v   = projector(vit(image))                   # ★注入点：投到 LLM 词嵌入空间
+    H_txt = llm.embed_tokens(prompt_ids)
+    return replace_image_placeholder(H_txt, H_v)    # 视觉token插到 &lt;image&gt; 占位 → 喂 LLM 做 AR
+
+# —— Fuyu-8B：无独立视觉 encoder，patch 原始像素线性投影直入 decoder ——
+self.vision_embed_tokens = nn.Linear(patch*patch*channels, hidden)   # 展平 patch → 隐维
+# 图像 token 与文本同序列（raster-scan + image-newline 符），去图像专用位置编码 → 任意分辨率</code></pre>
+<div class=secsub><b>训练配方与数值（均已核实）</b>：· <b>LLaVA-1.5</b> 两阶段——① 对齐：558K LAION-CC-SBU，<b>只训 MLP connector</b>（ViT+LLM 冻结），bs=256 / lr=1e-3 / 1 epoch / ~5.5h（13B, 8×A100-80G）；② 指令微调：665K 混合（158K LLaVA 对话 + VQAv2/GQA/OCR-VQA…），训 connector+LLM（ViT 仍冻结），bs=128 / lr=2e-5 / ~20h。· <b>LLaVA-1.0</b>：595K CC3M(阶段一) / 158K GPT-4 生成(阶段二)，单线性 projector，256 token。· <b>MiniGPT-4</b>：阶段一 ~5M 图文对齐、阶段二仅 3,500 条高质量对话，<b>只训一个线性层</b>（冻结 EVA-ViT+Q-Former+Vicuna）。· <b>Frozen</b>(NeurIPS21) 首次把视觉→连续 embedding 前缀喂<b>冻结</b> LM，跑通 few-shot——LLaVA/MiniGPT-4 的直系祖先。</div>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 对比 + 权衡）</b><br>· <b>为何"投影"而非"cross-attn 注入"</b>：projector 参数最少（一个 MLP），能<b>复用冻结的强 encoder + 强 LLM</b>，工程门槛最低 → 当前开源 VLM 主流；Flamingo 式插层（A5）要新训一堆交错层。<br>· <b>为何两阶段</b>：阶段一先廉价对齐 projector、不动 LLM（不破坏语言能力）；阶段二才教指令遵循。跳过阶段一直接端到端小数据训，对齐不稳。<br>· <b>为何 1.0 线性 → 1.5 换 MLP</b>：MLP 换基更有表达力，实测多榜显著提升。<br>· <b>核心代价</b>：全 patch 直入 → 视觉 token 多（576/图），长图/多图/视频<b>撑爆上下文</b>（注意力 O(N²)）——这正是 A5（Q-Former/Resampler）要解决的。<br>
+<table class=tbl><tr><th>维度</th><th>A4 全 patch 投影（LLaVA/Fuyu）</th><th>A5 定长压缩（Q-Former/Resampler）</th></tr>
+<tr><td>视觉 token 数</td><td><b>= patch 数（576，随分辨率涨）</b></td><td><b>= query 数（32/64，固定）</b></td></tr>
+<tr><td>细节保留</td><td>高（全 patch，利于精细/OCR）</td><td>受压缩瓶颈，可能丢细粒度</td></tr>
+<tr><td>多图/视频/长上下文</td><td>贵（token 随图数线性膨胀）</td><td>友好（定长，与输入长度无关）</td></tr>
+<tr><td>新增可训模块</td><td>仅一个 MLP（最省）</td><td>Q-Former/Resampler（较重、训练更复杂）</td></tr></table></div>
+
+<h3 class=sub><span class=n>A5</span>Resampler / Q-Former：BLIP-2 / Flamingo（ICML23/NeurIPS22）</h3>
+<figure class=fig><img src="assets/mmi/blip2_fig2.webp" alt="BLIP-2 Q-Former architecture and self-attention masking"><figcaption><b>BLIP-2 Figure 2</b>（arXiv 2301.12597）：(Left) Q-Former 结构与第一阶段视觉-语言表征学习——三目标 <b>ITC/ITM/ITG</b> 迫使 learnable queries 抽取与文本最相关的视觉表征；(Right) 每个目标的 self-attention masking（Bi-directional / Multi-modal Causal / Uni-modal）控制 query-text 交互。</figcaption></figure>
+<div class=callout key><b>① 为什么能 work</b>　A4 把<b>全部</b> patch 塞进 LLM，token 太多、多图/视频撑爆上下文。A5 的地基是 <b>Perceiver 的非对称 cross-attention</b>：一组<b>固定数量、可学习的 query</b> 作 Q 去 attend 变长视觉（K,V），把任意长输入<b>蒸馏进定长 bottleneck</b>（复杂度 O(N²)→O(N·M), M≪N）。为什么"压缩不崩"？因为 query 不是平均池化，而是<b>内容自适应</b>地"挑"信息——softmax(QKᵀ) 让每个 query 学会聚焦一类语义（物体/属性/关系）；BLIP-2 更用 <b>ITC/ITM/ITG 三目标</b>逼 query 只保留"与文本最相关"的视觉信息（信息瓶颈原理）。<b>反例</b>：把 query 换成固定的均值/最大池化，信息按位置平摊、无法按语义取舍，细粒度对齐立刻退化；Flamingo 消融也证明 Resampler &gt; 朴素 Transformer &gt; MLP。</div>
+<div class=callout><b>② 工作原理是什么</b>　设 k 个可学习 query Q∈ℝ^(k×d)、视觉特征 X∈ℝ^(N×d_v)（N 变长）。cross-attention：A=softmax( (Q W_q)(X W_k)ᵀ/√d )，输出 O=A·(X W_v)∈ℝ^(k×d)——<b>输出 token 数恒等于 query 数 k，与 N 无关</b>，这就是"变长压定长"。BLIP-2 的 Q-Former 更进一步：query 之间还做 self-attention、并<b>按任务切换 attention mask</b> 与文本交互——ITC 用单模态 mask（禁 query 看文本，防泄漏）、ITM 用双向 mask（细粒度匹配）、ITG 用因果 mask（逼 query 保住够生成的视觉信息）；一套结构同时当对齐器与压缩器。Flamingo 则把 Resampler 的定长 token 作 K,V，用<b>新插入的 gated cross-attn</b> 喂进冻结 LM。</div>
+<div class=eq>O = softmax( (Q W_q)(X W_k)ᵀ / √d ) · (X W_v)　，　Q∈ℝ^(k×d) 可学习，X∈ℝ^(N×d_v)<br>|O| = k（固定）⊥ N　⇒　BLIP-2: k=32, d=768；Flamingo Resampler: k=64<span class=lbl>BLIP-2 2301.12597 / Flamingo 2204.14198</span></div>
+<div class=callout><b>③ 怎么实现的</b>　Q-Former / Resampler 的共同骨架就是"可学习 query 作 Q、视觉作 K,V"的一层 cross-attention：</div>
+<pre><code>class QueryResampler(nn.Module):     # BLIP-2 Q-Former / Flamingo Resampler 共同骨架
+    def __init__(self, n_query, d, d_vision):
+        self.query = nn.Parameter(torch.randn(n_query, d))   # ★可学习 query（如 32/64 个）
+        self.to_q = nn.Linear(d, d); self.to_k = nn.Linear(d_vision, d); self.to_v = nn.Linear(d_vision, d)
+    def forward(self, vision_feats):          # [B, N, d_vision]，N 可变长/很大
+        q = self.to_q(self.query); k = self.to_k(vision_feats); v = self.to_v(vision_feats)
+        attn = softmax(q @ k.transpose(-1,-2) * scale)       # query 从视觉里"挑"信息
+        return ffn(attn @ v)                  # [B, n_query, d] ← 定长视觉token，喂 LLM</code></pre>
+<div class=secsub><b>数值与配方（已核实）</b>：· <b>BLIP-2 Q-Former</b>：k=<b>32</b> query、d=768，由 <b>BERT-base 初始化</b>（cross-attn 层随机初始化、每隔一层插一个），共 <b>188M</b> 参数。输出 Z 尺寸 32×768 ≪ 冻结视觉特征 257×1024（ViT-L/14）——瓶颈逼 query 抽"与文本最相关"信息。两阶段：① 冻结 ViT，query↔文本联合训 <b>ITC+ITM+ITG</b>；② 冻结 LLM（OPT/FlanT5），query 经线性层作前缀做语言生成。· <b>Flamingo</b>：Resampler 出 <b>64</b> token；GATED XATTN-DENSE 插进冻结 <b>Chinchilla</b>（1.4B/7B/70B → Flamingo-3B/9B/80B）层间，输出乘 <b>tanh(α)、α 初始化为 0</b> ⇒ 训练初等价原 LM，门再渐开（保护预训练权重）。</div>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 对比 + 权衡）</b><br>· <b>为何 learnable query 而非池化</b>：query 是内容自适应的可微"提问器"，能按语义取舍并被下游 loss 端到端优化；池化固定、丢语义结构。<br>· <b>为何 BLIP-2 要三目标而非只对齐</b>：ITC 学粗对齐、ITM 学细粒度匹配（难负例挖掘）、ITG 逼 query 保住"够生成文本"的完整视觉信息——单靠 ITC 压缩会丢生成所需细节。<br>· <b>为何 Flamingo 用 zero-init 门</b>：把新模块"安全"接进已训好的 LM，避免随机 cross-attn 一上来毁掉语言能力（与 A3 的 adaLN-Zero 同思想）。<br>· <b>代价</b>：多一个待训模块、Q-Former 三目标训练较复杂；定长压缩<b>可能丢细粒度</b>（密集 OCR 弱于 A4 全 patch）。<br>
+<table class=tbl><tr><th>维度</th><th>BLIP-2 Q-Former</th><th>Flamingo Perceiver Resampler</th></tr>
+<tr><td>定长 token 数</td><td>32（query）</td><td>64（latent）</td></tr>
+<tr><td>接入 LLM 方式</td><td>query→线性层→<b>前缀</b>拼接</td><td><b>gated cross-attn</b> 插进冻结 LM 层间</td></tr>
+<tr><td>训练目标</td><td>阶段一 ITC+ITM+ITG，阶段二语言 loss</td><td>图文交错 next-token（LM 冻结）</td></tr>
+<tr><td>额外能力</td><td>兼做图文对齐（可检索）</td><td>few-shot in-context、多图/视频交错</td></tr></table></div>
+
+<h3 class=sub><span class=n>A1</span>Cross-Attention 注入：Stable Diffusion / Imagen（CVPR22/NeurIPS22）</h3>
+<figure class=fig><img src="assets/mmi/ldm_fig3.webp" alt="Latent Diffusion Model architecture with cross-attention conditioning"><figcaption><b>LDM/SD Figure 3</b>（arXiv 2112.10752）：We condition LDMs either via concatenation or by a more general cross-attention mechanism. 图中 Denoising U-Net εθ 内的 <b>Q/K/V crossattention</b> 块即文本注入点，右侧 Conditioning 塔经 τθ 编码语义图/文本/表征/图像后作 K,V。</figcaption></figure>
+<div class=callout key><b>① 为什么能 work</b>　文本能逐区域控制图像，根子是<b>两件事叠加</b>：(a) 文本经 encoder（SD 用 CLIP-text、Imagen 用冻结 T5-XXL）被编码进一个<b>与视觉语义对齐</b>的向量序列（对齐地基见 <a href="#s1" style="color:var(--accent)">A0</a>）；(b) cross-attention 的 softmax(QKᵀ) 让图像<b>每个空间位置</b>去"查询"这串文本 token、得到一组归一化权重 =「我这块像素该听哪些词」。海量图文对上，denoising loss 的梯度把这套「词↔区域」对应<b>蒸馏进 W_Q/W_K/W_V</b>，文本于是获得改写局部内容的能力。<b>反例（证其必要）</b>：拿掉 cross-attn 的无条件 U-Net 只会生成"某种图"、文本无处注入，无法生成"符合这句话的图"——交互能力正来自这层注意力。</div>
+<div class=callout><b>② 工作原理是什么</b>　LDM 先用 VAE 把像素压到 latent z（感知压缩省算力），在 latent 上做 U-Net 去噪；文本通过在 U-Net 每个（部分）分辨率块插入的 cross-attention 注入：</div>
+<div class=eq>Attention(Q,K,V) = softmax(QKᵀ/√d)·V ；　Q = W_Q·φ(z_t)〔图像 latent，逐空间位置〕，　K = W_K·τ(y)、V = W_V·τ(y)〔文本序列 embedding〕<span class=lbl>LDM 2112.10752</span></div>
+<div class=secsub>· <b>Q</b> 来自图像当前层特征（flatten 成 token），<b>K/V</b> 来自文本 encoder τ(y)；· softmax 沿"所有文本 token"归一化 → 每个图像位置对文本 V 加权求和 = 吸收的语义；· 多头让不同 head 关注不同语义面（颜色/物体/关系）；· 与图像自注意力 <code>attn1</code> 串联成 <code>BasicTransformerBlock</code>（自注意管图像内部一致、交叉注意管"听文本"）。</div>
+<div class=callout><b>③ 怎么实现的</b>　文本 encoder 出的序列 embedding 作 <code>encoder_hidden_states</code> 透传进 UNet、被每个 cross-attn 当 K,V；ε-prediction 的 MSE 梯度反传穿过所有 cross-attn（及文本 encoder，若不冻结），把"文本→去噪方向"学出：</div>
+<pre><code># diffusers UNet2DConditionModel 的 encoder_hidden_states 注入（训练侧全链路）
+latents = vae.encode(pixel_values).latent_dist.sample() * 0.18215
+noise   = torch.randn_like(latents)
+t       = torch.randint(0, 1000, (bsz,))
+noisy   = scheduler.add_noise(latents, noise, t)              # z_t = √ᾱ_t·z_0 + √(1-ᾱ_t)·ε
+ids     = tokenizer(captions, max_length=77, ...).input_ids
+encoder_hidden_states = text_encoder(ids)[0]                  # [B,77,768] ← K,V 来源
+noise_pred = unet(noisy, t,
+                  encoder_hidden_states=encoder_hidden_states).sample  # ★注入点 → 每个 cross-attn 的 K,V
+loss = F.mse_loss(noise_pred, noise)                          # ε-prediction；v-pred 则 target 换成 v</code></pre>
+<div class=eq>训练目标 L_LDM = E_{z_0,y,ε,t} ‖ ε − ε_θ(z_t, t, τ_θ(y)) ‖²（第三个入参即文本 → 学条件 score ∇log p(z_t|y)）<span class=lbl>infer 侧 CFG/采样见 §3</span></div>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>· <b>为何用 cross-attn 而非 concat 文本进输入</b>：concat 需定长、且文图混在同一自注意里难对齐；cross-attn 天然支持<b>变长文本</b>、每层反复回看文本、区域级对齐强（DiT 实测 in-context/concat 注入 FID 最差，见 <a href="#s1" style="color:var(--accent)">A3</a>）。<br>· <b>为何文本作 K,V、图像作 Q</b>：要生成的"主模态"是图像，应由图像主动查询文本条件；反过来就成了"图像改写文本"（那是 image→text，非生成）。<br>· <b>为何每个 block 都插</b>：让文本在各分辨率/各去噪深度持续作用，粗结构与细纹理都受控。<br>· <b>为何用外部预训练文本 encoder（尤其 Imagen 冻结 T5-XXL）</b>：纯文本大模型比 CLIP-text 更懂长句/组合；Imagen 实证<b>放大文本 encoder 比放大扩散模型更提升对齐</b>——语言侧表征是瓶颈。<br>· <b>代价</b>：单向（文→图不反哺，故 SD3 改双向 MM-DiT，见 <a href="#s1" style="color:var(--accent)">A2</a>）；每 block +约 15% flops；依赖外部 text encoder。</div>
+
+<h3 class=sub><span class=n>A3 ⭐</span>AdaLN / AdaLN-Zero 调制：DiT（ICCV23）</h3>
+<figure class=fig><img src="assets/mmi/dit_fig3.webp" alt="DiT architecture and conditioning block variants"><figcaption><b>DiT Figure 3</b>（arXiv 2212.09748）：左＝DiT 整体（Noised Latent→Patchify→N× DiT Block→Linear）；右＝block 变体图 <b>adaLN-Zero / Cross-Attention / In-Context</b>（对应 DiT 原文 §3 讨论的 4 种 conditioning，adaLN 与 adaLN-Zero 合并展示）。原文结论：Adaptive layer norm works best。</figcaption></figure>
+<div class=callout key><b>① 为什么能 work</b>　两点叠加。<b>(a) 形状匹配</b>：DiT 要注入的条件（时间步 t、类别/pooled 文本）本质是<b>一个全局向量</b>，对图像的作用是"全局风格/强度"而非"逐区域内容"——用 LayerNorm 的 <b>scale/shift（FiLM 式逐通道仿射）</b>承载它，比硬塞进 attention 更贴合"全局标量"本性，且几乎不加 flops。<b>(b) 恒等初始化稳训练</b>：AdaLN-Zero 把残差<b>门 α 零初始化</b> → 每个 block 训练初是<b>恒等映射</b>，深层 Transformer ≈ 恒等、梯度干净，大模型/大 batch 不易崩；随训练 α/γ/β 才"长出来"、条件影响平滑增强（同 ResNet zero-γ / Fixup / ReZero 的 identity-init 思想）。<b>一手证据（证其必要）</b>：DiT 原论文四注入对照中，adaLN-Zero <b>比 vanilla adaLN 显著更好</b>（去掉 zero-init 就变差 → 初始化是关键），并比 cross-attn/in-context 的 FID 更低、flops 最省；400K 步时其 FID <b>约为 in-context 的一半</b>。</div>
+<div class=callout><b>② 工作原理是什么</b>　标准 LayerNorm 的仿射 γ,β 是<b>固定</b>学出来的；AdaLN 改成<b>从条件 c 回归</b>：γ(c),β(c)=MLP(c)。DiT 每个 block 回归 <b>6 组</b>参数——注意力与 MLP 各一套 (shift, scale, 残差门 gate)：</div>
+<div class=eq>modulate(x, shift, scale) = x·(1 + scale) + shift ；　x ← x + α₁(c)·Attn(modulate(LN(x), β₁, γ₁)) ；　x ← x + α₂(c)·MLP(modulate(LN(x), β₂, γ₂))<span class=lbl>DiT 2212.09748</span></div>
+<div class=secsub>· <b>为何 6 组</b>：attn 前的 (shift₁,scale₁)、attn 残差门 α₁、mlp 前的 (shift₂,scale₂)、mlp 残差门 α₂ —— 共 6×hidden，由 <code>SiLU→Linear(hidden, 6·hidden)</code> 一次回归；· <b>"Zero"如何得到恒等</b>：把回归这 6 组的<b>最后一层权重/偏置全零初始化</b> → 初始 α=scale=shift=0 → <code>modulate</code> 输出 = x·1+0 = x，且残差门 α=0 使<b>残差支路输出为 0</b> → x←x（恒等）；· AdaLN <b>不用注意力</b>，条件只变成逐通道仿射系数去缩放/平移激活并门控残差。</div>
+<div class=callout><b>③ 怎么实现的</b>　官方 DiT block 的 <code>modulate</code> 与 adaLN-Zero 零初始化（逐行）；配 DiT-XL/2 实测数值：</div>
+<pre><code>def modulate(x, shift, scale): return x * (1 + scale) + shift   # ★AdaLN 核心
+
+class DiTBlock(nn.Module):
+    def forward(self, x, c):     # x:[B,N,D]图像token; c:[B,D]条件(时间步+类别/文本)
+        shift1,scale1,gate1, shift2,scale2,gate2 = self.adaLN_modulation(c).chunk(6, 1)
+        x = x + gate1 * self.attn(modulate(self.norm1(x), shift1, scale1))
+        x = x + gate2 * self.mlp (modulate(self.norm2(x), shift2, scale2))
+        return x
+# ★AdaLN-Zero: 回归调制参数的最后一层零初始化 → 训练初每 block 是恒等映射
+nn.init.constant_(block.adaLN_modulation[-1].weight, 0)
+nn.init.constant_(block.adaLN_modulation[-1].bias,   0)</code></pre>
+<div class=secsub>· <b>DiT-XL/2</b>：depth 28、hidden 1152、16 头、patch 2（32×32 latent → 256 token），<b>675M</b> 参数、<b>118.6 Gflops</b>；ImageNet 256² 用 CFG=1.5 训 7M 步 <b>FID-50K 2.27</b>（当年 SOTA，把 LDM 的 3.60 压下来）。· <b>算力对比</b>：DiT-XL/2 118.6 Gflops vs LDM-4 103.6、ADM 1120、ADM-U 742——同级质量下 transformer backbone 并不比 U-Net 贵。· <b>scaling</b>：DiT-S(33M)→B(130M)→L(458M)→XL(675M)，Gflops 越高 FID 越低，遵循与 LLM 类似的 scaling law。</div>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>· <b>DiT 原论文"四种条件注入"对照实验</b>（"how condition enters 决定成败"的最强一手证据）：<br>
+<table class=tbl>
+<tr><th>注入方式</th><th>做法</th><th>Gflops (DiT-XL/2)</th><th>恒等初始化</th><th>FID</th></tr>
+<tr><td>In-context</td><td>把 t,c 当额外 token 拼进序列</td><td>119.4</td><td>否</td><td>基线（最差）</td></tr>
+<tr><td>Cross-attention</td><td>条件作独立序列，图像 cross-attend</td><td>137.6 (+15%)</td><td>否</td><td>中等</td></tr>
+<tr><td>AdaLN(vanilla)</td><td>从 t+c 回归 LN 的 scale/shift</td><td>118.6 (最省)</td><td>否</td><td>好</td></tr>
+<tr><td><b>AdaLN-Zero</b></td><td>AdaLN + 残差 gate + 零初始化</td><td><b>118.6 (最省)</b></td><td><b>是</b></td><td><b>最好</b>（约 in-context 的一半）</td></tr>
+</table>
+· <b>为何选 AdaLN-Zero</b>：最省算力、FID 最低、训练最稳（恒等初始化），三者兼得。<br>· <b>局限与代价</b>：AdaLN 只能注入<b>一个全局向量</b>（pooled 文本/时间步/类别），<b>逐 token 文本对齐弱</b>——所以 SD3 在 AdaLN 之外还要 <a href="#s1" style="color:var(--accent)">A2</a> MM-DiT 的 joint-attention 来喂逐 token 文本。被 SD3 / PixArt-α / Sora / Wan 广泛沿用（见 <a href="#s7" style="color:var(--accent)">§7</a>）。</div>
+
+<h3 class=sub><span class=n>A0</span>对比对齐地基：CLIP / ALIGN / SigLIP（ICML21/ICCV23）</h3>
+<figure class=fig><img src="assets/mmi/clip_fig1.webp" alt="CLIP contrastive pre-training and zero-shot"><figcaption><b>CLIP Figure 1</b>（arXiv 2103.00020）：Summary of our approach. While standard image models jointly train an image feature extractor and a linear classifier, <b>CLIP jointly trains an image encoder and a text encoder to predict the correct pairings of a batch of (image, text) training examples</b>. At test time the learned text encoder synthesizes a zero-shot linear classifier by embedding the names/descriptions of the target dataset's classes.</figcaption></figure>
+<div class=callout key><b>① 为什么能 work</b>　对比学习不"注入"、而是把两个模态搬进<b>同一个可比较的空间</b>。本质是：InfoNCE 是配对图文<b>互信息 I(image;text) 的变分下界</b>——van den Oord(2018, CPC) 证明 <code>I(image;text) ≥ log N − L_InfoNCE</code>，且 N（batch 内负样本数）越大界越紧。最小化对比 loss ⇔ 最大化"图文都指向的那部分语义"的互信息，网络被迫丢弃与文本无关的像素噪声、只保留"猫/红色/在草地上"这类跨模态共有概念。<b>反例（证其必要）</b>：若两塔各自独立训练、无共享对比目标，两个嵌入空间的坐标轴是<b>任意且不对齐</b>的，"图向量·文向量"的余弦相似度<b>没有意义</b>；换成传统监督分类则被锁死在固定标签集、无法开放词表 zero-shot。正因有了这个已对齐的球面，下游 <a href="#s1" style="color:var(--accent)">A1</a> cross-attn、<a href="#s1" style="color:var(--accent)">A4</a> projection 才是在"同一语义空间里搬运信息"——没有 A0 地基，注入就是鸡同鸭讲。</div>
+<div class=callout><b>② 工作原理是什么</b>　双塔各自编码 → L2 归一化到单位球 → 可学习温度 τ 缩放 → 相似度矩阵 → <b>对称 InfoNCE（双向交叉熵）</b>。对含 N 个真实配对的 batch，把对角线当正例、其余 N−1 当负例，"给图找对的文"与"给文找对的图"两方向各算一次交叉熵再平均：</div>
+<div class=eq>I_i = f_I(img_i)/‖f_I(img_i)‖，T_j = f_T(txt_j)/‖f_T(txt_j)‖，s_ij = I_i·T_j ；　L_CLIP = ½( L_{i→t} + L_{t→i} )，其中 L_{i→t} = −(1/N)Σ_i log[ exp(s_ii/τ) / Σ_j exp(s_ij/τ) ]<span class=lbl>CLIP 2103.00020</span></div>
+<div class=eq>互信息下界：I(image;text) ≥ log N − L_InfoNCE（N 越大界越紧）→ 最小化 loss = 最大化配对互信息<span class=lbl>CPC 1807.03748</span></div>
+<div class=secsub>· <b>为何 L2 归一化</b>：把点积变成<b>余弦</b>（值域 [−1,1]），只比方向不比模长，训练更稳；· <b>温度 τ</b>：控制 softmax 锐度——τ 小则分布尖锐、更"较真"于最近负例；· <b>为何对称</b>：image→text 与 text→image 都要对齐，这份<b>双向</b>正是后续图↔文两方向都能 work 的根；· 全程<b>无任何跨模态注意力</b>，交互只发生在最后 <code>I_e @ T_e.T</code> 一个点积。</div>
+<div class=callout><b>③ 怎么实现的</b>　图文交互<b>只在最后 <code>I_e @ T_e.T</code> 的点积</b>——"点积要大"的约束逼两塔把同语义图文放到球面邻近处。原论文 Figure 3 的 numpy 风格与关键超参：</div>
+<pre><code># CLIP 对称 InfoNCE（原论文 Figure 3 numpy 风格）
+I_e = l2_normalize(image_encoder(I) @ W_i)   # [n, d] 投到共享空间并归一化
+T_e = l2_normalize(text_encoder(T)  @ W_t)   # [n, d]
+logits = (I_e @ T_e.T) * exp(t)              # 余弦 * 可学习温度 exp(t)；初始 t=log(1/0.07)
+labels = arange(n)                           # 对角线是正例(i图配i文)
+loss = (cross_entropy(logits, labels, axis=0)   # 给"文"找对的"图"
+      + cross_entropy(logits, labels, axis=1))/2 # 给"图"找对的"文" ★对称</code></pre>
+<div class=eq>SigLIP 变体：L = −(1/N)Σ_i Σ_j log σ( z_ij·(t·s_ij + b) )，z_ij = +1(i=j) / −1(i≠j)，σ=sigmoid，<b>逐对</b>无需全局归一化<span class=lbl>SigLIP 2303.15343</span></div>
+<div class=secsub>· <b>CLIP 实测</b>：batch <b>32,768</b>（超大 batch = 更多负例 → MI 下界更紧）、τ 初始 0.07 并 <b>clamp 使 logit 缩放 ≤ 100</b>（原文："必须，否则训练不稳"）、400M 图文对训 32 epoch；ViT-L/14@336px <b>zero-shot ImageNet 76.2% top-1</b>（追平全监督 ResNet-50、95% top-5），12 天 256×V100。· <b>SigLIP</b>：sigmoid 免全局归一化 → 与 batch 解耦，小 batch 更优、<b>32k 即饱和</b>（softmax 需 98k，307k 反伤两者）；SigLiT-g/14 两天 4×TPUv4 达 <b>84.5% zero-shot</b>。· <b>ALIGN</b>(2102.05918)：<b>18 亿</b> noisy alt-text 双塔，证"数据可脏但要大"。</div>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>· <b>为何用对比而非生成来对齐</b>：对齐只需"配对相似度 &gt; 非配对"，对比 loss 直接优化该序关系、无需重建像素，极省算力且天然给出可检索的度量空间。<br>· <b>为何超大 batch</b>：InfoNCE 下界 I ≥ log N − L 随 N 收紧，负例越多"较真"越强——这就是 CLIP 用 32k、并把相似度矩阵跨 GPU 分片的动机。<br>· <b>softmax vs sigmoid vs 监督分类</b>（三条对齐路线的权衡）：<br>
+<table class=tbl>
+<tr><th>方案</th><th>归一化</th><th>batch 依赖</th><th>开放词表</th><th>最优 batch / 代表数值</th></tr>
+<tr><td><b>CLIP softmax InfoNCE</b></td><td>全 batch 全局归一化</td><td>强（需大 batch 多负例）</td><td>是</td><td>32k；ViT-L/14@336 ZS 76.2%</td></tr>
+<tr><td><b>SigLIP sigmoid</b></td><td>逐对，无全局归一化</td><td>弱（与 batch 解耦）</td><td>是</td><td>32k 即饱和；SigLiT 84.5%</td></tr>
+<tr><td>传统监督分类</td><td>softmax over 固定类</td><td>无</td><td><b>否</b>（锁死标签集）</td><td>— 不能 zero-shot</td></tr>
+</table>
+· <b>接口价值</b>：CLIP/SigLIP <b>视觉塔</b>是几乎所有 VLM（LLaVA/BLIP-2/MiniGPT-4）的默认"眼睛"，CLIP <b>文本塔</b>是 SD1.x/SDXL 的默认文本 encoder，SD3 更同时用 CLIP-L + bigG + T5（见 <a href="#s1" style="color:var(--accent)">A2</a>）。<br>· <b>代价</b>：对齐偏<b>粗粒度</b>（image-level 非 region-level）、本身<b>不能生成</b>（只提供表征地基）、依赖海量弱标注（ALIGN 18 亿对为证）。</div>
+
+<h3 class=sub><span class=n>目标</span>四种训练目标 → 让谁影响谁</h3>
+<table class=tbl>
+<tr><th>训练目标</th><th>公式核心</th><th>让谁影响谁</th><th>条件怎么进（机制）</th><th>代表</th></tr>
+<tr><td>Diffusion denoising</td><td>‖ε − ε_θ(z_t,t,c)‖²</td><td>text→image</td><td>A1 cross-attn / A3 adaLN</td><td>SD、Imagen、DiT</td></tr>
+<tr><td>Rectified flow</td><td>‖v_θ(x_t,t,c) − (x_1−x_0)‖²</td><td>text→image</td><td>A2 joint-attn + A3 adaLN</td><td>SD3、FLUX</td></tr>
+<tr><td>AR next-token</td><td>−Σ log p(t_i | t_&lt;i)</td><td><b>双向</b>（看序列顺序）</td><td>A4 projection / A6 early-fusion</td><td>LLaVA、Chameleon、Emu3</td></tr>
+<tr><td>Contrastive</td><td>对称 InfoNCE / sigmoid</td><td>对称对齐</td><td>A0 双塔（+A5 Q-Former ITC）</td><td>CLIP、ALIGN、SigLIP</td></tr>
+</table>
+<!-- /FILL:s1 -->
+
+<h2 class=sec id=s2><span class=bar></span>§2 · 为什么能 work：对齐与条件建模的本质 [Q2]</h2>
+<div class=secsub><b>本节 = 跨机制的「共性总纲」</b>：各机制自身的「① 为什么能 work」已在 <a href="#s1" style="color:var(--accent)">§1</a>/<a href="#s3" style="color:var(--accent)">§3</a>/<a href="#s4" style="color:var(--accent)">§4</a>/<a href="#s6" style="color:var(--accent)">§6</a> 逐条展开；此处抽象出四条共通支柱，回答"为什么这类机制<b>普遍</b>成立"——是各机制 ① 的上位归纳，非重复。</div>
+<!-- FILL:s2 -->
+<div class=callout key>把"为什么训练能让语言↔图像交互成立"拆成<b>四个互相支撑的机制支柱</b>。核心论断：形态各异的模型殊途同归，因为它们是<b>同一枚硬币（条件建模）的不同铸法</b>。</div>
+<div class=steps>
+<div class=step><h4>支柱一：共享表征空间（对齐让"跨模态可比较"）</h4><p>对比预训练（CLIP/SigLIP）把图文映到<b>同一语义流形</b>，配对样本互信息最大化（InfoNCE 是 I(img;txt) 的下界）。一旦两模态在同一空间可比较，"文本定位图像区域""图像检索文本"就有几何基础。后续 cross-attn/projection 本质都在这个<b>已对齐空间</b>里搬运信息——没有地基，注入的信息就是"鸡同鸭讲"。</p></div>
+<div class=step><h4>支柱二：注意力 = 可微的软对齐（学出"词↔区域"对应）</h4><p>cross-/joint-/self-attention 的 softmax 权重，本质是为每个 Query 在另一模态 token 上算一组归一化权重。训练中它们<b>自发收敛到语义对应</b>（"dog"注意力聚到狗的像素、图像区域 attend 到描述它的词）。这是"文本精确控制局部""图像被逐词描述"的可学习机制，且<b>全程可微</b>，能被生成/语言 loss 端到端优化。</p></div>
+<div class=step><h4>支柱三：大规模图文对（把共现统计蒸馏进权重）</h4><p>LAION-5B / JFT / 十亿级 alt-text 提供开放世界的图文<b>共现统计</b>。SGD 在 denoising/AR/contrastive loss 上迭代 = 把"什么文字通常配什么像素"压进权重。规模是必要条件：Imagen 发现"放大文本 encoder 比放大图像模型更提升对齐"，CLIP/ALIGN 证明<b>数据规模压过清洗质量</b>——大数据 + 简单目标 &gt; 精巧结构 + 小数据。</p></div>
+<div class=step><h4>支柱四：条件建模本质（架构只决定"条件怎么进"）</h4><p>所有机制在做同一件事——估计条件/联合分布：p(image|text)（生成）、p(text|image)（理解）、或对齐 p(image,text)。<b>架构 A0–A6 的全部差异只在"条件以什么结构进入前向"</b>，而驱动学习的都是"最大化条件似然/互信息"这同一原理。这解释了为何形态各异的模型能殊途同归。</p></div>
+</div>
+<div class=callout ntm><b>训练 → infer 的桥</b>：训练把"跨模态条件依赖"写进权重后，<b>infer 只是把它展开</b>——diffusion/flow 反向积分（+CFG 放大文本方向，<a href="#s3" style="color:var(--accent)">§3</a>）、VLM 自回归解码（<a href="#s4" style="color:var(--accent)">§4</a>）。"为什么 infer 有此能力" = 训练目标的直接兑现（完整论证见 <a href="#s5" style="color:var(--accent)">§5</a>）。</div>
+
+<h3 class=sub><span class=n>总表</span>7 类融合机制完整对比（核心交付物）</h3>
+<table class=tbl>
+<tr><th>机制类</th><th>代表模型（arXiv）</th><th>条件如何进入</th><th>训练目标</th><th>流向</th><th>优 / 缺</th></tr>
+<tr><td><b>A2 双流联合注意力</b> 🥇</td><td>SD3/MM-DiT(2403.03206)、FLUX(需核实)</td><td>文图 token 拼接 joint self-attn（独立权重）</td><td>rectified flow</td><td><b>双向</b></td><td>+双向/scaling好/组合性强 / −序列长、实现复杂</td></tr>
+<tr><td><b>A6 Early-fusion</b> 🔥</td><td>Chameleon(2405.09818)、Emu3(2409.18869)、Fuyu</td><td>图像量化/投影成 token，与文本同序列 self-attn</td><td>AR next-token（混合）</td><td><b>双向对称</b></td><td>+真正对称/架构统一/任意交错 / −训练不稳(需QK-Norm)、量化丢信息</td></tr>
+<tr><td><b>A4 Projection</b></td><td>LLaVA(2304.08485)、MiniGPT-4(2304.10592)、Frozen(2106.13884)、Fuyu</td><td>视觉特征 linear/MLP 投进 LLM 空间当软 token</td><td>AR next-token</td><td>img→text</td><td>+极简/参数少/复用冻结模块/开源主流 / −视觉token多占上下文</td></tr>
+<tr><td><b>A5 Resampler/Q-Former</b></td><td>BLIP-2(2301.12597)、Flamingo(2204.14198)、Perceiver(2103.03206)</td><td>learnable query cross-attend 视觉压定长</td><td>ITC/ITM/ITG + 语言</td><td>img→text</td><td>+视觉token定长少/多图视频友好 / −多一模块、压缩丢细节</td></tr>
+<tr><td><b>A1 Cross-attn</b></td><td>LDM/SD(2112.10752)、Imagen(2205.11487)</td><td>文本作 K,V，图像 latent 作 Q</td><td>diffusion denoising</td><td>text→img</td><td>+灵活/变长/区域对齐强/事实标准 / −单向、+15% flops</td></tr>
+<tr><td><b>A3 AdaLN-Zero</b></td><td>DiT(2212.09748)、PixArt-α、SD3(pooled)</td><td>条件→回归 LN scale/shift/gate，零初始化</td><td>diffusion/flow</td><td>全局→img</td><td>+flops最省/最稳/易scale / −只注全局向量，常配 A1/A2</td></tr>
+<tr><td><b>A0 对比对齐</b>（地基）</td><td>CLIP(2103.00020)、ALIGN(2102.05918)、SigLIP(2303.15343)</td><td>双塔共享空间点积对齐（不注入）</td><td>对称 InfoNCE/sigmoid</td><td>对称</td><td>+zero-shot/通用/地基 / −不能生成、偏粗</td></tr>
+</table>
+<div class=callout warn><b>组合是常态</b>：SD3 = A3(AdaLN pooled) + A2(MM-DiT 逐 token)；Flamingo = A5(Resampler) + A1(gated cross-attn)；MiniGPT-4 = A5(Q-Former) + A4(线性投影)；Fuyu = A4(线性投影) × A6(同序列)。</div>
+<!-- /FILL:s2 -->
+
+<h2 class=sec id=s3><span class=bar></span>§3 · infer：语言控制图像 [Q3]</h2>
+<div class=secsub>按 Best First：<b>CFG（核心控制机制）· flow-matching（SD3/FLUX SOTA）· AR 解码（VAR NeurIPS24 Best）· DDPM/DDIM（采样基础）· Classifier Guidance（前 CFG 历史对比）</b>。子编号 3.x 为类型 ID，非先后。</div>
+<!-- FILL:s3 -->
+<div class=callout key><b>统一视角：infer = 训练的"时间反演"</b>。三范式在 infer 时都是把一个简单先验（高斯噪声 / 起始 token）<b>逐步变换为数据</b>，条件 <code>c</code>（文本 embedding）在每一步注入、偏置这个变换的方向。<b>CFG 则是"把这种偏置放大"的通用旋钮</b>。</div>
+
+<h3 class=sub><span class=n>3.2 ⭐</span>Classifier-Free Guidance（核心：文本如何"控制"图像）</h3>
+<div class=secsub>CFG（Ho &amp; Salimans, NeurIPS 2021 WS, arXiv 2207.12598）—— 文本→图像的事实标准控制机制。</div>
+<div class=callout key><b>① 为什么能 work（隐式分类器完整推导）</b>　文本之所以能从"弱条件"升级为"强控制"，核心是 CFG 在采样每步<b>沿一个隐式分类器的梯度额外前进</b>。<b>推导四步</b>：<br>(1) <b>贝叶斯</b>：p(c|x) ∝ p(x|c)·p(c)/p(x) ⇒ log p(c|x) = log p(x|c) − log p(x) + const。<br>(2) <b>取梯度</b>：∇_x log p(c|x) = ∇_x log p(x|c) − ∇_x log p(x)。<br>(3) <b>score ↔ ε</b>：∇_x log p_t(x|c) = −ε_θ(x,t,c)/√(1−ᾱ_t)，∇_x log p_t(x) = −ε_θ(x,t,∅)/√(1−ᾱ_t)。<br>(4) <b>代入</b>：∇_x log p(c|x) ∝ −(ε_cond − ε_uncond) ⇒ <b>方向 (ε_cond − ε_uncond) 正是"更像文本 c"</b>。<br>于是把 CFG 改写为 ε̃ = ε_cond + (s−1)·(ε_cond − ε_uncond)：在纯条件之上<b>再沿 ∇log p(c|x) 多走 (s−1) 倍</b>，等价于从<b>被锐化的分布</b> p(x|c)^s·p(x)^{1−s} 采样——增大条件似然、压低无条件似然。<b>反例</b>：s=1 时无外推，模型对文本只做"轻微 bias"、常出"大致相关却贴不紧"的图；去掉 uncond 分支则根本没有可放大的方向。</div>
+<div class=callout><b>② 工作原理是什么（两惯例 + 等价证明）</b>　训练用 condition dropout 让<b>同一网络</b>既会条件 ε_cond 又会无条件 ε_uncond；采样把二者线性外推。业界两种写法<b>完全等价</b>：ε_uncond + s·(ε_cond−ε_uncond) = (1−s)·ε_uncond + s·ε_cond；令 s=1+w 即得原文 (1+w)·ε_cond − w·ε_uncond ⇒ <b>s = 1 + w</b>（s=1 / w=0 为无引导 = 纯条件）。</div>
+<div class=eq>训练：以 p_uncond=0.1 把条件置空 —— c ← ∅ (概率 0.1) 否则 c ← 真实文本；损失 ‖ε − ε_θ(x_t,t,c)‖² <span class=lbl>condition dropout</span></div>
+<div class=eq>采样(diffusers 惯例，s=guidance scale)：<b>ε̃ = ε_uncond + s·(ε_cond − ε_uncond)</b> <span class=lbl>s≈7.5</span></div>
+<div class=eq>采样(原文 Eq.6，权重 w)：ε̃ = (1+w)·ε_θ(x,t,c) − w·ε_θ(x,t,∅) ，等价 <b>s = 1 + w</b> <span class=lbl>CFG 2207.12598</span></div>
+<div class=eq>隐式分类器：∇_x log p^i(c|x) ∝ −(ε_cond − ε_uncond)（x-空间 score 带负号，见 ①(3)(4)）；故 ε-空间沿 (ε_cond − ε_uncond) 外推 ⇒ ε̃ 采样自 p(x|c)^s·p(x)^{1−s} <span class=lbl>锐化条件分布</span></div>
+<div class=callout><b>③ 怎么实现的</b>　训练侧<b>仅一行</b>：以概率 0.1 把文本 embedding 换成学到的 ∅（空串编码 / 全零）。推理侧把 [∅, c] 拼成 batch <b>一次前向</b>拿到 ε_uncond / ε_cond，再按外推式合成，配 DDIM 更新（<a href="#s3" style="color:var(--accent)">§3.1</a>）。SD 常用 s≈7.5、30 步。</div>
+<pre><code>from diffusers import StableDiffusionPipeline
+pipe = StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5").to("cuda")
+image = pipe(
+    prompt="a corgi astronaut on the moon, cinematic lighting",
+    guidance_scale=7.5,        # ← 这就是 CFG 的 s；1.0=关闭引导；越大越贴文本
+    num_inference_steps=30,    # DDIM/其他 scheduler 步数
+).images[0]</code></pre>
+<pre><code># CFG + DDIM 采样全链路（text→image）
+def cfg_ddim_sample(unet, scheduler, text_enc, prompt, s=7.5, steps=30, shape=(1,4,64,64)):
+    c      = text_enc(prompt)     # 条件文本 embedding
+    c_null = text_enc("")         # 空文本 ∅（训练 dropout 学到的那个）
+    x = torch.randn(shape)        # x_T ~ N(0, I)
+    scheduler.set_timesteps(steps)
+    for t in scheduler.timesteps:                  # T → 0
+        eps_uncond = unet(x, t, c_null)
+        eps_cond   = unet(x, t, c)
+        eps_tilde  = eps_uncond + s * (eps_cond - eps_uncond)   # ★ CFG 外推
+        x = scheduler.step(eps_tilde, t, x).prev_sample         # DDIM 确定性更新
+    return vae_decode(x)          # latent → 像素</code></pre>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>· <b>为何用 dropout 而非训练独立 uncond 模型</b>：一个网络共享容量、零额外参数，∅ 只是词表里多一个可学 token。<br>· <b>为何接受 2× 推理成本</b>：仍远低于"训练 + 运行独立带噪分类器"（对比 <a href="#s3" style="color:var(--accent)">§3.3</a>），且 [∅,c] 可 batch 并行。<br>· <b>guidance scale 的 fidelity/diversity 权衡</b>（原文 ImageNet 64²，p_uncond=0.1 列，Table 1）：<b>FID 随 w 单调变差、IS 单调变好</b>——小引导保真最好、强引导个体最锐但多样性塌缩。SD 系用 s≈7.5 折中。
+<table class=tbl>
+<tr><th>guidance w（s=1+w）</th><th>FID ↓（分布匹配 / 多样）</th><th>IS ↑（锐利 / 可辨识）</th><th>状态</th></tr>
+<tr><td>w=0（s=1）纯条件</td><td>1.80</td><td>53.71</td><td>多样、贴文本弱</td></tr>
+<tr><td><b>w=0.1（s≈1.1）</b></td><td><b>1.55</b>（最优）</td><td>66.11</td><td>分布最匹配</td></tr>
+<tr><td>w=0.3（s≈1.3）</td><td>3.03</td><td>92.8</td><td>折中偏保真</td></tr>
+<tr><td>w=1（s=2）</td><td>12.6</td><td>170.1</td><td>明显锐化</td></tr>
+<tr><td>w≥4（s≥5）</td><td>26.22</td><td><b>260.2</b>（最优）</td><td>强控制、多样性塌缩</td></tr>
+</table>
+<div class=secsub>· 数值取 p_uncond=0.1 列（原文 Table 1，T=256 采样，50k 样本）· 文本→图像实践 s≈7.5 远高于类别条件最优 w，因文本条件更弱、需更强外推。</div></div>
+
+<h3 class=sub><span class=n>3.4</span>Flow Matching / Rectified Flow（SD3 / FLUX 一代）</h3>
+<div class=callout key><b>① 为什么能 work</b>　不走随机扩散，而是学一个<b>确定性速度场</b> v_θ(x,t)，其 ODE 把噪声<b>连续搬运</b>成数据。合法性来自连续性方程：任何插值 p_0=噪声 ↔ p_1=数据 的概率路径都<b>唯一对应</b>一个速度场。Flow Matching 关键定理：直接回归难算的边缘速度不可行，但回归<b>逐样本条件速度</b> u_t(x|x_1) 的 CFM 损失与它<b>梯度相同</b>，故可训。<b>Rectified Flow 洞察</b>：用直线连噪声与数据，目标速度是<b>常向量 x_1−x_0</b>——直线是最短路径，可被 Euler 极少步（甚至 1 步）精确积分。<b>反例</b>：随便一个 ODE 积分不会落到数据流形；必须匹配到正确速度场才行。</div>
+<div class=callout><b>② 工作原理是什么</b>　采样＝解 ODE dφ_t/dt = v_θ；训练＝回归条件速度。Rectified Flow 把前向定成直线 x_t=(1−t)x_0+t·x_1，目标速度恒为 x_1−x_0（SD3 里等价预测 ε−x_0）。扩散的 probability-flow ODE 是其"弯曲路径"特例——flow 把路径<b>拉直</b>以换取少步。</div>
+<div class=eq>训练速度场 v_θ，生成由 ODE 定义：dφ_t(x)/dt = v_θ(φ_t(x), t, c) ，φ_0(x)=x <span class=lbl>Flow Matching 2210.02747</span></div>
+<div class=eq>CFM 目标：L = E_{t,x_1~data,x~p_t(·|x_1)} ‖ v_θ(x,t,c) − u_t(x|x_1) ‖² <span class=lbl>与难算的 FM 损失同梯度</span></div>
+<div class=eq>Rectified Flow 直线：x_t=(1−t)·x_0 + t·x_1 ，目标速度 = x_1 − x_0（恒定方向；SD3 ≡ 预测 ε−x_0）<span class=lbl>2209.03003 / SD3 2403.03206</span></div>
+<pre><code># Flow 采样 ODE（infer，t: 0→1，N 个 Euler 步）
+x = torch.randn(shape); dt = 1/N
+for i in range(N):
+    t = i*dt
+    v = v_theta(x, t, c)          # 可叠加 CFG: v_uncond + s*(v_cond - v_uncond)
+    x = x + v * dt                # Euler；也可用 RK/Heun 高阶 solver</code></pre>
+<div class=callout><b>③ 怎么实现的</b>　<b>reflow</b>：用模型自造 (x_0,x_1) 配对再训一遍、把轨迹进一步拉直，逼近单步生成。落地 <b>SD3</b>（ICML'24 Oral, 2403.03206）：rectified flow + <b>MM-DiT</b>（文本 / 图像各自投影与 MLP、joint attention 双向交换、QK-Norm）＋ 3 文本编码器（CLIP-L、OpenCLIP-bigG、T5-XXL），并用 <b>logit-normal timestep 采样</b>（默认 rf/lognorm(0.00,1.00)）把训练权重偏置到<b>轨迹中段</b>（感知最难处）——这一"训练分布微调"才是 RF 反超普通扩散的主因；800M→8B 平滑 scaling，8B+DPO 达 GenEval 0.74（&gt; DALL·E 3 的 0.67）。<b>FLUX.1</b>（Black Forest Labs）同族开源 SOTA（无正式 arXiv）。CFG 同样适用（作用于 v）。</div>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>· <b>为何拉直路径</b>：diffusion 的弯曲反向轨迹需多步小 Euler 才不失真；直线常速度 few-step 甚至 1 步即准，直接省推理算力。<br>· <b>为何偏置 timestep 而非均匀</b>：端点 t≈0/1 速度目标简单、学不到东西，中段感知最难；logit-normal 把学习信号投到中段，是 SD3 实测反超的关键。<br>· <b>代价 / 权衡</b>：见下表。
+<table class=tbl>
+<tr><th>维度</th><th>Diffusion（DDPM/DDIM）</th><th>Flow / Rectified Flow</th></tr>
+<tr><td>前向路径</td><td>弯曲（噪声调度决定）</td><td><b>直线</b>（最短、常速度）</td></tr>
+<tr><td>学习对象</td><td>各层 score / ε</td><td>速度场 v（≈ x_1−x_0）</td></tr>
+<tr><td>采样步数</td><td>20~1000（DDIM 20~50）</td><td><b>few-step ~ 1 步</b>（reflow 后）</td></tr>
+<tr><td>确定性</td><td>DDIM(η=0) 确定；DDPM 随机</td><td>ODE <b>天然确定</b></td></tr>
+<tr><td>代表系统</td><td>SD1.5/SDXL, Imagen</td><td><b>SD3, FLUX</b></td></tr>
+</table></div>
+
+<h3 class=sub><span class=n>3.5</span>AR 图像解码（LlamaGen next-token / VAR next-scale）</h3>
+<figure class=fig><img src="assets/mmi/var_fig2.webp" alt="Standard AR vs VAR next-scale prediction"><figcaption><b>VAR Figure 2</b>（arXiv 2404.02905）：Standard autoregressive (AR) vs. visual autoregressive (VAR). (a) AR for language：逐词左→右；(b) AR for images：raster-scan 逐视觉 token；(c) <b>VAR</b>：multi-scale token maps 由粗到细 autoregressively 生成、每个尺度内并行。VAR 需 multi-scale VQVAE。</figcaption></figure>
+<div class=callout key><b>① 为什么能 work</b>　图像能像语言一样"逐 token 生成"，前提是<b>把连续像素离散化</b>（VQ tokenizer 把图编码成有限码本的 token 序列），于是链式法则 p(x)=Π_k p(tok_k | tok_&lt;k, c) 把联合分布拆成一串<b>可 teacher-forcing 学习</b>的条件分布——与 GPT 完全同构，<b>整套 LLM 基建（交叉熵、KV-cache、vLLM）可直接迁移</b>。<b>反例</b>：不离散化就得建模连续高维条件、难度大增。<b>VAR 洞察</b>：光栅 next-token 把 2D 图强行拍成 1D、要 256 步且违背图像结构；改成<b>由粗到细 next-scale</b>（先全局后细节）更符合视觉先验、步数骤降。</div>
+<div class=callout><b>② 工作原理是什么</b>　<b>LlamaGen</b>：VQ 下采样 16 → 16×16=256 token，Llama 骨干（RoPE + SwiGLU + pre-norm）逐 token 预测，文本作前缀 embedding 注入。<b>VAR</b>：把图编码成<b>多尺度 token maps</b>，把因式分解从"逐 token"改成"逐尺度"—— p(x)=Π_r p(map_r | map_{&lt;r}, c)，每步一次性预测<b>整张</b>更高分辨率 token map。</div>
+<ul class=pa>
+<li><b>LlamaGen</b>（arXiv 2406.06525）：VQ tokenizer 下采样 16、码本用满率 97%、rFID 0.94；Llama 架构逐 token 预测 p(token_k | token_&lt;k, text)；可复用 <b>vLLM</b> 加速 ~300~400%。ImageNet 256²、3.1B 模型 FID <b>2.18</b>，<b>超 LDM/DiT</b>。</li>
+<li><b>VAR</b>（<b>NeurIPS 2024 Best Paper</b>，arXiv 2404.02905）：next-scale prediction（1×1→2×2→…→16×16，每步预测整张更高分辨率 token map）；<b>步数=尺度数(~10) 而非 256，快 20×</b>；ImageNet 256² FID 18.65→<b>1.73</b>、IS 80.4→<b>350.2</b>，首次让 GPT 式 AR 超过 DiT，且现幂律 scaling 与 zero-shot 泛化。</li>
+</ul>
+<div class=callout><b>③ 怎么实现的</b>　tokenizer 先在图像上训好（VQ / 多尺度残差量化）再冻结；AR 骨干做 teacher-forcing next-token / next-scale 交叉熵。文本条件作前缀 token；<b>CFG 移到 logits 层</b>外推 logit_u + cfg·(logit_c − logit_u)。推理复用 KV-cache 与 vLLM 服务栈。</div>
+<pre><code># AR 图像解码（LlamaGen + logits 层 CFG）
+def llamagen_sample(ar_model, vq_decoder, text_emb, seq_len, top_k=2000, cfg=4.0):
+    tokens = []
+    for k in range(seq_len):                        # 逐 token
+        logit_c = ar_model(text_emb,       tokens)  # p(·| text, 已生成)
+        logit_u = ar_model(null_text_emb,  tokens)  # p(·| ∅,    已生成)
+        logit   = logit_u + cfg * (logit_c - logit_u)   # ★ AR 里也能用 CFG（logits 外推）
+        tokens.append(sample_top_k(softmax(logit), top_k))
+    return vq_decoder(reshape(tokens, (16, 16)))    # 离散 token → 像素</code></pre>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>· <b>为何离散 token + AR</b>：直接复用成熟 LLM 训练 / 推理栈（KV-cache、vLLM、投机解码），天然接入统一多模态（<a href="#s7" style="color:var(--accent)">§7</a> 的 Chameleon/Emu3）。<br>· <b>为何 VAR 改 next-scale</b>：光栅顺序违背图像"全局→局部"结构且步数=token 数；next-scale 让步数=尺度数（~10），既提速 20× 又提质（FID 1.73）。<br>· <b>CFG 在 AR</b>：不作用于 ε/v 而在 <b>logits 层</b>外推。
+<table class=tbl>
+<tr><th>维度</th><th>LlamaGen（next-token）</th><th>VAR（next-scale）</th></tr>
+<tr><td>解码单位</td><td>单个 token（光栅序）</td><td><b>整张尺度 token map</b>（粗→细）</td></tr>
+<tr><td>步数</td><td>256（=16×16）</td><td><b>尺度数 ~10</b>（快 20×）</td></tr>
+<tr><td>ImageNet 256² FID</td><td>2.18（3.1B）</td><td><b>1.73</b></td></tr>
+<tr><td>LLM 生态复用</td><td><b>强</b>（Llama + vLLM）</td><td>中（改造注意力）</td></tr>
+<tr><td>额外特性</td><td>直接接文本 LLM</td><td>幂律 scaling + zero-shot 编辑</td></tr>
+</table></div>
+
+<h3 class=sub><span class=n>3.1</span>Diffusion 采样：DDPM（随机）→ DDIM（确定/加速）</h3>
+<div class=callout key><b>① 为什么能 work</b>　扩散能从纯噪声"反推"出符合文本的图，根子是<b>把一个不可解的大逆问题拆成 T 个可解的小步</b>。前向加噪把<b>任意</b>数据分布抹成高斯；只要在<b>每个噪声层</b>都知道反向转移，就能从噪声一路走回数据。理论地基是 <b>Anderson 反向 SDE</b>：一个扩散 SDE 的时间反演仍是扩散，其漂移由 <b>score</b> ∇log p_t(x) 决定；而 ε-prediction 与 score <b>等价</b>——∇log p_t(x) = −ε_θ(x,t)/√(1−ᾱ_t)。所以"学去噪"＝"学各层 score"＝"定义了一条合法的噪声→数据动力学"。<b>反例</b>：只知道 t=0 的 score（干净数据）无法采样；单步从纯噪声一跳到底也不行——后验 p(x_0|x_T) 极度多峰、病态，必须分 ~T 层逐步收紧。</div>
+<div class=callout><b>② 工作原理是什么</b>　前向用重参数化<b>一步</b>到 x_t；训练回归噪声 ε；反向每步"减噪声、再加回一点噪声"。<b>DDIM 的确定性来自把前向式反解出 x̂_0</b>：由 x_t = √(ᾱ_t)·x_0 + √(1−ᾱ_t)·ε 反解得预测干净图 x̂_0=(x_t−√(1−ᾱ_t)·ε_θ)/√(ᾱ_t)，再用"预测 x_0 ＋ 指向 x_t 的方向"重构 x_{t−1}，随机项系数 σ_t 可调。</div>
+<div class=eq>前向加噪：x_t = √(ᾱ_t)·x_0 + √(1−ᾱ_t)·ε ，ε~N(0,I)，ᾱ_t=Π_{s≤t}α_s <span class=lbl>DDPM 2006.11239</span></div>
+<div class=eq>训练目标：L = E_{t,x_0,ε} ‖ ε − <b>ε_θ</b>(x_t, t, c) ‖² <span class=lbl>ε-prediction ↔ score</span></div>
+<div class=eq>DDPM 反向（随机）：x_{t−1} = (1/√α_t)·( x_t − (1−α_t)/√(1−ᾱ_t)·ε_θ(x_t,t,c) ) + σ_t·z <span class=lbl>每步 1 次前向，需 ~1000 步</span></div>
+<div class=eq>DDIM 更新：x_{t−1} = √(ᾱ_{t−1})·x̂_0 + √(1−ᾱ_{t−1}−σ_t²)·ε_θ + σ_t·z ，x̂_0=(x_t−√(1−ᾱ_t)·ε_θ)/√ᾱ_t <span class=lbl>DDIM 2010.02502</span></div>
+<div class=secsub>· <b>η=0 ⇒ σ_t=0</b>：随机项消失，同一 x_T 恒映到同一 x_0（可 latent 插值 / 复现 / 图像反演）· η=1：退化回 DDPM · 中间 η∈(0,1) 平滑过渡随机↔确定。</div>
+<div class=callout><b>③ 怎么实现的</b>　训练：T=1000 层、线性或 cosine β 调度、ε-参数化，与采样器<b>解耦</b>（同一权重可换 DDPM / DDIM / DPM-Solver）。采样：DDIM 取 η=0、把 1000 步<b>子采样</b>到 20~50 步即得高质量样本（≈ probability-flow ODE 的 Euler 离散），比 DDPM 快 <b>10~50×</b> 且可复现。</div>
+<pre><code># DDIM 确定性采样（η=0，从 1000 步子采样到 ~50 步）
+x = torch.randn(shape)                         # x_T ~ N(0, I)
+ts = linspace(T-1, 0, steps).long()            # 1000 层里挑 ~50 个
+for i, t in enumerate(ts):
+    eps    = unet(x, t, c)                     # 预测噪声
+    x0hat  = (x - sqrt(1-abar[t]) * eps) / sqrt(abar[t])   # 反解 x̂_0
+    t_prev = ts[i+1] if i+1 &lt; len(ts) else 0
+    x = sqrt(abar[t_prev]) * x0hat + sqrt(1-abar[t_prev]) * eps  # σ_t=0：确定性
+return vae_decode(x)</code></pre>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>· <b>为何非马尔可夫化（DDIM）</b>：DDPM 的马尔可夫链强制随机、必须近满步；DDIM 把前向推广为<b>非马尔可夫</b>，训练目标不变（<b>无需重训</b>）却能确定性跳步。<br>· <b>随机 vs 确定的取舍</b>：随机采样多样性略高、可"重掷"细节；确定性采样可复现、可插值 / 反演，是编辑（<a href="#s6" style="color:var(--accent)">§6</a>）与一致性生成的前提。<br>· <b>代价</b>：步数越少数值误差越大，极少步需高阶 solver（DPM-Solver / Heun）或改用 flow（<a href="#s3" style="color:var(--accent)">§3.4</a>）补偿。
+<table class=tbl>
+<tr><th>维度</th><th>DDPM（随机）</th><th>DDIM（确定 / 加速）</th></tr>
+<tr><td>反向过程</td><td>马尔可夫，含随机项 σ_t·z</td><td>非马尔可夫，η=0 时无随机项</td></tr>
+<tr><td>步数</td><td>~1000（慢）</td><td><b>20~50</b>（快 10~50×）</td></tr>
+<tr><td>可复现 / 插值</td><td>否（每次不同）</td><td><b>是</b>（同 x_T → 同 x_0）</td></tr>
+<tr><td>是否需重训</td><td>—</td><td><b>否</b>，复用同一 ε_θ</td></tr>
+<tr><td>ODE 视角</td><td>反向 SDE 离散</td><td><b>probability-flow ODE</b> 的 Euler 离散</td></tr>
+</table></div>
+
+<h3 class=sub><span class=n>3.3</span>对比：Classifier Guidance（前 CFG 时代）</h3>
+<div class=callout key><b>① 为什么能 work</b>　CFG 之前，Dhariwal &amp; Nichol（NeurIPS 2021, 2105.05233）用<b>真实分类器的梯度</b>把 score 掰向类别 y。原理同样是贝叶斯：p(x|y) ∝ p(x)·p(y|x) ⇒ ∇log p(x_t|y) = ∇log p(x_t) + s·∇log p_φ(y|x_t)。分类器梯度 ∇log p_φ(y|x_t) 指向"更像类别 y"，乘系数 s 即放大控制力度——这正是"扩散击败 GAN"的关键旋钮。<b>反例 / 前提</b>：p_φ 必须在<b>带噪图</b> x_t 上训练；用干净图训的分类器在 x_t 上梯度是噪声、引导失效。</div>
+<div class=callout><b>② 工作原理是什么</b>　把分类器梯度换算成 ε 修正（乘 −√(1−ᾱ_t)），即可插进任意去噪采样器；s 越大越贴类别、越牺牲多样性——与 CFG 调 fidelity/diversity 同效，只是信号来源是"外部真分类器"而非"隐式分类器"。</div>
+<div class=eq>score 形式：∇_x log p(x_t|y) = ∇_x log p(x_t) + s·∇_x log p_φ(y|x_t) <span class=lbl>Classifier Guidance 2105.05233</span></div>
+<div class=eq>ε 形式（等价）：ε̃(x_t) = ε_θ(x_t) − √(1−ᾱ_t)·s·∇_{x_t} log p_φ(y|x_t) <span class=lbl>需在带噪图上重训分类器 p_φ</span></div>
+<div class=callout><b>③ 怎么实现的</b>　额外训练一个<b>噪声感知分类器</b> p_φ(y|x_t)（常用 UNet 编码器 + 分类头，在 ImageNet 全噪声层上训）；采样每步先算 ε_θ，再减去 s·√(1−ᾱ_t)·∇log p_φ。Dhariwal &amp; Nichol 的 <b>ADM-G</b> 借此在 ImageNet 上把 FID 压到当时 SOTA、首次全面超越 BigGAN。</div>
+<pre><code># Classifier Guidance 采样一步（需预训练 noisy 分类器 clf）
+eps  = unet(x, t)                              # 无条件 / 类别无关 ε
+with torch.enable_grad():
+    x_in = x.detach().requires_grad_(True)
+    logp = clf(x_in, t).log_softmax(-1)[:, y]  # log p_φ(y | x_t)
+    grad = torch.autograd.grad(logp.sum(), x_in)[0]
+eps_tilde = eps - sqrt(1 - abar[t]) * s * grad   # 用分类器梯度修正 ε
+x = ddim_step(eps_tilde, t, x)</code></pre>
+<div class=callout ntm><b>④ 为什么被 CFG 取代（对比表）</b><br>CFG 用"生成模型自己充当分类器"，把外部 ∇log p(y|x) 换成 ε_cond − ε_uncond，<b>免分类器</b>却达到同样 fidelity/diversity 调节；代价仅是采样跑两次网络。文本条件尤其偏爱 CFG——为"任意文本"训带噪分类器不现实。
+<table class=tbl>
+<tr><th>维度</th><th>Classifier Guidance</th><th>Classifier-Free Guidance</th></tr>
+<tr><td>是否需额外模型</td><td><b>需</b>，且必须在带噪图上重训分类器</td><td><b>不需</b>，一个生成网络搞定</td></tr>
+<tr><td>控制信号来源</td><td>真实分类器梯度 ∇log p(y|x_t)</td><td>隐式分类器 ε_cond − ε_uncond</td></tr>
+<tr><td>训练改动</td><td>额外训练管线</td><td><b>一行</b>：随机 dropout 文本</td></tr>
+<tr><td>infer 成本</td><td>生成 1 次 + 分类器 1 次（含反传求梯度）</td><td>生成 <b>2 次</b>（cond+uncond）</td></tr>
+<tr><td>能否处理任意文本</td><td>难（须为条件空间训分类器）</td><td><b>能</b>（∅ 对任意 prompt 通用）</td></tr>
+<tr><td>现状</td><td>类别条件经典法</td><td><b>文本→图像事实标准</b></td></tr>
+</table></div>
+
+<h3 class=sub><span class=n>对比</span>三大生成范式 infer 对比</h3>
+<table class=tbl>
+<tr><th>维度</th><th>Diffusion (DDPM/DDIM)</th><th>Flow / Rectified Flow</th><th>AR (LlamaGen / VAR)</th></tr>
+<tr><td>数学对象</td><td>各噪声层 score ∇log p_t</td><td>速度场 v_t（ODE）</td><td>条件类别分布 p(tok|·)</td></tr>
+<tr><td>infer 迭代</td><td>反向去噪 20~1000 步</td><td>解 ODE，few-step~1 步</td><td>逐 token / 逐 scale</td></tr>
+<tr><td>确定性</td><td>DDIM(η=0) 确定；DDPM 随机</td><td>ODE 天然确定</td><td>采样随机（温度/top-k）</td></tr>
+<tr><td>文本控制旋钮</td><td><b>CFG</b> s</td><td><b>CFG</b>（作用于 v）</td><td><b>CFG</b>（作用于 logits）/温度</td></tr>
+<tr><td>典型代表</td><td>SD1.5/SDXL, Imagen</td><td><b>SD3, FLUX</b></td><td><b>LlamaGen, VAR</b>, Parti</td></tr>
+<tr><td>复用 LLM 基建</td><td>否</td><td>否</td><td><b>是</b>（KV-cache/vLLM）</td></tr>
+</table>
+<!-- /FILL:s3 -->
+
+<h2 class=sec id=s4><span class=bar></span>§4 · infer：图像反推语言 + GenCeption [Q3]</h2>
+<div class=secsub>VLM 自回归解码 · 视觉 token 如何进 LLM · GenCeption 图→文→图 循环评估。</div>
+<!-- FILL:s4 -->
+<div class=callout key><b>通用三段式</b>：<code>视觉 encoder → projector/adapter → LLM 自回归解码</code>。核心是<b>把图像变成一串"视觉 token"塞进 LLM 上下文，然后像续写文本一样逐 token 生成答案</b>。关键洞察：image→text <b>不是"反演生成器"，而是直接学出的正向条件分布 p(text|image)</b> —— captioning/VQA 就是这条分布的采样。</div>
+
+<h3 class=sub><span class=n>4.1</span>VLM 自回归解码（LLaVA / Qwen-VL / BLIP-2 / Flamingo）</h3>
+<figure class=fig><img src="assets/mmi/llava_fig1.webp" alt="LLaVA network architecture"><figcaption><b>LLaVA Figure 1</b>（arXiv 2304.08485）：LLaVA network architecture. 输入图 Xv 经预训练 CLIP ViT-L/14 得视觉特征 Zv；一个可训练投影矩阵 <b>W 把 Zv 转成语言嵌入 token Hv</b>（与 LLM 词嵌入空间同维），与文本指令拼接后自回归解码。</figcaption></figure>
+<div class=callout key><b>① 为什么能 work</b>　image→text <b>不是"反演"生成器</b>，而是被<b>直接训练出来的正向条件分布 p(text|image)</b>。三根支柱叠加：(a) <b>CLIP 对齐地基</b>——视觉 encoder（CLIP ViT）经图文对比学习，patch 特征天然落在<b>与语言语义可对齐</b>的空间（不是像素堆，而是"可被语言描述的概念"，地基见 <a href="#s1" style="color:var(--accent)">A0</a>）；(b) <b>projector 翻译</b>——把视觉特征投进 LLM 词嵌入空间，成为 LLM 看得懂的"外语单词"（软 prompt）；(c) <b>梯度桥</b>——训练时语言 loss 的梯度<b>反传穿过 projector</b>，强制视觉 token 编码"可被语言解码"的语义。<b>反例</b>：若 projector 随机初始化且<b>冻结不训</b>，视觉 token 落在词空间的乱位、LLM 无从解码，输出与图像无关；若视觉塔改用纯像素重建特征（无图文对齐），captioning 立刻退化。<b>理论依据</b>：next-token 训练 = 最大化 <code>log p(text|image)</code>，captioning/VQA 就是这条已学分布的采样，<b>无需任何"反推/反演"</b>。</div>
+<div class=callout><b>② 工作原理是什么</b>　通用三段式 <code>视觉 encoder → projector/adapter → LLM 自回归解码</code>：把图像变成一串<b>视觉 token</b> <code>H_v</code> 塞进 LLM 上下文，再像续写文本一样逐 token 展开答案。条件语言建模按链式法则分解：</div>
+<div class=eq>p(X_ans | X_img, X_instruct) = Π_i  p(x_i | H_v, X_instruct, x_&lt;i) ，  H_v = projector( vision_enc(X_img) )<span class=lbl>LLaVA 2304.08485</span></div>
+<div class=secsub>· <b>逐项</b>：<code>H_v</code> 是视觉 token 序列 <code>[n_vis, d_llm]</code>，<code>X_instruct</code> 是文本指令 token，<code>x_&lt;i</code> 是已生成答案前缀；每步 LLM 前向 → softmax(logits) → 采样 <code>x_i</code> → 拼回上下文继续，直到 EOS。· <b>shape 直觉</b>：<code>Z_v [n_patch, d_v]</code> —projector→ <code>H_v [n_vis, d_llm]</code>，与文本 <code>H_txt [n_txt, d_llm]</code> 拼成 <code>[n_vis+n_txt, d_llm]</code> —— 视觉/文本 token 落在<b>同一嵌入空间被 LLM 无差别 attend</b>，图像因此成为解码的"上下文/前缀"。· <b>视觉 token 数（数值小例）</b>：LLaVA-1.5（2304.08485）= CLIP ViT-L/14-336 的 24×24 = <b>576</b> token；Qwen-VL（2308.12966）压成 <b>256</b>；BLIP-2（2301.12597）Q-Former <b>32</b>；Flamingo（2204.14198）Resampler <b>64</b>。</div>
+<div class=callout><b>③ 怎么实现的</b>　把视觉 token 插到文本序列里（替换 <code>&lt;image&gt;</code> 占位或前置），首次 prefill 一次吃完（视觉+指令）token、之后每步只喂 1 个新 token 并复用 <b>KV-cache</b>：</div>
+<pre><code>def vlm_caption(image, prompt, vision_enc, projector, llm, tokenizer, max_new=256):
+    # 1) 图像 → 视觉特征 → 视觉 token（进入 LLM 的嵌入空间）
+    Z_v = vision_enc(image)                # CLIP ViT patch 特征 [n_patch, d_v]
+    H_v = projector(Z_v)                   # 线性/MLP/Q-Former → [n_vis_tok, d_llm]  ← "看图"入口
+    # 2) 文本 token 嵌入
+    ids   = tokenizer(prompt).input_ids    # "USER: &lt;image&gt;\n描述这张图 ASSISTANT:"
+    H_txt = llm.embed_tokens(ids)
+    # 3) 关键：把视觉 token 插到文本序列里（替换 &lt;image&gt; 占位或前置）
+    inputs_embeds = concat_at_image_placeholder(H_txt, H_v)
+    # 4) 自回归解码：图像作"前缀/条件"，逐 token 生成语言
+    out, past = [], None
+    for _ in range(max_new):
+        logits, past = llm(inputs_embeds=inputs_embeds, past_key_values=past)
+        next_tok = sample(logits[:, -1])                 # greedy / top-p / 温度
+        if next_tok == EOS: break
+        out.append(next_tok)
+        inputs_embeds = llm.embed_tokens(next_tok)       # 只喂新 token（KV-cache 复用）
+    return tokenizer.decode(out)           # ← 生成的语言（caption / 答案）</code></pre>
+<div class=secsub><b>训练配方（LLaVA-1.5，已核实 2310.03744）</b>：CLIP ViT-L/14-336（冻结）+ <b>2 层 MLP</b> projector + Vicuna-7B/13B。<b>两阶段</b>：① 对齐——<b>只训 projector</b>、冻结 ViT 与 LLM，<b>558K</b> 图文对（最省，约 1 h / 8×A100）；② 指令微调——放开 LLM，<b>665K</b> 多任务 VQA/对话混合（ViT 仍冻结）；全程仅约 1.2M 公开数据、1 天单机（8×A100）刷到 11 项 SOTA。<b>Qwen-VL</b>：position-aware VL adapter 把变长 patch 压成 256 token（注入 2D 位置）；<b>BLIP-2</b>：Q-Former 32 query（dim 768、仅 188M 参数，把 257×1024 压成 32×768）桥接冻结 ViT + 冻结 OPT/FlanT5。</div>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>理解侧"视觉怎么进 LLM"有三条主流接法，核心矛盾是<b>细节保留 ↔ 上下文成本</b>：
+<table class=tbl>
+<tr><th>维度</th><th>Projection（LLaVA/Fuyu）</th><th>Q-Former/Resampler（BLIP-2）</th><th>Gated Cross-Attn（Flamingo）</th></tr>
+<tr><td>视觉→LLM 方式</td><td>线性/MLP 投影、当软 token <b>前置</b></td><td>learnable query cross-attend <b>压定长</b></td><td>新增 gated cross-attn 层<b>插进冻结 LLM</b></td></tr>
+<tr><td>视觉 token 数</td><td>= patch 数（LLaVA-1.5 <b>576</b>，多）</td><td>= query 数（BLIP-2 <b>32</b>，定长少）</td><td>Resampler <b>64</b>，单图交错注入</td></tr>
+<tr><td>训练开销</td><td><b>最省</b>（阶段一只训 W/MLP）</td><td>多训 Q-Former 一模块（188M）</td><td>训 gated 层，tanh 门 init 0 保护预训练 LLM</td></tr>
+<tr><td>是否改 LLM 结构</td><td>否（只加前缀 token）</td><td>否（喂软 prompt）</td><td><b>是</b>（插新层）</td></tr>
+<tr><td>细节 vs 压缩</td><td>全 patch → <b>细节全</b>、占上下文多</td><td>压缩 8× → 省 context、<b>丢细节</b></td><td>居中；<b>多图/视频友好</b></td></tr>
+<tr><td>代表</td><td>LLaVA、MiniGPT-4、Fuyu</td><td>BLIP-2</td><td>Flamingo</td></tr>
+</table>
+· <b>OCR/计数能力边界</b>：视觉 token 数直接决定细粒度——Projection 保留全部 576 patch，<b>OCR/读图表强</b>但长上下文贵；Q-Former 压到 32（8× 压缩）省 context 却<b>丢密集文字/计数细节</b>（原文消融：16→32 有增益、64 边际收益递减）。这正是 <a href="#s4" style="color:var(--accent)">4.2</a> GenCeption 里 text-intensive 图片（OCR/代码/计算）暴露 VLM 短板的根源。<br>· <b>为何主流选 Projection</b>：极简、参数少、复用冻结 encoder/LLM，且 336px 的 576 token 对文档/图表精度增益显著——这是 LLaVA-1.5 极省成本却刷到 SOTA 的关键；Q-Former/Resampler 则用"定长瓶颈"换多图/视频与常数推理成本。</div>
+
+<h3 class=sub><span class=n>4.2 ⭐</span>GenCeption：图→文→图 闭环探针（双向 infer 的直接证据）</h3>
+<figure class=fig><img src="assets/mmi/genception_fig1.webp" alt="GenCeption iterative image-text-image loop"><figcaption><b>GenCeption Figure 1</b>（arXiv 2402.14973）：第 t 轮迭代示意。从单模态图集取初始图 X(0)（t=1）；<b>VLLM 详细描述该图 → 图像生成器据描述产出 X(t)</b>，如此循环，语义随迭代漂移，漂移速度反向度量幻觉。</figcaption></figure>
+<div class=secsub>Cao et al., <i>GenCeption: Evaluate (V)LLMs with Unlabeled Unimodal Data</i>，TrustNLP@NAACL 2024，arXiv <b>2402.14973</b>（期刊扩展 Computer Speech &amp; Language 2025）。</div>
+<div class=callout key><b>① 为什么能测幻觉</b>　把 <b>image→text（描述）</b> 与 <b>text→image（重画）</b> 串成闭环反复迭代：每次跨模态转换都会注入一点信息损失/幻觉，<b>语义随迭代漂移</b>。灵感来自"你画我猜"传话游戏 <b>DrawCeption</b>——强模型能把原始语义<b>保持更久</b>，爱幻觉的模型<b>漂移更快</b>，所以"漂移速度"就是幻觉的行为学度量。<b>为什么它是双向 infer 的天然探针</b>：<b>只有当两条 infer 链都语义忠实，环路才不漂移</b>——任一侧幻觉都会被逐轮放大、暴露。<b>对比传统基准（反例）</b>：MME/VQA 这类<b>有标注</b>基准，题库会泄漏进训练集（<b>数据污染</b>）、易被针对性刷满（<b>饱和</b>）；GenCeption <b>只需无标注单模态图片</b>、无固定答案可背，用"自一致性"探测，天然抗污染、抗饱和、省标注。</div>
+<div class=callout><b>② GC@T 公式与推导</b>　用预训练 <b>ViT</b> 把 <code>T+1</code> 张图编码为 <code>z^(0..T)</code>，逐轮算与原图的余弦相似度 <code>s^(t)=cos(z^(0),z^(t))∈[−1,1]</code>（近似第 t 轮的语义保持度），再<b>按迭代序号 t 加权平均</b>：</div>
+<div class=eq>GC@T := Σ_{t=1}^{T}( t·s^(t) ) / Σ_{t=1}^{T} t ，  分母 Σ_{t=1}^{T} t = T(T+1)/2<span class=lbl>原文 Eq.3，GC@T∈[−1,1]</span></div>
+<div class=secsub>· <b>为何用 t 加权</b>：越靠后的迭代离原图越远、<b>最能说明问题</b>，故权重随 t 线性增大，同时刻画整段动态（而非只看末轮）。· <b>数值小例（T=3）</b>：分母 = 1+2+3 = 6，<code>GC@3 = (1·s^(1) + 2·s^(2) + 3·s^(3)) / 6</code>。· <b>解读</b>：<b>GC@T 越高 = 语义越连贯 = 幻觉越低</b>（二者反相关）；特例 <code>GC@1 = s^(1)</code>。· <b>变体 GC_FID@T</b>：把"ViT+余弦"换成原图集 vs 生成图集的 <b>FID</b>（Eq.4，此时<b>越低越好</b>）。</div>
+<div class=callout><b>③ 算法伪代码 + 实测数值</b>　生成器用 <b>DALL·E（默认）/ Imagen2</b>，VLM 与生成器<b>温度=0</b> 降随机性，<code>P_Desc</code> 用一句固定简短指令降 prompt 敏感：</div>
+<pre><code>def gc_at_T(vllm, image_gen, img_encoder, X0, P_desc, T=3):
+    imgs = [X0]
+    for t in range(1, T+1):
+        desc = vllm.describe(imgs[-1], P_desc)   # image→text
+        imgs.append(image_gen(desc))             # text→image
+    z = [img_encoder(im) for im in imgs]         # ViT embedding
+    s = [cosine(z[0], z[t]) for t in range(1, T+1)]
+    num = sum(t * s[t-1] for t in range(1, T+1)); den = sum(range(1, T+1))
+    return num / den                              # = GC@T</code></pre>
+<div class=secsub><b>MMECeption 基准</b>（复用 MME 图片、丢弃其 QA 标注）：GC@3 与 MME / HallusionBench / OpenCompass <b>强相关</b>（<b>GC@1 vs MME 相关系数 0.99</b>），说明这套"图→文→图"闭环确实测到了多模态核心能力。<b>VLLM 排名</b>：Gemini-1.5-Pro &gt; GPT-4o &gt; GPT-4V &gt; Claude3-Opus &gt; mPLUG-Owl2 &gt; LLaVA-13B/7B；<b>人类显著优于所有 VLLM</b>（尤其 OCR/代码/翻译/计算类 text-intensive 图片），揭示当前 VLM 的双向语义保持短板。</div>
+<div class=callout ntm><b>④ 为什么这么设计（对比有标注基准 + 权衡）</b><br>立意是"<b>用无标注数据 + 自一致性</b>取代人工标注答案"，与传统基准的分工对比：
+<table class=tbl>
+<tr><th>维度</th><th>传统有标注基准（MME/VQA/HallusionBench）</th><th>GenCeption（GC@T 闭环）</th></tr>
+<tr><td>是否需人工标注</td><td><b>需</b>（QA 对 / 标签）</td><td><b>不需</b>，只要无标注图</td></tr>
+<tr><td>抗数据污染</td><td>弱（题库易泄漏进训练集）</td><td><b>强</b>（无固定答案可背）</td></tr>
+<tr><td>抗基准饱和</td><td>弱（易被刷满分）</td><td><b>强</b>（自一致性难针对性优化）</td></tr>
+<tr><td>测量对象</td><td>单向 image→text 正确率</td><td><b>双向</b> image↔text 语义保持</td></tr>
+<tr><td>幻觉度量</td><td>靠特定幻觉题打分</td><td><b>语义漂移速度</b>（GC@T 越低漂移越快）</td></tr>
+<tr><td>主要局限</td><td>标注成本高、覆盖窄、会饱和</td><td>依赖 text→image 生成器质量（生成器成共同上游，其对排名的影响需核实）</td></tr>
+</table>
+· <b>为何加权而非等权</b>：等权会淹没"末轮偏离"这一最强信号；线性 t 加权兼顾"终态偏离"与"全程动态"。· <b>为何温度=0 + 固定 P_Desc</b>：把采样随机性与 prompt 敏感性压到最低，让 GC@T 主要反映<b>模型能力</b>而非噪声。· <b>对 §4 的意义</b>：它是"双向 infer"最直接的行为学证据——<a href="#s4" style="color:var(--accent)">4.1</a> 的 image→text 与 <a href="#s3" style="color:var(--accent)">§3</a> 的 text→image 谁先漂移，环路立刻放大暴露。</div>
+<!-- /FILL:s4 -->
+
+<h2 class=sec id=s5><span class=bar></span>§5 · 为什么 infer 能实现 + 训练如何得到 [Q4]</h2>
+<div class=secsub><b>本节 = Q4 的「综合抽象」</b>：各机制的具体实现/动机（③④）见 <a href="#s3" style="color:var(--accent)">§3</a>/<a href="#s4" style="color:var(--accent)">§4</a>/<a href="#s6" style="color:var(--accent)">§6</a>；此处统一论证"infer 能力 = 训练目标的直接兑现"，给出训练目标 ↔ infer 行为的总映射（condition dropout→CFG；next-token→captioning）。</div>
+<!-- FILL:s5 -->
+<div class=callout key><b>主线论点</b>：infer 时的能力<b>不是额外获得的</b>，而是训练目标在采样过程中的<b>直接兑现</b>。训练目标与 infer 行为是同一枚硬币的两面。</div>
+<div class=steps>
+<div class=step><h4>5.1 CFG：训练做 condition dropout ⇒ infer 能"外推控制"</h4><p>训练以 p≈0.1 随机置空文本，让<b>同一网络</b>既会 ε_θ(x,c) 又会 ε_θ(x,∅)——相当于同时学到"有文本分布"与"无文本边缘分布"。因 ε_cond−ε_uncond ∝ ∇_x log p(c|x)（隐式分类器），infer 时<b>线性外推</b>这个差异方向 = 沿"更符合文本"多走几步 ⇒ 文本从弱条件变强控制。<b>训练一行改动，infer 一行外推</b>。</p></div>
+<div class=step><h4>5.2 VLM：next-token 训练 ⇒ infer 能 captioning/VQA</h4><p>训练最小化 −Σ log p(x_i | image, x_&lt;i)，这<b>本身就是</b> captioning/VQA 目标。语言 loss 梯度反传穿过 projector（LLaVA 阶段一只训 projector 做对齐），<b>强制视觉 token 携带"可被语言解码"的语义</b>。故 image→text 是被直接训练出的正向条件生成，非反推。能力边界：只会说"训练分布里能被语言解码的东西"（密集 OCR/精确计数就是 GenCeption 暴露的短板）。</p></div>
+<div class=step><h4>5.3 Diffusion / Flow：学 score / 速度场 ⇒ infer 能反向生成</h4><p>ε-prediction / 速度回归本质是在每个噪声层估计 ∇log p_t(x)（score）或搬运噪声的速度场 v_t。理论保证：给定各层 score，<b>Anderson 反向 SDE / probability-flow ODE</b> 定义了合法的"噪声→数据"动力学。infer = 按学到的动力学积分（去噪/解 ODE）= <b>训练所学动力学的时间反演</b>；文本 c 把每层 score/速度变成条件版，CFG 再放大条件方向。</p></div>
+<div class=step><h4>5.4 AR 图像：teacher forcing ⇒ infer 逐 token/尺度采样</h4><p>对图像 token 序列（LlamaGen）/多尺度 token maps（VAR）做 teacher-forcing 交叉熵学 p(tok_k | tok_&lt;k, c)。infer 按链式法则 Π p(tok_k|tok_&lt;k,c) 逐个采样——<b>采样顺序 = 训练时的条件顺序</b>；文本前缀/class token 提供条件，CFG 可在 logits 层外推。</p></div>
+</div>
+<h3 class=sub><span class=n>速查</span>训练目标 → infer 行为</h3>
+<table class=tbl>
+<tr><th>能力（infer）</th><th>直接对应的训练目标</th><th>让它 work 的关键机制</th></tr>
+<tr><td>文本"控制"图像强度可调</td><td>condition dropout 联合训练 cond/uncond</td><td>ε_cond−ε_uncond ∝ ∇log p(c|x)，infer 外推</td></tr>
+<tr><td>去噪反向生成图像</td><td>各层 score / 速度场回归</td><td>反向 SDE / probability-flow ODE 合法性</td></tr>
+<tr><td>确定性/可复现/快采样</td><td>同一 ε 目标(DDIM)/直线路径(RF)</td><td>非马尔可夫→ODE；直线可少步 Euler</td></tr>
+<tr><td>图像→语言描述/问答</td><td>max log p(text|image) next-token</td><td>梯度过 projector 逼视觉 token 可被语言解码</td></tr>
+<tr><td>逐 token/尺度出图</td><td>teacher-forcing AR 交叉熵</td><td>链式分解 + KV-cache 采样</td></tr>
+<tr><td>双向语义忠实（不漂移）</td><td>两侧条件生成各自训练充分</td><td>GenCeption 用 GC@T 反向度量幻觉</td></tr>
+</table>
+<!-- /FILL:s5 -->
+
+<h2 class=sec id=s6><span class=bar></span>§6 · 文字驱动的图像编辑与 inpainting [Q5]</h2>
+<div class=secsub>按 Best First：<b>ControlNet（结构条件，ICCV23 Best Paper）· instruction 指令编辑 · training-free attention 操纵 · mask-based 重绘（基础）</b> · 训练数据构造。①–④ 为类型 ID，非先后。</div>
+<!-- FILL:s6 -->
+<div class=callout key><b>本质</b>：文字驱动图像编辑 = 在标准 text-to-image 采样过程里，额外<b>注入"锚定原图"的约束</b>，使输出既服从新文本、又保留原图该保留的部分。<b>锚点注入的位置</b>决定方法类别：latent 覆盖 / 权重旁路 / attention 操纵 / 结构条件 / inversion 五层。<b>两把最有用的分类尺</b>：① 要不要训练；② 要不要 mask。</div>
+
+<h3 class=sub><span class=n>核心表</span>14 方法分类总表（arXiv 已核实）</h3>
+<table class=tbl>
+<tr><th>方法</th><th>类别</th><th>要训练?</th><th>要 mask?</th><th>锚定机制（原理一句话）</th><th>venue · arXiv</th></tr>
+<tr><td><b>SD Inpainting</b></td><td>mask 重绘</td><td>微调(可选)</td><td>✅</td><td>每步用原图 latent 覆盖已知区，只在 mask 内去噪</td><td>2112.10752</td></tr>
+<tr><td><b>RePaint</b></td><td>mask 重绘</td><td>❌免训</td><td>✅</td><td>无条件 DDPM，已知区注入 + resample 反复和谐化</td><td>CVPR22 · 2201.09865</td></tr>
+<tr><td><b>Blended Diffusion</b></td><td>mask 重绘</td><td>❌</td><td>✅</td><td>CLIP 引导 + 每步空间混合前景/背景</td><td>CVPR22 · 2111.14818</td></tr>
+<tr><td><b>Blended Latent Diff.</b></td><td>mask 重绘</td><td>❌</td><td>✅</td><td>Blended 的 latent 版，更快</td><td>TOG23 · 2206.02779</td></tr>
+<tr><td><b>InstructPix2Pix</b></td><td>指令编辑</td><td>✅合成</td><td>❌</td><td>GPT-3+P2P 造 45 万三元组，训"指令→编辑"</td><td>CVPR23 · 2211.09800</td></tr>
+<tr><td><b>MagicBrush</b></td><td>指令编辑</td><td>✅人工</td><td>可选</td><td>人工标注真实编辑三元组微调 IP2P</td><td>NeurIPS23 · 2306.10012</td></tr>
+<tr><td><b>Emu Edit</b></td><td>指令编辑</td><td>✅多任务</td><td>❌</td><td>多任务 + 任务嵌入，SOTA 指令编辑</td><td>CVPR24 · 2311.10089</td></tr>
+<tr><td><b>Prompt-to-Prompt</b></td><td>attention</td><td>❌</td><td>❌</td><td>替换/加权 cross-attention map 实现编辑</td><td>ICLR23 · 2208.01626</td></tr>
+<tr><td><b>Null-text Inversion</b></td><td>attention</td><td>❌优化 null</td><td>❌</td><td>优化 null-embedding 让真实图可被 P2P 编辑</td><td>CVPR23 · 2211.09794</td></tr>
+<tr><td><b>Plug-and-Play</b></td><td>attention</td><td>❌</td><td>❌</td><td>注入空间特征 + self-attn 保结构</td><td>CVPR23 · 2211.12572</td></tr>
+<tr><td><b>MasaCtrl</b></td><td>attention</td><td>❌</td><td>❌</td><td>mutual self-attn 查询原图，非刚性编辑</td><td>ICCV23 · 2304.08465</td></tr>
+<tr><td><b>ControlNet</b> ⭐</td><td>结构条件</td><td>✅旁路</td><td>❌(条件图)</td><td>复制编码器 + zero-conv 注入结构条件</td><td><b>ICCV23 Best Paper</b> · 2302.05543</td></tr>
+<tr><td><b>T2I-Adapter</b></td><td>结构条件</td><td>✅轻量旁路</td><td>❌</td><td>77M 外挂 adapter 对齐内部知识</td><td>AAAI24 · 2302.08453</td></tr>
+<tr><td><b>SDEdit</b></td><td>加噪重绘</td><td>❌</td><td>❌</td><td>加噪到中间步再用新 prompt 去噪</td><td>ICLR22 · 2108.01073</td></tr>
+</table>
+
+<h3 class=sub><span class=n>④</span>结构条件控制：ControlNet ⭐</h3>
+<figure class=fig><img src="assets/mmi/controlnet_fig2.webp" alt="ControlNet zero-convolution block"><figcaption><b>ControlNet Figure 2</b>（arXiv 2302.05543）：(a) 原 neural block 把特征图 x→y；(b) 加 ControlNet＝<b>锁定原 block + 可训练副本，用 zero convolution（1×1 卷积、权重与偏置初始化为 0）连接</b>，c 为要注入的条件向量。零初始化使训练起点等于原模型、不退化。</figcaption></figure>
+<div class=secsub>要控<b>精确结构</b>（边缘/深度/姿态/分割/涂鸦）需喂一张<b>条件图</b>。难点：既要新增条件通路，又<b>不能破坏</b>预训练大模型已有能力。ControlNet = ICCV 2023 <b>Best Paper (Marr Prize)</b>（已核实），arXiv 2302.05543。</div>
+<div class=callout key><b>① 为什么能 work</b>　招牌是 <b>zero-convolution</b>（1×1 卷积，weight 与 bias 都<b>初始化为 0</b>）。训练<b>第一步</b>两个 zero-conv 全为 0 → 两个 Z(·) 项 = 0 → 输出 y_c = F(x;Θ) = y（论文 Eq.3），<b>与原模型逐比特相同</b>，有害噪声一开始无法污染主干隐状态。同时因可训练副本<b>也吃输入 x、且克隆了预训练权重</b>，它一上来就是个"满血强 backbone"，只是被 zero-conv 暂时"闸门"住。<b>为何梯度还能流（关键）</b>：对 Z(I)=W·I+B，∂Z/∂W = I，即使 W=0，只要输入特征 I≠0（来自预训练副本，天然非 0），W 的梯度就非 0 → 第一步梯度下降后 W 变非 0、闸门缓缓打开。<b>反例（消融）</b>：把 zero-conv 换成高斯初始化的普通卷积，随机噪声一开始就当梯度污染主干 → 性能崩到 ControlNet-lite。</div>
+<div class=callout><b>② 工作原理是什么</b>　锁住原 block F(·;Θ)（冻结），克隆可训练副本 F(·;Θ_c) 接收条件 c，副本与主干用两个 zero-conv Z 连接：</div>
+<div class=eq>y_c = F(x;Θ) + Z( F( x + Z(c;Θ_z1) ; Θ_c) ; Θ_z2)　；　初始 Z=0 ⇒ y_c = F(x;Θ) = y <span class=lbl>ControlNet Eq.2/3 · 2302.05543</span></div>
+<div class=secsub>逐项梯度（论文附录）：Z(I;W,B)_{p,i} = B_i + Σ_j I_{p,j}·W_{i,j}，于是 ∂Z/∂B_i = 1、∂Z/∂I_{p,i} = Σ_j W_{i,j} = 0（初始）、<b>∂Z/∂W_{i,j} = I_{p,j} ≠ 0</b>。即 W=0 只让"对特征 I 的梯度"归零、<b>不影响"对权重 W 的梯度"</b>；I 非 0 ⇒ 一步 GD 后 W 非 0 ⇒ 之后 ∂Z/∂I 也非 0、网络开始学。zero-conv 由此"从 0 渐长为普通卷积"，把条件安全注入主干。</div>
+<div class=callout><b>③ 怎么实现的</b>　把 SD 的 <b>编码器各 block + 中间 block</b> 克隆成可训练副本、用 zero-conv 挂回主干。目标是标准去噪损失 L = 𝔼‖ε − ε_θ(z_t, t, c_t, c_f)‖²（c_t=文本、c_f=条件图）；训练时<b>随机 50% 文本置空</b>逼模型从条件图本身学语义。数据 <b>&lt;50k 到 &gt;1m</b> 都能稳训；出现 <b>"sudden convergence"</b>——因 zero-conv 全程输出高质量图，模型常在某步（如第 <b>6133</b> 步）<b>突然</b>学会跟随条件。</div>
+<pre><code>from diffusers import StableDiffusionControlNetPipeline, ControlNetModel
+import torch
+controlnet = ControlNetModel.from_pretrained(
+    "lllyasviel/sd-controlnet-canny", torch_dtype=torch.float16)
+pipe = StableDiffusionControlNetPipeline.from_pretrained(
+    "runwayml/stable-diffusion-v1-5", controlnet=controlnet,
+    torch_dtype=torch.float16).to("cuda")
+out = pipe("a futuristic city at night",
+           image=canny_edge_image,               # 条件图 c_f = Canny 边缘
+           num_inference_steps=20,
+           controlnet_conditioning_scale=1.0).images[0]</code></pre>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>· <b>为何"冻结原模型 + 旁路"而非全量微调</b>：结构控制只想<b>加一种条件</b>、不想动预训练已学到的产品级能力；旁路把新能力隔离在副本里，原模型逐比特不变。<br>· <b>为何用 zero-conv 而非普通初始化</b>：普通高斯初始化的旁路一开始就用随机噪声污染主干、破坏预训练分布；zero-conv 让起点=原模型、再"从 0 渐长"，小数据也稳训。<br>· <b>ControlNet vs T2I-Adapter</b>：二者都冻结原模型、都属"结构条件旁路"，差别在旁路的重量级：</div>
+<table class=tbl>
+<tr><th>维度</th><th>ControlNet ⭐</th><th>T2I-Adapter</th></tr>
+<tr><td>旁路结构</td><td>克隆半个 UNet 编码器 + zero-conv 门控</td><td>独立轻量 CNN adapter（多尺度特征）</td></tr>
+<tr><td>参数量 / 成本</td><td>重（≈半个 UNet），训练慢</td><td>轻（<b>≈77M</b>），训练快省</td></tr>
+<tr><td>精度 / 可控性</td><td>强，大改动可控（Best Paper）</td><td>略逊，大改动稍弱</td></tr>
+<tr><td>组合多条件</td><td>可（多 ControlNet 相加）</td><td>可（多 adapter，手调融合权重）</td></tr>
+</table>
+
+<h3 class=sub><span class=n>②</span>Instruction-based Editing（指令编辑）</h3>
+<figure class=fig><img src="assets/mmi/ip2p_fig2.webp" alt="InstructPix2Pix data generation and training"><figcaption><b>InstructPix2Pix Figure 2</b>（arXiv 2211.09800）：方法两部分——(a) finetuned GPT-3 生成指令与编辑后 caption；(b) Stable Diffusion + <b>Prompt-to-Prompt</b> 由 caption 对生成结构对齐的图像对；(c) 造出 45 万+ 训练三元组；(d) 训练 InstructPix2Pix 据指令编辑图像。</figcaption></figure>
+<div class=secsub>不给 mask、不给"改后完整描述"，只给一句<b>指令</b>（"make it winter"）。模型自己定位改哪、怎么改——做法是造一批 <b>(指令, 原图, 目标图)</b> 三元组，把"编辑"训练成一个<b>条件分布</b>。代表 InstructPix2Pix / MagicBrush / Emu Edit。</div>
+<div class=callout key><b>① 为什么能 work</b>　编辑数据难以规模化人工采集，InstructPix2Pix 的洞见是<b>组合两个各自很强的预训练大模型、把互补知识"蒸馏"成配对数据</b>：GPT-3（语言）造指令、Stable Diffusion+Prompt-to-Prompt（图像）造成对图片。<b>一致性密码</b>：P2P 让"原图/目标图"从<b>同一噪声、共享 p 比例的 cross-attention</b> 出发，两图只在编辑目标处不同、其余布局一致——于是模型学到的是"<b>指令→局部改动</b>"而非"照描述重画"。<b>反例</b>：若不共享注意力、两图处处不同，监督信号里"改哪"无从定位，模型只会退化成普通 T2I。训练后模型在<b>前向一次</b>内完成编辑，推理泛化到真实照片 + 人写指令，<b>无需 per-image 微调 / inversion</b>——因为学到的是通用"编辑"条件分布。</div>
+<div class=callout><b>② 工作原理是什么</b>　score 网络同时吃<b>两个条件</b>：图像 c_I、指令 c_T，用<b>两个独立</b> guidance scale 做三项外推（对比 <a href="#s3" style="color:var(--accent)">§3.2</a> 的标准单条件 CFG）：</div>
+<div class=eq>ẽ_θ(z_t,c_I,c_T) = e_θ(z_t,∅,∅) + s_I·[e_θ(z_t,c_I,∅) − e_θ(z_t,∅,∅)] + s_T·[e_θ(z_t,c_I,c_T) − e_θ(z_t,c_I,∅)] <span class=lbl>InstructPix2Pix Eq.3 · 2211.09800</span></div>
+<div class=secsub>· 第 1 项 e(∅,∅)=无条件基线；· 第 2 项按 <b>s_I</b> 把轨迹推向"<b>像原图</b>"（图像引导，推荐 <b>1.0–1.5</b>，↑ 更保结构）；· 第 3 项按 <b>s_T</b> 推向"<b>听指令</b>"（文本引导，推荐 <b>5–10</b>，↑ 改得更狠）。两个 scale <b>解耦</b>了保真与编辑强度——这是标准单 scale CFG 做不到的，也是指令编辑的招牌。</div>
+<div class=callout><b>③ 怎么实现的</b>　<b>数据合成三阶段</b>：(a) 人工写 ~700 条 (caption c, 指令 r, 改后 caption c') 种子微调 GPT-3 → 对 LAION caption 批量生成 (c,r,c')；(b) 每对 (c,c') 用 SD+P2P 采 <b>100</b> 个候选、共享注意力比例 p∼U(0.1,0.9)，按 <b>CLIP 方向相似度 + 图像 CLIP 相似度</b>筛最优对；(c) 得 <b>45 万+</b> 三元组。<b>训练</b>：UNet 首层输入 <b>4→8 通道</b>（拼接原图 latent；新增 4 通道<b>零初始化</b>、前 4 通道拷预训练权重），diffusers 参考配方 res=256 / batch=4×accum4 / <b>15000 步</b> / lr=5e-5 / conditioning_dropout_prob=0.05（随机置空 c_I 或 c_T 以支持上式三项外推）。</div>
+<pre><code>from diffusers import StableDiffusionInstructPix2PixPipeline
+import torch
+pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
+    "timbrooks/instruct-pix2pix", torch_dtype=torch.float16).to("cuda")
+out = pipe("turn the sky into a dramatic sunset", image=init_image,
+           num_inference_steps=20,
+           image_guidance_scale=1.5,      # = s_I（像原图）
+           guidance_scale=7.0).images[0]  # = s_T（听指令）
+
+# 训练侧关键：把原图 latent 拼进 noisy latent → 首层 4→8 通道
+in_channels = 8                           # 4(noisy z_t) + 4(原图 latent)
+new_conv_in = nn.Conv2d(in_channels, out_ch, k, s, p)
+new_conv_in.weight.zero_()                # 新增通道零初始化
+new_conv_in.weight[:, :4].copy_(unet.conv_in.weight)  # 前 4 通道继承预训练</code></pre>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>· <b>为何用双 CFG 而非单 CFG</b>：编辑天然是"<b>图像 + 文本</b>"双条件，用户既要控"多像原图"又要控"多听指令"，单一 scale 无法解耦；三项式把联合分数拆成两条独立引导方向。<br>· <b>为何走"训练出编辑先验"而非采样期注入</b>：换来<b>前向一次、免 per-image 优化</b>的通用编辑器，推理最快、对人写指令最鲁棒；代价是需 45 万级数据 + 全量微调，且大幅空间变换（非刚性）较弱。<br>· <b>为何新增通道零初始化</b>：与 ControlNet 同理，起点不扰动预训练权重、安全渐学（见本节 <a href="#s6" style="color:var(--accent)">④ ControlNet</a>）。</div>
+<div class=secsub>三条指令数据路线（合成 vs 人工 vs 多任务）对比：</div>
+<table class=tbl>
+<tr><th>路线</th><th>代表</th><th>怎么造</th><th>规模/质量</th><th>mask</th></tr>
+<tr><td><b>全合成</b></td><td>InstructPix2Pix (CVPR23)</td><td>GPT-3 造指令 + SD/P2P 造图对 + CLIP 方向相似度筛</td><td>45 万，量大有噪</td><td>否</td></tr>
+<tr><td><b>人工标注</b></td><td>MagicBrush (NeurIPS23)</td><td>众包 + DALL·E2 在线编辑逐轮标注</td><td>10K，真实质高</td><td>可选</td></tr>
+<tr><td><b>多任务</b></td><td>Emu Edit (CVPR24)</td><td>区域/自由编辑 + CV 任务统一为生成，学习式任务嵌入</td><td>覆盖广，SOTA</td><td>否</td></tr>
+</table>
+
+<h3 class=sub><span class=n>③</span>Training-free Attention 编辑</h3>
+<figure class=fig><img src="assets/mmi/p2p_fig3.webp" alt="Prompt-to-Prompt method overview cross-attention control"><figcaption><b>Prompt-to-Prompt Figure 3</b>（arXiv 2208.01626）：Method overview. 上＝视觉与文本嵌入经 <b>cross-attention</b> 融合、为每个文本 token 产生空间注意力图；下＝用源图的注意力图控制生成图的空间布局，从而<b>仅改文本 prompt</b> 即可编辑（换词时注入源图注意力图以保布局）。</figcaption></figure>
+<div class=secsub>不训练、不给 mask，直接在采样时<b>操纵 U-Net 内部注意力图</b>注入原图结构。两支：操纵 <b>cross-attention</b>（文字↔空间，P2P）与操纵 <b>self-attention/features</b>（空间↔空间，PnP/MasaCtrl）；真图需先 <b>Null-text inversion</b> 进模型域。</div>
+<div class=callout key><b>① 为什么能 work</b>　T2I 扩散里 <b>cross-attention map 决定"每个词"与"空间布局"的绑定</b>：M=Softmax(QKᵀ/√d)，M_ij = 像素 i 对 token j 的关注度 =「我这块该听哪些词」。关键事实：<b>空间几何布局在扩散早期（高噪声步）就被 attention 定下</b>、细纹理留到后期。所以只要在用新 prompt 生成时把<b>旧 prompt 的注意力图 M 注入早期步</b>，就能"锁结构、换语义"。<b>反例</b>：不注入时，改一个词（cat→dog）会重算 QKᵀ→整张 M 改变→采样轨迹整条偏移→全图不同（T2I 对 prompt 极敏感）。整套<b>免训练、不动权重</b>，只改采样期的注意力张量——这是它比 mask/训练类都轻的根因。</div>
+<div class=callout><b>② 工作原理是什么</b>　Q 来自图像空间特征、K 来自文本 token；三种编辑算子都作用在 M 上，核心是"早期用源布局、后期放开"的<b>软约束按步切换</b>（τ 越大越保结构）：</div>
+<div class=eq>M_t^edit = { M_t^src, t ≥ τ（早期注入源 map 定结构）;  M_t^*, t &lt; τ（后期用新 map 补细节） }　；　M = Softmax(QKᵀ/√d) <span class=lbl>Prompt-to-Prompt ICLR23 · 2208.01626</span></div>
+<div class=secsub>· <b>Word Swap</b>（bicycle→car）：前期注入原 map、后期放开；· <b>Prompt Refinement</b>（加词/加修饰）：用对齐函数 A 把新 prompt token 索引映射回旧 prompt，<b>只对共有 token</b> 注入原 map、新增词用自己的 attn；· <b>Attention Re-weighting</b>（调强弱，如放大 "snowy"）：把目标 token 那一列注意力乘系数 c∈[−2,2]。</div>
+<div class=callout><b>③ 怎么实现的</b>　在每个 cross-attn 层 forward 时改写注意力张量（batch 维含"原 prompt 支 / 编辑 prompt 支"）。diffusers 社区实现默认 <b>cross_replace_steps=0.4、self_replace_steps=0.4</b>（=注入占总步数的比例）。<b>真图入口 Null-text Inversion</b>（CVPR23, 2211.09794）：P2P 只能编辑模型自生成的图；真图先做一次 <b>DDIM 反演</b>得枢轴轨迹 {z_t^*} 当锚点，再<b>只优化每步无条件嵌入 ∅_t</b>（用 ∅_{t+1} 初始化）让带 CFG 的去噪贴合枢轴——<b>模型权重与真实文本嵌入 C 都不动</b>，per-image 几十步优化即可无损重建、再叠加 P2P 编辑。</div>
+<div class=eq>Null-text 优化目标：min_{∅_t} ‖ z_{t−1}^* − z_{t−1}(z̄_t, ∅_t, C) ‖₂²，  t=T,…,1 <span class=lbl>只调 per-step 空文本嵌入 · 2211.09794</span></div>
+<pre><code># P2P：在每个 cross-attn forward 改写注意力（概念伪代码）
+class AttentionReplace(AttentionControl):
+    def forward(self, attn, is_cross, place_in_unet):
+        if is_cross and self.cur_step &lt; self.num_replace_steps:   # 早期步注入
+            attn_orig, attn_edit = attn.chunk(2)                  # 原支/编辑支
+            attn_edit = attn_orig @ self.mapper                   # 对齐矩阵搬原图注意力
+            attn = torch.cat([attn_orig, attn_edit])
+        return attn                                               # self-attn/后期步保持不变</code></pre>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>· <b>为何操纵 attention 而非 latent/mask</b>：attention 是"词↔区域"的<b>软结构</b>，能免 mask 保住原图几何、又允许语义替换；比 mask 更灵活（不用画框），比训练更省（零成本）。<br>· <b>为何真图必须先 inversion</b>：训练-free 注入依赖"模型自己的生成轨迹"，真图不在此轨迹上；Null-text 用<b>测试时优化</b>把真图搬进模型域。<br>· <b>代价</b>：per-image 需反演/优化、对<b>非刚性大改</b>（换姿态）易崩，故有 MasaCtrl 的 mutual self-attn。</div>
+<div class=secsub>免训练注入三支：操纵谁、管什么、真图支持：</div>
+<table class=tbl>
+<tr><th>方法</th><th>操纵对象</th><th>管什么</th><th>真图</th></tr>
+<tr><td><b>Prompt-to-Prompt</b> (ICLR23)</td><td>cross-attention map</td><td>词↔空间位置（改词不改结构）</td><td>需 Null-text</td></tr>
+<tr><td><b>Plug-and-Play</b> (CVPR23)</td><td>spatial feature + self-attn</td><td>结构/语义布局一致、换外观</td><td>反演引导图</td></tr>
+<tr><td><b>MasaCtrl</b> (ICCV23)</td><td>mutual self-attn（查源图 K/V）</td><td>保身份的<b>非刚性</b>编辑（改姿态）</td><td>mask 自动</td></tr>
+</table>
+
+<h3 class=sub><span class=n>①</span>Mask-based Inpainting（掩码重绘）</h3>
+<div class=secsub>输入原图 x、二值掩码 m（本块约定 <b>1=已知/保留区、0=待重绘区</b>）、文本 c：mask 外逐像素等于原图，mask 内由 diffusion 依文本 + 上下文生成，接缝和谐。SD-inpaint / RePaint / Blended 本质是<b>同一招</b>——"已知区每步用原图加噪覆盖/混合"，区别只在<b>像素 vs latent、有无 resample、有无 CLIP 引导</b>。</div>
+<div class=callout key><b>① 为什么能 work</b>　根子是<b>前向扩散的边缘分布本身就是模型被训练去反演的对象</b>。前向加噪满足 q(z_t|z_0)=𝒩(√ᾱ_t·z_0,(1−ᾱ_t)I)；inpainting 每一步都把已知区用"原图 latent 加噪到<b>当前噪声水平 t</b>"的样本覆盖，等于强制已知区<b>始终精确落在 U-Net 认识的噪声流形上</b>。当 t→0、ᾱ_t→1，已知区收敛回原始 latent（近乎无损）；待绘区则借 U-Net 感受野"看到"正确噪声水平的已知区上下文、生成与之连贯的内容。<b>反例（证"加噪到匹配水平"才是关键、而非"粘贴"）</b>：若把干净 z_0 直接粘进带噪画布而不重新加噪到 t，U-Net 收到<b>分布外</b>输入（噪声画布里嵌一块干净像素），ε 预测在边界失准 → 出接缝/伪影。所以真正"生成"的只有待绘区，已知区永远是原图的<b>确定性投影</b>——这就是一致性的来源。</div>
+<div class=callout><b>② 工作原理是什么</b>　三条路线共享"已知区替换"这一步，只是替换的空间与配套技巧不同。SD-inpaint 的 latent 替换式（m=已知区，⊙=逐元素乘）：</div>
+<div class=eq>z_{t−1} = m ⊙ (√ᾱ_{t−1}·z_0 + √(1−ᾱ_{t−1})·ε) + (1−m) ⊙ z_{t−1}^gen　；　z_0=ℰ(x_orig), ε∼𝒩(0,I) <span class=lbl>已知区=原图加噪 · 待绘区=模型去噪</span></div>
+<div class=secsub>· <b>RePaint</b>（无条件 DDPM，免训练）加了 <b>resample</b>：把去噪得到的 x_{t−1} <b>再前向加噪跳回</b> x_t，在同一 t 上来回 r 次，让已知区与生成区反复"协调"，解决单次去噪的语义不连贯。· <b>Blended</b>：用 CLIP 当分类器对当前 x̂_0 打分求梯度、把前景推向文本，再把"CLIP 引导的前景"与"原图加噪的背景"按 mask 逐层混合。</div>
+<div class=eq>RePaint resample：x_t ∼ 𝒩(√(1−β_t)·x_{t−1}, β_t·I)，跳跃步长 j、重采样 r 次　｜　Blended：x_t = m⊙x_fg,t + (1−m)⊙x_bg,t, x_bg,t∼q(x_t|x_orig) <span class=lbl>RePaint 2201.09865 · Blended 2111.14818</span></div>
+<div class=callout><b>③ 怎么实现的</b>　diffusers 两条路线：(A) <b>免训练替换式</b>（等价 latent 版 RePaint 单步）；(B) <b>微调 9 通道 UNet</b>——把首层输入从 4 通道扩到 <b>9 = 4(noisy z_t) + 1(下采样 mask) + 4(masked-image latent ℰ(x⊙(1−m)))</b>，在带 mask 数据上继训，让模型<b>显式</b>学"哪抄哪重绘"，大块 mask 更稳。RePaint 论文配置 <b>T=250, r=10, j=10</b>（消融：j=10 明显优于 j=1，和谐化收益在 r≈10 饱和）。</div>
+<pre><code># (B) diffusers 微调版 inpaint 权重（9 通道 UNet）
+from diffusers import StableDiffusionInpaintPipeline
+import torch
+pipe = StableDiffusionInpaintPipeline.from_pretrained(
+    "runwayml/stable-diffusion-inpainting", torch_dtype=torch.float16).to("cuda")
+out = pipe(prompt="a golden retriever on the bench",
+           image=init_image,       # PIL RGB 原图
+           mask_image=mask_image,  # PIL L：白=重绘区, 黑=保留区
+           num_inference_steps=50, guidance_scale=7.5, strength=1.0).images[0]
+
+# (A) 免训练 RePaint 采样核心（无条件 DDPM，对应 Algorithm 1）
+for t in reversed(range(T)):
+    for u in range(r):                                   # resample r 次
+        eps       = randn_like(x0) if t &gt; 1 else 0
+        x_known   = sqrt(abar[t])*x0 + sqrt(1-abar[t])*eps    # 已知区=原图加噪
+        x_unknown = ddpm_reverse_step(x_t, t)                # 未知区=模型去噪一步
+        x_t = m*x_known + (1-m)*x_unknown                    # 拼接 → x_{t-1}
+        if u &lt; r-1 and t &gt; 1:
+            x_t = sqrt(1-beta[t])*x_t + sqrt(beta[t])*randn()  # 前向跳回 x_t（resample）</code></pre>
+<div class=callout ntm><b>④ 为什么这么实现（设计动机 + 权衡）</b><br>编辑的第一性矛盾是<b>可编辑性 vs 保真性</b>：纯 T2I 改一处就全图重画。mask 类把"锚住原图"塞在<b>最硬的 latent/像素空间</b>——空间上直接锁死已知区，是保真性最强的一档。<br>· <b>为何免训练替换式够用</b>：一致性由数学恒等式（加噪到匹配水平）保证、不必学；代价是大块 mask 语义补全弱。<br>· <b>为何还要 9 通道微调</b>：替换式对"补一整只不存在的物体"力不从心，显式喂 mask+masked latent 让模型学到补全先验。<br>· <b>为何 RePaint 走像素 + resample</b>：要泛化到<b>任意极端 mask</b> 且不重训，只能靠 resample 反复和谐化换质量，代价是采样慢 r 倍。</div>
+<div class=secsub>用"要不要训练 × 要不要 mask"两把尺子给整个 §6 定位（本块①落在"要 mask"行）：</div>
+<table class=tbl>
+<tr><th>　</th><th>免训练（采样期注入）</th><th>要训练</th></tr>
+<tr><td><b>要 mask</b></td><td>SD-inpaint 替换式 · RePaint · Blended(Latent)</td><td>SD-inpaint 9 通道 UNet</td></tr>
+<tr><td><b>免 mask</b></td><td>P2P · PnP · MasaCtrl（真图先 inversion）</td><td>InstructPix2Pix · ControlNet · T2I-Adapter</td></tr>
+</table>
+
+<h3 class=sub><span class=n>⑤</span>训练数据构造 + 微调策略</h3>
+<div class=grid2>
+<div class=card><div class=tag>数据构造</div><p><b>全合成</b>（IP2P）：GPT-3 造指令 + P2P 造图像对，量大(45万)有噪；<b>人工</b>（MagicBrush）：真实、质高但小(10K)；<b>多任务</b>（Emu Edit）：混多任务 + 任务嵌入；<b>重渲染/仿真</b>：3D 改参重渲染（对接 <a href="wm_vl_survey.html#s3" style="color:var(--accent2)">VL Survey §3 GT 构造</a>）。</p></div>
+<div class=card><div class=tag>微调策略</div><p><b>全量</b>：IP2P（UNet 输入通道 concat 原图）；<b>旁路</b>：ControlNet/T2I-Adapter（冻结主干 + 可训副本）；<b>LoRA</b>：低秩适配省显存、适合定制；<b>null-embedding 优化</b>：Null-text（per-image，不改权重）。</p></div>
+</div>
+<!-- /FILL:s6 -->
+
+<h2 class=sec id=s7><span class=bar></span>§7 · SOTA 与经典系统方法分类 [Q6]</h2>
+<div class=secsub>Wan / Cosmos / Sora / Gemini / Kimi-VL / VLA / Chameleon / Transfusion / Emu / Janus / Show-o 逐一定位。</div>
+<!-- FILL:s7 -->
+<div class=callout><b>四大类系统</b>：① <b>视频生成 / 世界模型</b>（Sora · Wan · Cosmos）；② <b>原生多模态 VLM</b>（Gemini · Kimi）；③ <b>统一理解+生成</b>（Chameleon · Transfusion · Show-o · Emu3 · Janus-Pro · Unified-IO 2）；④ <b>VLA 机器人</b>（RT-2 · OpenVLA · π0）。三范式主导：<b>Diffusion（DiT/flow）</b>、<b>Autoregressive（next-token）</b>、二者<b>混合</b>（Transfusion / Show-o / π0）。绝大多数系统的「语言↔图像」交互都落在 <a href="#s1" style="color:var(--accent)">§1</a> 的三种融合范式之一。</div>
+
+<h3 class=sub><span class=n>核心表</span>分类归类总表（15 系统 · arXiv 已核实）</h3>
+<table class=tbl>
+<tr><th>模型（机构·年）</th><th>类别</th><th>生成范式</th><th>交互机制（归口 §1/§4）</th><th>开源</th><th>定位</th></tr>
+<tr><td><b>Wan2.1/2.2</b> 阿里'25<br>2503.20314</td><td>视频 T2V/I2V</td><td>Diffusion (DiT+flow)，2.2 加 MoE</td><td>T5 <b>cross-attn</b> 逐块 + <b>adaLN</b> 6 调制参数</td><td>✅ Apache</td><td>🥇开源视频 SOTA</td></tr>
+<tr><td><b>Cosmos</b> NVIDIA'25<br>2501.03575</td><td>世界基础模型(Physical AI)</td><td><b>Diffusion + AR 双线</b></td><td>Cosmos Tokenizer + T5 <b>cross-attn</b></td><td>✅</td><td>🥇物理 AI SOTA</td></tr>
+<tr><td><b>Sora</b> OpenAI'24</td><td>视频/世界模拟器</td><td>Diffusion (DiT)</td><td>spacetime patch + adaLN 条件 + 文本 re-caption</td><td>❌</td><td>🏆里程碑</td></tr>
+<tr><td><b>Kimi-VL</b> Moonshot'25<br>2504.07491</td><td>原生多模态 VLM</td><td>AR 文本</td><td>MoonViT + <b>MLP projector</b> → MoE LLM</td><td>✅ MIT</td><td>🥇高效开源 VLM</td></tr>
+<tr><td><b>Gemini 1.5</b> Google'24<br>2403.05530</td><td>原生多模态 VLM</td><td>理解为主 (AR)</td><td><b>early-fusion</b> token 交错 + Sparse MoE + self-attn</td><td>❌</td><td>🏆里程碑</td></tr>
+<tr><td><b>Janus-Pro</b> DeepSeek'25<br>2501.17811</td><td>统一理解+生成</td><td>AR</td><td><b>解耦视觉编码</b>：理解用 SigLIP、生成用 VQ，共享 AR</td><td>✅ (1B/7B)</td><td>🥇开源统一 SOTA</td></tr>
+<tr><td><b>Show-o</b> NUS'24<br>2408.12528</td><td>统一理解+生成</td><td><b>混合</b>：AR+Discrete Diffusion</td><td>单 transformer；<b>原生 text-guided inpainting</b>（→<a href="#s6" style="color:var(--accent)">§6</a>）</td><td>✅</td><td>SOTA(统一小模型)</td></tr>
+<tr><td><b>Emu3</b> BAAI'24<br>2409.18869</td><td>统一理解+生成</td><td>AR（离散）</td><td><b>next-token is all you need</b>：图/文/视频统一离散 token</td><td>✅ Apache</td><td>🏆next-token 统一证明</td></tr>
+<tr><td><b>Transfusion</b> Meta'24<br>2408.11039</td><td>统一理解+生成</td><td><b>混合</b>：AR文本+Diffusion图</td><td>单 transformer 混合目标（CE+diffusion loss），图像连续</td><td>❌(复现多)</td><td>里程碑(混合)</td></tr>
+<tr><td><b>Chameleon</b> Meta'24<br>2405.09818</td><td>统一理解+生成</td><td>AR（离散）</td><td><b>early-fusion</b> 图像量化 token + 同一 AR 序列</td><td>✅</td><td>🏆early-fusion 开山</td></tr>
+<tr><td><b>Unified-IO 2</b> AI2'23<br>2312.17172</td><td>统一(含音/动作)</td><td>AR (enc-dec)</td><td>图/文/音/动作统一离散 token + 混合去噪</td><td>✅</td><td>里程碑(全模态)</td></tr>
+<tr><td><b>π0</b> Physical Int.'24<br>2410.24164</td><td>VLA 机器人</td><td><b>混合</b>：VLM AR + Flow 动作</td><td>PaliGemma + <b>flow-matching action expert</b>（Transfusion 式）</td><td>✅ (LeRobot)</td><td>🥇通用机器人 SOTA</td></tr>
+<tr><td><b>OpenVLA</b> Stanford'24<br>2406.09246</td><td>VLA 机器人</td><td>AR</td><td>Prismatic VLM（<b>SigLIP+DINOv2</b>）+Llama2，动作 token</td><td>✅</td><td>🥇开源 VLA SOTA</td></tr>
+<tr><td><b>RT-2</b> Google'23<br>2307.15818</td><td>VLA 机器人</td><td>AR</td><td><b>动作即 token</b>：VLM co-fine-tune，6-DoF 离散 256 bin</td><td>❌</td><td>🏆VLA 开山</td></tr>
+</table>
+<div class=secsub>图例：🏆=开创范式的经典里程碑；🥇=当前 SOTA 代表；✅/❌=是否开源权重。</div>
+
+<h3 class=sub><span class=n>①</span>视频生成 / 世界模型</h3>
+<div class=secsub>三者都以 <b>DiT + latent 压缩</b> 为骨架，文本经 <a href="#s1" style="color:var(--accent)">§1</a> 的 cross-attn(A1) / adaLN(A3) 注入去噪；差异在 latent 表示与"是否兼做世界模型"。</div>
+<div class=card>
+<div class=tag>🥇 开源视频 SOTA · 阿里 2025 · ✅ Apache-2.0</div>
+<h4>Wan / Wan2.1 / Wan2.2 — 消费级可跑的中英双语视频基座</h4>
+<p><b>定位</b>　阿里开源大规模视频基础模型套件，覆盖 T2V / I2V，主打"开源 + 消费级可跑 + 中英双语"；arXiv 2503.20314（2025），GitHub <code>Wan-Video/Wan2.1</code> · <code>Wan2.2</code>（Wan2.2 于 2025-07-28 发布）。</p>
+<p><b>核心架构机制</b>　<b>同时用 <a href="#s1" style="color:var(--accent)">§1</a> 的 cross-attn(A1) + adaLN(A3) 两种融合</b>：<b>Wan-VAE</b>（自研 <b>3D causal VAE</b>，时空压缩且保时序因果，可编解码<b>任意长 1080P</b>不丢历史）→ DiT + <b>flow matching</b>；<b>T5 编码多语言文本 → 每个 block cross-attention 逐块注入</b>；时间步 embedding 经共享 <b>MLP(Linear+SiLU) 预测 6 个 adaLN 调制参数</b>（每块学不同 bias）。Wan2.2 升级 <b>MoE 扩散</b>：high-noise 专家（去噪早期管整体布局）+ low-noise 专家（后期 refine 细节）。</p>
+<p><b>训练 / 数据规模</b>　flow matching 目标 + 升级数据 + 美学标签提升电影感。A14B 系列<b>总 27B / 每步活跃 14B</b>（MoE，推理成本不变）；高压缩 <b>TI2V-5B</b>（dense）配 Wan2.2-VAE（压缩比 4×16×16 = 64×，patchify 后 4×32×32），<b>单张 RTX 4090 &lt; 9 分钟生成 5s 720P@24fps</b>，单框架原生 T2V+I2V。</p>
+<p><b>为什么这么设计</b>　3D causal VAE 保时序因果以支持任意长视频；cross-attn 喂逐 token 文本对齐、adaLN 喂全局时间步调制，双注入互补（正补 <a href="#s1" style="color:var(--accent)">§1 A3</a> 指出的 adaLN 逐 token 对齐弱）；MoE 按去噪信噪比分工，在不加推理成本下提质。ckpt：<code>Wan2.2-T2V-A14B</code> · <code>I2V-A14B</code> · <code>TI2V-5B</code>。</p>
+</div>
+<div class=card>
+<div class=tag>🥇 Physical AI SOTA · NVIDIA 2025 · ✅ 开源开权重</div>
+<h4>Cosmos — 面向机器人 / 自驾的世界基础模型平台</h4>
+<p><b>定位</b>　把"世界模型"当可微调的通用数字孪生，覆盖视频数据管线 + 预训练 WFM + 后训练示例 + 视频 tokenizer；arXiv 2501.03575（2025-01，Ming-Yu Liu 等），GitHub <code>nvidia-cosmos</code>。</p>
+<p><b>核心架构机制</b>　<b>双线并行 + <a href="#s1" style="color:var(--accent)">§1 A1 cross-attn</a> 文本注入</b>：① <b>Cosmos Tokenizer</b>——attention 式 enc-dec，<b>同时学连续 token(CV) 与离散 token(DV)</b> 两套（如 Tokenizer-DV8×16×16，时间 8× / 空间 16×16 压缩）；② <b>Diffusion 线（连续 CV）</b>：transformer diffusion，T5 embedding cross-attn 注入，分 Text2World / Video2World；③ <b>AR 线（离散 DV）</b>：Llama3 式 GPT（4B / 12B）预测未来帧，本身无语言理解、靠 T5 cross-attn 引入文本，因重压缩失真另训 <b>diffusion decoder（DV→CV）</b>修复。</p>
+<p><b>训练 / 数据规模</b>　预训练（Text2World + Video2World）→ 针对下游 Physical AI（机器人操作、自驾）<b>post-training</b>；配套视频 curation 管线。模型线 Cosmos-Predict1/2 + Tokenizer 全部开源开权重。</p>
+<p><b>为什么这么设计</b>　双 tokenizer 让 diffusion 与 AR 两条线共用同一压缩基座、各取所长；作为 <b>world model</b> 与 VLA（policy）互补——为 VLA 造廉价合成数据、做策略 rollout 评估（详见本节 ④ Cosmos↔VLA）。</p>
+</div>
+
+<div class=card>
+<div class=tag>🏆 里程碑 · OpenAI 2024 · ❌闭源</div>
+<h4>Sora — 视频生成即"物理世界通用模拟器"</h4>
+<p><b>定位</b>　大规模 text-to-video diffusion transformer，可生成 <b>1 分钟</b>高保真视频；技术博客《Video generation models as world simulators》，<b>无正式 arXiv</b>（第三方逆向综述 2402.17177 / 2405.03520）。</p>
+<p><b>核心架构机制</b>　融合方式 = <a href="#s1" style="color:var(--accent)">§1 A3 adaLN</a> 条件调制（时间步 / 文本注入 DiT）。三大关键设计：① <b>spacetime latent patches</b>——VAE 把视频<b>时空同时压缩</b>成低维 latent，再切成时空 patch 序列当 token（"图像=单帧视频"统一处理，天然支持可变分辨率 / 时长 / 宽高比，推理靠排布 patch 网格大小控制输出尺寸）；② <b>DiT 主干</b>（transformer 替代 U-Net 做 latent 去噪，Peebles &amp; Xie ICCV23）；③ <b>video re-captioning</b>（DALL·E 3 式重描述，训高描述性 captioner 生成详尽字幕，推理再用 GPT 扩写用户短 prompt）。</p>
+<p><b>训练 / 数据规模</b>　文本条件 diffusion，<b>联合训练不同时长 / 分辨率 / 宽高比</b>的视频与图像；强依赖高质量 video-text 对（re-caption 补数据瓶颈）。精确参数量 / 步数官方未公开。</p>
+<p><b>为什么这么设计</b>　spacetime patch 把异构尺寸视频统一成变长 token，让"一个模型吃所有分辨率 / 时长"成立；DiT+adaLN 直接继承扩散 scaling law；re-caption 用合成高质量字幕破解 video-text 配对稀缺。闭源，复现见 <code>Open-Sora</code> / <code>Open-Sora-Plan</code>。</p>
+</div>
+
+<h3 class=sub><span class=n>②</span>原生多模态 VLM</h3>
+<div class=secsub>"原生" = 设计之初就多模态、而非事后拼接；融合走 <a href="#s1" style="color:var(--accent)">§1</a> 的 early-fusion(Gemini) 或 projector 桥接(Kimi-VL)，图→文理解归口 <a href="#s4" style="color:var(--accent)">§4</a>。</div>
+<div class=card>
+<div class=tag>🥇 高效开源 VLM · Moonshot 2025 · ✅ MIT</div>
+<h4>Kimi-VL — 2.8B 活跃参数的高效开源 VLM</h4>
+<p><b>定位</b>　小激活参数 + 强推理 / 长上下文的开源多模态 VLM；arXiv 2504.07491（2025-04），GitHub <code>MoonshotAI/Kimi-VL</code>。</p>
+<p><b>核心架构机制</b>　融合 = <a href="#s1" style="color:var(--accent)">§1 A4 projector 桥接</a>：<b>Moonlight MoE LLM（16B 总 / 2.8B 活跃，即 A3B）</b> + <b>400M MoonViT 原生分辨率视觉编码器</b> + <b>MLP projector</b>（把视觉 token 映入 LLM 空间）；128K 上下文。图→文理解归口 <a href="#s4" style="color:var(--accent)">§4</a>。</p>
+<p><b>训练 / 数据规模</b>　变体 <code>A3B-Instruct</code>（感知 / OCR / 长文档 / agent）与 <code>A3B-Thinking(-2506)</code>（长 CoT SFT + RL 强化推理）；HF <code>moonshotai/Kimi-VL-A3B-*</code>。</p>
+<p><b>为什么这么设计</b>　MoE 只激活 2.8B 大幅省推理成本；MoonViT 原生分辨率避免图像强行缩放丢细节（利于 OCR / 文档）；MLP projector 极简、复用冻结 encoder+LLM（对应 <a href="#s1" style="color:var(--accent)">§1 A4</a> 主流选 projection 的理由）。</p>
+</div>
+<div class=card>
+<div class=tag>🏆 里程碑 · Google 2024 · ❌闭源（仅 API）</div>
+<h4>Gemini 1.5 — 原生多模态 + 百万级长上下文</h4>
+<p><b>定位</b>　Google 设计之初即 <b>natively multimodal</b> 的旗舰族，图 / 文 / 音 / 视频<b>任意交错(interleaved)输入</b>，1.5 主打<b>最高 10M token</b> 超长上下文；arXiv 2403.05530（2024）。</p>
+<p><b>核心架构机制</b>　融合 = <a href="#s1" style="color:var(--accent)">§1 early-fusion + self-attention</a>：图像 patch / 视频帧 / audiogram / 文本 token 全投影到<b>统一 latent 空间</b>，同一序列内 self-attention <b>逐层</b>自然完成跨模态融合（官方称 Unified Multimodal Token Interleaving）；音频由专用 encoder <b>直接从原始波形</b>处理（保语调 / 音色，不走 STT 转写丢信息）。1.5 明确采用 <b>Sparse MoE</b>。</p>
+<p><b>训练 / 数据规模</b>　跨模态联合训练 + 蒸馏 + 长上下文架构改造；1.5 Pro 以<b>远低于 1.0 Ultra 的算力</b>达相近质量。10M token ≈ <b>107 小时音频 / 10.5 小时视频(1fps)</b>，NIAH 大海捞针召回近 <b>100%</b>。</p>
+<p><b>为什么这么设计</b>　early-fusion 让跨模态在<b>每一层</b>交互，表达力强于 late-fusion 拼接；原始波形直编避免 STT 信息损失；sparse MoE 是撑起百万级上下文算力效率的关键。</p>
+</div>
+<ul class=pa>
+<li><b>Kimi k1.5</b>（arXiv 2501.12599，2025-01）：多模态 RL 长 CoT 推理，<b>简洁 RL 框架</b>（不用 MCTS / value / PRM），多模态基准（MathVista 74.9 等）match OpenAI o1。里程碑（把 RL 推理引入多模态）。</li>
+</ul>
+
+<h3 class=sub><span class=n>③</span>统一理解+生成（最能体现双向交互）</h3>
+<div class=secsub>核心分歧：图像用<b>离散 token(AR)</b> 还是<b>连续表示(diffusion)</b>；理解 / 生成是否<b>共用视觉编码器</b>。下面两个点名系统分别代表"全离散 early-fusion 开山"与"双编码解耦"两条主流路线。</div>
+<div class=card>
+<div class=tag>🥇 开源统一 SOTA · DeepSeek 2025 · ✅ MIT (1B/7B)</div>
+<h4>Janus-Pro — 解耦视觉编码的统一理解+生成</h4>
+<p><b>定位</b>　用"解耦视觉编码"化解理解 / 生成冲突的统一模型；Janus arXiv 2410.13848、Janus-Pro arXiv 2501.17811（1B / 7B），GitHub <code>deepseek-ai/Janus</code>。</p>
+<p><b>核心架构机制</b>　融合 = <a href="#s1" style="color:var(--accent)">§1 双编码器解耦</a>（单一 AR transformer 处理）：<b>理解路径</b>用 <b>SigLIP</b> 抽高维语义 → 展平 1D → understanding adaptor → LLM；<b>生成路径</b>用 <b>VQ tokenizer</b> 把图转离散 ID → generation adaptor（codebook embedding）→ LLM，另用随机初始化 image prediction head 出图。理解方向归口 <a href="#s4" style="color:var(--accent)">§4</a>。</p>
+<p><b>训练 / 数据规模</b>　Janus-Pro 改训练策略 + 扩数据 + 放大到 <b>7B</b>，修复短 prompt 生成不稳；部分基准<b>超 DALL-E 3 / SD3-Medium</b>。</p>
+<p><b>为什么这么设计</b>　理解需<b>高层语义</b>、生成需<b>低层细节</b>，共用一个视觉 encoder 会互相拖累——解耦双编码器消除冲突，却共享同一 AR transformer 保持"统一"。当前开源统一模型主流范式之一。</p>
+</div>
+<div class=card>
+<div class=tag>🏆 early-fusion 开山 · Meta 2024 · ✅ 权重开放</div>
+<h4>Chameleon — 图文全离散 token 的 early-fusion 开山</h4>
+<p><b>定位</b>　从 inception 就 mixed-modal 的 <b>early-fusion 全 token 化</b>基础模型（图 / 文 / 代码交错）；arXiv 2405.09818（2024），HF <code>facebook/chameleon-*</code>（7B / 34B）。</p>
+<p><b>核心架构机制</b>　融合 = <a href="#s1" style="color:var(--accent)">§1 early-fusion 统一序列</a> 的开山：<b>图像量化为离散 token</b>（类比单词），与文本 token <b>共用同一 transformer、同一 AR 目标</b>，无需独立图 / 文 encoder 或域专用 decoder。为解决 early-fusion 训练不稳定：<b>QK-Norm</b>（对 Q / K 做 layernorm 控 softmax 输入范数）+ <b>重排 layernorm 位置</b>（Swin 式，界定 FFN 范数增长）+ dropout。</p>
+<p><b>训练 / 数据规模</b>　<b>34B 训练量达 Llama-2 的 5×</b>；官方开生成受限，社区有解锁。</p>
+<p><b>为什么这么设计</b>　全 token 化统一序列可直接复用 LLM 训练 / 推理栈；early-fusion 让图文在<b>每层</b>交互；但混模态会放大 logits 发散——QK-Norm 正是为治这个 early-fusion 特有的训练不稳定而生。</p>
+</div>
+<ul class=pa>
+<li><b>Transfusion</b>（Meta 2024，arXiv 2408.11039）：单 transformer <b>混合目标</b>——文本 next-token(CE) + 图像 diffusion loss，<b>图像保持连续</b>（避开量化瓶颈，scale 优于离散路线）；每图仅 16 patch，7B/2T token，GenEval 超 SDXL/DALL-E 2。</li>
+<li><b>Show-o</b>（NUS 2024，arXiv 2408.12528）：单 transformer 统一 <b>AR 文本 + discrete diffusion 图像（MaskGIT 式）</b>，内建文本条件；<b>原生支持 text-guided inpainting/extrapolation</b>（直接对接 <a href="#s6" style="color:var(--accent)">§6</a>）。开源 <code>showlab/Show-o</code>。</li>
+<li><b>Emu3</b>（BAAI 2024，arXiv 2409.18869，Nature 2025）：<b>纯 next-token 统一</b>，图/文/视频 tokenize 到离散空间从零训单 transformer，彻底不用 diffusion/CLIP；SBER-MoVQGAN tokenizer（512² 图→4096 token）；超 SDXL/LLaVA-1.6。Apache-2.0。</li>
+<li><b>Unified-IO 2</b>（AllenAI，arXiv 2312.17172，CVPR 2024）：首个同时理解+生成 <b>图/文/音/动作</b> 的 AR 模型，全 tokenize 到共享空间 + enc-dec + multimodal mixture-of-denoisers。</li>
+</ul>
+
+<h3 class=sub><span class=n>④</span>VLA（Vision-Language-Action 机器人）</h3>
+<div class=secsub>把<b>动作</b>纳入语言↔视觉联合建模：离散成 token 当"文本"（RT-2 / OpenVLA）或用连续生成头出动作（π0），均归口 <a href="#s1" style="color:var(--accent)">§1</a> 的统一 token 空间 / 混合目标融合。</div>
+<div class=card>
+<div class=tag>🥇 开源 VLA SOTA · Stanford 等 2024 (CoRL) · ✅ 全开源</div>
+<h4>OpenVLA — 7B 反超 55B 的全开源 VLA</h4>
+<p><b>定位</b>　全开源 7B VLA，通用机器人操作 SOTA，可开箱控制多机器人、参数高效微调适配新本体；arXiv 2406.09246（CoRL 2024），GitHub <code>openvla/openvla</code>。</p>
+<p><b>核心架构机制</b>　融合 = <a href="#s1" style="color:var(--accent)">§1 双视觉 backbone + 动作 token</a>：基于 Prismatic-7B VLM = <b>融合视觉编码器（SigLIP + DINOv2 特征通道拼接，600M）</b> + 2 层 MLP projector + <b>Llama-2 7B</b>；输出离散动作 token 再解码为连续动作。</p>
+<p><b>训练 / 数据规模</b>　在 <b>Open X-Embodiment 970k 真机轨迹</b>上训练（<b>64×A100 ~14-15 天</b>）；<b>7B 超 RT-2-X(55B) 16.5%</b>（29 任务）；支持消费级 GPU <b>LoRA 微调（lora_rank=32）+ 量化推理</b>不掉点。</p>
+<p><b>为什么这么设计</b>　SigLIP（语义）+ DINOv2（空间 / 几何）双 backbone 互补，补足机器人控制最需要的<b>空间推理</b>；全开源 + LoRA 让消费级即可微调适配新本体（对应 <a href="#s1" style="color:var(--accent)">§1</a> 双 backbone 融合）。</p>
+</div>
+<div class=card>
+<div class=tag>🥇 通用机器人 SOTA · Physical Intelligence 2024 · ✅ (LeRobot)</div>
+<h4>π0 / pi-zero — flow-matching 动作头的通用机器人策略</h4>
+<p><b>定位</b>　面向高频灵巧操作（叠衣物、装盒）的通用机器人策略（robot foundation model）；arXiv 2410.24164（2024-10），后续 π0-FAST（FAST 动作 tokenizer，2501.09747）；HF LeRobot 官方移植。</p>
+<p><b>核心架构机制</b>　融合 = <a href="#s1" style="color:var(--accent)">§1 混合目标 + expert 分工</a>（架构灵感来自 Transfusion）：预训练 <b>VLM 主干（PaliGemma）</b>继承 web 语义 + <b>action expert 用 conditional flow matching</b> 生成<b>连续动作 chunk</b>（action chunking），控制频率 <b>50Hz</b>；单 transformer 多目标——连续输出用 flow-matching loss、离散输出用 CE loss，且"机器人专用(动作 / 状态)token"用<b>独立权重</b>（类 MoE 双专家：一专家管图文、一专家管动作）。</p>
+<p><b>训练 / 数据规模</b>　跨本体(cross-embodiment)训练；Physical Intelligence 放出 + HuggingFace LeRobot 官方移植 π0 / π0-FAST（可直接用）。</p>
+<p><b>为什么这么设计</b>　灵巧操作需高频平滑<b>连续</b>动作，flow-matching 头比离散 token 更适合出高维连续动作(50Hz)；Transfusion 式<b>独立动作专家</b>避免动作模态干扰 VLM 图文预训练知识。</p>
+</div>
+<div class=card>
+<div class=tag>🏆 VLA 开山 · Google DeepMind 2023 · ❌闭源</div>
+<h4>RT-2 — 把 web 知识迁移到机器人控制的开山 VLA</h4>
+<p><b>定位</b>　把互联网规模 VLM 知识直接迁移到机器人控制的开山 VLA；arXiv 2307.15818（2023-07）。RT-2-X(55B) 是其在 Open X-Embodiment 上的变体。</p>
+<p><b>核心架构机制</b>　融合 = <a href="#s1" style="color:var(--accent)">§1 统一 token 空间</a>："动作即文本 token"——对 SOTA VLM（<b>PaLI-X / PaLM-E</b>）在机器人轨迹 + 互联网 VQA 上 <b>co-fine-tune</b>；6-DoF 位姿 + 夹爪等每维<b>离散成 256 个 bin</b>，bin 索引当词表 token，推理 AR 生成动作 token 串（如 "1 128 91 241 5 101 127"）再解码为控制指令。</p>
+<p><b>训练 / 数据规模</b>　机器人轨迹 + 互联网 VQA 联合 co-fine-tune；涌现<b>新物体泛化 / 指令外推 / CoT 多步语义推理</b>。闭源。</p>
+<p><b>为什么这么设计</b>　动作离散成 token 让它与语言<b>共用同一 AR 词表和训练栈</b>（零改动复用 VLM）；co-fine-tune（而非纯微调）保留 web 语义知识不遗忘，这正是涌现语义推理的来源。</p>
+</div>
+<ul class=pa>
+<li><b>Cosmos ↔ VLA 关系</b>：Physical AI 需两个数字孪生——<b>VLA=策略模型 policy</b>（观测/指令→动作）、<b>Cosmos=世界模型 world model</b>（过去帧+文/动作→未来帧），<b>互补非替代</b>：Cosmos 为 VLA 造合成数据 / 做策略 rollout 评估 / 后训练。</li>
+</ul>
+
+<h3 class=sub><span class=n>分层</span>SOTA vs 经典里程碑</h3>
+<table class=tbl>
+<tr><th>层级</th><th>模型</th><th>为什么</th></tr>
+<tr><td rowspan=6>🥇 当前 SOTA 代表<br>（最新最好，先看）</td><td><b>Wan2.2</b> (2025)</td><td>开源视频 SOTA（MoE 去噪 + 消费级）</td></tr>
+<tr><td><b>Cosmos</b> (2025)</td><td>Physical AI 世界模型平台 SOTA</td></tr>
+<tr><td><b>Janus-Pro</b> (2025)</td><td>开源统一理解生成 SOTA（解耦编码）</td></tr>
+<tr><td><b>Kimi-VL</b> (2025)</td><td>高效开源 VLM（2.8B 活跃 + 长 CoT）</td></tr>
+<tr><td><b>π0</b> (2024)</td><td>通用机器人 SOTA（flow-matching 动作头）</td></tr>
+<tr><td><b>OpenVLA</b> (2024)</td><td>开源 VLA SOTA（7B 超 55B RT-2-X）</td></tr>
+<tr><td rowspan=7>🏆 经典里程碑<br>（开创范式，作背景）</td><td><b>Sora</b> (2024)</td><td>spacetime patch + DiT，确立"视频=世界模拟器"</td></tr>
+<tr><td><b>Emu3</b> (2024)</td><td>证明纯 next-token 可统一图/文/视频</td></tr>
+<tr><td><b>Transfusion</b> (2024)</td><td>AR文本 + diffusion图像 单模型混合范式</td></tr>
+<tr><td><b>Chameleon</b> (2024)</td><td>early-fusion 全离散 token 统一模型开山</td></tr>
+<tr><td><b>Gemini 1.5</b> (2024)</td><td>原生多模态 + 百万级长上下文</td></tr>
+<tr><td><b>RT-2</b> (2023)</td><td>首次"web 知识→动作 token"，定义 VLA</td></tr>
+<tr><td><b>Unified-IO 2</b> (2023)</td><td>图/文/音/动作全模态 AR 统一</td></tr>
+</table>
+
+<h3 class=sub><span class=n>映射</span>交互机制 → 采用系统（回指 §1 训练融合 / §4 理解）</h3>
+<table class=tbl>
+<tr><th>交互机制</th><th>代表系统</th></tr>
+<tr><td><b>cross-attention 文本注入</b>（文本作 K/V 注入视觉去噪）</td><td>Sora、Wan2.1/2.2、Cosmos-diffusion、Cosmos-AR</td></tr>
+<tr><td><b>adaLN / adaLN-Zero 条件调制</b></td><td>所有 DiT 系：Sora、Wan（6 调制参数）、Cosmos-diffusion</td></tr>
+<tr><td><b>early-fusion 统一 token + self-attention</b></td><td>Chameleon、Emu3、Gemini、Unified-IO 2、RT-2、OpenVLA</td></tr>
+<tr><td><b>混合目标</b>（AR-CE + diffusion/flow loss）</td><td>Transfusion、Show-o、π0</td></tr>
+<tr><td><b>双路径/双 backbone 视觉编码解耦</b></td><td>Janus-Pro（SigLIP+VQ）、OpenVLA（SigLIP+DINOv2）</td></tr>
+<tr><td><b>projector/adapter 桥接</b>（视觉映入 LLM 空间）</td><td>Kimi-VL（MoonViT+MLP）、多数 VLM</td></tr>
+<tr><td><b>图→文双向理解</b>（infer 反推语言，→<a href="#s4" style="color:var(--accent)">§4</a>）</td><td>Gemini、Kimi-VL、Janus(理解路径)、Chameleon/Emu3/Show-o(理解侧)</td></tr>
+<tr><td><b>文字驱动编辑/inpainting</b>（→<a href="#s6" style="color:var(--accent)">§6</a>）</td><td>Show-o（原生）；扩散系普遍可做</td></tr>
+</table>
+
+<div class=callout warn><b>⚠ "Kimi x3" 澄清（请你确认所指）</b>：无官方对应命名。月之暗面三个相关模型：<b>Kimi-VL</b>（arXiv 2504.07491，开源 MoE VLM，16B 总/2.8B 活跃，MIT）、<b>Kimi k1.5</b>（arXiv 2501.12599，多模态 RL 长 CoT 推理）、<b>Kimi K2</b>（arXiv 2507.20534，1T MoE agentic，<b>当前不支持视觉</b>，故不属多模态交互模型）。已按三者分别覆盖；若你另有所指请告知。</div>
+<div class=callout warn><b>需二次核实项</b>：Emu/Emu2 arXiv id（记忆 2307.05222 / 2312.13286，Emu3 已核实）；Gemini 1.0 报告 id（记忆 2312.11805）；FLUX.1 无正式 arXiv（技术发布）；NVIDIA Isaac GR00T N1 细节未展开。</div>
+<!-- /FILL:s7 -->
+
+<h2 class=sec id=s8><span class=bar></span>§8 · 代码粒度速查</h2>
+<div class=secsub>关键机制的最小可运行/伪代码片段汇总（cross-attn、CFG、inpainting、ControlNet、VLM generate）。</div>
+<!-- FILL:s8 -->
+<div class=callout>全页共 <b>18+ 段可读代码/伪代码</b>散落在各章。此处做<b>索引</b>（点章节跳转）+ 开源仓库清单，便于按需定位；代码正文见对应章节。</div>
+<table class=tbl>
+<tr><th>代码 / 机制</th><th>用途</th><th>位置</th><th>关键 API / 来源</th></tr>
+<tr><td>CLIP InfoNCE</td><td>图文对比对齐（训练地基）</td><td><a href="#s1" style="color:var(--accent)">§1 A0</a></td><td>numpy；CLIP Fig.3</td></tr>
+<tr><td>diffusers <code>encoder_hidden_states</code> 注入</td><td>训练时文本→图像的物理落点</td><td><a href="#s1" style="color:var(--accent)">§1 A1</a></td><td><code>UNet2DConditionModel</code></td></tr>
+<tr><td>MM-DiT joint-attention</td><td>双流联合注意（双向）</td><td><a href="#s1" style="color:var(--accent)">§1 A2</a></td><td>SD3 2403.03206</td></tr>
+<tr><td>DiT <code>modulate</code> / adaLN-Zero</td><td>条件调制 + 零初始化恒等</td><td><a href="#s1" style="color:var(--accent)">§1 A3</a></td><td>DiT 官方实现</td></tr>
+<tr><td>LLaVA projector</td><td>视觉特征→LLM 软 token</td><td><a href="#s1" style="color:var(--accent)">§1 A4</a></td><td>2 层 MLP</td></tr>
+<tr><td>Q-Former / Resampler</td><td>learnable query 压定长视觉</td><td><a href="#s1" style="color:var(--accent)">§1 A5</a></td><td>BLIP-2 / Flamingo</td></tr>
+<tr><td><b>CFG + DDIM 采样</b></td><td>语言控制图像（含 guidance_scale）</td><td><a href="#s3" style="color:var(--accent)">§3.2</a></td><td>diffusers <code>StableDiffusionPipeline</code></td></tr>
+<tr><td>Flow 采样 ODE（Euler）</td><td>rectified flow few-step 采样</td><td><a href="#s3" style="color:var(--accent)">§3.4</a></td><td>SD3 / FLUX</td></tr>
+<tr><td>LlamaGen AR 解码 + logits CFG</td><td>自回归逐 token 出图</td><td><a href="#s3" style="color:var(--accent)">§3.5</a></td><td>LlamaGen 2406.06525</td></tr>
+<tr><td><b>VLM generate</b>（视觉 token 拼接）</td><td>图像反推语言（看图说话）</td><td><a href="#s4" style="color:var(--accent)">§4.1</a></td><td>LLaVA / KV-cache</td></tr>
+<tr><td>GenCeption GC@T</td><td>图→文→图 双向语义漂移评估</td><td><a href="#s4" style="color:var(--accent)">§4.2</a></td><td>GenCeption 2402.14973</td></tr>
+<tr><td>SD Inpaint latent 替换</td><td>mask 重绘（已知区锁回原图）</td><td><a href="#s6" style="color:var(--accent)">§6①</a></td><td>diffusers <code>StableDiffusionInpaintPipeline</code></td></tr>
+<tr><td>双 CFG（图像+文本）</td><td>指令编辑独立调"像原图/像指令"</td><td><a href="#s6" style="color:var(--accent)">§6②</a></td><td>InstructPix2Pix</td></tr>
+<tr><td>Prompt-to-Prompt attention 替换</td><td>training-free 词替换/加权编辑</td><td><a href="#s6" style="color:var(--accent)">§6③</a></td><td>cross-attn map</td></tr>
+<tr><td>ControlNet zero-convolution</td><td>结构条件注入不破坏原模型</td><td><a href="#s6" style="color:var(--accent)">§6④</a></td><td>diffusers <code>ControlNetModel</code></td></tr>
+</table>
+<h3 class=sub><span class=n>仓库</span>开源代码仓库速查（可上手）</h3>
+<ul class=pa>
+<li><b>生成/编辑基建</b>：<code>huggingface/diffusers</code>（SD/SDXL/SD3/inpaint/ControlNet/T2I-Adapter 全套 pipeline，最常用起点）；<code>CompVis/latent-diffusion</code>、<code>lllyasviel/ControlNet</code>。</li>
+<li><b>视频/世界模型</b>：<code>Wan-Video/Wan2.2</code>（Apache-2.0，T2V/I2V，含 TI2V-5B 消费级）；<code>nvidia-cosmos</code>（Cosmos-Predict/Tokenizer）；<code>hpcaitech/Open-Sora</code>（Sora 社区复现）。</li>
+<li><b>VLM 理解</b>：<code>haotian-liu/LLaVA</code>、<code>QwenLM/Qwen-VL</code>、<code>salesforce/LAVIS</code>(BLIP-2)、<code>MoonshotAI/Kimi-VL</code>(MIT)。</li>
+<li><b>统一理解+生成</b>：<code>showlab/Show-o</code>（原生 inpainting）、<code>baaivision/Emu3</code>(Apache-2.0)、<code>deepseek-ai/Janus</code>(Janus-Pro 1B/7B)、<code>facebookresearch/chameleon</code>。</li>
+<li><b>AR 图像生成</b>：<code>FoundationVision/LlamaGen</code>、<code>FoundationVision/VAR</code>(NeurIPS24 Best Paper)。</li>
+<li><b>VLA 机器人</b>：<code>openvla/openvla</code>（含 LoRA 微调 notebook）、<code>huggingface/lerobot</code>（π0/π0-FAST 官方移植）。</li>
+</ul>
+<!-- /FILL:s8 -->
+
+<h2 class=sec id=s9><span class=bar></span>§9 · 方案选型建议 + 参考文献</h2>
+<div class=secsub>按目标（生成/理解/编辑/统一/视频/VLA）给选型路径 + 完整顶会参考文献。</div>
+<!-- FILL:s9 -->
+<h3 class=sub><span class=n>选型</span>按目标的方法选型路径</h3>
+<table class=tbl>
+<tr><th>目标</th><th>首选（SOTA）</th><th>经典 / 备选</th><th>机制 · 章节</th></tr>
+<tr><td>文生图·质量优先</td><td><b>SD3 / FLUX</b>（rectified flow + MM-DiT）</td><td>SDXL / Imagen（cross-attn diffusion）</td><td>A2+A3 · <a href="#s1" style="color:var(--accent)">§1</a><a href="#s3" style="color:var(--accent)">§3</a></td></tr>
+<tr><td>文生图·AR/LLM 生态</td><td><b>VAR</b>（next-scale，NeurIPS24 Best）</td><td>LlamaGen（next-token）</td><td>AR·文本前缀 · <a href="#s3" style="color:var(--accent)">§3.5</a></td></tr>
+<tr><td>图像理解 / VQA</td><td><b>Qwen-VL / Kimi-VL</b></td><td>LLaVA（projection）/ BLIP-2（Q-Former）</td><td>A4/A5 · <a href="#s4" style="color:var(--accent)">§4</a></td></tr>
+<tr><td>文字编辑·指令式</td><td><b>Emu Edit</b>（多任务 SOTA）</td><td>InstructPix2Pix / MagicBrush</td><td>双 CFG · <a href="#s6" style="color:var(--accent)">§6②</a></td></tr>
+<tr><td>文字编辑·免训练</td><td><b>Prompt-to-Prompt + Null-text</b></td><td>Plug-and-Play / MasaCtrl</td><td>attention · <a href="#s6" style="color:var(--accent)">§6③</a></td></tr>
+<tr><td>结构可控 / inpainting</td><td><b>ControlNet</b>（ICCV23 Best）</td><td>T2I-Adapter / RePaint / SD-inpaint</td><td>zero-conv · <a href="#s6" style="color:var(--accent)">§6④①</a></td></tr>
+<tr><td>统一理解+生成</td><td><b>Janus-Pro</b>（解耦编码）</td><td>Show-o / Emu3 / Chameleon</td><td>双路径解耦 · <a href="#s7" style="color:var(--accent)">§7③</a></td></tr>
+<tr><td>文生视频 / 世界模型</td><td><b>Wan2.2</b>（开源）/ <b>Cosmos</b>（Physical AI）</td><td>Sora（闭源）</td><td>DiT+cross-attn · <a href="#s7" style="color:var(--accent)">§7①</a></td></tr>
+<tr><td>机器人 VLA</td><td><b>π0</b>（flow 动作）/ <b>OpenVLA</b>（开源）</td><td>RT-2（动作即 token）</td><td>混合/early-fusion · <a href="#s7" style="color:var(--accent)">§7④</a></td></tr>
+</table>
+
+<h3 class=sub><span class=n>文献</span>完整参考文献（会议 + 年份 + arXiv，均已核实）</h3>
+<ul class=pa>
+<li><b>表征对齐 A0</b>：CLIP(ICML21, 2103.00020)、ALIGN(ICML21, 2102.05918)、SigLIP(ICCV23, 2303.15343)。</li>
+<li><b>扩散与采样</b>：DDPM(NeurIPS20, 2006.11239)、DDIM(ICLR21, 2010.02502)、Classifier Guidance(NeurIPS21, 2105.05233)、<b>CFG</b>(NeurIPS21 WS, 2207.12598)、LDM/SD(CVPR22 Oral, 2112.10752)、Imagen(NeurIPS22, 2205.11487)、DiT(ICCV23, 2212.09748)。</li>
+<li><b>Flow / Rectified Flow</b>：Flow Matching(ICLR23, 2210.02747)、Rectified Flow(ICLR23, 2209.03003)、SD3/MM-DiT(ICML24 Oral, 2403.03206)、FLUX.1(2024，无正式论文·需核实)。</li>
+<li><b>AR 图像生成</b>：LlamaGen(2406.06525)、<b>VAR</b>(NeurIPS24 Best Paper, 2404.02905)。</li>
+<li><b>VLM 理解 / 双向</b>：Frozen(NeurIPS21, 2106.13884)、Flamingo(NeurIPS22, 2204.14198)、Perceiver(ICML21, 2103.03206)/Perceiver IO(ICLR22, 2107.14795)、BLIP-2(ICML23, 2301.12597)、LLaVA(NeurIPS23 Oral, 2304.08485)、MiniGPT-4(2304.10592·会议需核实)、Qwen-VL(2308.12966)、GenCeption(TrustNLP@NAACL24, 2402.14973)。</li>
+<li><b>编辑 / inpainting C</b>：RePaint(CVPR22, 2201.09865)、Blended Diffusion(CVPR22, 2111.14818)、Blended Latent(TOG23, 2206.02779)、SDEdit(ICLR22, 2108.01073)、InstructPix2Pix(CVPR23, 2211.09800)、MagicBrush(NeurIPS23, 2306.10012)、Emu Edit(CVPR24, 2311.10089)、Prompt-to-Prompt(ICLR23, 2208.01626)、Null-text Inversion(CVPR23, 2211.09794)、Plug-and-Play(CVPR23, 2211.12572)、MasaCtrl(ICCV23, 2304.08465)、<b>ControlNet</b>(ICCV23 Best Paper, 2302.05543)、T2I-Adapter(AAAI24, 2302.08453)。</li>
+<li><b>统一理解+生成</b>：Chameleon(2405.09818)、Transfusion(2408.11039)、Show-o(2408.12528)、Emu3(2409.18869, Nature25)、Janus(2410.13848)/Janus-Pro(2501.17811)、Unified-IO 2(CVPR24, 2312.17172)。</li>
+<li><b>视频 / 世界模型</b>：Sora(OpenAI 2024, 技术博客无 arXiv)、Wan(2503.20314, Apache-2.0)、Cosmos(2501.03575, NVIDIA)。</li>
+<li><b>原生多模态 VLM</b>：Gemini 1.5(2403.05530)、Kimi-VL(2504.07491, MIT)、Kimi k1.5(2501.12599)、Kimi K2(2507.20534, 无视觉)。</li>
+<li><b>VLA 机器人</b>：RT-2(2307.15818)、OpenVLA(CoRL24, 2406.09246)、π0(2410.24164)、π0-FAST(2501.09747)。</li>
+<li><b>基础</b>：Transformer(NeurIPS17, 1706.03762)。</li>
+</ul>
+
+<div class=callout warn><b>需二次核实项（诚实标注，未编造）</b>：① "Kimi x3" 无官方命名，实为 Kimi-VL / k1.5 / K2 三者（K2 无视觉）——<b>请你确认所指</b>；② FLUX.1 无正式 arXiv 论文（仅开源权重/技术发布）；③ Emu/Emu2 的 arXiv id（记忆 2307.05222 / 2312.13286，Emu3 已核实）、Gemini 1.0 报告 id（记忆 2312.11805）、MiniGPT-4 正式会议归属；④ Sora 仅技术博客、无一手论文，架构细节来自第三方逆向；⑤ NVIDIA Isaac GR00T N1 细节未展开；⑥ 各论文架构图的精确 Figure 编号以原文为准（抠图时校对）。</div>
+<div class=callout>本页四个专题的完整深度分片（含更多公式/代码/推导）存于工作区 <code>auto_docs/mmi_A_fusion_arch.md</code>（683 行）、<code>mmi_B_inference_bidirectional.md</code>（469 行）、<code>mmi_C_editing_inpainting.md</code>（411 行）、<code>mmi_D_systems.md</code>（258 行），由 4 个 Opus 子 Agent 并行调研、逐条 WebSearch 核实 arXiv 后写成。</div>
+<!-- /FILL:s9 -->
+
+<div class=note2><b>诚实边界：</b>本页由 5 个 Opus 子 Agent 并行调研 + 主 Agent 汇总；论文引用力求逐一核实（会议/年份/arXiv id），标「需核实」者为待二次确认项。与本站 <a href="wm_vtm.html" style="color:var(--accent2)">视觉图灵机 VTM</a>、<a href="wm_vl_survey.html" style="color:var(--accent2)">VL 条件 Survey</a>（生成侧条件枚举）互为呼应。</div>
+</div></body></html>

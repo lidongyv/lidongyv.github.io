@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⑥ 纵向走廊 · STBounds · Planning 算法详解</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/planning.css">
+</head>
+<body>
+
+<nav class="nav"><div class="nav-in">
+  <div class="nav-brand"><span class="nav-dot"></span>Planning 算法详解</div>
+  <div class="nav-links">
+    <a href="../index.html">← 总览</a>
+    <a href="cilqr-path.html">CiLQR</a><a href="speed-qp.html">速度QP</a><a href="refpath.html">参考路径</a><a href="hts-speed.html">HTS</a><a href="path-corridor.html">横向走廊</a><a href="speed-corridor.html" class="cur">纵向走廊</a><a href="lane-decision.html">变道决策</a><a href="hybrid-astar.html">泊车HA*</a>
+  </div>
+</div></nav>
+
+<header class="hero wrap">
+  <div class="crumb"><a href="../index.html">🧭 算法详解</a><span class="sep">/</span><span class="cur">⑥ 纵向走廊 · STBounds</span></div>
+  <div class="eyebrow">纵向 · ST 可行域 · 障碍投影 + 扫线决策</div>
+  <h1 class="title">纵向走廊 · STBoundsDecider</h1>
+  <p class="lede">为速度 QP 准备「每个时刻 <code>s</code> 能落在哪、对每个障碍怎么办」：把动静态障碍预测<b>投影到 ST 图</b>，扫线扫出每个时刻可通行的 <code>s</code> 区间，并对每个障碍定下 <b>让行 / 超车 / 跟随 / 停车</b>，再叠加红灯、限速、freespace 虚拟墙。是 <code>SpeedCorridorConstructor</code> 子链。</p>
+  <div class="stats">
+    <div class="stat"><div class="n" style="color:var(--violet)">SVT</div><div class="l">(s,v,t) 障碍边界</div></div>
+    <div class="stat"><div class="n" style="color:var(--cyan)">5 子算子</div><div class="l">走廊构造链</div></div>
+    <div class="stat"><div class="n" style="color:var(--amber)">50 / 5s</div><div class="l">时间索引 / 视界</div></div>
+    <div class="stat"><div class="n" style="color:var(--emerald)">4 决策</div><div class="l">让/超/跟/停</div></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section><div class="panel why">
+    <div class="panel-head"><span class="ic">🎯</span><h2>解决的问题</h2></div>
+    <p>速度 QP 只会「在给定上下界里求平滑速度」，它不知道哪个障碍要让、停止线在哪。纵向走廊负责把这些<b>翻译成 QP 能吃的边界</b>：</p>
+    <ul>
+      <li><b>障碍 → ST 边界</b>：把每个障碍在未来各时刻占据的 <code>s</code> 区间画到 s-t 图上（静态=竖墙，动态=随 t 移动的带）。</li>
+      <li><b>多障碍取舍</b>：同一时刻多个障碍给出不同上下界，要扫线选出一条连贯可行的 <code>s</code> 通道。</li>
+      <li><b>规则虚拟墙</b>：红灯停止线、换道暂停、泊车停车、OCC 占据都化成虚拟限速墙叠加进来。</li>
+    </ul>
+  </div></section>
+
+  <section><div class="panel how">
+    <div class="panel-head"><span class="ic">⚙️</span><h2>实现</h2><span class="tag lon">Backside→Reverse→Occ→STBounds→SpeedBounds</span></div>
+    <p><b>障碍投影</b>（<code>STObstaclesProcessor</code>）：静态障碍 overlap s 区间在 t∈[0,T] 不变 → 竖直 ST 墙；动态障碍遍历预测轨迹，<code>GetOverlappingS</code> 求每时刻 <code>(s_lo, s_hi)</code>，速度投影 <code>v·cos(θ_obs−θ_path)</code> → <code>SVTPoint(s,t,vₛ)</code>。</p>
+    <div class="eq lon">
+<span class="c">// STBoundsDecider 扫线：对每个 tᵢ = i·0.1 (50 点)</span>
+1. s_lower=-∞, s_upper=+∞
+2. STDrivingLimits        <span class="c">→ 车辆动力学可达 s 范围</span>
+3. GetSBoundsFromDecisions<span class="c">→ 各障碍 SVT 候选 (s_lo,s_hi)</span>
+4. RankDecisions(STGuideLine) <span class="c">→ 按参考速度引导选最优</span>
+5. SetObstacleDecision    <span class="c">→ YIELD / OVERTAKE / FOLLOW / STOP</span>
+6. 写入 STDrivableBoundary (t, s_lower, s_upper)
+    </div>
+    <p class="note"><b>虚拟墙</b>：<code>kTldLimit</code>（红灯停止线）/ <code>kParkingStop</code> / <code>kLcPause</code> / <code>kOccLimit</code>，统一以 <code>virtual_limit_wall_width</code> 宽度叠加。<b>限速</b>：<code>SpeedLimitDecider</code> 综合 refline 限速 + 曲率 <code>v≤√(a_lat/|κ|)</code> + 近距障碍的距离-速度表。</p>
+    <div class="note" style="font-weight:700;color:var(--text-2);margin-top:12px">代码锚点</div>
+    <table class="t fileidx">
+      <tbody>
+        <tr><td>子链装配</td><td class="path">…/optimizer/speed_corridor_constructor/speed_corridor_constructor.cpp <span class="ln">:48-67</span></td></tr>
+        <tr><td>障碍 ST 投影</td><td class="path">…/st_bounds_decider/st_obstacles_processor.cpp <span class="ln">:685-797</span></td></tr>
+        <tr><td>扫线决策</td><td class="path">…/st_bounds_decider/st_bounds_decider.cpp <span class="ln">:243-340, 704</span></td></tr>
+        <tr><td>限速</td><td class="path">…/speed_bounds_decider/speed_limit_decider.cpp <span class="ln">:64-120</span></td></tr>
+      </tbody>
+    </table>
+  </div></section>
+
+  <section><div class="panel params">
+    <div class="panel-head"><span class="ic">🎚️</span><h2>超参设置</h2><span class="tag" style="background:rgba(91,157,255,.14);color:var(--blue);border:1px solid rgba(91,157,255,.32)">speed_corridor_conf + 代码默认</span></div>
+    <div class="grid2">
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">ST 图 / 决策缓冲（代码默认）</div>
+        <table class="t blue">
+          <thead><tr><th>参数</th><th style="width:80px">值</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">plan_time / kIndexSize</td><td class="mono">5 / 50</td><td>视界 / 时间索引</td></tr>
+            <tr><td class="mono">resolution</td><td class="mono">0.1 s</td><td>5/50</td></tr>
+            <tr><td class="mono">ADC L buffer</td><td class="mono">0.25 m</td><td>默认横向安全</td></tr>
+            <tr><td class="mono">Truck / VRU L buffer</td><td class="mono">0.4 m</td><td>卡车 / 行人非机动</td></tr>
+            <tr><td class="mono">yield_distance_buffer</td><td class="mono">5.0 m</td><td>让行距离</td></tr>
+            <tr><td class="mono">overtake_time_buffer</td><td class="mono">3.0 s</td><td>超车时间</td></tr>
+            <tr><td class="mono">overtake_min_distance</td><td class="mono">10 m</td><td>超车最小距</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">虚拟墙 / 停车缓冲（speed_corridor_conf）</div>
+        <table class="t blue">
+          <thead><tr><th>参数</th><th style="width:96px">值</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">freespace stop_buffer</td><td class="mono">4.5/1.5/0.5</td><td>行车/终点/泊车</td></tr>
+            <tr><td class="mono">fusion_map stop_buffer</td><td class="mono">4.5/1.5/0.3</td><td>OCC 融合</td></tr>
+            <tr><td class="mono">backside_ignore_time</td><td class="mono">2.0 s</td><td>后方障碍忽略</td></tr>
+            <tr><td class="mono">reverse_ignore_time</td><td class="mono">2.5 s</td><td>逆行忽略</td></tr>
+            <tr><td class="mono">virtual_limit_wall_width</td><td class="mono">5.0 m</td><td>虚拟墙宽</td></tr>
+            <tr><td class="mono">road_class 限速</td><td class="mono">12.5 / 8.0</td><td>快速路/乡镇路</td></tr>
+            <tr><td class="mono">lat_acc_limit</td><td class="mono">1.5</td><td>曲率限速用</td></tr>
+            <tr><td class="mono">虚拟 tld/occ/lc/parking</td><td class="mono">均 on</td><td>各虚拟墙开关</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div></section>
+
+  <section><div class="panel opt">
+    <div class="panel-head"><span class="ic">🔧</span><h2>后续优化点</h2></div>
+    <div class="opt-item"><div class="ot">ref_s / path_s 混用 bug <span class="badge todo">注释 TODO</span></div><div class="od">决策派发里参考线 s 与路径 s 混用，注释自标 <code>this is a bug!</code>。</div><div class="oimp">全链路统一 path_s 或显式转换。</div><div class="src">dispatch_decision.cpp:641-642</div></div>
+    <div class="opt-item"><div class="ot">STDrivableBoundary 主要写 debug，非 QP 全局硬约束 <span class="badge infer">推断局限</span></div><div class="od">SpeedOptimizer 实际用 per-obs <code>svt_boundaries</code> 聚合，drivable ST 管更偏中间产物。</div><div class="oimp">将 drivable ST 管作为 QP 全局约束，或明确仅 debug。</div><div class="src">st_bounds_decider.cpp:704 · speed_optimizer 无 st_drivable 引用</div></div>
+    <div class="opt-item"><div class="ot">stop decision 逻辑占位 <span class="badge todo">注释 TODO</span></div><div class="od">主 stop 逻辑用 <code>max()</code> 占位，注释 <code>replace here for real logic!!!</code>。</div><div class="oimp">实现主 stop 与 fence 比较。</div><div class="src">dispatch_decision.cpp:650-651</div></div>
+    <div class="opt-item"><div class="ot">RefineSVTBoundary 整段 #if 0、参数未入 config <span class="badge infer">推断局限</span></div><div class="od">SVT 精修被禁用；大量阈值在模块内 struct。</div><div class="oimp">评估是否迁入 STBoundsDecider；参数入 planning_config。</div><div class="src">speed_bounds_decider.cpp:148-160 · dispatch_decision.cpp:15</div></div>
+    <div class="opt-item"><div class="ot">clear zone / decision manager 未接、ADC-障碍重叠处理不全 <span class="badge todo">注释 TODO</span></div><div class="od">obstacle_decision_manager 与 clear zone 未接入；overlap 初始 ST 边界缺。</div><div class="oimp">接入 decision manager；补 overlap 初始边界。</div><div class="src">st_obstacles_processor.cpp:359,523,738</div></div>
+  </div></section>
+
+  <div class="algonav">
+    <a href="path-corridor.html"><div class="d">← 上一个</div><div class="n">⑤ 横向走廊 · Nudge</div></a>
+    <a class="next" href="lane-decision.html"><div class="d">下一个 →</div><div class="n">⑦ 借道 / 换道 / Gap</div></a>
+  </div>
+</main>
+
+<footer class="footer"><div class="wrap">
+  <p style="margin:0">纵向走廊 · STBounds · 源自 <code>ad-/pnc/planning @ delivery/release_candidate_260403</code> 静态解读 · 超参取自 <code>planning_config.json</code> 与代码默认值。</p>
+</div></footer>
+
+<script src="../assets/planning.js"></script>
+</body>
+</html>

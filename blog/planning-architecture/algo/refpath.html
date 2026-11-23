@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>③ 粗参考路径 · Planning 算法详解</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/planning.css">
+</head>
+<body>
+
+<nav class="nav"><div class="nav-in">
+  <div class="nav-brand"><span class="nav-dot"></span>Planning 算法详解</div>
+  <div class="nav-links">
+    <a href="../index.html">← 总览</a>
+    <a href="cilqr-path.html">CiLQR</a><a href="speed-qp.html">速度QP</a><a href="refpath.html" class="cur">参考路径</a><a href="hts-speed.html">HTS</a><a href="path-corridor.html">横向走廊</a><a href="speed-corridor.html">纵向走廊</a><a href="lane-decision.html">变道决策</a><a href="hybrid-astar.html">泊车HA*</a>
+  </div>
+</div></nav>
+
+<header class="hero wrap">
+  <div class="crumb"><a href="../index.html">🧭 算法详解</a><span class="sep">/</span><span class="cur">③ 粗参考路径</span></div>
+  <div class="eyebrow">横向 · 暖启动 · Frenet 五次多项式 + OSQP</div>
+  <h1 class="title">粗参考路径 (Reference Path)</h1>
+  <p class="lede">在 Frenet 坐标下快速生成一条「贴目标车道、绕开障碍」的横向曲线 <code>l(s)</code>：先用<b>五次多项式</b>暖启动，再用 <b>OSQP 分段-jerk QP</b> 平滑（默认）。它既是 CiLQR 精修的初值打底，也是 keep / borrow / change 等<b>多模态候选</b>的来源。</p>
+  <div class="stats">
+    <div class="stat"><div class="n" style="color:var(--cyan)">Frenet l(s)</div><div class="l">求解对象</div></div>
+    <div class="stat"><div class="n" style="color:var(--emerald)">Quintic</div><div class="l">暖启动曲线</div></div>
+    <div class="stat"><div class="n" style="color:var(--blue)">5 类</div><div class="l">场景生成器</div></div>
+    <div class="stat"><div class="n" style="color:var(--amber)">max(20, v·7)</div><div class="l">规划长度 (m)</div></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section><div class="panel why">
+    <div class="panel-head"><span class="ic">🎯</span><h2>解决的问题</h2></div>
+    <p>非线性优化器（CiLQR）和图搜索都对初值敏感 —— 没有好的暖启动，迭代慢、易陷局部最优。粗参考路径就是为此而生：</p>
+    <ul>
+      <li><b>给打底初值</b>：快速产出一条满足车道约束、绕障的 <code>l(s)</code>，作为 CiLQR 的参考与起点。</li>
+      <li><b>提供多模态候选</b>：同一帧并行生成 保持 / 借道 / 换道 等多条参考路径，交给 <code>ReferenceTrajectorySelector</code> 选优。</li>
+      <li><b>解耦决策与精修</b>：把「往哪偏、绕哪侧」的 nudge 决策放在这一层先定，精修层只管把它做平滑可行。</li>
+    </ul>
+  </div></section>
+
+  <section><div class="panel how">
+    <div class="panel-head"><span class="ic">⚙️</span><h2>实现</h2><span class="tag osqp">RefathOsqpOptimizer (默认)</span></div>
+    <p><b>每个生成器（以 KeepInLane 为例）的流程</b>：</p>
+    <table class="t">
+      <thead><tr><th style="width:150px">步骤</th><th>做什么</th><th style="width:210px">类 / 算法</th></tr></thead>
+      <tbody>
+        <tr><td>① Frenet 初值</td><td>自车 Cartesian → Frenet，得 <code class="mono">[s,ds,dds]/[l,dl,ddl]</code></td><td class="mono">CartesianToFrenetExt</td></tr>
+        <tr><td>② 暖启动曲线</td><td>起点 <code>(l,dl,ddl)</code> → 终点 <code>(end_l,0,0)</code> 的五次多项式</td><td><span class="tag cilqr">Quintic</span></td></tr>
+        <tr><td>③ nudge 决策</td><td>逐障碍 LEFT/RIGHT/YIELD 预决策，生成分层 SL 边界</td><td class="mono">NudgePreDecider</td></tr>
+        <tr><td>④ 凸平滑</td><td>默认对 <code>l(s)</code> 解分段-jerk QP；<code>enable_ilqr_refpath=true</code> 时改用 CiLQR</td><td><span class="tag osqp">OSQP</span></td></tr>
+      </tbody>
+    </table>
+    <div class="eq lat" style="margin-top:12px">
+<span class="c">// 五次多项式暖启动（满足两端 l, dl, ddl 边界）</span>
+l(s) = a₀ + a₁s + a₂s² + a₃s³ + a₄s⁴ + a₅s⁵
+<span class="c">// OSQP 分段-jerk：状态 [l, dl/ds, ddl/ds²]，与纵向同一套内核</span>
+min ∑ wₗ(l−l_ref)² + w_dl·dl² + w_ddl·ddl² + w_dddl·dddl²
+   s.t. 初值 + 连续性 + SL 软走廊
+        </div>
+    <p class="note">5 类生成器按场景分流：<code>KEEP_INLANE</code> / <code>KEEP_BORROWLANE</code>（借道）/ <code>CHANGE_INLANE</code>（换道，用目标参考线）/ <code>PARKING</code> / <code>E2E</code>。参考 <code>l_ref</code> 即各自的 <code>goal.end_l</code>。</p>
+    <div class="note" style="font-weight:700;color:var(--text-2);margin-top:12px">代码锚点</div>
+    <table class="t fileidx">
+      <tbody>
+        <tr><td>规划长度 / Frenet / Quintic</td><td class="path">…/reference_path/common/refpath_generator_base.cpp <span class="ln">:12-159</span></td></tr>
+        <tr><td>OSQP 路径优化</td><td class="path">…/reference_path/common/refpath_osqp_optimizer.cpp <span class="ln">:10-132</span></td></tr>
+        <tr><td>CiLQR refpath（可选）</td><td class="path">…/reference_path/common/refpath_cilqr_optimizer.cpp</td></tr>
+        <tr><td>生成器分支</td><td class="path">…/reference_trajectory/reference_trajectory_generator.cpp <span class="ln">:858-879</span></td></tr>
+      </tbody>
+    </table>
+  </div></section>
+
+  <section><div class="panel params">
+    <div class="panel-head"><span class="ic">🎚️</span><h2>超参设置</h2><span class="tag" style="background:rgba(91,157,255,.14);color:var(--blue);border:1px solid rgba(91,157,255,.32)">reference_path_conf + 代码默认</span></div>
+    <table class="t blue">
+      <thead><tr><th>参数</th><th style="width:150px">值</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">enable_ilqr_refpath</td><td class="mono">false</td><td>false→Quintic+OSQP；true→CiLQR</td></tr>
+        <tr><td class="mono">规划长度</td><td class="mono">max(20m, v×7s)</td><td><code>kMinRefPathLength=20, kRefPathPlannedTime=7</code></td></tr>
+        <tr><td class="mono">kSResolution</td><td class="mono">0.5 m</td><td>SL 采样基准（10~50 点）</td></tr>
+        <tr><td class="mono">l_weight</td><td class="mono">2.0</td><td>参考 l 跟踪 <span class="tag" style="background:rgba(126,135,173,.16);color:var(--text-3);border:1px solid var(--line-2)">代码默认</span></td></tr>
+        <tr><td class="mono">dl_weight</td><td class="mono">5.0 × max(v,2)²</td><td>横向一阶平滑</td></tr>
+        <tr><td class="mono">ddl_weight</td><td class="mono">15 × max(v,2.5)⁴</td><td>横向二阶</td></tr>
+        <tr><td class="mono">dddl_weight</td><td class="mono">15 × max(v,2.5)⁶</td><td>横向三阶</td></tr>
+        <tr><td class="mono">soft constraint weight</td><td class="mono">150</td><td>SL 软走廊约束</td></tr>
+        <tr><td class="mono">OSQP max_iter</td><td class="mono">1500</td><td>求解迭代</td></tr>
+        <tr><td class="mono">iLQR refpath dt / 点数</td><td class="mono">0.3s / 31</td><td><code>enable_ilqr_refpath=true</code> 时</td></tr>
+      </tbody>
+    </table>
+  </div></section>
+
+  <section><div class="panel opt">
+    <div class="panel-head"><span class="ic">🔧</span><h2>后续优化点</h2></div>
+    <div class="opt-item"><div class="ot">SL bound 仅软约束、init dl/ddl 被临时清零 <span class="badge todo">注释 TODO</span></div><div class="od">OSQP 路径优化只有软走廊，且初始 dl/ddl 被临时置零。</div><div class="oimp">增加 hard bound 或双层 OSQP；保留真实 init dl/ddl。</div><div class="src">refpath_osqp_optimizer.cpp:28-29,60,132</div></div>
+    <div class="opt-item"><div class="ot">OSQP 权重硬编码、未走配置 <span class="badge infer">推断局限</span></div><div class="od">l/dl/ddl/dddl 权重写死在代码。</div><div class="oimp">配置化以便按场景调参。</div><div class="src">refpath_osqp_optimizer.cpp:44-47</div></div>
+    <div class="opt-item"><div class="ot">CiLQR refpath 启发轨迹为匀速直线 SL <span class="badge infer">推断局限</span></div><div class="od"><code>ref_l</code> 常值，初值质量有限。</div><div class="oimp">用五次多项式或粗 HTS 轨迹作 heuristic。</div><div class="src">refpath_cilqr_optimizer.cpp:82-114</div></div>
+    <div class="opt-item"><div class="ot">无 refpath 质量评估器 <span class="badge todo">注释 TODO</span></div><div class="od">多候选选型缺曲率/碰撞/舒适度打分。</div><div class="oimp">加 refpath evaluator 用于多模态选优。</div><div class="src">keep_inlane_refpath_generator.cpp:92「add refpath evaluator」</div></div>
+    <div class="opt-item"><div class="ot">后车安全检查未实现 <span class="badge todo">注释 TODO</span></div><div class="od">keep/borrow/change 的 nudge 都缺动态后车校验。</div><div class="oimp">补后车 TTC/RSS，与 nudge 方向联动。</div><div class="src">keep_inlane_nudge_bound_decider.cpp:1333 等</div></div>
+    <div class="opt-item"><div class="ot">换道 nudge 未接 gap / roadedge / 上一帧信息 <span class="badge todo">注释 TODO</span></div><div class="od">gap 前后车、路沿、dead_vehicle、上帧 gap 均未消费。</div><div class="oimp">接上游 <code>gaps_result_vec</code> 与 roadedge。</div><div class="src">change_inlane_nudge_bound_decider.cpp:585-596 等</div></div>
+    <div class="opt-item"><div class="ot">nudge 策略为初版 <span class="badge todo">注释</span></div><div class="od">注释提及未来可换 DP / Hybrid A* / MCTS / E2E 横向搜索后端。</div><div class="oimp">按场景切换横向搜索后端。</div><div class="src">keep_inlane_refpath_generator.cpp:49-50</div></div>
+  </div></section>
+
+  <div class="algonav">
+    <a href="speed-qp.html"><div class="d">← 上一个</div><div class="n">② OSQP 纵向速度</div></a>
+    <a class="next" href="hts-speed.html"><div class="d">下一个 →</div><div class="n">④ HTS 参考速度</div></a>
+  </div>
+</main>
+
+<footer class="footer"><div class="wrap">
+  <p style="margin:0">粗参考路径 · 源自 <code>ad-/pnc/planning @ delivery/release_candidate_260403</code> 静态解读 · 超参取自 <code>planning_config.json</code> 与代码默认值。</p>
+</div></footer>
+
+<script src="../assets/planning.js"></script>
+</body>
+</html>

@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>行车 Planning 实现解构 · 横向 CiLQR × 纵向 OSQP 分段Jerk · 解耦分层架构</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/planning.css">
+<style>
+  :root{
+    --bg-0:#070b16; --bg-1:#0b1020;
+    --line:#1f2747; --line-2:#2d3760;
+    --text:#e8ecf8; --text-2:#aeb6d6; --text-3:#7e87ad; --text-4:#5a6286;
+    --cyan:#5ad6f0; --blue:#5b9dff; --violet:#a78bfa; --emerald:#34d399;
+    --amber:#fbbf24; --red:#f87171; --pink:#f472b6;
+    --accent:var(--cyan);
+    --lat:var(--cyan); --lon:var(--violet);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+    background:
+      radial-gradient(1200px 700px at 10% -10%, rgba(90,214,240,.16), transparent 55%),
+      radial-gradient(1000px 600px at 90% 0%, rgba(167,139,250,.14), transparent 55%),
+      radial-gradient(900px 560px at 50% 112%, rgba(52,211,153,.07), transparent 60%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%);
+    color:var(--text); min-height:100vh; line-height:1.62; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  .mono{font-family:'JetBrains Mono',monospace}
+  .wrap{max-width:1160px; margin:0 auto; padding:0 22px}
+  a{color:inherit; text-decoration:none}
+  code{font-family:'JetBrains Mono',monospace; font-size:.92em; color:var(--cyan); background:rgba(90,214,240,.08); padding:1px 6px; border-radius:6px; border:1px solid rgba(90,214,240,.14)}
+
+  .nav{position:sticky; top:0; z-index:50; backdrop-filter:blur(16px);
+    background:linear-gradient(180deg, rgba(7,11,22,.92), rgba(7,11,22,.6)); border-bottom:1px solid var(--line)}
+  .nav-in{max-width:1160px; margin:0 auto; padding:11px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+  .nav-brand{font-weight:800; font-size:14.5px; display:flex; align-items:center; gap:9px; white-space:nowrap}
+  .nav-dot{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,var(--cyan));box-shadow:0 0 14px rgba(90,214,240,.7)}
+  .nav-links{display:flex; gap:3px; margin-left:auto; flex-wrap:wrap}
+  .nav-links a{font-size:12.5px; font-weight:600; color:var(--text-3); padding:6px 10px; border-radius:9px; border:1px solid transparent; transition:.15s; white-space:nowrap}
+  .nav-links a:hover{color:var(--text); background:rgba(255,255,255,.05); border-color:var(--line-2)}
+
+  .hero{padding:54px 0 22px}
+  .eyebrow{display:inline-flex; align-items:center; gap:10px; font-size:11px; font-weight:700; letter-spacing:2.4px; text-transform:uppercase; color:var(--accent)}
+  .eyebrow::before,.eyebrow::after{content:""; width:28px; height:1px; background:linear-gradient(90deg,transparent,currentColor)}
+  h1.title{font-size:clamp(30px,5vw,52px); font-weight:900; line-height:1.06; letter-spacing:-.02em; margin:15px 0 0;
+    background:linear-gradient(180deg,#fff 35%,rgba(255,255,255,.6)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .lede{margin:16px 0 0; max-width:820px; font-size:15.5px; color:var(--text-2)}
+  .branch{display:inline-flex;align-items:center;gap:7px;margin-top:14px;font-size:12px;font-weight:600;color:var(--text-3);
+    padding:5px 11px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+  .branch b{color:var(--emerald)}
+  .stats{display:flex; gap:13px; flex-wrap:wrap; margin-top:26px}
+  .stat{flex:1; min-width:135px; padding:15px 17px; border-radius:15px; background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015)); border:1px solid var(--line)}
+  .stat .n{font-size:26px; font-weight:800; line-height:1}
+  .stat .l{margin-top:7px; font-size:12px; color:var(--text-3); font-weight:600}
+
+  section{scroll-margin-top:70px; padding:34px 0}
+  .sec-head{display:flex; align-items:baseline; gap:13px; flex-wrap:wrap}
+  .sec-kicker{font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:var(--accent)}
+  h2.sec-title{font-size:clamp(22px,3vw,31px); font-weight:800; color:#fff; margin:0}
+  .sec-sub{color:var(--text-2); font-size:14px; max-width:880px; margin:11px 0 20px}
+
+  .glass{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.014)); border:1px solid var(--line); border-radius:15px; position:relative; overflow:hidden}
+  .glass::before{content:""; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.1),transparent)}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media(max-width:860px){.grid2{grid-template-columns:1fr}}
+  .sub{padding:18px 20px}
+  .sub h4{margin:0 0 7px; font-size:16px; font-weight:800; color:#fff; display:flex; align-items:center; gap:9px}
+  .sub p{margin:0; font-size:13.5px; color:var(--text-2)}
+  .sub.lat{border-color:rgba(90,214,240,.3)} .sub.lat h4{color:var(--cyan)}
+  .sub.lon{border-color:rgba(167,139,250,.32)} .sub.lon h4{color:var(--violet)}
+  .sub.sol{border-color:rgba(52,211,153,.3)} .sub.sol h4{color:var(--emerald)}
+
+  /* pipeline flow */
+  .flow{display:flex; align-items:stretch; gap:0; flex-wrap:wrap; margin-top:4px}
+  .step{flex:1; min-width:120px; position:relative; padding:14px 14px 13px; border-radius:13px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line); margin:6px 16px 6px 0}
+  .step:last-child{margin-right:0}
+  .step::after{content:"›"; position:absolute; right:-14px; top:50%; transform:translateY(-50%); color:var(--text-4); font-size:20px; font-weight:800}
+  .step:last-child::after{display:none}
+  .step .si{font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; color:var(--accent)}
+  .step .sn{margin-top:5px; font-size:13.5px; font-weight:800; color:#fff}
+  .step .sd{margin-top:5px; font-size:11.5px; color:var(--text-3); line-height:1.45}
+  .step.dim{opacity:.62}
+  .step.hot{border-color:rgba(90,214,240,.4); background:linear-gradient(180deg,rgba(90,214,240,.08),rgba(90,214,240,.02))}
+  @media(max-width:860px){.step{flex:none;width:100%;margin-right:0}.step::after{content:"⌄";right:50%;top:auto;bottom:-15px;transform:translateX(50%)}}
+
+  table.t{width:100%; border-collapse:collapse; font-size:12.5px; border:1px solid var(--line); border-radius:12px; overflow:hidden}
+  table.t th,table.t td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top}
+  table.t thead th{background:rgba(90,214,240,.09); color:var(--cyan); font-weight:700; font-size:11.5px; letter-spacing:.3px}
+  table.t tbody tr:last-child td{border-bottom:none}
+  table.t td.mono,table.t td .mono{font-family:'JetBrains Mono',monospace; color:var(--text); font-size:11.5px}
+  table.t tbody tr:hover{background:rgba(255,255,255,.022)}
+  table.t.lon thead th{background:rgba(167,139,250,.1); color:var(--violet)}
+  .tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap}
+  .tag.lat{background:rgba(90,214,240,.13);color:var(--cyan);border:1px solid rgba(90,214,240,.3)}
+  .tag.lon{background:rgba(167,139,250,.14);color:var(--violet);border:1px solid rgba(167,139,250,.32)}
+  .tag.osqp{background:rgba(52,211,153,.13);color:var(--emerald);border:1px solid rgba(52,211,153,.3)}
+  .tag.cilqr{background:rgba(91,157,255,.14);color:var(--blue);border:1px solid rgba(91,157,255,.32)}
+  .tag.ha{background:rgba(251,191,36,.13);color:var(--amber);border:1px solid rgba(251,191,36,.3)}
+  .tag.legacy{background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.3)}
+
+  .eq{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--text); background:rgba(0,0,0,.28);
+    border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:9px; padding:11px 14px; margin:9px 0; overflow-x:auto; line-height:1.85}
+  .eq .c{color:var(--text-3)}
+  .eq .h{color:var(--amber)}
+  .eq.lon{border-left-color:var(--violet)}
+  .eq.lat{border-left-color:var(--cyan)}
+
+  .pts{display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-top:6px}
+  @media(max-width:860px){.pts{grid-template-columns:1fr}}
+  .pt{padding:13px 15px; border-radius:12px; background:rgba(255,255,255,.03); border:1px solid var(--line)}
+  .pt .k{font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; color:var(--accent)}
+  .pt .tt{margin-top:5px; font-size:13.5px; font-weight:700; color:#fff}
+  .pt .dd{margin-top:5px; font-size:12.5px; color:var(--text-2)}
+
+  /* layered corridor bars */
+  .layers{display:flex;flex-direction:column;gap:7px;margin-top:6px}
+  .layer{display:flex;align-items:center;gap:11px}
+  .layer .ln{width:130px;flex-shrink:0;font-size:11.5px;font-weight:700;color:var(--text-2);text-align:right;font-family:'JetBrains Mono',monospace}
+  .layer .bar{flex:1;height:22px;border-radius:6px;position:relative;border:1px solid var(--line);background:rgba(255,255,255,.02)}
+  .layer .fill{position:absolute;top:0;bottom:0;border-radius:5px}
+  .layer .note{font-size:11px;color:var(--text-3);width:120px;flex-shrink:0}
+  @media(max-width:680px){.layer .ln{width:84px}.layer .note{display:none}}
+
+  .callout{display:flex;gap:12px;padding:14px 16px;border-radius:12px;margin:6px 0;
+    background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.25)}
+  .callout .ic{flex-shrink:0;font-size:17px}
+  .callout p{margin:0;font-size:13px;color:var(--text-2)}
+  .callout b{color:var(--amber)}
+  .callout.blue{background:rgba(91,157,255,.06);border-color:rgba(91,157,255,.25)}
+  .callout.blue b{color:var(--blue)}
+
+  .fileidx{font-family:'JetBrains Mono',monospace;font-size:11.5px}
+  .fileidx td:first-child{color:var(--text)}
+  .fileidx td.path{color:var(--text-3);word-break:break-all}
+  .fileidx td .ln{color:var(--amber)}
+
+  ul.clean{margin:8px 0 0;padding-left:18px}
+  ul.clean li{font-size:13px;color:var(--text-2);margin:4px 0}
+  ul.clean li b{color:var(--text)}
+
+  .footer{padding:40px 0 80px; border-top:1px solid var(--line); margin-top:24px; color:var(--text-3); font-size:13px}
+  .reveal{opacity:1; transform:none}
+  html.js .reveal:not(.in){opacity:0; transform:translateY(14px); transition:opacity .6s, transform .6s}
+  .reveal.in{opacity:1; transform:none}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--text-3)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:13px;height:13px;border-radius:4px;display:inline-block}
+
+  /* —— 可读性增强 —— */
+  .h3{margin:26px 0 9px; font-size:16.5px; font-weight:800; color:#fff; display:flex; align-items:baseline; gap:9px; flex-wrap:wrap}
+  .h3 .num{font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; color:var(--accent)}
+  .h3 .sm{font-size:12px; font-weight:600; color:var(--text-3)}
+  .note{font-size:12px; color:var(--text-3); margin:10px 2px; line-height:1.6}
+  .lead{display:flex; gap:12px; align-items:flex-start; margin:2px 0 18px; padding:13px 16px; border-radius:12px;
+    background:linear-gradient(100deg, rgba(90,214,240,.06), rgba(167,139,250,.04)); border:1px solid var(--line)}
+  .lead .em{flex-shrink:0; font-size:19px; line-height:1.25}
+  .lead p{margin:0; font-size:14px; color:var(--text-2)}
+  .lead b{color:#fff}
+  .lead.lat{background:linear-gradient(100deg, rgba(90,214,240,.09), transparent); border-color:rgba(90,214,240,.28)}
+  .lead.lon{background:linear-gradient(100deg, rgba(167,139,250,.09), transparent); border-color:rgba(167,139,250,.28)}
+  .overview{margin:6px 0 2px; padding:16px 16px 8px}
+  .ov-cap{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:8px}
+  @media(max-width:760px){.ov-cap{grid-template-columns:1fr}}
+  .ov-cap .c b{display:block; font-size:13px; margin-bottom:3px}
+  .ov-cap .c.a b{color:var(--cyan)} .ov-cap .c.b b{color:var(--violet)} .ov-cap .c.c b{color:var(--emerald)}
+  .ov-cap .c p{margin:0; font-size:12px; color:var(--text-3); line-height:1.58}
+</style>
+</head>
+<body>
+
+<nav class="nav"><div class="nav-in">
+  <a class="nav-brand" href="../../index.html" title="返回 Demo 集合首页"><span class="nav-dot"></span>Planning 实现解构</a>
+  <div class="nav-links">
+    <a href="../../index.html">🏠 Demo 集合</a><a href="#tldr">速览</a><a href="#arch">架构</a><a href="#lateral">横向 Path</a>
+    <a href="#longi">纵向 Speed</a><a href="#merge">合成</a><a href="#solvers">求解器栈</a>
+    <a href="#compare">横纵对照</a><a href="#flow">数据流</a><a href="#files">文件索引</a><a href="#truth">可证性</a><a href="#algos" style="color:var(--cyan);font-weight:700">🧭 算法详解</a>
+  </div>
+</div></nav>
+
+<header class="hero wrap">
+  <div class="eyebrow"> 行车规划 · operator-pipeline · 横纵解耦分层</div>
+  <h1 class="title">行车 Planning 是怎么做横向 / 纵向规划的</h1>
+  <p class="lede">一份对 <code>ad-/pnc/planning</code> 真实代码的解构：10&nbsp;Hz 的 <b>operator 流水线</b>，把轨迹规划拆成<b>先横后纵再合成</b>三步。横向最终路径走 <b>CiLQR</b>（Cartesian 6 维状态联合优化），纵向速度走 <b>OSQP 分段-jerk QP</b>（ST 走廊约束），粗轨迹由 <b>五次多项式 + Hybrid A*</b> 暖启动，泊车另走 <b>Hybrid A*</b> 几何搜索。下面每个结论都标注了「代码可证」还是「遗留/推测」。</p>
+  <div class="branch">分支 <b>delivery/release_candidate_260403</b> · 2026-04-03 · 842 文件 · 解读源自代码与子 agent 深挖</div>
+  <div class="stats">
+    <div class="stat"><div class="n" style="color:var(--cyan)">6</div><div class="l">主链路 operator 阶段</div></div>
+    <div class="stat"><div class="n" style="color:var(--blue)">CiLQR</div><div class="l">横向最终路径优化</div></div>
+    <div class="stat"><div class="n" style="color:var(--violet)">OSQP</div><div class="l">纵向速度分段-jerk QP</div></div>
+    <div class="stat"><div class="n" style="color:var(--amber)">HA*</div><div class="l">参考速度 / 泊车搜索</div></div>
+    <div class="stat"><div class="n" style="color:var(--emerald)">5</div><div class="l">Optimizer 子流水线</div></div>
+  </div>
+  <div style="margin-top:24px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+    <span style="font-size:12.5px;color:var(--cyan);font-weight:800;letter-spacing:.4px">🧭 8 个算法详解 →</span>
+    <a href="algo/cilqr-path.html" style="font-size:12px;font-weight:600;color:var(--text-2);padding:6px 11px;border-radius:9px;border:1px solid var(--line-2);background:rgba(255,255,255,.04)">① CiLQR 横向</a>
+    <a href="algo/speed-qp.html" style="font-size:12px;font-weight:600;color:var(--text-2);padding:6px 11px;border-radius:9px;border:1px solid var(--line-2);background:rgba(255,255,255,.04)">② 纵向速度</a>
+    <a href="algo/refpath.html" style="font-size:12px;font-weight:600;color:var(--text-2);padding:6px 11px;border-radius:9px;border:1px solid var(--line-2);background:rgba(255,255,255,.04)">③ 参考路径</a>
+    <a href="algo/hts-speed.html" style="font-size:12px;font-weight:600;color:var(--text-2);padding:6px 11px;border-radius:9px;border:1px solid var(--line-2);background:rgba(255,255,255,.04)">④ HTS</a>
+    <a href="algo/path-corridor.html" style="font-size:12px;font-weight:600;color:var(--text-2);padding:6px 11px;border-radius:9px;border:1px solid var(--line-2);background:rgba(255,255,255,.04)">⑤ 横向走廊</a>
+    <a href="algo/speed-corridor.html" style="font-size:12px;font-weight:600;color:var(--text-2);padding:6px 11px;border-radius:9px;border:1px solid var(--line-2);background:rgba(255,255,255,.04)">⑥ 纵向走廊</a>
+    <a href="algo/lane-decision.html" style="font-size:12px;font-weight:600;color:var(--text-2);padding:6px 11px;border-radius:9px;border:1px solid var(--line-2);background:rgba(255,255,255,.04)">⑦ 变道决策</a>
+    <a href="algo/hybrid-astar.html" style="font-size:12px;font-weight:600;color:var(--text-2);padding:6px 11px;border-radius:9px;border:1px solid var(--line-2);background:rgba(255,255,255,.04)">⑧ 泊车HA*</a>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ TL;DR ============ -->
+  <section id="tldr">
+    <div class="sec-head"><span class="sec-kicker">00</span><h2 class="sec-title">一句话速览：横纵向怎么做到</h2></div>
+    <p class="sec-sub">Planning 不是端到端一把梭，而是经典的 <b>path-speed 解耦（decoupled）分层</b>：先在空间上定「往哪走」（横向路径，不含时间），再在这条路径上定「走多快」（纵向速度，含时间），最后把两者对齐合成带时间戳的轨迹。每一层各用最合适的优化器。</p>
+
+    <div class="overview glass">
+      <svg viewBox="0 0 1080 250" width="100%" height="auto" font-family="'Inter','PingFang SC','Microsoft YaHei',sans-serif" role="img" aria-label="解耦分层全景：横向定路径形状 → 纵向定速度 → 合成时空轨迹">
+        <!-- ===== Panel A 横向 Path ===== -->
+        <rect x="8" y="38" width="322" height="196" rx="12" fill="rgba(255,255,255,.025)" stroke="#1f2747"/>
+        <text x="169" y="27" fill="#5ad6f0" font-size="13.5" font-weight="700" text-anchor="middle">① 横向 Path · 形状 l(s)</text>
+        <line x1="40" y1="82" x2="300" y2="82" stroke="#2d3760" stroke-width="1.4"/>
+        <line x1="40" y1="206" x2="300" y2="206" stroke="#2d3760" stroke-width="1.4"/>
+        <line x1="40" y1="144" x2="300" y2="144" stroke="#5a6286" stroke-width="1" stroke-dasharray="5 4"/>
+        <rect x="176" y="108" width="30" height="40" rx="3" fill="rgba(248,113,113,.28)" stroke="rgba(248,113,113,.7)"/>
+        <text x="191" y="102" fill="#f87171" font-size="10" text-anchor="middle">障碍</text>
+        <path d="M40,144 C100,144 140,182 186,182 S270,144 300,144" fill="none" stroke="#5ad6f0" stroke-width="2.6"/>
+        <rect x="33" y="138" width="12" height="12" rx="2" fill="#5ad6f0"/>
+        <text x="236" y="172" fill="#5ad6f0" font-size="12" font-weight="600">l(s)</text>
+        <text x="272" y="224" fill="#5a6286" font-size="11">s →</text>
+        <!-- arrow A->B -->
+        <line x1="340" y1="135" x2="367" y2="135" stroke="#5a6286" stroke-width="2"/>
+        <polygon points="366,131 375,135 366,139" fill="#5a6286"/>
+        <!-- ===== Panel B 纵向 Speed ===== -->
+        <rect x="378" y="38" width="322" height="196" rx="12" fill="rgba(255,255,255,.025)" stroke="#1f2747"/>
+        <text x="539" y="27" fill="#a78bfa" font-size="13.5" font-weight="700" text-anchor="middle">② 纵向 Speed · 速度 s(t)</text>
+        <line x1="410" y1="58" x2="410" y2="208" stroke="#2d3760" stroke-width="1.4"/>
+        <line x1="410" y1="208" x2="680" y2="208" stroke="#2d3760" stroke-width="1.4"/>
+        <text x="396" y="66" fill="#5a6286" font-size="11">s</text>
+        <text x="648" y="203" fill="#5a6286" font-size="11">t →</text>
+        <path d="M462,116 L602,55 L624,69 L486,131 Z" fill="rgba(248,113,113,.24)" stroke="rgba(248,113,113,.6)" stroke-width="1"/>
+        <text x="556" y="88" fill="#f87171" font-size="10" text-anchor="middle">障碍 ST</text>
+        <path d="M410,208 C470,202 506,178 548,150 C590,122 632,92 668,74" fill="none" stroke="#a78bfa" stroke-width="2.6"/>
+        <circle cx="410" cy="208" r="3.5" fill="#a78bfa"/>
+        <text x="604" y="134" fill="#a78bfa" font-size="12" font-weight="600">s(t)</text>
+        <!-- arrow B->C -->
+        <line x1="710" y1="135" x2="737" y2="135" stroke="#5a6286" stroke-width="2"/>
+        <polygon points="736,131 745,135 736,139" fill="#5a6286"/>
+        <!-- ===== Panel C 合成 ===== -->
+        <rect x="748" y="38" width="322" height="196" rx="12" fill="rgba(255,255,255,.025)" stroke="#1f2747"/>
+        <text x="909" y="27" fill="#34d399" font-size="13.5" font-weight="700" text-anchor="middle">③ 合成 · 时空轨迹</text>
+        <line x1="780" y1="82" x2="1040" y2="82" stroke="#222a4a" stroke-width="1.2"/>
+        <line x1="780" y1="206" x2="1040" y2="206" stroke="#222a4a" stroke-width="1.2"/>
+        <path d="M780,144 C840,144 880,182 926,182 S1010,144 1040,144" fill="none" stroke="#2d3760" stroke-width="1.4" stroke-dasharray="4 4"/>
+        <circle cx="780" cy="144" r="3.4" fill="#5ad6f0"/>
+        <circle cx="798" cy="147" r="3.4" fill="#5ec9ec"/>
+        <circle cx="818" cy="155" r="3.4" fill="#69bce8"/>
+        <circle cx="841" cy="166" r="3.4" fill="#79afe0"/>
+        <circle cx="867" cy="177" r="3.4" fill="#8aa6d4"/>
+        <circle cx="897" cy="181" r="3.4" fill="#7fb0c0"/>
+        <circle cx="938" cy="177" r="3.4" fill="#5cc6a4"/>
+        <circle cx="985" cy="159" r="3.4" fill="#45c79a"/>
+        <circle cx="1036" cy="145" r="3.4" fill="#34d399"/>
+        <text x="792" y="224" fill="#aeb6d6" font-size="11">(x, y, θ, κ, v, a, t)</text>
+      </svg>
+      <div class="ov-cap">
+        <div class="c a"><b>① 横向 Path（空间）</b><p>先画出「车要走的那条线」<code>l(s)</code>——绕开障碍、贴合车道，<b>不管快慢</b>。主力 CiLQR。</p></div>
+        <div class="c b"><b>② 纵向 Speed（时间）</b><p>在这条线上排「何时走到哪」<code>s(t)</code>——让行/跟车/限速，<b>决定快慢与停走</b>。OSQP 分段-jerk。</p></div>
+        <div class="c c"><b>③ 合成（时空）</b><p>把形状与速度按弧长 <code>s</code> 对齐，吐出带时间戳的 <code>(x,y,θ,κ,v,a,t)</code> 轨迹交给控制。</p></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="sub glass lat">
+        <h4>↔ 横向 Lateral / Path —— 决定路径形状 l(s)</h4>
+        <p><b>两阶段</b>。① 粗参考路径：Frenet 坐标下用<b>五次多项式</b>暖启动，再由 <b>OSQP 分段-jerk QP</b> 平滑 <code>l(s)</code>（默认）。② 精细路径：<b>CiLQR</b> 在 Cartesian 直接优化 6 维状态 <code>[x,y,θ,κ,v,a]</code>，避障/边界以软代价（penalty）注入。借道/换道通过切换参考线与 goal 点、扩展横向走廊实现。</p>
+      </div>
+      <div class="sub glass lon">
+        <h4>↕ 纵向 Longitudinal / Speed —— 决定速度曲线 s(t)</h4>
+        <p><b>两阶段</b>。① 粗参考速度：<b>Hybrid A* + ST 栅格</b>搜索（对 jerk 采样扩展），把跟车/限速/红绿灯都编码进代价。② 精细速度：<b>OSQP 分段-jerk QP</b> 在 5&nbsp;s / 51 点上优化 <code>s(t)</code>，跟车用 RSS / IDM 软上界；低速到点切「舒适停车曲线」绕过 QP。</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:14px">
+      <span class="ic">⚠️</span>
+      <p><b>易混淆点（已用代码校正）：</b>「精细横向 <code>PathOptimizer</code>」用的是 <b>CiLQR</b>，<u>不是</u> 分段-jerk QP；分段-jerk QP（OSQP）用在<b>纵向速度</b>和<b>粗横向参考路径</b>。另外 <code>optimizer/solver/</code> 里那套基于因子 + Levenberg-Marquardt 的横纵分解求解器，<b>当前并未接入</b> <code>Optimizer::Create()</code>，属历史遗留代码。</p>
+    </div>
+  </section>
+
+  <!-- ============ ALGOS 入口 ============ -->
+  <section id="algos">
+    <div class="sec-head"><span class="sec-kicker">★</span><h2 class="sec-title">算法详解 · 8 个子页</h2></div>
+    <p class="sec-sub">每个核心算法一页，统一讲清四件事：<b>解决的问题 · 实现（流程/数学/代码锚点）· 超参设置 · 后续优化点</b>。点开任意卡片进入。</p>
+    <div class="algo-cards">
+      <a class="acard lat" href="algo/cilqr-path.html">
+        <div class="ah"><span class="ic">🛣️</span><span class="nm">① CiLQR 横向路径</span></div>
+        <div class="ax">把粗路径精修成车真能开的形状：6 维状态 <code>[x,y,θ,κ,v,a]</code> 的 iLQR，避障/边界以软代价注入。</div>
+        <div class="am"><span class="tag lat">横向</span><span class="tag cilqr">CiLQR</span></div>
+        <div class="open">实现 / 超参 / 优化点 →</div>
+      </a>
+      <a class="acard lon" href="algo/speed-qp.html">
+        <div class="ah"><span class="ic">⏱️</span><span class="nm">② OSQP 纵向速度</span></div>
+        <div class="ax">5s / 51 点解 <code>s(t)</code>，状态 <code>[s,v,a]</code>、jerk 控制；跟车走 RSS / IDM 软上界，到点切舒适停车。</div>
+        <div class="am"><span class="tag lon">纵向</span><span class="tag osqp">OSQP</span></div>
+        <div class="open">实现 / 超参 / 优化点 →</div>
+      </a>
+      <a class="acard lat" href="algo/refpath.html">
+        <div class="ah"><span class="ic">📐</span><span class="nm">③ 粗参考路径</span></div>
+        <div class="ax">Frenet 下五次多项式暖启动 + OSQP 分段-jerk 平滑 <code>l(s)</code>，为 CiLQR 打底。</div>
+        <div class="am"><span class="tag lat">横向</span><span class="tag osqp">OSQP</span><span class="tag cilqr">Quintic</span></div>
+        <div class="open">实现 / 超参 / 优化点 →</div>
+      </a>
+      <a class="acard lon" href="algo/hts-speed.html">
+        <div class="ah"><span class="ic">🔍</span><span class="nm">④ HTS 参考速度</span></div>
+        <div class="ax">Hybrid A* 在 ST 栅格上搜参考速度，对 jerk 采样扩展，把限速/跟车/红灯编码进代价。</div>
+        <div class="am"><span class="tag lon">纵向</span><span class="tag ha">Hybrid A*</span></div>
+        <div class="open">实现 / 超参 / 优化点 →</div>
+      </a>
+      <a class="acard lat" href="algo/path-corridor.html">
+        <div class="ah"><span class="ic">🧱</span><span class="nm">⑤ 横向走廊 · Nudge</span></div>
+        <div class="ax">把车道/freespace/curb/OCC/障碍逐层合成横向 <code>l</code> 上下界，定避障方向，喂给优化器。</div>
+        <div class="am"><span class="tag lat">横向</span><span class="tag">走廊</span></div>
+        <div class="open">实现 / 超参 / 优化点 →</div>
+      </a>
+      <a class="acard lon" href="algo/speed-corridor.html">
+        <div class="ah"><span class="ic">📊</span><span class="nm">⑥ 纵向走廊 · STBounds</span></div>
+        <div class="ax">障碍投影到 ST 图、扫线扫出每个时刻可通行 <code>s</code> 区间，并对每个障碍定让行/超车/跟车/停车。</div>
+        <div class="am"><span class="tag lon">纵向</span><span class="tag">走廊</span></div>
+        <div class="open">实现 / 超参 / 优化点 →</div>
+      </a>
+      <a class="acard lat" href="algo/lane-decision.html">
+        <div class="ah"><span class="ic">↔️</span><span class="nm">⑦ 借道 / 换道 / Gap</span></div>
+        <div class="ax">LaneGuider 评估换道、LaneBorrowDecider 触发借道、GapManager 选汇入空隙，改写参考线与走廊。</div>
+        <div class="am"><span class="tag lat">决策</span><span class="tag">横向</span></div>
+        <div class="open">实现 / 超参 / 优化点 →</div>
+      </a>
+      <a class="acard park" href="algo/hybrid-astar.html">
+        <div class="ah"><span class="ic">🅿️</span><span class="nm">⑧ Hybrid A* 泊车</span></div>
+        <div class="ax">状态 <code>(x,y,θ)</code> 自行车模型扩展 + Reeds-Shepp 启发与解析展开，搜出泊车几何路径。</div>
+        <div class="am"><span class="tag ha">Hybrid A*</span><span class="tag">泊车</span></div>
+        <div class="open">实现 / 超参 / 优化点 →</div>
+      </a>
+    </div>
+  </section>
+
+  <!-- ============ ARCH ============ -->
+  <section id="arch">
+    <div class="sec-head"><span class="sec-kicker">01</span><h2 class="sec-title">整体架构 · operator 流水线</h2></div>
+    <p class="sec-sub">CyberRT 组件 10&nbsp;Hz 触发。顶层 <code>PPLManager</code> 经状态机选 行车 / 泊车 pipeline；行车主链路 <code>ADPPLManager</code> 按序跑 6 个 <code>InterfaceOperator</code>，每个算子内部又是一条子流水线。<b>执行顺序（代码可证 <span class="mono">ad_ppl_manager.cpp:283-317</span>）：</b></p>
+    <div class="flow">
+      <div class="step"><div class="si">1</div><div class="sn">DataPreprocessor</div><div class="sd">输入校验 · 障碍物预测 · 参考线生成 · 泊车选位</div></div>
+      <div class="step"><div class="si">2</div><div class="sn">ScenarioDetector</div><div class="sd">仅路口几何分类（in/before/after junction）</div></div>
+      <div class="step"><div class="si">3</div><div class="sn">CoarseTrajectoryGenerator</div><div class="sd">参考线+参考速度+粗轨迹 · 借道/换道/Gap</div></div>
+      <div class="step dim"><div class="si">4</div><div class="sn">Decider</div><div class="sd">当前空跑（OLD_IMPLEMENTATION 0）</div></div>
+      <div class="step hot"><div class="si">5</div><div class="sn">Optimizer ★</div><div class="sd">横向 path → 纵向 speed → 合成</div></div>
+      <div class="step"><div class="si">6</div><div class="sn">ADStateProcessor</div><div class="sd">AD 状态位 · 车灯</div></div>
+    </div>
+    <div class="callout blue" style="margin-top:16px">
+      <span class="ic">📌</span>
+      <p><b>纠正常见口述：</b><code>DataPreprocessor</code> 在 <code>ScenarioDetector</code> <b>之前</b>（与 <code>STRUCTURE.md</code> 文档里写的顺序相反，以代码 <span class="mono">ad_ppl_manager.cpp</span> 为准）。<b>Decider 阶段当前是空壳</b>，纵向决策（让行/跟车/超车）实际发生在 Optimizer 的 <code>STBoundsDecider</code> 里。</p>
+    </div>
+
+    <h3 class="h3">Optimizer 子流水线（核心 · 代码可证 <span class="mono" style="font-size:11px;color:var(--text-3)">optimizer.cpp:64-79</span>）</h3>
+    <div class="flow">
+      <div class="step" style="border-color:rgba(90,214,240,.3)"><div class="si" style="color:var(--cyan)">5.1</div><div class="sn">PathCorridor<br>Constructor</div><div class="sd">构建横向可行走廊（CiLQR 约束边界）</div></div>
+      <div class="step" style="border-color:rgba(90,214,240,.4);background:linear-gradient(180deg,rgba(90,214,240,.07),transparent)"><div class="si" style="color:var(--cyan)">5.2</div><div class="sn">PathOptimizer<br><span class="tag cilqr">CiLQR</span></div><div class="sd">精细路径 l(s)→Cartesian</div></div>
+      <div class="step" style="border-color:rgba(167,139,250,.3)"><div class="si" style="color:var(--violet)">5.3</div><div class="sn">SpeedCorridor<br>Constructor</div><div class="sd">ST/SVT 走廊 + 纵向决策</div></div>
+      <div class="step" style="border-color:rgba(167,139,250,.4);background:linear-gradient(180deg,rgba(167,139,250,.07),transparent)"><div class="si" style="color:var(--violet)">5.4</div><div class="sn">SpeedOptimizer<br><span class="tag osqp">OSQP QP</span></div><div class="sd">速度曲线 s(t)</div></div>
+      <div class="step" style="border-color:rgba(52,211,153,.3)"><div class="si" style="color:var(--emerald)">5.5</div><div class="sn">FinalTrajectory<br>Generator</div><div class="sd">path ⊕ speed → 轨迹</div></div>
+    </div>
+  </section>
+
+  <!-- ============ LATERAL ============ -->
+  <section id="lateral">
+    <div class="sec-head"><span class="sec-kicker">02</span><h2 class="sec-title" style="color:var(--cyan)">横向规划 · Path / Lateral</h2></div>
+    <p class="sec-sub">目标：在 Frenet 弧长 <code>s</code> 上求横向偏移曲线 <code>l(s)</code>，即「车往哪个轨迹走」（不含速度/时间）。分粗、精两阶段，精细阶段是整个横向的主力。</p>
+    <div class="lead lat"><span class="em">🛣️</span><p><b>一句话：</b>先不管快慢，在车道里画出一条「绕开障碍、平滑贴线」的行车曲线。<b>分两步走</b>——先用五次多项式 + QP 拉一条粗线打底，再用 <b>CiLQR</b> 精修成车真正能开的形状。</p></div>
+
+    <h3 class="h3">阶段 A · 粗参考路径（warm-start + 凸平滑）</h3>
+    <table class="t">
+      <thead><tr><th style="width:170px">步骤</th><th>做什么</th><th style="width:230px">关键类 / 算法</th></tr></thead>
+      <tbody>
+        <tr><td>① Frenet 初值</td><td>自车 Cartesian → Frenet，得 <code class="mono">[s,ds,dds]</code> / <code class="mono">[l,dl,ddl]</code></td><td class="mono">CartesianToFrenetExt</td></tr>
+        <tr><td>② 暖启动曲线</td><td>起点 <code>(l,dl,ddl)</code> → 终点 <code>(end_l,0,0)</code> 的五次多项式；规划长 <code>max(20m, v·7s)</code></td><td><span class="tag cilqr">Quintic</span> <span class="mono">QuinticPolynomialCurve1d</span></td></tr>
+        <tr><td>③ nudge 决策</td><td>逐障碍 LEFT/RIGHT/YIELD 预决策，生成分层 SL 边界</td><td class="mono">NudgePreDecider / NudgeBoundDecider</td></tr>
+        <tr><td>④ 凸优化平滑</td><td>默认对 <code>l(s)</code> 解分段-jerk QP；<code>enable_ilqr_refpath</code> 时改用 CiLQR</td><td><span class="tag osqp">OSQP</span> <span class="mono">RefathOsqpOptimizer</span></td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:12.5px;color:var(--text-3);margin:10px 2px">5 类参考路径生成器按场景分流：<code>KEEP_INLANE</code>（保持）· <code>KEEP_BORROWLANE</code>（借道）· <code>CHANGE_INLANE</code>（换道，用目标参考线）· <code>PARKING</code>（泊车）· <code>E2E</code>。多模态结果由 <code>ReferenceTrajectorySelector</code> 选优。</p>
+
+    <h3 class="h3">横向可行走廊 · SLBoundPoint 分层合成</h3>
+    <p class="sec-sub" style="margin:0 0 12px">走廊给出每个 <code>s</code> 处横向 <code>l</code> 的上下界，由多个来源逐层合成，最终裁出 <code>final_soft_lb/ub</code>（再加 nudge buffer、按车宽 shrink、保证最小走廊宽度）。</p>
+    <div class="layers">
+      <div class="layer"><div class="ln">kinematic</div><div class="bar"><div class="fill" style="left:6%;right:6%;background:rgba(126,135,173,.35)"></div></div><div class="note">最小转弯半径可达</div></div>
+      <div class="layer"><div class="ln">lane（地图）</div><div class="bar"><div class="fill" style="left:12%;right:10%;background:rgba(91,157,255,.4)"></div></div><div class="note">±left/right_width</div></div>
+      <div class="layer"><div class="ln">freespace</div><div class="bar"><div class="fill" style="left:16%;right:14%;background:rgba(52,211,153,.38)"></div></div><div class="note">lidar 可行驶</div></div>
+      <div class="layer"><div class="ln">curb / occ</div><div class="bar"><div class="fill" style="left:20%;right:18%;background:rgba(251,191,36,.36)"></div></div><div class="note">路沿 + 占据栅格</div></div>
+      <div class="layer"><div class="ln">static / dyn obs</div><div class="bar"><div class="fill" style="left:30%;right:22%;background:rgba(248,113,113,.4)"></div></div><div class="note">障碍 nudge 软界</div></div>
+      <div class="layer"><div class="ln" style="color:var(--cyan)">→ final_soft</div><div class="bar" style="border-color:rgba(90,214,240,.5)"><div class="fill" style="left:31%;right:23%;background:linear-gradient(90deg,rgba(90,214,240,.5),rgba(90,214,240,.3))"></div></div><div class="note" style="color:var(--cyan)">合成 + buffer</div></div>
+    </div>
+
+    <h3 class="h3">阶段 B · 精细路径优化 = <span style="color:var(--blue)">CiLQR</span></h3>
+    <p class="sec-sub" style="margin:0 0 10px"><code>PathCorridorConstructor</code> 先沿参考线中心匀速推出启发轨迹 + 映射 SL 走廊（前轴额外 +2.927m），再交给 <code>CilqrTrajectoryOptimizer</code>（泊车场景跳过、直接透传搜索路径）。这是 constrained-iLQR 的工程实现 —— iLQR + 线搜索 + λ 正则化，约束以惩罚代价进入。</p>
+    <div class="grid2">
+      <div>
+        <div style="font-size:12px;color:var(--text-2);font-weight:700;margin:0 2px 6px">状态 / 控制 / 动力学（RK4 离散）</div>
+        <div class="eq lat">
+<span class="c">// 6 维状态, 2 维控制</span>
+x = [ x, y, θ, κ, v, a ]ᵀ
+u = [ dκ, j ]ᵀ
+<span class="c">// 连续动力学</span>
+dx/dt = v·cos θ &nbsp; dy/dt = v·sin θ
+dθ/dt = v·κ &nbsp;&nbsp;&nbsp;&nbsp; dκ/dt = dκ
+dv/dt = a &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; da/dt = j
+<span class="c">// 求解器</span>
+<span class="h">cilqr::Solver&lt;6,2&gt;</span>  iLQR + line-search + LM
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-2);font-weight:700;margin:0 2px 6px">代价项（每步 + 终端）</div>
+        <table class="t">
+          <thead><tr><th>代价</th><th>形式</th><th style="width:74px">速度耦合</th></tr></thead>
+          <tbody>
+            <tr><td>position ref</td><td class="mono">w·‖p−p_ref‖²</td><td>—</td></tr>
+            <tr><td>heading ref</td><td class="mono">w·(θ−θ_ref)²</td><td class="mono">×v²</td></tr>
+            <tr><td>kappa ref</td><td class="mono">w·(κ−κ_ref)²</td><td class="mono">×v⁴</td></tr>
+            <tr><td>kappa-rate</td><td class="mono">w·(dκ)²</td><td class="mono">×v⁴</td></tr>
+            <tr><td>speed/acc/jerk</td><td class="mono">w·(·−·_ref)²</td><td>—</td></tr>
+            <tr><td>*Limit 软约束</td><td class="mono">w·max(0,viol)²</td><td>—</td></tr>
+            <tr><td>Safety / 前轴</td><td class="mono">w·max(0,d_safe−d)²</td><td>nudge 界</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-3);margin:12px 2px"><b>跟踪参考的巧思：</b><code>x_ref,y_ref</code> 取自参考线上 <code>(s, goal.end_l)</code> 的 XY（决定横向贴哪条线），而 <code>θ,κ,v,a</code> 参考来自中心线启发轨迹。借道/换道正是通过改 <code>goal.end_l</code> 和切换参考线来「掰」这个跟踪目标。</p>
+
+    <h3 class="h3">借道 / 换道：如何影响横向</h3>
+    <div class="pts">
+      <div class="pt"><div class="k">LANE BORROW · 借道</div><div class="tt">LaneBorrowDecider</div><div class="dd">触发：非换道态 + 车速≤15m/s + 非路口 + 前方 blocking/dead_car（3 帧滞回）。效果：把走廊上界/下界<b>扩展到相邻车道边界</b>（无邻道再加 off-lane 宽），但仍用<b>原车道参考线</b>。</div></div>
+      <div class="pt"><div class="k">LANE CHANGE · 换道</div><div class="tt">LaneGuider</div><div class="dd">Precheck → ObstacleTracer → HardEndDecider → Evaluator（Deviation + Efficiency + Pullover 代价）。CHANGE 态切到<b>目标参考线</b>、<code>end_l→0</code>；HOLD 态保持原线 <code>end_l=±0.5m</code>。</div></div>
+    </div>
+  </section>
+
+  <!-- ============ LONGITUDINAL ============ -->
+  <section id="longi">
+    <div class="sec-head"><span class="sec-kicker">03</span><h2 class="sec-title" style="color:var(--violet)">纵向规划 · Speed / Longitudinal</h2></div>
+    <p class="sec-sub">目标：在横向已定的路径上，求弧长随时间的曲线 <code>s(t)</code>（从而得到 <code>v=ṡ, a=s̈</code>），即「在这条路上走多快、何时停」。同样分粗（搜索）、精（QP）两阶段，且各自有一套 ST 表达。</p>
+    <div class="lead lon"><span class="em">⏱️</span><p><b>一句话：</b>路径定好后，再决定「在这条线上何时走到哪、何时该让该停」。<b>分两步走</b>——先用 <b>Hybrid A*</b> 在 s-t 图上搜一条参考速度，再用 <b>OSQP 分段-jerk QP</b> 精修成平顺速度曲线。</p></div>
+
+    <h3 class="h3">阶段 A · 参考速度 = <span style="color:var(--amber)">Hybrid A* + ST 栅格</span></h3>
+    <div class="grid2">
+      <div class="sub glass">
+        <h4 style="color:var(--amber)">⛏ HTS 搜索（默认）</h4>
+        <p>节点 <code class="mono">(s, v, a, j, t)</code>，对 jerk 采样集做离散积分扩展；代价 <code>g = 限速 + 加速度 + jerk + 障碍 + 进度(−Δs)</code>。障碍按各时刻 SL 盒写入 <code>(t,s)</code> 栅格，红绿灯/换道虚线停车点编码成限速惩罚。输出 <code>ReferenceSpeed(s,t,v,a,j)</code>。</p>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-2);font-weight:700;margin:0 2px 6px">节点扩展（jerk 三次积分）</div>
+        <div class="eq lon">
+a<sub>k+1</sub> = a<sub>k</sub> + Δt·j
+v<sub>k+1</sub> = v<sub>k</sub> + a<sub>k</sub>·Δt + ½·Δt²·j
+s<sub>k+1</sub> = s<sub>k</sub> + v<sub>k</sub>·Δt + ½a<sub>k</sub>Δt² + ⅙Δt³·j
+<span class="c">// v &lt; 0 钳为停车</span>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:12.5px;color:var(--text-3);margin:10px 2px"><b>GapManager（换道时）：</b>目标车道 ±80m 障碍排序 → 枚举 gap → 对 <code>(v_diff, acc)</code> 采样推演 + 安全校验 + 代价选最优 gap → 注入 HTS 作目标 <code>s</code> 启发（IDM 期望距）。开启多 gap 时每个 gap 各跑一次 HTS，产出多模态粗轨迹。</p>
+
+    <h3 class="h3">纵向走廊 · SVT 边界 + ST 可行域</h3>
+    <p class="sec-sub" style="margin:0 0 12px"><code>SpeedCorridorConstructor</code> 子链：<code>BacksideDecider → ReverseDecider → OccDecider → STBoundsDecider → SpeedBoundsDecider</code>。核心是把障碍投影到 ST 图、扫描出每个时刻可通行的 <code>s</code> 区间，并对每个障碍定下 让行/超车/跟车/停车 决策。</p>
+    <div class="grid2">
+      <div class="glass" style="padding:14px 16px">
+        <svg viewBox="0 0 420 250" width="100%" height="auto" role="img" aria-label="ST 图：障碍投影与可行走廊">
+          <!-- axes -->
+          <line x1="44" y1="14" x2="44" y2="214" stroke="#2d3760" stroke-width="1.5"/>
+          <line x1="44" y1="214" x2="406" y2="214" stroke="#2d3760" stroke-width="1.5"/>
+          <text x="16" y="20" fill="#aeb6d6" font-size="12" font-family="monospace">s</text>
+          <text x="396" y="234" fill="#aeb6d6" font-size="12" font-family="monospace">t</text>
+          <text x="20" y="120" fill="#5a6286" font-size="9" font-family="monospace" transform="rotate(-90 20 120)">弧长 s (m)</text>
+          <!-- grid -->
+          <g stroke="#1f2747" stroke-width="1">
+            <line x1="44" y1="174" x2="406" y2="174"/><line x1="44" y1="134" x2="406" y2="134"/>
+            <line x1="44" y1="94" x2="406" y2="94"/><line x1="44" y1="54" x2="406" y2="54"/>
+            <line x1="134" y1="14" x2="134" y2="214"/><line x1="224" y1="14" x2="224" y2="214"/><line x1="314" y1="14" x2="314" y2="214"/>
+          </g>
+          <!-- feasible corridor (between obstacles) -->
+          <path d="M44,200 L406,150 L406,196 L44,206 Z" fill="rgba(90,214,240,.10)" stroke="none"/>
+          <!-- dynamic obstacle band (yield: stay below) -->
+          <path d="M120,150 L300,70 L330,84 L150,164 Z" fill="rgba(248,113,113,.32)" stroke="rgba(248,113,113,.6)" stroke-width="1"/>
+          <text x="210" y="118" fill="#f87171" font-size="10" font-family="monospace" transform="rotate(-24 210 118)">动态障碍 YIELD</text>
+          <!-- static wall (vertical) -->
+          <rect x="356" y="40" width="22" height="174" fill="rgba(251,191,36,.22)" stroke="rgba(251,191,36,.5)" stroke-width="1"/>
+          <text x="352" y="34" fill="#fbbf24" font-size="9" font-family="monospace">静态墙</text>
+          <!-- reference speed line (STGuideLine) -->
+          <path d="M44,206 Q170,180 300,120 T406,70" fill="none" stroke="#5ad6f0" stroke-width="2.2" stroke-dasharray="0"/>
+          <circle cx="44" cy="206" r="3.5" fill="#5ad6f0"/>
+          <text x="300" y="200" fill="#5ad6f0" font-size="10" font-family="monospace">参考速度 s(t)</text>
+          <!-- upper/lower bound -->
+          <path d="M44,196 L150,164 L330,84 L356,72" fill="none" stroke="rgba(248,113,113,.7)" stroke-width="1.4" stroke-dasharray="4 3"/>
+        </svg>
+        <div class="legend">
+          <span><span class="sw" style="background:#5ad6f0"></span>参考速度 / GuideLine</span>
+          <span><span class="sw" style="background:rgba(248,113,113,.5)"></span>障碍 ST 占据</span>
+          <span><span class="sw" style="background:rgba(90,214,240,.2)"></span>可行 s 区间</span>
+        </div>
+      </div>
+      <div>
+        <table class="t lon">
+          <thead><tr><th>来源</th><th>纵向边界含义</th></tr></thead>
+          <tbody>
+            <tr><td>静态障碍</td><td>overlap s 区间在 t∈[0,T] 不变 → <b>竖直 ST 墙</b></td></tr>
+            <tr><td>动态障碍</td><td>遍历预测轨迹，<code>GetOverlappingS</code>→(s_lo,s_hi)，速度投影 <code class="mono">v·cos(θ_obs−θ_path)</code></td></tr>
+            <tr><td>红绿灯</td><td><code>kTldLimit</code> 虚拟墙（停止线 s）</td></tr>
+            <tr><td>泊车/换道暂停</td><td><code>kParkingStop</code> / <code>kLcPause</code> 虚拟墙</td></tr>
+            <tr><td>地图/曲率限速</td><td>refline 限速 + <code class="mono">v≤√(a_lat/|κ|)</code></td></tr>
+            <tr><td>决策</td><td>每障碍 <b>YIELD / OVERTAKE / FOLLOW / STOP</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3 class="h3">阶段 B · 速度优化 = <span style="color:var(--emerald)">OSQP 分段-jerk QP</span></h3>
+    <p class="sec-sub" style="margin:0 0 10px">在路径弧长 <code>s</code> 上、5&nbsp;s / 51 点（Δt=0.1s）求 <code>s(t)</code>。状态 <code>[s,v,a]</code>、jerk 为段间控制，标准 QP <code>min ½zᵀPz+qᵀz s.t. l≤Az≤u</code> 交 OSQP。</p>
+    <div class="grid2">
+      <div>
+        <div style="font-size:12px;color:var(--text-2);font-weight:700;margin:0 2px 6px">目标函数（逐项）</div>
+        <table class="t lon">
+          <thead><tr><th>代价项</th><th>形式</th><th style="width:54px">权重</th></tr></thead>
+          <tbody>
+            <tr><td>贴合参考 s</td><td class="mono">∑ w(s−s_ref)²</td><td>10</td></tr>
+            <tr><td>曲率限速</td><td class="mono">∑ |κ|·v²</td><td>—</td></tr>
+            <tr><td>加速度</td><td class="mono">∑ a²</td><td>1</td></tr>
+            <tr><td>jerk 平滑</td><td class="mono">∑ ((a₊−a)/Δt)²</td><td>1</td></tr>
+            <tr><td>RSS 软上界</td><td class="mono">slack²</td><td>400</td></tr>
+            <tr><td>IDM 软上界</td><td class="mono">slack²</td><td>20</td></tr>
+            <tr><td>v / a 软界</td><td class="mono">slack²</td><td>1000/250</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-2);font-weight:700;margin:0 2px 6px">约束（连续性 + 盒约束）</div>
+        <div class="eq lon">
+<span class="c">// 运动学连续性（梯形积分）</span>
+v<sub>i+1</sub> − v<sub>i</sub> − ½Δt(a<sub>i</sub>+a<sub>i+1</sub>) = 0
+s<sub>i+1</sub> − s<sub>i</sub> − Δt·v<sub>i</sub>
+&nbsp;&nbsp;&nbsp; − (Δt²/3)a<sub>i</sub> − (Δt²/6)a<sub>i+1</sub> = 0
+<span class="c">// 盒约束</span>
+s<sub>i</sub> ∈ [s_lo, s_hi]   (硬, 来自 ST 走廊)
+0 ≤ v<sub>i</sub> ≤ v_max  ·  a,jerk ∈ [min,max]
+<span class="c">// 软上界: RSS / IDM 跟车距</span>
+s<sub>i</sub> + e<sub>k</sub> ≤ s_follow
+        </div>
+        <p style="font-size:11.5px;color:var(--text-3);margin:6px 2px">输出后强制单调：<code class="mono">sᵢ=max(sᵢ,sᵢ₋₁), vᵢ=max(vᵢ,0)</code>。低速到点触发滞回 → <code>GenerateComfortStopProfile</code> 直接给停车曲线、绕过 QP。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MERGE ============ -->
+  <section id="merge">
+    <div class="sec-head"><span class="sec-kicker">04</span><h2 class="sec-title">合成 · path ⊕ speed → 轨迹</h2></div>
+    <p class="sec-sub"><code>FinalTrajectoryGenerator</code> 把横向路径 <code>path(s)=(x,y,θ,κ)</code> 与纵向速度 <code>speed(t)=(s,v,a,j)</code> 按弧长对齐，拼出带时间戳的可发布轨迹 <code>PublishableTrajectory</code>。</p>
+    <div class="eq">
+<span class="c">// 先继承 stitching_trajectory 作为前缀（拼接历史，保证平滑接续）</span>
+for t in [0, T]:  <span class="c">// 0.1s 密采样, &gt;1s 后稀疏</span>
+    (s, v, a, j) = speed.GetSpeedPointWithTime(t)   <span class="c">// 纵向给 s</span>
+    (x, y, θ, κ) = path.Evaluate(s)                 <span class="c">// 横向按 s 查 Cartesian</span>
+    emit  TrajectoryPoint(x, y, θ, κ, v, a, j, t + t_stitch)
+    </div>
+    <div class="callout blue">
+      <span class="ic">🧭</span>
+      <p><b>Frenet → Cartesian 在哪做？</b> 不在合成阶段。粗路径在 <code>ConstructDiscretizedPathByFrenetFramePath()</code> 就转好；CiLQR 直接输出 Cartesian。合成时只按弧长 <code>s</code> 查表，<b>不再做坐标变换</b>。</p>
+    </div>
+  </section>
+
+  <!-- ============ SOLVERS ============ -->
+  <section id="solvers">
+    <div class="sec-head"><span class="sec-kicker">05</span><h2 class="sec-title" style="color:var(--emerald)">求解器栈 · 谁在干活</h2></div>
+    <p class="sec-sub">Planning 不是单一求解器，而是「分层各用其长」。下表区分<b>当前运行路径</b>与<b>遗留/未接入</b>。</p>
+    <table class="t">
+      <thead><tr><th style="width:150px">求解器</th><th style="width:90px">用途</th><th>问题形式</th><th style="width:90px">状态</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag cilqr">CiLQR</span> <span class="mono">Solver&lt;6,2&gt;</span></td><td>横向最终路径</td><td>Cartesian 6 维状态联合，iLQR + 线搜索 + LM 正则，避障走 penalty</td><td><span class="tag" style="background:rgba(52,211,153,.13);color:var(--emerald);border:1px solid rgba(52,211,153,.3)">运行中</span></td></tr>
+        <tr><td><span class="tag osqp">OSQP</span> 分段-jerk</td><td>纵向速度 s(t)</td><td>状态 [s,v,a]、jerk 控制，软/硬约束 QP</td><td><span class="tag" style="background:rgba(52,211,153,.13);color:var(--emerald);border:1px solid rgba(52,211,153,.3)">运行中</span></td></tr>
+        <tr><td><span class="tag osqp">OSQP</span> 分段-jerk</td><td>粗横向 l(s)</td><td>Frenet [l,dl,ddl]，默认（<code>enable_ilqr_refpath=false</code>）</td><td><span class="tag" style="background:rgba(52,211,153,.13);color:var(--emerald);border:1px solid rgba(52,211,153,.3)">运行中</span></td></tr>
+        <tr><td><span class="tag ha">Hybrid A*</span> + ST 栅格</td><td>参考速度</td><td>(s,v,a,j,t) 节点 jerk 采样扩展，代价图搜索</td><td><span class="tag" style="background:rgba(52,211,153,.13);color:var(--emerald);border:1px solid rgba(52,211,153,.3)">运行中</span></td></tr>
+        <tr><td><span class="tag ha">Hybrid A*</span> (RS)</td><td>泊车几何路径</td><td>(x,y,θ) 自行车模型扩展，Reeds-Shepp 启发，不经 CiLQR/QP</td><td><span class="tag" style="background:rgba(52,211,153,.13);color:var(--emerald);border:1px solid rgba(52,211,153,.3)">运行中</span></td></tr>
+        <tr><td><span class="tag cilqr">Quintic</span> 多项式</td><td>暖启动</td><td>粗 refpath 初值 l(s) / nudge 参考曲线</td><td><span class="tag" style="background:rgba(52,211,153,.13);color:var(--emerald);border:1px solid rgba(52,211,153,.3)">运行中</span></td></tr>
+        <tr><td><span class="tag legacy">LM factor</span> <span class="mono">solver/</span></td><td>横纵分解</td><td>lat/long motion+prior+ref factor + Ceres AutoDiff + Levenberg-Marquardt</td><td><span class="tag legacy">未接入</span></td></tr>
+        <tr><td><span class="tag legacy">qpOASES / HPIPM</span></td><td>—</td><td>仅 CMake 链接项，<code>src/</code> 内无任何调用</td><td><span class="tag legacy">残留</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ COMPARE ============ -->
+  <section id="compare">
+    <div class="sec-head"><span class="sec-kicker">06</span><h2 class="sec-title">横向 ↔ 纵向 对照</h2></div>
+    <p class="sec-sub">同一套「粗搜索/暖启动 → 走廊约束 → 凸/非凸优化」范式，在两个维度上的具体落地对比。</p>
+    <table class="t">
+      <thead><tr><th style="width:130px">维度</th><th style="width:50%;color:var(--cyan)">横向 Path / Lateral</th><th style="color:var(--violet)">纵向 Speed / Longitudinal</th></tr></thead>
+      <tbody>
+        <tr><td>求解对象</td><td>横向偏移 <code class="mono">l(s)</code>（路径形状，无时间）</td><td>弧长 <code class="mono">s(t)</code>（速度曲线，含时间）</td></tr>
+        <tr><td>自变量</td><td>Frenet 弧长 <code>s</code></td><td>时间 <code>t</code>（Δt=0.1s，5s/51 点）</td></tr>
+        <tr><td>粗阶段</td><td>Quintic 暖启动 + OSQP 平滑</td><td>Hybrid A* + ST 栅格搜索</td></tr>
+        <tr><td>走廊</td><td>SLBoundPoint 分层 → <code>final_soft_lb/ub</code></td><td>SVT 边界 + STDrivableBoundary（sweep-line）</td></tr>
+        <tr><td>精阶段优化</td><td><span class="tag cilqr">CiLQR</span> Cartesian 6 维</td><td><span class="tag osqp">OSQP</span> 分段-jerk [s,v,a]</td></tr>
+        <tr><td>避障方式</td><td>nudge 软代价（penalty）</td><td>YIELD/OVERTAKE + RSS/IDM 软上界</td></tr>
+        <tr><td>主要决策</td><td>借道 LaneBorrow · 换道 LaneGuider</td><td>STBoundsDecider（让行/跟车/停车）</td></tr>
+        <tr><td>关键算子</td><td class="mono">PathOptimizer</td><td class="mono">SpeedOptimizer</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ DATAFLOW ============ -->
+  <section id="flow">
+    <div class="sec-head"><span class="sec-kicker">07</span><h2 class="sec-title">端到端数据流 · 单帧 10 Hz</h2></div>
+    <div class="eq">
+[Frame 10Hz]
+ ├─ DataPreprocessor   <span class="c">输入校验 · 障碍预测 · 参考线生成</span>
+ ├─ ScenarioDetector   <span class="c">路口几何分类</span>
+ ├─ CoarseTrajectoryGenerator
+ │    ├─ GapManager            <span class="c">→ 换道候选 gaps[]</span>
+ │    ├─ Reference<span class="h">Path</span> 生成      <span class="c">Frenet quintic + OSQP/CiLQR → l(s)</span>
+ │    ├─ Reference<span class="h">Speed</span> = HTS    <span class="c">障碍→ST栅格, HA*→ s(t,v,a,j)</span>
+ │    └─ Selector              <span class="c">→ 选中粗轨迹</span>
+ ├─ Decider                    <span class="c">(空跑)</span>
+ ├─ Optimizer
+ │    ├─ PathCorridorConstructor   <span class="c">→ 横向走廊</span>
+ │    ├─ PathOptimizer <span class="h">[CiLQR]</span>      <span class="c">→ final_path (x,y,θ,κ,s)</span>
+ │    ├─ SpeedCorridorConstructor  <span class="c">→ SVT 边界 + 决策</span>
+ │    ├─ SpeedOptimizer <span class="h">[OSQP]</span>     <span class="c">→ SpeedData (s,t,v,a)</span>
+ │    └─ FinalTrajectoryGenerator  <span class="c">→ path ⊕ speed</span>
+ └─ ADStateProcessor           <span class="c">→ /pnc/planning 发布</span>
+    </div>
+  </section>
+
+  <!-- ============ FILES ============ -->
+  <section id="files">
+    <div class="sec-head"><span class="sec-kicker">08</span><h2 class="sec-title">关键文件索引 · 可溯源</h2></div>
+    <p class="sec-sub">主要论断的代码锚点（路径相对 <code>src/</code>，行号对应 <code>release_candidate_260403</code>）。</p>
+    <table class="t fileidx">
+      <thead><tr><th style="width:215px">主题</th><th>文件 : 行</th></tr></thead>
+      <tbody>
+        <tr><td>AD 6 段注册</td><td class="path">proc_ppl/ad_ppl_manager.cpp <span class="ln">:283-317</span></td></tr>
+        <tr><td>Optimizer 5 段</td><td class="path">proc_ppl/optimizer/optimizer.cpp <span class="ln">:64-79</span></td></tr>
+        <tr><td>横向 CiLQR 调用</td><td class="path">proc_ppl/optimizer/path_optimizer/path_optimizer.cpp <span class="ln">:51-74</span></td></tr>
+        <tr><td>CiLQR 动力学/代价</td><td class="path">common/cilqr_trajectory_optimizer/{kinematic.h, cilqr_trajectory_optimizer.cpp <span class="ln">:244-439</span>}</td></tr>
+        <tr><td>CiLQR 求解器</td><td class="path">common/math/cilqr/solver.h</td></tr>
+        <tr><td>粗 refpath OSQP</td><td class="path">…/reference_path/common/refpath_osqp_optimizer.cpp <span class="ln">:10-117</span></td></tr>
+        <tr><td>Quintic 暖启动</td><td class="path">…/reference_path/common/refpath_generator_base.cpp <span class="ln">:76-159</span></td></tr>
+        <tr><td>横向走廊分层</td><td class="path">…/keep_inlane_nudge_bound_decider.cpp · common/path/sl_bound_point.h</td></tr>
+        <tr><td>纵向 HTS / ST 图</td><td class="path">…/reference_speed/search/{heuristic_trajectory_search,st_graph}.cpp</td></tr>
+        <tr><td>纵向 ST 走廊</td><td class="path">…/optimizer/speed_corridor_constructor/st_bounds_decider/*.cpp</td></tr>
+        <tr><td>纵向速度 QP</td><td class="path">…/optimizer/speed_optimizer/speed_optimizer.cpp <span class="ln">:334-382</span></td></tr>
+        <tr><td>分段-jerk QP 内核</td><td class="path">common/math/piecewise_jerk_problem/*.{h,cpp}（OSQP, 连续性 <span class="ln">:654-685</span>）</td></tr>
+        <tr><td>轨迹合成</td><td class="path">…/final_trajectory_generator/ · common/trajectory/publishable_trajectory.cpp <span class="ln">:7-38</span></td></tr>
+        <tr><td>泊车 Hybrid A*</td><td class="path">common/search/hybrid_a_star/hybrid_a_star.cpp</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ TRUTH ============ -->
+  <section id="truth">
+    <div class="sec-head"><span class="sec-kicker">09</span><h2 class="sec-title">可证性 · 诚实标注</h2></div>
+    <div class="grid2">
+      <div class="sub glass sol">
+        <h4>✓ 代码可证</h4>
+        <ul class="clean">
+          <li><b>6 段顺序</b>，DataPreprocessor 在 ScenarioDetector 之前</li>
+          <li><b>PathOptimizer = CiLQR</b>（6 维状态 / [dκ,j] 控制 / RK4）</li>
+          <li><b>SpeedOptimizer = OSQP</b> 分段-jerk，5s/51 点</li>
+          <li>粗 refpath 默认 OSQP，Quintic 暖启动</li>
+          <li>参考速度 = Hybrid A* + ST 栅格</li>
+          <li><b>Decider 当前空跑</b>；纵向决策在 STBoundsDecider</li>
+          <li><code>solver/</code> LM 因子求解器未接入 Optimizer</li>
+          <li>qpOASES/HPIPM 在 <code>src/</code> 无调用</li>
+        </ul>
+      </div>
+      <div class="sub glass" style="border-color:rgba(251,191,36,.28)">
+        <h4 style="color:var(--amber)">⚠ 遗留 / 推测 / TODO</h4>
+        <ul class="clean">
+          <li>精细 <code>SLBoundaryDecider</code> 当前直接复用粗 refpath 的 SL 边界（代码标 TODO 待精细化）</li>
+          <li><code>path_corridor_points_</code> 字段暂未填充（短期先用 sl boundary）</li>
+          <li>「Decider 职责已迁移到走廊/粗速度」是架构推测，无单一注释佐证</li>
+          <li>Gap 不直接进 QP；Optimizer 用选中粗轨迹的参考速度</li>
+          <li><code>STDrivableBoundary</code> 未作 QP 硬约束直接读取，更偏中间产物</li>
+          <li>ScenarioDetector 未来扩展直道/弯道（TODO）</li>
+          <li>横向 DP / Hybrid A* 仅注释提及，当前未实现</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer"><div class="wrap">
+  <div style="font-weight:700;color:var(--text-2);font-size:14px">关于本页</div>
+  <p style="margin:10px 0 0">基于 <code>ad-/pnc/planning</code> 分支 <b>delivery/release_candidate_260403</b> 的源码静态解读 · 横向 CiLQR × 纵向 OSQP 分段-jerk × 解耦分层 · 结论均标注「代码可证 / 遗留推测」· 内联 SVG，零外部依赖（仅 Google Fonts）。</p>
+</div></footer>
+
+<script>
+(function(){
+  "use strict";
+  document.documentElement.classList.add("js");
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("in"); } });
+  }, { threshold: 0.06 });
+  document.querySelectorAll("section, .step, .pt, .stat, .sub, .layer").forEach(function(el){
+    el.classList.add("reveal"); io.observe(el);
+  });
+  document.querySelectorAll('.nav-links a').forEach(function(a){
+    a.addEventListener('click', function(ev){
+      var id = a.getAttribute('href');
+      if(id && id.charAt(0) === '#'){
+        var t = document.querySelector(id);
+        if(t){ ev.preventDefault(); t.scrollIntoView({behavior:'smooth', block:'start'}); }
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

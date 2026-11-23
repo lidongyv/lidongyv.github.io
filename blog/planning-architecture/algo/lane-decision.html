@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⑦ 借道 / 换道 / Gap · Planning 算法详解</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/planning.css">
+</head>
+<body>
+
+<nav class="nav"><div class="nav-in">
+  <div class="nav-brand"><span class="nav-dot"></span>Planning 算法详解</div>
+  <div class="nav-links">
+    <a href="../index.html">← 总览</a>
+    <a href="cilqr-path.html">CiLQR</a><a href="speed-qp.html">速度QP</a><a href="refpath.html">参考路径</a><a href="hts-speed.html">HTS</a><a href="path-corridor.html">横向走廊</a><a href="speed-corridor.html">纵向走廊</a><a href="lane-decision.html" class="cur">变道决策</a><a href="hybrid-astar.html">泊车HA*</a>
+  </div>
+</div></nav>
+
+<header class="hero wrap">
+  <div class="crumb"><a href="../index.html">🧭 算法详解</a><span class="sep">/</span><span class="cur">⑦ 借道 / 换道 / Gap</span></div>
+  <div class="eyebrow">横向决策 · 换道 · 借道 · 汇入空隙</div>
+  <h1 class="title">借道 / 换道 / Gap 决策</h1>
+  <p class="lede">决定「<b>什么时候变道、要不要借道绕障、汇入选哪个空隙</b>」——这些离散横向决策直接改写参考线与走廊，需要在安全（后车 / gap）与效率（少堵、跟导航）之间权衡。由 <code>LaneGuider</code> + <code>LaneBorrowDecider</code> + <code>GapManager</code> 三件套协作。</p>
+  <div class="stats">
+    <div class="stat"><div class="n" style="color:var(--cyan)">3 件套</div><div class="l">换道/借道/Gap</div></div>
+    <div class="stat"><div class="n" style="color:var(--blue)">≤15 m/s</div><div class="l">借道速度上限</div></div>
+    <div class="stat"><div class="n" style="color:var(--violet)">±80 m</div><div class="l">Gap 考虑范围</div></div>
+    <div class="stat"><div class="n" style="color:var(--emerald)">3 帧</div><div class="l">借道确认/退出滞回</div></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section><div class="panel why">
+    <div class="panel-head"><span class="ic">🎯</span><h2>解决的问题</h2></div>
+    <p>横向优化器只会「在给定参考线和走廊里求最优路径」，但「该不该换到隔壁车道、前方死车要不要借对向道绕、并线插哪个空当」是<b>上游的离散决策</b>，决定了优化器看到的参考线与走廊长什么样。</p>
+    <ul>
+      <li><b>换道</b>：跟导航（必须换）与图效率（换了更快）之间权衡，且要确认目标车道安全。</li>
+      <li><b>借道</b>：本车道被静障/死车堵住时，临时借相邻或路外空间绕行，过后回原车道。</li>
+      <li><b>选 Gap</b>：汇入/换道时在目标车道车流里挑一个安全又省时的空隙，并把它告诉速度搜索。</li>
+    </ul>
+  </div></section>
+
+  <section><div class="panel how">
+    <div class="panel-head"><span class="ic">⚙️</span><h2>实现</h2><span class="tag lat">LaneGuider · LaneBorrowDecider · GapManager</span></div>
+    <div class="pts">
+      <div class="pt"><div class="k">换道 · LaneGuider</div><div class="tt">Precheck → ObstacleTracer → HardEndDecider → Evaluator</div><div class="dd">Evaluator 综合 <b>Deviation（跟导航）+ Efficiency（效率）+ Pullover（靠边）</b> 代价，输出 LC 状态机：KEEP / PREPARE / CHANGE / HOLD / FINISH / CANCEL。CHANGE 切到<b>目标参考线</b>、<code>end_l→0</code>；HOLD 保持原线 <code>end_l=±0.5</code>。</div></div>
+      <div class="pt"><div class="k">借道 · LaneBorrowDecider</div><div class="tt">触发 → available LEFT/RIGHT</div><div class="dd">条件：非换道态 + 车速 ≤ 15 m/s + 非路口 + 前方 blocking/dead_car（3 帧滞回确认）。效果：把走廊上/下界<b>扩展到相邻车道</b>（无邻道再加 off-lane 宽），但<b>仍用原车道参考线</b>。</div></div>
+      <div class="pt"><div class="k">汇入 · GapManager</div><div class="tt">枚举 gap → 推演 → 选最优</div><div class="dd">目标车道 ±80 m 障碍排序 → 枚举 gap → 对 <code>(v_diff, acc)</code> 采样用 <code>AdcPathSample</code> 推演自车轨迹 + <code>SafetyChecker</code> + 代价 → 选最优 gap → 注入 HTS 作目标 s 启发。</div></div>
+    </div>
+    <p class="note" style="margin-top:12px"><b>多模态选优</b>：上述决策并行产出 keep / prepare / change / borrow 多条参考路径，最终由 <code>ReferenceTrajectorySelector</code> 选一条。开 <code>enable_multi_gap_search</code> 时每个 gap 还各跑一次 HTS。</p>
+    <div class="note" style="font-weight:700;color:var(--text-2);margin-top:12px">代码锚点</div>
+    <table class="t fileidx">
+      <tbody>
+        <tr><td>换道 LaneGuider / 代价</td><td class="path">…/lane_guider/lane_guider.cpp <span class="ln">:19-146</span> · evaluator/evaluator.cpp <span class="ln">:14-227</span></td></tr>
+        <tr><td>借道 LaneBorrowDecider</td><td class="path">…/lane_borrow_decider/lane_borrow_decider.cpp <span class="ln">:34-285</span></td></tr>
+        <tr><td>Gap 选择</td><td class="path">…/gap_manager/gap_manager.cpp <span class="ln">:6-31, 135-435</span></td></tr>
+        <tr><td>多模态选优</td><td class="path">…/reference_trajectory/reference_trajectory_selector.cpp</td></tr>
+      </tbody>
+    </table>
+  </div></section>
+
+  <section><div class="panel params">
+    <div class="panel-head"><span class="ic">🎚️</span><h2>超参设置</h2><span class="tag" style="background:rgba(91,157,255,.14);color:var(--blue);border:1px solid rgba(91,157,255,.32)">lane_change_conf / reference_path_conf + 代码默认</span></div>
+    <div class="grid2">
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">换道 / 借道</div>
+        <table class="t blue">
+          <thead><tr><th>参数</th><th style="width:96px">值</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">enable_lane_guider</td><td class="mono">true</td><td>换道总开关</td></tr>
+            <tr><td class="mono">blocked_obs_l_threshold</td><td class="mono">0.4 m</td><td>阻塞判定</td></tr>
+            <tr><td class="mono">Deviation/Efficiency/Pullover w</td><td class="mono">1 / 2 / 1</td><td>效率优先级高</td></tr>
+            <tr><td class="mono">效率换道滞回</td><td class="mono">7→8 m/s</td><td>速度阈值滞回</td></tr>
+            <tr><td class="mono">受益帧</td><td class="mono">50</td><td>效率换道容忍</td></tr>
+            <tr><td class="mono">HOLD end_l</td><td class="mono">±0.5 m</td><td>保持时偏移</td></tr>
+            <tr><td class="mono">借道 kMaxBorrowSpeed</td><td class="mono">15 m/s</td><td>超速禁借</td></tr>
+            <tr><td class="mono">借道确认/退出</td><td class="mono">3 帧</td><td>滞回</td></tr>
+            <tr><td class="mono">off_lane 额外宽</td><td class="mono">1.5 / 2.5 m</td><td>路外 / 末端泊车</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">Gap（代码默认）</div>
+        <table class="t blue">
+          <thead><tr><th>参数</th><th style="width:96px">值</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">考虑范围</td><td class="mono">±80 m</td><td>目标车道障碍</td></tr>
+            <tr><td class="mono">推演步长 / 时长</td><td class="mono">0.5 s / 8.1 s</td><td>AdcPathSample</td></tr>
+            <tr><td class="mono">PREPARE 安全</td><td class="mono">ttc 2s, min 8m</td><td>SafetyChecker</td></tr>
+            <tr><td class="mono">CHANGING 安全</td><td class="mono">ttc 1s, min 4m</td><td>换道中</td></tr>
+            <tr><td class="mono">Gap-IDM s₀/T</td><td class="mono">3.5 / 0.5</td><td>目标 s 启发</td></tr>
+            <tr><td class="mono">后车最小间隙</td><td class="mono">max(IDM, 15m)</td><td>仅后车场景</td></tr>
+            <tr><td class="mono">enable_multi_gap_search</td><td class="mono">true</td><td>每 gap 一次 HTS</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div></section>
+
+  <section><div class="panel opt">
+    <div class="panel-head"><span class="ic">🔧</span><h2>后续优化点</h2></div>
+    <div class="opt-item"><div class="ot">Selector 无 fallback、prepare/change 靠规则非 cost <span class="badge todo">注释 TODO</span></div><div class="od">粗轨迹选择缺兜底轨迹，PREPARE/CHANGE 用硬规则而非代价比较。</div><div class="oimp"><code>GenerateFallbackTrajectory</code> + prepare/change cost 化。</div><div class="src">reference_trajectory_selector.cpp:302,370-393</div></div>
+    <div class="opt-item"><div class="ot">GapManager 换道后半段安全校验被注释 <span class="badge infer">推断局限</span></div><div class="od"><code>IsGapSafeAfterTime(...)</code> 被注释掉，只校验前半段。</div><div class="oimp">恢复换道后半段安全校验。</div><div class="src">gap_manager.cpp:467</div></div>
+    <div class="opt-item"><div class="ot">Gap 与换道 nudge 未打通 <span class="badge todo">注释 TODO</span></div><div class="od">换道 nudge 未消费 gap 前后车信息（与参考路径页同源问题）。</div><div class="oimp">gap 前车 ignore / 后车反侧 nudge。</div><div class="src">change_inlane_nudge_bound_decider.cpp:585-596</div></div>
+    <div class="opt-item"><div class="ot">Pullover cost 未实现、效率 max_speed 硬编码 <span class="badge todo">注释 TODO</span></div><div class="od">靠边 cost 标 <code>To implement</code>；效率 cost 速度上限写死 12.0。</div><div class="oimp">补 pullover cost；max_speed 从 map/router 读。</div><div class="src">pullover_cost.cpp:99 · efficiency_cost.cpp:931</div></div>
+    <div class="opt-item"><div class="ot">LaneGuider 与 Selector 耦合 <span class="badge todo">注释 TODO</span></div><div class="od">换道状态机与轨迹选择耦合，职责不清。</div><div class="oimp">状态机迁入 Selector，解耦换道。</div><div class="src">lane_guider.h:35,55</div></div>
+  </div></section>
+
+  <div class="algonav">
+    <a href="speed-corridor.html"><div class="d">← 上一个</div><div class="n">⑥ 纵向走廊 · STBounds</div></a>
+    <a class="next" href="hybrid-astar.html"><div class="d">下一个 →</div><div class="n">⑧ Hybrid A* 泊车</div></a>
+  </div>
+</main>
+
+<footer class="footer"><div class="wrap">
+  <p style="margin:0">借道 / 换道 / Gap 决策 · 源自 <code>ad-/pnc/planning @ delivery/release_candidate_260403</code> 静态解读 · 超参取自 <code>planning_config.json</code> 与代码默认值。</p>
+</div></footer>
+
+<script src="../assets/planning.js"></script>
+</body>
+</html>

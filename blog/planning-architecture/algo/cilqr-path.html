@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>① CiLQR 横向路径优化 · Planning 算法详解</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/planning.css">
+</head>
+<body>
+
+<nav class="nav"><div class="nav-in">
+  <div class="nav-brand"><span class="nav-dot"></span>Planning 算法详解</div>
+  <div class="nav-links">
+    <a href="../index.html">← 总览</a>
+    <a href="cilqr-path.html" class="cur">CiLQR</a><a href="speed-qp.html">速度QP</a><a href="refpath.html">参考路径</a><a href="hts-speed.html">HTS</a><a href="path-corridor.html">横向走廊</a><a href="speed-corridor.html">纵向走廊</a><a href="lane-decision.html">变道决策</a><a href="hybrid-astar.html">泊车HA*</a>
+  </div>
+</div></nav>
+
+<header class="hero wrap">
+  <div class="crumb"><a href="../index.html">🧭 算法详解</a><span class="sep">/</span><span class="cur">① CiLQR 横向路径优化</span></div>
+  <div class="eyebrow">横向 · 精细路径 · 约束 iLQR · 非线性最优控制</div>
+  <h1 class="title">CiLQR 横向路径优化</h1>
+  <p class="lede">把粗参考路径精修成车辆<b>真正能执行</b>的路径：在 Cartesian 下对 6 维状态 <code>[x,y,θ,κ,v,a]</code> 做约束 iLQR 联合优化，曲率/转向率/横向加速度等限制与避障走廊都以软代价注入。是 <code>PathOptimizer</code> 阶段的主力。</p>
+  <div class="stats">
+    <div class="stat"><div class="n" style="color:var(--blue)">6 / 2</div><div class="l">状态维 / 控制维</div></div>
+    <div class="stat"><div class="n" style="color:var(--cyan)">0.2s × 40</div><div class="l">步长 × 视野 (≈8s)</div></div>
+    <div class="stat"><div class="n" style="color:var(--violet)">1500</div><div class="l">iLQR 最大迭代</div></div>
+    <div class="stat"><div class="n" style="color:var(--emerald)">penalty</div><div class="l">约束注入方式</div></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section><div class="panel why">
+    <div class="panel-head"><span class="ic">🎯</span><h2>解决的问题</h2></div>
+    <p>参考路径只给出「大致往哪走」，但要变成可下发给控制的轨迹，必须同时满足一堆<b>互相耦合</b>的约束：</p>
+    <ul>
+      <li><b>车辆运动学</b>：曲率 κ 不能超过最小转弯半径、转向速率 dκ 有限 —— 且这些限制随速度变化（高速不能急打方向）。</li>
+      <li><b>舒适性</b>：纵向 acc / jerk、横向加速度 latacc 都要在人能接受的范围。</li>
+      <li><b>贴线 + 避障</b>：贴合目标车道中心（或借道/换道目标），同时与左右障碍保持安全距离。</li>
+    </ul>
+    <p>这些量在 Cartesian 下与航向 θ、曲率 κ、速度 v <b>强非线性耦合</b>，只优化横向偏移 <code>l(s)</code> 的纯横向 QP 无法表达「曲率限制随 v⁴ 收紧」这类关系。因此把横向规划建成 <b>6 维状态的非线性最优控制问题</b>，用 CiLQR（约束 iLQR）求解。</p>
+  </div></section>
+
+  <section><div class="panel how">
+    <div class="panel-head"><span class="ic">⚙️</span><h2>实现</h2><span class="tag cilqr">cilqr::Solver&lt;6,2&gt;</span></div>
+    <p><b>调用链</b>：<code>PathCorridorConstructor</code> 产出横向走廊（SL 软界）+ <code>HeuristicTrajectoryGenerator</code> 沿参考线中心匀速推出启发轨迹 → <code>PathOptimizer</code> 调 <code>CilqrTrajectoryOptimizer::Optimize(init, corridor)</code>。泊车场景（<code>RefPathType::PARKING</code>）<b>跳过 CiLQR</b>，直接透传 Hybrid A* 搜索路径。</p>
+
+    <div class="grid2">
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">状态 / 控制 / 动力学（RK4 离散）</div>
+        <div class="eq lat">
+<span class="c">// 状态 6 维 / 控制 2 维</span>
+x = [ x, y, θ, κ, v, a ]ᵀ
+u = [ dκ, j ]ᵀ
+<span class="c">// 连续动力学</span>
+ẋ = v·cosθ   ẏ = v·sinθ
+θ̇ = v·κ      κ̇ = dκ
+v̇ = a        ȧ = j
+        </div>
+      </div>
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">跟踪参考的设计</div>
+        <p style="font-size:12.5px;color:var(--text-2);margin:6px 2px">位置参考 <code>x_ref,y_ref</code> 取自<b>参考线上 (s, goal.end_l) 的 XY</b>（决定贴哪条线 / 借道偏移），而 <code>θ,κ,v,a</code> 参考来自中心线启发轨迹。借道/换道就是通过改 <code>goal.end_l</code> 和切换参考线来「掰」这个目标。</p>
+        <p style="font-size:12.5px;color:var(--text-3);margin:6px 2px"><code>position_weight</code> 随 <code>|init_l|</code> 插值放大：偏离越大越使劲拉回。</p>
+      </div>
+    </div>
+
+    <div class="note" style="font-weight:700;color:var(--text-2);margin-top:14px">代价项（每步 + 终端，最小化）</div>
+    <table class="t blue">
+      <thead><tr><th>类别</th><th>代价</th><th>形式</th><th style="width:96px">速度耦合</th></tr></thead>
+      <tbody>
+        <tr><td>跟踪</td><td>position ref</td><td class="mono">w·‖p−p_ref‖²</td><td>随|init_l|插值</td></tr>
+        <tr><td>跟踪</td><td>heading ref</td><td class="mono">w·(θ−θ_ref)²</td><td class="mono">×v²</td></tr>
+        <tr><td>跟踪</td><td>kappa ref</td><td class="mono">w·(κ−κ_ref)²</td><td class="mono">×max(v,3)⁴</td></tr>
+        <tr><td>跟踪</td><td>dkappa / jerk / speed / acc</td><td class="mono">w·(·−·_ref)²</td><td>dκ ×v⁴</td></tr>
+        <tr><td>软限</td><td>speed/acc/jerk/kappa/kappa_rate/latacc Limit</td><td class="mono">w·max(0,viol)²</td><td>—</td></tr>
+        <tr><td>避障</td><td>Safety（后轴）/ FrontAxles（前轴 +2.927m）</td><td class="mono">w·max(0,d_safe−d)²</td><td>nudge 软界</td></tr>
+        <tr><td>终端</td><td>end position / end heading</td><td class="mono">w·(·−·)²</td><td>heading ×v²</td></tr>
+      </tbody>
+    </table>
+    <p class="note">低速门控：速度 &lt; <code>min_speed_for_*</code>(=3 m/s) 时关闭 heading/kappa/dkappa 权重（低速航向噪声大，不跟）。求解器为<b>自研 iLQR + 线搜索 + Levenberg-Marquardt 正则</b>（Q_uu+λI），约束以惩罚代价进入，属 constrained-iLQR 的工程实现。</p>
+
+    <div class="note" style="font-weight:700;color:var(--text-2);margin-top:12px">代码锚点</div>
+    <table class="t fileidx">
+      <tbody>
+        <tr><td>调用 / 泊车跳过</td><td class="path">proc_ppl/optimizer/path_optimizer/path_optimizer.cpp <span class="ln">:31-74</span></td></tr>
+        <tr><td>代价 / 前轴 2.927</td><td class="path">common/cilqr_trajectory_optimizer/cilqr_trajectory_optimizer.cpp <span class="ln">:244-439</span></td></tr>
+        <tr><td>动力学</td><td class="path">common/cilqr_trajectory_optimizer/kinematic.h <span class="ln">:8-46</span></td></tr>
+        <tr><td>iLQR 求解器</td><td class="path">common/math/cilqr/solver.h <span class="ln">:44-80</span></td></tr>
+      </tbody>
+    </table>
+  </div></section>
+
+  <section><div class="panel params">
+    <div class="panel-head"><span class="ic">🎚️</span><h2>超参设置</h2><span class="tag" style="background:rgba(91,157,255,.14);color:var(--blue);border:1px solid rgba(91,157,255,.32)">cilqr_trajectory_conf</span></div>
+    <div class="grid2">
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">视野 / 跟踪权重（planning_config.json）</div>
+        <table class="t blue">
+          <thead><tr><th>参数</th><th style="width:70px">值</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">dt / horizon</td><td class="mono">0.2 / 40</td><td>步长 / 视野 ≈8s</td></tr>
+            <tr><td class="mono">min_horizon / min_speed</td><td class="mono">5 / 2.0</td><td>最少点 / 速度下限</td></tr>
+            <tr><td class="mono">position_weight</td><td class="mono">1.0</td><td>随|init_l|插值放大</td></tr>
+            <tr><td class="mono">heading_weight</td><td class="mono">5.0</td><td>×v²</td></tr>
+            <tr><td class="mono">kappa_weight</td><td class="mono">4.0</td><td>×max(v,3)⁴</td></tr>
+            <tr><td class="mono">dkappa_weight</td><td class="mono">2.0</td><td>转向率跟踪</td></tr>
+            <tr><td class="mono">speed/acc/jerk_weight</td><td class="mono">1.0</td><td>—</td></tr>
+            <tr><td class="mono">nudge_soft_weight</td><td class="mono">50.0</td><td>走廊/前轴避障</td></tr>
+            <tr><td class="mono">end_pos / end_heading</td><td class="mono">1.0 / 1.0</td><td>终端</td></tr>
+            <tr><td class="mono">min_speed_for_*</td><td class="mono">3.0</td><td>低速门控阈值</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="note" style="font-weight:700;color:var(--text-2)">软限边界 + iLQR 求解器（部分为代码默认）</div>
+        <table class="t blue">
+          <thead><tr><th>参数</th><th style="width:96px">值</th><th>含义</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">kappa 限 / w</td><td class="mono">±0.3 / 1000</td><td>曲率硬度最高</td></tr>
+            <tr><td class="mono">kappa_rate 限 / w</td><td class="mono">±0.2 / 1000</td><td>转向速率</td></tr>
+            <tr><td class="mono">acc / jerk 限 / w</td><td class="mono">±4 / 100</td><td>纵向</td></tr>
+            <tr><td class="mono">latacc 限 / w</td><td class="mono">±4 / 100</td><td>横向加速度</td></tr>
+            <tr><td class="mono">speed 限 / w</td><td class="mono">0.5~15 / 100</td><td>速度软限</td></tr>
+            <tr><td class="mono">max_iter</td><td class="mono">1500</td><td>iLQR 迭代<span class="tag" style="margin-left:4px;background:rgba(126,135,173,.16);color:var(--text-3);border:1px solid var(--line-2)">代码默认</span></td></tr>
+            <tr><td class="mono">max_time_cost</td><td class="mono">400 ms</td><td>超时退出</td></tr>
+            <tr><td class="mono">initial_lambda / factor</td><td class="mono">1.0 / 1.6</td><td>LM 正则</td></tr>
+            <tr><td class="mono">line_search_max</td><td class="mono">20</td><td>线搜索次数</td></tr>
+            <tr><td class="mono">cost/grad_exit</td><td class="mono">1e-3 / 1e-4</td><td>收敛阈值</td></tr>
+            <tr><td class="mono">front_edge_to_base</td><td class="mono">2.927 m</td><td>前轴走廊偏移</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div></section>
+
+  <section><div class="panel opt">
+    <div class="panel-head"><span class="ic">🔧</span><h2>后续优化点</h2></div>
+    <div class="opt-item"><div class="ot">外循环 hard bound 未实现 <span class="badge todo">注释 TODO</span></div><div class="od">走廊约束目前全以 penalty 软约束进入，无法严格保证不越界。</div><div class="oimp">检测 violation 后增大 penalty / 增广 Lagrangian，或对关键约束做投影/内点法。</div><div class="src">cilqr_trajectory_optimizer.h:95-102「外循环hard bound，先不实现」</div></div>
+    <div class="opt-item"><div class="ot">横向 jerk 软限只有注释、未挂 cost <span class="badge infer">推断局限</span></div><div class="od">代码留了 <code>// lat jerk soft limit</code> 但未实现 <code>LatJerkLimitCostFunction</code>。</div><div class="oimp">补齐横向 jerk 软限，与 latacc 一致。</div><div class="src">cilqr_trajectory_optimizer.cpp:346-347</div></div>
+    <div class="opt-item"><div class="ot">参考轨迹不按时间插值、horizon/ts 不自适应 <span class="badge todo">注释 TODO</span></div><div class="od">ref_traj 直接按索引取，未按 relative_time 插值。</div><div class="oimp">按时间插值 ref；horizon/dt 随车速/场景自适应。</div><div class="src">cilqr_trajectory_optimizer.cpp:136</div></div>
+    <div class="opt-item"><div class="ot">泊车场景跳过 CiLQR <span class="badge infer">推断局限</span></div><div class="od">PARKING 直接透传搜索路径，未经精细优化。</div><div class="oimp">泊车专用 CiLQR 配置或 MINCO 后处理。</div><div class="src">path_optimizer.cpp:31-50</div></div>
+    <div class="opt-item"><div class="ot">solver 超参硬编码、FillPathData 重复构建 <span class="badge todo">注释 TODO</span></div><div class="od">iLQR 超参在 solver.h 写死；FillPathData 重复构建 reference_line。</div><div class="oimp">超参迁入 planning_config；复用已有 ReferenceLine。</div><div class="src">math/cilqr/solver.h:43 · cilqr_trajectory_optimizer.cpp:475</div></div>
+  </div></section>
+
+  <div class="algonav">
+    <a href="../index.html"><div class="d">← 返回</div><div class="n">算法总览</div></a>
+    <a class="next" href="speed-qp.html"><div class="d">下一个 →</div><div class="n">② OSQP 纵向速度</div></a>
+  </div>
+</main>
+
+<footer class="footer"><div class="wrap">
+  <p style="margin:0">CiLQR 横向路径优化 · 源自 <code>ad-/pnc/planning @ delivery/release_candidate_260403</code> 静态解读 · 超参取自 <code>planning_config.json</code> 与代码默认值 · 结论标注「注释 TODO / 推断局限」。</p>
+</div></footer>
+
+<script src="../assets/planning.js"></script>
+</body>
+</html>

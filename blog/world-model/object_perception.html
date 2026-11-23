@@ -1,0 +1,189 @@
+<!doctype html><html lang=zh-CN><head><meta charset=utf-8><script>try{if(sessionStorage.getItem('wm_auth')!=='1'){sessionStorage.setItem('wm_after_login',location.pathname.split('/').pop());location.replace('index.html');}}catch(e){}</script>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>物体感知 · 两个本质问题 + OD formulation</title>
+<style>
+:root{--bg:#0b1020;--bg2:#11172d;--line:#2a3157;--text:#e7eaf6;--text2:#aab1d0;--text3:#7f87a8;--accent:#7ee0ff;--accent2:#a78bfa;--green:#4ade80;--amber:#ffd35c;--red:#fb7185;--blue:#60a5fa;--pink:#f0abfc}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:radial-gradient(1100px 600px at 15% -10%,rgba(74,222,128,.14),transparent 55%),radial-gradient(900px 520px at 90% -6%,rgba(96,165,250,.14),transparent 55%),linear-gradient(180deg,var(--bg),var(--bg2));color:var(--text);line-height:1.7;min-height:100vh}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 18px 90px}
+.backlink{display:inline-flex;gap:6px;color:var(--accent2);text-decoration:none;font-size:13px;font-weight:600;margin:0 8px 14px 0;padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(167,139,250,.08)}
+.backlink:hover{border-color:var(--accent2);color:#fff}
+.hero{padding:22px 24px;border-radius:16px;background:linear-gradient(135deg,rgba(74,222,128,.16),rgba(96,165,250,.1));border:1px solid var(--line);margin-bottom:16px}
+.kick{color:var(--green);letter-spacing:2px;font-size:12px;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.hero h1{font-size:clamp(20px,3vw,30px);font-weight:800;margin-bottom:8px;background:linear-gradient(90deg,#fff 30%,var(--green) 72%,var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .sub{color:var(--text2);font-size:13.5px}.hero .sub b{color:#fff}
+.badge{display:inline-block;margin-top:10px;font-size:11px;color:var(--amber);border:1px solid rgba(255,211,92,.4);background:rgba(255,211,92,.1);border-radius:999px;padding:3px 11px}
+.callout{background:rgba(126,224,255,.07);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:12px;padding:13px 17px;margin:14px 0;font-size:13.6px;color:var(--text2)}.callout b{color:var(--text)}
+.callout.key{background:rgba(74,222,128,.09);border-left-color:var(--green)}
+.callout.obs{background:rgba(255,211,92,.08);border-left-color:var(--amber)}
+.callout.warn{background:rgba(251,113,133,.08);border-left-color:var(--red)}
+.callout .ct{font-weight:800;color:#fff;margin-bottom:6px;font-size:14px}
+h2.sec{font-size:18px;font-weight:800;margin:30px 0 6px;display:flex;align-items:center;gap:8px}
+h2.sec .bar{width:4px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--green),var(--accent))}
+.secsub{font-size:12px;color:var(--text3);margin-bottom:10px}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}
+.side{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:13px;padding:13px 15px}
+.side.a{border-top:3px solid var(--blue)}.side.b{border-top:3px solid var(--pink)}
+.side h4{font-size:14px;font-weight:800;margin-bottom:5px;color:#fff}
+.side .lead2{font-size:12.5px;color:var(--accent2);font-weight:700;margin-bottom:5px}
+.side ul{margin:6px 0 0;padding-left:18px}.side li{font-size:12.5px;color:var(--text2);margin:5px 0}.side li b{color:#fff}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin:8px 0}
+.card{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:13px;padding:13px 15px}
+.card h4{font-size:14px;color:var(--accent);font-weight:800;margin-bottom:5px}
+.card p{font-size:12.5px;color:var(--text2)}.card p b{color:#fff}
+.card .tag{display:inline-block;font-size:10.5px;color:var(--green);border:1px solid rgba(74,222,128,.4);border-radius:6px;padding:1px 7px;margin-bottom:6px}
+.card .eg{font-size:11.3px;color:var(--text3);margin-top:6px;border-top:1px dashed var(--line);padding-top:6px}.card .eg b{color:var(--text2)}
+.hl{color:var(--accent);font-weight:700}.hlp{color:var(--accent2);font-weight:700}.hlg{color:var(--green);font-weight:700}
+figure.fig{margin:14px 0;background:#0a0e1c;border:1px solid var(--line);border-radius:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+figcaption{padding:10px 14px;font-size:12px;color:var(--text3);border-top:1px solid var(--line);line-height:1.6}figcaption b{color:var(--text2)}
+.pa{list-style:none;display:flex;flex-direction:column;gap:7px;margin:8px 0}
+.pa li{font-size:12.9px;color:var(--text2);background:rgba(0,0,0,.2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:9px;padding:9px 13px}.pa li b{color:var(--text)}
+.pa.warn li{border-left-color:var(--red)}.pa.q li{border-left-color:var(--accent2)}
+.note2{margin-top:22px;padding:12px 15px;background:rgba(0,0,0,.22);border:1px dashed var(--line);border-radius:10px;font-size:11.5px;color:var(--text3)}.note2 b{color:var(--text2)}
+@media(max-width:720px){.duo{grid-template-columns:1fr}figure.fig svg{min-width:680px}}
+</style></head><body><div class=wrap>
+<a href="index.html" class=backlink>← 返回 World Model 主页（发展路线图）</a>
+<a href="wm_unified.html" class=backlink>统一视角（Sampler/latent）→</a>
+<a href="benchmarks.html" class=backlink>视觉 SOTA 全景（含小目标）→</a>
+<a href="wm_methods.html" class=backlink>方法全景 →</a>
+
+<header class=hero><div class=kick>Perception · 物体感知</div>
+<h1>物体感知的两个本质问题 · 从 OD formulation 出发</h1>
+<p class=sub>从物体检测（OD）出发，用两个本质问题组织物体感知的架构哲学：<b>① 先检测还是先预测</b> · <b>② 先单帧还是先时序</b>。并直面一个实验痛点——<b>grid-based formulation 对大目标（vehicle）划算、对小目标（行人/cyclist）大量浪费算力</b>；解法不在"堆分辨率/堆算力"，而要<b>从 formulation 改起</b>。</p>
+<div class=badge>⚠ 思考框架 / 判断；含内部实验观察；所引方法为公开工作，具体收益需实测</div></header>
+
+<h2 class=sec><span class=bar></span>① 两个本质问题 = 一张「感知架构哲学」两轴图</h2>
+<div class=secsub>横轴：先检测 ↔ 先预测；纵轴：先单帧 ↔ 先时序。两问不是独立的——右上（预测×时序）就是世界模型/端到端那一支，左下（检测×单帧）是传统起点，对角线是演进方向。</div>
+<figure class=fig>
+<svg viewBox="0 0 960 440" style="width:100%;height:auto;font-family:inherit;background:#0a0e1c">
+  <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#4ade80"/></marker></defs>
+  <!-- quadrant background -->
+  <rect x="120" y="40" width="720" height="340" rx="8" fill="none" stroke="#2a3157"/>
+  <line x1="480" y1="40" x2="480" y2="380" stroke="#2a3157" stroke-dasharray="4 4"/>
+  <line x1="120" y1="210" x2="840" y2="210" stroke="#2a3157" stroke-dasharray="4 4"/>
+  <!-- axis labels -->
+  <text x="140" y="404" fill="#60a5fa" font-size="12" font-weight="700">先检测 detect-first</text>
+  <text x="820" y="404" fill="#f0abfc" font-size="12" font-weight="700" text-anchor="end">先预测 predict-first</text>
+  <text x="480" y="426" fill="#7f87a8" font-size="11" text-anchor="middle">横轴：检测优先 ————————→ 预测优先</text>
+  <text x="112" y="60" fill="#7ee0ff" font-size="12" font-weight="700" text-anchor="end" transform="rotate(-90 112,60)">先时序 temporal-first</text>
+  <text x="112" y="372" fill="#ffd35c" font-size="12" font-weight="700" text-anchor="end" transform="rotate(-90 112,372)">先单帧 frame-first</text>
+  <!-- quadrant titles -->
+  <text x="300" y="235" fill="#5a6486" font-size="11" text-anchor="middle">检测 × 单帧（传统起点）</text>
+  <text x="660" y="235" fill="#5a6486" font-size="11" text-anchor="middle">预测 × 单帧</text>
+  <text x="300" y="62" fill="#5a6486" font-size="11" text-anchor="middle">检测 × 时序</text>
+  <text x="660" y="62" fill="#5a6486" font-size="11" text-anchor="middle">预测 × 时序（世界模型 / e2e）</text>
+  <!-- points: bottom-left detect×frame -->
+  <g font-size="11" text-anchor="middle">
+    <circle cx="230" cy="300" r="6" fill="#60a5fa"/><text x="230" y="288" fill="#e7eaf6">YOLO / DETR</text><text x="230" y="318" fill="#7f87a8" font-size="9.5">单帧检测器</text>
+    <circle cx="360" cy="330" r="6" fill="#60a5fa"/><text x="360" y="350" fill="#e7eaf6">CenterNet / FCOS</text>
+    <!-- top-left detect×temporal -->
+    <circle cx="250" cy="150" r="6" fill="#7ee0ff"/><text x="250" y="138" fill="#e7eaf6">tracking-by-detection</text>
+    <circle cx="380" cy="110" r="6" fill="#7ee0ff"/><text x="380" y="98" fill="#e7eaf6">BEVFormer-temporal</text>
+    <circle cx="410" cy="165" r="6" fill="#7ee0ff"/><text x="410" y="182" fill="#e7eaf6">Sparse4D / StreamPETR</text>
+    <!-- bottom-right predict×frame -->
+    <circle cx="620" cy="320" r="6" fill="#ffd35c"/><text x="620" y="340" fill="#e7eaf6">单帧 occupancy</text>
+    <!-- top-right predict×temporal -->
+    <circle cx="700" cy="120" r="7" fill="#f0abfc"/><text x="700" y="108" fill="#e7eaf6">UniAD / e2e</text>
+    <circle cx="770" cy="165" r="6" fill="#f0abfc"/><text x="770" y="182" fill="#e7eaf6">4D occ / 世界模型</text>
+    <circle cx="620" cy="150" r="6" fill="#f0abfc"/><text x="620" y="138" fill="#e7eaf6">query 传播=检测即预测</text>
+  </g>
+  <!-- evolution arrow -->
+  <line x1="250" y1="315" x2="690" y2="140" stroke="#4ade80" stroke-width="1.6" stroke-dasharray="7 5" marker-end="url(#ar)" opacity=".8"/>
+  <text x="470" y="250" fill="#4ade80" font-size="11" text-anchor="middle" transform="rotate(-20 470,250)">演进方向：向「预测×时序」收敛</text>
+</svg>
+<figcaption><b>两问四象限（示意，非精确坐标）。</b> 左下＝传统单帧检测器；左上＝把时序加进检测（跟踪 / 时序 BEV / query 传播）；右下＝单帧预测（占用）；右上＝<b>预测×时序</b>＝端到端 / 4D 占用 / 世界模型。<b>query 跨帧传播</b>让"检测"与"预测/跟踪"在同一 latent 里发生——两问在右上象限合流。</figcaption>
+</figure>
+
+<div class=duo>
+  <div class="side a"><div class=lead2>问题 1 · 先检测 还是 先预测</div>
+    <h4>detect-first vs predict-first</h4>
+    <ul>
+      <li><b>先检测：</b>单帧/当前观测先出 box/instance，再做跟踪、运动预测。<b>模块化、可监督、可评测</b>（每帧有 GT）；但丢时序先验，单帧歧义（遮挡/远小目标）难解。</li>
+      <li><b>先预测：</b>先在表征里预测世界演化（未来状态/占用），<b>检测是预测的一个 readout</b>。利用运动先验、对遮挡鲁棒、与世界模型统一；但监督/评测难、误差累积。</li>
+      <li><b>我的判断：</b>趋于<b>融合</b>——query-based 端到端里 object query 跨帧传播，<span class=hl>检测即预测</span>（同一 latent 同时出当前框与未来）。</li>
+    </ul>
+  </div>
+  <div class="side b"><div class=lead2>问题 2 · 先单帧 还是 先时序</div>
+    <h4>frame-first vs temporal-first</h4>
+    <ul>
+      <li><b>先单帧：</b>把单帧做到极致再叠时序。工程稳、标注友好（单帧标注多）、是<b>强基线</b>；但小目标/遮挡/运动模糊在单帧本就信息不足，<b>单帧上限低</b>。</li>
+      <li><b>先时序：</b>时序作一等公民，单帧是特例。对<b>小目标（多帧累积弱证据）、遮挡（时序补全）、速度（天然可得）</b>有本质增益；但计算/内存重、时序对齐与标注难。</li>
+      <li><b>我的判断：</b><span class=hlp>小目标/遮挡本质是"单帧信息不足"</span>，时序有不可替代增益；但落地宜"单帧建强基线 → 尽早时序化"。</li>
+    </ul>
+  </div>
+</div>
+<div class=callout key><div class=ct>两问是耦合的</div><b>先预测 ≈ 先时序</b>（预测世界必然要时序，落在右上＝世界模型/e2e）；<b>先检测 ≈ 先单帧</b>（左下＝传统）。所以这不是两个独立选择，而是<b>同一条对角线</b>——从"单帧检测"走向"时序预测"，检测逐渐变成"预测世界"的一个出口（呼应 <a href="wm_unified.html" style="color:var(--accent)">统一视角</a>：检测＝在某层 latent 上的一个 readout）。</div>
+
+<h2 class=sec><span class=bar></span>② 实验观察：grid-based formulation 的小目标困局</h2>
+<div class=callout obs><div class=ct>◆ 内部实验观察</div><b>grid-based formulation 对 vehicle 检测效果不错，但对行人 / cyclist 等小物体会浪费大量算力。</b> 直觉修法（提高全图 grid 分辨率）会让算力平方级增长，而增加的高分辨 cell 绝大多数是空的——<b>钱花在了背景上</b>。</div>
+<div class=secsub>先看清 grid formulation 为什么"大目标划算、小目标亏"。</div>
+<figure class=fig>
+<svg viewBox="0 0 960 360" style="width:100%;height:auto;font-family:inherit;background:#0a0e1c">
+  <text x="250" y="26" fill="#aab1d0" font-size="12.5" text-anchor="middle" font-weight="700">均匀 grid formulation（每格都算）</text>
+  <text x="740" y="26" fill="#aab1d0" font-size="12.5" text-anchor="middle" font-weight="700">稀疏 query formulation（只为物体算）</text>
+  <!-- left: uniform grid -->
+  <g stroke="#2a3157" stroke-width="1">
+    <rect x="60" y="44" width="380" height="266" fill="none"/>
+    <line x1="60" y1="44" x2="60" y2="310"/><line x1="98" y1="44" x2="98" y2="310"/><line x1="136" y1="44" x2="136" y2="310"/><line x1="174" y1="44" x2="174" y2="310"/><line x1="212" y1="44" x2="212" y2="310"/><line x1="250" y1="44" x2="250" y2="310"/><line x1="288" y1="44" x2="288" y2="310"/><line x1="326" y1="44" x2="326" y2="310"/><line x1="364" y1="44" x2="364" y2="310"/><line x1="402" y1="44" x2="402" y2="310"/><line x1="440" y1="44" x2="440" y2="310"/>
+    <line x1="60" y1="44" x2="440" y2="44"/><line x1="60" y1="82" x2="440" y2="82"/><line x1="60" y1="120" x2="440" y2="120"/><line x1="60" y1="158" x2="440" y2="158"/><line x1="60" y1="196" x2="440" y2="196"/><line x1="60" y1="234" x2="440" y2="234"/><line x1="60" y1="272" x2="440" y2="272"/><line x1="60" y1="310" x2="440" y2="310"/>
+  </g>
+  <!-- vehicle: spans multiple cells (green, efficient) -->
+  <rect x="100" y="122" width="72" height="34" rx="3" fill="rgba(74,222,128,.28)" stroke="#4ade80" stroke-width="1.6"/>
+  <text x="136" y="143" fill="#4ade80" font-size="10" text-anchor="middle" font-weight="700">vehicle</text>
+  <!-- pedestrians / cyclists: sub-cell, red -->
+  <circle cx="315" cy="99" r="3.2" fill="#fb7185"/><circle cx="332" cy="103" r="3.2" fill="#fb7185"/><circle cx="349" cy="97" r="3.2" fill="#fb7185"/>
+  <circle cx="393" cy="215" r="3.2" fill="#fb7185"/><circle cx="408" cy="222" r="3.2" fill="#fb7185"/>
+  <text x="345" y="128" fill="#fb7185" font-size="9.5" text-anchor="middle">行人/cyclist（&lt;1 cell）</text>
+  <!-- empty cells note -->
+  <text x="250" y="332" fill="#7f87a8" font-size="10.5" text-anchor="middle">大量空 cell（道路/背景）＝算力浪费；提分辨率 → 空 cell 平方增长</text>
+  <!-- right: sparse query -->
+  <rect x="560" y="44" width="360" height="266" rx="6" fill="rgba(96,165,250,.04)" stroke="#2a3157"/>
+  <rect x="600" y="130" width="72" height="34" rx="3" fill="rgba(74,222,128,.28)" stroke="#4ade80" stroke-width="1.6"/>
+  <text x="636" y="151" fill="#4ade80" font-size="10" text-anchor="middle" font-weight="700">vehicle</text>
+  <!-- queries land on objects only -->
+  <circle cx="636" cy="147" r="8" fill="none" stroke="#7ee0ff" stroke-width="1.6"/>
+  <circle cx="800" cy="100" r="8" fill="none" stroke="#7ee0ff" stroke-width="1.6"/><circle cx="800" cy="100" r="3" fill="#fb7185"/>
+  <circle cx="822" cy="112" r="8" fill="none" stroke="#7ee0ff" stroke-width="1.6"/><circle cx="822" cy="112" r="3" fill="#fb7185"/>
+  <circle cx="750" cy="230" r="8" fill="none" stroke="#7ee0ff" stroke-width="1.6"/><circle cx="750" cy="230" r="3" fill="#fb7185"/>
+  <text x="740" y="300" fill="#7ee0ff" font-size="10.5" text-anchor="middle">query 数 ∝ 物体数（不 ∝ 分辨率²）；小目标可多派/自适应 query</text>
+  <!-- arrow between -->
+  <line x1="446" y1="177" x2="556" y2="177" stroke="#4ade80" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <text x="501" y="170" fill="#4ade80" font-size="10" text-anchor="middle">改 formulation</text>
+</svg>
+<figcaption><b>为空间付费 vs 为物体付费。</b> 左：均匀 grid 里 <span class=hlg>vehicle 跨多 cell、分辨率匹配得好</span>，但<span style="color:#fb7185">行人/cyclist 常 &lt;1 个 cell</span>、要检出就得全图提分辨率 → 算力平方涨、且新增 cell 绝大多数是空背景。右：<span class=hl>稀疏 query</span> 让算力随物体数走，小目标按需加 query，不为空背景买单。</figcaption>
+</figure>
+<ul class=pa warn>
+<li><b>分辨率–算力平方矛盾：</b>小目标要细粒度 → 提 grid 分辨率 → 算力/显存 O(H×W) 平方增长。</li>
+<li><b>稀疏性浪费：</b>真实场景绝大多数 cell 是道路/背景（空），密集 grid 对空 cell 一视同仁地算，钱花在背景上。</li>
+<li><b>尺度失配：</b>vehicle 占多 cell（grid 是"合适容器"），行人/cyclist 是 sub-cell（一个 cell 塞不下一个、或多人挤一个 cell），grid 粒度与目标尺度天然不匹配。</li>
+<li><b>密集监督不友好：</b>小目标正样本极少，密集 head 的正负极度不平衡，训练也吃亏（这是 formulation 带来的，不只是算力）。</li>
+</ul>
+
+<h2 class=sec><span class=bar></span>③ 从 formulation 出发的解法：从「为空间付费」到「为物体付费」</h2>
+<div class=secsub>核心不是堆分辨率/堆算力，而是改表述让<b>算力自适应地流向"有物体、需细粒度"处</b>。按"改动的彻底程度"排序。</div>
+<div class=cards>
+<div class=card><span class=tag>最本质</span><h4>密集 grid → 稀疏 query</h4><p>放弃"每 cell 预测"，改"<b>每 object query 预测</b>"。算力 ∝ query 数（≈物体数），<b>与空间分辨率解耦</b>；小目标可多派/自适应分配 query，不为空背景付费。</p><div class=eg><b>代表：</b>DETR / Deformable DETR / Sparse R-CNN；3D：Sparse4D · PETR / StreamPETR · SparseBEV。</div></div>
+<div class=card><span class=tag>缓解</span><h4>多尺度 / 分层分配</h4><p>小目标交<b>高分辨浅层</b>特征、大目标交低分辨深层（FPN + 按尺度分配标签）。缓解尺度失配，但高分辨层仍密集，没根治平方问题。</p><div class=eg><b>代表：</b>FPN · FCOS 多尺度 · NWD/RFLA（小目标标签分配）。</div></div>
+<div class=card><span class=tag>算力跟前景</span><h4>coarse-to-fine / 前景稀疏化</h4><p>先粗 grid 找 foreground，只在前景区域细化（级联 / 稀疏卷积 / token 剪枝）。<b>算力随前景走</b>，空背景不细算。</p><div class=eg><b>代表：</b>SparseBEV · SparseOcc · Focal Sparse Conv（LiDAR 侧类比）· AdaMixer。</div></div>
+<div class=card><span class=tag>自适应采样</span><h4>deformable / 可变形采样</h4><p>采样点<b>自适应聚到物体上</b>，不均匀撒点；小目标处采样密、背景处稀。把"密集卷积"换成"稀疏可变形 attention"。</p><div class=eg><b>代表：</b>Deformable DETR · Deformable attention 系。</div></div>
+<div class=card><span class=tag>换坐标系</span><h4>非均匀 formulation</h4><p>换表述让远处小目标不被稀释：<b>距离自适应 BEV 分辨率</b>（近粗远细）、<b>极坐标 grid</b>（远处角分辨率自然细）、range-view（LiDAR 侧）。</p><div class=eg><b>代表：</b>PolarFormer / 极坐标 BEV · 距离自适应体素。</div></div>
+<div class=card><span class=tag>接时序</span><h4>object-centric + 时序 query 传播</h4><p>小目标单帧弱证据 → <b>跨帧传播 query、累积证据</b>，让弱小目标从背景里"跳"出来。把"先时序/先预测"直接变成算力分配器。</p><div class=eg><b>代表：</b>StreamPETR（memory queue）· Sparse4D 时序 · MOTR（query 传播）。</div></div>
+</div>
+<div class=callout key><div class=ct>✔ 一句话解法</div>小目标困局的根因是 <b>grid「为空间均匀付费」</b>；解法是把 formulation 改成 <b>「为物体付费」</b>——<span class=hl>稀疏 query（算力∝物体）＋ 前景稀疏化（算力跟前景）＋ 时序 query 传播（弱证据累积）</span>。堆分辨率是治标，改 formulation 才治本。</div>
+
+<h2 class=sec><span class=bar></span>④ 回接两个本质问题</h2>
+<div class=callout><b>小目标困局恰好把两个本质问题"逼"了出来：</b><br>
+· 它印证 <b class=hlp>先时序</b>——行人/cyclist 单帧只有几个像素/一个 cell，信息不足；<b>多帧时序累积</b>是把弱证据攒够的本质手段（不是锦上添花）。<br>
+· 它也印证 <b class=hlp>先预测</b>——用<b>预测的占用/运动先验引导算力分配</b>（"哪里可能出现人 → 那里细化"），即 <span class=hl>prediction-guided detection</span>。<br>
+· 而"稀疏 query"这个解法，正是 <a href="wm_unified.html" style="color:var(--accent)">统一视角</a> 里"<b>消费哪层 latent + 多层出口</b>"在检测上的落地：检测 head 从"密集像素/cell readout"变成"稀疏 object-query readout"。</div>
+
+<h2 class=sec><span class=bar></span>⑤ 我的推荐路线</h2>
+<ul class=pa q>
+<li><b>工程上"先单帧"</b>建强基线（快、标注友好、可评测），但——</li>
+<li><b>架构上从第一天就押"稀疏 query"</b>而非 dense grid，避免小目标的"分辨率债"；vehicle 用 dense grid 的短期收益，会在小目标上连本带利还回来。</li>
+<li><b>尽早"时序化"</b>：object-centric query 跨帧传播，既解小目标弱证据、又天然得到速度/运动。</li>
+<li><b>终局"检测即预测"</b>：让检测成为"在某层 latent 上预测世界"的一个 readout（右上象限），与世界模型统一。</li>
+</ul>
+
+<div class=note2><b>诚实边界：</b>本页是<b>架构判断 / 讨论</b>，"grid 对小目标浪费算力"来自<b>内部实验观察</b>（定性）；所引方法（DETR/Deformable DETR/Sparse4D/PETR/StreamPETR/SparseBEV/SparseOcc/PolarFormer/FCOS/CenterNet/UniAD/NWD/RFLA 等）均为公开工作，"稀疏 query / 前景稀疏化 / 时序传播"在你场景下的**具体收益需实测**；四象限图为示意、非精确坐标。纯相机视觉基调（LiDAR 侧方法仅作类比，已标注）。小目标 benchmark 见 <a href="benchmarks.html" style="color:var(--accent)">SOTA 全景（SODA-A/D · AI-TOD · TinyPerson · VisDrone）</a>；架构统一见 <a href="wm_unified.html" style="color:var(--accent2)">统一视角</a>。</div>
+</div></body></html>

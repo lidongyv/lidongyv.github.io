@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OD 检测方案介绍与迭代计划 · 可验证 · 可迭代 · 可预测</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#05070d; --bg-1:#0a0e1a; --bg-2:#0f1424; --bg-3:#141a2e;
+    --line:#1f2740; --line-2:#2a3357;
+    --text:#e7eaf6; --text-2:#aab1d0; --text-3:#7f87a8; --text-4:#5a6488;
+    --blue:#60a5fa; --emerald:#34d399; --amber:#fbbf24; --violet:#a78bfa;
+    --cyan:#67e8f9; --pink:#f472b6; --red:#f87171; --slate:#94a3b8;
+    --accent:var(--blue);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+    background:
+      radial-gradient(1200px 700px at 12% -10%, rgba(96,165,250,.18), transparent 55%),
+      radial-gradient(1000px 600px at 88% 0%, rgba(167,139,250,.16), transparent 55%),
+      radial-gradient(900px 560px at 50% 110%, rgba(52,211,153,.10), transparent 60%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%);
+    color:var(--text); min-height:100vh; line-height:1.62;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  .mono{font-family:'JetBrains Mono',monospace}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 22px}
+  a{color:inherit; text-decoration:none}
+
+  /* nav */
+  .nav{position:sticky; top:0; z-index:50; backdrop-filter:blur(16px);
+    background:linear-gradient(180deg, rgba(5,7,13,.88), rgba(5,7,13,.55));
+    border-bottom:1px solid var(--line)}
+  .nav-in{max-width:1180px; margin:0 auto; padding:11px 22px; display:flex; align-items:center; gap:18px; flex-wrap:wrap}
+  .nav-brand{font-weight:800; font-size:14.5px; letter-spacing:.2px; display:flex; align-items:center; gap:9px}
+  .nav-dot{width:9px;height:9px;border-radius:50%;background:conic-gradient(from 0deg,var(--blue),var(--emerald),var(--amber),var(--violet),var(--blue));box-shadow:0 0 14px rgba(96,165,250,.6)}
+  .nav-links{display:flex; gap:5px; margin-left:auto; flex-wrap:wrap}
+  .nav-links a{font-size:12.5px; font-weight:600; color:var(--text-3); padding:6px 12px; border-radius:9px; border:1px solid transparent; transition:.15s; white-space:nowrap}
+  .nav-links a:hover{color:var(--text); background:rgba(255,255,255,.05); border-color:var(--line-2)}
+
+  /* hero */
+  .hero{padding:60px 0 26px; position:relative}
+  .eyebrow{display:inline-flex; align-items:center; gap:10px; font-size:11px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:var(--accent)}
+  .eyebrow::before{content:""; width:30px; height:1px; background:linear-gradient(90deg,transparent,currentColor)}
+  .eyebrow::after{content:""; width:30px; height:1px; background:linear-gradient(90deg,currentColor,transparent)}
+  h1.title{font-size:clamp(32px,5.2vw,56px); font-weight:900; line-height:1.05; letter-spacing:-.02em; margin:18px 0 0;
+    background:linear-gradient(180deg,#fff 35%,rgba(255,255,255,.62)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .lede{margin:18px 0 0; max-width:780px; font-size:16px; color:var(--text-2)}
+  .three-can{display:flex; gap:9px; flex-wrap:wrap; margin-top:20px}
+  .tc{display:inline-flex; align-items:center; gap:8px; padding:7px 14px; border-radius:999px; font-size:13px; font-weight:700; border:1px solid}
+  .tc-1{color:var(--cyan); border-color:rgba(103,232,249,.34); background:rgba(103,232,249,.10)}
+  .tc-2{color:var(--violet); border-color:rgba(167,139,250,.34); background:rgba(167,139,250,.10)}
+  .tc-3{color:var(--emerald); border-color:rgba(52,211,153,.34); background:rgba(52,211,153,.10)}
+  .stats{display:flex; gap:14px; flex-wrap:wrap; margin-top:26px}
+  .stat{flex:1; min-width:150px; padding:16px 18px; border-radius:15px;
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015)); border:1px solid var(--line)}
+  .stat .n{font-size:29px; font-weight:800; line-height:1; letter-spacing:-.01em}
+  .stat .l{margin-top:7px; font-size:12px; color:var(--text-3); font-weight:600}
+
+  /* sections */
+  section{scroll-margin-top:74px; padding:40px 0}
+  .sec-head{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:6px}
+  .sec-kicker{font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:var(--accent); opacity:.85}
+  h2.sec-title{font-size:clamp(24px,3.2vw,34px); font-weight:800; letter-spacing:-.01em; color:#fff; margin:0}
+  .sec-sub{color:var(--text-2); font-size:14.5px; max-width:840px; margin:12px 0 0}
+
+  .glass{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.014)); border:1px solid var(--line); border-radius:16px; position:relative; overflow:hidden}
+  .glass::before{content:""; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent)}
+
+  /* overview cards */
+  .ov-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:18px}
+  @media(max-width:880px){.ov-grid{grid-template-columns:1fr}}
+  .ov-card{padding:20px}
+  .ov-card .oc-ic{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:13px;border:1px solid}
+  .ov-card h4{margin:0;font-size:16px;font-weight:700;color:#fff}
+  .ov-card p{margin:8px 0 0;font-size:13px;color:var(--text-2)}
+
+  /* model band */
+  .model-band{display:flex; align-items:center; gap:16px; padding:18px 20px; border-radius:16px; margin-bottom:18px;
+    background:linear-gradient(110deg, color-mix(in srgb,var(--accent) 16%, transparent), rgba(255,255,255,.02) 60%);
+    border:1px solid color-mix(in srgb,var(--accent) 34%, var(--line))}
+  .model-ico{width:50px; height:50px; flex-shrink:0; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800;
+    background:color-mix(in srgb,var(--accent) 18%, transparent); border:1px solid color-mix(in srgb,var(--accent) 40%, transparent); color:var(--accent)}
+  .model-band h3{margin:0; font-size:21px; font-weight:800; color:#fff; display:flex; align-items:center; gap:11px; flex-wrap:wrap}
+  .model-band .tag{font-size:11.5px; font-weight:700; color:var(--accent); padding:3px 10px; border-radius:999px; background:color-mix(in srgb,var(--accent) 14%, transparent); border:1px solid color-mix(in srgb,var(--accent) 34%, transparent)}
+  .model-band p{margin:7px 0 0; font-size:13.5px; color:var(--text-2); max-width:840px}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+  @media(max-width:880px){.grid2{grid-template-columns:1fr}}
+
+  .card{padding:18px 18px}
+  .card h4{margin:0 0 4px; font-size:15.5px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px}
+  .card h4 .seq{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--accent); font-weight:700; opacity:.85}
+  .card p{margin:8px 0 0; font-size:13px; color:var(--text-2)}
+  .pts{margin:9px 0 0; padding:0; list-style:none; display:flex; flex-direction:column; gap:5px}
+  .pts li{position:relative; padding-left:16px; font-size:12.8px; color:var(--text-2); line-height:1.55}
+  .pts li::before{content:"▸"; position:absolute; left:0; top:0; color:var(--accent); font-size:11px}
+  .pts li b{color:#fff}
+
+  .st{flex-shrink:0; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap}
+  .st-online{background:rgba(52,211,153,.14); color:var(--emerald); border:1px solid rgba(52,211,153,.34)}
+  .st-dev{background:rgba(251,191,36,.13); color:var(--amber); border:1px solid rgba(251,191,36,.32)}
+  .st-plan{background:rgba(96,165,250,.13); color:var(--blue); border:1px solid rgba(96,165,250,.32)}
+  .st-blocked{background:rgba(248,113,113,.12); color:var(--red); border:1px solid rgba(248,113,113,.32)}
+
+  /* tables */
+  table.tbl{width:100%; border-collapse:collapse; margin-top:14px; font-size:12.8px; overflow:hidden; border-radius:12px; border:1px solid var(--line)}
+  table.tbl th{background:rgba(255,255,255,.045); color:var(--text-2); font-weight:700; text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); font-size:12px}
+  table.tbl td{padding:9px 12px; border-bottom:1px solid var(--line); color:var(--text-2)}
+  table.tbl tr:last-child td{border-bottom:none}
+  table.tbl td b{color:#fff}
+  .pos{color:var(--emerald); font-weight:700}
+  .neg{color:var(--red); font-weight:700}
+  .mut{color:var(--text-3)}
+  .poly{color:var(--cyan); font-weight:700}
+
+  /* code */
+  pre.code{margin:14px 0 0; padding:15px 16px; border-radius:12px; background:#070a13; border:1px solid var(--line); overflow-x:auto}
+  pre.code code{font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.7; color:#c8d3f5; white-space:pre}
+  pre.code .cm{color:var(--text-4)}
+  pre.code .kw{color:var(--violet)}
+  pre.code .nm{color:var(--cyan)}
+
+  /* callout */
+  .callout{display:flex; gap:12px; padding:14px 16px; border-radius:13px; margin-top:14px; align-items:flex-start}
+  .callout .ce{font-size:18px; line-height:1.4}
+  .callout p{margin:0; font-size:13.2px; color:var(--text-2)}
+  .callout p b{color:#fff}
+  .co-blue{background:rgba(96,165,250,.09); border:1px solid rgba(96,165,250,.28)}
+  .co-green{background:rgba(52,211,153,.09); border:1px solid rgba(52,211,153,.28)}
+  .co-amber{background:rgba(251,191,36,.09); border:1px solid rgba(251,191,36,.28)}
+  .co-violet{background:rgba(167,139,250,.09); border:1px solid rgba(167,139,250,.28)}
+
+  /* doc chips */
+  .docs{display:flex; flex-wrap:wrap; gap:6px; margin-top:13px}
+  .doc{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; color:var(--text-2);
+    padding:4px 10px 4px 8px; border-radius:8px; background:rgba(255,255,255,.04); border:1px solid var(--line); transition:.15s; max-width:100%}
+  .doc:hover{color:#fff; border-color:color-mix(in srgb,var(--accent) 50%, var(--line)); background:color-mix(in srgb,var(--accent) 10%, transparent); transform:translateY(-1px)}
+  .doc .ic{width:13px; height:13px; flex-shrink:0; opacity:.8}
+  .doc .tt{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:320px}
+
+  /* svg diagram wrap */
+  .diagram{margin-top:16px; padding:18px; border-radius:14px; background:rgba(255,255,255,.02); border:1px solid var(--line)}
+  .diagram .cap{font-size:11.5px; color:var(--text-3); font-weight:700; letter-spacing:.4px; text-transform:uppercase; margin-bottom:12px}
+  .diagram svg{width:100%; height:auto; display:block}
+
+  /* roadmap pipeline */
+  .pipeline{display:flex; align-items:stretch; gap:0; flex-wrap:wrap; margin-top:18px; border-radius:14px; overflow:hidden; border:1px solid var(--line)}
+  .pl-stage{flex:1; min-width:170px; padding:16px 16px; position:relative; background:rgba(255,255,255,.02)}
+  .pl-stage + .pl-stage{border-left:1px solid var(--line)}
+  .pl-stage .ps-k{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-4); font-weight:700}
+  .pl-stage .ps-t{margin-top:5px; font-size:14px; font-weight:700; color:#fff}
+  .pl-stage .ps-d{margin-top:5px; font-size:11.5px; color:var(--text-3)}
+  .pl-stage .ps-s{margin-top:8px}
+
+  .legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:18px; padding:13px 16px; border-radius:13px; background:rgba(255,255,255,.025); border:1px solid var(--line)}
+  .legend .lg{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text-2); font-weight:600}
+  .legend .dot{width:9px;height:9px;border-radius:50%}
+
+  .footer{padding:44px 0 70px; border-top:1px solid var(--line); margin-top:26px; color:var(--text-3); font-size:13px}
+  .doc-cta{display:inline-flex; align-items:center; gap:10px; margin-top:8px; padding:12px 18px; border-radius:12px; font-weight:700; font-size:14px; color:#fff;
+    background:linear-gradient(110deg, rgba(96,165,250,.18), rgba(167,139,250,.14)); border:1px solid var(--line-2); transition:.15s}
+  .doc-cta:hover{border-color:var(--blue); transform:translateY(-1px)}
+  .hero-cta{margin-top:24px; display:flex; flex-wrap:wrap; gap:13px; align-items:center}
+
+  .reveal{opacity:0; transform:translateY(14px); transition:opacity .6s, transform .6s}
+  .reveal.in{opacity:1; transform:none}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-in">
+    <div class="nav-brand"><span class="nav-dot"></span>OD 检测方案 · 介绍与迭代计划</div>
+    <div class="nav-links">
+      <a href="#overview">总览</a>
+      <a href="#current">现状方案</a>
+      <a href="#parking">泊车位</a>
+      <a href="#sparse">Sparse</a>
+      <a href="#temporal">时序+预测</a>
+      <a href="#threecan">三可论证</a>
+      <a href="#roadmap">迭代计划</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero wrap">
+  <div class="eyebrow">Onemodel · 多任务感知 · OD 目标检测</div>
+  <h1 class="title">OD 检测方案介绍与迭代计划</h1>
+  <p class="lede">基于 onemodel 共享 PV2BEV + BEV feature，用 <b>Query Group 分组解耦</b>输出五大类目标，支持临时新增任意稀少类别 query；后续沿 <b>Sparse（陈昌）</b>与<b>时序 + 预测（张达）</b>两条主线演进。整套方案围绕<b>可验证 · 可迭代 · 可预测</b>设计。</p>
+  <div class="three-can">
+    <span class="tc tc-1">🔬 可验证 · 每类独立评测</span>
+    <span class="tc tc-2">🔁 可迭代 · 需求方自助加 query</span>
+    <span class="tc tc-3">📈 可预测 · 距离/稳定按需扩展</span>
+  </div>
+  <div class="hero-cta" id="heroCta"></div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<main class="wrap">
+
+  <!-- OVERVIEW -->
+  <section id="overview">
+    <div class="sec-head"><span class="sec-kicker">00</span><h2 class="sec-title">总览 · 共享架构与设计哲学</h2></div>
+    <p class="sec-sub">12V 图像经统一 PV2BEV 得到共享 BEV feature，OD / Lane / TLD / OCC 各挂任务头；OD 在自车系输出动 / 静态目标 3D 框。三条设计主线如下。</p>
+    <div class="ov-grid">
+      <div class="ov-card glass reveal">
+        <div class="oc-ic" style="color:var(--blue);border-color:#60a5fa55;background:#60a5fa1a">🧩</div>
+        <h4>共享 BEV 主干 + 多任务头</h4>
+        <p>共享 PV2BEV 与 BEV feature，OD 仅负责检测头；前融合分支额外融合 Lidar 点云特征。</p>
+      </div>
+      <div class="ov-card glass reveal">
+        <div class="oc-ic" style="color:var(--violet);border-color:#a78bfa55;background:#a78bfa1a">🎛️</div>
+        <h4>Query Group 分组解耦</h4>
+        <p>不同 query 组数据与配平互不影响，新增类别 / 需求只加耗时、不动主线指标，支持多人并行迭代。</p>
+      </div>
+      <div class="ov-card glass reveal">
+        <div class="oc-ic" style="color:var(--emerald);border-color:#34d39955;background:#34d3991a">🚀</div>
+        <h4>Sparse · 时序 + 预测</h4>
+        <p>两条改进主线：Sparse 适配任意检测距离并切分纯视觉 / 前融合；时序 + 预测解决稳定性与短距预测。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CURRENT -->
+  <section id="current">
+    <div class="sec-head"><span class="sec-kicker">01</span><h2 class="sec-title">现状方案设计</h2></div>
+    <p class="sec-sub">五大类输出 + Animal query（待合入）+ 临时新增稀少类别能力；Query Group 分组迭代；共享 PV2BEV + BEV feat。</p>
+
+    <div class="model-band" style="--accent:var(--blue)">
+      <div class="model-ico">OD</div>
+      <div>
+        <h3>OD 目标检测<span class="tag">五大类</span><span class="tag">Query Group</span><span class="tag">共享 BEV</span></h3>
+        <p>每个检测 query 输出对应物体的 bbox，高度不做严格约束与评测；泊车位是 2D polygon 而非 bbox。</p>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card glass reveal">
+        <h4><span class="seq">2.</span>五大类输出 + Animal query</h4>
+        <table class="tbl">
+          <thead><tr><th>类别</th><th>输出形态</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td><b>Vehicle</b></td><td>3D bbox</td><td>常规车辆，主干流量</td></tr>
+            <tr><td><b>Large Vehicle</b></td><td>3D bbox</td><td>大车，单独组、单独配平</td></tr>
+            <tr><td><b>Pedestrian</b></td><td>3D bbox</td><td>行人</td></tr>
+            <tr><td><b>Cyclist</b></td><td>3D bbox</td><td>骑行者</td></tr>
+            <tr><td><b>Parking Zone</b></td><td class="poly">2D polygon</td><td>泊车位是 2D 多边形，非 bbox</td></tr>
+          </tbody>
+        </table>
+        <div class="callout co-amber">
+          <div class="ce">❗</div>
+          <p><b>Animal query</b> 已设计、暂未合入主线。框架支持<b>临时新增任意稀少类别 query</b>。</p>
+        </div>
+      </div>
+
+      <div class="card glass reveal">
+        <h4><span class="seq">2.1</span>Query Group 分组迭代</h4>
+        <ul class="pts">
+          <li>不同组内数据与配平<b>互不影响</b>，可自主配平每一类</li>
+          <li>新增类别 / 需求<b>不影响原有主线指标</b>，只增加耗时</li>
+          <li>可分多个人<b>分别迭代</b>，推荐需求方自己上来配平</li>
+        </ul>
+        <div class="callout co-green">
+          <div class="ce">✅</div>
+          <p><b>自助交付</b>：需求提出者直接上来加 query、跟数据迭代，与感知 team 主线需求<b>解耦</b>。</p>
+        </div>
+        <h4 style="margin-top:16px"><span class="seq">2.2</span>共享 PV2BEV + BEV feat</h4>
+        <ul class="pts">
+          <li>与各任务<b>共享 PV2BEV 与 BEV feature</b></li>
+          <li>每个检测 query 输出对应物体的 <b>bbox</b></li>
+          <li><b>高度</b>不做严格约束和评测</li>
+          <li>泊车位检测是 <b>2D polygon</b>，而非 bbox</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout co-blue" style="margin-top:18px">
+      <div class="ce">⚡</div>
+      <p><b>可迭代范式 · CIPV 60m 一天上线</b>：上周新增 CIPV group、把检测距离提高到 <b>60m</b>，仅用 <span class="pos">一天 ↑</span> 完成验证并上线，不影响原有主线指标——这正是 query group + 自助配平带来的迭代速度。</p>
+    </div>
+  </section>
+
+  <!-- PARKING -->
+  <section id="parking">
+    <div class="sec-head"><span class="sec-kicker">02</span><h2 class="sec-title">泊车位检测专项<span style="font-size:.5em;color:var(--text-3);font-weight:600;margin-left:8px">蔡孟玥</span></h2></div>
+    <p class="sec-sub">泊车位作为第 6 个 query group（group 5）接入，复用整套解耦机制；表征从 3D bbox 演进到 <b>2D polygon（4 角点）</b>，并带占用 / 类型 / 属性多重状态识别——「新增类别只加 query、不动主线」与「可验证 / 可迭代」的最佳样例。</p>
+
+    <div class="model-band" style="--accent:var(--cyan)">
+      <div class="model-ico">P</div>
+      <div>
+        <h3>Parking Zone<span class="tag">group 5</span><span class="tag">2D polygon</span><span class="tag">config 驱动</span></h3>
+        <p>走全部 head（camera / lidar / fusion），Lidar 两路对 parking 零 loss（以视觉为准）；Head / 后处理零代码改动，纯 config 新增。</p>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card glass reveal">
+        <h4>① 接入 · Query Group group 5（config 驱动）</h4>
+        <ul class="pts" style="--accent:var(--cyan)">
+          <li>group 5（label=5）加到现有 5 组后，<b>模型结构不变</b>，parking query 走全部 head</li>
+          <li><b>lidar_zero_loss_groups=[5]</b>：Lidar OD + Fusion Lidar 两路对 parking 零 loss（以视觉为准）</li>
+          <li><b>Head / 后处理零代码改动</b>：num_groups 由 len(group_num_queries) 自动驱动</li>
+          <li>DOD / SOD 都监督：dod=[0,1,2,3,5]、sod=[4,5]</li>
+        </ul>
+        <pre class="code"><code><span class="cm"># config 驱动新增 group 5（基线 bbox 形态）</span>
+CLASSES = { ..., <span class="nm">"ParkingSpace": 5</span> }
+GROUP_NUM_QUERIES = [540,108,180,72,20,<span class="nm">40</span>]
+group_score_thr   = [.2,.25,.2,.2,.1,<span class="nm">.15</span>]
+lidar_zero_loss_groups = [<span class="nm">5</span>]  <span class="cm"># Lidar 两路 loss=0</span></code></pre>
+      </div>
+
+      <div class="card glass reveal">
+        <h4>② 表征演进 · 3D bbox → 2D polygon（角点 CA）</h4>
+        <ul class="pts" style="--accent:var(--cyan)">
+          <li><b>base</b>：N 条中心 query，单 reference deformable CA；offset 半径只有几 BEV pixel，<b>远端角点出感受野</b>、长车位覆盖不足</li>
+          <li><b>角点 CA（MapTR 式）</b>：N instance × 4 corner query，每角点带<b>独立 reference</b> 做 deformable CA</li>
+          <li>line_wise_sa / line_to_ins 把 4 角点绑到同一 instance；保留 bbox 分支</li>
+          <li>parking query 40→<b>120</b>（30×4），总 query <b>960→1040</b>，多一路 corners 输出</li>
+        </ul>
+        <div class="diagram">
+          <div class="cap">中心 query（覆盖不足） vs 4 角点 CA（polygon）</div>
+          <svg viewBox="0 0 520 150" role="img" aria-label="center vs 4-corner">
+            <text x="10" y="18" fill="#7f87a8" font-size="11" font-family="JetBrains Mono">CENTER QUERY</text>
+            <rect x="20" y="34" width="200" height="62" rx="4" fill="none" stroke="#f87171" stroke-width="1.5"/>
+            <circle cx="120" cy="65" r="4" fill="#f87171"/>
+            <circle cx="120" cy="65" r="26" fill="none" stroke="#f8717155" stroke-dasharray="4 3"/>
+            <circle cx="20" cy="34" r="3" fill="#5a6488"/><circle cx="220" cy="34" r="3" fill="#5a6488"/>
+            <circle cx="20" cy="96" r="3" fill="#5a6488"/><circle cx="220" cy="96" r="3" fill="#5a6488"/>
+            <text x="120" y="120" fill="#7f87a8" font-size="9.5" text-anchor="middle">offset 半径覆盖不到远端角点</text>
+
+            <text x="300" y="18" fill="#67e8f9" font-size="11" font-family="JetBrains Mono">4-CORNER CA</text>
+            <rect x="300" y="34" width="200" height="62" rx="4" fill="none" stroke="#67e8f9" stroke-width="1.5"/>
+            <circle cx="300" cy="34" r="5" fill="#67e8f9"/><circle cx="500" cy="34" r="5" fill="#67e8f9"/>
+            <circle cx="300" cy="96" r="5" fill="#67e8f9"/><circle cx="500" cy="96" r="5" fill="#67e8f9"/>
+            <circle cx="300" cy="34" r="13" fill="none" stroke="#67e8f955" stroke-dasharray="3 2"/>
+            <circle cx="500" cy="34" r="13" fill="none" stroke="#67e8f955" stroke-dasharray="3 2"/>
+            <circle cx="300" cy="96" r="13" fill="none" stroke="#67e8f955" stroke-dasharray="3 2"/>
+            <circle cx="500" cy="96" r="13" fill="none" stroke="#67e8f955" stroke-dasharray="3 2"/>
+            <text x="400" y="120" fill="#7f87a8" font-size="9.5" text-anchor="middle">4 角点各带 reference · 绑同一 instance</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="card glass reveal" style="margin-top:18px">
+      <h4>③ 多重状态识别 + 评测（可验证）<span class="st st-dev">研发 / 验证中</span></h4>
+      <div class="grid2" style="margin-top:6px">
+        <div>
+          <ul class="pts" style="--accent:var(--cyan)">
+            <li>除 corner / heading 外，识别 <b>Occupancy</b>（占用）/ <b>Type</b> / <b>Attribute</b></li>
+            <li>Attribute 长尾：charging / disabled / ground_lock(raised·lowered) / diagonal</li>
+            <li>1000 帧 parking val · corner 精度 / heading 误差 / 分类准确率 · <b>perm loss</b> 角点匹配</li>
+          </ul>
+          <div class="callout co-amber">
+            <div class="ce">⚠️</div>
+            <p><b>数据</b>：4 类 ATTRS 长尾 + 斜列缺口大需分批补采；val 仅 1000 帧、3 个长尾类 0 instance，须先扩 val（P0）。</p>
+          </div>
+        </div>
+        <div>
+          <table class="tbl">
+            <thead><tr><th>调整</th><th>Recall</th><th>F1</th><th>corner/heading</th></tr></thead>
+            <tbody>
+              <tr><td>NMS 0.1 → 0.3</td><td class="pos">+30.8%</td><td class="pos">+9.1%</td><td class="mut">质量不变</td></tr>
+            </tbody>
+          </table>
+          <p class="mut" style="font-size:11px;margin-top:8px">相邻车位不再误合并，多找到 488 个车位 · 蔡孟玥 perm 模型评测</p>
+        </div>
+      </div>
+      <div class="docs" id="parkingDocs"></div>
+    </div>
+  </section>
+
+  <!-- SPARSE -->
+  <section id="sparse">
+    <div class="sec-head"><span class="sec-kicker">03</span><h2 class="sec-title">改进主线 A · Sparse 方案<span style="font-size:.5em;color:var(--text-3);font-weight:600;margin-left:8px">陈昌</span></h2></div>
+    <p class="sec-sub">动态适配检测距离；切分纯视觉与前融合两条路线分开迭代——纯视觉作基本盘、前融合作交付项；增强 query group 响应能力，随时随地按需加 query。</p>
+
+    <div class="grid2">
+      <div class="card glass reveal">
+        <h4>核心思想 · 去掉 PV2BEV</h4>
+        <p>Dense BEV 先用约 20000 个 BEV query、3 层 transformer（约 90G FLOPs）<b>建图</b>，再让 OD query <b>查图</b>。Sparse4D 跳过建图：每个 query 知道自己 3D 位置后，<b>直接</b>算出投影到 12 相机的 2D 像素并采样——920 个 query 各自独立采样。</p>
+        <div class="diagram">
+          <div class="cap">Dense「建图→查图」 vs Sparse「直接查原图」</div>
+          <svg viewBox="0 0 560 196" role="img" aria-label="Dense vs Sparse pipeline">
+            <defs>
+              <marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#7f87a8"/></marker>
+            </defs>
+            <text x="8" y="20" fill="#7f87a8" font-size="11" font-family="JetBrains Mono">DENSE</text>
+            <rect x="8" y="28" width="92" height="40" rx="8" fill="#0f1424" stroke="#2a3357"/>
+            <text x="54" y="52" fill="#aab1d0" font-size="11" text-anchor="middle">12V 图像</text>
+            <line x1="100" y1="48" x2="132" y2="48" stroke="#7f87a8" marker-end="url(#ar)"/>
+            <rect x="132" y="28" width="120" height="40" rx="8" fill="#1a1330" stroke="#a78bfa66"/>
+            <text x="192" y="46" fill="#c4b5fd" font-size="10.5" text-anchor="middle">PV2BEV 建图</text>
+            <text x="192" y="60" fill="#7f87a8" font-size="9" text-anchor="middle">~20000 q · ~90G</text>
+            <line x1="252" y1="48" x2="284" y2="48" stroke="#7f87a8" marker-end="url(#ar)"/>
+            <rect x="284" y="28" width="110" height="40" rx="8" fill="#0f1424" stroke="#2a3357"/>
+            <text x="339" y="52" fill="#aab1d0" font-size="11" text-anchor="middle">查图 cross-attn</text>
+            <line x1="394" y1="48" x2="426" y2="48" stroke="#7f87a8" marker-end="url(#ar)"/>
+            <rect x="426" y="28" width="120" height="40" rx="8" fill="#0f1424" stroke="#2a3357"/>
+            <text x="486" y="52" fill="#aab1d0" font-size="11" text-anchor="middle">检测 bbox</text>
+
+            <text x="8" y="120" fill="#34d399" font-size="11" font-family="JetBrains Mono">SPARSE4D</text>
+            <rect x="8" y="128" width="92" height="40" rx="8" fill="#0f1424" stroke="#2a3357"/>
+            <text x="54" y="152" fill="#aab1d0" font-size="11" text-anchor="middle">12V 图像</text>
+            <line x1="100" y1="148" x2="132" y2="148" stroke="#34d399" marker-end="url(#ar)"/>
+            <rect x="132" y="128" width="262" height="40" rx="8" fill="#0b2018" stroke="#34d39966"/>
+            <text x="263" y="146" fill="#6ee7b7" font-size="10.5" text-anchor="middle">920 query 直接投影 12 相机 · 多尺度采样</text>
+            <text x="263" y="160" fill="#7f87a8" font-size="9" text-anchor="middle">跳过建图 · Deformable Aggregation</text>
+            <line x1="394" y1="148" x2="426" y2="148" stroke="#34d399" marker-end="url(#ar)"/>
+            <rect x="426" y="128" width="120" height="40" rx="8" fill="#0f1424" stroke="#2a3357"/>
+            <text x="486" y="152" fill="#aab1d0" font-size="11" text-anchor="middle">检测 bbox</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="card glass reveal">
+        <h4>GroupedSparse4DHead · 实现细节</h4>
+        <p><b>输出格式与 GroupedBEVFormerHead 完全兼容</b>，与现有 query group / 配平 / 评测体系无缝对接。</p>
+        <pre class="code"><code><span class="cm"># Instance Bank（query 起点）</span>
+instance_feature: (bs, <span class="nm">920</span>, 256)  <span class="cm"># 全零初始化</span>
+anchor:           (bs, <span class="nm">920</span>, 10)   <span class="cm"># KMeans 初始化</span>
+<span class="cm"># 920 query 按类别分 5 组</span>
+group_sizes = [<span class="nm">540</span>, <span class="nm">108</span>, <span class="nm">180</span>, <span class="nm">72</span>, <span class="nm">20</span>]
+<span class="cm"># anchor 10 维 = [X,Y,Z, logW,logL,logH,</span>
+<span class="cm">#               sinYaw,cosYaw, VX,VY]</span>
+
+<span class="cm"># Decoder：6 层迭代精炼 · 每层 op_order</span>
+[deformable, norm, ffn, norm, refine, gnn, norm]
+<span class="cm">#   第 1 层跳过 gnn+norm；各操作参数不共享</span></code></pre>
+        <ul class="pts" style="margin-top:12px">
+          <li><b>Deformable Aggregation</b>（替代 PV2BEV）：每 anchor 生成 13 个 3D 关键点（7 固定 + 6 可学习）→ 投影 12 相机 → 多尺度 grid_sample → <b>8-group</b> 注意力加权融合</li>
+          <li><b>PVRefinement</b>：embed=256 · points=4 · cams=12 · levels=2(stride16/32) · heads=8</li>
+          <li><b>Refinement</b>：box 残差回归（共享）+ 分组二分类（每组独立 MLP）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card glass reveal" style="margin-top:18px">
+      <h4>2-stage 纯视觉 / 前融合切分 <span class="st st-dev">研发 / 验证中</span></h4>
+      <p>4 个 vision block + 2 个 fusion block，在 fusion 边界 <b>detach</b>，从 bft200 warm-start。评测固定三列：dense baseline / 纯视觉(2stage_cam) / 前融合(2stage_fused)。</p>
+      <div class="grid2" style="margin-top:6px">
+        <div>
+          <table class="tbl">
+            <thead><tr><th>场景 · 类别</th><th>dense</th><th>纯视觉 Δ</th><th>前融合 Δ</th></tr></thead>
+            <tbody>
+              <tr><td>busy 0–10m · Vehicle</td><td>79.0</td><td class="pos">+0.6</td><td class="pos">+4.1</td></tr>
+              <tr><td>busy 0–10m · Pedestrian</td><td>48.5</td><td class="pos">+4.0</td><td class="pos">+9.3</td></tr>
+              <tr><td>busy 0–10m · Large Veh.</td><td>85.7</td><td class="neg">-7.6</td><td class="pos">+8.3</td></tr>
+              <tr><td>back -50~-20m · Vehicle</td><td>72.5</td><td class="neg">-23.9</td><td class="pos">+1.6</td></tr>
+            </tbody>
+          </table>
+          <p class="mut" style="font-size:11px;margin-top:8px">AP(%) 相对 dense 的差值 · 陈昌 2026-05-25 公平对比</p>
+        </div>
+        <div>
+          <div class="diagram" style="margin-top:0">
+            <div class="cap">2-stage · fusion 边界 detach</div>
+            <svg viewBox="0 0 520 150" role="img" aria-label="2-stage detach">
+              <defs><marker id="ar2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#7f87a8"/></marker></defs>
+              <rect x="10" y="44" width="210" height="58" rx="10" fill="#0b1730" stroke="#60a5fa66"/>
+              <text x="115" y="36" fill="#93c5fd" font-size="11" text-anchor="middle" font-weight="700">Vision Stage · 纯视觉基本盘</text>
+              <rect x="24" y="58" width="42" height="30" rx="6" fill="#0f1424" stroke="#2a3357"/>
+              <rect x="72" y="58" width="42" height="30" rx="6" fill="#0f1424" stroke="#2a3357"/>
+              <rect x="120" y="58" width="42" height="30" rx="6" fill="#0f1424" stroke="#2a3357"/>
+              <rect x="168" y="58" width="42" height="30" rx="6" fill="#0f1424" stroke="#2a3357"/>
+              <text x="115" y="78" fill="#aab1d0" font-size="9" text-anchor="middle">×4 vision block</text>
+              <line x1="220" y1="73" x2="262" y2="73" stroke="#f87171" stroke-dasharray="4 3" marker-end="url(#ar2)"/>
+              <text x="241" y="64" fill="#f87171" font-size="9" text-anchor="middle">detach</text>
+              <rect x="262" y="44" width="160" height="58" rx="10" fill="#0b2018" stroke="#34d39966"/>
+              <text x="342" y="36" fill="#6ee7b7" font-size="11" text-anchor="middle" font-weight="700">Fusion Stage · 交付项</text>
+              <rect x="278" y="58" width="56" height="30" rx="6" fill="#0f1424" stroke="#2a3357"/>
+              <rect x="344" y="58" width="56" height="30" rx="6" fill="#0f1424" stroke="#2a3357"/>
+              <text x="342" y="78" fill="#aab1d0" font-size="9" text-anchor="middle">×2 fusion +Lidar</text>
+              <line x1="210" y1="116" x2="210" y2="100" stroke="#60a5fa" marker-end="url(#ar2)"/>
+              <text x="115" y="130" fill="#7f87a8" font-size="9.5" text-anchor="middle">纯视觉输出（近距已可用）</text>
+              <line x1="400" y1="116" x2="400" y2="100" stroke="#34d399" marker-end="url(#ar2)"/>
+              <text x="342" y="130" fill="#7f87a8" font-size="9.5" text-anchor="middle">前融合输出（全段吃收益）</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="callout co-green">
+        <div class="ce">✅</div>
+        <p><b>结论</b>：纯视觉作<b>基本盘</b>（近距已可用），前融合作<b>交付项</b>（全距离段吃收益）；detach 让两条路线<b>独立迭代、互不拖累</b>，为后续接入新 Lidar / 超声波留接口。</p>
+      </div>
+      <div class="docs" id="sparseDocs"></div>
+    </div>
+  </section>
+
+  <!-- TEMPORAL -->
+  <section id="temporal">
+    <div class="sec-head"><span class="sec-kicker">04</span><h2 class="sec-title">改进主线 B · 时序 + 预测<span style="font-size:.5em;color:var(--text-3);font-weight:600;margin-left:8px">张达</span></h2></div>
+    <p class="sec-sub">解决稳定性问题以及短距离预测与状态识别。保单帧为 base，多帧为后融合方案，吃收益、不接受回退。</p>
+
+    <div class="grid2">
+      <div class="card glass reveal">
+        <h4>Stream time fusion · 两种形态</h4>
+        <pre class="code"><code><span class="cm"># 形态 1：缓存 5 帧时序队列</span>
+<span class="kw">for</span> frame <span class="kw">in</span> stream:
+    q = cross_attn(frame, <span class="nm">queue[-5:]</span>)
+    assoc, traj = predict(q)   <span class="cm"># 关联 + 轨迹预测</span>
+
+<span class="cm"># 形态 2：无缓存队列（仅与上一帧 CA）</span>
+<span class="kw">for</span> frame <span class="kw">in</span> stream:
+    q = cross_attn(frame, prev)
+    <span class="kw">if</span> warmed_up:  emit(traj)  <span class="cm"># 前 4 帧不出 traj</span></code></pre>
+        <div class="callout co-violet">
+          <div class="ce">⏱️</div>
+          <p>关联 (association) 已初步可用，作为轨迹预测的前置；用当前帧 CA 后的 query 做关联与预测。</p>
+        </div>
+      </div>
+
+      <div class="card glass reveal">
+        <h4>当前进展 · 张达「时序模型进展」</h4>
+        <table class="tbl">
+          <thead><tr><th>子项</th><th>状态</th><th>备注</th></tr></thead>
+          <tbody>
+            <tr><td>关联 association</td><td><span class="st st-online">初步可用</span></td><td>作为预测前置</td></tr>
+            <tr><td>轨迹预测</td><td><span class="st st-dev">迭代中</span></td><td>已训一版；large veh. 时序数据需调整重训</td></tr>
+            <tr><td>帧间稳定</td><td><span class="st st-dev">调优中</span></td><td>首帧抖动；修复后整体轨迹变差，需平衡</td></tr>
+            <tr><td>死车 / 静止车标签</td><td><span class="st st-dev">待处理</span></td><td>帧间稳定性（李辰提出）</td></tr>
+          </tbody>
+        </table>
+        <div class="callout co-amber">
+          <div class="ce">⚠️</div>
+          <p><b>关键约束</b>：单帧为 base、多帧为后融合——多帧分支只做<b>增量</b>，必须<b>吃收益、不接受回退</b>，主线随时可回退到稳定单帧。</p>
+        </div>
+        <div class="docs" id="temporalDocs"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- THREE CAN -->
+  <section id="threecan">
+    <div class="sec-head"><span class="sec-kicker">05</span><h2 class="sec-title">三可论证落地</h2></div>
+    <p class="sec-sub">设计与迭代如何具体兑现「可验证 · 可迭代 · 可预测」。</p>
+    <div class="ov-grid">
+      <div class="card glass reveal" style="border-color:rgba(103,232,249,.3)">
+        <h4 style="color:var(--cyan)">🔬 可验证</h4>
+        <ul class="pts" style="--accent:var(--cyan)">
+          <li>每个 query group <b>独立评测</b>，互不干扰</li>
+          <li>场景 × 距离桶 × 类别 × 指标（AP / P / R / x_err / y_err / rot）</li>
+          <li>固定<b>三列对照</b>：dense / 纯视觉 / 前融合，[+]/[-] 标注，pp&lt;0.5 视为持平</li>
+        </ul>
+      </div>
+      <div class="card glass reveal" style="border-color:rgba(167,139,250,.3)">
+        <h4 style="color:var(--violet)">🔁 可迭代</h4>
+        <ul class="pts" style="--accent:var(--violet)">
+          <li>组内<b>自主配平</b>，新增不动主线、只加耗时</li>
+          <li><b>多人并行</b>：每条 query group / 主线独立 owner</li>
+          <li><b>需求方自助</b>加 query 跟数据迭代，CIPV 60m 一天上线即范式</li>
+        </ul>
+      </div>
+      <div class="card glass reveal" style="border-color:rgba(52,211,153,.3)">
+        <h4 style="color:var(--emerald)">📈 可预测</h4>
+        <ul class="pts" style="--accent:var(--emerald)">
+          <li><b>检测距离</b>：Sparse 动态适配，按需扩展不重构</li>
+          <li><b>稳定 / 预测</b>：时序短距预测 + 状态识别，单帧 base + 多帧后融合</li>
+          <li><b>收益边界</b>：纯视觉近距已可用、前融合全段吃收益，可估算每步 ROI</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROADMAP -->
+  <section id="roadmap">
+    <div class="sec-head"><span class="sec-kicker">06</span><h2 class="sec-title">迭代计划与里程碑</h2></div>
+    <p class="sec-sub">从现状 base 到远期 Lidar / 超声波兼容，每一阶段都有明确验证口径。</p>
+    <div class="pipeline">
+      <div class="pl-stage"><div class="ps-k">BASE</div><div class="ps-t">现状 base</div><div class="ps-d">五大类 + Query Group + 共享 BEV</div><div class="ps-s"><span class="st st-online">已上线</span></div></div>
+      <div class="pl-stage"><div class="ps-k">NEXT</div><div class="ps-t">近期</div><div class="ps-d">Animal 合入 · 临时 query 自助化（CIPV 60m）</div><div class="ps-s"><span class="st st-dev">进行中</span></div></div>
+      <div class="pl-stage"><div class="ps-k">LINE A</div><div class="ps-t">Sparse 主线 · 陈昌</div><div class="ps-d">GroupedSparse4DHead · 2-stage detach</div><div class="ps-s"><span class="st st-dev">研发/验证</span></div></div>
+      <div class="pl-stage"><div class="ps-k">LINE B</div><div class="ps-t">时序+预测 · 张达</div><div class="ps-d">Stream fusion · 关联+轨迹 · 死车标签</div><div class="ps-s"><span class="st st-dev">研发/验证</span></div></div>
+      <div class="pl-stage"><div class="ps-k">FUTURE</div><div class="ps-t">远期</div><div class="ps-d">兼容新增超声波 / 新 Lidar 型号</div><div class="ps-s"><span class="st st-plan">规划</span></div></div>
+    </div>
+    <div class="legend">
+      <div class="lg"><span class="dot" style="background:var(--emerald)"></span>已上线</div>
+      <div class="lg"><span class="dot" style="background:var(--amber)"></span>研发 / 验证中</div>
+      <div class="lg"><span class="dot" style="background:var(--blue)"></span>规划</div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div style="font-weight:700;color:var(--text-2);font-size:14px">配套飞书文档</div>
+    <a class="doc-cta" id="feishuCta" href="#" target="_blank" rel="noopener">📄 打开飞书版「OD 检测方案介绍与迭代计划」<span style="opacity:.6">↗</span></a>
+    <div style="margin-top:22px;font-weight:700;color:var(--text-2);font-size:13px">关联文档</div>
+    <div class="docs" id="allDocs" style="margin-top:8px"></div>
+    <p style="margin-top:20px">本页围绕 OD 现状方案、Sparse（陈昌）/ 时序+预测（张达）两条改进主线与「三可」迭代准则归纳生成 · 暗色展示页。</p>
+    <p style="color:var(--text-4)">数据来源：OD 模型 OnePage、感知模型整体方案 Review，及张达 / 陈昌 的 sparse / 时序 / 预测设计与对比文档（飞书空间 r3c0qt6yjw）。</p>
+  </div>
+</footer>
+
+<script>
+const FS="https://r3c0qt6yjw.feishu.cn";
+const FEISHU_DOC=FS+"/docx/K9apdwRGqoj1kIx38h9cF0Cgnlf";
+const d=(t,u)=>({t,u});
+
+const SPARSE_DOCS=[
+  d("GroupedSparse4DHead 设计文档",FS+"/wiki/TmGhwdCiEiCbQUkH4OkctMjln8f"),
+  d("Sparse 方案开发记录",FS+"/wiki/TltbwgyYLihN0UkQsVkcFlPFnpb"),
+  d("Sparse4D 2stage(cam/fused) vs Dense baseline 对比",FS+"/docx/NI1IdwSldoZiSwxjnCrcszYbnLd"),
+  d("Sparse4D H-DETR cls6 vs 2stage cam-only @ep181",FS+"/docx/UmledGjghoTtOjxHuMGc66I0nkd"),
+  d("Sparse fusion 方案",FS+"/wiki/LNTHw8hX1ipwnrkj0g8cVEUOnBc"),
+];
+const TEMPORAL_DOCS=[
+  d("时序模型进展",FS+"/wiki/Z0dRw2QKtiQ392kGHlucvacynPg"),
+  d("Stream time fusion 轨迹预测方案",FS+"/wiki/VKemwQgoEi6w6kkdh7ycVzFCnIz"),
+  d("时序融合设计文档 1225",FS+"/wiki/P4yNweSazihyHfkirpFcd2k7neh"),
+];
+const PARKING_DOCS=[
+  d("新增泊车位 3D 检测 Query Group 方案",FS+"/wiki/NTmuwDoPDiPcaZkLZRxcCxQKnqb"),
+  d("泊车位角点 CA 方案（polygon / 4 角点）",FS+"/wiki/O47gwRTqqiXdW4kqJjZcIeCZnOh"),
+  d("泊车位角点模型输出接口",FS+"/wiki/F56hwKzAti37nHkgUtRcow46n1g"),
+  d("泊车位 perm 模型可视化（NMS 评测）",FS+"/wiki/PrTEwgVnoi7bL5ksztYceFzQn9e"),
+  d("泊车位数据补采需求",FS+"/wiki/LNzRwRRruiBZSXkaEHFchdNmnVf"),
+];
+const ARCH_DOCS=[
+  d("感知模型整体方案 Review",FS+"/docx/CRbbdtf55oVncxxCX9wcYzVunph"),
+  d("OD 模型 OnePage",FS+"/wiki/TGoAwqsdui4iF7kKeXFcIWMXntr"),
+  d("BEVFormer object_query 分组",FS+"/wiki/ZINLw6VXeiDNLdkmKYAcQwz0n1b"),
+  d("新增泊车位 3D 检测 Query Group 方案",FS+"/wiki/NTmuwDoPDiPcaZkLZRxcCxQKnqb"),
+  d("数采需求 · 动物目标采集",FS+"/wiki/AiYowhdgXi8vPbk5JAkcO3oOnah"),
+  d("感知多任务训练集成 v5",FS+"/wiki/Ea5bwygiZiYMa8khGTXc6OvQn0g"),
+  d("HD/LD 前融合 v2 总览",FS+"/docx/Jn0RdmMISoIb57xmdrDcR0VIn0b"),
+];
+
+const docIcon='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+function chips(arr){return arr.map(x=>`<a class="doc" href="${x.u}" target="_blank" rel="noopener" title="${x.t}">${docIcon}<span class="tt">${x.t}</span></a>`).join("");}
+document.getElementById("sparseDocs").innerHTML=chips(SPARSE_DOCS);
+document.getElementById("temporalDocs").innerHTML=chips(TEMPORAL_DOCS);
+document.getElementById("parkingDocs").innerHTML=chips(PARKING_DOCS);
+document.getElementById("allDocs").innerHTML=chips(PARKING_DOCS.concat(SPARSE_DOCS,TEMPORAL_DOCS,ARCH_DOCS));
+
+// stats
+const docCount=new Set(PARKING_DOCS.concat(SPARSE_DOCS,TEMPORAL_DOCS,ARCH_DOCS).map(x=>x.u)).size;
+const STATS=[
+  {n:"5+1",l:"五大类 + Animal query",c:"var(--blue)"},
+  {n:"2",l:"改进主线 Sparse · 时序+预测",c:"var(--emerald)"},
+  {n:"1 天",l:"CIPV 60m 验证上线",c:"var(--amber)"},
+  {n:docCount+"+",l:"关联飞书文档",c:"var(--violet)"},
+];
+document.getElementById("stats").innerHTML=STATS.map(s=>`<div class="stat reveal"><div class="n" style="color:${s.c}">${s.n}</div><div class="l">${s.l}</div></div>`).join("");
+
+// feishu CTA
+document.getElementById("feishuCta").href=FEISHU_DOC;
+document.getElementById("heroCta").innerHTML=`<a class="doc-cta" href="${FEISHU_DOC}" target="_blank" rel="noopener">📄 飞书文档 · OD 检测方案介绍与迭代计划 <span style="opacity:.6">↗</span></a>`;
+
+// reveal
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add("in")}),{threshold:.08});
+document.querySelectorAll("section, .reveal").forEach(el=>{el.classList.add("reveal");io.observe(el)});
+</script>
+</body>
+</html>

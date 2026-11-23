@@ -132,22 +132,29 @@ summary_en: One-line English summary.
 - 顶部加了一条「← 返回新主页 / Home」的细栏；
 - 顺手修了 3 个旧站遗留的死链（详见 `_build/docs/migration.md`）。
 
-## 研究站（`/design/`）
+## 研究站：已并入博客（/blog/）
 
-`design/` 下是 12 个独立成站的研究笔记 / 综述，由 `_build/design.py` 从两个源目录复制，
-清单在 `_build/gen/data_design.py`。
+原来单独挂在 `/design/` 的研究站，现在和文章合并成一个博客列表：每条要么是
+`/blog/<slug>.html`（Markdown 文章），要么是 `/blog/<slug>/`（一个站点）。没有独立的
+「研究站」入口了。
 
-**源目录写在 `_build/sources.local.json`（已 gitignore），不进仓库**——里面是本机路径，不公开。
+由 `_build/design.py` 从两个源目录复制，清单在 `_build/gen/data_design.py`。
+**源目录与密码写在 `_build/sources.local.json`（已 gitignore），不进仓库。**
 
 | 源 | 说明 | 条目 |
 |---|---|---|
-| `design` | 个人研究站点 | `wam-survey`、`gs-reading`、`world-model-reading`、`embodied-wam`、`distill-research`、`fsd-v15`、`vla-rl` |
-| `demos` | 论文阅读 demo | `cvpr-awards`、`cosmos-reading`、`deepseek-v4-reading`、`mamba-intro`、`vggt-reading` |
+| `design` | 个人研究站点 | 7 个（世界模型综述、3DGS 阅读站、精读笔记、具身 WAM、蒸馏、FSD、VLA-RL） |
+| `demos` | 论文阅读与方案文档 | 20 个站点 + `world-model` 内部的 13 个子页面各成一条 |
 
-`demos` 组标了 `"images": "webp"`，截图会被重新编码（最长边 1500、q80）并把 HTML 里的引用改成 `.webp`。
+`demos` 组标了 `"images": "webp"`：截图重新编码（最长边 1500、q80），HTML 引用同步改成 `.webp`。
 
-它们同时出现在博客列表里（带「站」标记），并各自有 `/design/<slug>/` 入口。日期不是手写的，
-取源目录里最新的文件修改时间。
+### 密码页
+
+`world-model` 的入口页把正文用 AES-256-GCM 加密在 `<script id="wm-payload">` 里，**密码校验脚本
+同时是渲染器**，直接删掉会让页面空白。所以构建时会真正解密（`_build/tools/decrypt_wm.mjs`，
+Node WebCrypto，密码取自本地配置），把明文注入 `<main>`，再移除密码层与校验脚本。当前发布页已无密码。
+
+日期不手写：取该条目源文件的**最早存在时间**（每个文件取 ctime 与 mtime 中更早者，再取整组最早）。
 
 **只发布自建正文**，以下内容被排除：
 

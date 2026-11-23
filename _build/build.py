@@ -301,7 +301,6 @@ def main():
     for lang in ("zh", "en"):
         home_file = "index.html" if lang == "zh" else "en/index.html"
         made.append(w(home_file, R.render_home(lang, posts)))
-        made.append(w(url(lang, "design/index.html").lstrip("/"), R.render_design_index(lang)))
         made.append(w(url(lang, "experience.html").lstrip("/"), R.render_experience(lang)))
         made.append(w(url(lang, "publications.html").lstrip("/"), R.render_publications(lang)))
         made.append(w(url(lang, "projects.html").lstrip("/"), R.render_projects(lang)))
@@ -333,12 +332,13 @@ def main():
         pages.append((lang, "opensource.html", "0.8"))
         pages.append((lang, "about.html", "0.8"))
         pages.append((lang, "blog/index.html", "0.7"))
-        pages.append((lang, "design/index.html", "0.6"))
         if lang == "zh":
             for p in posts:
                 pages.append((lang, "blog/%s.html" % p["slug"], "0.6"))
     for d in R.DESIGN:
-        pages.append(("zh", "design/%s/index.html" % d["slug"], "0.5"))
+        if d.get("href"):
+            continue
+        pages.append(("zh", "blog/%s/index.html" % d["slug"], "0.5"))
     made.append(w("sitemap.xml", sitemap(pages)))
     made.append(w("robots.txt", robots()))
     made.append(w(".nojekyll", ""))
