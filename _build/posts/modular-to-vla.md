@@ -2,7 +2,6 @@
 title: 从模块化感知到单阶段 VLA：三次换代里反复出现的同一个坑
 tags_en: VLA, End-to-end, Perception
 title_en: "From modular perception to one-stage VLA: the same trap, three generations in a row"
-date: 2026-11-18
 tags: VLA, 端到端, 感知
 summary: 每一次「把感知融进端到端」，真正难的都不是模型结构，而是怎么在不破坏单任务指标的前提下，让多任务在同一份数据上共存。
 summary_en: Every time we fold perception into end-to-end driving, the hard part is never the architecture — it is keeping multi-task training alive on the same data without breaking single-task metrics.

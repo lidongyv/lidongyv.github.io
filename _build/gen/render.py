@@ -193,12 +193,19 @@ def load_posts(posts_dir):
             raw = fh.read()
         fm, body = parse_front_matter(raw)
         slug = fm.get("slug") or fn.rsplit(".", 1)[0]
+        # no hand-written date: use the earliest moment the file existed, never
+        # the build or push time
+        date = fm.get("date") or ""
+        if not date:
+            import datetime as _dt
+            st = os.stat(path)
+            date = _dt.date.fromtimestamp(min(st.st_ctime, st.st_mtime)).isoformat()
         posts.append({
             "slug": slug,
             "file": fn,
             "title": fm.get("title", slug),
             "title_en": fm.get("title_en", fm.get("title", slug)),
-            "date": fm.get("date", ""),
+            "date": date,
             "tags": [x.strip() for x in (fm.get("tags") or "").split(",") if x.strip()],
             "tags_en": [x.strip() for x in (fm.get("tags_en") or "").split(",") if x.strip()],
             "summary": fm.get("summary", ""),

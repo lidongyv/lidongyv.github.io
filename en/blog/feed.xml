@@ -9,10 +9,33 @@
     <lastBuildDate>Mon, 23 Nov 2026 09:00:00 +0800</lastBuildDate>
 
     <item>
+      <title>How a world model actually earns its keep in production: four questions it has to answer</title>
+      <link>https://lidongyv.github.io/en/blog/world-model-in-production.html</link>
+      <guid isPermaLink="true">https://lidongyv.github.io/en/blog/world-model-in-production.html</guid>
+      <pubDate>Mon, 23 Nov 2026 09:00:00 +0800</pubDate>
+      <description>If a world model only generates pretty videos, it has no place in production. It has to answer four questions first: evaluation, replay, conditioning, and cost.</description>
+      <content:encoded><![CDATA[<p>我在 NVIDIA 和新石器都做过世界模型这条线，被问得最多的问题是「世界模型到底解决什么问题」。我的回答一直很朴素：<strong>它得先在工程流程里占一个位置，而不是先在排行榜上占一个位置。</strong></p>
+<p>对我来说，这个位置要过四道关。</p>
+<h2 id="一-能不能当考场-而不只是渲染器">一、能不能当考场，而不只是渲染器</h2>
+<p>单场景重建式的渲染很酷，但它对评测没用——你只能重建你录过的那一段。所以后来我们把 render 的目标从「单场景重建」改成「泛化的生成」，DiT 和 3D-GS 只作为渲染手段，而不是目的本身。</p>
+<p>有意义的用法是：给定同一段场景，模型能不能生成「如果那辆车早 0.3 秒变道」的版本？如果能，你就可以拿它做闭环评测，而不用真的在路上去复现一次危险场景。</p>
+<h2 id="二-能不能复现失败-case">二、能不能复现失败 case</h2>
+<p>数据闭环里最贵的一环是「把线上问题变回可训练的数据」。我们当时的做法是：VLM 自动 triage 找出问题、离线感知模型自动标注、再用世界模型把失败 case 扩展成多个变体。这条路把冗余从 80% 压到 5%，把 issue 解决周期从 D+10 压到 D+3。</p>
+<p>世界模型在这里的价值是<strong>放大样本</strong>，不是替代真值。</p>
+<h2 id="三-能不能被条件注入">三、能不能被条件注入</h2>
+<p>如果世界模型只能无条件下生成，那它跟数据增广没有本质区别。真正有用的是 conditional inception：语言（下一段该左转）、layout（这排车该在哪）、轨迹（自车要走这条线）。</p>
+<p>这也是为什么我们把 backbone 和 CoT inception 都从 Cosmos / VGGT / Qwen 蒸馏过来——<strong>conditioning 的语义必须和规划器共享</strong>，否则生成出来的场景没法用来评测规划。</p>
+<h2 id="四-成本能不能算得过来">四、成本能不能算得过来</h2>
+<p>这一条最容易被忽略。一个 6 个月、13 人、3500 卡的端到端项目，如果世界模型推理成本高于真车采集成本，它在量产流程里就不成立。所以我们做的是「预训练一次、渲染按需」——render 的算力只花在需要复现的那批 case 上。</p>
+<h2 id="一个反向的经验">一个反向的经验</h2>
+<p>做世界模型最容易犯的错，是把它当成一个更大的模型去做，而不是<strong>当成一个更严格的评测装置去做</strong>。前者会一路追指标，最后没人知道它好不好；后者会逼你先定义什么叫「好」，然后模型自然朝着那个方向收敛。</p>
+<p>对 VLA 来说这件事更明显：当策略直接吃图像流、感知元素变成 token 之后，唯一能把「策略变好了」和「数据泄漏了」区分开的，就是那个能条件生成反事实场景的世界模型。</p>]]></content:encoded>
+    </item>
+    <item>
       <title>From modular perception to one-stage VLA: the same trap, three generations in a row</title>
-      <link>https://lidongyv.github.io/en/blog/2026-11-18-modular-to-vla.html</link>
-      <guid isPermaLink="true">https://lidongyv.github.io/en/blog/2026-11-18-modular-to-vla.html</guid>
-      <pubDate>Wed, 18 Nov 2026 09:00:00 +0800</pubDate>
+      <link>https://lidongyv.github.io/en/blog/modular-to-vla.html</link>
+      <guid isPermaLink="true">https://lidongyv.github.io/en/blog/modular-to-vla.html</guid>
+      <pubDate>Mon, 23 Nov 2026 09:00:00 +0800</pubDate>
       <description>Every time we fold perception into end-to-end driving, the hard part is never the architecture — it is keeping multi-task training alive on the same data without breaking single-task metrics.</description>
       <content:encoded><![CDATA[<p>我把 2021 年以来的工作按「感知在不在策略里」分成三代：模块化感知、两阶段端到端、单阶段 VLA。三代的技术细节差别很大，但每一代我都撞在同一堵墙上：<strong>多任务指标与单模型之间的取舍</strong>。</p>
 <h2 id="第一代-模块化-指标好看但学不动">第一代：模块化，指标好看但学不动</h2>
@@ -32,9 +55,9 @@
     </item>
     <item>
       <title>Three years without a map: three model generations from HD map to Mapless</title>
-      <link>https://lidongyv.github.io/en/blog/2026-11-05-mapless-two-generations.html</link>
-      <guid isPermaLink="true">https://lidongyv.github.io/en/blog/2026-11-05-mapless-two-generations.html</guid>
-      <pubDate>Thu, 05 Nov 2026 09:00:00 +0800</pubDate>
+      <link>https://lidongyv.github.io/en/blog/mapless-two-generations.html</link>
+      <guid isPermaLink="true">https://lidongyv.github.io/en/blog/mapless-two-generations.html</guid>
+      <pubDate>Mon, 23 Nov 2026 09:00:00 +0800</pubDate>
       <description>When we shipped China's first Mapless solution in 2023, the hard part was not removing the map — it was getting stable topology out of a model that no longer had map priors.</description>
       <content:encoded><![CDATA[<p>「无图」这个词很容易被误解成「把地图模块删掉」。实际上删掉地图之后，所有原来由地图免费提供的东西——拓扑、路口结构、车道归属——都要由模型自己学出来。</p>
 <h2 id="第一次换代-segment-based-所见即所得">第一次换代：segment-based，所见即所得</h2>
@@ -50,29 +73,6 @@
 <p>如果只允许留三条经验：</p>
 <ol><li><strong>无图的本质是拓扑建模</strong>，不是检测精度。精度再高，没有拓扑就无法支撑决策。</li><li><strong>换表示之前先换数据规则</strong>。query-based 的收益有一半来自标注规则和数据配平的重写。</li><li><strong>换代的判据是「能不能进端到端」</strong>，不是「这一代指标涨了多少」。token-based 之所以值得做，是因为它让后面两代成为可能。</li></ol>
 <p>再往后就是世界模型那条线了，我在另一篇里写。</p>]]></content:encoded>
-    </item>
-    <item>
-      <title>How a world model actually earns its keep in production: four questions it has to answer</title>
-      <link>https://lidongyv.github.io/en/blog/2026-10-20-world-model-in-production.html</link>
-      <guid isPermaLink="true">https://lidongyv.github.io/en/blog/2026-10-20-world-model-in-production.html</guid>
-      <pubDate>Tue, 20 Oct 2026 09:00:00 +0800</pubDate>
-      <description>If a world model only generates pretty videos, it has no place in production. It has to answer four questions first: evaluation, replay, conditioning, and cost.</description>
-      <content:encoded><![CDATA[<p>我在 NVIDIA 和新石器都做过世界模型这条线，被问得最多的问题是「世界模型到底解决什么问题」。我的回答一直很朴素：<strong>它得先在工程流程里占一个位置，而不是先在排行榜上占一个位置。</strong></p>
-<p>对我来说，这个位置要过四道关。</p>
-<h2 id="一-能不能当考场-而不只是渲染器">一、能不能当考场，而不只是渲染器</h2>
-<p>单场景重建式的渲染很酷，但它对评测没用——你只能重建你录过的那一段。所以后来我们把 render 的目标从「单场景重建」改成「泛化的生成」，DiT 和 3D-GS 只作为渲染手段，而不是目的本身。</p>
-<p>有意义的用法是：给定同一段场景，模型能不能生成「如果那辆车早 0.3 秒变道」的版本？如果能，你就可以拿它做闭环评测，而不用真的在路上去复现一次危险场景。</p>
-<h2 id="二-能不能复现失败-case">二、能不能复现失败 case</h2>
-<p>数据闭环里最贵的一环是「把线上问题变回可训练的数据」。我们当时的做法是：VLM 自动 triage 找出问题、离线感知模型自动标注、再用世界模型把失败 case 扩展成多个变体。这条路把冗余从 80% 压到 5%，把 issue 解决周期从 D+10 压到 D+3。</p>
-<p>世界模型在这里的价值是<strong>放大样本</strong>，不是替代真值。</p>
-<h2 id="三-能不能被条件注入">三、能不能被条件注入</h2>
-<p>如果世界模型只能无条件下生成，那它跟数据增广没有本质区别。真正有用的是 conditional inception：语言（下一段该左转）、layout（这排车该在哪）、轨迹（自车要走这条线）。</p>
-<p>这也是为什么我们把 backbone 和 CoT inception 都从 Cosmos / VGGT / Qwen 蒸馏过来——<strong>conditioning 的语义必须和规划器共享</strong>，否则生成出来的场景没法用来评测规划。</p>
-<h2 id="四-成本能不能算得过来">四、成本能不能算得过来</h2>
-<p>这一条最容易被忽略。一个 6 个月、13 人、3500 卡的端到端项目，如果世界模型推理成本高于真车采集成本，它在量产流程里就不成立。所以我们做的是「预训练一次、渲染按需」——render 的算力只花在需要复现的那批 case 上。</p>
-<h2 id="一个反向的经验">一个反向的经验</h2>
-<p>做世界模型最容易犯的错，是把它当成一个更大的模型去做，而不是<strong>当成一个更严格的评测装置去做</strong>。前者会一路追指标，最后没人知道它好不好；后者会逼你先定义什么叫「好」，然后模型自然朝着那个方向收敛。</p>
-<p>对 VLA 来说这件事更明显：当策略直接吃图像流、感知元素变成 token 之后，唯一能把「策略变好了」和「数据泄漏了」区分开的，就是那个能条件生成反事实场景的世界模型。</p>]]></content:encoded>
     </item>
   </channel>
 </rss>

@@ -1,6 +1,6 @@
-# FSD V15 / Technical Map
+# 管中窥豹 FSD V15 / A Narrow View of FSD V15
 
-A bilingual (Chinese / English), single-page technical teardown of Tesla FSD V15: the public facts, the engineering inferences, and the open hypotheses — with 11 original diagrams and a static WeChat edition.
+A bilingual (Chinese / English), single-page, deliberately limited reading of Tesla FSD V15: public facts, second-hand relays, engineering inferences, and open questions — with 11 original diagrams and a static WeChat edition.
 
 **Live entry:** `index.html`
 
@@ -11,7 +11,7 @@ A bilingual (Chinese / English), single-page technical teardown of Tesla FSD V15
 | File | Purpose |
 |---|---|
 | `index.html` | The main bilingual, interactive article. Single file + `assets/` images. |
-| `assets/fig-01.png` … `fig-09.png` | The 11 original diagrams (1600×1000, 2× PNG). |
+| `assets/fig-01.png` … `fig-11.png` | The 11 original diagrams (2400×1500, optimized PNG). |
 | `wechat-zh.html` | Static, inline-styled Chinese edition for the WeChat editor. |
 | `wechat-en.html` | Static, inline-styled English edition for the WeChat editor. |
 | `sources.md` | Source list, evidence levels, and notes on conflicting numbers. |
@@ -47,12 +47,11 @@ A bilingual (Chinese / English), single-page technical teardown of Tesla FSD V15
 
 ---
 
-## 3. Print / PDF
+## 3. Print (not part of the UI)
 
-- Click **打印 / PDF** in the top bar, or press `Ctrl/Cmd + P`.
-- The print stylesheet hides navigation, TOC, rail, lightbox, and buttons, and prints the currently selected language.
-- For best results: A4, default margins, “Background graphics” on.
-- Figures are intentionally dense; use **⤢ Zoom** / click any figure for the full-resolution view.
+The article has a print stylesheet for personal use, but there is no print button on the page. Use the browser's `Ctrl/Cmd + P` if you need it. The WeChat edition is separate and described below.
+
+For best results: A4, default margins, “Background graphics” on.
 
 ---
 
@@ -110,11 +109,13 @@ The figures use only HTML/CSS (no external libraries), so they are reproducible 
 
 - This is **not** an official Tesla document. It combines public sources, the operator's engineering notes, and the author's inference.
 - Evidence labels: `PUBLIC` / `REPORTED` / `INFERRED` / `HYPOTHESIS`. See `sources.md`.
-- **4B vs 10B:** 3B + 1B = 4B is the on-vehicle graph (Musk post, screenshot); the reported “10B” is likely a training/cloud teacher. Tesla has not clarified. The article treats this as an open scope question, not a contradiction.
+- **4B / 10B / Grok:** 3B + 1B = 4B is the on-car graph (second-hand Musk post). The reported “10B” has an unclear scope, conflicts with 3B+1B, and is **not** treated as the teacher. Grok is a different order of model, far larger than 10B.
 - **25×:** official framing is “critical intervention rate” improvement versus V14, not “25× safer” and not “25%”. The baseline is not public.
 - **Grok + FSD:** public evidence supports a shared general-pretrain stack / internet-video encoder; there is no public evidence that Grok weights directly co-train with FSD. The article separates the readings.
-- **V15 pipeline:** the “general pretrain → distill → deploy” diagram is an inference, not an official pipeline.
-- **Latency / 18 Hz / 8-frame chunks:** community teardown and arithmetic, not Tesla disclosures.
+- **UVE:** Universal Vision Encoder (not “Unified”); the full name comes from second-hand relays of Musk's posts, not the release notes.
+- **18 Hz / 8 frames / 36 fps / half TRIP:** also from second-hand relays of Musk's posts and media reconstruction; not official release-note text.
+- **V15 pipeline:** the “general VLM/world-model pretrain → VLA/WAM adaptation → compression/deployment” diagram is an inference, not an official pipeline. SFT's status is unknown.
+- **Task taxonomy:** three families (4D dense world, 4D sparse world, planner) follow the operator's framing; language/VLM is treated as an interface, not a main family.
 - Figures are dense by design. The web page supports click-to-zoom; the WeChat edition relies on tap-to-zoom.
 
 If you have first-hand V15 details, the most useful additions are: UVE pretraining data mix, 4D NVS conditioning, compact-token structure, and teacher/student distillation configuration.
@@ -124,7 +125,7 @@ If you have first-hand V15 details, the most useful additions are: UVE pretraini
 ## 7. Citation
 
 ```
-FSD V15 Technical Map, 2026-11-23, v1.0.
+管中窥豹 FSD V15, 2026-11-23, v1.1.
 ```
 
 License: text and original diagrams © 2026. Public source excerpts remain the property of their respective owners. If you republish, please link back to the original sources listed in `sources.md`.

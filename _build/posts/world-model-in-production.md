@@ -2,7 +2,6 @@
 title: 世界模型在量产里到底怎么用：四个必须回答的问题
 tags_en: World models, WAM, Evaluation
 title_en: "How a world model actually earns its keep in production: four questions it has to answer"
-date: 2026-10-20
 tags: 世界模型, WAM, 评测
 summary: 如果世界模型只被用来「生成好看的视频」，它在量产里就没有位置。它必须先回答评测、复现、条件注入和成本这四个问题。
 summary_en: If a world model only generates pretty videos, it has no place in production. It has to answer four questions first: evaluation, replay, conditioning, and cost.

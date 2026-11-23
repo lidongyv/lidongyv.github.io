@@ -169,20 +169,29 @@ def _scrub(text):
 
 
 def _entry_date(src_dir, files):
-    """Use the newest source mtime — a real number, not an invented date."""
-    newest = 0.0
-    for abs_p, _rel in files[:400]:
+    """Earliest moment this content is known to have existed.
+
+    Per file take the earlier of creation and modification time (a copy bumps
+    ctime while preserving mtime, and an edit bumps mtime while preserving ctime),
+    then take the earliest across the project. Deliberately not the build date and
+    not the newest file: the entry should show when the work was made.
+    """
+    import datetime
+    earliest = None
+    for abs_p, _rel in files:
         try:
-            newest = max(newest, os.path.getmtime(abs_p))
+            st = os.stat(abs_p)
         except OSError:
-            pass
-    if newest <= 0:
+            continue
+        for ts in (st.st_ctime, st.st_mtime):
+            if ts and (earliest is None or ts < earliest):
+                earliest = ts
+    if earliest is None:
         try:
-            newest = os.path.getmtime(src_dir)
+            earliest = os.path.getmtime(src_dir)
         except OSError:
             return ""
-    import datetime
-    return datetime.date.fromtimestamp(newest).isoformat()
+    return datetime.date.fromtimestamp(earliest).isoformat()
 
 
 def build(report=False):

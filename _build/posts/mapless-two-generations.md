@@ -2,7 +2,6 @@
 title: 无图三年：从 HD map 到 Mapless 的三次模型换代
 tags_en: Mapless, Lane detection, Data loop
 title_en: "Three years without a map: three model generations from HD map to Mapless"
-date: 2026-11-05
 tags: 无图, 车道线, 数据闭环
 summary: 2023 年交付国内第一套 Mapless 方案时，真正的难点不是「不要地图」，而是让模型在没有地图先验时依然能稳定输出拓扑。
 summary_en: When we shipped China's first Mapless solution in 2023, the hard part was not removing the map — it was getting stable topology out of a model that no longer had map priors.
