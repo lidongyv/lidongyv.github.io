@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """Everything that is published as a browsable site under /blog/.
 
 Source directories live in _build/sources.local.json (gitignored). Dates are not
@@ -36,7 +36,7 @@ DESIGN = [
      "summary": "模型蒸馏、剪枝与推理加速的调研与方案对比。",
      "summary_en": "Distillation, pruning and inference acceleration, with scheme comparisons.",
      "tags": ["蒸馏", "部署"], "tags_en": ["Distillation", "Deployment"]},
-    {"slug": "fsd-v15", "src": "fsd-v15", "skip": ["src"],
+    {"slug": "fsd-v15", "src": "fsd-v15", "skip": ["src"], "bilingual": True,
      "title": "FSD V15 拆解", "title_en": "Inside FSD V15",
      "summary": "把 FSD V15 的公开信息拆成技术组件，并给出自己的判断。",
      "summary_en": "Breaking the public information on FSD V15 into technical components.",

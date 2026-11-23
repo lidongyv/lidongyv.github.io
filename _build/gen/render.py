@@ -407,7 +407,7 @@ def _blog_rows(lang, posts, include_design=True):
                 "summary": d["summary"] if lang == "zh" else d["summary_en"],
                 "tags": " / ".join(d["tags"] if lang == "zh" else (d.get("tags_en") or d["tags"])),
                 "minutes": None,
-                "badge": "站" if lang == "zh" else "中文",
+                "badge": "站" if lang == "zh" else ("中 / EN" if d.get("bilingual") else "中文"),
             })
     rows.sort(key=lambda r: r["date"], reverse=True)
     return rows

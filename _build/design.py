@@ -272,9 +272,13 @@ def _inject_lang_note(index_path, entry):
     style = ("font:15px/1.65 -apple-system,Segoe UI,PingFang SC,Microsoft YaHei,sans-serif;"
              "max-width:860px;margin:18px auto;padding:14px 18px;"
              "border:1px solid rgba(128,128,128,.35);border-radius:12px;background:rgba(128,128,128,.06)")
+    if entry.get("bilingual"):
+        tail = ("This page has its own 中文 / EN switch at the top.")
+    else:
+        tail = "The full text of this page is in Chinese."
     note = ('<div class="ldy-en-note" lang="en" style="%s"><strong>%s</strong><br>%s<br>'
-            '<span style="opacity:.75">The full text of this page is in Chinese.</span></div>'
-            % (style, _html.escape(entry["title_en"]), _html.escape(entry["summary_en"])))
+            '<span style="opacity:.75">%s</span></div>'
+            % (style, _html.escape(entry["title_en"]), _html.escape(entry["summary_en"]), tail))
     raw = io.open(index_path, "rb").read().decode("utf-8", "surrogateescape")
     if "ldy-en-note" in raw:
         return
