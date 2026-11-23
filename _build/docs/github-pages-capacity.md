@@ -53,13 +53,24 @@
 3. **不要在仓库里放大视频 / 大模型权重**
    单文件 100 MiB 是硬墙，2 GB 是单次推送的硬墙。真要放就走 Releases 或外部对象存储。
 
-## 与你「每年付费」的关系
+## 与你「每年付费」的关系（重要更正）
 
-`lidongyv.github.io` 这种用户站点，在 **GitHub Free** 上就已经是公开可用的，
-**不需要付费**。付费（Pro/Team）买到的是私有仓库 Pages、受保护分支等，
-并不会提高 1 GB / 100 GB 这两个上限。所以：
-- 如果只是个人主页 + 博客，Free 足够，**这笔钱可以省下来**；
-- 如果 Pay 是为了「私有仓库也能发布 Pages」或团队协作，那就保留。
+实测发现：**这个仓库当前是 private**，且 Pages 的 `build_type` 是 `workflow`。这有两个直接后果。
+
+1. **私有仓库发 Pages 需要付费套餐。** 官方文档写的是：Pages「available in public repositories with GitHub Free…
+   and in public and private repositories with **GitHub Pro / Team / Enterprise Cloud**」。
+   所以只要你保持仓库私有，这笔 Pro 年费是**必须的**，不是可选项。
+   反过来说——**把仓库改成 public，这笔钱立刻就能省掉**，因为个人站点在公开仓库上用 Free 就能发。
+2. **`build_type: workflow` 意味着必须有一个 Actions 工作流才会真正发布。** 之前仓库里没有任何 workflow，
+   所以最后一次成功发布停在 **2022-10-29**，之后所有推送都没上线（包括 2026 年那几次 cvpr2022 提交）。
+   现在 `.github/workflows/pages.yml` 已经补上，推 master 即自动发布。
+
+### 1 GB / 100 GB 这两个额度与付费无关
+
+Free 和 Pro 完全一样，加钱买不到更高配额。所以判断很简单：
+
+- 只是个人主页 + 博客 → **把仓库改成 public，年费可以省**；
+- 需要私有仓库也能发布（或用私有仓库放草稿）→ 保留付费。
 
 ## 当前站点体积构成（实测）
 

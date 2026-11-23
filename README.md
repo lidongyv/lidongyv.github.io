@@ -11,7 +11,8 @@
 **没有技术栈。** 输出的是预渲染好的 HTML + 一个手写 CSS + 一个小 JS，GitHub Pages 直接托管：
 
 - 不依赖 Jekyll（仓库根目录有 `.nojekyll`），不消耗「每小时 10 次构建」配额；
-- 不需要 GitHub Actions；
+- 发布由 `.github/workflows/pages.yml` 完成：仓库的 Pages 配置是 `build_type: workflow`，
+  没有 workflow 就不会发布（2022-10-29 之后站点停止更新就是这个原因，现已修好）；
 - 无外部字体、无 CDN、无追踪脚本，首屏没有任何阻塞资源；
 - 深色模式自动跟随系统，也可手动切换并记忆；
 - 中英双语，右上角切换。
@@ -63,7 +64,8 @@ git commit -m "site: update"
 git push
 ```
 
-推送后约 1 分钟生效。**不需要**在仓库设置里选主题或开 Actions。
+推送后 `.github/workflows/pages.yml` 会自动发布，约 1 分钟生效。
+进度看 Actions 页面的「Deploy site to GitHub Pages」。**不需要**在仓库设置里选主题。
 
 ## 内容在哪里改
 
