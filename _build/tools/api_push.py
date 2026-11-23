@@ -118,35 +118,34 @@ def main():
         entries.append({"path": path, "mode": mode, "type": "blob", "sha": sha})
         print("  %s %s -> %s" % ("modify" if state.startswith("M") else "add", path, sha[:8]))
 
-    # what the server will produce
-    status, rtree_check = call("POST", "%s/repos/%s/git/trees" % (API, REPO),
-                               {"base_tree": base_tree, "tree": entries}) if apply else (0, {})
-    if apply:
-        if status not in (200, 201):
-            print("tree failed: %s %s" % (status, rtree_check))
-            return 1
-        if rtree_check["sha"] != tree:
-            print("TREE MISMATCH: server %s != local %s" % (rtree_check["sha"], tree))
-            return 1
-        print("tree matches local: %s" % tree)
-
-    # upload only blobs the server does not already have
-    if apply:
-        for e in entries:
-            if e["sha"] is None:
-                continue
-            blob = git("cat-file", "blob", e["sha"])
-            st, r = call("POST", "%s/repos/%s/git/blobs" % (API, REPO),
-                         {"content": base64.b64encode(blob).decode("ascii"), "encoding": "base64"})
-            if st not in (200, 201):
-                print("  blob re-upload %s -> %s (already exists is fine)" % (e["path"], st))
-            elif r["sha"] != e["sha"]:
-                print("  BLOB MISMATCH %s: %s != %s" % (e["path"], r["sha"], e["sha"]))
-                return 1
-
     if not apply:
         print("\ndry run: %d entr(ies)" % len(entries))
         return 0
+
+    # blobs first: GitHub refuses a tree that references a blob it does not have
+    for e in entries:
+        if e["sha"] is None:
+            continue
+        blob = git("cat-file", "blob", e["sha"])
+        st, r = call("POST", "%s/repos/%s/git/blobs" % (API, REPO),
+                     {"content": base64.b64encode(blob).decode("ascii"), "encoding": "base64"})
+        if st not in (200, 201):
+            print("blob failed %s: %s %s" % (e["path"], st, r))
+            return 1
+        if r["sha"] != e["sha"]:
+            print("BLOB MISMATCH %s: %s != %s" % (e["path"], r["sha"], e["sha"]))
+            return 1
+    print("uploaded/verified %d blob(s)" % len([e for e in entries if e["sha"]]))
+
+    status, rtree = call("POST", "%s/repos/%s/git/trees" % (API, REPO),
+                         {"base_tree": base_tree, "tree": entries})
+    if status not in (200, 201):
+        print("tree failed: %s %s" % (status, rtree))
+        return 1
+    if rtree["sha"] != tree:
+        print("TREE MISMATCH: server %s != local %s" % (rtree["sha"], tree))
+        return 1
+    print("tree matches local: %s" % tree)
 
     status, rnew = call("POST", "%s/repos/%s/git/commits" % (API, REPO), {
         "message": message,
@@ -161,18 +160,27 @@ def main():
     server_sha = rnew["sha"]
     print("server commit: %s" % server_sha)
 
-    # recreate locally with UTC dates so both sides carry the same object
-    env = dict(os.environ)
-    env["GIT_AUTHOR_NAME"] = an
-    env["GIT_AUTHOR_EMAIL"] = ae
-    env["GIT_AUTHOR_DATE"] = ad_utc
-    env["GIT_COMMITTER_NAME"] = cn
-    env["GIT_COMMITTER_EMAIL"] = ce
-    env["GIT_COMMITTER_DATE"] = cd_utc
-    local_utc = git("commit-tree", tree, "-p", parent, "-m", message, env=env).decode().strip()
+    # Recreate the same commit object locally. GitHub stores the message without
+    # the trailing newline that `git commit-tree -m` adds, so the object is built
+    # byte for byte and written with `git hash-object -w`.
+    head_lines = git("cat-file", "commit", head).decode("utf-8").split("\n\n", 1)[0].split("\n")
+
+    def line_of(prefix):
+        return [l for l in head_lines if l.startswith(prefix + " ")][0]
+
+    def utc(line):
+        pre, epoch, _tz = line.rsplit(" ", 2)
+        return "%s %s +0000" % (pre, epoch)
+
+    body = "%s\n%s\n%s\n%s\n\n%s" % (
+        line_of("tree"), line_of("parent"), utc(line_of("author")),
+        utc(line_of("committer")), message.rstrip("\n"))
+    proc = subprocess.run(["git", "hash-object", "-t", "commit", "--stdin", "-w"],
+                          cwd=ROOT, input=body.encode("utf-8"), capture_output=True)
+    local_utc = proc.stdout.decode().strip()
     print("local  (UTC) : %s" % local_utc)
     if local_utc != server_sha:
-        print("WARNING: UTC-normalised local commit still differs; leaving refs alone")
+        print("WARNING: rebuilt local commit still differs; leaving local ref alone")
         return 1
 
     status, rref = call("PATCH", "%s/repos/%s/git/refs/heads/master" % (API, REPO),
@@ -183,6 +191,7 @@ def main():
     print("master -> %s" % rref["object"]["sha"])
 
     git("update-ref", "refs/heads/master", local_utc, head)
+    git("update-ref", "refs/remotes/origin/master", local_utc)
     git("reset", "--mixed", "-q")
     print("local master repointed to %s (worktree untouched)" % local_utc)
     return 0
