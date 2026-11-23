@@ -66,9 +66,9 @@ def icon_solid(name, cls=""):
 NAV = [
     ("home", L("主页", "Home"), "index.html"),
     ("experience", L("职业经历", "Experience"), "experience.html"),
-    ("projects", L("项目", "Projects"), "projects.html"),
     ("publications", L("论文", "Publications"), "publications.html"),
     ("blog", L("博客", "Blog"), "blog/index.html"),
+    ("projects", L("项目", "Projects"), "projects.html"),
     ("opensource", L("开源", "Open source"), "opensource.html"),
 ]
 

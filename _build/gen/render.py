@@ -310,18 +310,18 @@ def render_home(lang, posts):
   </div>
 </section>
 
+<section class="section" id="notes">
+  <div class="wrap">
+    {blog_head}
+    {blog_list}
+  </div>
+</section>
+
 <section class="section" id="open-source">
   <div class="wrap">
     {repo_head}
     <div class="repo-grid">{repos}</div>
     <div class="cta-row" style="margin-top:24px">{repo_cta}</div>
-  </div>
-</section>
-
-<section class="section" id="notes">
-  <div class="wrap">
-    {blog_head}
-    {blog_list}
   </div>
 </section>
 
