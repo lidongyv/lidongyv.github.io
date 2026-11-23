@@ -64,7 +64,7 @@ EDUCATION = [
         "dept": L("计算机学院", "School of Computer Science"),
         "when": "2016.08 — 2019.06",
         "where": L("北京", "Beijing"),
-        "note": L("导师：贾云得教授、吴宇威教授", "Advisors: Prof. Yunde Jia, Prof. Yuwei Wu"),
+        "note": L("导师：贾云得教授、武玉伟教授", "Advisors: Prof. Yunde Jia, Prof. Yuwei Wu"),
     },
     {
         "school": L("中国海洋大学", "Ocean University of China"),
