@@ -266,6 +266,19 @@ def _unlock(html, src_path=None):
 
 BACKBAR_CSS = """
 <style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
 .ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
  font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
 .ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
@@ -275,22 +288,30 @@ BACKBAR_CSS = """
 .ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
 .ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
 .ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
-@media print{.ldy-backbar{display:none}}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 """
 
 
 def _backbar_html(is_en):
     if is_en:
-        home, prof, blog = "Home", "Profile", "Blog"
+        home, prof, blog = "Back to homepage", "Profile", "Blog"
+        hint = ""
     else:
         home, prof, blog = "返回主页", "个人资料", "博客"
+        hint = "于立冬的个人网站"
     return (BACKBAR_CSS +
+            '<div class="ldy-topbar" role="navigation" aria-label="%s">'
+            '<a class="ldy-topbar__home" href="/">\u2190 %s</a>'
+            '<a href="/about.html">%s</a>'
+            '<a href="/blog/">%s</a>'
+            '<span class="ldy-topbar__hint">%s</span></div>'
             '<div class="ldy-backbar" role="navigation" aria-label="%s">'
             '<a class="ldy-backbar__home" href="/">\u2190 %s</a>'
             '<a href="/about.html">%s</a>'
             '<a href="/blog/">%s</a></div>'
-            % ("site navigation" if is_en else "站点导航", home, prof, blog))
+            % ("site navigation" if is_en else "站点导航", home, prof, blog, hint,
+               "site navigation" if is_en else "站点导航", home, prof, blog))
 
 
 def _inject_backbar(html, rel=""):
@@ -327,7 +348,10 @@ def _inject_lang_note(index_path, entry):
     m = re.search(r"<body[^>]*>", raw, re.I)
     if not m:
         return
-    raw = raw[:m.end()] + "\n" + note + raw[m.end():]
+    # keep the site bar first, then the note
+    bar = re.search(r'<div class="ldy-backbar".*?</div>', raw, re.S)
+    pos = bar.end() if bar else m.end()
+    raw = raw[:pos] + "\n" + note + raw[pos:]
     with io.open(index_path, "wb") as fh:
         fh.write(raw.encode("utf-8", "surrogateescape"))
 
