@@ -123,22 +123,32 @@ def publish(message):
     return True
 
 
-def wait_for_deploy(prev_sha):
+def wait_for_deploy():
+    """Wait for the run that belongs to *this* commit, not the previous one."""
     step("wait for GitHub Pages")
-    for i in range(40):
-        runs = api("/repos/%s/actions/runs?per_page=1" % REPO)
+    _, out, _ = sh(["git", "rev-parse", "HEAD"])
+    want = out.strip()[:7]
+    print("  watching for %s" % want)
+    for i in range(60):
+        runs = api("/repos/%s/actions/runs?per_page=3" % REPO)
         if not runs or not runs.get("workflow_runs"):
             print("  no token or no runs — check https://github.com/%s/actions" % REPO)
             return
-        run = runs["workflow_runs"][0]
-        sha, status, conclusion = run["head_sha"][:7], run["status"], run["conclusion"]
-        if i % 3 == 0 or status == "completed":
-            print("  %s %s %s" % (sha, status, conclusion or ""))
+        run = next((r for r in runs["workflow_runs"]
+                    if r["head_sha"][:7] == want), None)
+        if run is None:
+            time.sleep(8)
+            continue
+        status, conclusion = run["status"], run["conclusion"]
         if status == "completed":
+            print("  %s %s %s" % (run["head_sha"][:7], status, conclusion))
             if conclusion != "success":
                 raise SystemExit("deployment failed: %s" % conclusion)
             return
+        if i % 4 == 0:
+            print("  %s %s" % (run["head_sha"][:7], status))
         time.sleep(10)
+    raise SystemExit("deployment did not finish in time — check the Actions tab")
 
 
 def verify(paths):
@@ -182,7 +192,7 @@ def main():
     msg = args.message or ("content: re-pull from source\n\n"
                            "%d path(s) rebuilt by _build/publish.py" % len(files))
     if publish(msg):
-        wait_for_deploy(None)
+        wait_for_deploy()
         verify([p for p in args.verify.split(",") if p])
     print("\ndone. Pages caches html for 10 minutes; hard-refresh if you still see the old page.")
 
