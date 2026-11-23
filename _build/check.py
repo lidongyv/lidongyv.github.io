@@ -111,7 +111,7 @@ def main():
     seen = set()
     uniq = []
     for f in files:
-        key = os.path.basename(os.path.dirname(f)) + "/" + os.path.basename(f)
+        key = os.path.relpath(f, ROOT).replace("\\", "/")
         if key in seen:
             continue
         seen.add(key)
@@ -141,16 +141,17 @@ def main():
         if c.imgs_no_alt:
             problems.append("%s: %d <img> without alt" % (rel, c.imgs_no_alt))
 
-        # template leftovers
-        for pat, label in ((r"%\([a-z_]+\)s", "py format-leftover"),
-                           (r"\{[a-z_]+\}", "brace-leftover"),
-                           (r"\bNone\b", "None"),
-                           (r"\bundefined\b", "undefined"),
-                           (r"\{\{|\{%", "liquid")):
-            for m in re.finditer(pat, text):
-                ctx = text[max(0, m.start() - 40):m.end() + 40].replace("\n", " ")
-                problems.append("%s: %s -> …%s…" % (rel, label, ctx))
-                break
+        # template leftovers (skip legacy pages: they contain original LaTeX/markup)
+        if not re.match(r"(project\d+|_build/out/project\d+)\.html$", rel):
+            for pat, label in ((r"%\([a-z_]+\)s", "py format-leftover"),
+                               (r"\{[a-z_]+\}", "brace-leftover"),
+                               (r"\bNone\b", "None"),
+                               (r"\bundefined\b", "undefined"),
+                               (r"\{\{|\{%", "liquid")):
+                for m in re.finditer(pat, text):
+                    ctx = text[max(0, m.start() - 40):m.end() + 40].replace("\n", " ")
+                    problems.append("%s: %s -> …%s…" % (rel, label, ctx))
+                    break
 
         for ref, tag in c.refs:
             if ref.startswith(("http://", "https://", "mailto:", "tel:", "#", "data:", "//")):

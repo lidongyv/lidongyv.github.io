@@ -112,28 +112,50 @@ def og_images():
         return ImageFont.load_default()
 
     def card(path, kicker, title, subtitle, accent=(36, 71, 216)):
+        import numpy as np
         W, H = 1200, 630
-        img = Image.new("RGB", (W, H), (255, 255, 255))
-        d = ImageDraw.Draw(img)
-        # soft gradient blobs
-        for i in range(300):
-            a = int(16 * (1 - i / 300))
-            d.ellipse([-260 + i, -320 + i, 760 - i, 520 - i], outline=None,
-                      fill=(255 - (255 - accent[0]) * a // 16,
-                            255 - (255 - accent[1]) * a // 16,
-                            255 - (255 - accent[2]) * a // 16))
-        d.rectangle([0, 0, W, 8], fill=accent)
-        d.text((72, 78), kicker, font=font(24, False), fill=(110, 118, 132))
-        y = 132
+        yy, xx = np.mgrid[0:H, 0:W]
+
+        # base: very light paper white with a horizontal accent wash on the right
+        base = np.ones((H, W, 3), dtype=np.float64) * np.array([252, 252, 254])
+        wash = np.clip((xx - 700) / 520.0, 0, 1) ** 1.7
+        wash = wash * 0.92
+        col = np.array(accent, dtype=np.float64)
+        base = base * (1 - wash[..., None]) + col * wash[..., None]
+
+        # a second, softer glow bottom-right for depth
+        d = np.sqrt((xx - 1120) ** 2 + (yy - 660) ** 2) / 520.0
+        g = np.clip(1 - d, 0, 1) ** 2.2 * 0.45
+        base = base * (1 - g[..., None]) + (col * 0.72) * g[..., None]
+
+        # flatten toward white so the text side stays clean
+        left_clean = np.clip((620 - xx) / 300.0, 0, 1) ** 1.2
+        base = base * (1 - left_clean[..., None]) + 252.0 * left_clean[..., None]
+
+        img = Image.fromarray(np.clip(base, 0, 255).astype("uint8"), "RGB")
+        d2 = ImageDraw.Draw(img)
+
+        # accent rule + kicker
+        d2.rectangle([72, 92, 128, 97], fill=accent)
+        d2.text((144, 78), kicker, font=font(23, False), fill=(110, 118, 132))
+
+        y = 172
         for line in title.split("\n"):
-            d.text((72, y), line, font=font(64), fill=(12, 14, 20))
-            y += 84
-        y += 16
+            d2.text((72, y), line, font=font(62), fill=(12, 14, 20))
+            y += 78
+        y += 22
         for line in subtitle.split("\n"):
-            d.text((72, y), line, font=font(30, False), fill=(92, 101, 117))
-            y += 46
-        d.text((72, H - 96), "lidongyv.github.io", font=font(26, False), fill=(120, 128, 144))
-        d.text((W - 250, H - 96), "LY", font=font(34), fill=accent)
+            d2.text((72, y), line, font=font(28, False), fill=(88, 97, 113))
+            y += 44
+
+        # footer
+        d2.line([72, H - 118, W - 72, H - 118], fill=(224, 228, 238), width=1)
+        d2.text((72, H - 92), "lidongyv.github.io", font=font(25, False), fill=(120, 128, 144))
+        badge_x, badge_y, badge_w, badge_h = W - 72 - 116, H - 104, 116, 52
+        d2.rounded_rectangle([badge_x, badge_y, badge_x + badge_w, badge_y + badge_h],
+                             radius=14, fill=accent)
+        d2.text((badge_x + 30, badge_y + 11), "LY", font=font(26), fill=(255, 255, 255))
+
         img.save(os.path.join(ROOT, path.lstrip("/")), "PNG", optimize=True)
         made.append(path)
 

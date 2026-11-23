@@ -275,22 +275,22 @@ def render_home(lang, posts):
       <div class="hero-side">
         <div class="portrait"><img src="/assets/img/head.jpg" alt="{name}" width="520" height="520" loading="eager"></div>
         <div class="mini-list">
-          <div class="mini-card"><dt>{now_label}</dt><dd>{now_value}</dd></div>
-          <div class="mini-card"><dt>{focus_label}</dt><dd>{focus_value}</dd></div>
+          <dl class="mini-card"><dt>{now_label}</dt><dd>{now_value}</dd></dl>
+          <dl class="mini-card"><dt>{focus_label}</dt><dd>{focus_value}</dd></dl>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="section">
+<section class="section" id="focus">
   <div class="wrap">
     {focus_head}
     {focus}
   </div>
 </section>
 
-<section class="section">
+<section class="section" id="experience">
   <div class="wrap">
     {career_head}
     {career}
@@ -298,7 +298,7 @@ def render_home(lang, posts):
   </div>
 </section>
 
-<section class="section">
+<section class="section" id="papers">
   <div class="wrap">
     {paper_head}
     <div class="grid grid--2">{papers}</div>
@@ -306,7 +306,7 @@ def render_home(lang, posts):
   </div>
 </section>
 
-<section class="section">
+<section class="section" id="open-source">
   <div class="wrap">
     {repo_head}
     <div class="repo-grid">{repos}</div>
@@ -314,7 +314,7 @@ def render_home(lang, posts):
   </div>
 </section>
 
-<section class="section">
+<section class="section" id="notes">
   <div class="wrap">
     {blog_head}
     {blog_list}
@@ -366,7 +366,8 @@ def render_home(lang, posts):
                                 "the eval harness and the production budget."),
         focus=focus_cards(lang),
         career_head=section_head(lang, "Experience · 经历" if lang == "zh" else "Experience",
-                                 "十年，六段量产经历" if lang == "zh" else "Ten years, six production roles",
+                                 "六段经历，每一段都把模型送上了车" if lang == "zh"
+                                 else "Six roles — every one put a model on a vehicle",
                                  "从立体匹配到端到端，每一段都把模型送上了车。"
                                  if lang == "zh" else
                                  "From stereo matching to end-to-end — and every one of them shipped."),
