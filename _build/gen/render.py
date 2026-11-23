@@ -1037,11 +1037,11 @@ def render_about(lang):
                "From 2019 I worked on autonomous-driving algorithms at UISEE's Nanjing AI Research Institute, NIO, "
                "DeepRoute.ai, Horizon Robotics, NVIDIA and Neolix, across perception, tracking, data loops and "
                "end-to-end driving."),
-        p2=esc("在新石器负责到 2026 年 11 月。目前关注 VLA（视觉-语言-动作模型）与世界模型"
+        p2=esc("目前关注 VLA（视觉-语言-动作模型）与世界模型"
                "（World Action Model）的落地，以及端到端自动驾驶的评测与数据闭环。"
                if lang == "zh" else
-               "At Neolix until November 2026. Current interest: landing VLA (vision-language-action) models and "
-               "world models, and evaluation and data loops for end-to-end autonomous driving."),
+               "Current interest: landing VLA (vision-language-action) models and world models, and evaluation "
+               "and data loops for end-to-end autonomous driving."),
         p3=esc("开放全职与顾问机会。" if lang == "zh" else "Open to full-time and advisory roles."),
         contact_title=esc("联系方式" if lang == "zh" else "Contact"),
         lbl_email=esc("邮箱" if lang == "zh" else "Email"),
