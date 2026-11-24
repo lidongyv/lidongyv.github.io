@@ -63,6 +63,9 @@ def _load_sources():
 
 
 SRC_ROOTS = _load_sources()
+# projects kept inside this repository: the canonical copy for anything new,
+# so it is versioned here instead of living in a folder outside git
+SRC_ROOTS["repo"] = os.path.join(ROOT, "projects")
 _SCRUB_WORDS = [w for w in (SRC_ROOTS.get("scrub") or []) if w]
 SCRUB = [(re.compile(w, re.I), "") for w in _SCRUB_WORDS]
 

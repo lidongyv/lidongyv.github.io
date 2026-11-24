@@ -240,12 +240,21 @@ def x(s):
             .replace('"', "&quot;"))
 
 
+
+def content_date(posts):
+    """Newest date actually present in the content (not the build date)."""
+    dates = [p.get("date", "") for p in posts]
+    dates += [d.get("date", "") for d in R.DESIGN]
+    dates = [d for d in dates if d]
+    return max(dates) if dates else datetime.date.today().isoformat()
+
+
 def pubdate(iso):
     try:
         d = datetime.date.fromisoformat(iso)
         return d.strftime("%a, %d %b %Y 09:00:00 +0800")
     except Exception:
-        return datetime.datetime.now().strftime("%a, %d %b %Y 09:00:00 +0800")
+        return pubdate(TODAY)
 
 
 def sitemap(pages):
@@ -298,6 +307,9 @@ def main():
     print("[3/6] pages")
     posts = R.load_posts(os.path.join(HERE, "posts"))
     print("      posts:", len(posts))
+    # feed/sitemap must not change on every run: use the newest content date
+    global TODAY
+    TODAY = content_date(posts)
 
     for lang in ("zh", "en"):
         home_file = "index.html" if lang == "zh" else "en/index.html"
