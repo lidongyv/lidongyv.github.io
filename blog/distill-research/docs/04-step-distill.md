@@ -2,7 +2,7 @@
 
 > 为什么这条线最值钱：π0 系 VLA 的动作头每次出 chunk 要积 10 次速度场，"action generation dominates model latency and caps the achievable control frequency"（SnapFlow Abstract，逐字）。压步数 = 直接抬控制频率。
 > 本页只讲**动作生成器**（flow matching / diffusion）的步数压缩，不讲语言 token 的投机解码（见 08 章 H）。
-> **逐步对应的伪代码见第 12 章 §5–§9（SnapFlow / VLA-SSD / FastOPD / VLA-MOPD / APM）。**
+> **实现代码见本章 §10（Progressive / Consistency / DMD / Shortcut / SnapFlow / VLA-SSD / FastOPD）。**
 
 ---
 
@@ -190,6 +190,113 @@ L = L_fm + λ * L_sc
 3. **stop-gradient 必须有**：SnapFlow 的目标来自自己，不 detach 会自我强化错误。
 4. **zero-init 投影很重要**：不然 1 步学生初始化就偏离预训练模型，训练早期崩。
 5. **评测要看 NFE-成功率曲线**，不要只报 1 步；2 步常常是性价比拐点。
+
+## 10. 实现代码（逐方法）
+
+> 输入 `x0/x1 [B,H,D]`（动作）、`cond`（视觉语言条件）；输出 `loss: scalar`。`recon` = 按描述重构。
+
+### 10.1 Progressive Distillation（2202.00512）
+
+**物理意义（解释）**：反复「两小步并一大步」。物理上=把 10 次小修压成 1 次大修，每轮都让上一轮学生当老师。
+
+```python
+# 输入: x_t, t；输出: loss（每轮减半）
+with torch.no_grad():
+    x_mid = x_t + (t - 0.5) * teacher(x_t, t)          # 教师走一步
+    x_dst = x_mid + 0.5 * teacher(x_mid, t - 0.5)      # 再走一步
+loss = F.mse_loss(student(x_t, t), (x_dst - x_t) / (0 - t))
+# 学生成为下一轮教师，重复 log2(N) 次
+```
+
+### 10.2 Consistency / LCM（2303.01469 / 2310.04378）
+
+**物理意义（解释）**：任意时刻都能一步到终点，且同一条 ODE 轨迹上自洽。物理上=学会「从任何半成品直接交出成品」。
+
+```python
+# 输入: x_t, t, t_next；输出: loss
+with torch.no_grad():
+    x_next = solver_step(x_t, t, t_next)               # ODE 相邻点
+loss = F.mse_loss(f_student(x_next, t_next), f_student(x_t, t))
+# LCM 额外：skipping-step（一次跳多步）+ scheduled sampling
+```
+
+### 10.3 DMD / DMD2（2311.18828 / 2405.14867）
+
+**物理意义（解释）**：让学生的输出分布匹配教师/真值分布。物理上=不要求逐帧像，只要「生成出来的动作集合」像；所以保多峰。
+
+```python
+# 输入: cond；输出: loss
+with torch.no_grad():
+    s_real = score_real(x_t, t, cond)                  # 真值/教师 score
+x0 = student(x_t, t, cond)
+s_fake = score_fake(x_t, t, cond)
+loss = ((s_real - s_fake) * x0).mean()                 # 分布匹配梯度
+# DMD2：去掉回归项，加 GAN loss 稳定训练
+```
+
+### 10.4 Shortcut / MeanFlow（2410.12557 / 2505.13447）
+
+**物理意义（解释）**：学「跳 d 步的平均速度」，推理取最大 d。物理上=一个网络学会「大步走」，单 checkpoint 支持多步数。
+
+```python
+# Shortcut：输入 x, t, d；输出 v
+v = student(x, t, d)                                   # d = 本次跳的步长
+target = (x_{t+d} - x_t) / d                           # 平均速度
+loss = F.mse_loss(v, target)
+# 自洽：v(x,t,2d) ≈ 0.5*(v(x,t,d) + v(x_{t+d},t+d,d))
+```
+
+### 10.5 SnapFlow（2604.05656）
+
+**物理意义（解释）**：用自己两步 Euler 端点当老师。物理上=用自己的「慢想」教自己的「快答」；stop-grad 防止自我强化错误。
+
+```python
+# 输入: x0, cond；输出: loss
+t = torch.rand(B, 1); eps = torch.randn_like(x0)
+x_t = (1 - t) * x0 + t * eps
+L_fm = F.mse_loss(model(x_t, t, t_dst=t, cond=cond), eps - x0)
+with torch.no_grad():                                   # 整链 stop-grad
+    t_mid = 0.5 * t
+    x_mid = x_t + (t_mid - t) * model(x_t, t, t_dst=t_mid, cond=cond)
+    x_dst = x_mid + (0 - t_mid) * model(x_mid, t_mid, t_dst=0, cond=cond)
+    v_tgt = (x_dst - x_t) / (0 - t)
+L_sc = F.mse_loss(model(x_t, t, t_dst=0, cond=cond), v_tgt)
+loss = L_fm + lam * L_sc
+```
+
+### 10.6 VLA-SSD（2611.20460）
+
+**物理意义（解释）**：布朗路径注入随机性，一步仍有分布。物理上=快答但不失去随机应变；有密度才能做 GRPO。
+
+```python
+# 输入: a0 [B,L], state；输出: loss
+W  = torch.randn(B, L).cumsum(-1)                      # 布朗路径
+a1 = ito(a0, W, state)                                 # 单跳
+logp, = jvp(lambda z: ito(z, W, state), (a0,), (torch.ones_like(a0),))
+R = reward_fn(a1); A = (R - R.mean()) / (R.std() + kappa)
+ratio = (logp - logp_old).exp()
+loss = -torch.min(ratio * A, ratio.clamp(1-eps, 1+eps) * A).mean()
+```
+
+### 10.7 FastOPD（2610.02832）
+
+**物理意义（解释）**：单点 on-policy + 有限区间自一致。物理上=既在学生会到的地方补课，又保证「一大步 = 两小步」。
+
+```python
+# 输入: x1, cond；输出: loss
+t   = torch.rand(B, 1) * 0.9 + 0.05
+x_t = student.jump(x1, s=1.0, t=t, cond=cond).detach()
+L_opd = F.mse_loss(student.velocity(x_t, t, cond),
+                   teacher.velocity(x_t, t, cond))
+s = t * torch.rand(B, 1); m = 0.5 * (s + t)
+x_s = student.jump(x1, s=1.0, t=s, cond=cond).detach()
+with torch.no_grad():
+    v_s = student.velocity(x_s, s, cond)
+    v_m = student.velocity(x_s + (m - s) * v_s, m, cond)
+    tgt = 0.5 * (v_s + v_m)
+L_sc = F.mse_loss(student.interval_vel(x_s, s, t, cond), tgt)
+loss = L_sc + lam * L_opd
+```
 
 ---
 

@@ -38,9 +38,9 @@
 <main>
 <h1>04 · 步数蒸馏：把 10 步 ODE 压成 1 步的所有做法</h1>
 <p class="meta">来源 docs/04-step-distill.md · 生成于 2026-11-21</p>
-<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">0. 一张图看懂五类方法</a></li><li class=""><a href="#sec-2">1. Progressive Distillation（2202.00512）：最稳，但最贵</a></li><li class=""><a href="#sec-3">2. Consistency Models / LCM（2303.01469 / 2310.04378）：一步，但目标弱</a></li><li class=""><a href="#sec-4">3. DMD / DMD2（2311.18828 / 2405.14867）：质量最高，最玄学</a></li><li class=""><a href="#sec-5">4. Shortcut / MeanFlow（2410.12557 / 2505.13447）：一次训练，任意步数</a></li><li class=""><a href="#sec-6">5. 端点自蒸馏：SnapFlow（2604.05656）</a></li><li class=""><a href="#sec-7">6. 随机单跳：VLA-SSD（2611.20460）</a></li><li class=""><a href="#sec-8">7. On-policy + 步数：FastOPD（2610.02832）</a></li><li class=""><a href="#sec-9">8. 横向对比：五种方法在动作头上的实际表现</a></li><li class=""><a href="#sec-10">9. 实现坑（动作空间特有）</a></li></ol></details>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">0. 一张图看懂五类方法</a></li><li class=""><a href="#sec-2">1. Progressive Distillation（2202.00512）：最稳，但最贵</a></li><li class=""><a href="#sec-3">2. Consistency Models / LCM（2303.01469 / 2310.04378）：一步，但目标弱</a></li><li class=""><a href="#sec-4">3. DMD / DMD2（2311.18828 / 2405.14867）：质量最高，最玄学</a></li><li class=""><a href="#sec-5">4. Shortcut / MeanFlow（2410.12557 / 2505.13447）：一次训练，任意步数</a></li><li class=""><a href="#sec-6">5. 端点自蒸馏：SnapFlow（2604.05656）</a></li><li class=""><a href="#sec-7">6. 随机单跳：VLA-SSD（2611.20460）</a></li><li class=""><a href="#sec-8">7. On-policy + 步数：FastOPD（2610.02832）</a></li><li class=""><a href="#sec-9">8. 横向对比：五种方法在动作头上的实际表现</a></li><li class=""><a href="#sec-10">9. 实现坑（动作空间特有）</a></li><li class=""><a href="#sec-11">10. 实现代码（逐方法）</a></li><li class="toc-h3"><a href="#sec-12">10.1 Progressive Distillation（2202.00512）</a></li><li class="toc-h3"><a href="#sec-13">10.2 Consistency / LCM（2303.01469 / 2310.04378）</a></li><li class="toc-h3"><a href="#sec-14">10.3 DMD / DMD2（2311.18828 / 2405.14867）</a></li><li class="toc-h3"><a href="#sec-15">10.4 Shortcut / MeanFlow（2410.12557 / 2505.13447）</a></li><li class="toc-h3"><a href="#sec-16">10.5 SnapFlow（2604.05656）</a></li><li class="toc-h3"><a href="#sec-17">10.6 VLA-SSD（2611.20460）</a></li><li class="toc-h3"><a href="#sec-18">10.7 FastOPD（2610.02832）</a></li></ol></details>
 <h1>04 · 步数蒸馏：把 10 步 ODE 压成 1 步的所有做法</h1>
-<blockquote>为什么这条线最值钱：π0 系 VLA 的动作头每次出 chunk 要积 10 次速度场，&quot;action generation dominates model latency and caps the achievable control frequency&quot;（SnapFlow Abstract，逐字）。压步数 = 直接抬控制频率。<br>本页只讲<strong>动作生成器</strong>（flow matching / diffusion）的步数压缩，不讲语言 token 的投机解码（见 08 章 H）。<br><strong>逐步对应的伪代码见第 12 章 §5–§9（SnapFlow / VLA-SSD / FastOPD / VLA-MOPD / APM）。</strong></blockquote>
+<blockquote>为什么这条线最值钱：π0 系 VLA 的动作头每次出 chunk 要积 10 次速度场，&quot;action generation dominates model latency and caps the achievable control frequency&quot;（SnapFlow Abstract，逐字）。压步数 = 直接抬控制频率。<br>本页只讲<strong>动作生成器</strong>（flow matching / diffusion）的步数压缩，不讲语言 token 的投机解码（见 08 章 H）。<br><strong>实现代码见本章 §10（Progressive / Consistency / DMD / Shortcut / SnapFlow / VLA-SSD / FastOPD）。</strong></blockquote>
 <hr>
 <h2 id="sec-1">0. 一张图看懂五类方法</h2>
 <table><tr><th>类型</th><th>核心思想</th><th>代表</th><th>需要教师吗</th><th>训练轮数</th></tr><tr><td><strong>迭代减半</strong></td><td>学生学&quot;教师两步的端点&quot;，反复减半</td><td>Progressive Distillation (2202.00512)</td><td>需要（上一轮学生）</td><td>log₂N 轮</td></tr><tr><td><strong>自洽约束</strong></td><td>任意 t 都能一步到 x₀，沿 ODE 轨迹自洽</td><td>Consistency Models (2303.01469)、LCM (2310.04378)</td><td>不需要（用 solver）</td><td>1 轮</td></tr><tr><td><strong>分布匹配</strong></td><td>用 score 差把学生分布拉向教师/真值</td><td>DMD (2311.18828)、DMD2 (2405.14867)</td><td>需要（score/教师）</td><td>1 轮</td></tr><tr><td><strong>步长条件</strong></td><td>学&quot;跳 d 步&quot;的平均速度，推理取最大 d</td><td>Shortcut (2410.12557)、MeanFlow (2505.13447)</td><td>不需要（从零/继续训练）</td><td>1 轮</td></tr><tr><td><strong>端点自蒸馏</strong></td><td>教师=自己的多步 Euler 端点</td><td>SnapFlow (2604.05656)、RealtimeWAM/TACD (2610.06617)</td><td>自己</td><td>1 轮</td></tr></table>
@@ -164,6 +164,76 @@ L = L_fm + λ * L_sc</code></pre>
 </li><li><strong>zero-init 投影很重要</strong>：不然 1 步学生初始化就偏离预训练模型，训练早期崩。
 </li><li><strong>评测要看 NFE-成功率曲线</strong>，不要只报 1 步；2 步常常是性价比拐点。
 </li></ol>
+<h2 id="sec-11">10. 实现代码（逐方法）</h2>
+<blockquote>输入 <code>x0/x1 [B,H,D]</code>（动作）、<code>cond</code>（视觉语言条件）；输出 <code>loss: scalar</code>。<code>recon</code> = 按描述重构。</blockquote>
+<h3 id="sec-12">10.1 Progressive Distillation（2202.00512）</h3>
+<p><strong>物理意义（解释）</strong>：反复「两小步并一大步」。物理上=把 10 次小修压成 1 次大修，每轮都让上一轮学生当老师。</p>
+<pre class="code"><code># 输入: x_t, t；输出: loss（每轮减半）
+with torch.no_grad():
+    x_mid = x_t + (t - 0.5) * teacher(x_t, t)          # 教师走一步
+    x_dst = x_mid + 0.5 * teacher(x_mid, t - 0.5)      # 再走一步
+loss = F.mse_loss(student(x_t, t), (x_dst - x_t) / (0 - t))
+# 学生成为下一轮教师，重复 log2(N) 次</code></pre>
+<h3 id="sec-13">10.2 Consistency / LCM（2303.01469 / 2310.04378）</h3>
+<p><strong>物理意义（解释）</strong>：任意时刻都能一步到终点，且同一条 ODE 轨迹上自洽。物理上=学会「从任何半成品直接交出成品」。</p>
+<pre class="code"><code># 输入: x_t, t, t_next；输出: loss
+with torch.no_grad():
+    x_next = solver_step(x_t, t, t_next)               # ODE 相邻点
+loss = F.mse_loss(f_student(x_next, t_next), f_student(x_t, t))
+# LCM 额外：skipping-step（一次跳多步）+ scheduled sampling</code></pre>
+<h3 id="sec-14">10.3 DMD / DMD2（2311.18828 / 2405.14867）</h3>
+<p><strong>物理意义（解释）</strong>：让学生的输出分布匹配教师/真值分布。物理上=不要求逐帧像，只要「生成出来的动作集合」像；所以保多峰。</p>
+<pre class="code"><code># 输入: cond；输出: loss
+with torch.no_grad():
+    s_real = score_real(x_t, t, cond)                  # 真值/教师 score
+x0 = student(x_t, t, cond)
+s_fake = score_fake(x_t, t, cond)
+loss = ((s_real - s_fake) * x0).mean()                 # 分布匹配梯度
+# DMD2：去掉回归项，加 GAN loss 稳定训练</code></pre>
+<h3 id="sec-15">10.4 Shortcut / MeanFlow（2410.12557 / 2505.13447）</h3>
+<p><strong>物理意义（解释）</strong>：学「跳 d 步的平均速度」，推理取最大 d。物理上=一个网络学会「大步走」，单 checkpoint 支持多步数。</p>
+<pre class="code"><code># Shortcut：输入 x, t, d；输出 v
+v = student(x, t, d)                                   # d = 本次跳的步长
+target = (x_{t+d} - x_t) / d                           # 平均速度
+loss = F.mse_loss(v, target)
+# 自洽：v(x,t,2d) ≈ 0.5*(v(x,t,d) + v(x_{t+d},t+d,d))</code></pre>
+<h3 id="sec-16">10.5 SnapFlow（2604.05656）</h3>
+<p><strong>物理意义（解释）</strong>：用自己两步 Euler 端点当老师。物理上=用自己的「慢想」教自己的「快答」；stop-grad 防止自我强化错误。</p>
+<pre class="code"><code># 输入: x0, cond；输出: loss
+t = torch.rand(B, 1); eps = torch.randn_like(x0)
+x_t = (1 - t) * x0 + t * eps
+L_fm = F.mse_loss(model(x_t, t, t_dst=t, cond=cond), eps - x0)
+with torch.no_grad():                                   # 整链 stop-grad
+    t_mid = 0.5 * t
+    x_mid = x_t + (t_mid - t) * model(x_t, t, t_dst=t_mid, cond=cond)
+    x_dst = x_mid + (0 - t_mid) * model(x_mid, t_mid, t_dst=0, cond=cond)
+    v_tgt = (x_dst - x_t) / (0 - t)
+L_sc = F.mse_loss(model(x_t, t, t_dst=0, cond=cond), v_tgt)
+loss = L_fm + lam * L_sc</code></pre>
+<h3 id="sec-17">10.6 VLA-SSD（2611.20460）</h3>
+<p><strong>物理意义（解释）</strong>：布朗路径注入随机性，一步仍有分布。物理上=快答但不失去随机应变；有密度才能做 GRPO。</p>
+<pre class="code"><code># 输入: a0 [B,L], state；输出: loss
+W  = torch.randn(B, L).cumsum(-1)                      # 布朗路径
+a1 = ito(a0, W, state)                                 # 单跳
+logp, = jvp(lambda z: ito(z, W, state), (a0,), (torch.ones_like(a0),))
+R = reward_fn(a1); A = (R - R.mean()) / (R.std() + kappa)
+ratio = (logp - logp_old).exp()
+loss = -torch.min(ratio * A, ratio.clamp(1-eps, 1+eps) * A).mean()</code></pre>
+<h3 id="sec-18">10.7 FastOPD（2610.02832）</h3>
+<p><strong>物理意义（解释）</strong>：单点 on-policy + 有限区间自一致。物理上=既在学生会到的地方补课，又保证「一大步 = 两小步」。</p>
+<pre class="code"><code># 输入: x1, cond；输出: loss
+t   = torch.rand(B, 1) * 0.9 + 0.05
+x_t = student.jump(x1, s=1.0, t=t, cond=cond).detach()
+L_opd = F.mse_loss(student.velocity(x_t, t, cond),
+                   teacher.velocity(x_t, t, cond))
+s = t * torch.rand(B, 1); m = 0.5 * (s + t)
+x_s = student.jump(x1, s=1.0, t=s, cond=cond).detach()
+with torch.no_grad():
+    v_s = student.velocity(x_s, s, cond)
+    v_m = student.velocity(x_s + (m - s) * v_s, m, cond)
+    tgt = 0.5 * (v_s + v_m)
+L_sc = F.mse_loss(student.interval_vel(x_s, s, t, cond), tgt)
+loss = L_sc + lam * L_opd</code></pre>
 <hr>
 <p>更新时间: 2026-11-21</p>
 <footer>大模型 → VLA/WAM 蒸馏研究 · 2026-11 · 数字均标证据级别（L3 全文 / L2 部分 / L1 摘要）</footer>

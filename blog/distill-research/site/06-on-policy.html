@@ -38,9 +38,9 @@
 <main>
 <h1>06 · On-policy 蒸馏与经验蒸馏：2026 下半年的主战场</h1>
 <p class="meta">来源 docs/06-on-policy.md · 生成于 2026-11-21</p>
-<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 为什么离线蒸馏不够</a></li><li class=""><a href="#sec-2">2. 四种 on-policy 形态（按教师查询方式分）</a></li><li class=""><a href="#sec-3">3. A 类：逐步动作监督</a></li><li class="toc-h3"><a href="#sec-4">FastOPD（2610.02832，L2 部分正文）</a></li><li class="toc-h3"><a href="#sec-5">VLA-MOPD（2611.12286，L1）</a></li><li class="toc-h3"><a href="#sec-6">WAM-Policy（2611.24011，L1）</a></li><li class=""><a href="#sec-7">4. B 类：只用教师轨迹库（黑盒教师）</a></li><li class="toc-h3"><a href="#sec-8">TAD（2610.33650，L1）</a></li><li class=""><a href="#sec-9">5. C 类：恢复数据（DAgger 的现代版）</a></li><li class="toc-h3"><a href="#sec-10">TILDE（2610.25376，L1）</a></li><li class=""><a href="#sec-11">6. D 类：经验筛选（环境当裁判）</a></li><li class="toc-h3"><a href="#sec-12">H2E（2611.16246，L3 部分）</a></li><li class="toc-h3"><a href="#sec-13">REPAIR（2611.02777，L1）</a></li><li class="toc-h3"><a href="#sec-14">Verify-Act-Distill（2610.14885，L3 部分）</a></li><li class=""><a href="#sec-15">7. 驾驶侧的 on-policy</a></li><li class="toc-h3"><a href="#sec-16">OPTED（2609.20756，L1）</a></li><li class="toc-h3"><a href="#sec-17">Reflect-VLA（2610.13453，L1）</a></li><li class=""><a href="#sec-18">8. On-policy 蒸馏的五个工程决定</a></li><li class=""><a href="#sec-19">9. 一句话选型</a></li></ol></details>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 为什么离线蒸馏不够</a></li><li class=""><a href="#sec-2">2. 四种 on-policy 形态（按教师查询方式分）</a></li><li class=""><a href="#sec-3">3. A 类：逐步动作监督</a></li><li class="toc-h3"><a href="#sec-4">FastOPD（2610.02832，L2 部分正文）</a></li><li class="toc-h3"><a href="#sec-5">VLA-MOPD（2611.12286，L1）</a></li><li class="toc-h3"><a href="#sec-6">WAM-Policy（2611.24011，L1）</a></li><li class=""><a href="#sec-7">4. B 类：只用教师轨迹库（黑盒教师）</a></li><li class="toc-h3"><a href="#sec-8">TAD（2610.33650，L1）</a></li><li class=""><a href="#sec-9">5. C 类：恢复数据（DAgger 的现代版）</a></li><li class="toc-h3"><a href="#sec-10">TILDE（2610.25376，L1）</a></li><li class=""><a href="#sec-11">6. D 类：经验筛选（环境当裁判）</a></li><li class="toc-h3"><a href="#sec-12">H2E（2611.16246，L3 部分）</a></li><li class="toc-h3"><a href="#sec-13">REPAIR（2611.02777，L1）</a></li><li class="toc-h3"><a href="#sec-14">Verify-Act-Distill（2610.14885，L3 部分）</a></li><li class=""><a href="#sec-15">7. 驾驶侧的 on-policy</a></li><li class="toc-h3"><a href="#sec-16">OPTED（2609.20756，L1）</a></li><li class="toc-h3"><a href="#sec-17">Reflect-VLA（2610.13453，L1）</a></li><li class=""><a href="#sec-18">8. On-policy 蒸馏的五个工程决定</a></li><li class=""><a href="#sec-19">9. 一句话选型</a></li><li class=""><a href="#sec-20">10. 实现代码（逐方法）</a></li><li class="toc-h3"><a href="#sec-21">10.1 FastOPD（2610.02832）——A 类</a></li><li class="toc-h3"><a href="#sec-22">10.2 VLA-MOPD（2611.12286）——A 类</a></li><li class="toc-h3"><a href="#sec-23">10.3 WAM-Policy（2611.24011）——A 类</a></li><li class="toc-h3"><a href="#sec-24">10.4 TAD（2610.33650）——B 类</a></li><li class="toc-h3"><a href="#sec-25">10.5 TILDE（2610.25376）——C 类</a></li><li class="toc-h3"><a href="#sec-26">10.6 H2E（2611.16246）——D 类</a></li><li class="toc-h3"><a href="#sec-27">10.7 REPAIR（2611.02777）——D 类</a></li><li class="toc-h3"><a href="#sec-28">10.8 Verify-Act-Distill（2610.14885）——D 类</a></li><li class="toc-h3"><a href="#sec-29">10.9 OPTED（2609.20756）——A 类（驾驶）</a></li><li class="toc-h3"><a href="#sec-30">10.10 Reflect-VLA（2610.13453）——A 类（驾驶）</a></li></ol></details>
 <h1>06 · On-policy 蒸馏与经验蒸馏：2026 下半年的主战场</h1>
-<blockquote>一句话：<strong>离线蒸馏教学生&quot;在教师轨迹上怎么做&quot;，on-policy 蒸馏教学生&quot;在你自己搞砸的地方怎么补救&quot;。</strong><br>这也是最近三个月（2026-08~11）新论文最密集的方向：VLA-MOPD、FastOPD、REPAIR、TAD、TILDE、WAM-Policy、OPTED、Reflect-VLA 全部落在这一格。<br><strong>训练循环级伪代码见第 12 章 §7–§11、§13–§14（FastOPD / VLA-MOPD / APM / TACD / WAM-Policy / VAD / H2E）。</strong></blockquote>
+<blockquote>一句话：<strong>离线蒸馏教学生&quot;在教师轨迹上怎么做&quot;，on-policy 蒸馏教学生&quot;在你自己搞砸的地方怎么补救&quot;。</strong><br>这也是最近三个月（2026-08~11）新论文最密集的方向：VLA-MOPD、FastOPD、REPAIR、TAD、TILDE、WAM-Policy、OPTED、Reflect-VLA 全部落在这一格。<br><strong>每个方法的训练循环见本章 §10（FastOPD / VLA-MOPD / WAM-Policy / TAD / TILDE / H2E / REPAIR / VAD / OPTED / Reflect）。</strong></blockquote>
 <hr>
 <h2 id="sec-1">1. 为什么离线蒸馏不够</h2>
 <p>离线 KD 的致命问题是 <strong>exposure bias / 分布偏移</strong>：</p>
@@ -158,6 +158,90 @@
 <hr>
 <h2 id="sec-19">9. 一句话选型</h2>
 <table><tr><th>你的约束</th><th>选</th></tr><tr><td>教师可以进训练循环、要最高上限</td><td>A 类（FastOPD / VLA-MOPD）</td></tr><tr><td>教师只能给轨迹、不能查</td><td>B 类（TAD），但接受样本效率差 5–12×</td></tr><tr><td>真机、教师调用贵</td><td>C 类（TILDE，触发式恢复）</td></tr><tr><td>有环境/verifier 当裁判</td><td>D 类（H2E / REPAIR / Verify-Act-Distill）</td></tr></table>
+<h2 id="sec-20">10. 实现代码（逐方法）</h2>
+<blockquote>只给&quot;on-policy 那一段&quot;：学生怎么跑、教师在哪查、损失怎么算。完整训练循环见第 12 章。</blockquote>
+<h3 id="sec-21">10.1 FastOPD（2610.02832）——A 类</h3>
+<p><strong>物理意义（解释）</strong>：在学生落点查教师：只补学生真正会到的地方，训练成本比逐步 OPD 低。</p>
+<pre class="code"><code>for batch in loader:
+    t   = torch.rand(B, 1) * 0.9 + 0.05
+    x_t = student.jump(batch.x1, s=1.0, t=t, cond=batch.cond).detach()
+    L_opd = F.mse_loss(student.velocity(x_t, t), teacher.velocity(x_t, t))
+    # 另加有限区间自一致项 L_sc（见 04 章 §10.7）
+    (L_sc + lam * L_opd).backward(); optimizer.step()</code></pre>
+<h3 id="sec-22">10.2 VLA-MOPD（2611.12286）——A 类</h3>
+<p><strong>物理意义（解释）</strong>：在学生的每个 ODE 中间状态查对应专家：不只学终点，还学「中间该怎么走」。</p>
+<pre class="code"><code>for task in tasks:
+    traj = rollout(student, task)                 # 学生自己跑
+    teacher = teachers[route(task.instruction)]   # 路由冻结专家
+    for obs, act in traj:
+        x = torch.randn_like(act)
+        for k in range(K):                        # 逐 ODE 中间状态
+            with torch.no_grad():
+                tgt = transition(teacher, obs, x, k, K)
+            loss += masked_match(transition(student, obs, x, k, K), tgt, valid_dims(act))
+            x = x + tgt / K
+    loss += beta * ref_kl(student, ref, task)     # 防遗忘</code></pre>
+<h3 id="sec-23">10.3 WAM-Policy（2611.24011）——A 类</h3>
+<p><strong>物理意义（解释）</strong>：学生自己采样，教师高 NFE 端点当目标；plan stop-grad，动作以 plan 为条件。</p>
+<pre class="code"><code>Z_hat = student.sample_video(eps_Z, steps=1)
+A_hat = student.sample_action(eps_A, Z_hat.detach(), steps=2)
+with torch.no_grad():
+    Z_T = teacher.sample_video(eps_Z, steps=K_T)
+    A_T = teacher.sample_action(eps_A, Z_T, steps=K_T)
+loss = pseudo_huber(Z_hat - Z_T) + lam_A * pseudo_huber(A_hat - A_T)</code></pre>
+<h3 id="sec-24">10.4 TAD（2610.33650）——B 类</h3>
+<p><strong>物理意义（解释）</strong>：判别器当 reward，比较学生/教师 rollout 的特征分布；只有轨迹库也能学行为风格。</p>
+<pre class="code"><code>rollout = student_rollout(student, env)          # 学生自己跑
+f_s = student_features(rollout)
+f_t = sample_teacher_features()                  # 教师轨迹库（黑盒）
+reward = discriminator(f_s, f_t)
+loss = -reward.mean() + bc_loss(student, rollout)</code></pre>
+<h3 id="sec-25">10.5 TILDE（2610.25376）——C 类</h3>
+<p><strong>物理意义（解释）</strong>：失败前叫教师接管，收集恢复轨迹；把「师傅扶一把」变成数据。</p>
+<pre class="code"><code>for obs in student_rollout:
+    if reward_model(obs) &lt; thr:                  # 触发式干预
+        with torch.no_grad():
+            D_recovery.append((obs, teacher(obs)))
+loss = bc(student, D_recovery) + bc(student, D_online)</code></pre>
+<h3 id="sec-26">10.6 H2E（2611.16246）——D 类</h3>
+<p><strong>物理意义（解释）</strong>：agent 成功 session 重标为 VLA 动作；只学能到达目标的轨迹，测试时零 LLM。</p>
+<pre class="code"><code>for s in successful_sessions:
+    for t, step in enumerate(s):
+        y = relabel(step)                        # 所有运动重标为 VLA 动作
+        if dist(s.p[t], goal) &lt;= 1.0: y = STOP
+        m = float(dist(s.p[t+K], goal) &lt;= dist(s.p[t], goal) + 0.25)
+        loss += m * F.l1_loss(student(step.obs), y)</code></pre>
+<h3 id="sec-27">10.7 REPAIR（2611.02777）——D 类</h3>
+<p><strong>物理意义（解释）</strong>：critic 给多专家候选加权成监督分布；把偏好蒸进单个 VLA。</p>
+<pre class="code"><code>with torch.no_grad():
+    cands = torch.stack([e(obs) for e in experts])   # 多专家候选
+    w = critic(obs, cands).softmax(-1)
+    target = (w[..., None, None] * cands).sum(0)
+loss = flow_matching(student(obs), target)</code></pre>
+<h3 id="sec-28">10.8 Verify-Act-Distill（2610.14885）——D 类</h3>
+<p><strong>物理意义（解释）</strong>：verifier 选优→聚合→只留成功 episode→蒸进 LoRA；把测试时搜索的收益写回权重。</p>
+<pre class="code"><code>for b in range(replan_steps):
+    cands  = [student.sample(obs) for _ in range(8)]
+    scores = verifier(obs, [c[:10] for c in cands])
+    A_bar  = sum(torch.softmax(scores/0.3, 0)[i] * cands[i] for i in range(8))
+    env.execute([c[:10] for c in cands])
+    if env.success: D.append((obs, A_bar))       # 只留成功
+loss = flow_matching_lora(student, D)</code></pre>
+<h3 id="sec-29">10.9 OPTED（2609.20756）——A 类（驾驶）</h3>
+<p><strong>物理意义（解释）</strong>：特权教师（HD 图/框）在闭环里给学生相机动作；样本效率来自「在环」而不是离线数据。</p>
+<pre class="code"><code>obs, priv = env.step()
+with torch.no_grad():
+    a_t = teacher(priv)                          # 向量化 RL 特权教师
+loss = bc_loss(student(obs), a_t)                # 闭环 on-policy</code></pre>
+<h3 id="sec-30">10.10 Reflect-VLA（2610.13453）——A 类（驾驶）</h3>
+<p><strong>物理意义（解释）</strong>：风险轨迹学教师纠正分布，可靠轨迹自模仿；把反思内化。</p>
+<pre class="code"><code>risk = risk_score(traj)
+if risk &gt; thr:
+    with torch.no_grad():
+        p_t = teacher.token_dist(obs, traj)      # token 级纠正
+    loss = kl_div(student.logits(obs), p_t)
+else:
+    loss = ce_loss(student.logits(obs), traj)    # 自模仿</code></pre>
 <hr>
 <p>更新时间: 2026-11-21</p>
 <footer>大模型 → VLA/WAM 蒸馏研究 · 2026-11 · 数字均标证据级别（L3 全文 / L2 部分 / L1 摘要）</footer>

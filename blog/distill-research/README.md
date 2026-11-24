@@ -22,12 +22,12 @@
 | 0 | [00 证据与核实](docs/00-evidence.md) | 每个数字的级别、核实方法、纠错记录；机器表 `evidence/papers.csv`（59 条） |
 | 1 | [01 分类框架](docs/01-taxonomy.md) | 6 类转移对象 × 5 种教师生命周期；先建立坐标系 |
 | 2 | [09 教师 vs 学生总表](docs/09-benchmarks.md) | 教师基线 + 学生数字：参数、成功率、延迟、加速比、显存 |
-| 3 | [02 VLA 蒸馏](docs/02-vla-distill.md) | 驾驶/操作两条线的实现与数字 |
-| 4 | [03 WAM 蒸馏](docs/03-wam-distill.md) | 世界模型三条硬路线 + 新出的表征蒸馏 |
-| 5 | [04 步数蒸馏](docs/04-step-distill.md) | 10 步 → 1 步的所有做法（DMD/consistency/shortcut/自蒸馏） |
-| 6 | [05 特征与 latent](docs/05-feature-latent.md) | 隐层、latent planning token、世界模型特征怎么对齐 |
-| 7 | [06 on-policy 与经验](docs/06-on-policy.md) | 学生自己跑、教师来打分：最新最热的一条线 |
-| 8 | [07 数据蒸馏](docs/07-data-distill.md) | 用大模型造 CoT/视频/伪动作 |
+| 3 | [02 VLA 蒸馏](docs/02-vla-distill.md) | 驾驶/操作两条线；**每个方法都带实现代码**（Orion/DRIFT/FPD/OPTED/Reflect/ConDense/π0-FAST/SnapFlow/FastOPD/VLA-MOPD/REPAIR/TAD/TILDE/剪枝/SPARK） |
+| 4 | [03 WAM 蒸馏](docs/03-wam-distill.md) | 五条路线 + **12 个方法的实现代码**（CKT/APM/TACD/DIDO/WAM-Policy/THAW/W2A/DreamFree/FRED/DyMD/S-VAM/Autodidact） |
+| 5 | [04 步数蒸馏](docs/04-step-distill.md) | 10 步 → 1 步；**7 种做法的实现代码**（Progressive/Consistency/DMD/Shortcut/SnapFlow/VLA-SSD/FastOPD） |
+| 6 | [05 特征与 latent](docs/05-feature-latent.md) | 隐层/latent/世界模型特征怎么对齐；**9 个方法的对齐代码** |
+| 7 | [06 on-policy 与经验](docs/06-on-policy.md) | 2026 主战场；**10 个方法的训练循环代码** |
+| 8 | [07 数据蒸馏](docs/07-data-distill.md) | 用大模型造 CoT/视频/伪动作；**生成→过滤→混合代码** |
 | 9 | [08 trick 总谱](docs/08-tricks.md) | 40+ 个可开关的零件，按需取用 |
 | 10 | [10 最近三个月雷达](docs/10-recent.md) | 时间线、趋势、还没被解决的问题 |
 | 11 | [11 陷阱与复现清单](docs/11-pitfalls.md) | 别被 open-loop 指标和"快 150×"骗了 |

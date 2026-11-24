@@ -38,9 +38,9 @@
 <main>
 <h1>05 · 特征与 latent 蒸馏：蒸"教师看到了什么"，而不是"教师输出什么"</h1>
 <p class="meta">来源 docs/05-feature-latent.md · 生成于 2026-11-21</p>
-<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 为什么&quot;蒸中间层&quot;在驾驶里特别有效</a></li><li class=""><a href="#sec-2">2. Orion-Lite（2604.08266）：latent planning token 的 L1 蒸馏</a></li><li class=""><a href="#sec-3">3. CKT-WAM（2605.06247）：跨异构 WAM 的隐状态压缩</a></li><li class=""><a href="#sec-4">4. THAW-VLA（2609.24682）：世界模型特征离线缓存，部署零开销</a></li><li class=""><a href="#sec-5">5. VLP（2401.05577）：训练期教师，推理期不存在</a></li><li class=""><a href="#sec-6">6. S-VAM（2603.16195）：自蒸馏 VFM 特征，把多步生成压成单步</a></li><li class=""><a href="#sec-7">7. 2026 下半年的新面孔</a></li><li class="toc-h3"><a href="#sec-8">DRIFT（2611.24719，2026-11-18，L1）</a></li><li class="toc-h3"><a href="#sec-9">W2A（2611.02600，2026-11-02，L2 部分正文）</a></li><li class="toc-h3"><a href="#sec-10">DreamFree（2611.04527，2026-11-03，L1）</a></li><li class="toc-h3"><a href="#sec-11">SPARK-VLA（2611.10443，NeurIPS 2026，L1）</a></li><li class=""><a href="#sec-12">8. 特征蒸馏的五个实现决定（按重要性排序）</a></li><li class=""><a href="#sec-13">9. 一张对照表</a></li></ol></details>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 为什么&quot;蒸中间层&quot;在驾驶里特别有效</a></li><li class=""><a href="#sec-2">2. Orion-Lite（2604.08266）：latent planning token 的 L1 蒸馏</a></li><li class=""><a href="#sec-3">3. CKT-WAM（2605.06247）：跨异构 WAM 的隐状态压缩</a></li><li class=""><a href="#sec-4">4. THAW-VLA（2609.24682）：世界模型特征离线缓存，部署零开销</a></li><li class=""><a href="#sec-5">5. VLP（2401.05577）：训练期教师，推理期不存在</a></li><li class=""><a href="#sec-6">6. S-VAM（2603.16195）：自蒸馏 VFM 特征，把多步生成压成单步</a></li><li class=""><a href="#sec-7">7. 2026 下半年的新面孔</a></li><li class="toc-h3"><a href="#sec-8">DRIFT（2611.24719，2026-11-18，L1）</a></li><li class="toc-h3"><a href="#sec-9">W2A（2611.02600，2026-11-02，L2 部分正文）</a></li><li class="toc-h3"><a href="#sec-10">DreamFree（2611.04527，2026-11-03，L1）</a></li><li class="toc-h3"><a href="#sec-11">SPARK-VLA（2611.10443，NeurIPS 2026，L1）</a></li><li class=""><a href="#sec-12">8. 特征蒸馏的五个实现决定（按重要性排序）</a></li><li class=""><a href="#sec-13">9. 一张对照表</a></li><li class=""><a href="#sec-14">10. 实现代码（逐方法）</a></li><li class="toc-h3"><a href="#sec-15">10.1 Orion-Lite（2604.08266）——latent planning token</a></li><li class="toc-h3"><a href="#sec-16">10.2 THAW-VLA（2609.24682）——离线缓存 + 视图级 cosine</a></li><li class="toc-h3"><a href="#sec-17">10.3 CKT-WAM（2605.06247）——隐状态 → 条件 token</a></li><li class="toc-h3"><a href="#sec-18">10.4 VLP（2401.05577）——训练期教师（对比对齐）</a></li><li class="toc-h3"><a href="#sec-19">10.5 S-VAM（2603.16195）——自蒸馏 VFM 特征</a></li><li class="toc-h3"><a href="#sec-20">10.6 DRIFT（2611.24719）——latent 推理特征</a></li><li class="toc-h3"><a href="#sec-21">10.7 W2A（2611.02600）——PCA + Q-Former + 时间加权</a></li><li class="toc-h3"><a href="#sec-22">10.8 DreamFree（2611.04527，recon）——未来表征</a></li><li class="toc-h3"><a href="#sec-23">10.9 SPARK-VLA（2611.10443）——空间注意力对齐</a></li></ol></details>
 <h1>05 · 特征与 latent 蒸馏：蒸&quot;教师看到了什么&quot;，而不是&quot;教师输出什么&quot;</h1>
-<blockquote>适用场景：教师和学生的<strong>输出空间不一致</strong>（7B LLM 出 latent token，车端只出轨迹；14B WAM 出未来视频，策略只出动作），此时 logit/动作对齐不可行，只能对齐中间表示。<br>本页覆盖：Orion-Lite（latent planning token）、CKT-WAM（世界模型隐状态）、THAW-VLA（世界模型特征离线缓存）、VLP（训练期教师）、S-VAM（自蒸馏 VFM 特征），以及 2026 下半年新出的 DRIFT / W2A / DreamFree / SPARK-VLA。<br><strong>完整实现（缓存格式、LQCA、cosine 对齐、W2A 的 PCA+Q-Former）见第 12 章 §1–§4、§12。</strong></blockquote>
+<blockquote>适用场景：教师和学生的<strong>输出空间不一致</strong>（7B LLM 出 latent token，车端只出轨迹；14B WAM 出未来视频，策略只出动作），此时 logit/动作对齐不可行，只能对齐中间表示。<br>本页覆盖：Orion-Lite（latent planning token）、CKT-WAM（世界模型隐状态）、THAW-VLA（世界模型特征离线缓存）、VLP（训练期教师）、S-VAM（自蒸馏 VFM 特征），以及 2026 下半年新出的 DRIFT / W2A / DreamFree / SPARK-VLA。<br><strong>每个方法的对齐代码见本章 §10（Orion / THAW / CKT / VLP / S-VAM / DRIFT / W2A / DreamFree / SPARK）。</strong></blockquote>
 <hr>
 <h2 id="sec-1">1. 为什么&quot;蒸中间层&quot;在驾驶里特别有效</h2>
 <p>Orion-Lite 的关键论断（Abstract）：</p>
@@ -83,7 +83,9 @@ cond = concat([text_tokens, separator, C_g, C_s], dim=1)
 loss = flow_matching(student_dit(obs, cond), target_video_action_latent)</code></pre>
 <hr>
 <h2 id="sec-4">4. THAW-VLA（2609.24682）：世界模型特征离线缓存，部署零开销</h2>
-<table><tr><th>项</th><th>内容</th></tr><tr><td>教师</td><td>冻结 <strong>Cosmos 3 理解塔</strong>（其 <strong>Qwen3-VL-8B reasoner</strong> 的 layer-24，每视图 mean-pool，<strong>D_t=4096</strong>）</td></tr><tr><td>学生</td><td><strong>QwenGR00T</strong>：0.8B Qwen3.5-VL backbone + GR00T flow-matching action expert（θ 全可训）</td></tr><tr><td>蒸什么</td><td>世界模型的内部特征（原文：&quot;What a world model knows about physical scenes lives in its internal features; generating the future is merely the objective that produced them.&quot;）</td></tr><tr><td>怎么蒸</td><td>教师对训练帧<strong>离线跑一次</strong> → memory-mapped 缓存（key = trajectory id + base index）；训练时只加<strong>视图级 cosine 对齐（λ=0.5 everywhere）</strong>：<code>L_align = 1 − cos(p_φ(f_c^S), sg[f_c^T])</code>；投影 <code>p_φ</code> 训完丢弃</td></tr><tr><td>部署</td><td>蒸馏模块<strong>全部丢弃</strong>；&quot;latency is identical to the undistilled student by construction&quot;；&quot;the deployed policy is architecturally identical to the undistilled baseline&quot;</td></tr><tr><td>结果</td><td>LIBERO <strong>97.9%</strong>（同结构未蒸馏 +2.6）；RoboCasa-GR1 <strong>48.2%→50.5%</strong>（距同架构 4B 仅 4.3 点）；真机 <strong>28/30</strong>（参数为 4B π-style 的 1/5）；<strong>32ms / 1.86GB</strong>（RTX 5090）——对比 π0.5 <strong>65ms</strong>、DreamZero <strong>3s/H100 + 45.9GB</strong></td></tr><tr><td>训练</td><td>LIBERO ~273k 示教步 / 2 视角；RoboCasa-GR1 24 任务 24k episodes（6.02M 步）；4×A100-80GB + ZeRO-2，有效 batch 256；教师缓存约 4 GPU·1 小时</td></tr></table>
+<table><tr><th>项</th><th>内容</th></tr><tr><td>教师</td><td>冻结 <strong>Cosmos 3 理解塔</strong>（<strong>Qwen3-VL-8B reasoner</strong>，layer 24；对每个视图的<strong>图像 token 维</strong>做 mean-pool，得到 <strong>1 个 4096 维向量/视图</strong>）</td></tr><tr><td>学生</td><td><strong>QwenGR00T</strong>：0.8B Qwen3.5-VL backbone + GR00T flow-matching action expert（θ 全可训）</td></tr><tr><td>蒸什么</td><td>世界模型的内部特征（原文：&quot;What a world model knows about physical scenes lives in its internal features; generating the future is merely the objective that produced them.&quot;）</td></tr><tr><td>怎么蒸</td><td>教师对训练帧<strong>离线跑一次</strong> → memory-mapped 缓存（key = trajectory id + base index）；学生把自己的图像 token 也按视图 mean-pool，经 <strong>2 层 MLP <code>p_φ</code></strong> 投到 4096 维；只加<strong>视图级 cosine 对齐（λ=0.5 everywhere）</strong>：<code>L_align = 1 − cos(p_φ(f_c^S), sg[f_c^T])</code>；投影 <code>p_φ</code> 训完丢弃</td></tr><tr><td>部署</td><td>蒸馏模块<strong>全部丢弃</strong>；&quot;latency is identical to the undistilled student by construction&quot;；&quot;the deployed policy is architecturally identical to the undistilled baseline&quot;</td></tr><tr><td>结果</td><td>LIBERO <strong>97.9%</strong>（同结构未蒸馏 +2.6）；RoboCasa-GR1 <strong>48.2%→50.5%</strong>（距同架构 4B 仅 4.3 点）；真机 <strong>28/30</strong>（参数为 4B π-style 的 1/5）；<strong>32ms / 1.86GB</strong>（RTX 5090）——对比 π0.5 <strong>65ms</strong>、DreamZero <strong>3s/H100 + 45.9GB</strong></td></tr><tr><td>训练</td><td>LIBERO ~273k 示教步 / 2 视角；RoboCasa-GR1 24 任务 24k episodes（6.02M 步）；4×A100-80GB + ZeRO-2，有效 batch 256；教师缓存约 4 GPU·1 小时</td></tr></table>
+<p><strong>关于 mean-pool 的疑问（重要）</strong>：式(2) 的 mean 是沿<strong>该视图的图像 token 维</strong>做的——<code>f_c^S = (1/|I_c|) Σ_{i∈I_c} h_i</code>，<code>|I_c|</code> 是这个视图的 image placeholder token 数（几百到几千，取决于分辨率与 token merge；论文没给具体值），输出是 <strong>1 个 D_s 向量</strong>。<strong>4096 的特征维没有被平均</strong>；被压掉的是 token 维，也就是空间布局。</p>
+<p>所以你的直觉是对的：<strong>每个视图只剩一个全局向量，空间信息确实丢了</strong>。论文的赌注是：世界模型的知识主要在全局语义/物理特征里，方向对齐（cosine）+ 小权重（λ=0.5）足以当正则项；空间精度由动作损失负责。证据是增益对 layer、student scale、backbone、teacher family 都稳健（§IV-E 的消融列表），说明转移的是<strong>粗粒度表征先验</strong>，不是精确的空间对齐。代价：它蒸不了&quot;某个区域该怎么动&quot;。要保留空间信息，得用 token-wise 对齐（CKT-WAM 的 LQCA、W2A 的 Q-Former）或网格池化（2×2/4×4）。</p>
 <p><strong>为什么这条最重要</strong>：它是唯一一个&quot;蒸馏对部署零成本&quot;的严格证明——学生结构、延迟、显存与未蒸馏基线<strong>逐位一致</strong>，唯一变化是训练时的对齐项。</p>
 <p><strong>坑</strong>：缓存的是教师看到的状态，学生偏离后特征失效；所以 THAW 的 λ 只有 0.5，且只对齐&quot;视图级&quot;（粗粒度），不敢做逐 token 对齐。</p>
 <hr>
@@ -142,6 +144,84 @@ loss = flow_matching(student_dit(obs, cond), target_video_action_latent)</code><
 <h2 id="sec-13">9. 一张对照表</h2>
 <table><tr><th>工作</th><th>教师</th><th>学生</th><th>蒸什么</th><th>部署是否带蒸馏模块</th><th>关键数字</th></tr><tr><td>Orion-Lite</td><td>7B LLM</td><td>0.1B decoder</td><td>latent planning token</td><td>否（decoder 就是学生）</td><td>DS 80.6&gt;77.7；150×；31→8GB</td></tr><tr><td>CKT-WAM</td><td>14B WAM</td><td>2B WAM</td><td>第 20 层隐状态→64 token</td><td>否（CKT 训完即弃）</td><td>LIBERO-Plus 86.1%；1.17% 参数</td></tr><tr><td>THAW-VLA</td><td>Cosmos3-Nano</td><td>0.8B VLA</td><td>layer-24 特征（4096-D）</td><td>否（逐位一致）</td><td>97.9%；32ms/1.86GB</td></tr><tr><td>VLP</td><td>冻结 LLM</td><td>ADS</td><td>对比对齐</td><td>否</td><td>零推理开销</td></tr><tr><td>S-VAM</td><td>自身多步视频</td><td>同模型</td><td>DPAv3+DINOv2 特征</td><td>否</td><td>CALVIN 4.16；50k 步单卡</td></tr><tr><td>DRIFT</td><td>&lt;150M LM</td><td>255M 规划器</td><td>latent 推理特征</td><td>否</td><td>DS 97.03</td></tr><tr><td>W2A</td><td>视频扩散</td><td>动作模型</td><td>中间去噪表征</td><td>否</td><td>LIBERO 95.9%；21×</td></tr><tr><td>DreamFree</td><td>14B 视频扩散</td><td>编码器+动作头</td><td>未来视频表征</td><td>否</td><td>11Hz</td></tr></table>
 <p><strong>共同点</strong>：全部在部署时丢掉教师/蒸馏模块。这是 2026 年可落地蒸馏方案的必要条件。</p>
+<h2 id="sec-14">10. 实现代码（逐方法）</h2>
+<blockquote>每个方法只给<strong>对齐那一段</strong>（主干与任务损失省略）；输入输出形状按第 12 章约定。</blockquote>
+<h3 id="sec-15">10.1 Orion-Lite（2604.08266）——latent planning token</h3>
+<p><strong>物理意义（解释）</strong>：蒸「规划意图」向量：学生纯视觉重建教师 LLM 的 latent planning token。</p>
+<pre class="code"><code># 输入: images, text, gt_traj；输出: loss
+with torch.no_grad():
+    T_p = teacher.planning_token(images, text)        # [B,1,C_p]
+T_s = student.decoder(student.vision(images))         # [B,1,C_p]
+loss = traj_loss(student.planner(T_s), gt_traj) + (T_s - T_p).abs().mean()</code></pre>
+<h3 id="sec-16">10.2 THAW-VLA（2609.24682）——离线缓存 + 视图级 cosine</h3>
+<p><strong>物理意义（解释）</strong>：蒸「每视角全局印象」：只对齐方向（cosine），不传空间布局；便宜、可作为正则，但蒸不了局部怎么动。</p>
+<pre class="code"><code># 输入: obs, act, keys；输出: loss
+h   = student(obs)
+f_S = h.image_tokens.mean(dim=1)                      # [B,V,4096]
+f_T = load_cache(keys)                                # 教师离线特征
+L_a = (1 - F.cosine_similarity(p_phi(f_S), f_T, dim=-1)).mean()
+loss = flow_matching(h, act) + 0.5 * L_a</code></pre>
+<h3 id="sec-17">10.3 CKT-WAM（2605.06247）——隐状态 → 条件 token</h3>
+<p><strong>物理意义（解释）</strong>：蒸「场景理解」成 64 个条件 token：经 bottleneck→LQCA→adapter，贴到学生文本条件序列。</p>
+<pre class="code"><code># 输入: obs, text, latent；输出: loss
+with torch.no_grad():
+    H_t = teacher.encode(obs, text, t=0, layer=20)    # [B,N,D_t]
+h  = ckt.bottleneck(H_t)                              # [B,N,512]
+Cg = ckt.lqca_g(ckt.q_g.expand(B,-1,-1), h, h)        # [B,32,512]
+Cs = ckt.lqca_s(ckt.q_s.expand(B,-1,-1), h, h)        # [B,32,512]
+cond = torch.cat([text_tokens, ckt.sep, ckt.adapter_g(Cg), Cs], 1)
+loss = flow_matching(student_dit(noisy(latent), t, cond), target_vel(latent))</code></pre>
+<h3 id="sec-18">10.4 VLP（2401.05577）——训练期教师（对比对齐）</h3>
+<p><strong>物理意义（解释）</strong>：训练期用冻结 LLM 把 GT 感知/规划编码，和学生 BEV 特征做对比对齐。物理上=用「标准答案」当老师，推理时老师完全不在。</p>
+<pre class="code"><code># 输入: images, gt_perception, gt_plan；输出: loss
+with torch.no_grad():
+    prompt = build_prompt(gt_perception, gt_plan)
+    t_feat = llm.encode(prompt)                       # 冻结 LLM，只在训练期
+bev = student.bev_encoder(images)                     # [B,N,C]
+loss = contrastive(bev, t_feat) + task_loss(student.head(bev), gt_plan)
+# 推理：删除 llm，零开销</code></pre>
+<h3 id="sec-19">10.5 S-VAM（2603.16195）——自蒸馏 VFM 特征</h3>
+<p><strong>物理意义（解释）</strong>：自己的多步视频 → VFM（几何+语义）特征当目标；一步特征经 decoupler 映射过去。</p>
+<pre class="code"><code># 输入: obs；输出: loss
+F = concat_interp(denoiser.upsample_features(obs, step=0))
+with torch.no_grad():
+    V_hat = svd_sample(denoiser, obs, steps=K)
+    Y_geo = vfm.dpav3(interp(V_hat)); Y_sem = vfm.dinov2(interp(V_hat))
+L = ((decoup.geo(torch.cat([F, Y_geo_ref], -1)) - Y_geo) ** 2).mean() \
+  + ((decoup.sem(torch.cat([F, Y_sem_ref], -1)) - Y_sem) ** 2).mean()</code></pre>
+<h3 id="sec-20">10.6 DRIFT（2611.24719）——latent 推理特征</h3>
+<p><strong>物理意义（解释）</strong>：蒸 255M 规划器的 latent 推理特征；推理时把轻量 LM 摘掉。</p>
+<pre class="code"><code># 输入: images, text, gt_traj；输出: loss
+with torch.no_grad():
+    R_t = lm_teacher(images, text)                    # [B,1,Cr] &lt;150M
+R_s, traj = planner(images)                           # 255M
+loss = traj_loss(traj, gt_traj) + (R_s - R_t).abs().mean()</code></pre>
+<h3 id="sec-21">10.7 W2A（2611.02600）——PCA + Q-Former + 时间加权</h3>
+<p><strong>物理意义（解释）</strong>：蒸视频 DiT 中间表征：PCA 降维 + Q-Former 对齐 + 按去噪时间加权。</p>
+<pre class="code"><code># 输入: future, act, cond；输出: loss
+with torch.no_grad():
+    Z_v = video_dit.latent(future, layer=L, step=tau) # [B,N,Cv]
+Z_v = (Z_v - mu) @ U                                  # PCA → [B,N,K]
+Z_a = action_dit.hidden(add_noise(act, tau), tau, cond)
+Z_h = qformer(query, Z_a)                             # [B,M,K]
+w = torch.exp(-(tau - tau_c) ** 2 / (2 * sigma_w ** 2))
+L_d = (w * (1 - F.cosine_similarity(Z_h, Z_v, dim=-1))).mean()
+loss = flow_matching(action_dit, act, cond) + lam_dist * L_d</code></pre>
+<h3 id="sec-22">10.8 DreamFree（2611.04527，recon）——未来表征</h3>
+<p><strong>物理意义（解释）</strong>：蒸 14B 视频模型的未来表征，让学生只看当前观测就能预测「未来大概什么样」。</p>
+<pre class="code"><code># 输入: obs, future；输出: loss
+with torch.no_grad():
+    y = video_dit.encode(future)                      # 冻结 14B
+z = encoder(obs)
+loss = (1 - F.cosine_similarity(z, y, dim=-1)).mean() + action_loss(...)</code></pre>
+<h3 id="sec-23">10.9 SPARK-VLA（2611.10443）——空间注意力对齐</h3>
+<p><strong>物理意义（解释）</strong>：蒸 3D 专家的注意力响应，注入 LoRA 视觉分支；router 用 action-loss 梯度监督。</p>
+<pre class="code"><code># 输入: img, action_loss；输出: loss
+with torch.no_grad():
+    A_t = expert3d.attention(img)                     # [B,h,N,N]
+A_s = student.visual_attention(img)                   # LoRA 分支
+loss = F.mse_loss(A_s, A_t) + L_task \
+     + route_supervision(router(student.tokens), action_loss_grad)</code></pre>
 <hr>
 <p>更新时间: 2026-11-21</p>
 <footer>大模型 → VLA/WAM 蒸馏研究 · 2026-11 · 数字均标证据级别（L3 全文 / L2 部分 / L1 摘要）</footer>

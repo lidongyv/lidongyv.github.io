@@ -2,7 +2,7 @@
 
 > 一句话：**离线蒸馏教学生"在教师轨迹上怎么做"，on-policy 蒸馏教学生"在你自己搞砸的地方怎么补救"。**
 > 这也是最近三个月（2026-08~11）新论文最密集的方向：VLA-MOPD、FastOPD、REPAIR、TAD、TILDE、WAM-Policy、OPTED、Reflect-VLA 全部落在这一格。
-> **训练循环级伪代码见第 12 章 §7–§11、§13–§14（FastOPD / VLA-MOPD / APM / TACD / WAM-Policy / VAD / H2E）。**
+> **每个方法的训练循环见本章 §10（FastOPD / VLA-MOPD / WAM-Policy / TAD / TILDE / H2E / REPAIR / VAD / OPTED / Reflect）。**
 
 ---
 
@@ -151,6 +151,142 @@ L(θ) = E[ ||u_θ(x_s,s,t) − ½(sg[v_θ(x_s,s)] + sg[v_θ(x̂_m,m)])||² ]    
 | 教师只能给轨迹、不能查 | B 类（TAD），但接受样本效率差 5–12× |
 | 真机、教师调用贵 | C 类（TILDE，触发式恢复） |
 | 有环境/verifier 当裁判 | D 类（H2E / REPAIR / Verify-Act-Distill） |
+
+## 10. 实现代码（逐方法）
+
+> 只给"on-policy 那一段"：学生怎么跑、教师在哪查、损失怎么算。完整训练循环见第 12 章。
+
+### 10.1 FastOPD（2610.02832）——A 类
+
+**物理意义（解释）**：在学生落点查教师：只补学生真正会到的地方，训练成本比逐步 OPD 低。
+
+```python
+for batch in loader:
+    t   = torch.rand(B, 1) * 0.9 + 0.05
+    x_t = student.jump(batch.x1, s=1.0, t=t, cond=batch.cond).detach()
+    L_opd = F.mse_loss(student.velocity(x_t, t), teacher.velocity(x_t, t))
+    # 另加有限区间自一致项 L_sc（见 04 章 §10.7）
+    (L_sc + lam * L_opd).backward(); optimizer.step()
+```
+
+### 10.2 VLA-MOPD（2611.12286）——A 类
+
+**物理意义（解释）**：在学生的每个 ODE 中间状态查对应专家：不只学终点，还学「中间该怎么走」。
+
+```python
+for task in tasks:
+    traj = rollout(student, task)                 # 学生自己跑
+    teacher = teachers[route(task.instruction)]   # 路由冻结专家
+    for obs, act in traj:
+        x = torch.randn_like(act)
+        for k in range(K):                        # 逐 ODE 中间状态
+            with torch.no_grad():
+                tgt = transition(teacher, obs, x, k, K)
+            loss += masked_match(transition(student, obs, x, k, K), tgt, valid_dims(act))
+            x = x + tgt / K
+    loss += beta * ref_kl(student, ref, task)     # 防遗忘
+```
+
+### 10.3 WAM-Policy（2611.24011）——A 类
+
+**物理意义（解释）**：学生自己采样，教师高 NFE 端点当目标；plan stop-grad，动作以 plan 为条件。
+
+```python
+Z_hat = student.sample_video(eps_Z, steps=1)
+A_hat = student.sample_action(eps_A, Z_hat.detach(), steps=2)
+with torch.no_grad():
+    Z_T = teacher.sample_video(eps_Z, steps=K_T)
+    A_T = teacher.sample_action(eps_A, Z_T, steps=K_T)
+loss = pseudo_huber(Z_hat - Z_T) + lam_A * pseudo_huber(A_hat - A_T)
+```
+
+### 10.4 TAD（2610.33650）——B 类
+
+**物理意义（解释）**：判别器当 reward，比较学生/教师 rollout 的特征分布；只有轨迹库也能学行为风格。
+
+```python
+rollout = student_rollout(student, env)          # 学生自己跑
+f_s = student_features(rollout)
+f_t = sample_teacher_features()                  # 教师轨迹库（黑盒）
+reward = discriminator(f_s, f_t)
+loss = -reward.mean() + bc_loss(student, rollout)
+```
+
+### 10.5 TILDE（2610.25376）——C 类
+
+**物理意义（解释）**：失败前叫教师接管，收集恢复轨迹；把「师傅扶一把」变成数据。
+
+```python
+for obs in student_rollout:
+    if reward_model(obs) < thr:                  # 触发式干预
+        with torch.no_grad():
+            D_recovery.append((obs, teacher(obs)))
+loss = bc(student, D_recovery) + bc(student, D_online)
+```
+
+### 10.6 H2E（2611.16246）——D 类
+
+**物理意义（解释）**：agent 成功 session 重标为 VLA 动作；只学能到达目标的轨迹，测试时零 LLM。
+
+```python
+for s in successful_sessions:
+    for t, step in enumerate(s):
+        y = relabel(step)                        # 所有运动重标为 VLA 动作
+        if dist(s.p[t], goal) <= 1.0: y = STOP
+        m = float(dist(s.p[t+K], goal) <= dist(s.p[t], goal) + 0.25)
+        loss += m * F.l1_loss(student(step.obs), y)
+```
+
+### 10.7 REPAIR（2611.02777）——D 类
+
+**物理意义（解释）**：critic 给多专家候选加权成监督分布；把偏好蒸进单个 VLA。
+
+```python
+with torch.no_grad():
+    cands = torch.stack([e(obs) for e in experts])   # 多专家候选
+    w = critic(obs, cands).softmax(-1)
+    target = (w[..., None, None] * cands).sum(0)
+loss = flow_matching(student(obs), target)
+```
+
+### 10.8 Verify-Act-Distill（2610.14885）——D 类
+
+**物理意义（解释）**：verifier 选优→聚合→只留成功 episode→蒸进 LoRA；把测试时搜索的收益写回权重。
+
+```python
+for b in range(replan_steps):
+    cands  = [student.sample(obs) for _ in range(8)]
+    scores = verifier(obs, [c[:10] for c in cands])
+    A_bar  = sum(torch.softmax(scores/0.3, 0)[i] * cands[i] for i in range(8))
+    env.execute([c[:10] for c in cands])
+    if env.success: D.append((obs, A_bar))       # 只留成功
+loss = flow_matching_lora(student, D)
+```
+
+### 10.9 OPTED（2609.20756）——A 类（驾驶）
+
+**物理意义（解释）**：特权教师（HD 图/框）在闭环里给学生相机动作；样本效率来自「在环」而不是离线数据。
+
+```python
+obs, priv = env.step()
+with torch.no_grad():
+    a_t = teacher(priv)                          # 向量化 RL 特权教师
+loss = bc_loss(student(obs), a_t)                # 闭环 on-policy
+```
+
+### 10.10 Reflect-VLA（2610.13453）——A 类（驾驶）
+
+**物理意义（解释）**：风险轨迹学教师纠正分布，可靠轨迹自模仿；把反思内化。
+
+```python
+risk = risk_score(traj)
+if risk > thr:
+    with torch.no_grad():
+        p_t = teacher.token_dist(obs, traj)      # token 级纠正
+    loss = kl_div(student.logits(obs), p_t)
+else:
+    loss = ce_loss(student.logits(obs), traj)    # 自模仿
+```
 
 ---
 

@@ -2,6 +2,7 @@
 
 > 定义：学生**从不拟合教师的分布**，只吃教师生成的标注/数据。教师是"标注器"，不是"被模仿的对象"。
 > 这一类的上限由**数据覆盖度**决定，不由教师容量决定——这是它与 KD 最本质的区别。
+> **生成→过滤→混合的实现代码见本章 §7。**
 
 ---
 
@@ -102,6 +103,78 @@ loss = CE(student(front_img, ego_state, instruction), cot)
 ## 6. 与 KD 的边界（一句话）
 
 > 数据蒸馏改的是**训练集**，KD 改的是**损失函数**。前者换教师不用改学生代码，后者换教师要对齐接口。
+
+## 7. 实现代码（逐方法）
+
+> 数据蒸馏的代码都长一个样：**生成 → 过滤 → 混入训练集**。区别只在"生成什么"和"怎么过滤"。
+
+### 7.1 AutoVLA（2506.13757）——CoT 标注
+
+**物理意义（解释）**：大模型写「驾驶理由」，GT 动作当 hint 抑幻觉；学生学 CoT + 动作。
+
+```python
+# 输入: 前视图, ego_state, gt_traj；输出: (cot, action) 样本
+prompt = build_prompt(front_img, ego_state, gt_action_hint)   # GT 作 hint 抑幻觉
+cot = teacher.generate(prompt, temperature=0.7, max_tokens=512)
+if not check_action_consistency(cot, gt_traj):                # 一致性过滤
+    cot = teacher.regenerate(prompt, temperature=0.3)
+student_sft(student(front_img, ego_state, instruction), cot)
+```
+
+### 7.2 GR00T N1（2503.14734）——神经轨迹 + 潜动作
+
+**物理意义（解释）**：视频生成模型造 827h 神经轨迹 + VQ-VAE 潜动作；与真机 1:1 混合。
+
+```python
+# 1) 在 88h 遥操上微调图生视频模型，生成 827h 视频
+video_model = finetune_video_gen(teleop_88h)
+fake_videos = video_model.generate(prompts, n=...)              # ≈10× 数据
+
+# 2) VQ-VAE 帧间潜动作（encoder 当 IDM）
+latent_action = vqvael.encode(frame_t, frame_t1)
+
+# 3) 与真机动作 1:1 混合，做 flow-matching
+batch = mix(real_batch, fake_batch, ratio=1.0)
+flow_matching(student, batch.obs, batch.latent_action)
+```
+
+### 7.3 LAPA（2410.11758）——无动作视频 → 潜动作
+
+**物理意义（解释）**：无动作视频学离散潜动作，再小数据映射到真实动作；把「看视频」变成「有标签」。
+
+```python
+# 输入: 无动作视频帧对；输出: 离散潜动作
+z = vqvael.encode(frame_t, frame_t1).argmax(-1)                 # [B, 8^4]
+latent_vla.train(video_frames, z)                                # 预训练
+# 小数据微调：潜动作 → 真实 ΔEE
+map_head.fit(latent_vla.features, delta_ee)                      # 256^7
+```
+
+### 7.4 DreamGen / Veo-Act / RIGVid（L1）
+
+**物理意义（解释）**：生成演示 → IDM/IK/跟踪 → 机器人轨迹；用生成模型补长尾任务。
+
+```python
+# 生成演示 → IDM/IK/跟踪 → 机器人轨迹
+video = veo3.generate(instruction, first_frame=obs0)
+actions = idm(video)                       # 逆动力学模型
+# 或 NovaFlow: video → 3D object flow → IK
+# 或 RIGVid: video → VLM 过滤 → 6D 跟踪 → 轨迹
+dataset.add(actions); train_bc(student, dataset)
+```
+
+### 7.5 过滤与混合（工程要点）
+
+**物理意义（解释）**：三道过滤（格式/物理/动作一致性）+ 真机:合成 1:1；数据蒸馏的上限由覆盖度决定。
+
+```python
+def keep(sample):
+    return (check_format(sample) and
+            check_physics(sample) and
+            check_action_consistency(sample, sample.gt))
+dataset = [s for s in generated if keep(s)]        # 通常只留 40–60%
+loader  = mix(real_data, dataset, ratio=1.0)       # GR00T 经验值
+```
 
 ---
 

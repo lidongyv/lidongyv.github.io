@@ -36,153 +36,281 @@
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
 <nav class="topnav"><div class="inner"><a href="index.html">首页</a><a class="" href="00-evidence.html">00 · 证据与核实</a><a class="" href="01-taxonomy.html">01 · 分类框架</a><a class="" href="02-vla-distill.html">02 · VLA 蒸馏</a><a class="" href="03-wam-distill.html">03 · WAM 蒸馏</a><a class="" href="04-step-distill.html">04 · 步数蒸馏</a><a class="" href="05-feature-latent.html">05 · 特征与 latent</a><a class="" href="06-on-policy.html">06 · On-policy 蒸馏</a><a class="" href="07-data-distill.html">07 · 数据蒸馏</a><a class="" href="08-tricks.html">08 · Trick 总谱</a><a class="" href="09-benchmarks.html">09 · 教师 vs 学生</a><a class="" href="10-recent.html">10 · 最近三个月</a><a class="" href="11-pitfalls.html">11 · 陷阱与复现</a><a class="" href="12-implementation.html">12 · 实现手册</a></div></nav>
 <main>
-<h1>02 · VLA 蒸馏：驾驶与操作两条线的实现与数字</h1>
+<h1>02 · VLA 蒸馏：每个方法的实现、数字与坑</h1>
 <p class="meta">来源 docs/02-vla-distill.md · 生成于 2026-11-21</p>
-<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 全景：VLA 蒸馏的 8 种做法</a></li><li class=""><a href="#sec-2">2. 驾驶线：省掉推理期的 LLM</a></li><li class="toc-h3"><a href="#sec-3">2.1 Orion-Lite（2604.08266，L3）——最硬的证据</a></li><li class="toc-h3"><a href="#sec-4">2.2 DRIFT（2611.24719，L1）——把 LM 做成&quot;可摘除的推理支架&quot;</a></li><li class="toc-h3"><a href="#sec-5">2.3 FPD-Drive（2610.13232，L1）——特权教师</a></li><li class="toc-h3"><a href="#sec-6">2.4 OPTED（2609.20756，L1）——闭环 on-policy 经验蒸馏</a></li><li class="toc-h3"><a href="#sec-7">2.5 Reflect-VLA（2610.13453，L1）——同体自蒸馏</a></li><li class="toc-h3"><a href="#sec-8">2.6 ConDenseDrive（2610.16908，L1）——多教师特征蒸馏</a></li><li class="toc-h3"><a href="#sec-9">2.7 数据蒸馏（驾驶，见 07 章）</a></li><li class=""><a href="#sec-10">3. 操作线：压动作头的 NFE</a></li><li class="toc-h3"><a href="#sec-11">3.1 π0-FAST（PI 官方，无 arXiv，L2）</a></li><li class="toc-h3"><a href="#sec-12">3.2 SnapFlow（2604.05656，L3）</a></li><li class="toc-h3"><a href="#sec-13">3.3 FastOPD（2610.02832，L1）</a></li><li class="toc-h3"><a href="#sec-14">3.4 VLA-MOPD（2611.12286，L1）</a></li><li class="toc-h3"><a href="#sec-15">3.5 REPAIR（2611.02777，L1）</a></li><li class="toc-h3"><a href="#sec-16">3.6 TAD（2610.33650，L1）——黑盒教师的上限</a></li><li class="toc-h3"><a href="#sec-17">3.7 TILDE（2610.25376，L1）</a></li><li class="toc-h3"><a href="#sec-18">3.8 剪枝 + 离线隐层蒸馏（2609.19579，L1）——最实用的基线</a></li><li class="toc-h3"><a href="#sec-19">3.9 SPARK-VLA（2611.10443，NeurIPS 2026，L1）</a></li><li class=""><a href="#sec-20">4. 横向总表（VLA）</a></li><li class=""><a href="#sec-21">5. 三条实现范式（可直接抄）</a></li><li class="toc-h3"><a href="#sec-22">范式 A：latent token 蒸馏（驾驶）</a></li><li class="toc-h3"><a href="#sec-23">范式 B：动作头步数蒸馏（操作）</a></li><li class="toc-h3"><a href="#sec-24">范式 C：剪枝 + 离线隐层（最便宜）</a></li><li class=""><a href="#sec-25">6. 选型</a></li></ol></details>
-<h1>02 · VLA 蒸馏：驾驶与操作两条线的实现与数字</h1>
-<blockquote>VLA = Vision-Language-Action。蒸馏它有两种完全不同的动机：<br><strong>驾驶</strong>——把 7B 级 LLM 的车端推理省掉（延迟/显存是硬约束）；<br><strong>操作</strong>——把 flow/diffusion 动作头的 NFE 压下来（控制频率是硬约束）。<br>两条线的论文几乎不互引，但机制高度重合。本页按&quot;蒸什么&quot;组织。<br><strong>实现级细节（张量形状、完整伪代码、超参）统一放在第 12 章《实现手册》。</strong></blockquote>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 全景：VLA 蒸馏的 8 种做法</a></li><li class=""><a href="#sec-2">2. 驾驶线：省掉推理期的 LLM</a></li><li class="toc-h3"><a href="#sec-3">2.1 Orion-Lite（2604.08266，L3）——最硬的证据</a></li><li class="toc-h3"><a href="#sec-4">2.2 DRIFT（2611.24719，L1）——把 LM 做成&quot;可摘除的推理支架&quot;</a></li><li class="toc-h3"><a href="#sec-5">2.3 FPD-Drive（2610.13232，L1）——未来观测特权教师</a></li><li class="toc-h3"><a href="#sec-6">2.4 OPTED（2609.20756，L1）——闭环 on-policy 经验蒸馏</a></li><li class="toc-h3"><a href="#sec-7">2.5 Reflect-VLA（2610.13453，L1）——双路径自蒸馏</a></li><li class="toc-h3"><a href="#sec-8">2.6 ConDenseDrive（2610.16908，L1）——多教师特征蒸馏</a></li><li class="toc-h3"><a href="#sec-9">2.7 数据蒸馏（驾驶，见 07 章）</a></li><li class=""><a href="#sec-10">3. 操作线：压动作头的 NFE</a></li><li class="toc-h3"><a href="#sec-11">3.1 π0-FAST（PI 官方，无 arXiv，L2）</a></li><li class="toc-h3"><a href="#sec-12">3.2 SnapFlow（2604.05656，L3）</a></li><li class="toc-h3"><a href="#sec-13">3.3 FastOPD（2610.02832，L2）</a></li><li class="toc-h3"><a href="#sec-14">3.4 VLA-MOPD（2611.12286，L1）</a></li><li class="toc-h3"><a href="#sec-15">3.5 REPAIR（2611.02777，L1）</a></li><li class="toc-h3"><a href="#sec-16">3.6 TAD（2610.33650，L1）——黑盒教师</a></li><li class="toc-h3"><a href="#sec-17">3.7 TILDE（2610.25376，L1）</a></li><li class="toc-h3"><a href="#sec-18">3.8 剪枝 + 离线隐层（2609.19579，L1）——最实用的基线</a></li><li class="toc-h3"><a href="#sec-19">3.9 SPARK-VLA（2611.10443，NeurIPS 2026，L1）</a></li><li class=""><a href="#sec-20">4. 横向总表（VLA）</a></li><li class=""><a href="#sec-21">5. 五种&quot;只看描述会写错&quot;的实现细节</a></li><li class=""><a href="#sec-22">6. 选型</a></li></ol></details>
+<h1>02 · VLA 蒸馏：每个方法的实现、数字与坑</h1>
+<blockquote>VLA = Vision-Language-Action。蒸馏它有两种完全不同的动机：<br><strong>驾驶</strong>——把 7B 级 LLM 的车端推理省掉（延迟/显存是硬约束）；<br><strong>操作</strong>——把 flow/diffusion 动作头的 NFE 压下来（控制频率是硬约束）。<br>这一版把<strong>每个方法的实现代码</strong>放进对应小节（输入/输出 + 核心伪代码），不再只写&quot;做了什么、结果多少&quot;。<br>深度模块拆解（LQCA、decoder 内部形状、训练循环）见第 12 章。</blockquote>
 <hr>
 <h2 id="sec-1">1. 全景：VLA 蒸馏的 8 种做法</h2>
 <table><tr><th>#</th><th>做法</th><th>代表</th><th>教师</th><th>学生</th><th>部署带走什么</th></tr><tr><td>1</td><td>latent planning token 回归</td><td><strong>Orion-Lite</strong> (2604.08266)</td><td>7B LLM</td><td>0.1B decoder</td><td>只有学生</td></tr><tr><td>2</td><td>latent 推理特征 + 可摘 LM</td><td><strong>DRIFT</strong> (2611.24719)</td><td>&lt;150M LM</td><td>255M 规划器</td><td>只有规划器</td></tr><tr><td>3</td><td>特权/未来观测蒸馏</td><td><strong>FPD-Drive</strong> (2610.13232)、<strong>OPTED</strong> (2609.20756)</td><td>特权教师</td><td>纯视觉规划器</td><td>只有学生</td></tr><tr><td>4</td><td>多教师特征蒸馏</td><td><strong>ConDenseDrive</strong> (2610.16908)</td><td>3 个 VFM</td><td>单一视觉编码器</td><td>只有编码器</td></tr><tr><td>5</td><td>同体渐进 + token 级纠正</td><td><strong>Reflect-VLA</strong> (2610.13453)</td><td>自身渐进教师</td><td>单次前向 VLA</td><td>只有学生</td></tr><tr><td>6</td><td>动作头步数蒸馏</td><td><strong>SnapFlow</strong> (2604.05656)、<strong>π0-FAST</strong>、<strong>FastOPD</strong> (2610.02832)</td><td>10-NFE / flow 教师</td><td>1-NFE</td><td>只有学生</td></tr><tr><td>7</td><td>多专家策略合并（OPD）</td><td><strong>VLA-MOPD</strong> (2611.12286)、<strong>REPAIR</strong> (2611.02777)</td><td>多任务/RL 专家</td><td>单一 VLA</td><td>只有学生</td></tr><tr><td>8</td><td>剪枝 + 离线隐层蒸馏</td><td><strong>2609.19579</strong></td><td>OpenVLA-OFT 7B</td><td>宽度剪枝 63–72%</td><td>剪枝后的学生</td></tr></table>
 <hr>
 <h2 id="sec-2">2. 驾驶线：省掉推理期的 LLM</h2>
 <h3 id="sec-3">2.1 Orion-Lite（2604.08266，L3）——最硬的证据</h3>
-<table><tr><th>项</th><th>教师 ORION</th><th>学生 Orion-Lite</th></tr><tr><td>结构</td><td>EVA-02-L + Vicuna-v1.5 <strong>7B</strong> + VAE 规划器</td><td>EVA-02-L（冻结）+ <strong>0.1B</strong> 6 层 decoder + planner</td></tr><tr><td>输入</td><td>图像 + 文本 prompt</td><td><strong>纯视觉</strong>（丢弃文本）</td></tr><tr><td>蒸什么</td><td>—</td><td>教师 LLM 的 latent planning token <code>T_p</code></td></tr><tr><td>损失</td><td>—</td><td><code>L = L_GT + L_mimic</code>，<code>L_mimic = ‖T_s − T_p‖₁</code></td></tr><tr><td>Bench2Drive 闭环 DS</td><td><strong>77.7</strong></td><td><strong>80.6</strong></td></tr><tr><td>能力分</td><td>54.7</td><td>60.5</td></tr><tr><td>推理模块延迟</td><td>基线</td><td><strong>150×</strong></td></tr><tr><td>端到端延迟</td><td>—</td><td><strong>806ms → 267ms</strong></td></tr><tr><td>显存</td><td><strong>31GB</strong></td><td><strong>8GB</strong></td></tr></table>
-<p><strong>要点</strong>：</p>
-<ul>
-<li>冻结视觉编码器 + QT-Former，只训 0.1B decoder；
-</li><li>用 L1 而不是 KL（作者明确对比 DiMA 的 KL 路线）；
-</li><li>闭环反超，作者归因于&quot;LLM 在直接模式下是过参数化的特征提取器&quot;。
-</li></ul>
+<p><strong>物理意义（解释）</strong>：蒸的是教师 LLM 对当前场景形成的<strong>规划意图</strong>——不是动作，而是「看到这个场景，老司机心里已经有的路线倾向」。学生用纯视觉重建这个意图，反而去掉了文本 prompt 与长 CoT 带来的推理噪声，所以能反超教师。</p>
+<p><strong>教师结构</strong>：ORION = <strong>EVA-02-L/14 视觉塔 + Vicuna-v1.5 7B LLM + VAE 生成式规划器</strong>。</p>
+<p>EVA-02-L/14 是 ViT-L/14 规格（<strong>24 层、1024 宽、16 头、patch 14、304M 参数</strong>；SwiGLU + RoPE；224 预训练、448 微调；层数/宽度按 ViT-L/14 惯例，具体以 checkpoint config 为准；预训练方式是&quot;从 CLIP 视觉编码器做掩码图像建模蒸馏&quot;，见 EVA-02 论文 2303.11331 / 官方 README）。</p>
+<p><strong>实现</strong>（输入 <code>images [B,V,3,224,224]</code>、<code>text [B,T]</code>、<code>gt_traj [B,H,3]</code>；输出 <code>loss: scalar</code>）</p>
+<pre class="code"><code># ---- 教师：EVA-02-L/14 + Vicuna-7B，冻结，只取 planning token ----
+with torch.no_grad():
+    T_p = teacher.planning_token(images, text)        # [B,1,C_p]
+
+# ---- 学生：同款视觉塔（冻结）+ 0.1B、6 层 decoder（纯视觉，丢文本） ----
+vis = student.vision(images)                          # [B,Nv,1024]
+T_s = student.decoder(vis)                            # [B,1,C_p]
+pred = student.planner(T_s, vis)                      # [B,H,3]
+
+# ---- 两路损失 ----
+L_mimic = (T_s - T_p).abs().mean()                    # 逐元素 L1
+L_gt    = traj_losses(pred, gt_traj)                  # col + bd + reg + vae
+loss    = L_gt + L_mimic</code></pre>
+<p><strong>L1 和 KL 的实现区别</strong>（这是最常被问的问题）</p>
+<pre class="code"><code># L1：逐元素比较两个连续向量，要求形状完全一致
+L1 = (T_s - T_p).abs().mean()
+
+# KL：比较两个&quot;分布&quot;，先 log_softmax/softmax，再沿类别维求和
+p  = F.log_softmax(T_s / T, dim=-1)                   # 学生 log-prob
+q  = F.softmax(T_p / T, dim=-1)                       # 教师 prob
+KL = F.kl_div(p, q, reduction=&quot;batchmean&quot;) * T * T    # 温度缩放要乘回 T²</code></pre>
+<table><tr><th>维度</th><th>L1</th><th>KL</th></tr><tr><td>输入形状</td><td>两个<strong>同形状</strong>张量</td><td>两个<strong>同形状</strong>张量，但最后一维被当作&quot;类别&quot;</td></tr><tr><td>是否需要 softmax</td><td>不需要</td><td>必须（否则不是分布）</td></tr><tr><td>语义</td><td>向量回归，逐元素</td><td>分布对齐，沿类别求和</td></tr><tr><td>梯度</td><td>±1，对误差大小不敏感</td><td>与概率差成正比，教师越自信权重越大</td></tr><tr><td>对称性</td><td>对称</td><td><strong>不对称</strong>（<code>KL(p‖q) ≠ KL(q‖p)</code>）</td></tr><tr><td>数值</td><td>稳定</td><td>需要 <code>log_softmax</code>，否则 <code>-inf</code></td></tr></table>
+<p>所以&quot;不都还是 L1 嘛&quot;不成立：<strong>L1 是逐元素绝对值，KL 是分布间的求和</strong>。Orion-Lite 用 L1，是因为 latent planning token 是连续表征、没有概率含义；DiMA 用 KL，是把通道维当分布，两者不能互换（作者原文明确说 KL 是 &quot;suboptimal distributional metrics&quot;）。</p>
+<p><strong>KL 也不是一种实现：KD 的 KL 与 VAE 的 KL 是两个东西</strong></p>
+<pre class="code"><code># (a) KD 的 KL：两个 categorical 分布（logits → softmax），沿类别维求和
+p = F.log_softmax(student_logits / T, -1)
+q = F.softmax(teacher_logits / T, -1)
+KL_cat = F.kl_div(p, q, reduction=&quot;batchmean&quot;) * T * T
+
+# (b) VAE 的 KL：对角高斯后验 vs N(0, I)，闭式，逐维求和
+def kl_gaussian(mu, logvar):
+    # 输入: mu [B,D], logvar [B,D]；输出: [B]
+    return -0.5 * (1 + logvar - mu.pow(2) - logvar.exp()).sum(-1)
+
+# (c) 用 torch.distributions 交叉验证（结果应与 (b) 一致）
+KL_gauss = torch.distributions.kl_divergence(
+    torch.distributions.Normal(mu, (0.5 * logvar).exp()),
+    torch.distributions.Normal(torch.zeros_like(mu), torch.ones_like(mu))
+).sum(-1)</code></pre>
+<table><tr><th></th><th>KD 的 KL</th><th>VAE 的 KL</th></tr><tr><td>分布族</td><td>categorical（softmax 后）</td><td>diagonal Gaussian</td></tr><tr><td>输入</td><td>logits <code>[B,C]</code></td><td><code>mu, logvar [B,D]</code></td></tr><tr><td>计算</td><td><code>Σ_c q·log(q/p)</code></td><td><code>−0.5·Σ_d (1 + logvar − mu² − exp(logvar))</code></td></tr><tr><td>是否采样</td><td>否</td><td>否（闭式）</td></tr><tr><td>作用</td><td>对齐教师/学生输出分布</td><td>把潜变量正则到先验</td></tr><tr><td>本工程出现处</td><td>DiMA、Reflect-VLA、VLA-MOPD 的 ref KL</td><td>Orion-Lite 的 <code>L_vae</code>（VAE 规划器损失项，通常含高斯 KL；原文 §3.4 未逐项展开）</td></tr></table>
+<p>看到 &quot;KL&quot; 要先问<strong>是哪个分布族</strong>：KD 的 KL 是类别分布（要 softmax）；VAE 的 KL 是高斯（闭式、对 <code>mu/logvar</code> 算）；DMD 里的 KL 则是用 score 差近似，连闭式都没有。</p>
+<p><strong>结果</strong>：Bench2Drive DS <strong>80.6</strong>（教师 77.7）；推理模块 150×；端到端 806→267ms；显存 31→8GB。</p>
+<hr>
 <h3 id="sec-4">2.2 DRIFT（2611.24719，L1）——把 LM 做成&quot;可摘除的推理支架&quot;</h3>
-<ul>
-<li>轻量 LM（&lt;150M）→ 规划器（全模型 <strong>255M</strong>）；蒸 <strong>surrogate reasoning features</strong>（latent 推理特征），推理期可把 LM 摘掉。
-</li><li>数字：Bench2Drive <strong>DS 97.03 / SR 89.39%</strong>（三次均值）。
-</li><li>解读：比 Orion-Lite 更彻底——连 0.1B decoder 都不保留，直接把推理压进 255M 规划器。<strong>但 97.03 与 Orion-Lite 的 80.6 不可比</strong>（前者大概率是不同评测设置/更大数据），只说明&quot;小模型可以做到很高&quot;。
-</li></ul>
-<h3 id="sec-5">2.3 FPD-Drive（2610.13232，L1）——特权教师</h3>
-<ul>
-<li>教师：可见未来观测的特权教师；学生：纯视觉规划器；蒸未来多目标轨迹监督。
-</li><li>数字：NAVSIM v1 <strong>94.9 PDMS</strong>；v2 navhard <strong>55.9 EPDMS</strong>；Pro 95.5/58.1；HUGSIM HD-Score 45.1、RC 55.3。
-</li><li>定位：典型的 Learning-by-Cheating 变体，部署不带教师。
-</li></ul>
+<p><strong>物理意义（解释）</strong>：把「想清楚再开」的推理过程压成一个 latent 特征，让 255M 规划器「看一眼就有数」。物理上蒸的是<strong>决策前的沉默思考</strong>，不是决策结果。</p>
+<p><strong>实现</strong>（输入 <code>images</code>、<code>text</code>、<code>gt_traj</code>；输出 <code>loss</code>）</p>
+<pre class="code"><code># 教师：轻量 LM（&lt;150M）出 latent reasoning feature
+with torch.no_grad():
+    R_t = lm_teacher(images, text)                    # [B,1,Cr]
+
+# 学生：255M 规划器直接出&quot;推理特征 + 轨迹&quot;
+R_s, traj = planner(images)                           # R_s [B,1,Cr], traj [B,H,3]
+
+loss = traj_loss(traj, gt_traj) + (R_s - R_t).abs().mean()
+# 推理：丢掉 lm_teacher，只跑 planner（255M）</code></pre>
+<p><strong>结果</strong>：Bench2Drive DS <strong>97.03</strong> / SR <strong>89.39%</strong>（三次均值），255M 参数。</p>
+<hr>
+<h3 id="sec-5">2.3 FPD-Drive（2610.13232，L1）——未来观测特权教师</h3>
+<p><strong>物理意义（解释）</strong>：教师能偷看未来几帧，学生不能；蒸的是「接下来别的车/人会往哪走」的<strong>未来轨迹先验</strong>，让学生从当前帧推断动态。</p>
+<p><strong>实现</strong>（输入 <code>obs</code>、<code>future_obs</code>（仅训练期）、<code>gt_traj</code>；输出 <code>loss</code>）</p>
+<pre class="code"><code># 教师能看到&quot;未来观测&quot;，学生只能看当前帧
+with torch.no_grad():
+    y_t = teacher(obs, future_obs)                    # [B,M,T,2] 多目标未来轨迹
+y_s = student(obs)                                    # 纯视觉规划器
+loss = traj_loss(y_s, gt_traj) + (y_s - y_t).abs().mean()
+# 部署：学生不需要 future_obs</code></pre>
+<p><strong>结果</strong>：NAVSIM v1 <strong>94.9 PDMS</strong>；v2 navhard 55.9 EPDMS；HUGSIM HD-Score 45.1。</p>
+<hr>
 <h3 id="sec-6">2.4 OPTED（2609.20756，L1）——闭环 on-policy 经验蒸馏</h3>
-<ul>
-<li>教师：向量化输入（HD 图 + 框）的 RL 特权教师；学生：相机（TransFuser/VaVAM）。
-</li><li>做法：AlpaSim + 3DGS 在线采样，闭环蒸馏。
-</li><li>数字：DS 提升 <strong>1.6× 与 9.5×</strong>；同等闭环性能少约 <strong>3 个数量级</strong>仿真交互。
-</li><li>价值：证明&quot;闭环经验&quot;比&quot;离线轨迹&quot;值钱得多——3 个数量级是这条线最夸张的样本效率数字。
-</li></ul>
-<h3 id="sec-7">2.5 Reflect-VLA（2610.13453，L1）——同体自蒸馏</h3>
-<ul>
-<li>教师：同体渐进教师（Reflective Guidance 作为训练期特权）→ 单次前向 VLA。
-</li><li>做法：<strong>token 级纠正分布蒸馏</strong>；风险轨迹蒸教师、可靠轨迹自模仿（双路径）。
-</li><li>数字：训练时间较 RL 减少 <strong>90%+</strong>；NAVSIM v1/v2、Bench2Drive（摘要未给分值）。
-</li><li>价值：把&quot;自我反思/纠错&quot;变成训练期信号，推理期不需要反思循环。
-</li></ul>
+<p><strong>物理意义（解释）</strong>：蒸的是<strong>闭环交互经验</strong>——不是单帧动作，而是「在环里开错之后怎么修」的行为分布；所以同等性能需要的仿真交互少三个数量级。</p>
+<p><strong>实现</strong>（输入 <code>obs</code>（相机）、<code>priv</code>（HD 图 + 框，仅教师）；输出 <code>loss</code>）</p>
+<pre class="code"><code>for step in range(N):
+    obs, priv, done = env.step()
+    with torch.no_grad():
+        a_t = teacher(priv)                           # 向量化 RL 特权教师
+    a_s = student(obs)                                # 相机学生
+    loss = bc_loss(a_s, a_t)                          # 闭环 on-policy 蒸馏
+    optimizer.zero_grad(); loss.backward(); optimizer.step()</code></pre>
+<p><strong>结果</strong>：DS 提升 <strong>1.6× / 9.5×</strong>；同等闭环性能少约 <strong>3 个数量级</strong>仿真交互。</p>
+<hr>
+<h3 id="sec-7">2.5 Reflect-VLA（2610.13453，L1）——双路径自蒸馏</h3>
+<p><strong>物理意义（解释）</strong>：风险轨迹上学教师的<strong>纠错意见</strong>（token 级纠正分布），可靠轨迹上自模仿。物理上=把「事后复盘」内化进单次前向。</p>
+<p><strong>实现</strong>（输入 <code>obs</code>、<code>traj</code>、<code>risk</code>；输出 <code>loss</code>）</p>
+<pre class="code"><code>risk = risk_score(traj)                               # 轨迹风险分
+if risk &gt; thr:                                        # 风险轨迹 → 学教师纠正
+    with torch.no_grad():
+        p_t = teacher.token_dist(obs, traj)           # token 级纠正分布
+    loss = kl_div(student.logits(obs), p_t)
+else:                                                 # 可靠轨迹 → 自模仿
+    loss = ce_loss(student.logits(obs), traj)</code></pre>
+<p><strong>结果</strong>：训练时间较 RL 减少 <strong>90%+</strong>；NAVSIM v1/v2、Bench2Drive（摘要未给分值）。</p>
+<hr>
 <h3 id="sec-8">2.6 ConDenseDrive（2610.16908，L1）——多教师特征蒸馏</h3>
-<ul>
-<li>教师：3 个视觉基础模型（视觉/语义/几何）→ 单一 E2E 视觉编码器；配 register token 压缩。
-</li><li>数字：<strong>2.0×</strong> 加速；NAVSIM v1 <strong>94.5 PDMS</strong>、v2 <strong>90.8 EPDMS</strong>；HUGSIM 37.4 HD-Score。
-</li></ul>
+<p><strong>物理意义（解释）</strong>：把视觉/语义/几何三个基础模型的「看法」压进一个编码器。物理上=让一个学生同时继承三双眼睛，且推理时只付一双眼睛的钱。</p>
+<p><strong>实现</strong>（输入 <code>img</code>；输出 <code>loss</code>）</p>
+<pre class="code"><code>with torch.no_grad():
+    f_v = vfm_visual(img)                             # 视觉 VFM
+    f_s = vfm_semantic(img)                           # 语义 VFM
+    f_g = vfm_geometric(img)                          # 几何 VFM
+f = encoder(img)                                      # 学生单编码器
+target = torch.cat([f_v, f_s, f_g], dim=-1).detach()
+loss = F.mse_loss(f, target) + task_loss(planner(f), gt)</code></pre>
+<p><strong>结果</strong>：<strong>2.0×</strong> 加速；NAVSIM v1 <strong>94.5 PDMS</strong>、v2 90.8 EPDMS。</p>
+<hr>
 <h3 id="sec-9">2.7 数据蒸馏（驾驶，见 07 章）</h3>
-<p>AutoVLA（Qwen2.5-VL-72B → 3B，45.6k nuPlan + 7.2k Waymo CoT）、Senna（GPT-4o）、DriveGPT4（ChatGPT）、OmniDrive（GPT-4）、LMDrive（指令改写）。</p>
+<p>AutoVLA（Qwen2.5-VL-72B → 3B）、Senna（GPT-4o）、DriveGPT4（ChatGPT）、OmniDrive（GPT-4）、LMDrive（指令改写）。</p>
 <hr>
 <h2 id="sec-10">3. 操作线：压动作头的 NFE</h2>
 <h3 id="sec-11">3.1 π0-FAST（PI 官方，无 arXiv，L2）</h3>
-<ul>
-<li>把 π0 的 flow matching 动作专家蒸馏成 <strong>FAST tokenizer 的自回归专家</strong>，推理约 <strong>5×</strong>（官方博客 + openpi 代码）。
-</li><li>注意：没有同行评议论文；引用时标 ❗。
-</li></ul>
+<p><strong>物理意义（解释）</strong>：把连续动作的「积分求解」换成离散 token 的「逐字写」。物理上=把连续控制翻译成语言，用自回归换掉 ODE 的串行开销。</p>
+<p><strong>实现</strong>（输入 <code>obs</code>；输出 <code>tokens</code>）</p>
+<pre class="code"><code># 教师：π0 flow 头多步采样出动作
+with torch.no_grad():
+    a = pi0_flow.sample(obs, steps=10)                # [B,H,D]
+    tokens = fast_tokenizer.encode(a)                 # 离散动作 token
+# 学生：FAST 自回归专家
+loss = F.cross_entropy(ar_expert(obs).logits, tokens)</code></pre>
+<p><strong>结果</strong>：推理约 <strong>5×</strong>（官方博客 + openpi 代码）。</p>
+<hr>
 <h3 id="sec-12">3.2 SnapFlow（2604.05656，L3）</h3>
-<ul>
-<li>教师=π0.5（10-NFE），学生=同网络 1-NFE；短切目标 + zero-init destination-time projection。
-</li><li>数字：LIBERO <strong>98.75% vs 教师 97.75%</strong>；π0 单步版超教师 <strong>+10.5pp</strong>；延迟 <strong>−3.3×</strong>。
-</li><li>详见 04 章。
-</li></ul>
-<h3 id="sec-13">3.3 FastOPD（2610.02832，L1）</h3>
-<ul>
-<li>教师：π0.5 / LingBot-VLA / MolmoAct2；学生：轻量 VLA。
-</li><li>蒸什么：教师速度场（flow map 单状态监督 + self-consistency），<strong>on-policy</strong> 在学生状态上查教师。
-</li><li>数字：LIBERO 2 步保留 <strong>84%</strong>，延迟 <strong>−78.1%</strong>；RoboTwin2.0 单步 <strong>+15.9pp</strong>。
-</li><li>详见 06 章。
-</li></ul>
+<p><strong>物理意义（解释）</strong>：蒸的是「自己走两步的终点」。物理上=让学生学会一步到位；反超教师是因为多步积分的离散化误差被消掉了。</p>
+<p><strong>实现</strong>（输入 <code>x0 [B,H,D]</code>、<code>cond</code>；输出 <code>loss</code>）</p>
+<pre class="code"><code>t   = torch.rand(B, 1)
+eps = torch.randn_like(x0)
+x_t = (1 - t) * x0 + t * eps
+
+# 分支 1：标准 flow matching
+L_fm = F.mse_loss(model(x_t, t, t_dst=t, cond=cond), eps - x0)
+
+# 分支 2：自己的两步 Euler 端点（整链 stop-grad）
+with torch.no_grad():
+    t_mid = 0.5 * t
+    x_mid = x_t + (t_mid - t) * model(x_t, t, t_dst=t_mid, cond=cond)
+    x_dst = x_mid + (0 - t_mid) * model(x_mid, t_mid, t_dst=0, cond=cond)
+    v_tgt = (x_dst - x_t) / (0 - t)
+L_sc = F.mse_loss(model(x_t, t, t_dst=0, cond=cond), v_tgt)
+
+loss = L_fm + lam * L_sc
+# 推理：a0 = a1 - model(a1, t=1, t_dst=0, cond)   1 NFE</code></pre>
+<p><strong>结果</strong>：LIBERO <strong>98.75% vs 教师 97.75%</strong>；去噪 9.6×、端到端 274→83ms。</p>
+<hr>
+<h3 id="sec-13">3.3 FastOPD（2610.02832，L2）</h3>
+<p><strong>物理意义（解释）</strong>：在学生<strong>自己会到达的状态</strong>上问教师「这里该往哪走」。物理上=补课补在学生真正卡住的地方，而不是教师轨迹上。</p>
+<p><strong>实现</strong>（输入 <code>x1 [B,H,D]</code>、<code>cond</code>；输出 <code>loss</code>）</p>
+<pre class="code"><code># S2 学生落点（教师只查这一个点）
+t   = torch.rand(B, 1) * 0.9 + 0.05
+x_t = student.jump(x1, s=1.0, t=t, cond=cond).detach()
+
+# S3 on-policy 速度蒸馏
+L_opd = F.mse_loss(student.velocity(x_t, t, cond),
+                   teacher.velocity(x_t, t, cond))
+
+# S4 有限区间自一致
+s   = t * torch.rand(B, 1)
+m   = 0.5 * (s + t)
+x_s = student.jump(x1, s=1.0, t=s, cond=cond).detach()
+with torch.no_grad():
+    v_s = student.velocity(x_s, s, cond)
+    v_m = student.velocity(x_s + (m - s) * v_s, m, cond)
+    tgt = 0.5 * (v_s + v_m)
+L_sc = F.mse_loss(student.interval_vel(x_s, s, t, cond), tgt)
+
+loss = L_sc + cfg.lam * L_opd</code></pre>
+<p><strong>结果</strong>：2 步保留 <strong>84%</strong>、延迟 <strong>−78.1%</strong>；RoboTwin 单步 +15.9pp。</p>
+<hr>
 <h3 id="sec-14">3.4 VLA-MOPD（2611.12286，L1）</h3>
-<ul>
-<li>多任务 flow-VLA 专家 → 单一共享 flow VLA；在<strong>学生观测 + 每个 ODE 中间状态</strong>做 masked local matching。
-</li><li>数字：LIBERO mean success-once <strong>75.4%→98.9%</strong>；RoboTwin 2.0 <strong>73.0%→89.3%</strong>；Piper 真机两轮 <strong>70.0%→90.0%</strong>。
-</li><li>价值：多专家合并第一次做到 ODE 轨迹级对齐。
-</li></ul>
+<p><strong>物理意义（解释）</strong>：多个任务专家各有各的「手感」；蒸的是每个 ODE 中间状态的动作走向。物理上=把几套手感合并成一套，且中间过程也要对。</p>
+<p><strong>实现</strong>（输入 <code>task</code>、<code>student</code>；输出 <code>loss</code>）</p>
+<pre class="code"><code>traj = rollout(student, task)                         # 学生自采样
+teacher = teachers[route(task.instruction)]           # 冻结专家路由
+loss = 0
+for obs, act in traj:
+    x = torch.randn_like(act)
+    for k in range(K):                                # 每个 ODE 中间状态
+        with torch.no_grad():
+            tgt = transition(teacher, obs, x, k, K)
+        mask = valid_dims(act)
+        loss += masked_match(transition(student, obs, x, k, K), tgt, mask)
+        x = x + tgt / K
+loss += beta * ref_kl(student, ref, task)             # 防遗忘</code></pre>
+<p><strong>结果</strong>：LIBERO 75.4→<strong>98.9%</strong>；RoboTwin 73.0→89.3%；Piper 70→90%。</p>
+<hr>
 <h3 id="sec-15">3.5 REPAIR（2611.02777，L1）</h3>
-<ul>
-<li>轻量 RL 专家 + critic → 单一 flow VLA；critic 加权多专家动作候选成监督分布。
-</li><li>数字：六个真机任务各 30 trials <strong>全部 100%</strong>；末端 jerk 均低于专家辅助执行。
-</li></ul>
-<h3 id="sec-16">3.6 TAD（2610.33650，L1）——黑盒教师的上限</h3>
-<ul>
-<li>教师只给轨迹库（joint-position 特征），不给动作分数、不给在线查询。
-</li><li>判别器比较教师/学生 rollout 特征边缘分布 → reward → on-policy 学习。
-</li><li>数字：<strong>26.2%→76.6%</strong>（+50.4 点）；但白盒 OPD 是 <strong>81.6%</strong>，且 TAD 花 <strong>5× 交互</strong>、<strong>12.5× batch-passes</strong>。
-</li></ul>
+<p><strong>物理意义（解释）</strong>：RL 专家 + critic 给「哪个动作更好」的加权。物理上=把多个师傅的偏好蒸成一个徒弟，真机上末端更平顺。</p>
+<p><strong>实现</strong>（输入 <code>obs</code>；输出 <code>loss</code>）</p>
+<pre class="code"><code>with torch.no_grad():
+    cands = torch.stack([e(obs) for e in experts])    # [E,B,H,D]
+    w = critic(obs, cands).softmax(-1)                # critic 加权
+    target = (w[..., None, None] * cands).sum(0)
+loss = flow_matching(student(obs), target)            # 单 VLA</code></pre>
+<p><strong>结果</strong>：六个真机任务各 30 trials <strong>100%</strong>；末端 jerk 低于专家辅助执行。</p>
+<hr>
+<h3 id="sec-16">3.6 TAD（2610.33650，L1）——黑盒教师</h3>
+<p><strong>物理意义（解释）</strong>：教师只给轨迹库，判别器判断「学生跑得像不像教师」。物理上=模仿教师的<strong>行为风格</strong>，而不是逐帧动作。</p>
+<p><strong>实现</strong>（输入 <code>rollout</code>、<code>teacher_feats</code>；输出 <code>loss</code>）</p>
+<pre class="code"><code>f_s = student_features(rollout)                       # 学生 rollout 特征
+f_t = sample_teacher_features()                       # 教师轨迹库特征
+reward = discriminator(f_s, f_t)                      # 判别器给 reward
+loss = -reward.mean() + bc_loss(student, rollout)     # on-policy 学习</code></pre>
+<p><strong>结果</strong>：26.2→<strong>76.6%</strong>，但白盒 OPD 81.6%；花 5× 交互、12.5× batch-passes。</p>
+<hr>
 <h3 id="sec-17">3.7 TILDE（2610.25376，L1）</h3>
-<ul>
-<li>预训练 EFM → 未做动作预训练的策略；on-policy 教师监督 + 教师恢复轨迹；AutoDAgger 用 reward model 触发干预。
-</li><li>数字：三个真机任务最高 <strong>4.1×</strong> 于 behavior cloning；恢复轨迹采集比 human-in-the-loop 快 <strong>&gt;2×</strong>。
-</li></ul>
-<h3 id="sec-18">3.8 剪枝 + 离线隐层蒸馏（2609.19579，L1）——最实用的基线</h3>
-<ul>
-<li>教师：OpenVLA-OFT <strong>7B</strong> → 学生：<strong>宽度剪枝 63%</strong> 的同构模型（CogACT 也测）。
-</li><li>做法：<strong>离线缓存教师 hidden state</strong>，直接对齐同形状残差流；无 projector、无 online rollout。
-</li><li>数字：
-<ul>
-<li>63% 剪枝使 LIBERO-Long <strong>93.2%→0.8%</strong>；蒸馏后回到教师 <strong>3.5 点内</strong>，约 <strong>8 GPU-hours</strong>；
-</li><li>72% 压缩学生真机 <strong>77.5%</strong>（vs 监督恢复 59.5%）；
-</li><li>板载 <strong>2.23×</strong> 快、显存少 <strong>62%</strong>。
-</li></ul>
-</li><li>价值：<strong>如果你只想低成本恢复一个被剪坏的 VLA，这是最划算的做法</strong>——纯离线、8 GPU 小时。
-</li></ul>
+<p><strong>物理意义（解释）</strong>：学生快失败时叫教师接管，收集「救回来」的轨迹。物理上=把「师傅扶一把」的经验变成训练数据。</p>
+<p><strong>实现</strong>（输入 <code>obs</code>、<code>reward_model</code>；输出 <code>loss</code>）</p>
+<pre class="code"><code>for obs in student_rollout:
+    r = reward_model(obs)
+    if r &lt; thr:                                       # AutoDAgger 触发
+        with torch.no_grad():
+            a_t = teacher(obs)
+        D_recovery.append((obs, a_t))                 # 教师恢复轨迹
+loss = bc(student, D_recovery) + bc(student, D_online)</code></pre>
+<p><strong>结果</strong>：三个真机任务最高 <strong>4.1×</strong> 于 behavior cloning；恢复轨迹采集快 <strong>&gt;2×</strong>。</p>
+<hr>
+<h3 id="sec-18">3.8 剪枝 + 离线隐层（2609.19579，L1）——最实用的基线</h3>
+<p><strong>物理意义（解释）</strong>：蒸的是「被剪掉的通道原本负责的表征」。物理上=给截肢后的模型做康复训练：同形状对齐，不让它重新学走路。</p>
+<p><strong>实现</strong>（输入 <code>teacher</code>、<code>loader</code>；输出 <code>pruned</code>）</p>
+<pre class="code"><code>pruned = prune_width(openvla_oft_7b, ratio=0.63)      # 同构剪枝
+cache = {}
+with torch.no_grad():
+    for batch in loader:
+        cache[batch.key] = teacher(batch.obs, return_hidden=True).half()
+
+for batch in loader:
+    H_s = pruned(batch.obs, return_hidden=True)       # 同形状
+    loss = task_loss(pruned(batch.obs), batch.label) \
+         + lam * F.mse_loss(H_s, cache[batch.key].float())
+    loss.backward(); optimizer.step()</code></pre>
+<p><strong>结果</strong>：63% 剪枝 → LIBERO-Long 93.2%→0.8%，<strong>8 GPU-h</strong> 恢复到 3.5 点内；真机 77.5% vs 59.5%；板载 2.23×。</p>
+<hr>
 <h3 id="sec-19">3.9 SPARK-VLA（2611.10443，NeurIPS 2026，L1）</h3>
-<ul>
-<li>冻结 3D 专家 → LoRA 视觉分支；0.5B LLM backbone，约 <strong>53M</strong> 可训练参数；对齐注意力响应、router 用 action-loss 梯度监督选 token。
-</li><li>定位：蒸&quot;空间表征&quot;而非动作。
-</li></ul>
+<p><strong>物理意义（解释）</strong>：蒸 3D 专家「注意力放在哪」。物理上=把立体空间感注入 2D 视觉分支，推理时不要 3D 输入。</p>
+<p><strong>实现</strong>（输入 <code>img</code>、<code>action_loss</code>；输出 <code>loss</code>）</p>
+<pre class="code"><code>with torch.no_grad():
+    A_t = expert3d.attention(img)                     # [B,h,N,N] 3D 专家注意力
+A_s = student.visual_attention(img)                   # LoRA 视觉分支
+L_align = F.mse_loss(A_s, A_t)                        # 对齐注意力响应
+
+# router：用 action-loss 梯度监督选 token
+w = router(student.tokens)
+L_route = route_supervision(w, action_loss_grad)
+loss = L_task + L_align + L_route</code></pre>
+<p><strong>结果</strong>：0.5B 主干、约 <strong>53M</strong> 可训练；摘要未给成功率。</p>
 <hr>
 <h2 id="sec-20">4. 横向总表（VLA）</h2>
-<table><tr><th>工作</th><th>场景</th><th>教师</th><th>学生</th><th>蒸什么</th><th>教师效果</th><th>学生效果</th><th>速度/成本</th></tr><tr><td>Orion-Lite</td><td>驾驶</td><td>7B LLM</td><td>0.1B decoder</td><td>latent token</td><td>DS 77.7</td><td><strong>DS 80.6</strong></td><td>150× 模块 / 806→267ms / 31→8GB</td></tr><tr><td>DRIFT</td><td>驾驶</td><td>&lt;150M LM</td><td>255M 规划器</td><td>latent 推理特征</td><td>—</td><td>DS 97.03 / SR 89.39</td><td>255M</td></tr><tr><td>FPD-Drive</td><td>驾驶</td><td>特权教师</td><td>视觉规划器</td><td>未来轨迹</td><td>—</td><td>94.9 PDMS (v1)</td><td>—</td></tr><tr><td>OPTED</td><td>驾驶</td><td>向量化 RL 教师</td><td>相机学生</td><td>闭环经验</td><td>—</td><td>DS 1.6–9.5×</td><td>交互 −3 数量级</td></tr><tr><td>ConDenseDrive</td><td>驾驶</td><td>3 VFM</td><td>视觉编码器</td><td>特征</td><td>—</td><td>94.5 PDMS</td><td>2.0×</td></tr><tr><td>Reflect-VLA</td><td>驾驶</td><td>同体渐进</td><td>单次 VLA</td><td>token 级纠正</td><td>—</td><td>未给分值</td><td>训练 −90%</td></tr><tr><td>SnapFlow</td><td>操作</td><td>π0.5 10-NFE</td><td>1-NFE</td><td>端点</td><td>97.75%</td><td><strong>98.75%</strong></td><td>−3.3×</td></tr><tr><td>FastOPD</td><td>操作</td><td>π0.5 等</td><td>轻量</td><td>速度场</td><td>—</td><td>2 步保留 84%</td><td>−78.1%</td></tr><tr><td>VLA-MOPD</td><td>操作</td><td>多专家</td><td>单一 VLA</td><td>ODE 轨迹</td><td>—</td><td>75.4→98.9%</td><td>—</td></tr><tr><td>REPAIR</td><td>操作</td><td>RL 专家</td><td>flow VLA</td><td>critic 加权动作</td><td>—</td><td>真机 100%</td><td>—</td></tr><tr><td>TAD</td><td>操作</td><td>轨迹库</td><td>OpenVLA-OFT 7B</td><td>判别器 reward</td><td>—</td><td>26.2→76.6%</td><td>5× 交互</td></tr><tr><td>TILDE</td><td>操作</td><td>EFM</td><td>策略</td><td>恢复轨迹</td><td>—</td><td>4.1× BC</td><td>采集 −2×</td></tr><tr><td>2609.19579</td><td>操作</td><td>7B</td><td>剪枝 63–72%</td><td>离线 hidden</td><td>93.2%</td><td>教师 −3.5 点内（真机 77.5%）</td><td>8 GPU-h；2.23×</td></tr><tr><td>SPARK-VLA</td><td>操作</td><td>3D 专家</td><td>0.5B + LoRA</td><td>空间表征</td><td>—</td><td>未给</td><td>53M 可训</td></tr></table>
+<table><tr><th>工作</th><th>场景</th><th>教师</th><th>学生</th><th>蒸什么</th><th>教师效果</th><th>学生效果</th><th>速度/成本</th></tr><tr><td>Orion-Lite</td><td>驾驶</td><td>7B LLM</td><td>0.1B decoder</td><td>latent token</td><td>DS 77.7</td><td><strong>DS 80.6</strong></td><td>150× 模块 / 806→267ms / 31→8GB</td></tr><tr><td>DRIFT</td><td>驾驶</td><td>&lt;150M LM</td><td>255M 规划器</td><td>latent 推理特征</td><td>—</td><td>DS 97.03 / SR 89.39</td><td>255M</td></tr><tr><td>FPD-Drive</td><td>驾驶</td><td>特权教师</td><td>视觉规划器</td><td>未来轨迹</td><td>—</td><td>94.9 PDMS (v1)</td><td>—</td></tr><tr><td>OPTED</td><td>驾驶</td><td>向量化 RL 教师</td><td>相机学生</td><td>闭环经验</td><td>—</td><td>DS 1.6–9.5×</td><td>交互 −3 数量级</td></tr><tr><td>ConDenseDrive</td><td>驾驶</td><td>3 VFM</td><td>视觉编码器</td><td>特征</td><td>—</td><td>94.5 PDMS</td><td>2.0×</td></tr><tr><td>Reflect-VLA</td><td>驾驶</td><td>同体渐进</td><td>单次 VLA</td><td>token 级纠正</td><td>—</td><td>未给分值</td><td>训练 −90%</td></tr><tr><td>SnapFlow</td><td>操作</td><td>π0.5 10-NFE</td><td>1-NFE</td><td>端点</td><td>97.75%</td><td><strong>98.75%</strong></td><td>−3.3×</td></tr><tr><td>FastOPD</td><td>操作</td><td>π0.5 等</td><td>轻量</td><td>速度场</td><td>—</td><td>2 步保留 84%</td><td>−78.1%</td></tr><tr><td>VLA-MOPD</td><td>操作</td><td>多专家</td><td>单一 VLA</td><td>ODE 轨迹</td><td>—</td><td>75.4→98.9%</td><td>—</td></tr><tr><td>REPAIR</td><td>操作</td><td>RL 专家</td><td>flow VLA</td><td>critic 加权动作</td><td>—</td><td>真机 100%</td><td>—</td></tr><tr><td>TAD</td><td>操作</td><td>轨迹库</td><td>OpenVLA-OFT 7B</td><td>判别器 reward</td><td>—</td><td>26.2→76.6%</td><td>5× 交互</td></tr><tr><td>TILDE</td><td>操作</td><td>EFM</td><td>策略</td><td>恢复轨迹</td><td>—</td><td>4.1× BC</td><td>采集 −2×</td></tr><tr><td>2609.19579</td><td>操作</td><td>7B</td><td>剪枝 63–72%</td><td>离线 hidden</td><td>93.2%</td><td>教师 −3.5 点内</td><td>8 GPU-h；2.23×</td></tr><tr><td>SPARK-VLA</td><td>操作</td><td>3D 专家</td><td>0.5B + LoRA</td><td>空间表征</td><td>—</td><td>未给</td><td>53M 可训</td></tr></table>
 <blockquote>表内数字来自不同 benchmark，<strong>不可直接横比</strong>；作用是看&quot;量级&quot;和&quot;代价结构&quot;。所有 L1 条目仅摘要级。</blockquote>
 <hr>
-<h2 id="sec-21">5. 三条实现范式（可直接抄）</h2>
-<h3 id="sec-22">范式 A：latent token 蒸馏（驾驶）</h3>
-<pre class="code"><code># 教师：一次性前向，取 planning token
-with torch.no_grad():
-    T_t = teacher(images, text).planning_token      # [B, 1, C]
-
-# 学生：纯视觉
-T_s = student_decoder(student_vision(images))       # [B, 1, C]
-
-loss = L_traj_gt + (T_s - T_t).abs().mean()         # L1，λ=1
-# 冻结视觉塔；只训 decoder + planner</code></pre>
-<h3 id="sec-23">范式 B：动作头步数蒸馏（操作）</h3>
-<pre class="code"><code># 教师：10 步 Euler 到端点（或直接用教师多步输出）
-with torch.no_grad():
-    a_t = teacher_sample(obs, steps=10)
-
-# 学生：1 步
-a_s = student_sample(obs, steps=1)
-
-loss = flow_matching_loss(student, a_t) + λ * shortcut_loss   # SnapFlow 式</code></pre>
-<h3 id="sec-24">范式 C：剪枝 + 离线隐层（最便宜）</h3>
-<pre class="code"><code># 离线：教师对所有训练帧提 hidden state，存 memmap
-teacher_hidden = cache[(traj_id, frame_idx)]         # [D]
-
-# 训练：学生（剪枝后的同构模型）对齐同一层
-h_s = student(images, return_hidden=True)
-loss = L_task + λ * (h_s - teacher_hidden).pow(2).mean()</code></pre>
+<h2 id="sec-21">5. 五种&quot;只看描述会写错&quot;的实现细节</h2>
+<ol>
+<li><strong>Orion-Lite 的 token 取法</strong>：取 planning query 那一个 token，不是 <code>last_hidden.mean()</code>。
+</li><li><strong>SnapFlow 的 stop-grad</strong>：两步 Euler 的整条链都要 <code>no_grad</code>，漏一步就自我强化。
+</li><li><strong>FastOPD 的教师查询点</strong>：是学生落点 <code>x_t</code>，不是数据集里的真值动作。
+</li><li><strong>VLA-MOPD 的 mask</strong>：只对有效动作维算损失，mask 用 float。
+</li><li><strong>剪枝恢复的同构性</strong>：只改宽度、不改层数/接口，否则要加 projector。
+</li></ol>
 <hr>
-<h2 id="sec-25">6. 选型</h2>
+<h2 id="sec-22">6. 选型</h2>
 <table><tr><th>约束</th><th>选</th></tr><tr><td>驾驶、要省推理 LLM</td><td>Orion-Lite（0.1B）或 DRIFT（255M）</td></tr><tr><td>驾驶、有特权教师/仿真</td><td>OPTED（闭环经验，样本效率最高）</td></tr><tr><td>操作、flow 动作头太慢</td><td>SnapFlow（无教师、一次训练）或 FastOPD（可到 2 步）</td></tr><tr><td>多个任务专家要合并</td><td>VLA-MOPD（ODE 轨迹级）</td></tr><tr><td>真机、有 RL 专家</td><td>REPAIR（critic 加权）</td></tr><tr><td>没预算、只想恢复剪坏的模型</td><td>2609.19579 的离线隐层（8 GPU-h）</td></tr></table>
 <hr>
-<p>更新时间: 2026-11-21</p>
+<p>更新时间: 2026-11-24</p>
 <footer>大模型 → VLA/WAM 蒸馏研究 · 2026-11 · 数字均标证据级别（L3 全文 / L2 部分 / L1 摘要）</footer>
 </main>
 </body>

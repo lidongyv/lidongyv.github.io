@@ -38,9 +38,9 @@
 <main>
 <h1>07 · 数据蒸馏：用大模型造监督信号（教师只当标注器）</h1>
 <p class="meta">来源 docs/07-data-distill.md · 生成于 2026-11-21</p>
-<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 什么时候该用数据蒸馏</a></li><li class=""><a href="#sec-2">2. CoT / 标注蒸馏（驾驶为主）</a></li><li class=""><a href="#sec-3">3. 视频 → 伪动作（无动作标签时）</a></li><li class="toc-h3"><a href="#sec-4">LAPA（2410.11758）</a></li><li class="toc-h3"><a href="#sec-5">GR00T N1（2503.14734）</a></li><li class="toc-h3"><a href="#sec-6">DreamGen（GR00T N1.5 官方页，L1）</a></li><li class="toc-h3"><a href="#sec-7">Veo-Act / NovaFlow / RIGVid（均 L1，清单级）</a></li><li class=""><a href="#sec-8">4. 经验蒸馏：教师&quot;陪着跑&quot;，只留成功片段</a></li><li class=""><a href="#sec-9">5. 数据蒸馏的四个工程要点</a></li><li class=""><a href="#sec-10">6. 与 KD 的边界（一句话）</a></li></ol></details>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">1. 什么时候该用数据蒸馏</a></li><li class=""><a href="#sec-2">2. CoT / 标注蒸馏（驾驶为主）</a></li><li class=""><a href="#sec-3">3. 视频 → 伪动作（无动作标签时）</a></li><li class="toc-h3"><a href="#sec-4">LAPA（2410.11758）</a></li><li class="toc-h3"><a href="#sec-5">GR00T N1（2503.14734）</a></li><li class="toc-h3"><a href="#sec-6">DreamGen（GR00T N1.5 官方页，L1）</a></li><li class="toc-h3"><a href="#sec-7">Veo-Act / NovaFlow / RIGVid（均 L1，清单级）</a></li><li class=""><a href="#sec-8">4. 经验蒸馏：教师&quot;陪着跑&quot;，只留成功片段</a></li><li class=""><a href="#sec-9">5. 数据蒸馏的四个工程要点</a></li><li class=""><a href="#sec-10">6. 与 KD 的边界（一句话）</a></li><li class=""><a href="#sec-11">7. 实现代码（逐方法）</a></li><li class="toc-h3"><a href="#sec-12">7.1 AutoVLA（2506.13757）——CoT 标注</a></li><li class="toc-h3"><a href="#sec-13">7.2 GR00T N1（2503.14734）——神经轨迹 + 潜动作</a></li><li class="toc-h3"><a href="#sec-14">7.3 LAPA（2410.11758）——无动作视频 → 潜动作</a></li><li class="toc-h3"><a href="#sec-15">7.4 DreamGen / Veo-Act / RIGVid（L1）</a></li><li class="toc-h3"><a href="#sec-16">7.5 过滤与混合（工程要点）</a></li></ol></details>
 <h1>07 · 数据蒸馏：用大模型造监督信号（教师只当标注器）</h1>
-<blockquote>定义：学生<strong>从不拟合教师的分布</strong>，只吃教师生成的标注/数据。教师是&quot;标注器&quot;，不是&quot;被模仿的对象&quot;。<br>这一类的上限由<strong>数据覆盖度</strong>决定，不由教师容量决定——这是它与 KD 最本质的区别。</blockquote>
+<blockquote>定义：学生<strong>从不拟合教师的分布</strong>，只吃教师生成的标注/数据。教师是&quot;标注器&quot;，不是&quot;被模仿的对象&quot;。<br>这一类的上限由<strong>数据覆盖度</strong>决定，不由教师容量决定——这是它与 KD 最本质的区别。<br><strong>生成→过滤→混合的实现代码见本章 §7。</strong></blockquote>
 <hr>
 <h2 id="sec-1">1. 什么时候该用数据蒸馏</h2>
 <table><tr><th>场景</th><th>为什么</th></tr><tr><td>遥操数据没有语言/CoT 标注</td><td>用大 VLM 生成指令、理由、场景描述</td></tr><tr><td>没有动作标签，只有视频</td><td>用潜动作模型（LAPA/VQ-VAE）造伪动作</td></tr><tr><td>长尾任务缺数据</td><td>用视频生成模型造轨迹（DreamGen/Veo-Act）</td></tr><tr><td>动作空间/机器人形态不一致</td><td>用 IDM 把&quot;别人的动作&quot;映射到自己的 embodiment</td></tr></table>
@@ -105,6 +105,51 @@ loss = CE(student(front_img, ego_state, instruction), cot)</code></pre>
 <hr>
 <h2 id="sec-10">6. 与 KD 的边界（一句话）</h2>
 <blockquote>数据蒸馏改的是<strong>训练集</strong>，KD 改的是<strong>损失函数</strong>。前者换教师不用改学生代码，后者换教师要对齐接口。</blockquote>
+<h2 id="sec-11">7. 实现代码（逐方法）</h2>
+<blockquote>数据蒸馏的代码都长一个样：<strong>生成 → 过滤 → 混入训练集</strong>。区别只在&quot;生成什么&quot;和&quot;怎么过滤&quot;。</blockquote>
+<h3 id="sec-12">7.1 AutoVLA（2506.13757）——CoT 标注</h3>
+<p><strong>物理意义（解释）</strong>：大模型写「驾驶理由」，GT 动作当 hint 抑幻觉；学生学 CoT + 动作。</p>
+<pre class="code"><code># 输入: 前视图, ego_state, gt_traj；输出: (cot, action) 样本
+prompt = build_prompt(front_img, ego_state, gt_action_hint)   # GT 作 hint 抑幻觉
+cot = teacher.generate(prompt, temperature=0.7, max_tokens=512)
+if not check_action_consistency(cot, gt_traj):                # 一致性过滤
+    cot = teacher.regenerate(prompt, temperature=0.3)
+student_sft(student(front_img, ego_state, instruction), cot)</code></pre>
+<h3 id="sec-13">7.2 GR00T N1（2503.14734）——神经轨迹 + 潜动作</h3>
+<p><strong>物理意义（解释）</strong>：视频生成模型造 827h 神经轨迹 + VQ-VAE 潜动作；与真机 1:1 混合。</p>
+<pre class="code"><code># 1) 在 88h 遥操上微调图生视频模型，生成 827h 视频
+video_model = finetune_video_gen(teleop_88h)
+fake_videos = video_model.generate(prompts, n=...)              # ≈10× 数据
+
+# 2) VQ-VAE 帧间潜动作（encoder 当 IDM）
+latent_action = vqvael.encode(frame_t, frame_t1)
+
+# 3) 与真机动作 1:1 混合，做 flow-matching
+batch = mix(real_batch, fake_batch, ratio=1.0)
+flow_matching(student, batch.obs, batch.latent_action)</code></pre>
+<h3 id="sec-14">7.3 LAPA（2410.11758）——无动作视频 → 潜动作</h3>
+<p><strong>物理意义（解释）</strong>：无动作视频学离散潜动作，再小数据映射到真实动作；把「看视频」变成「有标签」。</p>
+<pre class="code"><code># 输入: 无动作视频帧对；输出: 离散潜动作
+z = vqvael.encode(frame_t, frame_t1).argmax(-1)                 # [B, 8^4]
+latent_vla.train(video_frames, z)                                # 预训练
+# 小数据微调：潜动作 → 真实 ΔEE
+map_head.fit(latent_vla.features, delta_ee)                      # 256^7</code></pre>
+<h3 id="sec-15">7.4 DreamGen / Veo-Act / RIGVid（L1）</h3>
+<p><strong>物理意义（解释）</strong>：生成演示 → IDM/IK/跟踪 → 机器人轨迹；用生成模型补长尾任务。</p>
+<pre class="code"><code># 生成演示 → IDM/IK/跟踪 → 机器人轨迹
+video = veo3.generate(instruction, first_frame=obs0)
+actions = idm(video)                       # 逆动力学模型
+# 或 NovaFlow: video → 3D object flow → IK
+# 或 RIGVid: video → VLM 过滤 → 6D 跟踪 → 轨迹
+dataset.add(actions); train_bc(student, dataset)</code></pre>
+<h3 id="sec-16">7.5 过滤与混合（工程要点）</h3>
+<p><strong>物理意义（解释）</strong>：三道过滤（格式/物理/动作一致性）+ 真机:合成 1:1；数据蒸馏的上限由覆盖度决定。</p>
+<pre class="code"><code>def keep(sample):
+    return (check_format(sample) and
+            check_physics(sample) and
+            check_action_consistency(sample, sample.gt))
+dataset = [s for s in generated if keep(s)]        # 通常只留 40–60%
+loader  = mix(real_data, dataset, ratio=1.0)       # GR00T 经验值</code></pre>
 <hr>
 <p>更新时间: 2026-11-21</p>
 <footer>大模型 → VLA/WAM 蒸馏研究 · 2026-11 · 数字均标证据级别（L3 全文 / L2 部分 / L1 摘要）</footer>

@@ -132,14 +132,14 @@ def infer(images):
 <h2 id="sec-8">2. THAW-VLA（2609.24682，操作）</h2>
 <h3 id="sec-9">① 流程</h3>
 <ul>
-<li><strong>S1</strong> 冻结 Cosmos 3 理解塔，取 layer 24，按视图 mean-pool 成 4096 维特征。
+<li><strong>S1</strong> 冻结 Cosmos 3 理解塔，取 layer 24；对<strong>每个视图的图像 token 维</strong>做 mean-pool，得到 <strong>1 个 4096 维向量/视图</strong>（<code>|I_c|</code> 个 token → 1 个向量，特征维不变；空间布局被丢弃）。
 </li><li><strong>S2</strong> 对全训练集跑一次，特征写入 memmap，key=(traj_id, frame_idx)。
-</li><li><strong>S3</strong> 学生（QwenGR00T）前向，取图像 token 的池化特征。
+</li><li><strong>S3</strong> 学生（QwenGR00T）前向，把自己每个视图的图像 token 也 mean-pool 成 1 个向量，再经 2 层 MLP 投到 4096 维。
 </li><li><strong>S4</strong> 投影后与教师特征做 cosine 对齐（λ=0.5），再加动作 flow-matching 损失。
 </li><li><strong>S5</strong> 部署时丢掉投影器与缓存，学生与未蒸馏基线完全一致。
 </li></ul>
 <h3 id="sec-10">② 模块</h3>
-<table><tr><th>模块</th><th>输入</th><th>输出</th><th>作用</th></tr><tr><td><code>cosmos3.understanding</code></td><td><code>img_v [B,3,H,W]</code></td><td><code>f [B,4096]</code></td><td>冻结教师，layer 24 + mean-pool</td></tr><tr><td><code>build_cache</code></td><td><code>loader</code>, <code>teacher</code></td><td><code>.npy</code> 文件</td><td>一次性离线提特征</td></tr><tr><td><code>CachedDataset</code></td><td><code>index</code></td><td><code>(item, f_T)</code></td><td>训练时读缓存，不加载教师</td></tr><tr><td><code>qwengr00t</code></td><td><code>obs</code>, <code>lang</code></td><td><code>h</code>（含 image tokens）</td><td>0.8B 学生</td></tr><tr><td><code>p_phi</code></td><td><code>f_S [B,V,4096]</code></td><td>同形</td><td>可训投影，训完丢弃</td></tr><tr><td><code>flow_matching</code></td><td><code>h</code>, <code>actions</code></td><td><code>scalar</code></td><td>动作专家损失</td></tr></table>
+<table><tr><th>模块</th><th>输入</th><th>输出</th><th>作用</th></tr><tr><td><code>cosmos3.understanding</code></td><td><code>img_v [B,3,H,W]</code></td><td><code>f [B,4096]</code></td><td>冻结教师，layer 24，沿 token 维 mean-pool</td></tr><tr><td><code>build_cache</code></td><td><code>loader</code>, <code>teacher</code></td><td><code>.npy</code> 文件</td><td>一次性离线提特征</td></tr><tr><td><code>CachedDataset</code></td><td><code>index</code></td><td><code>(item, f_T)</code></td><td>训练时读缓存，不加载教师</td></tr><tr><td><code>qwengr00t</code></td><td><code>obs</code>, <code>lang</code></td><td><code>h</code>（含 image tokens）</td><td>0.8B 学生</td></tr><tr><td><code>p_phi</code></td><td><code>f_S [B,V,4096]</code></td><td>同形</td><td>可训投影，训完丢弃</td></tr><tr><td><code>flow_matching</code></td><td><code>h</code>, <code>actions</code></td><td><code>scalar</code></td><td>动作专家损失</td></tr></table>
 <h3 id="sec-11">③ 主伪代码</h3>
 <p><strong>公式（原文/重构）</strong></p>
 <pre class="code"><code>L_align = 1 − cos( p_φ(f_c^S(o_t)),  sg[f_c^T(o_t)] )
@@ -156,7 +156,7 @@ L       = L_act + λ_align · L_align,   λ_align = 0.5</code></pre>
     #   loss  : scalar = L_act + 0.5 * L_align
     #   stats : dict
     h   = student(batch.obs, batch.lang)                 # [S3] QwenGR00T 前向
-    f_S = h.image_tokens.mean(dim=1)                     # [B,V,4096]
+    f_S = h.image_tokens.mean(dim=1)                     # [B,V,D_s] 沿该视图 token 维池化
 
     f_T = load_cache(batch.keys)                          # [S2] [B,V,4096] fp16→fp32
 
@@ -173,7 +173,7 @@ def build_cache(loader, teacher, out_dir):
         per_view = []
         for v in range(batch.images.size(1)):            # 逐视角
             h = teacher.understanding(batch.images[:, v], layer=24)   # ✓ layer 24
-            per_view.append(h.mean(dim=1))               # ✓ 每视图 mean-pool
+            per_view.append(h.mean(dim=1))               # ✓ 沿 token 维池化（N→1）
         f_T = torch.stack(per_view, dim=1)               # [B,V,4096]
         for i, (traj_id, idx) in enumerate(batch.keys):
             np.save(f&quot;{out_dir}/{traj_id}_{idx}.npy&quot;,
@@ -214,15 +214,15 @@ def infer(obs, lang):
 <h2 id="sec-15">3. CKT-WAM（2605.06247，WAM）</h2>
 <h3 id="sec-16">① 流程</h3>
 <ul>
-<li><strong>S1</strong> 教师 WAM（14B）<strong>单次前向</strong>，时间步固定 0，取第 20 层隐状态。
-</li><li><strong>S2</strong> 过一个 512 维 bottleneck。
+<li><strong>S1</strong> 教师 WAM（14B）<strong>单次前向</strong>，时间步固定 0，取第 20 层隐状态 <code>H_T [B,N,d_tea]</code>。
+</li><li><strong>S2</strong> 过共享 bottleneck：<code>d_tea → d_b=512 → d_stu</code>（学生文本嵌入宽度）。
 </li><li><strong>S3</strong> 两组 learnable query（各 32 个）做 cross-attention，压成 32+32 个 token。
-</li><li><strong>S4</strong> 常开 general adapter + 8 个 specialized adapter（top-2 路由）生成条件 token。
+</li><li><strong>S4</strong> 常开 generalized adapter + 8 个 specialized adapter（top-k 路由，配置 k=2）生成条件 token。
 </li><li><strong>S5</strong> 条件 token 拼到学生文本条件序列尾部（加 separator），cross-attn 注入学生 DiT。
 </li><li><strong>S6</strong> 教师、学生都冻结，只训 CKT 模块；目标是学生自己的视频+动作 flow-matching。
 </li></ul>
 <h3 id="sec-17">② 模块</h3>
-<table><tr><th>模块</th><th>输入</th><th>输出</th><th>作用</th></tr><tr><td><code>teacher.encode</code></td><td><code>obs</code>, <code>text</code></td><td><code>H_t [B,N,D_t]</code></td><td>冻结 14B，t=0，layer 20</td></tr><tr><td><code>Bottleneck</code></td><td><code>H_t</code></td><td><code>[B,N,512]</code></td><td>降维</td></tr><tr><td><code>LQCA</code></td><td><code>queries [B,32,512]</code>, <code>h</code></td><td><code>C [B,32,512]</code></td><td>查询压缩</td></tr><tr><td><code>AdapterRouter</code></td><td><code>h.mean(1) [B,512]</code></td><td><code>logits [B,8]</code></td><td>选 2 个专家</td></tr><tr><td><code>ConditionBuilder</code></td><td><code>text_tokens</code>, <code>C_g</code>, <code>C_s</code></td><td><code>cond [B,T+1+64,D_s]</code></td><td>拼条件序列</td></tr><tr><td><code>student_dit</code></td><td><code>noisy_latent</code>, <code>t</code>, <code>cond</code></td><td><code>v [B,N*H,D]</code></td><td>冻结，只做前向</td></tr></table>
+<table><tr><th>模块</th><th>输入</th><th>输出</th><th>作用</th></tr><tr><td><code>teacher.encode</code></td><td><code>obs</code>, <code>text</code></td><td><code>H_T [B,N,d_tea]</code></td><td>冻结 14B，t=0，layer 20；只编码当前场景</td></tr><tr><td><code>Bottleneck</code></td><td><code>H_T</code></td><td><code>[B,N,d_stu]</code></td><td>内部 512 瓶颈，投到学生文本宽度</td></tr><tr><td><code>LQCA</code></td><td><code>queries [B,32,d_stu]</code>, <code>h</code></td><td><code>C [B,32,d_stu]</code></td><td>可学习 query 压缩 N→32</td></tr><tr><td><code>AdapterRouter</code></td><td><code>mean(H_T) [B,d_tea]</code></td><td><code>logits [B,8]</code></td><td>用教师原始特征选 top-2 专家</td></tr><tr><td><code>ConditionBuilder</code></td><td><code>text_tokens</code>, <code>C_g</code>, <code>C_s</code></td><td><code>cond [B,T+1+64,d_stu]</code></td><td>拼条件序列</td></tr><tr><td><code>student_dit</code></td><td><code>noisy_latent</code>, <code>t</code>, <code>cond</code></td><td><code>v [B,N*H,D]</code></td><td>冻结，只做前向</td></tr></table>
 <h3 id="sec-18">③ 主伪代码</h3>
 <p><strong>公式（原文/重构）</strong></p>
 <pre class="code"><code>L_bal = λ_bal · Σ_e ( p_e · E − 1 )²,   λ_bal = 0.01, E = 8
@@ -239,16 +239,17 @@ L     = L_flow(video+action) + L_bal</code></pre>
     #   loss  : scalar
     #   stats : dict {&quot;L_fm&quot;, &quot;L_bal&quot;}
     with torch.no_grad():                                    # [S1]
-        H_t = teacher.encode(batch.obs, batch.text, t=0, layer=20)  # [B,N,D_t]
+        H_t = teacher.encode(batch.obs, batch.text, t=0, layer=20)  # [B,N,d_tea]
 
-    h  = ckt.bottleneck(H_t)                                 # [S2] [B,N,512]
-    Cg = ckt.lqca_g(ckt.q_g.expand(B, -1, -1), h, h)         # [S3] [B,32,512]
-    Cs = ckt.lqca_s(ckt.q_s.expand(B, -1, -1), h, h)         # [S3] [B,32,512]
+    h   = ckt.bottleneck(H_t)                                # [S2] [B,N,d_stu]
+    C0g = ckt.lqca_g(ckt.q_g.expand(B, -1, -1), h, h)        # [S3] [B,32,d_stu]
+    C0s = ckt.lqca_s(ckt.q_s.expand(B, -1, -1), h, h)        # [S3] [B,32,d_stu]
 
-    logits = ckt.router(h.mean(1))                           # [S4] [B,8]
-    w, idx = logits.topk(2, dim=-1); w = w.softmax(-1)       # ✓ top-2
-    Cs = sum(ckt.adapters[j](Cs) * w[:, k] for k, j in enumerate(idx.T))
-    Cg = ckt.adapter_general(Cg)
+    logits = ckt.router(H_t.mean(1))                         # [S4] [B,8] 教师原始特征路由
+    w, idx = logits.topk(2, dim=-1); w = w.softmax(-1)       # ✓ top-k，配置 k=2
+    Cg = C0g + ckt.adapter_general(C0g)                      # 常开广义 adapter（残差）
+    Cs = C0s + sum(ckt.adapters[j](C0s) * w[:, k:k+1, None]
+                   for k, j in enumerate(idx.T))             # top-2 专家（残差）
 
     cond = torch.cat([batch.text_tokens, ckt.sep, Cg, Cs], dim=1)   # [S5]
     t    = torch.rand(B, device=obs.device)
@@ -287,9 +288,10 @@ for batch in loader:
 
 @torch.no_grad()
 def infer(obs, text):
-    H_t = teacher.encode(obs, text, t=0, layer=20)   # 仍需要教师（训练期方案）
-    cond = build_cond(ckt, H_t, text)
-    return student_dit.sample(cond)                  # 部署时只保留学生</code></pre>
+    # 教师每次观测只做一次前向（只编码，不生成）；C_A 在整条学生去噪轨迹中复用
+    H_t = teacher.encode(obs, text, t=0, layer=20)   # [B,N,d_tea]
+    cond = build_cond(ckt, H_t, text)                 # 只算一次
+    return student_dit.sample(cond)                  # 学生多步去噪，不再查教师</code></pre>
 <h3 id="sec-21">⑥ 实现注意</h3>
 <ol>
 <li>教师 14B 训练时常驻，显存约 28GB(bf16)+学生+激活；用 <code>no_grad</code> + 分层 offload。

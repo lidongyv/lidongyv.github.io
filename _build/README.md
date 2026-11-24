@@ -45,56 +45,78 @@
 
 ## 构建 / 预览 / 部署
 
+**一条命令发布**（推荐，日常只用这个）：
+
 ```powershell
-# 生成站点（Python 3.9+，只用标准库，无需 pip install）
-python _build\build.py
-
-# 本地预览（默认 8000 端口）
-python _build\preview.py 8000
-# 打开 http://127.0.0.1:8000/
-
-# 结构自检：标签闭合、内部链接、资源存在、模板残留
-python _build\check.py
-
-# 若某些文件因权限无法就地写入，构建会给出 staged 清单，执行：
-python _build\deploy.py
-
-# 发布
-git add -A
-git commit -m "site: update"
-git push
+publish.cmd                       # 或 python _build\publish.py -m "说明"
 ```
 
-推送后 `.github/workflows/pages.yml` 会自动发布，约 1 分钟生效。
-进度看 Actions 页面的「Deploy site to GitHub Pages」。**不需要**在仓库设置里选主题。
+它依次做：从源目录重建所有子站 → 结构自检 → 有变化才提交 → 推送（git 重试失败自动走 GitHub API）→ 等**本次提交**的 Pages 部署跑完 → 抓几个 URL 打印状态码。约 3–5 分钟。
+
+分步执行（调试时用）：
+
+```powershell
+python _build\build.py            # 生成站点（Python 3.9+，只用标准库）
+python _build\check.py            # 标签闭合 / 内部链接 / 资源存在 / 模板残留
+python _build\preview.py 8000     # 本地预览 http://127.0.0.1:8000/
+python _build\publish.py --dry-run  # 只重建并列出将提交的改动
+```
+
+推送后 `.github/workflows/pages.yml` 自动发布，约 1 分钟；Pages 的 HTML 缓存是 `max-age=600`，急看按 Ctrl+F5。
 
 ## 内容在哪里改
 
 | 想改什么 | 改哪个文件 |
 |---|---|
-| 姓名、邮箱、电话、一句话定位、求职状态 | `_build/gen/data_core.py` → `PROFILE` |
-| 首页那 4 个数字（论文 / 专利 / 经历 / 团队规模） | `_build/gen/data_core.py` → `STATS` |
-| 首页三张「在做什么」卡片 | `_build/gen/data_core.py` → `FOCUS` |
-| 工作经历、教育、指标 | `_build/gen/data_core.py` → `CAREER` / `EDUCATION` |
+| 姓名、邮箱、电话、一句话定位、求职状态、方向关键词 | `_build/gen/data_core.py` → `PROFILE` / `FOCUS_AREAS` |
+| 工作经历（按 detailed 简历原样，**不要删条目**） | `_build/gen/data_career.py` → `CAREER` |
+| 教育 | `_build/gen/data_core.py` → `EDUCATION` |
 | 论文（标题、作者、链接、问题/方法/结果） | `_build/gen/data_works.py` → `PAPERS` |
 | 未发表手稿存档 | `_build/gen/data_works.py` → `MANUSCRIPTS` |
 | 专利 | `_build/gen/data_works.py` → `PATENTS` |
 | 项目卡片 | `_build/gen/data_works.py` → `PROJECT_PAGES` |
 | GitHub 仓库与分类 | `_build/gen/data_repos.py` → `REPOS` / `REPO_GROUPS` |
 | 金融/量化板块 | `_build/gen/data_repos.py` → `FINANCE` |
+| **博客里的项目 / 报告 / 阅读站** | `_build/gen/data_design.py` → `DESIGN` |
+| 长文 | `_build/posts/<slug>.md`（英文版 `<slug>.en.md`） |
 | 导航栏、页脚、UI 文案 | `_build/gen/layout.py` → `NAV` / `UI` |
-| 配色、排版、间距 | `_build/assets/site.css`（CSS 变量集中在文件开头） |
-| 新增博客文章 | 往 `_build/posts/` 丢一个 `.md`，然后重新构建 |
+| 配色、排版、间距 | `_build/assets/site.css`（变量集中在文件开头） |
+| 本机源目录 / 脱敏词 / 密码 | `_build/sources.local.json`（**gitignore，不进仓库**） |
+
+## 新增内容：`projects/` 约定
+
+**2026-11-24 起，新工程直接放进仓库自己的 `projects/<slug>/`**，不再依赖仓库外的目录。
+
+```
+projects/<slug>/          原始工程（进 git，随便改，历史可追溯）
+      ↓  publish.cmd
+blog/<slug>/              生成物：注入顶部导航、脱敏、图片转 WebP
+```
+
+在 `_build/gen/data_design.py` 的 `DESIGN` 里加一条即可：
+
+```python
+{"slug": "my-project", "root": "repo", "src": "my-project", "images": "webp",
+ "title": "中文标题", "title_en": "English title",
+ "summary": "一两句摘要。", "summary_en": "One or two sentences.",
+ "tags": ["具身"], "tags_en": ["Embodied"]},
+```
+
+- `root: "repo"` → 读 `<repo>/projects/`；`root: "design"` / `"demos"` → 读仓库外的旧目录（历史项目保持不动）。
+- 入口页：源目录有 `index.html` 自动用；否则用 `"index": "sub/entry.html"`，构建会拷成根 `index.html` 并加 `<base>` 保住相对链接。
+- 双语站（页面自带中/EN 切换）加 `"bilingual": True`；带密码层的加 `"unlock": True`。
+- 单文件上限 6 MB；PDF / zip / 视频不进站点（放 Release）。别人的论文全文不要挂，改成链接。
+
+**`blog/` 下的一切都是生成物，手改会在下次构建被覆盖。**
 
 ### 新增一篇博客
 
-在 `_build/posts/` 新建 `YYYY-MM-DD-slug.md`，开头写 front matter：
+在 `_build/posts/` 新建 `<slug>.md`，开头写 front matter（**不要写 `date`**，构建时按文件最早存在时间生成）：
 
 ```markdown
 ---
 title: 中文标题
 title_en: English title
-date: 2026-12-01
 tags: VLA, 世界模型
 summary: 一句话中文摘要。
 summary_en: One-line English summary.
@@ -103,8 +125,8 @@ summary_en: One-line English summary.
 正文用 Markdown（支持标题、列表、表格、代码块、引用、链接、图片）。
 ```
 
-然后 `python _build\build.py`，会自动出现在中英文博客列表、RSS 和 sitemap 里。
-文件名日期只用于排序，URL 用的是 `slug`（即去掉日期的文件名）。
+英文版另存 `<slug>.en.md`（纯正文，无需 front matter），会发布到 `/en/blog/<slug>.html`，语言切换直达对译版。
+然后 `publish.cmd`，会自动出现在列表、搜索、标签、RSS 和 sitemap 里。
 
 ### 新增一篇论文
 

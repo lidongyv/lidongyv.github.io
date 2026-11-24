@@ -2,7 +2,7 @@
 
 > WAM（World Action Model）= 把"预测未来"和"输出动作"放在同一个生成模型里（CKT-WAM、Cosmos-Policy、DreamZero、GigaWorld-Policy 等）。
 > 它的蒸馏比 VLA 多一层：**既要蒸动作，又要蒸"世界表征"**。本页按"蒸什么"分五条路线，最后给选型。
-> **实现级细节见第 12 章《实现手册》（CKT-WAM 的 LQCA、S-VAM 的 decoupler、APM 的梯度投影等）。**
+> **每个方法的实现代码见本章 §9（CKT-WAM / APM / TACD / DIDO / WAM-Policy / THAW / W2A / DreamFree / FRED / DyMD / S-VAM / AutodidactWAM）。**
 
 ---
 
@@ -10,7 +10,7 @@
 
 | 路线 | 蒸什么 | 代表 | 部署时教师 |
 |---|---|---|---|
-| **A. 隐状态 → 上下文 token** | 教师 WAM 的中间层隐状态，压缩成可注入的 token | CKT-WAM (2605.06247) | 消失 |
+| **A. 隐状态 → 上下文 token** | 教师 WAM 的中间层隐状态，压缩成可注入的 token | CKT-WAM (2605.06247) | 单次前向（只编码，不生成） |
 | **B. 去噪轨迹/端点 → 少步** | 多步 ODE 的端点或整条轨迹 | Anchored Path Matching (2611.22592)、RealtimeWAM/TACD (2610.06617)、DIDO (2609.15570)、WAM-Policy (2611.24011) | 消失 |
 | **C. 未来视频表征 → 编码器** | 冻结视频扩散模型的中间/未来表征 | THAW-VLA (2609.24682)、W2A (2611.02600)、DreamFree (2611.04527)、FRED (2610.30320) | 消失 |
 | **D. 自蒸馏（自己教自己）** | 自身多步生成的视频取 VFM 特征 | S-VAM (2603.16195)、AutodidactWAM (2610.08119) | 不需要 |
@@ -27,7 +27,7 @@
 | 教师 | DreamZero-**14B** |
 | 学生 | Cosmos-Policy-**2B** |
 | 蒸什么 | 教师第 **20 层（共 40 层）** 中间隐状态；教师只做单次前向观测编码（`t*=0`），不生成视频/动作 |
-| 压缩 | bottleneck（`d_b=512`）→ **LQCA** 压成 **32+32** query token（generalized / specialized） |
+| 压缩 | 共享 bottleneck：`d_tea → d_b=512 → d_stu`（学生文本嵌入宽度）；**LQCA** 再压成 **32+32** 个 query token（generalized / specialized） |
 | 注入 | 拼到学生**文本条件序列**尾部，cross-attention 进 DiT；**不动学生去噪骨干** |
 | 可训 | 教师+学生**全冻结**，只训 CKT 模块 **187.4M（1.17%）** |
 | 配置 | 8×A800，bf16，AdamW（β=0.9/0.95，wd=0.01），cosine + 1k warmup，LR 3e-4 |
@@ -35,7 +35,20 @@
 
 **为什么这样设计**（原文 §3 的问题陈述）：跨异构 WAM 迁移难——潜接口不匹配、全量微调贵；输出模仿在动作头不对称时脆弱；逐层隐状态对齐太刚性。所以选"**单次前向 + 少量 query token + 条件序列注入**"。
 
-**代价**：教师仍需在训练时加载（14B）；学生推理时不需要，但训练显存是"14B + 2B + CKT"。
+**模块作用与物理意义**（原文 §3.2–3.4）
+
+| 模块 | 形状 | 作用 | 物理意义 |
+|---|---|---|---|
+| 教师单次前向（`t*=0`，第 20/40 层） | `H_T [B,N,d_tea]` | 把当前观测编码成"世界理解" | 教师**不想象未来**，只看现在；`t*=0` 是干净端点，避免把某一步的噪声当知识 |
+| Bottleneck（down→512→up） | `Z [B,N,d_stu]` | 把教师宽度投到学生文本嵌入宽度 | "翻译"：把教师的世界表征变成学生语言通道能吃的向量；512 是信息瓶颈 |
+| LQCA（`Q_g` 32 个、`Q_s` 32 个） | `C_g^0, C_s^0 [B,32,d_stu]` | N 个 token → 32+32 个摘要 | 32 个可学习的"问题"去问教师场景：generalized 问任务无关的（物体/空间/可供性），specialized 问任务相关的（技能/阶段） |
+| 广义 adapter（always-on） | `C_g [B,32,d_stu]` | 残差 bottleneck，始终生效 | 所有任务共享的"世界常识"翻译 |
+| 路由（`mean(H_T)` → MLP → softmax/M） | `p [B,M]` | 选 top-k 个专家 | 判断"现在处于哪类任务/技能"，决定用哪套翻译 |
+| 专家 adapter ×M（top-k 稀疏） | `C_s [B,32,d_stu]` | 各自一个残差 bottleneck | M 套"方言"：不同任务/阶段的世界知识表达；top-k 保证每次只付 k 份成本 |
+| 拼接 + `<sep>` | `Ẽ_t [B, L_t+1+64, d_stu]` | 塞进学生**文本条件序列**尾部 | 教师知识走学生已有的"语言条件"通道，cross-attention 消费，不改去噪骨干 |
+| 冻结学生 + 只训 CKT | 187.4M（1.17%） | 学生生成先验完全不变 | CKT 只是"同声传译"，不是新模型 |
+
+**推理成本（容易误解）**：教师不是训练期专属，也**不是每个 denoising step 都查**。原文是——教师每次观测只做**一次前向**（只编码当前场景，不生成未来视频/动作），得到 `C_A` 后**整条学生去噪轨迹复用**。所以部署形态是"14B 编码器单次前向 + 2B 学生 + CKT"，比"教师多步生成"便宜得多，但也不是把教师完全删掉。
 
 ---
 
@@ -173,6 +186,191 @@ GR00T N1（88h 遥操 → 827h 生成视频，1:1 混合）、LAPA（VQ-VAE 潜�
 3. **视频模型很强、但不想生成像素** → W2A / DreamFree（蒸未来表征）。
 4. **多步 WAM 想保质量** → Anchored Path Matching（单 ckpt 多预算）或 DIDO（DMD 变体）。
 5. **没有动作数据** → 数据蒸馏（GR00T N1 / LAPA / DreamGen）。
+
+## 9. 实现代码（逐方法）
+
+> 形状约定同第 12 章（`B` batch、`N` token、`D` 动作维、`K` 步数）。标 `recon` 的是按论文描述重构、细节未核实。
+
+### 9.1 CKT-WAM（2605.06247）——隐状态 → 条件 token
+
+**物理意义（解释）**：把 14B 世界模型对当前场景的理解浓缩成 64 条「备注」，贴到 2B 学生的文本条件后面；学生不改结构就继承世界知识。教师只做一次编码前向，备注在整条去噪轨迹复用。
+
+```python
+# 输入: obs [B,V,3,H,W], text [B,T], latent [B,Nz,Cl]
+# 输出: loss: scalar
+with torch.no_grad():
+    H_t = teacher.encode(obs, text, t=0, layer=20)      # [B,N,d_tea] 单次前向，只编码
+h  = ckt.bottleneck(H_t)                                # [B,N,d_stu] 内部 d_b=512
+C0g = ckt.lqca_g(ckt.q_g.expand(B, -1, -1), h, h)       # [B,32,d_stu] 32 个 query 摘要
+C0s = ckt.lqca_s(ckt.q_s.expand(B, -1, -1), h, h)       # [B,32,d_stu]
+logits = ckt.router(H_t.mean(1))                        # [B,8] 用教师原始特征做路由
+w, idx = logits.topk(2, dim=-1); w = w.softmax(-1)      # top-k，配置 k=2
+Cg = C0g + ckt.adapter_g(C0g)                           # 常开广义 adapter（残差）
+Cs = C0s + sum(ckt.adapters[j](C0s) * w[:, k:k+1, None]
+               for k, j in enumerate(idx.T))            # top-k 专家（残差）
+cond = torch.cat([text_tokens, ckt.sep, Cg, Cs], dim=1) # 拼到文本条件尾部
+t = torch.rand(B, 1)
+v = student_dit(add_noise(latent, t), t, cond=cond)     # 学生 DiT 冻结
+loss = F.mse_loss(v, target_velocity(latent)) + 0.01 * balance(logits)
+```
+
+### 9.2 APM（2611.22592）——端点锚 + 首步中间态
+
+**物理意义（解释）**：蒸「教师从学生当前状态继续走到的终点 + 第一步」。物理上=老师从你走错的地方接着走给你看，而不是从头示范。
+
+```python
+# 输入: x1 [B,N,D] 噪声；输出: loss
+r   = torch.rand(B, 1)
+z_r = rollout(student, x1, K=K, to=r).detach()          # 学生自达状态
+s   = r - 1.0 / K_T
+with torch.no_grad():
+    y0 = teacher.integrate(z_r, r, 0.0)                 # 端点锚
+    zs = teacher.integrate(z_r, r, s)                   # 首步中间态
+L_a = F.mse_loss(psi(student, z_r, r, 0.0), y0)
+L_f = F.mse_loss(psi(student, z_r, r, s),   zs)
+# g_a, g_f 用 anchor-priority 投影后合并
+```
+
+### 9.3 RealtimeWAM / TACD（2610.06617）——区间平均速度
+
+**物理意义（解释）**：蒸「教师多步走的平均速度」。物理上=把十个小碎步折成一大步，同时用一致性项保证这一步不偏离轨迹。
+
+```python
+# 输入: obs [B,V,3,H,W], a0 [B,H,D]；输出: loss
+with torch.no_grad():
+    kv = video_expert.kv(obs)                           # 只前向一次
+t = torch.rand(B, 1); eps = torch.randn_like(a0)
+a_t = (1 - t) * a0 + t * eps
+v_S = action_expert(a_t, t, kv)
+with torch.no_grad():
+    a0_T = solver(a_t, t, 0.0, teacher, kv)
+    u_T  = (a_t - a0_T) / t.clamp(min=1e-3)
+loss = consistency_loss(action_expert, ema, a_t, t, kv) \
+     + lam * F.mse_loss(v_S, u_T)
+```
+
+### 9.4 DIDO（2609.15570，recon）——DMD + 交互 token
+
+**物理意义（解释）**：蒸「收敛后的交互动力学」，不是第一步的粗预测。物理上=等视频「想清楚」再学，别学半成品；否则交互动态会被截断丢掉。
+
+```python
+# 输入: cond, gt_future, gt_box；输出: loss
+with torch.no_grad():
+    z_T = teacher.sample(cond, steps=4)                 # 4 步机器人域教师
+z   = student.sample(cond, steps=1)                     # 单步学生
+L_dmd  = dmd_loss(z, teacher, cond)                     # 分布匹配（非端点）
+L_box  = smooth_l1(box_head(z), gt_box) + giou_loss(box_head(z), gt_box)
+L_dino = F.mse_loss(proj(z), dinov3(gt_future))
+loss = L_dmd + lam1 * L_box + lam2 * L_dino
+```
+
+### 9.5 WAM-Policy（2611.24011）——video/action 双端点
+
+**物理意义（解释）**：蒸视频/动作两个端点。物理上=把「想象未来」和「动手」都压到 1–2 步；plan 分支 stop-grad，动作分支只看不想。
+
+```python
+# 输入: eps_Z [B,N,Cz], eps_A [B,H,D]；输出: loss
+Z_hat = student.sample_video(eps_Z, steps=1)                     # 1 步
+A_hat = student.sample_action(eps_A, Z_hat.detach(), steps=2)    # 2 步
+with torch.no_grad():
+    Z_T = teacher.sample_video(eps_Z, steps=K_T)
+    A_T = teacher.sample_action(eps_A, Z_T, steps=K_T)
+loss = pseudo_huber(Z_hat - Z_T) + lam_A * pseudo_huber(A_hat - A_T)
+```
+
+### 9.6 THAW-VLA（2609.24682）——离线特征 + cosine
+
+**物理意义（解释）**：蒸世界模型对每个视角的「整体印象」（全局向量）。物理上=只传「这场景大概是什么」，不传像素布局——空间信息确实丢了，这是有意的粗对齐。
+
+```python
+# 输入: obs, act, keys；输出: loss
+h   = student(obs)                                   # QwenGR00T 0.8B
+f_S = h.image_tokens.mean(dim=1)                     # [B,V,D_s] 沿 token 维池化
+f_T = load_cache(keys)                               # [B,V,4096] 教师缓存
+L_align = (1 - F.cosine_similarity(p_phi(f_S), f_T, dim=-1)).mean()
+loss = flow_matching(h, act) + 0.5 * L_align
+```
+
+### 9.7 W2A（2611.02600）——PCA + Q-Former + 时间加权
+
+**物理意义（解释）**：蒸视频 DiT 中间层的「去噪表征」，PCA 压到低维再对齐。物理上=把视频模型脑子里的画面压成低维向量喂给动作模型，不生成像素。
+
+```python
+# 输入: future, act, cond；输出: loss
+with torch.no_grad():
+    Z_v = video_dit.latent(future, layer=L, step=tau)   # [B,N,Cv]
+Z_v = (Z_v - mu) @ U                                     # PCA → [B,N,K]
+Z_a = action_dit.hidden(add_noise(act, tau), tau, cond)  # [B,N,Ca]
+Z_h = qformer(query, Z_a)                                # [B,M,K]
+w = torch.exp(-(tau - tau_c) ** 2 / (2 * sigma_w ** 2))
+L_d = (w * (1 - F.cosine_similarity(Z_h, Z_v, dim=-1))).mean()
+loss = flow_matching(action_dit, act, cond) + lam_dist * L_d
+```
+
+### 9.8 DreamFree（2611.04527，recon）——只蒸未来表征
+
+**物理意义（解释）**：蒸「未来视频的表征」而不是视频本身。物理上=只学「未来会变成什么样」的抽象，不把未来画出来。
+
+```python
+# 输入: obs, future_frames；输出: loss
+with torch.no_grad():
+    y = video_dit.encode(future_frames)                 # 冻结 14B 视频模型
+z = encoder(obs)                                        # 只看当前观测
+loss = (1 - F.cosine_similarity(z, y, dim=-1)).mean() \
+     + action_loss(action_head(z), act)
+```
+
+### 9.9 FRED（2610.30320，recon）——自蒸馏未来表征
+
+**物理意义（解释）**：自蒸馏「从噪声一步预测未来表征」。物理上=练习「闭眼想象未来」，目标来自真实未来观测，不用教师采样。
+
+```python
+# 输入: noise, cond, gt_future；输出: loss
+with torch.no_grad():
+    y = video_dit.encode(gt_future)                     # 目标来自 GT 未来观测
+z = video_dit.denoise(noise, cond, steps=1)             # 从噪声一步预测
+loss = F.mse_loss(z, y) + action_loss(...)
+```
+
+### 9.10 DyMD（2609.31349，recon）——DMD 变体
+
+**物理意义（解释）**：分布匹配，重点是保住「机器人—物体怎么动」。物理上=别把交互动力学蒸没了；画质持平但动作规划更对。
+
+```python
+# 输入: cond；输出: loss
+z0 = student(cond, steps=4)                             # 1.3B 学生
+L_G = score_diff_loss(z0, teacher, critic)              # 教师/fake score 差
+L_c = fm_loss(critic, z0, teacher)
+loss = L_G + lam * L_c
+```
+
+### 9.11 S-VAM（2603.16195）——自蒸馏 VFM 特征
+
+**物理意义（解释）**：用自己多步生成的视频取 VFM 特征当老师。物理上=自己先「做梦」，再用梦里的几何/语义校准一步预测；用同一条轨迹避免错位。
+
+```python
+# 输入: obs；输出: loss
+F = concat_interp(denoiser.upsample_features(obs, step=0))
+with torch.no_grad():
+    V_hat = svd_sample(denoiser, obs, steps=K)
+    Y_geo = vfm.dpav3(interp(V_hat)); Y_sem = vfm.dinov2(interp(V_hat))
+L = ((decoup.geo(torch.cat([F, Y_geo_ref], -1)) - Y_geo) ** 2).mean() \
+  + ((decoup.sem(torch.cat([F, Y_sem_ref], -1)) - Y_sem) ** 2).mean()
+```
+
+### 9.12 AutodidactWAM（2610.08119，recon）——视频 + 手姿 + IK
+
+**物理意义（解释）**：视频 + 手姿 + IK 造动作标签。物理上=看视频学动作，不需要真机示教；暴露了「视频像 ≠ 动作对」的模态不对称。
+
+```python
+# 输入: obs, video；输出: loss
+with torch.no_grad():
+    hand = hand_estimator(video)                        # 手姿
+    a_ik = ik_solver(hand)                              # IK 恢复动作
+L_sft = bc(action_layer(obs), a_ik)
+L_dpo = dpo_loss(action_layer(obs), a_ik, a_neg)       # 偏好对齐
+loss = L_sft + lam * L_dpo + dtw_align(...)
+```
 
 ---
 
