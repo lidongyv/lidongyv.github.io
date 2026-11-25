@@ -51,10 +51,26 @@ jobs:
         continue-on-error: true
 
       # GitHub occasionally answers "No artifacts named \"github-pages\" were found
-      # for this workflow run" immediately after a successful upload (artifact
-      # metadata lags). A retry fixes it, and without this the site would silently
-      # stay on the previous version. If the retry fails too, the job fails loudly.
-      - name: Deploy to GitHub Pages (retry)
+      # for this workflow run" right after a successful upload: the artifact
+      # metadata lags behind. The first retry therefore has to *wait* — retrying
+      # one second later always hits the same stale metadata (that is how the
+      # 2026-11-25 deploy failed twice and left the site on the previous build).
+      - name: Wait for artifact metadata
+        if: steps.deployment.outcome == 'failure'
+        run: |
+          echo "deploy failed; waiting for artifact metadata to settle"
+          sleep 30
+
+      - name: Deploy to GitHub Pages (retry 1)
         id: deployment_retry
         if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Wait longer
+        if: steps.deployment.outcome == 'failure' && steps.deployment_retry.outcome == 'failure'
+        run: sleep 60
+
+      - name: Deploy to GitHub Pages (retry 2)
+        if: steps.deployment.outcome == 'failure' && steps.deployment_retry.outcome == 'failure'
         uses: actions/deploy-pages@v4
