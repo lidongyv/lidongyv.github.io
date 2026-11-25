@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次6 · T4 力学/视触觉scaling</div><h1>ViTacWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2607.22530</span> <a href="https://arxiv.org/abs/2607.22530">arXiv 页面</a> · <a href="txt/ViTacWorld.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次6 · T4 力学/视触觉scaling</div><h1>ViTacWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2607.22530</span> <a href="https://arxiv.org/abs/2607.22530">arXiv 页面</a> · <a href="txt/ViTacWorld.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：auto_docs/papers/txt/ViTacWorld.txt（arXiv:2607.22530v2）。所有英文引用逐字取自 txt 并注明行号；引用时仅合并了跨行断词连字符（如 sim-to-\nreal）。论文未写的内容一律标注「原文未写」。</p>
 </blockquote>
 <h2>1) 原文信息</h2>
@@ -296,6 +296,12 @@
 <li><strong>Fig. 6</strong>（L620-621）："Fig. 6. Qualitative world-model predictions on held-out validation clips. The model receives the first observation frame and the logged action sequence, then predicts future visual and tactile observations."</li>
 <li><strong>TABLE I</strong>（L531-533）："TABLE I REAL-ROBOT SUCCESS RATES (%) OVER 50 TRIALS PER TASK, POLICY, AND TRAINING STAGE. AVG. IS THE FOUR-TASK MEAN; BOLD MARKS THE BEST RESULT PER COLUMN."</li>
 <li><strong>TABLE II</strong>（L649-652）："TABLE II WORLD-MODEL PREDICTION QUALITY ON HELD-OUT CONTACT-TRANSITION CLIPS. BOLD MARKS THE BEST RESULT PER VIEW AND METRIC."</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P9 · 触觉 / 力条件化世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>规模化视触觉世界模型：把触觉当第三路 view 接入动作条件 DiT（VAE latent + stream identity embedding + 跨视图注意力 + AdaLN 动作注入）；预训练混合 16K 公开真实 + 5K 任务对齐仿真轨迹（2:1）再真实 rollout 微调；数据增强使 π0.5 成功率 43.0%→79.5%、想象评估 Pearson r=0.863。</p><h3>English</h3><p>A scaled visuo-tactile world model that treats touch as a third view into an action-conditioned DiT (VAE latents + stream identity embedding + cross-view attention + AdaLN action injection); pretraining mixes 16K public real and 5K task-aligned simulated trajectories (2:1) with real-rollout fine-tuning; augmentation lifts tactile π0.5 from 43.0% to 79.5% and imagined evaluation correlates at Pearson r=0.863.</p><h3>核心代码（示意）</h3><pre><code># tactile as third view into action-conditioned DiT
+z = [vae(latent) for view in (main, wrist, tactile)]
+e = [z_i + stream_embed[i] for i, z_i in enumerate(z)]
+h = cross_view_attention(e)               # attention across streams
+a_emb = adaln(action)
+x = dit(h, t, cond=a_emb)
+L = flow_matching(x_pred, x_target)        # per-view denoising loss</code></pre><p class="meta">⚠ 依据原文 §3（三路 view、跨视图注意力、AdaLN、两阶段训练）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

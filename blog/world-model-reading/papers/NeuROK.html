@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次5 · T3 几何/4D运动学</div><h1>NeuROK 论文精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2605.30347</span> <a href="https://arxiv.org/abs/2605.30347">arXiv 页面</a> · <a href="txt/NeuROK.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次5 · T3 几何/4D运动学</div><h1>NeuROK 论文精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2605.30347</span> <a href="https://arxiv.org/abs/2605.30347">arXiv 页面</a> · <a href="txt/NeuROK.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/NeuROK.txt</code>（62,768 字符，1,258 行）。所有引文逐字复制自该 txt，括号内为行号。txt 为 LaTeX 转纯文本产物，存在排版痕迹：下标被平铺（如 "M 0" 即 M₀、"R 3n" 即 R³ⁿ、"V kint" 即 V_kint）、斜体词粘连（如 "NeuralObjectKinematics" 即 <em>Neural Object Kinematics</em>、"NEUROK" 即 <em>NeuROK</em>、参数名粘连如 "E cond" 即 E_cond）、换行断词（如 "parameteri-zation"）。以下引文均保持 txt 原样，仅在必要时以〔〕注明。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -254,6 +254,12 @@
 <li><strong>Figure 9</strong>（L650–652）："Figure 9.Generalization on unseen categories.Our model can generalize to novel object categories that are completely not present in the training data."</li>
 <li><strong>Table 1</strong>（L577–578）："Table 1.Quantitative comparison on inverse-kinematics optimization."</li>
 <li><strong>Table 2</strong>（L589–593）："Table 2.Quantitative comparison on physically-inspired gen-eration.We report user study preferences along with metrics from VBench [36] and WorldScore [27]. AQ: Aesthetic Quality, DD: Dynamic Degrees, IQ: Imaging Quality, CLIP: CLIP score [89], MM: Motion Magnitude."</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P7 · 3D/4D 结构化与几何蒸馏</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>生成式 4D 神经对象运动学：cVAE 学对象运动学状态潜空间（编码器/解码器），经 Active Subspace 降维后在潜空间用拉格朗日方程 mG(z)z̈+C(z,ż)+∇V=0 演化，边界条件吸收动作；仅用 4D 几何轨迹训练、无需物理或动作标注，广泛物体类别上逆运动学误差最低（0.028/0.028/0.764）。</p><h3>English</h3><p>Generative 4D neural object kinematics: a cVAE learns a latent kinematic state space (encoder/decoder), reduced by active subspaces, in which dynamics evolve under the Lagrangian equation mG(z)ẑ̈+C(z,ż)+∇V=0 with boundary conditions absorbing actions; trained solely on 4D geometric trajectories without physical or action annotations, it achieves the lowest inverse-kinematics errors (0.028/0.028/0.764) across object types.</p><h3>核心代码（示意）</h3><pre><code># latent kinematics + Lagrangian evolution (Eq.3, L489-497)
+mu, logvar = kin_encoder_cond(obj_cond); z = reparam(mu, logvar)
+x_hat = kin_decoder(z)                     # object shape at state z
+# Lagrangian ODE in latent space (active subspace reduced)
+z_ddot = solve_ode(M(z, z_dot), C(z, z_dot), dV_dz(z), bc)  # mG(z)z&#x27;&#x27; + C + grad V = 0
+# boundary conditions (start/end states) absorb actions
+L = recon(x_hat, x_gt) + kl(mu, logvar) + bc_loss + smoothness</code></pre><p class="meta">⚠ 依据原文 §3 与 Eq.3（cVAE、Active Subspace、拉格朗日 ODE、边界条件）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

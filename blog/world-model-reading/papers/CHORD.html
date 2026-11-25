@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次5 · T3 几何/视频蒸馏动力学</div><h1>CHORD 精读笔记（arXiv 2601.04194）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2601.04194</span> <a href="https://arxiv.org/abs/2601.04194">arXiv 页面</a> · <a href="txt/CHORD.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次5 · T3 几何/视频蒸馏动力学</div><h1>CHORD 精读笔记（arXiv 2601.04194）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2601.04194</span> <a href="https://arxiv.org/abs/2601.04194">arXiv 页面</a> · <a href="txt/CHORD.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/CHORD.txt</code>（64,813 字符，18 页）。所有行号指该 txt 的行号；英文引用均逐字复制（含原文换行连字符与空格缺失等提取痕迹）。【推断】为笔者解读；「原文未写」表示论文中未出现该内容。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -555,6 +555,14 @@ ing robotics manipulation policies. Project page:https:
 </blockquote>
 </li>
 </ul>
-<p>（图注中的 "Figure N.xxx" 空格缺失为 txt 提取痕迹，逐字保留。）</p>
+<p>（图注中的 "Figure N.xxx" 空格缺失为 txt 提取痕迹，逐字保留。）</p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P7 · 3D/4D 结构化与几何蒸馏</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>4D 动态对象编排：把视频生成模型当高层「编排者」（Wan2.2 14B），用 RF-SDS 从 2D 视频的欧拉表示蒸馏出拉格朗日运动信息，以空间控制点 + Fenwick 树时间层级表示形变、流/ARAP 正则保物理合理；99 人研究对齐 87.71%、真实感 87.37%，蒸馏产物可驱动机器人操控。</p><h3>English</h3><p>Choreographing 4D dynamic objects: a video generative model (Wan2.2 14B) acts as a high-level &#x27;choreographer&#x27;, and RF-SDS distills Lagrangian motion from the Eulerian representation of 2D video; deformations are represented by spatial control points with a Fenwick-tree temporal hierarchy, regularized by flow/ARAP; in a 99-person study alignment 87.71% and realism 87.37%, and the distilled motion can drive robot manipulation.</p><h3>核心代码（示意）</h3><pre><code># RF-SDS distillation of Lagrangian motion from a video prior (Eq.2)
+# theta = control points {R_t, T_t} over Fenwick-tree time hierarchy
+z = render(control_points(theta), camera, y_text)
+for tau in annealed_noise_schedule:            # w(tau)-normalized noise annealing
+    eps = randn_like(z_tau)
+    v_hat = wan2_2_14b(z_tau, tau, y_text)     # video prior velocity
+    g = (v_hat - eps + z) * w(tau) * d_z_d_theta
+theta -= lr * g                                # minus RF-SDS update
+L = L_flow + L_arap + L_anchor                  # regularization (Eq.3)</code></pre><p class="meta">⚠ 依据原文 §3（RF-SDS、Fenwick 树、控制点）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

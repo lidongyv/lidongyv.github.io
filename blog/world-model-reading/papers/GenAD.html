@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T5 决策/生成式端到端</div><h1>GenAD 精读笔记</h1><div class="meta"><span class="badge b-warn">🔶 笔记完整·引文抽查待讨论时</span><span class="badge">arXiv:2402.11502</span> <a href="https://arxiv.org/abs/2402.11502">arXiv 页面</a> · <a href="txt/GenAD.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T5 决策/生成式端到端</div><h1>GenAD 精读笔记</h1><div class="meta"><span class="badge b-warn">🔶 笔记完整·引文抽查待讨论时</span><span class="badge">arXiv:2402.11502</span> <a href="https://arxiv.org/abs/2402.11502">arXiv 页面</a> · <a href="txt/GenAD.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/GenAD.txt</code>（arXiv:2402.11502v3，共 930 行 / 10 页）。
 引用行号为 txt 行号；论文未写的内容一律标注「原文未写」，解读标注【推断】。
 结构要求的必抄部分（Abstract 全文、图注/表注、数值表）不计入讲解字数。</p>
@@ -470,6 +470,11 @@
 <li>Table 2（L581-582）："Table 2. Comparisons of perception, prediction, and planning performance. † denotes FPS measured with the same environment on our machine with a single RTX 3090 GPU card."</li>
 <li>Table 3（L586-588）："Table 3. Effect of the instance-centric scene representation. E → A represents the proposed ego-to-agent interaction to obtain the instance-centric scene representation."</li>
 <li>Table 4（L628-630）："Table 4. Effect of the generative framework for autonomous driving. TPM and LFTG denote the trajectory prior modeling and latent future trajectory generation, respectively."</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P1 · 自回归 token 视频世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>生成式端到端驾驶：把场景表示为实例中心的结构化 token，用自回归 Transformer 生成未来场景演化（含自车轨迹），规划即生成；无需显式感知/预测/规划分阶段；nuScenes 上生成式规划指标优于分阶段基线。</p><h3>English</h3><p>Generative end-to-end driving: the scene is represented as instance-centric structured tokens and an autoregressive Transformer generates the future scene evolution including the ego trajectory — planning is generation; no separate perception/prediction/planning stages; generative planning metrics beat stage-wise baselines on nuScenes.</p><h3>核心代码（示意）</h3><pre><code># instance-centric tokens -&gt; autoregressive future -&gt; ego trajectory
+inst = [agent_token(a) for a in agents] + [ego_token] + [map_token]
+seq = transformer(inst)                    # autoregressive generation
+fut = gen_decode(seq)                      # future instances + ego traj
+traj = fut.ego                             # planning = generation
+L = ||traj - traj_gt||^2 + instance_loss</code></pre><p class="meta">⚠ 依据原文 §3（实例中心 token、自回归生成）重建的示意实现；代码开源（GenAD）。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · 评测/潜变量物理</div><h1>Roz: A Taste Test for World Model Latents — 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.00612</span> <a href="https://arxiv.org/abs/2611.00612">arXiv 页面</a> · <a href="txt/Roz.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · 评测/潜变量物理</div><h1>Roz: A Taste Test for World Model Latents — 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.00612</span> <a href="https://arxiv.org/abs/2611.00612">arXiv 页面</a> · <a href="txt/Roz.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/Roz.txt</code>（612 行，43,971 字符，13 页）。本文所有行号均指该文件行号。所有事实性陈述附论文原句；解读标注【推断】；论文没有的写「原文未写」。</p>
 </blockquote>
 <h2>1) 原文信息</h2>
@@ -391,6 +391,13 @@ for 连续性质 p 的每个扫描值 p_i（例：位置 0→10 m，步长 1 m�
 3.【推断】三条定义性质（Path independence / Memory / Temporal Consistency，L112-119）可当作潜空间设计的规范清单，任何声称"动力学完备"的潜世界模型可按此逐项自查。
 4.【推断】PantheonWM 梯度表明 Roz 分数可随训练步提升（L383-385），暗示该评测有潜力被纳入训练目标或模型选型；但原文<strong>未写</strong>他们将 Roz 用于训练，仅用于评测。</p>
 <hr />
-<p>（笔记完。数据源唯一为 Roz.txt，未联网、未补写外部知识。）</p>
+<p>（笔记完。数据源唯一为 Roz.txt，未联网、未补写外部知识。）</p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P11 · 评测与基准</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>世界模型潜变量「品尝测试」：定义 10 个 contrastive 任务（三选一严格不等式）加 3 个 continuous 任务（最近邻排序），共 1,734 个场景，直接测潜变量是否编码质量/形变/摩擦/弹性；只需「模型吃帧/视频 + 提取潜 + 距离函数」单次前向。结论：图像稳健类任务全员高分，物理记忆类（occlusion/bounce/deform）全员崩溃；DreamDojo 重建 MSE 减半而 Roz 分数不变。</p><h3>English</h3><p>A &#x27;taste test&#x27; for world-model latents: 10 contrastive tasks (triple choice with strict inequalities) plus 3 continuous tasks (nearest-neighbour ordering), 1,734 scenarios in total, probing whether latents encode mass, deformation, friction and bounciness; it needs only frames/video, a latent extractor and a distance function, in a single pass. Results: all models do well on image-robustness tasks but collapse on physical-memory tasks (occlusion/bounce/deform); DreamDojo&#x27;s reconstruction MSE halves while its Roz score stays identical.</p><h3>核心代码（示意）</h3><pre><code># strict-inequality probe: latents must order physical variants (L147-150)
+for task in CONTRASTIVE_TASKS:      # collision/mass, deform, friction, bounce
+    A, B, C = frames_with_varied_physics(task)
+    zA, zB, zC = [extract_latent(f) for f in (A, B, C)]
+    correct = dist(zA, zB) &lt; dist(zA, zC)      # strict inequality
+    acc += correct
+# continuous task: nearest-neighbour ordering of latents
+score = spearman(latent_dist, physics_param_order)</code></pre><p class="meta">⚠ 依据原文 §3（contrastive/continuous 任务、单次前向评测）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

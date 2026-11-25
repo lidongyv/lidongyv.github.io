@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次5 · T3 几何/物理-视觉闭环</div><h1>PerpetualWonder 精读笔记（arXiv:2602.04876v2）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2602.04876</span> <a href="https://arxiv.org/abs/2602.04876">arXiv 页面</a> · <a href="txt/PerpetualWonder.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次5 · T3 几何/物理-视觉闭环</div><h1>PerpetualWonder 精读笔记（arXiv:2602.04876v2）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2602.04876</span> <a href="https://arxiv.org/abs/2602.04876">arXiv 页面</a> · <a href="txt/PerpetualWonder.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/PerpetualWonder.txt</code>（共 1110 行）。所有英文引文逐字复制自该 txt，行号即 txt 行号；PDF 提取伪影（换行连字符如 "sim-ulator"、缺空格如 "ofaction"）一律保留。标注【推断】处为本人解读，非论文原文；论文未写的一律标「原文未写」。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -226,6 +226,13 @@ maintaining physical plausibility and visual consistency."</p>
 <p><strong>Table S2</strong>（L1102）："Table S2. Runtime Analysis." 数值全抄（L1100–1101）：Initialization "∼8 min"、Forward Pass "&lt;1 min"、Backward Opt. "∼7 min"、Total (1st Loop) "∼16 min"。</p>
 <p><strong>Figure S1</strong>（L1105–1106）："Figure S1. Comparison of isotropic and anisotropic primitives in novel view synthesis."</p>
 <p><strong>Figure S2</strong>（L1109）："Figure S2. Ablation on radius."</p>
-<p><strong>Figure S3</strong>（L1110）："Figure S3. Failure case in generating unseen geometry."</p>
+<p><strong>Figure S3</strong>（L1110）："Figure S3. Failure case in generating unseen geometry."</p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P7 · 3D/4D 结构化与几何蒸馏</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>长时程动作条件 4D 场景生成：提出 VPP 统一表示（物理粒子锚定 J×K 个高斯，tanh 偏移），建立物理状态↔视觉原语双向链接；前向物理仿真驱动视觉预测、反向神经优化把优化后视觉基元回写物理粒子（速度继承），实现闭环；WorldScore 93.26/80.41/66.98，但非实时（反向优化约 7 分钟）。</p><h3>English</h3><p>Long-horizon action-conditioned 4D scene generation: a unified VPP representation (physics particles anchoring J×K Gaussians with tanh offsets) creates a bidirectional link between physical state and visual primitives; forward physics simulation drives visual prediction while a backward neural optimization writes optimized visual primitives back to particles (velocity inherited), forming a closed loop; WorldScore 93.26/80.41/66.98, though not real-time (~7 min backward optimization).</p><h3>核心代码（示意）</h3><pre><code># closed loop: forward physics -&gt; visual -&gt; backward writeback (L105-110)
+G = [particle(p_j) + J*K gaussians with tanh offsets]   # VPP representation
+for step in range(T):
+    p, v = physics_step(p, v, action_t)          # forward physics pass
+    img = render_gaussians(G, camera_views)      # multi-view supervision
+    img = refine_with_gen3c(img)                 # neural optimization
+    p = avg(optimized_primitive_positions)       # loop closure (L446-449)
+    v = inherit_velocity(v)                      # velocity carried over</code></pre><p class="meta">⚠ 依据原文 §3（VPP、前向物理+反向优化、loop closure）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次1 · T4 力学/触觉</div><h1>FAWAM 精读笔记（arXiv:2606.08555）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2606.08555</span> <a href="https://arxiv.org/abs/2606.08555">arXiv 页面</a> · <a href="txt/FAWAM.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次1 · T4 力学/触觉</div><h1>FAWAM 精读笔记（arXiv:2606.08555）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2606.08555</span> <a href="https://arxiv.org/abs/2606.08555">arXiv 页面</a> · <a href="txt/FAWAM.txt">提取正文 txt</a></div><blockquote>
 <p>引用约定：全部英文引文逐字复制自 <code>auto_docs/papers/txt/FAWAM.txt</code>，行号以 (txt Lxx) 标注。PDF 提取造成的换行连字符已按词合并；空格错位（如 "FA W AM"、"✓ ✓ ✓15/20"、"proposeFA W AM"）原样保留。「原文未写」= 论文中不存在该信息；【推断】= 本文的解读，非原文。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -308,6 +308,16 @@
 <li>Table 3 (txt L324): "Table 3:Results under perturbations."</li>
 </ul>
 <hr />
-<p>数据源：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\FAWAM.txt</code>（640 行全文，已全部引用核查）。禁止联网与外部知识补写的要求已遵守。</p>
+<p>数据源：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\FAWAM.txt</code>（640 行全文，已全部引用核查）。禁止联网与外部知识补写的要求已遵守。</p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P10 · 世界-动作联合模型（WAM）</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>力感知世界动作模型：1Hz 的 Force-Envisioned Action Model 编码 0.5s 力历史、经 AdaLN-Zero 调制联合预测动作与力矩；10Hz 的 Force-Guided Residual Corrector 用「预测−实测」力差门控修正残差动作；消融证明仅加力观测仅 +7.5%，预测 +17.5%，加残差校正 +18.75%，全量 85.00% vs 视觉基线 48.75%。</p><h3>English</h3><p>A force-aware world action model: a 1 Hz Force-Envisioned Action Model encodes a 0.5 s force history and, via AdaLN-Zero modulation, jointly predicts actions and wrench; a 10 Hz Force-Guided Residual Corrector turns predicted-vs-measured force discrepancies into gated residual corrections; ablations show force as observation only +7.5%, with prediction +17.5%, with correction +18.75%, overall 85.00% vs 48.75% vision baseline.</p><h3>核心代码（示意）</h3><pre><code># 1 Hz envisioning + 10 Hz correction loop (L115-116)
+f = force_enc(ft_hist[-0.5s])                      # wrench history
+a0, tau_pred = envision_head(f, obs, lang)         # AdaLN-Zero conditioned
+a = a0
+while step &lt; H:                                     # 10 Hz residual corrector
+tau_meas = read_ft()
+e = tau_pred - tau_meas
+g = torch.sigmoid(mlp(e))                          # gate (tau_thr=0.8 in paper)
+a = a0 + g * mlp(e)                                # corrected chunk
+execute(a[:1]); step += 1
+# training: L = flow_matching(a0) + ||tau_pred-tau||^2 + residual_target_BC</code></pre><p class="meta">⚠ 依据原文 §3.2-3.3 与 L115-116 重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

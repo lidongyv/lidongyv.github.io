@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T1 视频/显式状态</div><h1>Physical Registry 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2610.16365</span> <a href="https://arxiv.org/abs/2610.16365">arXiv 页面</a> · <a href="txt/PhysicalRegistry.txt">提取正文 txt</a></div><ul>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T1 视频/显式状态</div><h1>Physical Registry 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2610.16365</span> <a href="https://arxiv.org/abs/2610.16365">arXiv 页面</a> · <a href="txt/PhysicalRegistry.txt">提取正文 txt</a></div><ul>
 <li>来源文件：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\PhysicalRegistry.txt</code>（85,543 字符，36 页，1351 行）</li>
 <li>arXiv ID：arXiv:2610.16365v1 [cs.AI] 12 Oct 2026</li>
 <li>引用格式：<code>（L行号）</code>；原文英文逐字引用保留 txt 提取原样（两栏 PDF 提取造成个别空格异常，如 <code>W AN</code>=WAN、<code>live?Standard</code>）；解读一律标注【推断】；论文未写处标注「原文未写」。</li>
@@ -468,6 +468,14 @@ The score measures angular departure from the shared forecast and is invariant t
 <li>【推断】参数效率信号：仅 +0.45% 参数（72.63M，L856-857, L369）让 Cosmos 3 Nano 16B 的 I2V 43.56 超过 Cosmos 3 Super 64B 的 42.7（L390, L397）——物理合理性的短板在「状态/接口设计」而非模型规模，与「显式可读动力学状态」的叙事一致。</li>
 </ol>
 <hr />
-<p><em>笔记完。所有事实性陈述均附 L 行号原文；「原文未写」与【推断】已分别标注。</em></p>
+<p><em>笔记完。所有事实性陈述均附 L 行号原文；「原文未写」与【推断】已分别标注。</em></p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P6 · 显式状态与可执行记忆</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>显式动力学寄存器：在视频 DiT 内加 Tr=8 个 temporally grounded registry slots，每个去噪步由 observation-conditioned forecast 初始化、与视频 token 共享双向自注意力共演化，并经中间块 MLP 读头对齐 full-video JEPA 目标（λalign=0.5）；+0.45% 参数使 Cosmos Nano 16B 的 I2V 分数 43.56 超过 Super 64B 的 42.7；PRS 用中间 readout 偏离度选候选（+5.6–15.9%）。</p><h3>English</h3><p>An explicit dynamics registry: Tr=8 temporally grounded registry slots inside a video DiT, re-initialized each denoising step from an observation-conditioned forecast, co-evolving with video tokens via shared bidirectional self-attention and aligned by a mid-block MLP readout to full-video JEPA targets (λalign=0.5); 0.45% extra parameters let Cosmos Nano 16B reach 43.56 I2V, above Super 64B&#x27;s 42.7; PRS ranks candidates by intermediate readout departure (+5.6–15.9%).</p><h3>核心代码（示意）</h3><pre><code># registry slots co-evolve with video tokens (L177-219)
+J = [enc_ctx(x)] + [predictor(enc_ctx(x), k) for k in range(7)]   # Tr=8
+for t in denoise_steps:
+    R0 = G_phi(J)                           # same forecast initializes registry
+    Z  = cat([X_t, R0], dim=time)          # registry concat along temporal dim
+    Z  = dit_blocks(Z)                      # shared dense attention
+Z_hat = q_psi(H_reg[block_idx])            # mid-block readout
+L = L_fm + 0.5 * (-cos(Z_hat, Z_tgt)).mean()
+# PRS: r(n) = 1 - mean(cos(readout, forecast)); pick argmax at K steps</code></pre><p class="meta">⚠ 依据原文 §3（registry slots、对齐损失、PRS）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

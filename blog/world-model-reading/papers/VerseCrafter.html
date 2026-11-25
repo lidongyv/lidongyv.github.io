@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T1+T3 4D几何控制</div><h1>VerseCrafter 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2601.05138</span> <a href="https://arxiv.org/abs/2601.05138">arXiv 页面</a> · <a href="txt/VerseCrafter.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T1+T3 4D几何控制</div><h1>VerseCrafter 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2601.05138</span> <a href="https://arxiv.org/abs/2601.05138">arXiv 页面</a> · <a href="txt/VerseCrafter.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/VerseCrafter.txt</code>（arXiv:2601.05138v2，1941 行，25 页）。全部事实性陈述附论文原句（英文逐字 + 行号）；未写内容标注「原文未写」；本人解读标注【推断】。</p>
 </blockquote>
 <h2>1) 原文信息</h2>
@@ -407,6 +407,11 @@ fined in a shared world coordinate frame."（L209–213）</p>
 <li>正文与附录数字一致：35K 训练 / 1K 验证（L463–464 与 L879–880）；26%/74% 来源占比（L465–466 与 L881–882）；Table 5 的 Train 合计 9,071+7,000+18,929=35,000，Val 合计 468+250+282=1,000，吻合。</li>
 <li>推理成本两处口径：正文 L513–515 "takes about 1152 seconds, with a peak per-GPU memory usage of about 90 GB"；附录 Table 7 拆解 Diffusion Inference 866 s（50 步）+ 模型加载 203 s + 状态构建 23 s + 渲染 60 s ≈ 1152 s，自洽；Table 6 另报告 FSDP 可将峰值内存 90→70 GB、加 CPU offload 57 GB（L1262–1265）。</li>
 <li>论文全文无与"CVPR 2026"相关的自述信息；评测为 VBench-I2V 自动指标 + 自建数据集轨迹误差，未做用户研究（原文未写）。</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P7 · 3D/4D 结构化与几何蒸馏</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>4D 几何控制视频世界模型：以「静态背景点云 + 逐物体 3DGS 轨迹」组成 4D 几何控制表示（共享世界坐标系），渲染为控制图（RGB+depth+软合并掩码）经 GeoAdapter 零初始化残差注入冻结 Wan2.1-14B；数据引擎自动构建 35K 样本；联合控制 Overall 88.10、RotErr 0.890/TransErr 3.103 全面最优。</p><h3>English</h3><p>A 4D-geometry-controlled video world model: a 4D Geometric Control representation — static background point cloud plus per-object 3DGS trajectories in a shared world frame — is rendered into control maps (RGB+depth+soft-merged masks) and injected via a zero-initialized GeoAdapter residual into a frozen Wan2.1-14B; an automatic data engine yields 35K samples; joint control Overall 88.10 with best RotErr 0.890 / TransErr 3.103.</p><h3>核心代码（示意）</h3><pre><code># 4D geometric control -&gt; control maps -&gt; frozen video DiT (L209-213)
+Pbg = points_from_depth(img, depth)            # static background cloud
+G   = [gauss_traj(obj, t) for obj in objects]  # per-object 3DGS trajectories
+ctrl = render_control_maps(Pbg, G, camera_pose) # RGB + depth + soft masks
+x = wan2_1_14b(x, ctrl, embed=geoadapter(ctrl)) # k=5 zero-init residual
+L = flow_matching_pred(x, video)                # backbone frozen</code></pre><p class="meta">⚠ 依据原文 §3（4D 控制表示、GeoAdapter）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

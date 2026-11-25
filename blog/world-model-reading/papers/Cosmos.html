@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次4 · T1 视频/世界基础模型</div><h1>Cosmos World Foundation Model Platform for Physical AI — 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2501.03575</span> <a href="https://arxiv.org/abs/2501.03575">arXiv 页面</a> · <a href="txt/Cosmos.txt">提取正文 txt</a></div><p>数据源：<code>auto_docs\papers\txt\Cosmos.txt</code>（arXiv:2501.03575v3，3178 行，正文 L1–2564，参考文献 L2565–3178）。所有引用为 txt 逐字原句，行号按该 txt；「原文未写」= 论文无此内容；【推断】= 笔者解读。</p>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次4 · T1 视频/世界基础模型</div><h1>Cosmos World Foundation Model Platform for Physical AI — 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2501.03575</span> <a href="https://arxiv.org/abs/2501.03575">arXiv 页面</a> · <a href="txt/Cosmos.txt">提取正文 txt</a></div><p>数据源：<code>auto_docs\papers\txt\Cosmos.txt</code>（arXiv:2501.03575v3，3178 行，正文 L1–2564，参考文献 L2565–3178）。所有引用为 txt 逐字原句，行号按该 txt；「原文未写」= 论文无此内容；【推断】= 笔者解读。</p>
 <h2>1. 原文信息</h2>
 <ul>
 <li>标题（L2 逐字）：<code>Cosmos World Foundation Model Platform for Physical AI</code></li>
@@ -157,6 +157,13 @@
 <li>Tab.22（L1849–1851）："Quantitative comparison of post-trained WFM with camera control."（列：Camera Trajectory Alignment 与 Video Generation Quality）</li>
 <li>Tab.24（L2208–2210）："Evaluation on post-trained multi-view world models for multi-view driving video generation."（列：Generation Quality 与 Multi-View Consist.）</li>
 <li>Tab.25（L2217–2218）："Trajectory consistency evaluation on post-trained multi-view world models for multi-view driving video generation. The numbers of TAE are scaled by 10^2 for convenience, and the unit for TFE is cm."</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P2 · 扩散 / Flow-Matching 视频世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>物理 AI 世界基础模型平台：数据管线 2000 万小时→1 亿片段；tokenizer 提供连续 AE（4×8×8~8×16×16）与离散 FSQ（8,8,8,5,5,5=64,000 词表）两套；模型走扩散（DiT+EDM 7B/14B）与自回归（Llama3 风格 4B/12B）双路线并给后训练配方（相机控制、机器人 7 维动作、AD 六视）；权重开源，AR 4B 8×H100 达 10 FPS。</p><h3>English</h3><p>A world foundation model platform for physical AI: a data pipeline from 20M hours to 100M clips; tokenizers offer both a continuous AE (4×8×8 to 8×16×16) and a discrete FSQ (8,8,8,5,5,5 = 64,000 vocab); models follow two routes — diffusion (DiT+EDM 7B/14B) and autoregressive (Llama3-style 4B/12B) — with post-training recipes for camera control, 7-D robot actions and six-camera AD; open weights, with AR 4B reaching 10 FPS on 8×H100.</p><h3>核心代码（示意）</h3><pre><code># tokenizer: continuous AE or discrete FSQ (64,000 vocab)
+z_cont = causal_wavelet_ae(video)            # 4x8x8 ~ 8x16x16
+tokens = fsq(video, levels=[8,8,8,5,5,5])    # 64,000 vocab
+# diffusion DiT: EDM conditioning, AdaLN-LoRA
+x = dit_edm(tokens_or_z_cont, sigmas, cond=t5_text, rope=3d)
+# autoregressive: Llama3-style GPT over discrete video tokens
+next_token = gpt(video_tokens, text_cond) + medusa_speculative_decode()
+# post-train: camera control (Pluecker), robot 7-D actions, AD 6-view 848x480x57</code></pre><p class="meta">⚠ 依据原文 §3-4（双 tokenizer、双路线、后训练）重建的示意实现；权重与代码开源（NVIDIA Cosmos）。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

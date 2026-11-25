@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次5 · T3 接口/轨迹条件化</div><h1>TrAct 论文精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2608.24101</span> <a href="https://arxiv.org/abs/2608.24101">arXiv 页面</a> · <a href="txt/TrAct.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次5 · T3 接口/轨迹条件化</div><h1>TrAct 论文精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2608.24101</span> <a href="https://arxiv.org/abs/2608.24101">arXiv 页面</a> · <a href="txt/TrAct.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/TrAct.txt</code>（arXiv 2608.24101v4，22 页，791 行）。所有引用为逐字英文原句，行号标注；原文没有的内容一律标「原文未写」；本人的延伸判断标注【推断】。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -606,6 +606,13 @@
 <p>"Additional results on the five most difficult UR5 cross-embodiment tasks from LIBERO-INTEGRAL. TrAct+ denotes TrAct pretrained with the larger DROID+BridgeData V2+EgoDex mixture. Scores denote task success rates. The best result in each row is shown in bold."</p>
 </blockquote>
 <hr />
-<p><em>备注：论文另有批大小脚注（L765–766）："Unless otherwise specified, all batch sizes reported in this paper refer to the global batch size aggregated across all GPUs."</em></p>
+<p><em>备注：论文另有批大小脚注（L765–766）："Unless otherwise specified, all batch sizes reported in this paper refer to the global batch size aggregated across all GPUs."</em></p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P8 · 接口与条件化设计</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>轨迹作为控制与预测的中间接口：VLAT（π0.5+PaliGemma 系）联合预测动作与 2D 视觉轨迹，轨迹栅格化为模糊热图经时序 ControlNet 注入 SVD 世界模型（TWM）得到条件化未来，再用 VLAC 奖励在候选中选最优；LIBERO-INTEGRAL 27%→55%、真机 49%→76%，且轨迹条件比动作条件更抗视觉偏移。</p><h3>English</h3><p>Tracks as the interface between control and prediction: VLAT jointly predicts actions and 2D visual tracks; tracks are rasterized into blurred heatmaps and injected via a temporal ControlNet into an SVD world model (TWM) to produce conditioned futures, with a VLAC reward selecting the best candidate; LIBERO-INTEGRAL 27%→55%, real-world 49%→76%, and track conditioning is more robust to visual shift than action conditioning.</p><h3>核心代码（示意）</h3><pre><code># visual tracks as shared interface (L71-72, L151-155)
+a, traj = vlat(obs, lang)                  # joint action + 2D point tracks (7 agent-view + 32 wrist)
+
+heat = blur_heatmap(traj)                  # rasterized control maps
+future = svd_controlnet(x0=obs, cond=heat) # TWM: track-conditioned world model
+score = vlac(future, lang)                 # 0-50 reward
+best = argmax([rollout_score(a_i) for a_i in candidates])
+execute(best_action)</code></pre><p class="meta">⚠ 依据原文 §3（VLAT/TWM/VLAC、SVD+ControlNet）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

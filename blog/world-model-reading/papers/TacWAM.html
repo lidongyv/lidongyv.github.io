@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次1 · T4 力学/触觉</div><h1>TacWAM 精读笔记（arXiv 2607.28391）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2607.28391</span> <a href="https://arxiv.org/abs/2607.28391">arXiv 页面</a> · <a href="txt/TacWAM.txt">提取正文 txt</a></div><h2>1. 原文信息</h2>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次1 · T4 力学/触觉</div><h1>TacWAM 精读笔记（arXiv 2607.28391）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2607.28391</span> <a href="https://arxiv.org/abs/2607.28391">arXiv 页面</a> · <a href="txt/TacWAM.txt">提取正文 txt</a></div><h2>1. 原文信息</h2>
 <ul>
 <li>标题：TacWAM: Anchor-Guided World Action Model with Mechanics-Aware Tactile Prediction（txt L2-3）</li>
 <li>作者：Lei Jin*¹, Yiding Ma*¹, Xin Zhang², Chen Gao¹†, Wei Wu¹,², Yong Li¹†（*共同一作，†共同通讯；txt L4）</li>
@@ -176,6 +176,13 @@
 <li>Table 6（txt L701）："Stage 1 SAF reconstruction loss weights."</li>
 <li>Table 7（txt L734）："Stage 2 TacWAM loss weights."</li>
 <li>Table 8（txt L741）："Final training hyperparameters for Stage 1 and Stage 2."</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P10 · 世界-动作联合模型（WAM）</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>三流世界动作模型：视觉/触觉/动作三路 Mixture-of-Transformers 联合生成，SAF 触觉编码器融合外观、密集力场与形变流并重建双侧合力矩，AGT 注意力用「干净锚点 T0」做信息隔离——动作 token 不得读取未来预测 token；真机四任务平均 75.0%，超最强基线 VT-WAM 37.5 个百分点。</p><h3>English</h3><p>A tri-modal world action model: visual, tactile and action streams in a Mixture-of-Transformers generate jointly; a SAF tactile encoder fuses appearance, dense force fields and deformation flow while reconstructing bilateral resultant wrench; AGT attention isolates information via a clean anchor T0 so action tokens never read future prediction tokens; 75.0% average on four real tasks, +37.5 points over the best baseline.</p><h3>核心代码（示意）</h3><pre><code># AGT: action tokens cannot read future visual/tactile tokens (L218-222)
+N = num_tokens; mask = torch.ones(N, N, dtype=torch.bool)
+mask[act_idx, fut_vis_idx] = False   # no action -&gt; future video
+mask[act_idx, fut_tac_idx] = False   # no action -&gt; future tactile
+mask[vid_idx, fut_tac_idx] = False   # no video -&gt; T1:H tactile
+vis, tac, act = mote(mask)(x_vis, x_tac, x_act, anchors=T0)
+# losses: video flow-matching + tactile latent + action chunk + semantic tactile recon
+L = L_video + L_action + L_tac_latent + 0.5*L_sem + 0.1*L_contact</code></pre><p class="meta">⚠ 依据原文 L218-222 与 §3 重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

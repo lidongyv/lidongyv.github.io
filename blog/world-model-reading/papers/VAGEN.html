@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T6 语义/慢脑RL化</div><h1>VAGEN 精读笔记（arXiv:2510.16907，唯一数据源：auto_docs/papers/txt/VAGEN.txt）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2510.16907</span> <a href="https://arxiv.org/abs/2510.16907">arXiv 页面</a> · <a href="txt/VAGEN.txt">提取正文 txt</a></div><h2>1. 原文信息</h2>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T6 语义/慢脑RL化</div><h1>VAGEN 精读笔记（arXiv:2510.16907，唯一数据源：auto_docs/papers/txt/VAGEN.txt）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2510.16907</span> <a href="https://arxiv.org/abs/2510.16907">arXiv 页面</a> · <a href="txt/VAGEN.txt">提取正文 txt</a></div><h2>1. 原文信息</h2>
 <ul>
 <li><strong>标题</strong>（L1–2）："V AGEN: Reinforcing World Model Reasoning for Multi-Turn VLM Agents"</li>
 <li><strong>作者</strong>（L3–5）：Kangrui Wang、Pingyue Zhang、Zihan Wang、Yaning Gao、Linjie Li、Qineng Wang、Hanyang Chen、Chi Wan、Yiping Lu、Zhengyuan Yang、Lijuan Wang、Ranjay Krishna、Jiajun Wu、Li Fei-Fei、Yejin Choi、Manling Li（通讯作者）。</li>
@@ -399,6 +399,12 @@
 <li>框架实现（L1225–1228）："we developed V AGEN, a framework built upon VeRL[80]... We adoptenv-as-servicedesign, which decouples training from interacting with environments, enhances scalability."</li>
 </ul>
 <hr />
-<p><em>笔记完。全部英文引文逐字复制自 C:\Users\Admin\Desktop\design\auto_docs\papers\txt\VAGEN.txt，行号标注于括号内；斜体粘连照录原文。</em></p>
+<p><em>笔记完。全部英文引文逐字复制自 C:\Users\Admin\Desktop\design\auto_docs\papers\txt\VAGEN.txt，行号标注于括号内；斜体粘连照录原文。</em></p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P13 · 语义 / 语言世界建模</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>强化世界模型推理的多轮 VLM 智能体：把 POMDP 推理拆成 State Estimation（现在）与 Transition Modeling（下一步）两个构件，用 World Modeling Reward（token 级 F1、βs=βw=0.5）与 Bi-Level GAE（turn 级→token 级）训练；3B 模型 0.82 vs 未训练 0.21（近 3×），超 GPT-5 0.75、Gemini 2.5 Pro 0.67；表征上自然语言与结构化格式任务依赖、符号最差。</p><h3>English</h3><p>A multi-turn VLM agent that reinforces world-model reasoning: POMDP reasoning is decomposed into State Estimation (now) and Transition Modeling (next), trained with a World Modeling Reward (token-level F1, βs=βw=0.5) and Bi-Level GAE (turn-level → token-level); a 3B model reaches 0.82 vs 0.21 untrained (~3×), above GPT-5 0.75 and Gemini 2.5 Pro 0.67; representation is task-dependent, with natural language and structured formats leading and symbolic trailing.</p><h3>核心代码（示意）</h3><pre><code># StateEstimation + TransitionModeling with dense reward (L406-408, L440-442)
+se = think(&quot;current state?&quot;, obs)          # State Estimation
+ tm = think(&quot;what happens next?&quot;, obs, a)   # Transition Modeling
+r_reason = 0.5*F1(se, se_gt) + 0.5*F1(tm, tm_gt)
+# Bi-Level GAE: turn-level advantage broadcast to final token of the turn
+A_turn = gae(rewards, values); A_tok[-1] = A_turn
+action = output_action; r = r_reason + r_format + outcome</code></pre><p class="meta">⚠ 依据原文 §3（POMDP 分解、World Modeling Reward、Bi-Level GAE）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

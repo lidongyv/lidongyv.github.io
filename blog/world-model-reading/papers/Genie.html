@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T1 视频/可交互环境</div><h1>Genie: Generative Interactive Environments — 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2402.15391</span> <a href="https://arxiv.org/abs/2402.15391">arXiv 页面</a> · <a href="txt/Genie.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T1 视频/可交互环境</div><h1>Genie: Generative Interactive Environments — 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2402.15391</span> <a href="https://arxiv.org/abs/2402.15391">arXiv 页面</a> · <a href="txt/Genie.txt">提取正文 txt</a></div><blockquote>
 <p>唯一数据源：<code>auto_docs/papers/txt/Genie.txt</code>（1444 行，27 页）。所有英文引文逐字复制自该 txt 并标注行号；txt 由 PDF 提取，个别词间空格缺失（如 "firstgenerative"）保持原样。论文未写之处标「原文未写」；本人解读标【推断】。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -234,6 +234,12 @@ L797–806："Still, we believe Genie opens up vast poten- tial for future resea
 <li>Tokenizer（Table 7，L1266–1278）：Encoder 12 层/d_model 512/8 heads/kq 64；Decoder 20 层/1024/16/kq 64；Codebook num_codes 1024、patch_size 4、latent_dim 32；300k 步 AdamW 余弦衰减（Table 8：max_lr 3e-4、min_lr 3e-4、β1 0.9、β2 0.9、weight_decay 1e-4、warmup 10k）。</li>
 <li>动力学模型优化器（Table 9，L1302–1309）：max_lr 3e-5、min_lr 3e-6、β1 0.9、β2 0.9、weight_decay 1e-4、warmup 5k。</li>
 <li>可复现案例（附录 F）：CoinRun，"we collect data using a random policy... for a total of 10M transitions"（L1393–1396）；LAM 码本 num_codes 6（Table 16）；"We find this model generates consistent playable latent actions, resembling the original environment."（L1421–1422）</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P1 · 自回归 token 视频世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>生成式可交互环境：时空视频 tokenizer + 自回归动力学模型 + 潜动作模型三件套，从 680 万游戏视频无动作标注训练；视频 token 经 ST-transformer 逐 token 预测、潜动作（|A|=8）作为加性嵌入；推理时丢弃 LAM、用户动作用潜动作编码；11B 参数、Robotics 2.5B 模型 FVD 82.7，200 个专家样本即可达 oracle 分数。</p><h3>English</h3><p>Generative interactive environments: a spatiotemporal video tokenizer, an autoregressive dynamics model and a latent action model trained on 6.8M game videos without action labels; video tokens are predicted token-by-token by ST-transformer with latent actions (|A|=8) as additive embeddings, and the LAM is discarded at inference; 11B parameters, FVD 82.7 on the 2.5B robotics model, and 200 expert samples suffice to match oracle scores.</p><h3>核心代码（示意）</h3><pre><code># latent action interface: |A|=8 additive embeddings (L199-203, L274-296)
+tok = st_vit(video)                        # spatiotemporal tokens
+for t in tokens:
+    emb = tok_emb(t) + lam_emb(a_hat[t])   # user action encoded as latent action
+    pred = maskgit_decoder(tok_emb, emb)   # causal dynamics model
+# LAM: predict latent action from (frame_t, frame_{t+1}); discarded after training
+# user plays via LAM codebook action embedding at inference</code></pre><p class="meta">⚠ 依据原文 §3-4（ST-tokenizer、动力学模型、LAM）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

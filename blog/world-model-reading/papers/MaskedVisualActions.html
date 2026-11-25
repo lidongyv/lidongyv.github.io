@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次5 · T3 接口/像素空间动作</div><h1>Masked Visual Actions for Unified World Modeling —— 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2607.19343</span> <a href="https://arxiv.org/abs/2607.19343">arXiv 页面</a> · <a href="txt/MaskedVisualActions.txt">提取正文 txt</a></div><p>数据源：<code>auto_docs/papers/txt/MaskedVisualActions.txt</code>（共 1112 行）。文中行号均指该文件。所有事实性陈述附论文原句（英文逐字+行号）；论文未写之处注明「原文未写」；本文解读一律标注【推断】。注：txt 为 PDF 提取文本，存在少量空格丢失（如 "introduceMasked"、"expressedvisually"）与公式符号破碎，照录并注明。</p>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次5 · T3 接口/像素空间动作</div><h1>Masked Visual Actions for Unified World Modeling —— 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2607.19343</span> <a href="https://arxiv.org/abs/2607.19343">arXiv 页面</a> · <a href="txt/MaskedVisualActions.txt">提取正文 txt</a></div><p>数据源：<code>auto_docs/papers/txt/MaskedVisualActions.txt</code>（共 1112 行）。文中行号均指该文件。所有事实性陈述附论文原句（英文逐字+行号）；论文未写之处注明「原文未写」；本文解读一律标注【推断】。注：txt 为 PDF 提取文本，存在少量空格丢失（如 "introduceMasked"、"expressedvisually"）与公式符号破碎，照录并注明。</p>
 <p>核心一句话：本文把「动作」改写成像素空间中被部分揭示的实体轨迹，使同一个预训练视频模型既能做正向动力学预测（揭示机器人运动、预测场景响应），又能做逆向行为合成（揭示目标物体运动、恢复机器人行为），仅用 15 小时数据微调即可跨本体泛化，并支撑策略评估、模型基规划与动作提取三种下游应用。</p>
 <h2>1 原文信息</h2>
 <ul>
@@ -193,6 +193,13 @@ remain passive observers rather than tools for intervention."</p>
 <li>表 C1（L866）："Table C1: Reconstruction metrics across datasets (mean±SEM; best per column in bold)."</li>
 </ul>
 <p>一句话总结：Masked Visual Actions 把动作从「低维指令」迁移到「像素空间的掩码轨迹」，以极小的微调代价让单一视频模型同时具备正向动力学、逆向合成与零样本跨本体能力；其根本限制是模型学的是相关性而非因果性，且表达能力受基座视频模型制约。</p>
-<p>（完）</p>
+<p>（完）</p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P8 · 接口与条件化设计</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>像素空间控制接口：把动作表达为「视频中某实体被部分揭示的轨迹」——揭示机器人轨迹时模型作前向动力学，揭示物体轨迹时同一模型作逆向模型反推机器人动作；Wan-Fun-Control 2.2 14B + LoRA rank 256、仅 15 小时掩码数据微调，单检查点跨场景/跨本体；策略评估相关性 r=0.982，模型基规划与逆合成均有效。</p><h3>English</h3><p>A pixel-space control interface: actions are expressed as partially revealed trajectories of an arbitrary entity in video — revealing robot motion makes the model a forward dynamics model, revealing object motion makes the same model an inverse model recovering robot behavior; Wan-Fun-Control 2.2 14B with LoRA rank 256 and only 15h of masked data yields one checkpoint across scenes and embodiments; policy-evaluation correlation r=0.982 with effective model-based planning and inverse synthesis.</p><h3>核心代码（示意）</h3><pre><code># partially revealed trajectory = pixel-space action interface (L38-40)
+# forward dynamics: reveal robot, predict response
+x_revealed = paste(robot_frames_masked, target_frame)
+scene_future = video_dit(x_revealed, cond=lang)     # Wan-Fun-Control 2.2 14B + LoRA
+# inverse: reveal object (desired motion), recover robot behavior
+x_revealed = paste(object_motion_masked, target_frame)
+robot = video_dit(x_revealed, cond=lang)            # same checkpoint
+execute(robot[:H])</code></pre><p class="meta">⚠ 依据原文 §3 与 L38-40（像素空间部分揭示接口、正/逆向统一）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

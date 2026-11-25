@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T6 语义/物理记忆</div><h1>PhysMem 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2602.20323</span> <a href="https://arxiv.org/abs/2602.20323">arXiv 页面</a> · <a href="txt/PhysMem.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T6 语义/物理记忆</div><h1>PhysMem 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2602.20323</span> <a href="https://arxiv.org/abs/2602.20323">arXiv 页面</a> · <a href="txt/PhysMem.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/PhysMem.txt</code>（142,978 字符，41 页，arXiv 2602.20323）。所有英文引文逐字抄自 txt，括号内为行号；PDF 断行连字符（如 con-cepts）照原样保留；数值不四舍五入。标注【推断】处为笔者解读，非论文原文。正文（L1–926）全覆盖，Appendix 提取关键表与图注。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -247,6 +247,14 @@
 <li>Fig. 9（L765–771）："Bars show baseline performance (w/oPhysMem); annotations indicate improvement with test-time learning. Gemini-3-Flash dominates across all difficulties and shows the largest improve-ment. Weaker models benefit less from test-time learning."</li>
 <li>Table VI（L1823–1825）："TABLE VI:Complete ablation results across difficulty levels.Success rates and token consumption on simulation benchmark (100 episodes each)."</li>
 <li>Table VIII（L3084–3087）："TABLE VIII:Cross-model results on medium difficulty. Success rates with and withoutPhysMemacross different VLM planners (100 episodes each). All models use thinking mode. Consolidation model fixed to Qwen3-VL."</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P13 · 语义 / 语言世界建模</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>测试期物理记忆框架：冻结参数的 VLM 规划器通过「记录经验→符号聚类生成 AVOID/PREFER/SEQUENCE 假说→定向交互验证（置信度≥0.8、支持≥3）→晋升原则」的科学回路学习摩擦/稳定性；核心设计是「先验证后应用」；砖块插入 76% vs 直接检索 23%，四主干分别 +23/+14/+12/+5 点，31% 假说被证伪。</p><h3>English</h3><p>A test-time physical memory framework: a frozen VLM planner learns friction/stability through a scientific loop — record experience, symbolically cluster into AVOID/PREFER/SEQUENCE hypotheses, verify by targeted interaction (confidence ≥ 0.8, support ≥ 3), promote to principles; verification-before-application is the key design; brick insertion 76% vs 23% for direct retrieval, +23/+14/+12/+5 across four backbones, with 31% of hypotheses refuted.</p><h3>核心代码（示意）</h3><pre><code># verification before application (L16-19)
+mem = Memory(slots=3)                       # episodic / semantic / procedural
+hypotheses = cluster_symbolic(mem.episodes, surprise_rho&lt;1.0)
+verified = []
+for h in hypotheses:                        # AVOID / PREFER / SEQUENCE
+    trials = run_targeted_probes(h, max_trials=3)
+    if confidence(trials) &gt;= 0.8: verified.append(h)   # promote
+plan = vlm_plan(obs, principles=verified)
+# refuted ~31% of hypotheses before they condition the planner</code></pre><p class="meta">⚠ 依据原文 §3（科学回路、验证阈值）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

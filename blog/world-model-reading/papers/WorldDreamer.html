@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次4 · T1 视频/masked并行</div><h1>WorldDreamer 精读笔记（arXiv:2401.09985v1）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2401.09985</span> <a href="https://arxiv.org/abs/2401.09985">arXiv 页面</a> · <a href="txt/WorldDreamer.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次4 · T1 视频/masked并行</div><h1>WorldDreamer 精读笔记（arXiv:2401.09985v1）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2401.09985</span> <a href="https://arxiv.org/abs/2401.09985">arXiv 页面</a> · <a href="txt/WorldDreamer.txt">提取正文 txt</a></div><blockquote>
 <p>唯一数据源：<code>auto_docs/papers/txt/WorldDreamer.txt</code>（共 782 行，11 页短稿）。所有英文引文逐字复制自该 txt 并附行号；txt 中公式与断词存在 PDF 提取乱码，引文照原样保留并加注；论文未写之处标「原文未写」；本人解读标【推断】。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -89,6 +89,13 @@
 <li>Fig. 7（L519）："Figure 7. WorldDreamer possesses an exceptional ability to achieve high-quality video inpainting."</li>
 <li>Fig. 8（L525）："Figure 8. WorldDreamer excels in delivering high-quality video stylization capabilities."</li>
 <li>Fig. 9（L565）："Figure 9. WorldDreamer excels in realizing the ability to generate videos based on actions in the context of autonomous driving."</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P1 · 自回归 token 视频世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>掩码 token 通用世界模型：VQGAN 16× 降采样（词表 8192）把视频离散化，用 STPT（U-ViT + 3D 卷积 + 时空窗口自注意力 + 空间交叉注意力）预测被掩码 token，推理按置信度逐步 unmask；相对扩散约 30 步/自回归约 200 步，本方法约 10 步、3×~20× 加速，24 帧 192×320 单卡 A800 仅 3 秒。</p><h3>English</h3><p>A masked-token general world model: VQGAN at 16× downsampling (8192 vocab) discretizes video, and STPT (U-ViT + 3D conv + spatiotemporal windowed self-attention + spatial cross-attention) predicts masked tokens, unmasking by confidence at inference; versus ~30 diffusion steps or ~200 autoregressive steps it needs ~10 steps, a 3–20× speedup, generating 24 frames at 192×320 in 3 s on one A800.</p><h3>核心代码（示意）</h3><pre><code># masked token prediction with parallel decoding (~10 steps)
+tok = vqgan.encode(video)                 # 16x, vocab 8192
+mask = cosine_mask(tok.shape, cross_frame_same=True)
+for step in range(10):
+    logits = stpt(tok, mask, text_cond, act_cond)   # U-ViT + ST window attn
+    conf = confidence(logits)
+    tok = unmask_by_confidence(tok, logits, ratio=decay(step))
+# 24 frames @192x320 on one A800 in 3s (L481-483)</code></pre><p class="meta">⚠ 依据原文 §3（VQGAN、STPT、置信度 unmask）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

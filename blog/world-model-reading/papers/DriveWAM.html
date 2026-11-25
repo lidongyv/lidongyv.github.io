@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次2 · T5 决策/WAM</div><h1>DriveWAM 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2605.28544</span> <a href="https://arxiv.org/abs/2605.28544">arXiv 页面</a> · <a href="txt/DriveWAM.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次2 · T5 决策/WAM</div><h1>DriveWAM 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2605.28544</span> <a href="https://arxiv.org/abs/2605.28544">arXiv 页面</a> · <a href="txt/DriveWAM.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/DriveWAM.txt</code>（947 行，arXiv 2605.28544）。所有英文引用逐字复制自 txt 并注行号；txt 为 PDF 抽取文本，含排版产物：<code>DriveW AM</code>=DriveWAM、<code>V oyager</code>=Voyager、<code>NA VSIM</code>=NAVSIM、<code>W A</code>=WA、<code>V AE</code>=VAE，引用时不作修正。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -624,6 +624,12 @@
 <li>Table 4 (L429–431): "Table 4: Ablation of video backbone initialization and joint video supervision. All models are trained on 100k clips for 50k iterations."</li>
 <li>Table 5 (L436–438): "Table 5: Ablation of KV memory strategies. ADE/FDE are measured on 20s clips, while KV memory and GFLOPs are profiled under a 300s clip."</li>
 <li>Table 6 (L918–919): "Table 6: Per-chunk inference cost and trajectory prediction accuracy on a single H20 GPU.∗ indicates action denoising steps reduced from 10 to 5."</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P10 · 世界-动作联合模型（WAM）</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>驾驶域世界动作模型：以 Wan2.2-TI2V-5B 视频扩散为策略核心，先采样未来视频 latent、再以其为条件解码自车动作，实现「逆动力学读出」；冻结 Qwen3-VL-8B 每 chunk 给出语义引导，用相关性-冗余打分的选择性 KV 记忆做长时域推理；NAVSIM PDMS 90.1（单前视），推理约 871ms（5 步变体）。</p><h3>English</h3><p>A driving world action model: a Wan2.2-TI2V-5B video diffusion backbone first samples future video latents, then decodes ego actions conditioned on those latents as an inverse-dynamics readout; a frozen Qwen3-VL-8B provides per-chunk semantic guidance, and selective KV memory (relevance-redundancy scoring) bounds long-horizon inference; NAVSIM PDMS 90.1 from a single front view at ~871 ms.</p><h3>核心代码（示意）</h3><pre><code># imagine future -&gt; inverse-dynamics readout (L58-60, L246-247)
+z_fut = sample_video_latents(obs_ctx, prompt=lang, steps=5)   # Wan2.2-TI2V-5B
+hidden = vlm_guide(qwen3_vl, obs_ctx, chunk)                  # frozen VLM semantic guide
+a = action_head(z_fut, hidden)                                # inverse-dynamics readout
+# selective KV: score relevance vs redundancy (lambda=0.07)
+keep = topk(score(hidden_kv), k=160)                          # bounded memory
+# train: flow_matching(video) + action regression; VLM frozen</code></pre><p class="meta">⚠ 依据原文 §3 与 L58-60/L246-247 重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

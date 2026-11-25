@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T5 决策/AD世界模型</div><h1>AgentWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.22880</span> <a href="https://arxiv.org/abs/2611.22880">arXiv 页面</a> · <a href="txt/AgentWorld.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T5 决策/AD世界模型</div><h1>AgentWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.22880</span> <a href="https://arxiv.org/abs/2611.22880">arXiv 页面</a> · <a href="txt/AgentWorld.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\AgentWorld.txt</code>（118,235 字符，34 页，共 1789 行，全文通读；附录 A.1–A.8 亦已读取以覆盖超参与伪代码）
 引文格式：英文逐字 + 行号（行号按 txt 提取文件计；提取文本中少数处有换行撕裂/上下标破损，引用时以 <code>〔OCR 破损〕</code> 注明，不擅自补字）</p>
 </blockquote>
@@ -416,6 +416,12 @@ CenterNet 0.306/0.328；FCOS3D 0.299/0.373；DETR3D 0.303/0.374；PGD 0.305/0.40
 <li>L43–45 页眉页脚（"∗Corresponding author." / 会议名 / arXiv 号）插入在正文句子中间，引用 L42–49 时已注明。</li>
 <li>Eq. 8/11/15/26 等公式中上下标在提取文本中粘连（如 "CrossAttnm"、"Scuri"），笔记中按 LaTeX 惯例还原上下标并在首次出现处注明〔提取粘连〕；公式编号与符号含义均照原文。</li>
 <li>文中出现的 "w/oR action" 等（Tab. 12 行，L1364–1367）为提取文本无空格粘连，实为 "w/o R_action"。</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P6 · 显式状态与可执行记忆</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>agent 中心 VLA 世界模型：固定 N=20 个离散 ⟨agent_i⟩ token，动态接地到周边参与者（语义身份/3D 几何/运动/交互），用几何门控+视觉门控路由锚定冻结 VGGT 4D 与 MLLM 2D 特征；训练三阶段（接地 SFT→推理 SFT + 去脚手架→GRPO 五项奖励）；Bench2Drive DS 81.17、延迟 0.31s，证明规划只需少量关键 token（去除图像线索仅轻微掉点）。</p><h3>English</h3><p>An agent-centric VLA world model: a fixed set of N=20 discrete ⟨agent_i⟩ tokens dynamically grounds to surrounding participants (semantic identity/3D geometry/motion/interaction) via geometric and visual gated routing over frozen VGGT 4D and MLLM 2D features; three training stages (grounding SFT → reasoning SFT with scaffold annealing → GRPO with five rewards); Bench2Drive DS 81.17 at 0.31 s latency, showing planning needs few key tokens — removing image cues degrades only slightly.</p><h3>核心代码（示意）</h3><pre><code># N=20 agent tokens grounded to participants (Eq.2-9)
+tokens = [agent_slot(i) for i in range(20)]
+feat = route(tokens, VGGT4D, MLLM2D)      # geometric + visual gated grounding
+head = [class_head, box3d_head, traj_head]  # training-time only (dropped at inference)
+# stage 1: grounding SFT (lr 1e-4, 12 ep)
+# stage 2: reasoning SFT (lr 5e-5, 12 ep, scaffold eta 0.1 -&gt; 0)
+# stage 3: GRPO (lr 1e-6, 1 ep, rewards: format/percep/action/traj/agent)</code></pre><p class="meta">⚠ 依据原文 §3 与 Algorithm 1 重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

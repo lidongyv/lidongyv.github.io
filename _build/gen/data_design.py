@@ -282,4 +282,10 @@ DESIGN = [
      "summary_en": "The same kitchen scene told from the tactile side: on 99% of the path touch does nothing, and "
                   "then the state is changed by someone else.",
      "tags": ["具身", "触觉", "长文"], "tags_en": ["Embodied", "Tactile", "Essay"]},
+    {"slug": "wam-distill-code", "root": "repo", "src": "wam-distill-code",
+     "title": "WAM 蒸馏：按原理分类的核心代码与中英说明",
+     "title_en": "WAM distillation: principle-based core code with bilingual notes",
+     "summary": "13 个 WAM/VLA 蒸馏方法：按「蒸什么」分五族，每个方法给中文说明、English note 与核心伪代码，标注 L3/L2/L1 证据级别。",
+     "summary_en": "13 distillation methods for WAM/VLA, grouped by what is distilled; each has a Chinese note, an English note and core pseudocode, with L3/L2/L1 evidence tags.",
+     "tags": ["蒸馏", "WAM", "代码"], "tags_en": ["Distillation", "WAM", "Code"]},
 ]

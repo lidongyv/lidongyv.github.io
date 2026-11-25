@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次3 · T2 潜表征/MBRL</div><h1>DreamerV3 精读笔记（arXiv 2301.04104）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2301.04104</span> <a href="https://arxiv.org/abs/2301.04104">arXiv 页面</a> · <a href="txt/DreamerV3.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次3 · T2 潜表征/MBRL</div><h1>DreamerV3 精读笔记（arXiv 2301.04104）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2301.04104</span> <a href="https://arxiv.org/abs/2301.04104">arXiv 页面</a> · <a href="txt/DreamerV3.txt">提取正文 txt</a></div><blockquote>
 <p>唯一数据源：<code>auto_docs/papers/txt/DreamerV3.txt</code>。所有英文引文逐字复制自该 txt，行号以该 txt 为准；论文未写的内容一律标「原文未写」；笔者的理解标【推断】。</p>
 </blockquote>
 <h2>0. 一页总结（problem → method → experiment → takeaway）</h2>
@@ -178,6 +178,14 @@ Lrep(φ) = max(1, KL[qφ(zt|ht,xt) ‖ sg(pφ(zt|ht))])
 <li>Figure 18（L2766–2768）："Individual learning curves for the learning signal ablation experiment. Dreamer relies predominantly on the undersupervised [sic] reconstruction objective of its world model and additional reward and value gradients further improve performance on a subset of tasks."</li>
 </ul>
 <hr />
-<p><em>注：txt 中个别 OCR 痕迹按原样保留并标 [sic]，如 L246 "the world world"（应为 "world model"）、L2767 "undersupervised"。数值一律未四舍五入。</em></p>
+<p><em>注：txt 中个别 OCR 痕迹按原样保留并标 [sic]，如 L246 "the world world"（应为 "world model"）、L2767 "undersupervised"。数值一律未四舍五入。</em></p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P4 · 循环潜动力学与 MBRL</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>通用 MBRL 世界模型：RSSM 以离散潜变量建模动力学，配合 symlog 变换、free bits（1 nat≈1.44 bits）与 KL balancing 实现跨域鲁棒；策略在隐空间「想象」中训练、无 lookahead 规划，150+ 任务单一配置，Minecraft 从零采钻（1 GPU 9 天）。</p><h3>English</h3><p>A general MBRL world model: RSSM models dynamics with discrete latents, stabilized by symlog transforms, free bits (1 nat ≈ 1.44 bits) and KL balancing for cross-domain robustness; the policy is trained in latent imagination without lookahead planning; a single config across 150+ tasks, including collecting diamonds in Minecraft from scratch on one GPU in 9 days.</p><h3>核心代码（示意）</h3><pre><code># RSSM + imagination training (Algorithm 1)
+z, h = encoder(o), recur(h_prev, z_prev, a_prev)
+z_hat, r_hat, c_hat = decoder(h), reward_head(h), cont_head(h)
+# KL with free bits + balancing (L264-269)
+kl = kl_balancing(kl_div(z_hat, sg(z)), sg(kl_div(z_hat, z)))  # stop-grad asymmetry
+kl = torch.clamp(kl, min=1.0)              # free bits 1 nat
+L = recon_loss(o, decoder(z)) + kl_weight*kl + symlog(reward_mse)
+# imagination: actor/critic on abstract trajectories, no lookahead
+for k in range(H): z, h, r, c = imagine_step(z, h, actor(h)); r_sum += r*c</code></pre><p class="meta">⚠ 依据原文 §2（RSSM、symlog、free bits、KL balancing、纯隐想象）重建的示意实现；官方代码 danijar/dreamerv3。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

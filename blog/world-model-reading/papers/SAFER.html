@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T5 决策/风险感知规划</div><h1>SAFER 精读笔记（arXiv:2611.20107v1）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.20107</span> <a href="https://arxiv.org/abs/2611.20107">arXiv 页面</a> · <a href="txt/SAFER.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T5 决策/风险感知规划</div><h1>SAFER 精读笔记（arXiv:2611.20107v1）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.20107</span> <a href="https://arxiv.org/abs/2611.20107">arXiv 页面</a> · <a href="txt/SAFER.txt">提取正文 txt</a></div><blockquote>
 <p><strong>引用说明</strong>：全部英文引用逐字复制自 <code>auto_docs/papers/txt/SAFER.txt</code>，行号按该文件。txt 为 PDF 提取产物，保留其原始瑕疵：粗体词丢失空格（如 "We proposeSAFER"、"0.95and0.77"）、下标带空格（如 "a t"、 "o t"）、公式处含控制字符（U+0002，显示为空）。除注明「公式转写」外，引用不做任何修正。文中标注【推断】处为我个人的解读，非论文原文。</p>
 </blockquote>
 <hr />
@@ -883,6 +883,14 @@ Vehicle ahead | 94.8 / 95.0 | 49.3 / 30.0
 </li>
 </ul>
 <p><strong>类比映射（推断）</strong>：对「力学」，若要在模型中给危险定价，应该学 SAFER 的「有界概率 × 固定权重」结构而非无界惩罚项：① 惩罚上限 = W 保证一个极端风险候选最多输掉一个「好 episode」的量级，回报项仍有机会胜出（保留探索空间）；② 事件预测得越早、惩罚越重，鼓励提前规避而非最后一刻救险；③ 避开风险的候选几乎不付费，因此 planner 可以选「比数据更晚刹车/更早并线」等 coverage 边缘动作而不被惩罚淹没。这三点共同构成 SAFER 对探索-利用两难中「探索侧」的支付方案。</p>
-<hr />
+<hr /><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P5 · 规划与模型预测控制（MPC）</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>世界模型规划的探索-利用解法：离线用「部分训练智能体 + 可恢复脚本扰动（hold/late-brake）」批量制造失败、由任意状态可查询的专家标注 (a,v)，22.06M 步语料；chunked latent WM 16 步一次前向、风险头输出有界 ρ̄∈[0,1]；规划用 MPPI（135 候选×2 迭代，J=return−W·ρ̄，W=50）——碰撞是「有界价格」而非开关；在线只精调 dynamics/scorers/risk 并用 EMA 慢副本打分；CARLA 路线完成 0.95。</p><h3>English</h3><p>An exploration-exploitation solution for world-model planning: offline, partially trained agents plus recoverable scripted perturbations (hold/late-brake) stage failures, with an expert queryable at any state annotating (a,v) — 22.06M steps; a chunked latent world model runs 16 steps per forward, and a risk head yields bounded ρ̄∈[0,1]; planning uses MPPI (135 candidates × 2 iterations, J = return − W·ρ̄, W=50) so collisions are a bounded price, not a switch; online refinement touches only dynamics/scorers/risk with EMA slow copies; CARLA route completion 0.95.</p><h3>核心代码（示意）</h3><pre><code># offline staging + risk-priced MPPI + online refinement
+for ckpt in partially_trained_agents:       # 13 Roach checkpoints
+    roll = drive(ckpt, scripted=[&quot;hold&quot;, &quot;late_brake&quot;])   # recoverable failures
+    D += [(o, a_expert, v_expert, r, phi) for o in roll]
+# planning: J = return - W * rho_bar (Eq.27-28, W=50)
+A = sample_actions(mu, sigma, 128) + prior_proposals(6) + [prior_chunk]
+J = [discounted_return(rollout(a)) - 50*rho_bar(a) for a in A]
+mu = weighted_update(elite(J)); execute(mu[:1])
+# online: 256 steps / 32 updates; EMA slow scorers (tau=0.1)</code></pre><p class="meta">⚠ 依据原文 §3 与 Algorithm 1 重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

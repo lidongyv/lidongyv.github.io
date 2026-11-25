@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次6 · T4 力学/层次接触预测</div><h1>FeelWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2607.24267</span> <a href="https://arxiv.org/abs/2607.24267">arXiv 页面</a> · <a href="txt/FeelWorld.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次6 · T4 力学/层次接触预测</div><h1>FeelWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2607.24267</span> <a href="https://arxiv.org/abs/2607.24267">arXiv 页面</a> · <a href="txt/FeelWorld.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/FeelWorld.txt</code>（47,125 字符，共 1052 行）。所有英文引用逐字复制自该 txt，[L 行号] 标注；论文未写之处标「原文未写」；我方解读标【推断】。txt 内行尾换行连字符（如 "in-teractions"）按原词合并。</p>
 </blockquote>
 <hr />
@@ -495,6 +495,13 @@ Ensure: A⋆t:t+1
 <p><strong>Table IV（L841-842）</strong>："TABLE IV — ZERO-SHOT CEM PLANNING SUCCESS RATES."</p>
 <p><strong>Algorithm 1</strong> 全文见 4.5 节。</p>
 <hr />
-<p><em>笔记完成。数值全部照抄原文，未四舍五入。</em></p>
+<p><em>笔记完成。数值全部照抄原文，未四舍五入。</em></p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P9 · 触觉 / 力条件化世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>视触觉世界模型：把触觉交互分解为三层显式状态（二值接触态→3D 触觉潜变量→滑移态）并逐级监督，用「接触门控非对称注意力」（触觉恒可看视觉、视觉仅在接触时看触觉）抑制自由空间噪声，rollout 加噪声、规划用接触感知 CEM；80 步 LPIPS 低 61%、零样本规划成功率 81.7%。</p><h3>English</h3><p>A visuo-tactile world model that decomposes tactile interaction into three explicit levels (binary contact state → 3D tactile latent → slip state) with per-level supervision; contact-gated asymmetric attention (touch always sees vision, vision attends touch only upon contact) suppresses free-space noise, rollouts are noise-injected and planning uses contact-aware CEM; 61% lower LPIPS at 80 steps and 81.7% zero-shot planning success.</p><h3>核心代码（示意）</h3><pre><code># three-level tactile states + contact-gated asymmetric attention (Eq.11-12)
+contact = sigmoid(contact_head(h))          # binary, immediate
+z3d     = tac_latent(h)                     # local geometry / pressure / shear
+slip    = slip_head(h_temporal)             # temporal stability
+# vision can read touch ONLY when predicted contact &gt;= 0.5
+attn_vis = mha(vis_q, tac_kv * contact_mask)
+attn_tac = mha(tac_q, vis_kv)               # touch always reads vision
+rollout with sigma=0.007 noise; CEM cost = visual + (contact? tactile+slip : 0)</code></pre><p class="meta">⚠ 依据原文 §3（三层触觉状态、接触门控、CEM）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

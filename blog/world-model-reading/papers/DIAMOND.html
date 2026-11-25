@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次4 · T1 视频/扩散世界模型</div><h1>DIAMOND 精读笔记（Diffusion for World Modeling: Visual Details Matter in Atari）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2405.12399</span> <a href="https://arxiv.org/abs/2405.12399">arXiv 页面</a> · <a href="txt/DIAMOND.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次4 · T1 视频/扩散世界模型</div><h1>DIAMOND 精读笔记（Diffusion for World Modeling: Visual Details Matter in Atari）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2405.12399</span> <a href="https://arxiv.org/abs/2405.12399">arXiv 页面</a> · <a href="txt/DIAMOND.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/DIAMOND.txt</code>（arXiv:2405.12399v2，28 页，共 1238 行）。以下所有英文引用均逐字抄录自该 txt 并注明行号；标注【推断】处为本人解读，非论文原文。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -608,6 +608,14 @@
 <li>Figure 10（L1214–1215）："Example trajectories sampled every 25 timesteps from DIAMOND (frame stack) for the modern 3D first-person shooter CS:GO (top row), and real-world motorway driving (bottom row)."</li>
 <li>Figure 11（L1228–1231）："Effect of fixed actions on sampled trajectories in motorway driving. Conditioned on the same initial observations, we rollout the model applying differing actions. Interestingly, the model has learnt to associate ’Slow down’ and ’Speed up’ actions to the whole traffic slowing down and speeding up."</li>
 <li>Figure 12（L1232–1237）："Effect of fixed actions on sampled trajectories in CS:GO. Conditioned on the same initial observation, we rollout the model applying differing actions. Whilst in immediate frames these have the intended effect, for longer roll-outs the observations can degenerate. For instance, it would have been very unlikely for the human demonstrator to look directly into ground in this game state, so the world model is unable to generate a plausible trajectory here, and instead snaps onto another area of the map when looking down does make sense."</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P2 · 扩散 / Flow-Matching 视频世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>扩散世界模型：在像素空间建模 p(x_{t+1}|x_{≤t},a_{≤t})，用 EDM 预条件 U-Net + frame stacking + AdaGN 条件化，推理仅 3 步 Euler 去噪即可稳定长时程；策略在扩散世界模型内用 REINFORCE+λ 回报训练；Atari 100k HNS 1.46（最强世界模型内训练），CS:GO 上 10Hz@RTX 3090 可玩。</p><h3>English</h3><p>A diffusion world model: p(x_{t+1}|x_{≤t}, a_{≤t}) is modeled in pixel space with an EDM-preconditioned U-Net, frame stacking and AdaGN conditioning, stable over long horizons with only 3 Euler denoising steps; the policy is trained inside the diffusion world model with REINFORCE + lambda-returns; 1.46 HNS on Atari 100k and a playable 10 Hz CS:GO at RTX 3090.</p><h3>核心代码（示意）</h3><pre><code># pixel-space diffusion WM, 3-step Euler (L253-256, L404)
+def denoise(x_t, t, context):            # EDM preconditioning
+    c_skip, c_out, c_in, c_noise = edm_precond(t)
+    x = c_skip*x_t + c_out*unet(c_in*x_t, c_noise, adaGN(context))
+    return x
+for step in range(3):
+    x_t = euler_step(denoise(x_t, sigma[step], ctx), sigma[step], sigma[step+1])
+# context = stacked past frames + NOOP action one-hot (frame stacking)
+# RL: REINFORCE + lambda-return inside imagined rollouts</code></pre><p class="meta">⚠ 依据原文 §3（EDM 预条件、3 步 Euler、REINFORCE）重建的示意实现；代码开源 diamond-wm.github.io。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

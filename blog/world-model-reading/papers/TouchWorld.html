@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次1 · T4 力学/触觉</div><h1>TouchWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2607.07287</span> <a href="https://arxiv.org/abs/2607.07287">arXiv 页面</a> · <a href="txt/TouchWorld.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次1 · T4 力学/触觉</div><h1>TouchWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2607.07287</span> <a href="https://arxiv.org/abs/2607.07287">arXiv 页面</a> · <a href="txt/TouchWorld.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs\papers\txt\TouchWorld.txt</code>（arXiv:2607.07287v2，776 行）。所有英文引用均为 txt 原文逐字复制，行号为 txt 行号；txt 提取自 PDF，个别断词/缺空格处已按原文复原（如 "intro-duce"→"introduce"）。论文未写的一律标「原文未写」，本人解读标【推断】。数值未做任何四舍五入。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -294,6 +294,12 @@
 <li>Table 3（L469-471）："Evaluation of Vision-Language Subtask Planner variants. We compare zero-shot planners, supervised fine-tuning without memory, and the memory-augmented planner used by TouchWorld. Metrics are reported in percentage."</li>
 </ul>
 <hr />
-<p>附注：Abstract 全文、9 条图注/表注、3 张数值表、局限段落为强制逐字内容，合计已超出 2500–3500 字目标；正文中文讲解已尽量压缩，请以结构完整性为准。</p>
+<p>附注：Abstract 全文、9 条图注/表注、3 张数值表、局限段落为强制逐字内容，合计已超出 2500–3500 字目标；正文中文讲解已尽量压缩，请以结构完整性为准。</p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P9 · 触觉 / 力条件化世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>触觉基础模型：一条预测通路（触觉世界模型想象未来接触感知目标）加一条反应通路（触觉条件精修策略在线纠正局部执行误差），四阶段训练（触觉预训练→世界模型→策略→残差层），1/10/30Hz 三频调度；评测 6 任务，clean 65.0%、扰动 53.7%，去触觉输入损失最大。</p><h3>English</h3><p>A tactile foundation model with a predictive pathway (a tactile world model imagining future contact-aware goals) and a reactive pathway (a tactile-conditioned refinement policy correcting local execution errors online), trained in four stages at 1/10/30 Hz; 65.0% clean and 53.7% under perturbations on six tasks, with removing tactile input causing the largest degradation.</p><h3>核心代码（示意）</h3><pre><code># 4-stage: tactile pretrain -&gt; tactile world model -&gt; policy -&gt; residual layer
+h = tac_tokens(tactile_hist)                      # per-taxel embeddings
+future_goal = tactile_wm(h, action_chunk)          # predicts future contact-pressure maps @30Hz
+act = policy_dit(obs, tac_now, goal=future_goal)   # tactile-diffusion transformer @10Hz
+act = act + residual_layer(tactile_residual)       # TRT residual @30Hz
+# losses: L = ||future_goal - future_tac||^2 + flow_matching(act) + lambda*contact_aux
+# controller: planner (Qwen3-VL) @1Hz -&gt; action chunks; residual corrects per 33ms</code></pre><p class="meta">⚠ 依据原文 §3 四阶段与式 9 重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

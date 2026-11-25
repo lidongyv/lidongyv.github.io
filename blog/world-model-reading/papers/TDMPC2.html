@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次3 · T2 潜表征/隐式MPC</div><h1>TD-MPC2 精读笔记（唯一数据源：papers/txt/TDMPC2.txt，arXiv 2310.16828）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2310.16828</span> <a href="https://arxiv.org/abs/2310.16828">arXiv 页面</a> · <a href="txt/TDMPC2.txt">提取正文 txt</a></div><h2>1) 原文信息</h2>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次3 · T2 潜表征/隐式MPC</div><h1>TD-MPC2 精读笔记（唯一数据源：papers/txt/TDMPC2.txt，arXiv 2310.16828）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2310.16828</span> <a href="https://arxiv.org/abs/2310.16828">arXiv 页面</a> · <a href="txt/TDMPC2.txt">提取正文 txt</a></div><h2>1) 原文信息</h2>
 <ul>
 <li>标题："TD-MPC2: Scalable, Robust World Models for Continuous Control"（L2–3）</li>
 <li>作者与机构："Nicklas Hansen⋆, Hao Su ⋆†, Xiaolong Wang ⋆†"（L4）；"⋆University of California San Diego, †Equal advising"（L5）；"{nihansen,haosu,xiw012}@ucsd.edu"（L6）</li>
@@ -225,6 +225,14 @@
 <li>Table 1（L521–533）："Training cost. Approximate TD-MPC2 training cost on the 80-task dataset, reported in GPU days on a single NVIDIA GeForce RTX 3090 GPU. We also list the normalized score achieved by each model at end of training."</li>
 <li>Table 6（L1169–1171）："Environment details. We list the episode length and action repeat used for each task domain, as well as the total number of environment steps and performance metrics that we use for benchmarking methods. All methods use the same values for all tasks."</li>
 <li>Table 10（L1770–1773）："Test-time regularization. Normalized score of a 19M parameter TD-MPC2 agent trained on the 80-task dataset, varying the regularization strength c of our proposed test-time regularizer. We do not apply this regularization in any of our other experiments, and only include these results to inspire future research directions."</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P5 · 规划与模型预测控制（MPC）</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>隐式模型预测控制世界模型：不经像素重建，直接在潜空间学 encoder/dynamics/reward/value/policy 五件套，奖励与价值用 log 空间 101-bin 离散回归、潜表征用 SimNorm 归一化；规划用 MPPI 采样、以 terminal value 做自举，104 任务单组超参、317M 单智能体覆盖 80 任务。</p><h3>English</h3><p>An implicit MPC world model: no pixel reconstruction — an encoder/dynamics/reward/value/policy quintet is learned directly in latent space, with reward and value as log-space 101-bin discrete regression and SimNorm latent normalization; planning samples with MPPI and bootstraps from a terminal value; one hyperparameter set across 104 tasks and a 317M single agent covering 80 tasks.</p><h3>核心代码（示意）</h3><pre><code># five heads (L229-234); reward/value = log-space 101-bin regression
+z = simnorm(enc(o))                    # SimNorm: softmax over 8 groups
+z_next = dyn(z, a)
+r = two_hot_log_predict(reward_head(z_next))   # discrete regression
+v = two_hot_log_predict(value_head(z))          # terminal value
+# MPPI: sample H-step action sequences, bootstrap with terminal value
+A = sample_gaussian(mu, sigma, N)               # N candidates
+J = sum(gamma^k * r_k) + gamma^H * mean(ensemble_v(z_H))
+a = execute(A[argmax(J)][0])</code></pre><p class="meta">⚠ 依据原文 §4（五组件、离散回归、SimNorm、MPPI）重建的示意实现；官方代码 nicklashansen/tdmpc2。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

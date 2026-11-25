@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次2 · T5 决策/视频即策略</div><h1>UniPi 精读笔记（Learning Universal Policies via Text-Guided Video Generation）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2302.00111</span> <a href="https://arxiv.org/abs/2302.00111">arXiv 页面</a> · <a href="txt/UniPi.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次2 · T5 决策/视频即策略</div><h1>UniPi 精读笔记（Learning Universal Policies via Text-Guided Video Generation）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2302.00111</span> <a href="https://arxiv.org/abs/2302.00111">arXiv 页面</a> · <a href="txt/UniPi.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：C:\Users\Admin\Desktop\design\auto_docs\papers\txt\UniPi.txt（共 791 行）。所有引用均为 txt 逐字原文，行号为该文件行号。禁止联网核实，本笔记不含任何外部知识补充。</p>
 </blockquote>
 <h2>1) 原文信息</h2>
@@ -379,6 +379,11 @@ LLMs would be an interesting direction of future work.</p>
 <li>Table 2（L358–359）：<code>Task Completion Accuracy Ablations. Each component of UniPi improves its performance. Perfor-mance reported on the seen place and relation tasks.</code></li>
 <li>Table 3（L424–425）：<code>Task Completion Accuracy on Multitask Environment. UniPi generalizes well to new environments when trained on a set of different multi-task environments.</code></li>
 <li>Table 4（L479–480）：<code>Video Generation Quality of UniPi on Real Environment. The use of existing data on the internet improves video plan predictions under all metrics considered.</code></li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P12 · 模拟器与策略学习</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>视频即策略：把序贯决策写成「文本条件视频生成」——给定目标文本生成未来帧序列，再从生成视频回归出低层动作（逆动力学模型独立于规划器、可用仿真器小数据训练）；动作在图像空间统一，因而可跨任务/跨本体泛化，Seen Place 成功率 59.1% vs Diffuser 9.0%。</p><h3>English</h3><p>Policy-as-video: sequential decision making is cast as text-conditioned video generation; given a goal text the planner synthesizes future frames, and low-level actions are extracted by an inverse-dynamics model trained independently on small simulator data; sharing images as the state-action space enables cross-task/cross-embodiment generalization (59.1% Seen Place vs 9.0% Diffuser).</p><h3>核心代码（示意）</h3><pre><code># planner: text -&gt; video diffusion; inverse dynamics -&gt; actions
+video_plan = video_diffusion(prompt=goal_text, first_frame=obs, cfg=1.5)  # UNet denoise
+a_hat = inverse_dynamics(video_plan)                # small MLP/CNN trained on sim data
+# inverse dynamics is independent of planner (L256-258):
+# train on D_sim = {(o_t, o_{t+1}, a_t)} with MSE
+execute(a_hat[:H]); re-plan with new observation</code></pre><p class="meta">⚠ 依据原文 §3（video planner + inverse dynamics 解耦）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T4 力学/触觉</div><h1>TacForeSight 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2606.11184</span> <a href="https://arxiv.org/abs/2606.11184">arXiv 页面</a> · <a href="txt/TacForeSight.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T4 力学/触觉</div><h1>TacForeSight 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2606.11184</span> <a href="https://arxiv.org/abs/2606.11184">arXiv 页面</a> · <a href="txt/TacForeSight.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/TacForeSight.txt</code>（830 行，全文）。所有行号指该 txt 文件行号。
 凡【推断】均为解读，非原文；凡「原文未写」表示论文无对应内容。</p>
 </blockquote>
@@ -397,6 +397,12 @@
 <li>【推断】实验叙事以"执行中扰动 + 恢复演示"为核心（L512–517），且最大优势集中在扰动列（Swiping-P 65%→85%、Adjustment-P 25%→85%，对最强基线），支持"预测式接触控制优于反应式"的鲁棒恢复主张，适合作为预测式 vs 反应式接触控制对比的实证证据源。</li>
 </ol>
 <hr />
-<p><em>笔记完成：2026-11-21。数据源仅 TacForeSight.txt（arXiv:2606.11184v1），未使用任何外部资料。</em></p>
+<p><em>笔记完成：2026-11-21。数据源仅 TacForeSight.txt（arXiv:2606.11184v1），未使用任何外部资料。</em></p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P9 · 触觉 / 力条件化世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>力引导触觉预测框架：TacForceWM 以高频腕部力/力矩为条件、在紧凑潜空间预测短时域触觉动力学（CNN-Transformer tokenizer + 膨胀因果 1D 卷积 + AdaLN 潜 Transformer）；策略用预测触觉潜变量作提前接触先验、经 cross-attention 与门控融合；力信号比触觉早约 200ms、推理 20Hz（RTX 4090D），5 任务均值 79.0%、扰动 86.7%。</p><h3>English</h3><p>A force-guided tactile foresight framework: TacForceWM predicts short-horizon tactile latent dynamics conditioned on high-frequency wrist force/torque (CNN-Transformer tokenizer + dilated causal 1D conv + AdaLN latent Transformer); the policy uses predicted tactile latents as anticipatory contact priors with cross-attention and gated fusion; force leads touch by ~200 ms at 20 Hz inference on an RTX 4090D; 79.0% over five tasks and 86.7% under perturbations.</p><h3>核心代码（示意）</h3><pre><code># wrist F/T at 120Hz conditions tactile latent prediction @30Hz
+f_emb = dilated_causal_conv(ft_hist_120hz)     # global force as leading indicator
+z_fut = adaln_transformer(z_tac_hist, cond=f_emb)  # SIGReg latent dynamics
+# policy: predicted tactile latents as anticipatory prior
+p = cross_attn(policy_feat, z_fut, z_tac_now)
+gate = sigmoid(mlp(p)); act = flow_matching_head(fuse(p, gate))
+# inference: 20 Hz on RTX 4090D (L128-129)</code></pre><p class="meta">⚠ 依据原文 §3（TacForceWM、预测性触觉策略、20Hz 推理）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

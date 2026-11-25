@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T1 视频/驾驶生成</div><h1>GAIA-1 精读笔记</h1><div class="meta"><span class="badge b-warn">🔶 笔记完整·引文抽查待讨论时</span><span class="badge">arXiv:2309.17080</span> <a href="https://arxiv.org/abs/2309.17080">arXiv 页面</a> · <a href="txt/GAIA1.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T1 视频/驾驶生成</div><h1>GAIA-1 精读笔记</h1><div class="meta"><span class="badge b-warn">🔶 笔记完整·引文抽查待讨论时</span><span class="badge">arXiv:2309.17080</span> <a href="https://arxiv.org/abs/2309.17080">arXiv 页面</a> · <a href="txt/GAIA1.txt">提取正文 txt</a></div><blockquote>
 <p>唯一数据源：<code>papers/txt/GAIA1.txt</code>（arXiv 2309.17080，共 1209 行）。所有行号均指该 txt 文件行号。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -161,6 +161,12 @@
 <li><strong>Figure 13</strong>（L846-851）："The world model can predict different outcomes conditioned on its actions. In the first four rows, we execute different out-of-distribution actions (left, strong left, right, strong right — while maintaining speed) from a given context video. The world model can predict the corresponding states with accurate geometry. In the last row, we force the ego-vehicle to steer right while maintaining speed, and as a consequence, we observe the oncoming vehicle reacting and making a maneuver to avoid a collision."</li>
 <li>论文无表格（无 Table 条目），全部图注如上。</li>
 </ul>
-<p>（笔记完。行号均为 GAIA1.txt 行号；标注【推断】的为本文解读，其余事实均附原句。）</p>
+<p>（笔记完。行号均为 GAIA1.txt 行号；标注【推断】的为本文解读，其余事实均附原句。）</p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P1 · 自回归 token 视频世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>生成式驾驶世界模型：把视频、文本、动作全部映射为离散 token、统一为下一 token 预测（自回归 Transformer），9B 级模型在 4.7 万小时驾驶视频上训练；涌现出高层结构、场景动力学与几何理解（原文自述的 emergent properties），可生成 4.4 分钟长的驾驶视频。</p><h3>English</h3><p>A generative driving world model: video, text and actions are all mapped to discrete tokens and unified as next-token prediction (autoregressive Transformer) trained on 47k hours of driving video; emergent properties include high-level structure, scene dynamics and geometry understanding, with generations up to 4.4 minutes long.</p><h3>核心代码（示意）</h3><pre><code># everything -&gt; tokens -&gt; next-token prediction (L176-189)
+img_tok = vq_video(frame)                 # discrete video tokens
+txt_tok = tokenize(text); act_tok = tokenize(action)
+seq = interleave(img_tok, txt_tok, act_tok)
+for t in range(seq_len):
+    next_logits = transformer(seq[:t])     # causal, 9B-scale
+    seq[t+1] = sample(next_logits)</code></pre><p class="meta">⚠ 依据原文 §3（token 化、自回归序列建模）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

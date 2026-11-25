@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次2 · T5 决策/世界模型vs VLA</div><h1>HumanoidWM 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2506.01182</span> <a href="https://arxiv.org/abs/2506.01182">arXiv 页面</a> · <a href="txt/HumanoidWM.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次2 · T5 决策/世界模型vs VLA</div><h1>HumanoidWM 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2506.01182</span> <a href="https://arxiv.org/abs/2506.01182">arXiv 页面</a> · <a href="txt/HumanoidWM.txt">提取正文 txt</a></div><blockquote>
 <p>唯一数据源：<code>auto_docs/papers/txt/HumanoidWM.txt</code>（arXiv 2506.01182，51,053 字符，12 页）。行号均为该 txt 的行号。引文逐字复制（含原文拼写错误，如 L301 "passing passing"、L443 "seperately"、L456 "token steam"、L661 "very benefitial"，系原文如此）。所有事实性陈述附原句；论文未写处标「原文未写」；解读标【推断】。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -283,6 +283,13 @@ small-lab settings, such as 1–2 GPUs."</p>
 <p><strong>Table 2（L608–609）：</strong></p>
 <blockquote>
 <p>"Table 2. Performance of Flow-HWM variants. Full Sharing achieves the best FID, memory usage, and speed even when compared to the Base Variant; Split Attention yields the highest PSNR."</p>
-</blockquote>
+</blockquote><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P2 · 扩散 / Flow-Matching 视频世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>人形机器人开源世界模型：以 1xGPT（100 小时 EVE 自我中心视频+25 维动作）为数据，比较 Masked Transformer（VQ-VAE+掩码交叉熵）与 Flow-Matching（Cosmos 连续 VAE 速度场+CFG）两种范式；参数共享（Full/Modality）近无损地降参 33-53%，单卡 A6000 可训、两卡可部署，Masked FID 10.13 优于 Flow。</p><h3>English</h3><p>An open humanoid world model on 1x EVE data (100h egocentric video + 25-D actions) comparing Masked Transformer (VQ-VAE + masked cross-entropy) and Flow-Matching (Cosmos continuous VAE velocity + CFG) paradigms; parameter sharing (Full/Modality) cuts parameters by 33-53% with near-identical performance, trainable on one A6000 and deployable on two, with Masked-HWM at FID 10.13 outperforming Flow.</p><h3>核心代码（示意）</h3><pre><code># Masked-HWM: VQ tokens + masked cross-entropy (Fig.2/4)
+tok = vq_vae(frame_prev)                 # discrete tokens, block design
+mask = sample_block_mask(H, W, ratio=0.5) # masked prediction
+tokens_pred = masked_transformer(tok_visible, mask, act=a_t, cond=text)
+L = CE(tokens_pred[mask], tok[mask])
+# Flow-HWM alternative: velocity field + CFG
+# v_theta(x_t, t | act); L = ||v_theta - (eps - x_0)||^2, CFG at sampling
+# param sharing: Full (shared all) / Modality (per-modality shared) -&gt; -33~53% params</code></pre><p class="meta">⚠ 依据原文 §3（1xGPT 数据、两种范式与参数共享）重建的示意实现；项目页标注开源。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

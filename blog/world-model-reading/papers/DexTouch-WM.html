@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次1 · T4 力学/触觉</div><h1>DexTouch-WM 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2609.20649</span> <a href="https://arxiv.org/abs/2609.20649">arXiv 页面</a> · <a href="txt/DexTouch-WM.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次1 · T4 力学/触觉</div><h1>DexTouch-WM 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2609.20649</span> <a href="https://arxiv.org/abs/2609.20649">arXiv 页面</a> · <a href="txt/DexTouch-WM.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/DexTouch-WM.txt</code>（arXiv 2609.20649，8 页）。所有英文均为逐字摘录，行号标注于引文后。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -549,6 +549,13 @@
 <li><strong>Table I–V 表注</strong>：已逐字抄录于第 5 节各处（L396–398、L462–466、L480–482、L585–589、L603–606）。</li>
 </ul>
 <h2>附：一句话 Takeaway</h2>
-<p>人手穿戴式触觉 + 重定向到机器人动作空间 → 同一世界模型可由 100h 人手数据与 5h 机器人数据共同训练；在机器人域 held-out 上视觉/几何/接触预测随人手数据单调改善，且该模型可作策略评测代理环境与合成轨迹生成器，但合成数据的训练效用因策略/任务而异。</p>
+<p>人手穿戴式触觉 + 重定向到机器人动作空间 → 同一世界模型可由 100h 人手数据与 5h 机器人数据共同训练；在机器人域 held-out 上视觉/几何/接触预测随人手数据单调改善，且该模型可作策略评测代理环境与合成轨迹生成器，但合成数据的训练效用因策略/任务而异。</p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P9 · 触觉 / 力条件化世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>动作条件触觉世界模型：视频专家（Wan2.2-TI2V-5B）与轻量触觉专家经 MoE/联合注意力耦合，用解剖学对齐的 Split-Hands 触觉 token、残差触觉潜变量与双速率 AdaLN 动作条件，同时预测未来 RGB 与双侧触觉动力学；训练数据为 100 小时人手交互（50 任务）+5 小时真机，视觉指标在 +50→+100h 人手数据间饱和而接触预测继续提升。</p><h3>English</h3><p>An action-conditioned tactile world model: a video expert (Wan2.2-TI2V-5B) is coupled with a lightweight tactile expert via MoE/joint attention, using anatomy-aligned Split-Hands tactile tokens, residual tactile latents and dual-rate AdaLN action conditioning to jointly predict future RGB and bilateral tactile dynamics; trained on 100h of human interaction plus 5h real-robot data, with visual metrics saturating between +50h and +100h while contact prediction keeps improving.</p><h3>核心代码（示意）</h3><pre><code># joint video+tactile dynamics, conditioned on action (Eq.2-4)
+z_v = video_enc(obs)            # frozen-ish video VAE tokens
+t = tactile_enc(tac_hist)       # Split-Hands tokens (320 taxels = 5x4x4 + 15x16)
+z   = fuse_via_moe(z_v, t)      # video expert + tactile expert, shared attention
+z  += tactile_residual(z)       # residual tactile latent for contact detail
+cond = action_embed(a_67d)      # IK-retargeted human motion -&gt; 67-D robot action
+loss = flow_mse(pred_rgb(z, cond), next_rgb) + contact_loss(pred_tac(z, cond), next_tac)
+# dual-rate AdaLN: action injected at every denoise step (Eq.3)</code></pre><p class="meta">⚠ 依据原文 §3 与 Eq.2-4 重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

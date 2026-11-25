@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T5 决策/WAM</div><h1>DiffWAM 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.19904</span> <a href="https://arxiv.org/abs/2611.19904">arXiv 页面</a> · <a href="txt/DiffWAM.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T5 决策/WAM</div><h1>DiffWAM 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.19904</span> <a href="https://arxiv.org/abs/2611.19904">arXiv 页面</a> · <a href="txt/DiffWAM.txt">提取正文 txt</a></div><blockquote>
 <p>数据源（唯一）：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\DiffWAM.txt</code>（1830 行，arXiv 2611.19904，21 页）。
 规则：所有事实性陈述附论文原句（英文逐字 + 行号）；论文没有的写「原文未写」；解读标注【推断】。
 行号格式 <code>(L行号)</code>；正文中 "DiffW AM" 为 txt 排版断词痕迹，指 "DiffWAM"。</p>
@@ -891,6 +891,11 @@ regimes and deployment settings." (L1737)</p>
 <li>总损失："L=L world +λ diff Ldiff +λ actionLaction,(9)"（L575；λ 数值原文未写）</li>
 <li>主结果："Specifically, it attains average success rates of 98.8%, 92.65%, and 88.3%, outperforming the state-of-the-art baseline (i.e., FastWAM) by 1.75, 1.55, and 15.0 percentage points, respectively." (L118-121)</li>
 <li>消融结论："the diff loss provides a measurable improvement, and the Diff Expert contributes a further gain; both are necessary to attain the full performance of DiffWAM in this ablation." (L1003-1006)</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P10 · 世界-动作联合模型（WAM）</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>连续视觉差世界动作模型：三专家（World 预测未来帧、Action 生成动作、Diff 预测相邻观测潜表示差 Δf=f_i−f_{i−1}）共享观测编码器，World/Diff 共享前 N−M 层，单向结构化注意力掩码让各专家只读当前帧表示；推理时移除 World/Diff 专家、零额外开销；LIBERO 98.8%、RoboTwin 92.65%、真机 88.3%（+15.0 vs FastWAM）。</p><h3>English</h3><p>A world action model on consecutive visual differences: three experts (World predicting future frames, Action generating actions, Diff predicting latent differences Δf = f_i − f_{i−1} between adjacent observations) share an observation encoder, with World/Diff sharing the first N−M layers; a structured unidirectional attention mask lets each expert read only current-frame representations; at inference World/Diff are removed at no cost; LIBERO 98.8%, RoboTwin 92.65%, real-world 88.3% (+15.0 vs FastWAM).</p><h3>核心代码（示意）</h3><pre><code># multi-expert with unidirectional mask (L480-487)
+mask[world_tok, cur_tok] = True; mask[world_tok, fut_tok] = False
+mask[diff_tok,  cur_tok] = True; mask[diff_tok,  world_tok] = False  # no cross-expert
+mask[act_tok,   cur_tok] = True; mask[act_tok,   world_tok] = False
+# losses: L = L_world + lambda_d * L_diff + lambda_a * L_action
+# inference: drop World &amp; Diff experts -&gt; action expert only, zero overhead</code></pre><p class="meta">⚠ 依据原文 L480-487 与 L573-577 重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

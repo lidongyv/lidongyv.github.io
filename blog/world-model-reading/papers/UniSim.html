@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次2 · T5 决策/模拟器</div><h1>UniSim 精读笔记（arXiv 2310.06114）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2310.06114</span> <a href="https://arxiv.org/abs/2310.06114">arXiv 页面</a> · <a href="txt/UniSim.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次2 · T5 决策/模拟器</div><h1>UniSim 精读笔记（arXiv 2310.06114）</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2310.06114</span> <a href="https://arxiv.org/abs/2310.06114">arXiv 页面</a> · <a href="txt/UniSim.txt">提取正文 txt</a></div><blockquote>
 <p>唯一数据源：<code>papers/txt/UniSim.txt</code>（1102 行）。所有引文逐字复制自该 txt，行号即 txt 行号；「原文未写」= 论文中查无；【推断】= 本笔记作者的解读。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -410,6 +410,14 @@ where γ(k) is the denoising step size, α(k) is a linear decay on the current d
 <li><strong>表 9</strong>（行 1065–1066）：<code>Table 9: Ablations of model size using FVD and CLIP score on the held-out test split. The largest model achieves the best FVD and CLIP scores.</code></li>
 <li><strong>图 13</strong>（行 1070–1072）：<code>Figure 13: Failed environment simulation from the action “uncover bottle” without training on broad data as in UniSim. Top two videos are generated from only training on SSV2. Bottom two videos are generated from only training on generic internet data (without SSV2, EpicKitchen, Ego4D, and various robotics dataset).</code></li>
 <li><strong>图 14</strong>（行 1099–1101）：<code>Figure 14: When the text-to-video model behind UniSim is only trained on data from Brohan et al. (2022) as opposed incorporating broad data from the internet and other manipulation datasets, long-horizon interaction simulations fail half of the time (red text).</code></li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P12 · 模拟器与策略学习</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>通用交互模拟器：把图像（物体丰富）、机器人（动作密集）、导航（运动多样）等异构数据集统一到同一动作空间（离散化 4096 bins），用 5.6B 视频扩散 U-Net 以历史帧通道拼接+CFG 条件化，自回归生成观测；仿真中训的高层 VLM 策略与低层 RL 策略零样本部署真机（仅定性），并可当数据生成器提升其他视觉语言模型。</p><h3>English</h3><p>A universal interactive simulator: heterogeneous datasets (images for objects, robotics for dense actions, navigation for diverse motion) are unified into one discretized action space (4096 bins) and a 5.6B video diffusion U-Net conditions on channel-concatenated history frames with CFG, generating observations autoregressively; high-level VLM and low-level RL policies trained purely in simulation deploy zero-shot on real robots (qualitative only) and the simulator also serves as a data generator for other VLMs.</p><h3>核心代码（示意）</h3><pre><code># universal simulator: p(o_t | o_{&lt;t}, a_{t-1}) with unified action space
+A = discretize_to_bins(action, bins=4096)          # per-dataset action -&gt; shared bins
+ez = []
+for t in range(T):
+ ctx = channel_concat(o[max(0,t-K):t])           # K history frames (K=4)
+ eps = torch.randn_like(o_t)
+ o_t = diffusion_unet(ctx, eps, cond=A[t-1], cfg=2.0)   # 5.6B, 512 TPU-v3
+ ez.append(o_t)
+# train: denoising MSE over all datasets; eval: policies trained inside -&gt; real robot</code></pre><p class="meta">⚠ 依据原文 §2 方法（T5 嵌入、4096 bins、channelwise 拼接、CFG）重建的示意实现；原文未附官方代码包。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

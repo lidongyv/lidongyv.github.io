@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · 评测/世界状态</div><h1>FlipTest 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.19822</span> <a href="https://arxiv.org/abs/2611.19822">arXiv 页面</a> · <a href="txt/FlipTest.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · 评测/世界状态</div><h1>FlipTest 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.19822</span> <a href="https://arxiv.org/abs/2611.19822">arXiv 页面</a> · <a href="txt/FlipTest.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\FlipTest.txt</code>（103,570 字符 / 1,955 行 / 35 页）
 规则：所有事实性陈述附论文原句（英文逐字 + 行号）；论文没有的写「原文未写」；解读标注【推断】。</p>
 </blockquote>
@@ -271,6 +271,14 @@
 <li>L580–583: "The primary culprit is mode collapse across the boundary: models overwhelmingly generate the exact same outcome for both frames of a pair... predictions remain identical across 72% of real pairs and 89% of simulated pairs."</li>
 <li>L675–677: "Relieved of deciding the outcome, Gemini Omni Flash 1.1 surges from 18.3% to 73.7% pair accuracy, with substantial gains across every model."</li>
 <li>L777–778 + L838: "boosting accuracy to 93.3% on real pairs and over 99% across the sweeps" / "running the physical rollout alters the final prediction in less than 1% of runs".</li>
-</ol>
+</ol><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P11 · 评测与基准</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>反事实世界状态测评：构造三级测试——视觉最小对（两帧几近相同但真实未来不同）、匹配控制（未来相同的位置不应翻转）、密集 sweep（精确定位翻转边界），共 1,680 初始帧（10 仿真 + 15 真实任务）；11 个视频世界模型最强仅 18.3% 对准确率（低于随机 25%），边界两侧预测 72%/89% 完全相同，告知结局后 18.3%→73.7%——模型学的是外观而非因果状态。</p><h3>English</h3><p>A counterfactual world-state test: three levels — visual minimal pairs (near-identical frames whose true futures differ), matched controls (steps that leave the future unchanged), and dense sweeps (locating exactly where predictions flip) — over 1,680 initial frames from 10 simulated and 15 real tasks; all 11 video world models fall short, best at 18.3% pair accuracy (below 25% random), with identical predictions across 72%/89% of real/simulated pairs; told the outcome, accuracy jumps 18.3%→73.7% — they learn appearance, not the causal state.</p><h3>核心代码（示意）</h3><pre><code># minimal-pair construction: tiny state change flips the future (L62-68)
+pairs = []
+for x0 in seeds:                            # 1,680 initial frames
+    for delta in [before_edge, after_edge]:
+        x0_edit, future_f = simulate(x0, state_shift=delta)
+        pairs.append((x0, x0_edit, future_f))   # same pixels, different futures
+# judge generated videos: does prediction flip where the future flips?
+acc = mean(judge(video_model(x0)) != judge(video_model(x0_edit)))
+# controls: unchanged-future pairs must NOT flip; SS = CFR - SFR</code></pre><p class="meta">⚠ 依据原文 §3（三级测试、判据）重建的示意实现；评测代码开源（flip-test.github.io）。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

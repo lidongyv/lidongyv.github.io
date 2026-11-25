@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T1 视频/惯性先验</div><h1>InertialWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.22314</span> <a href="https://arxiv.org/abs/2611.22314">arXiv 页面</a> · <a href="txt/InertialWorld.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 新·最近三个月 · T1 视频/惯性先验</div><h1>InertialWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2611.22314</span> <a href="https://arxiv.org/abs/2611.22314">arXiv 页面</a> · <a href="txt/InertialWorld.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\InertialWorld.txt</code>（1546 行，arXiv:2611.22314v1）
 铁律执行：所有事实性陈述附英文原文逐字引用 + 行号；论文未写处标「原文未写」；解读标【推断】。
 说明：本文<strong>没有</strong> <code>\begin{algorithm}</code> 环境，第 5 节伪代码为「⚠ 依据原文重建（非原文伪代码）」，每步附行号。</p>
@@ -434,6 +434,11 @@ end
 <td>L1497</td>
 </tr>
 </tbody>
-</table>
+</table><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P6 · 显式状态与可执行记忆</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>惯性视频世界模型：把「从已有状态演化」作为结构先验，Inertial Memory 双视图——稠密欧拉网格（场景对齐证据）+ 持久拉格朗日载体（局部内容绑定规范坐标）；每步固定顺序 carry→predict→update：按动作传输载体（速度保持 η=0.90）、从 carried 状态预测完整下一状态、学习门控（g0=0.020，默认持久化）合并；机器人/游戏/导航三域全胜基线（RT-1 PSNR 24.37）。</p><h3>English</h3><p>An inertial video world model making &#x27;evolve from what exists&#x27; a structural prior: Inertial Memory has two views — a dense Eulerian grid (scene-aligned evidence) and persistent Lagrangian carriers binding local content to canonical coordinates; each step follows carry→predict→update: carriers are transported by action-conditioned motion (velocity retention η=0.90), the complete next state is predicted from carried state, and a learned gate (g0=0.020, persistence by default) commits memory; it beats baselines across robot/game/navigation (RT-1 PSNR 24.37).</p><h3>核心代码（示意）</h3><pre><code># carry -&gt; predict -&gt; update (fixed order, L875-876)
+G = dense_grid(prev_state); R = {carrier_k}
+G, R = transport(R, U_theta(state, a), eta=0.90)   # action-conditioned carry
+state_next = predictor(G, R, context)              # predict full next state
+g = gate(state_next)                               # learned write gate
+G = (1-g)*G_carried + g*G_new; R = (1-g)*R_carried + g*R_new</code></pre><p class="meta">⚠ 依据原文 Eq.2/3/6/8 与 L875-876 重建的示意实现；代码开源 YuanGao-YG/InertialWorld。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

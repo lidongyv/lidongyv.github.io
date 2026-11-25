@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T3 几何/occupancy</div><h1>OccWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2311.16038</span> <a href="https://arxiv.org/abs/2311.16038">arXiv 页面</a> · <a href="txt/OccWorld.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T3 几何/occupancy</div><h1>OccWorld 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2311.16038</span> <a href="https://arxiv.org/abs/2311.16038">arXiv 页面</a> · <a href="txt/OccWorld.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/OccWorld.txt</code>（81,779 字符，11 页，arXiv 2311.16038）。所有原文引用逐字复制并注明行号；txt 中不含补充材料（论文正文称细节见 supplementary，该部分原文未收录于 txt）。引用中的排版瑕疵（如 "VQV AE"、"V AD"）系 txt 原文如此，照录不改。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -444,6 +444,12 @@
 <li>Table 2（L626–627）："Table 2. Motion planning performance. Aux. Sup. denotes auxiliary supervision apart from the ego trajectory. We use bold and underlined numbers to denote the best and second-best results, respectively. † denotes using the metric computation adopted in V AD [25]."</li>
 <li>Table 3（L701）："Table 3. Effect of different hyperparameters for the scene tokenizer. We use bold numbers to denote the best results."</li>
 <li>Table 4（L709–710）："Table 4. Ablation study of the spatial-temporal generative transformer. We report average results over the 1s, 2s, and 3s."</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P7 · 3D/4D 结构化与几何蒸馏</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>3D 占据世界模型：VQ-VAE 场景 tokenizer（码本 512×128 维）+ 空间聚合/时间因果注意力多尺度 GPT + U-net 聚合，两阶段训练，联合解码 occupancy 与自车位移；无需 instance/map 标注，4D 预测 mIoU 17.14/IoU 26.63，规划 L2 1.17、碰撞率 0.60。</p><h3>English</h3><p>A 3D occupancy world model: a VQ-VAE scene tokenizer (512 codes × 128-D) plus a multi-scale GPT with spatial aggregation and temporal causal attention, trained in two stages and jointly decoding occupancy and ego displacement; without instance/map annotations it reaches mIoU 17.14 / IoU 26.63 for 4D prediction and L2 1.17 / collision 0.60 for planning.</p><h3>核心代码（示意）</h3><pre><code># scene tokens + spatiotemporal GPT (two-stage)
+scene = occ_voxel_grid(x)                 # H x W x D semantic occupancy
+tok = vq_scene_tokenizer(scene)           # 512 codes, 128-D
+tok_next, ego = gpt(tok_hist)             # spatial aggregation + temporal causal attn
+occ_next = vq_decoder(tok_next)
+L = CE(occ_next, occ_gt) + ||ego - ego_gt||^2
+# planner: future occupancy -&gt; trajectory (no instance/map labels)</code></pre><p class="meta">⚠ 依据原文 §3（VQ tokenizer、时空 GPT、联合解码）重建的示意实现；代码开源 wzzheng/OccWorld。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T3 几何/多模态3D</div><h1>MUVO 论文精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2311.11762</span> <a href="https://arxiv.org/abs/2311.11762">arXiv 页面</a> · <a href="txt/MUVO.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T3 几何/多模态3D</div><h1>MUVO 论文精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2311.11762</span> <a href="https://arxiv.org/abs/2311.11762">arXiv 页面</a> · <a href="txt/MUVO.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/MUVO.txt</code>（arXiv 2311.11762）。所有引用均为该 txt 逐字复制并注明行号。txt 为 PDF 提取文本，存在跨行断词与个别连写（如 "featureconcatenation"、"chamfer Distance"），引用时保留原貌。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -174,6 +174,11 @@ Occupancy 网格规格（L293–295）："voxel grids of size 192 × 192 × 64 w
 <li>Fig. 5（L332）："Fig. 5. Pre-Training: Influence of camera-lidar pre-training for 50,000 steps on 3D occupancy prediction. We evaluate on both DRLval and DDSval. The green lines show our benchmark without pre-training. Violet lines show frozen weights of the pre-trained model, and weights remained open for the blue lines."</li>
 <li>Fig. 6（L412–413）："Fig. 6. Occupancy: Impact of predicting 3D occupancy on the quality of camera and lidar predictions, evaluated on both DRLval and DDSval."</li>
 <li>表格：本文无表格（原文未写）。</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P7 · 3D/4D 结构化与几何蒸馏</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>多模态 3D 世界模型：前视 RGB（600×960）+ 64 线激光 range view（≤6 万点）经 Transformer 自注意力融合，GRU 过渡模型在 2D 卷积潜空间演化，解码 RGB/点云/192×192×64@0.5m 二值 occupancy；自监督无标签，结论是 range-view 无损表示 + 2D 潜空间最优，BEV 映射反而变差（BEV 缺高度的瓶颈获反证）。</p><h3>English</h3><p>A multimodal 3D world model: front-view RGB (600×960) and 64-beam LiDAR range view (≤60k points) are fused by Transformer self-attention, a GRU transition model evolves a 2D convolutional latent, decoding RGB, point cloud and 192×192×64@0.5 m binary occupancy; fully self-supervised, it finds lossless range-view representations with a 2D latent optimal while BEV mapping hurts — a counterexample to the BEV-height bottleneck.</p><h3>核心代码（示意）</h3><pre><code># sensor fusion -&gt; 2D latent GRU -&gt; multimodal decoders (self-supervised)
+img = cnn(rgb_600x960); lidar = range_view_pointnet(pointnet(rv_60k))
+fused = transformer_self_attn([img, lidar])
+z = conv2d_latent(fused); z_next = gru(z, action=[accel, steer])
+rgb_hat = dec_rgb(z_next); pts_hat = dec_points(z_next); occ_hat = dec_occ(z_next)
+L = Mse(rgb) + Chamfer(pts) + BCE(occ)</code></pre><p class="meta">⚠ 依据原文 §4（range view、GRU 潜空间、三解码器）重建的示意实现；代码开源 Bogdoll/MUVO。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

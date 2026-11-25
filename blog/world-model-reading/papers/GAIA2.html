@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次4 · T1 视频/驾驶生成</div><h1>GAIA-2 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2503.20523</span> <a href="https://arxiv.org/abs/2503.20523">arXiv 页面</a> · <a href="txt/GAIA2.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次4 · T1 视频/驾驶生成</div><h1>GAIA-2 精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2503.20523</span> <a href="https://arxiv.org/abs/2503.20523">arXiv 页面</a> · <a href="txt/GAIA2.txt">提取正文 txt</a></div><blockquote>
 <p>唯一数据源：<code>papers/txt/GAIA2.txt</code>（arXiv 2503.20523，全文 796 行）。所有引用逐字复制自 txt 并注行号；【推断】为笔者解读；论文未写处一律标注「原文未写」。</p>
 </blockquote>
 <h2>1. 原文信息</h2>
@@ -245,6 +245,12 @@
 <li>其余图注概括（非原文）：图 6（L437–439）部分加噪重去噪做天气/时段增强；图 7（L471–475）场景嵌入生成真实样本的多样变体；图 10（L532–533）极端动作外推越野轨迹；图 12（L551–552）3D 框引导的智能体 inpainting。</li>
 </ul>
 <h2>附：一句话速查</h2>
-<p>GAIA-2 = 连续潜空间 latent diffusion 世界模型（8.4B，flow matching）+ 高压缩视频 tokenizer（384×），以「速度+曲率动作、3D 框、元数据、CLIP/场景嵌入、相机几何」为条件，生成最多 5 路 448×960 一致视频；数据 25M 条 2 秒真实驾驶片段（英/美/德）；指标 FDD/FID/FVMD/IoU 仅训练曲线（n=1024），无最终数值表；无消融节；无 joystick/驾驶杆与闭环评测（原文未写）。</p>
+<p>GAIA-2 = 连续潜空间 latent diffusion 世界模型（8.4B，flow matching）+ 高压缩视频 tokenizer（384×），以「速度+曲率动作、3D 框、元数据、CLIP/场景嵌入、相机几何」为条件，生成最多 5 路 448×960 一致视频；数据 25M 条 2 秒真实驾驶片段（英/美/德）；指标 FDD/FID/FVMD/IoU 仅训练曲线（n=1024），无最终数值表；无消融节；无 joystick/驾驶杆与闭环评测（原文未写）。</p><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P2 · 扩散 / Flow-Matching 视频世界模型</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>可控多视角驾驶世界模型：8.4B 时空分解 Transformer + flow matching，以自车速度/曲率（symlog）、智能体、环境、道路语义与外部潜嵌入为条件；200M tokenizer 384× 压缩、相机几何位置编码保多视角一致；训练语料约 2500 万条 2 秒视频（英/美/德），支持纯动作轨迹生成场景。</p><h3>English</h3><p>A controllable multi-view driving world model: an 8.4B space-time factorized Transformer with flow matching, conditioned on ego speed/curvature (symlog), agents, environment, road semantics and external latent embeddings; a 200M tokenizer at 384× compression plus camera-geometry positional encodings keep views consistent; trained on ~25M two-second videos from the UK/US/Germany, capable of synthesizing scenes purely from ego action trajectories.</p><h3>核心代码（示意）</h3><pre><code># flow-matching DiT conditioned on structured driving signals (L238-245)
+cond = [symlog(v_ego), symlog(curvature), agents, road, env, latent_emb]
+for t in diffusion_steps:
+    v = dit(x_t, t, cond)                 # 8.4B, space-time factorized
+    x = x + dt * v                        # flow marching to data
+# camera-geometry PE keeps multi-view consistency; 200M tokenizer, 384x compression
+# data: ~25M clips x 2s, UK/US/Germany (L300-301)</code></pre><p class="meta">⚠ 依据原文 §3（flow matching、结构化条件、symlog 速度/曲率）重建的示意实现；论文未附官方代码。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

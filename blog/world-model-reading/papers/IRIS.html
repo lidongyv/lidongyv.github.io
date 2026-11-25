@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次3 · T2 潜表征/离散token</div><h1>IRIS 精读笔记：Transformers are Sample-Efficient World Models</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2209.00588</span> <a href="https://arxiv.org/abs/2209.00588">arXiv 页面</a> · <a href="txt/IRIS.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次3 · T2 潜表征/离散token</div><h1>IRIS 精读笔记：Transformers are Sample-Efficient World Models</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2209.00588</span> <a href="https://arxiv.org/abs/2209.00588">arXiv 页面</a> · <a href="txt/IRIS.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>C:\Users\Admin\Desktop\design\auto_docs\papers\txt\IRIS.txt</code>（922 行，arXiv 2209.00588，ICLR 2023）
 引用格式：所有英文原句逐字复制自 txt 并标注行号 L 起始–结束；原文未写处明确标注「原文未写」；本人解读标注【推断】。该 txt 由 PDF 抽取，存在连字（ﬁ/ﬂ）、上下标丢失、单词粘连（如 "closestembedding"）等抽取伪影，抄录时保留原样并加注，不猜测补全。</p>
 </blockquote>
@@ -590,6 +590,15 @@ Table 1 表注见第 5 节（L236–239）。</p>
 <li>L662–663 损失公式中范数上标 2 抽为 "22"（‖·‖22 应为 ‖·‖2²）。</li>
 <li>L175 节标题 "M ODELING DYNAMICS"、L130 "M ETHOD" 为小型大写字母抽取伪影。</li>
 <li>全文多处连字：ﬁ（inefﬁcient/ﬁrst/ﬁeld）、ﬂ（coin ﬂip/ﬂavored）等，均按 txt 原样保留。</li>
-</ol>
+</ol><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P4 · 循环潜动力学与 MBRL</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>离散潜世界模型：VQ-VAE 把帧编码为 512 码本 token，自回归 Transformer（20 层、256 维）逐 token 预测下一帧、奖励与终止；策略用 REINFORCE+λ 回报只在想象中训练；Atari 100k 人类归一化均分 1.046（+70% vs SPR），26 游戏 10 个超人类。</p><h3>English</h3><p>A discrete latent world model: VQ-VAE encodes frames into 512-codebook tokens and an autoregressive Transformer (20 layers, 256-D) predicts next frame, reward and termination token by token; the policy is trained purely in imagination with REINFORCE + lambda-returns; 1.046 mean human-normalized score on Atari 100k (+70% vs SPR), superhuman on 10 of 26 games.</p><h3>核心代码（示意）</h3><pre><code># VQ tokenizer + autoregressive imagination (L115-116, L182-195)
+tok = vq(frame)                            # 16x16 tokens, K=512, 20 layers
+for k in range(16*16):
+    tok_next, r, done = transformer(tok_flat, ctx)
+# policy in imagination: REINFORCE with lambda-return
+for t in range(H):
+    a = actor(tok_state)
+    tok_next, r, done = wm.step(tok_state, a)
+    ret = lambda_return(rewards, values)
+loss = -logp(a) * (ret - v(tok_state)) + v_loss</code></pre><p class="meta">⚠ 依据原文 §3-4 重建的示意实现；官方代码在 iris-rl 项目页。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>

@@ -29,7 +29,7 @@
 @media print{.ldy-backbar,.ldy-topbar{display:none}}
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
-<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T2 潜表征/JEPA</div><h1>V-JEPA 论文精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2404.08471</span> <a href="https://arxiv.org/abs/2404.08471">arXiv 页面</a> · <a href="txt/VJEPA.txt">提取正文 txt</a></div><blockquote>
+<header class="site"><div class="wrap"><span class="brand">🧠 世界模型调研与精读</span><nav><a href="../index.html">首页</a><a href="../world-model-survey.html">调研总览</a><a href="../world-model-capability-taxonomy.html">输出任务×能力</a><a href="../recent3m.html">最近三个月·实现细节</a><a href="../method-principles.html">方法原理</a><a href="../narrative.html">叙事线资料</a><a href="../progress.html">进度与纠偏</a><a href="../papers/index.html">论文索引(51)</a></nav></div></header><main><div class="wrap"><div class="kicker">精读笔记 · 批次7 · T2 潜表征/JEPA</div><h1>V-JEPA 论文精读笔记</h1><div class="meta"><span class="badge b-ok">✅ 引文已 grep 验证原文</span><span class="badge">arXiv:2404.08471</span> <a href="https://arxiv.org/abs/2404.08471">arXiv 页面</a> · <a href="txt/VJEPA.txt">提取正文 txt</a></div><blockquote>
 <p>数据源：<code>auto_docs/papers/txt/VJEPA.txt</code>（1705 行）。所有英文引用逐字复制自该文件，行号即 txt 行号。论文未写之处标注「原文未写」，笔者的解读标注【推断】。</p>
 </blockquote>
 <h2>1 原文信息</h2>
@@ -485,6 +485,11 @@
 <li><strong>Figure 8</strong>（行 1695–1699）："Masking Strategy Ablation. … We find it important to maintain a high spatial and temporal masking ratio during pretraining."</li>
 <li><strong>Figure 9</strong>（行 1703–1704）："Each mask is constructed by sampling several (possibly overlapping) blocks and taking their union."</li>
 <li><strong>Table 5 表注</strong>（行 593–601）、<strong>Table 6 表注</strong>（行 610–617）、<strong>Table 7 表注</strong>（行 789–795）：见第 5 节；<strong>Table 1–4 表注</strong>见第 6 节。</li>
-</ul>
+</ul><section id="method"><h2>方法原理 · 核心代码（示意实现）</h2><div class="meta"><span class="badge b-ok">P3 · JEPA / 潜空间预测</span><a href="../method-principles.html">按方法原理分类查看全部</a></div><h3>中文核心说明</h3><p>视频特征预测自监督：双编码器 + 窄预测器，在潜空间预测被掩码视频块的表征（ℓ1 + stop-grad + EMA 防坍缩），多块掩码（8 块×15% + 2 块×70%，平均约 90% 掩码率）；ViT-H/16 冻结评估 K400 81.9/SSv2 72.2，超最大视频模型至少 +5 点（SSv2），且样本少 1–2 个量级。</p><h3>English</h3><p>Self-supervised video feature prediction: dual encoders plus a narrow predictor forecast representations of masked video blocks in latent space (ℓ1 + stop-gradient + EMA to prevent collapse), with multi-block masking (8 blocks ×15% + 2 blocks ×70%, ~90% masked); ViT-H/16 frozen gives 81.9 K400 and 72.2 SSv2, beating the largest video models by ≥5 points on SSv2 with 1–2 orders of magnitude less data.</p><h3>核心代码（示意）</h3><pre><code># predict latent targets, not pixels (Eq.1, L257-266)
+ctx = enc_ctx(x_ctx)                       # context blocks
+z_tgt = ema_enc_tgt(x_tgt)                 # target blocks, stop-grad
+z_hat = predictor(ctx, deltas)             # narrow predictor (12 blocks)
+L = ||z_hat - sg(z_tgt)||_1                # stop-gradient prevents collapse
+# multi-block mask: 8 blocks @15% + 2 blocks @70%, ~90% masked</code></pre><p class="meta">⚠ 依据原文 §3-4（JEPA 目标、多块掩码、EMA）重建的示意实现；代码开源 facebookresearch/jepa。</p></section>
 <footer class="site">本工程由 DeepSeek Harness 从本地笔记自动生成 · 引用以论文原文为最终依据 ·
 <a href="../index.html">返回首页</a></footer></div></main></body></html>
