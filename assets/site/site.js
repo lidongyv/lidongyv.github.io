@@ -4,7 +4,8 @@
 
   var doc = document;
   var root = doc.documentElement;
-  root.parentNode.classList.remove('no-js');
+  // <html> is the root; its parentNode is the document and has no classList
+  root.classList.remove('no-js');
 
   /* ---------- Theme ---------- */
   var THEME_KEY = 'ldy-theme';
