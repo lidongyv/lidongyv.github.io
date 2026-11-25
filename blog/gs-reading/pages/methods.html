@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>方法核心实现（按原理分类）｜GS 阅读站</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<nav class="topnav">
+  <a href="../index.html">首页</a>
+  <a href="basics.html">工作原理</a>
+  <a href="paradigm.html">范式演进</a>
+  <a href="per-scene.html">per-scene 优化点</a>
+  <a href="latest-3months.html">最近三个月</a>
+  <a href="methods.html" class="active">方法实现</a>
+  <a href="survey-master.html">调研总报告</a>
+  <a href="../survey-list.html">论文全清单</a>
+</nav>
+<main>
+<h1>方法核心实现：按方法原理分类</h1>
+<p class="lede">最近三个月四篇深读方法的「核心代码实现 + 中英核心说明」。分类依据是<strong>方法改动发生在哪一层</strong>：表征修正、融合路由、训练监督、系统执行——对应 Marr 框架里 L2 表征/算法与 L3 实现的不同切入点。</p>
+
+<div class="note"><strong>代码说明</strong>：以下代码为<strong>根据论文公式整理的示意实现</strong>（非官方代码、未经完整训练验证），保留论文的核心算子与超参语义，省略了工程外围（数据加载、分布式、CUDA 核函数）。每页末尾附论文链接与原文依据。</div>
+
+<h2>四类方法原理</h2>
+<div class="cards">
+  <a class="card" href="m-pavesplat.html">
+    <span class="cat-label">① 表征修正类 · Representation Correction</span>
+    <h3>PaveSplat：残差四元数修正表面对齐协方差</h3>
+    <p><strong>原理</strong>：把「由深度解析导出的表面帧」当作先验，只学一个单位四元数残差去修正病态方向；协方差仍是解析可微的。<br><em>Principle: keep the depth-derived surface frame as a prior, learn only a unit-quaternion residual to correct ill-posed orientations.</em></p>
+  </a>
+  <a class="card" href="m-crosspressor.html">
+    <span class="cat-label">② 融合路由类 · Fusion Routing</span>
+    <h3>CrossPressor：训练无关的 coverage-cycled 证据路由</h3>
+    <p><strong>原理</strong>：不改锚表征与解码器，只把「支撑视图 → 锚」的注意力输入按空间/视图/层三维交错压缩，复杂度与视图数解耦。<br><em>Principle: leave the anchors and decoder untouched; route only the support-side evidence, decoupling cost from view count.</em></p>
+  </a>
+  <a class="card" href="m-instanthand.html">
+    <span class="cat-label">③ 监督正则类 · Supervision &amp; Regularization</span>
+    <h3>InstantHand：Soft Alpha Band + 可靠度门控外观迁移</h3>
+    <p><strong>原理</strong>：不换网络结构，靠两个针对性正则解决「轮廓变粗」与「颜色漂移」——监督集中在轮廓带，颜色按渲染贡献门控迁移。<br><em>Principle: no architecture change; two targeted regularizers fix silhouette thickening and color drift.</em></p>
+  </a>
+  <a class="card" href="m-cross3dgs.html">
+    <span class="cat-label">④ 系统执行类 · System Execution</span>
+    <h3>Cross3DGS：跨设备 schedule 选择</h3>
+    <p><strong>原理</strong>：训练循环不变，把 6 个执行选项组合成 256 种 schedule，按设备限制/负载/驱动故障三步筛选，不在设备上计时。<br><em>Principle: keep the training loop; pick an execution schedule from 256 combinations via device/workload/driver rules, no on-device timing.</em></p>
+  </a>
+</div>
+
+<h2>为什么按「原理层」分类</h2>
+<table>
+  <thead><tr><th>类别</th><th>改动位置</th><th>可迁移的经验</th></tr></thead>
+  <tbody>
+    <tr><td>① 表征修正</td><td>L2：单高斯的几何参数化（协方差/朝向）</td><td>能解析算出来的东西就别让网络重新学，只学残差——训练稳定、参数量极小（+0.05%）</td></tr>
+    <tr><td>② 融合路由</td><td>L2：跨视图注意力输入的重排</td><td>压缩要放在投影之前、且「所有视图都保留」比「丢整个视图」质量损失小得多</td></tr>
+    <tr><td>③ 监督正则</td><td>L2/L3 之间：损失与门控设计</td><td>平均损失掩盖局部错误——把监督预算集中到最容易崩坏的边界带（轮廓 2px）</td></tr>
+    <tr><td>④ 系统执行</td><td>L3：执行调度而非算法</td><td>「正确性」比「速度」优先：先用规则排除已知会算错的 schedule，再谈偏好</td></tr>
+  </tbody>
+</table>
+
+<p><a href="../index.html">← 返回首页</a></p>
+</main>
+<footer><p>gs-reading-site ｜ 方法核心实现 ｜ 整理自 2026-11 深读原文</p></footer>
+</body>
+</html>

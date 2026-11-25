@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaveSplat 核心实现｜GS 阅读站</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<nav class="topnav">
+  <a href="../index.html">首页</a>
+  <a href="basics.html">工作原理</a>
+  <a href="paradigm.html">范式演进</a>
+  <a href="per-scene.html">per-scene 优化点</a>
+  <a href="latest-3months.html">最近三个月</a>
+  <a href="methods.html" class="active">方法实现</a>
+  <a href="survey-master.html">调研总报告</a>
+  <a href="../survey-list.html">论文全清单</a>
+</nav>
+<main>
+<h1>PaveSplat：残差四元数修正表面对齐协方差</h1>
+<p class="lede"><span class="cat-label">① 表征修正类</span> arXiv 2611.26045 · ACCV 2026 ｜ 前馈 GS 的高分辨率重渲染空洞问题</p>
+
+<h2>中文核心说明</h2>
+<p>前馈 GS 给每个像素一个高斯，其协方差来自「预测深度 → 点图 → 切向 → 表面帧」的<strong>解析推导</strong>。问题在于：深度在边缘、细结构和掠射角处是病态的，解析帧没有自由度去修正朝向；训练分辨率下 1px 最小足迹还能盖住缝隙，一旦同一预测在高分辨率重渲染，缝隙就暴露成洞。</p>
+<p>PaveSplat 的思路是<strong>只学残差、不重学全部</strong>：保持解析帧 R_a 与解析尺度 s̄ 作为先验，额外输出一个单位四元数 Δq，右乘合成最终朝向 R = R_a·R_Δ(Δq)。Δq 以恒等初始化（零权重 + 单位四元数偏置），所以第一趟前向与基线完全一致，训练只把「解析帧瞄歪」的 surfel 重新拧回表面。代价是 +9,512 个参数（&lt;0.05%）。</p>
+<div class="en-block"><strong>English summary.</strong> Feed-forward surfel-based GS derives each Gaussian's covariance analytically from predicted depth. Where the depth-derived frame is ill-posed (edges, thin structures, grazing angles), the surfel orientation cannot be corrected, and the 1-pixel minimum footprint that hides gaps at training resolution exposes them as holes at higher rendering resolution. PaveSplat keeps the analytic frame R_a and analytic scales as priors and learns only an identity-initialized unit-quaternion residual Δq (right-multiplied: R = R_a·R_Δ(Δq)) that re-aims misoriented surfels. The first forward pass exactly reproduces the analytic baseline, so learning is confined to the residual; the cost is 9,512 extra parameters (&lt;0.05%).</div>
+
+<h2>核心代码实现（示意，按论文 Eq.2–6 整理）</h2>
+<pre class="code"><code>import torch
+import torch.nn.functional as F
+
+def _quat_mul(a, b):
+    """Hamilton product, q = (w,x,y,z)."""
+    aw, ax, ay, az = a.unbind(-1); bw, bx, by, bz = b.unbind(-1)
+    return torch.stack([
+        aw*bw - ax*bx - ay*by - az*bz,
+        aw*bx + ax*bw + ay*bz - az*by,
+        aw*by - ax*bz + ay*bw + az*bx,
+        aw*bz + ax*by - ay*bx + az*bw], dim=-1)
+
+def _quat_to_rotmat(q):
+    q = F.normalize(q, dim=-1)
+    w, x, y, z = q.unbind(-1)
+    R = torch.stack([
+        torch.stack([1-2*(y*y+z*z), 2*(x*y-z*w),   2*(x*z+y*w)], -1),
+        torch.stack([2*(x*y+z*w),   1-2*(x*x+z*z), 2*(y*z-x*w)], -1),
+        torch.stack([2*(x*z-y*w),   2*(y*z+x*w),   1-2*(x*x+y*y)], -1)], dim=-2)
+    return R
+
+def _rotmat_to_quat(R):
+    """旋转矩阵 -> 单位四元数 (w,x,y,z)。四分支标准实现。"""
+    m00, m11, m22 = R[..., 0, 0], R[..., 1, 1], R[..., 2, 2]
+    tr = m00 + m11 + m22
+    # 四分支的候选四元数（s 均用 clamp_min 防除零）
+    s0 = torch.sqrt(tr.clamp_min(0) + 1.0) * 2
+    q0 = torch.stack([0.25*s0, (R[...,2,1]-R[...,1,2])/s0,
+                      (R[...,0,2]-R[...,2,0])/s0, (R[...,1,0]-R[...,0,1])/s0], -1)
+    s1 = torch.sqrt((1.0 + m00 - m11 - m22).clamp_min(1e-8)) * 2
+    q1 = torch.stack([(R[...,2,1]-R[...,1,2])/s1, 0.25*s1,
+                      (R[...,0,1]+R[...,1,0])/s1, (R[...,0,2]+R[...,2,0])/s1], -1)
+    s2 = torch.sqrt((1.0 + m11 - m00 - m22).clamp_min(1e-8)) * 2
+    q2 = torch.stack([(R[...,0,2]-R[...,2,0])/s2, (R[...,0,1]+R[...,1,0])/s2,
+                      0.25*s2, (R[...,1,2]+R[...,2,1])/s2], -1)
+    s3 = torch.sqrt((1.0 + m22 - m00 - m11).clamp_min(1e-8)) * 2
+    q3 = torch.stack([(R[...,1,0]-R[...,0,1])/s3, (R[...,0,2]+R[...,2,0])/s3,
+                      (R[...,1,2]+R[...,2,1])/s3, 0.25*s3], -1)
+    best = torch.stack([tr, m00, m11, m22], -1).argmax(-1)
+    q = torch.where(best[..., None] == 0, q0,
+        torch.where(best[..., None] == 1, q1,
+        torch.where(best[..., None] == 2, q2, q3)))
+    return F.normalize(q, dim=-1)
+
+def _sobel_3d(X):
+    """[V,H,W,3] -> 面内切向 t_x, t_y（3x3 Sobel，边界 replicate）"""
+    kx = torch.tensor([[-1,0,1],[-2,0,2],[-1,0,1]], dtype=X.dtype, device=X.device)
+    ky = kx.t()
+    Xp = X.permute(0, 3, 1, 2)                      # [V,3,H,W]
+    pad = F.pad(Xp, (1,1,1,1), mode='replicate')
+    k = lambda kk: kk.view(1,1,3,3).expand(3,1,3,3)
+    tx = F.conv2d(pad, k(kx), groups=3) / 8.0
+    ty = F.conv2d(pad, k(ky), groups=3) / 8.0
+    return tx.permute(0,2,3,1), ty.permute(0,2,3,1)
+
+def pavesplat_encode(z, o, d, alpha, m1, m2, rgb, dq_raw,
+                     K, c2w_R, s_eps=1e-4, clamp_t=0.1,
+                     m_min=1/3, m_max=3.0):
+    """
+    z,o,d,alpha,m1,m2,rgb,dq_raw: [V,H,W,*] 网络逐像素输出（dq_raw 4 通道）
+    K: [V,3,3] 内参；c2w_R: [V,3,3] 相机到世界的旋转
+    """
+    V, H, W = z.shape
+    u = torch.stack(torch.meshgrid(torch.arange(H, device=z.device),
+                                   torch.arange(W, device=z.device),
+                                   indexing='ij'), -1).float()       # [H,W,2]
+    u1 = torch.cat([u, torch.ones_like(u[..., :1])], -1)             # [H,W,3]
+    ray = torch.einsum('vij,hwj->vhwi', torch.linalg.inv(K), u1)
+    X = z[..., None] * ray / ray[..., 2:]                            # 点图 X(u) Eq.2
+    mu = o + z[..., None] * d                                        # 高斯中心
+
+    tx, ty = _sobel_3d(X)
+    tx = tx.clamp(-clamp_t, clamp_t); ty = ty.clamp(-clamp_t, clamp_t)
+
+    n = F.normalize(torch.cross(tx, ty, dim=-1), dim=-1)
+    n = n * torch.sign(n[..., 2:3] + 1e-6)                           # ⟨n̂⟩_z ≥ 0
+    e1 = F.normalize(tx - (tx * n).sum(-1, keepdim=True) * n, dim=-1)
+    e2 = torch.cross(n, e1, dim=-1)
+    R_a = torch.stack([e1, e2, n], dim=-1)                           # 列向量帧 Eq.3
+
+    s1 = tx.norm(dim=-1)
+    s2 = (ty - (ty * e1).sum(-1, keepdim=True) * e1).norm(dim=-1)    # Eq.4
+    m = F.softplus(torch.stack([m1, m2], -1)).clamp(m_min, m_max)    # 尺度倍率 m_i
+    s = torch.stack([s1 * m[..., 0], s2 * m[..., 1],
+                     s_eps * torch.ones_like(s1)], -1)
+
+    q_a = _rotmat_to_quat(R_a)                                       # R_a → 四元数
+    dq = F.normalize(dq_raw, dim=-1)                                 # 恒等初始化
+    q = _quat_mul(q_a, dq)                                           # q_a ⊗ Δq Eq.5
+    R = _quat_to_rotmat(q)
+
+    Sigma_s = R @ torch.diag_embed(s ** 2) @ R.transpose(-1, -2)     # 相机系协方差
+    R_w = c2w_R[..., None, None, :, :]
+    Sigma_w = R_w @ Sigma_s @ R_w.transpose(-1, -2)                  # 世界系协方差 Eq.6
+    return dict(mu=mu, quat=q, scale=s, alpha=alpha, rgb=rgb, Sigma_w=Sigma_w)</code></pre>
+
+<h2>实现要点</h2>
+<table>
+  <thead><tr><th>要点</th><th>取值 / 做法</th></tr></thead>
+  <tbody>
+    <tr><td>Δq 初始化</td><td>最后一层零权重 + 单位四元数偏置 → 首趟前向等于解析帧（训练稳定关键）</td></tr>
+    <tr><td>切向 clamp</td><td>分量限制在 [−0.1, 0.1]，防边缘处切向爆炸</td></tr>
+    <tr><td>法向翻转</td><td>保证 ⟨n̂⟩_z ≥ 0，避免法向朝内</td></tr>
+    <tr><td>尺度</td><td>s_i = s̄_i·m_i，m_i = clamp(softplus(·), [1/3, 3])；s_ε 为全局下限</td></tr>
+    <tr><td>训练</td><td>RE10K 256×256、2 视图；L = MSE + 0.05·LPIPS；opacity 上限 0.6；150K 步</td></tr>
+  </tbody>
+</table>
+
+<p>原文：<a href="https://arxiv.org/abs/2611.26045" target="_blank" rel="noopener">arXiv 2611.26045</a> ｜ <a href="latest-3months.html#pave">深读笔记</a> ｜ <a href="methods.html">← 方法分类</a></p>
+</main>
+<footer><p>gs-reading-site ｜ 方法核心实现 ｜ 示意代码，按论文公式整理</p></footer>
+</body>
+</html>

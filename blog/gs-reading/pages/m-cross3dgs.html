@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cross3DGS 核心实现｜GS 阅读站</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<nav class="topnav">
+  <a href="../index.html">首页</a>
+  <a href="basics.html">工作原理</a>
+  <a href="paradigm.html">范式演进</a>
+  <a href="per-scene.html">per-scene 优化点</a>
+  <a href="latest-3months.html">最近三个月</a>
+  <a href="methods.html" class="active">方法实现</a>
+  <a href="survey-master.html">调研总报告</a>
+  <a href="../survey-list.html">论文全清单</a>
+</nav>
+<main>
+<h1>Cross3DGS：跨平台 3DGS 训练的 schedule 选择</h1>
+<p class="lede"><span class="cat-label">④ 系统执行类</span> arXiv 2611.22240 · WACV 2027 Workshop ｜ 让同一优化器在桌面与手机上算对</p>
+
+<h2>中文核心说明</h2>
+<p>把 3DGS 训练搬到手机上，难点不在「把 CUDA kernel 翻译一遍」：subgroup 宽度、float32 原子加、storage-buffer 范围、批量 command submission 的可靠性<strong>因 GPU/驱动而异</strong>，决定名义等价的步骤能否完成并返回<strong>正确</strong>的 update。关键观察是：<strong>错误的梯度也可能渲染出漂亮的 PSNR</strong>，所以正确的验证方式是直接比对 update 数值（同 GPU 精确 gather 最大差 3.4e-8，CPU 双精度 oracle 1.6e-5），而不是只看画质。</p>
+<p>Cross3DGS 训练循环不变（projection → tile binning+radix sort → alpha 合成 → loss → 梯度 → Adam，MCMC 稠密化每 100 步、在循环外），区别在于：把 6 个执行选项（梯度方法、command submission、训练图驻留方式、排序实现、投影+Adam 融合、pair dispatch）组合成 <strong>256 种 schedule</strong>，选择分两步——① 13 条规则排除「已知会算错」的组合：5 条设备限制（如 native atomic 要求 float32 atomicAdd、tiled 需要 ≥48KiB 共享内存与 ≥8 lane subgroup）、4 条负载规则（如 resident 要求图像完整放进单个 storage buffer）、4 条驱动规则（全绑定 Qualcomm 实测故障：scatter failure / watchdog timeout / sort key 损坏 / device fault）；② 对剩余可行集用<strong>固定偏好序</strong>取最靠前的组合，<strong>不在设备上计时</strong>。无可行解则拒绝训练，而不是硬跑。</p>
+<div class="en-block"><strong>English summary.</strong> Porting 3DGS training to phones is not a matter of translating CUDA kernels: subgroup width, float32 atomics, storage-buffer ranges and batched command submission reliability differ across GPUs and drivers, deciding whether nominally equivalent steps execute and return a <em>correct</em> update. Wrong gradients can still yield plausible PSNR, so correctness is verified by comparing updates directly (3.4e-8 max diff vs exact pair gather, 1.6e-5 vs a CPU double-precision oracle). Cross3DGS keeps the training loop (projection → tile binning + radix sort → alpha compositing → loss → gradients → Adam; MCMC densification every 100 steps, outside the loop) and instead composes 256 execution schedules from 6 option axes. Selection is two-stage: 13 rules exclude known-incorrect combinations — 5 device limits (native atomics need float32 atomicAdd; tiled needs ≥48 KiB shared memory and ≥8-lane subgroups), 4 workload rules (resident needs the image to fit one storage buffer), 4 driver rules (all Qualcomm-bound, recording observed failures), then a fixed preference order picks the first feasible schedule <em>without on-device timing</em>. No feasible schedule → refuse to train.</div>
+
+<h2>核心代码实现（示意，按论文 §3–§4 整理）</h2>
+<pre class="code"><code>import itertools
+
+# 6 个执行选项轴（Table 1）
+AXES = {
+    "grad_method": ["per_splat", "per_pixel_cas", ...],       # 8 种梯度实现
+    "submission":  ["batched_8", "fenced"],                    # 命令提交方式
+    "train_graph": ["resident", "streamed"],                   # 训练图驻留/流式
+    "radix_sort":  ["subgroup", "portable"],                   # 排序实现
+    "proj_adam":   ["fused", "split"],                         # 投影+Adam 融合
+    "pair_dispatch": ["indirect", "direct"],                   # pair 调度
+}
+SCHEDULES = [dict(zip(AXES, combo))
+             for combo in itertools.product(*AXES.values())]   # 256 种
+
+def device_rules(c, lim):
+    """5 条设备限制规则：返回 False 表示已知会算错。"""
+    if c["grad_method"] == "native_atomic" and not lim.get("float32_atomic_add"):
+        return False                                            # 需 float32 原子加
+    if c["grad_method"] == "tiled" and (lim["shared_kb"] < 48 or lim["subgroup"] < 8):
+        return False                                            # 需 48KiB 共享内存 + ≥8 lane
+    if c["train_graph"] == "resident" and not lim.get("image_fits_buffer"):
+        return False                                            # 图像要能放进单 buffer
+    if c["pair_dispatch"] == "indirect" and not lim.get("indirect_supported"):
+        return False
+    return True
+
+def workload_rules(c, wl):
+    """4 条负载规则：负载太大就回退（如 1M 高斯 + 全 SH 需要 streamed）。"""
+    if c["train_graph"] == "resident" and wl["gaussians"] * wl["bytes_per_gauss"] > wl["buffer_max"]:
+        return False
+    if wl["sh_two_buffers_overflow"] and c["train_graph"] == "resident":
+        return False
+    if wl["frames"] * wl["frame_bytes"] > wl["buffer_max"] and c["train_graph"] == "resident":
+        return False
+    return True
+
+def driver_rules(c, lim):
+    """4 条驱动规则：Qualcomm 上实测的故障组合（scatter/watchdog/sort key/device fault）。"""
+    if lim["vendor"] != "qualcomm":
+        return True
+    return c["radix_sort"] == "portable"      # 该平台 subgroup sort 会坏 key；其余 3 条同理由
+
+RULES = (device_rules, workload_rules, driver_rules)
+
+def feasible_schedules(lim, wl):
+    out = []
+    for c in SCHEDULES:
+        if (device_rules(c, lim) and workload_rules(c, wl)
+                and driver_rules(c, lim)):
+            out.append(c)
+    return out
+
+def choose_schedule(lim, wl, preference):
+    """两步：规则排除 -> 固定偏好序取首个可行（不做 on-device timing）。"""
+    F = feasible_schedules(lim, wl)
+    if not F:
+        raise RuntimeError("no feasible schedule on this device")  # 拒绝训练
+    return next(c for c in preference if c in F)
+</code></pre>
+
+<h2>实现要点</h2>
+<table>
+  <thead><tr><th>要点</th><th>取值 / 做法</th></tr></thead>
+  <tbody>
+    <tr><td>组合规模</td><td>6 轴 × 各自选项 = 256 种 schedule；Adreno740 淘汰链 256→128→32→6</td></tr>
+    <tr><td>规则数量</td><td>5 设备 + 4 负载 + 4 驱动（驱动规则全绑定 Qualcomm）</td></tr>
+    <tr><td>选择策略</td><td>固定偏好序（按 Table 1 列序），不在设备上计时；无可行解即拒训</td></tr>
+    <tr><td>内存</td><td>1180 B/高斯槽 × 1M = 1.18 GB；bicycle 全程 2.13 GB</td></tr>
+    <tr><td>正确性验证</td><td>同 GPU exact pair gather：梯度 3.4e-8、Adam 1.5e-6；双精度 oracle 1.6e-5；负控制（漏一个 tile partial）29,921 例违约被抓</td></tr>
+    <tr><td>设备范围</td><td>8 配置 6 厂商：NVIDIA/Intel/Mali/Adreno/AMD(RADV)/Apple（MoltenVK）；跨设备 PSNR span 0.019 dB</td></tr>
+  </tbody>
+</table>
+
+<p>原文：<a href="https://arxiv.org/abs/2611.22240" target="_blank" rel="noopener">arXiv 2611.22240</a> ｜ <a href="latest-3months.html#cross3">深读笔记</a> ｜ <a href="methods.html">← 方法分类</a></p>
+</main>
+<footer><p>gs-reading-site ｜ 方法核心实现 ｜ 示意代码，按论文 §3–§4 整理</p></footer>
+</body>
+</html>

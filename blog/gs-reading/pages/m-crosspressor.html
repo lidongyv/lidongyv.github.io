@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CrossPressor 核心实现｜GS 阅读站</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<nav class="topnav">
+  <a href="../index.html">首页</a>
+  <a href="basics.html">工作原理</a>
+  <a href="paradigm.html">范式演进</a>
+  <a href="per-scene.html">per-scene 优化点</a>
+  <a href="latest-3months.html">最近三个月</a>
+  <a href="methods.html" class="active">方法实现</a>
+  <a href="survey-master.html">调研总报告</a>
+  <a href="../survey-list.html">论文全清单</a>
+</nav>
+<main>
+<h1>CrossPressor：训练无关的 coverage-cycled 证据路由</h1>
+<p class="lede"><span class="cat-label">② 融合路由类</span> arXiv 2611.06258 · WACV 2027 ｜ 前馈 GS 扩展到长多视图序列时的融合成本</p>
+
+<h2>中文核心说明</h2>
+<p>锚式前馈 GS（如 ZPressor）先用 FPS 选 K 个锚视图，其余视图按最近邻融合进锚特征，只有 K 张锚图进高斯解码器——<strong>表征侧</strong>被限住了。但<strong>构造侧</strong>没有：每个锚要吸收的支持视图越多，支撑侧 K/V 投影与 cross-attention 就线性增长，形成 representation–fusion mismatch。</p>
+<p>CrossPressor 的做法是<strong>不动锚、不动解码器、不重训</strong>，只重排支撑 → 锚的融合输入：① 每簇按 Eq.5 选一个 stride s_c，使支撑序列 ≤ β_KV·T（β_KV=1.5）；② 用「偏移 p = (r_c(v)+κℓ) mod s_c²」在空间位置、视图次序、网络层三个维度上交错分配采样位置——每个视图只保留 T/s_c² 个位置，但<strong>所有视图都被保留</strong>（是空间压缩，不是丢整个视图）；③ 路由放在 K/V 投影<strong>之前</strong>，被丢弃 token 完全不进算子；④ L=6 层上下文一次性 gather 成 [L, Ñ_c, C] 张量（joint context packing），避免逐层重复搬运。</p>
+<p>因为 s_c=1 时路由退化为 dense（逐 token 精确），所以它可以直接套在已训练好的 ZPressor checkpoint 上，36 视图等价性测试最大差异为 0。</p>
+<div class="en-block"><strong>English summary.</strong> Anchor-based feed-forward GS (e.g. ZPressor) compresses the representation side (K anchors feed the Gaussian decoder) but not the construction side: each anchor's support set keeps growing with the number of views, so support-side K/V projections and cross-attention grow linearly — a representation–fusion mismatch. CrossPressor is a training-free rerouting of the support→anchor fusion: per cluster it picks a stride s_c so that the support sequence stays ≤ β_KV·T (Eq.5), and distributes retained spatial positions with offset p = (r_c(v)+κℓ) mod s_c² across space, view index and layer, so every view keeps T/s_c² positions (spatial compression, not view dropping). Routing happens <em>before</em> K/V projection, so discarded tokens never reach the operators, and all L context layers are gathered once into an [L, Ñ_c, C] tensor. With s_c=1 it reduces to exact dense fusion, so the official checkpoint can be reused unchanged.</div>
+
+<h2>核心代码实现（示意，按论文 Eq.5–16 整理）</h2>
+<pre class="code"><code>import math
+import torch
+import torch.nn.functional as F
+
+STRIDES = (1, 2, 4, 8, 16, 32, 64)
+KAPPA = 5                      # 与 s_c^2 互素，保证层间轮转覆盖
+BETA_KV = 1.5                  # 支撑序列上限 = beta * T
+H = W = 64                     # MVSplat 特征图；T = H*W
+T = H * W
+
+def choose_stride(m_c: int) -> int:
+    """Eq.5：让簇 c 的支撑 token 数 m_c*(H/s)*(W/s) <= beta*T 的最小 s。"""
+    for s in STRIDES:
+        if m_c * math.ceil(H / s) * math.ceil(W / s) <= BETA_KV * T:
+            return s
+    raise ValueError("no feasible stride")
+
+def routed_mask(rank: int, layer: int, s_c: int):
+    """Eq.6–9：视图 rank + 层 index 决定空间偏移 (a,b)。"""
+    p = (rank + KAPPA * layer) % (s_c * s_c)
+    a, b = p // s_c, p % s_c                       # 行/列相位
+    ii = torch.arange(H)[:, None]
+    jj = torch.arange(W)[None, :]
+    return (ii % s_c == a) & (jj % s_c == b)       # [H, W] bool
+
+def pack_context(support: list, ranks: list, s_c: int, L: int = 6):
+    """Eq.16：一次性 gather 全部层上下文 -> [L, N_c, C]（N_c <= beta*T）。"""
+    parts_per_layer = [[] for _ in range(L)]
+    for v, F_v in enumerate(support):              # F_v: [T, C] 该视图 token
+        for l in range(L):
+            mask = routed_mask(ranks[v], l, s_c).flatten()
+            parts_per_layer[l].append(F_v[mask])   # 只保留 T/s_c^2 个位置
+    ctx = torch.stack([torch.cat(p, 0) for p in parts_per_layer], 0)
+    return ctx                                     # [L, N_c, C]，每层长度相同
+
+def attention(q, k, v, heads=8):
+    """原 ZPressor block 的注意力，仅输入换成 routed 序列。"""
+    Bq, Lq, C = q.shape
+    q = q.view(Bq, Lq, heads, C // heads).transpose(1, 2)
+    k = k.view(*k.shape[:2], heads, C // heads).transpose(1, 2)
+    v = v.view(*v.shape[:2], heads, C // heads).transpose(1, 2)
+    out = F.scaled_dot_product_attention(q, k, v)
+    return out.transpose(1, 2).reshape(Bq, Lq, C)
+
+def crosspressor_fuse(anchor_feats, clusters, proj_q, proj_kv, block):
+    """
+    training-free 融合循环：锚 query 通路原样保留，支撑侧只喂压缩序列。
+    anchor_feats: [K, T, C]；clusters: [{'support': [m,T,C], 'ranks': [m]}]
+    proj_q/proj_kv/block: 直接复用 ZPressor checkpoint 内的算子
+    """
+    out = anchor_feats.clone()
+    for c, cl in enumerate(clusters):
+        s_c = choose_stride(len(cl['support']))
+        ctx = pack_context(cl['support'], cl['ranks'], s_c)     # [L, N_c, C]
+        q = out[c]
+        for l in range(ctx.shape[0]):
+            q_n = proj_q(l, q)                 # 锚 query：原算子
+            k_n, v_n = proj_kv(l, ctx[l])      # 支撑：只对 routed 序列投影
+            q = block(l, q, attention(q_n, k_n, v_n))
+        out[c] = q
+    return out                                     # [K, T, C] -> 原高斯解码器
+</code></pre>
+
+<h2>实现要点</h2>
+<table>
+  <thead><tr><th>要点</th><th>取值 / 做法</th></tr></thead>
+  <tbody>
+    <tr><td>stride 选择</td><td>每个簇只选一次（Eq.5），β_KV=1.5；64×64 特征下 T=4096</td></tr>
+    <tr><td>交错相位</td><td>视图内相邻 rank 偏移 +1，层间再加 κ=5；任意奇 κ 与 s_c² 互素，效果不依赖 κ 具体值</td></tr>
+    <tr><td>路由位置</td><td>放在 Norm_KV/Proj_KV 之前——省的是投影与注意力，不只是注意力</td></tr>
+    <tr><td>等价性</td><td>s_c=1 时逐 token 恢复 dense；36 视图测试最大差异 0（可直接复用官方权重）</td></tr>
+    <tr><td>复杂度</td><td>O(Ñ_cC² + TÑ_cC) ≤ O(β_KV(TC²+T²C))，主导项与视图数解耦</td></tr>
+    <tr><td>数据</td><td>256 视图：融合 125.28→4.80 ms（26.12×）；质量 p5 ΔPSNR −0.0063 dB</td></tr>
+  </tbody>
+</table>
+
+<p>原文：<a href="https://arxiv.org/abs/2611.06258" target="_blank" rel="noopener">arXiv 2611.06258</a> ｜ <a href="latest-3months.html#crossp">深读笔记</a> ｜ <a href="methods.html">← 方法分类</a></p>
+</main>
+<footer><p>gs-reading-site ｜ 方法核心实现 ｜ 示意代码，按论文公式整理</p></footer>
+</body>
+</html>

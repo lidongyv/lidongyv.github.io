@@ -40,6 +40,7 @@
   <a href="paradigm.html">范式演进</a>
   <a href="per-scene.html">per-scene 优化点</a>
   <a href="latest-3months.html" class="active">最近三个月</a>
+  <a href="methods.html">方法实现</a>
   <a href="survey-master.html">调研总报告</a>
   <a href="../survey-list.html">论文全清单</a>
 </nav>
@@ -144,6 +145,7 @@
 12. Σ_s = R·diag(s₁,s₂,s_ε)²·Rᵀ;  Σ_w = R_c2w·Σ_s·R_c2wᵀ   # Eq.6
 输出: {μ,α,q,s,c,Σ_w} → surfel 光栅化 → L = MSE + 0.05·LPIPS</div>
 
+<p>核心代码实现：<a href="m-pavesplat.html">→ PaveSplat 示意实现（PyTorch，含四元数残差与协方差推导）</a></p>
 <h2 id="crossp">三、深读② CrossPressor：训练无关的可扩展 anchor 融合（WACV'27）</h2>
 <p><strong>动机</strong>：ZPressor 用 FPS 选 K 个锚视图、其余视图按最近锚融合，只有 K 张锚图进高斯解码器。representation–fusion mismatch = 固定锚集合限制了<strong>解码器侧表征</strong>，却不限制构造它的<strong>支撑证据</strong>：视图增多时支撑侧 K/V 投影与 cross-attention 持续增长。CrossPressor 与 ZPressor 互补：锚表征/解码器/注意力参数全不动，只重排支撑→锚融合，<strong>training-free</strong>（直接作用于官方 checkpoint；s_c=1 时逐 token 精确恢复 dense，36 视图等价性测试最大差异为 0）。</p>
 <p><strong>核心实现细节</strong>：</p>
@@ -170,6 +172,7 @@
 13.    Q_c^{ℓ+1} ← ZPressor block(Q_c^ℓ + Attn^ℓ(Q̂,K,V) + 后续操作)
 输出: K 个更新锚特征 → 原高斯解码器（393,216 高斯不变）</div>
 
+<p>核心代码实现：<a href="m-crosspressor.html">→ CrossPressor 示意实现（stride 选择 + 交错路由 + 上下文打包）</a></p>
 <h2 id="hand">四、深读③ InstantHand：单图前馈可动画手部 avatar（NeurIPS'26）</h2>
 <p><strong>动机</strong>（原文引用）：① "Image-averaged losses provide insufficient supervision for alpha leakage, which thickens thin finger contours"——图像平均损失对 alpha 泄漏监督不足 → 手指变粗；② "colors regressed from image features can drift toward a learned prior even in observed regions"——特征回归的颜色在可见区域也向先验漂移。</p>
 <p><strong>管线</strong>：单图 + MANO/相机/掩码估计 → 冻结 DINOv3 提特征，2 个 1×1 卷积融合成 256 个 1024 维 tokens；MANO(β,θ_mean) 网格 k=3 次细分取 49,281 顶点为 query 锚点（八倍频正弦点嵌入 d=512）；双流条件 Transformer：Z^g=Φ_g(Q;F_s)（2 个 SD3 joint-attention 块）、Z^a=Φ_a(Z^g;F_s)（单层 cross-attn）。解码头：x_i=q_i+0.008(sigmoid(·)−0.5)（每轴 ±4mm），s_i=clamp(exp(f_s), 5e-4, 0.008) 各向同性，α₀=1、r₀=(1,0,0,0) 固定。MANO 驱动变形 W 后渲染 R。</p>
@@ -201,6 +204,7 @@ L_band = η(n)·( λ_out·Avg_{B_out} ψ([A−τ_out]_+) + λ_in·Avg_{B_in} ψ(
 15 渲染: Î_t ← R(W(G^can|_{c^0←c*}; θ_t,β); K_t,T_t)             (Eq.14)
 # 训练: Stage1 最小化 L_can(含SAB Eq.16); Stage2 冻结Stage1, 最小化 L_app (Eq.17)</div>
 
+<p>核心代码实现：<a href="m-instanthand.html">→ InstantHand 示意实现（SAB 损失 + 可靠度门控外观迁移）</a></p>
 <h2 id="cross3">五、深读④ Cross3DGS：跨平台 Vulkan 3DGS 训练（WACV'27 W）</h2>
 <p><strong>动机</strong>（原文引用）："requires more than translating kernels"——subgroup 宽度、float32 atomic add、storage-buffer 范围、batched command submission 的可靠性因 GPU/驱动而异，决定名义等价的步骤能否完成并返回<strong>正确</strong>的 update（错误梯度也可能得到合理 PSNR，所以论文直接测 update 本身）。VkSplat 需 ≥32 lane subgroup 且无移动 host；Brush 超出 Adreno740 的 128-MiB storage-buffer 范围。</p>
 <p><strong>管线</strong>：θ⁺ = U(θ,I)；U = projection → tile binning + radix sort → alpha 合成 → loss → 梯度 → Adam；MCMC 稠密化每 100 步、在 U 之外。schedule = 6 个选项各取一值共 256 种：梯度方法 8 值、command submission（batched 8 updates / fenced）、训练图（resident/streamed）、radix sort（subgroup/portable）、projection+Adam（fused/split）、pair dispatch（indirect/direct）。</p>
@@ -223,6 +227,7 @@ train_loop():
     θ ← U(θ, I) 按 c* 执行    # projection→tile binning+radix sort→alpha合成→loss→梯度→Adam
   # 离线一致性: 同GPU exact pair gather; CPU双精度oracle; 式(3)容差</div>
 
+<p>核心代码实现：<a href="m-cross3dgs.html">→ Cross3DGS 示意实现（256 种 schedule + 13 条规则 + 偏好序）</a></p>
 <h2 id="link">六、与既有结论的衔接：这三个月更新了什么</h2>
 <ul>
   <li><strong>前馈线爆发式扩容</strong>：八月以来前馈重建出现“质量（PaveSplat 残差协方差）— 扩展性（CrossPressor 训练无关融合）— 效率（GradSplat 前向内梯度自精修）— 成本（BudgetSplat/RLSplat 预算可控）”四个子方向，印证调研结论“前馈竞争焦点转向数据与 scaling”；且 PaveSplat/GradSplat 都在把<strong>逐场景优化的机制学回前馈网络里</strong>（残差校正、梯度步），两个范式的边界在变模糊。</li>

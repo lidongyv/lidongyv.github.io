@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InstantHand 核心实现｜GS 阅读站</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<nav class="topnav">
+  <a href="../index.html">首页</a>
+  <a href="basics.html">工作原理</a>
+  <a href="paradigm.html">范式演进</a>
+  <a href="per-scene.html">per-scene 优化点</a>
+  <a href="latest-3months.html">最近三个月</a>
+  <a href="methods.html" class="active">方法实现</a>
+  <a href="survey-master.html">调研总报告</a>
+  <a href="../survey-list.html">论文全清单</a>
+</nav>
+<main>
+<h1>InstantHand：Soft Alpha Band + 可靠度门控外观迁移</h1>
+<p class="lede"><span class="cat-label">③ 监督正则类</span> arXiv 2611.08330 · NeurIPS 2026 ｜ 单图前馈手部 avatar 的两个监督盲区</p>
+
+<h2>中文核心说明</h2>
+<p>单图前馈重建手部 avatar 有两个「图像平均损失」盖不住的盲区：① <strong>alpha 泄漏</strong>——手指轮廓很细，轮廓附近的 alpha 误差在整图平均下极其微弱，模型学不到「把轮廓收回来」，结果手指变粗；② <strong>颜色向先验漂移</strong>——从图像特征回归的颜色在<strong>可见区域</strong>也会滑向学到的先验，丢掉输入图的外观。</p>
+<p>InstantHand 对应两个模块：</p>
+<ul>
+  <li><strong>Soft Alpha Band（SAB）</strong>：只监督 GT 掩码外 2px 膨胀带与内 2px 腐蚀带，带外用 smooth-L1 的 hinge 形式：带外要求 alpha 压到 τ_out=0.03 以下，带内要求 alpha 抬到 τ_in=0.60 以上；权重 η(n) 前 5000 步为 0、5000–12000 步线性升到 1——先让整体形状收敛，再精修轮廓。</li>
+  <li><strong>Reliability-gated Appearance Transfer</strong>：在源视角渲染一次，按每个高斯的 7×7 footprint 聚合出「源图颜色 / 渲染颜色 / 特征 / 掩码支持」，双门控：γ_i 衡量该高斯的<strong>渲染贡献可靠度</strong>（√C·m 相对 P95 归一化，且只对观测到的前端高斯开放），g_i 决定<strong>是否启用</strong>颜色迁移（bias 初始化 −1.5 → 初期不迁移）；合成时再加全局身份平移 Δ_s^aid。整个模块只改颜色，不动几何。</li>
+</ul>
+<div class="en-block"><strong>English summary.</strong> Single-image feed-forward hand avatars suffer from two blind spots of image-averaged losses: (1) alpha leakage thickens thin finger contours because silhouette errors are diluted in the average; (2) colors regressed from image features drift toward a learned prior even in observed regions. InstantHand adds two modules. The <em>Soft Alpha Band</em> supervises only a 2px dilated band outside the ground-truth mask and a 2px eroded band inside it, with hinge smooth-L1 terms pushing alpha below τ_out=0.03 outside and above τ_in=0.60 inside; a schedule η(n) keeps the term off for the first 5k steps and ramps it to 1 by 12k. The <em>Reliability-gated Appearance Transfer</em> renders the source view, aggregates per-Gaussian 7×7-footprint statistics, and gates color transfer with γ (rendering-contribution reliability, normalized by the P95 over supported Gaussians) and g (learned enable gate, bias −1.5 so transfer starts off), plus a global identity shift Δ_s^aid. It changes colors only, never geometry.</div>
+
+<h2>核心代码实现（示意，按论文 Eq.8、13、16 整理）</h2>
+<pre class="code"><code>import torch
+import torch.nn.functional as F
+
+def soft_alpha_band(alpha, mask_gt, step,
+                    t_out=0.03, t_in=0.60, lam_out=0.25, lam_in=0.05,
+                    band=2, sched=(5000, 12000)):
+    """
+    Eq.16：只在轮廓带内监督 alpha。
+    alpha: [B,1,H,W] 渲染 alpha；mask_gt: [B,1,H,W] GT 掩码 (0/1)
+    """
+    k = band * 2 + 1
+    dil = F.max_pool2d(mask_gt, k, stride=1, padding=band)      # 膨胀
+    ero = -F.max_pool2d(-mask_gt, k, stride=1, padding=band)    # 腐蚀
+    b_out = (dil - mask_gt).clamp(0, 1).bool()                  # 外 2px 带
+    b_in  = ero.bool()                                          # 内 2px 带
+
+    # 不在带的像素不计入：用掩码乘 smooth-L1 的 hinge 项
+    def hinge(a, tau, mask, sign):
+        h = F.smooth_l1_loss(a, torch.full_like(a, tau), reduction='none')
+        return (h * mask.float()).sum() / mask.float().sum().clamp_min(1)
+
+    l_out = hinge(alpha, t_out, b_out, +1)   # 带外 alpha 应 <= t_out
+    l_in  = hinge(alpha, t_in,  b_in,  -1)   # 带内 alpha 应 >= t_in
+
+    eta = 0.0 if step < sched[0] else min(1.0, (step - sched[0]) / (sched[1] - sched[0]))
+    return eta * (lam_out * l_out + lam_in * l_in)
+
+def reliability_gamma(C, m, kappa=0.5, tau_m=0.5, p=95):
+    """
+    Eq.8：渲染贡献可靠度门控。
+    C: [N] 每高斯渲染贡献（footprint 内 alpha 和）；m: [N] 掩码支持度 [0,1]
+    """
+    val = C.clamp_min(0).sqrt() * m                       # √C · m
+    support = (C > kappa * C[C > 0].median()) & (m > tau_m)   # 前端+被观测
+    p95 = torch.quantile(val[support], p / 100.0) if support.any() else val.max()
+    gamma = (val / p95.clamp_min(1e-8)).clamp(max=1.0) * support.float()
+    return gamma                                          # [N]
+
+def appearance_transfer(c0, c_obs, gamma, g, delta_s_aid):
+    """
+    Eq.13：颜色合成——过渡只在被门控的可靠高斯上发生。
+    c0: 规范颜色 [N,3]；c_obs: 观测聚合色；g: 启用门 [N,1] ∈ [0,1]
+    """
+    c = g * (gamma * c_obs + (1.0 - gamma) * c0) + (1.0 - g) * c0 + delta_s_aid
+    return c.clamp(0.0, 1.0)
+
+def render_and_aggregate(gaussians, cam, K):
+    """
+    Eq.6/9：源视角渲染 → footprint 聚合（示意）。
+    实际实现用 3DGS 光栅化的 per-pixel 归属，这里给出接口语义。
+    """
+    rendered, contrib, feat = rasterize(gaussians, cam, K)   # 渲染图/贡献/特征缓冲
+    return rendered, contrib, feat
+</code></pre>
+
+<h2>实现要点</h2>
+<table>
+  <thead><tr><th>要点</th><th>取值 / 做法</th></tr></thead>
+  <tbody>
+    <tr><td>轮廓带宽度</td><td>内外各 2px（256×256 输入）</td></tr>
+    <tr><td>阈值</td><td>τ_out=0.03、τ_in=0.60；λ_out=0.25、λ_in=0.05</td></tr>
+    <tr><td>调度</td><td>η(n)：前 5000 步 0；5000–12000 步线性升到 1</td></tr>
+    <tr><td>γ 门控</td><td>支撑集 O={C&gt;0.5·median(C₊), m&gt;0.5}；P95 归一化；仅前端高斯</td></tr>
+    <tr><td>g 门控</td><td>bias 初始化 −1.5（初期不迁移），δ_i=0.1·tanh，clip[0,1]</td></tr>
+    <tr><td>两阶段损失</td><td>Stage1：L_can = L_rec + 0.6L_sil + L_geo + L_band（20k 步）；Stage2 冻结 Stage1 全部，L_app = 1.0L1^src+0.5LPIPS^src+0.05L_stat+1.0L1^novel+0.25LPIPS^novel</td></tr>
+  </tbody>
+</table>
+
+<p>原文：<a href="https://arxiv.org/abs/2611.08330" target="_blank" rel="noopener">arXiv 2611.08330</a> ｜ <a href="latest-3months.html#hand">深读笔记</a> ｜ <a href="methods.html">← 方法分类</a></p>
+</main>
+<footer><p>gs-reading-site ｜ 方法核心实现 ｜ 示意代码，按论文公式整理</p></footer>
+</body>
+</html>

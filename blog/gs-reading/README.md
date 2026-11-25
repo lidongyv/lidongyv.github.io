@@ -8,6 +8,7 @@
 - **范式演进**（pages/paradigm.html）：per-scene 优化 vs 前馈泛化 3DGS、DiT 术语校准、2024 锚点与 2025–2026 版图、五条趋势。
 - **per-scene 优化点**（pages/per-scene.html）：208 篇论文的七大着力方向 + 底层四个优化旋钮 + 为什么 per-scene 仍是最大盘。
 - **最近三个月**（pages/latest-3months.html）：2026-08→11 arXiv 最新 170 篇精选一览（前馈重建/密度控制/压缩部署/动态/语义五线程）+ 四篇深读（PaveSplat / CrossPressor / InstantHand / Cross3DGS）的实现细节、公式与伪代码；原文留存 raw/reading/。
+- **方法核心实现**（pages/methods.html）：按方法原理分四类（表征修正 / 融合路由 / 监督正则 / 系统执行），每篇方法页含中英核心说明 + 核心代码实现（示意实现，按论文公式整理）：m-pavesplat / m-crosspressor / m-instanthand / m-cross3dgs。
 - **调研总报告**（pages/survey-master.html）：2025–2026 五会议 870 篇统计、10 类 × 7 届分布、八条趋势、代表论文索引、覆盖审计。
 - **论文全清单**（survey-list.html）：870 篇逐条（标题 + 已验证链接 + 会议 + 类别 + 一句话核心），支持按会议/类别筛选与全文搜索。
 
