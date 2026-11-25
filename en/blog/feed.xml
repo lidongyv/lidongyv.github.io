@@ -9,6 +9,98 @@
     <lastBuildDate>Wed, 25 Nov 2026 09:00:00 +0800</lastBuildDate>
 
     <item>
+      <title>From SFT to Closed Loop: RL Post-training for VLA and WAM</title>
+      <link>https://lidongyv.github.io/en/blog/wam-rl-posttraining.html</link>
+      <guid isPermaLink="true">https://lidongyv.github.io/en/blog/wam-rl-posttraining.html</guid>
+      <pubDate>Wed, 25 Nov 2026 09:00:00 +0800</pubDate>
+      <description>A standalone guide to RL post-training for VLA and WAM: where rewards come from, how GRPO and KL-regularized RL are implemented, five case studies, and six references for closed-loop training.</description>
+      <content:encoded><![CDATA[<blockquote><p>这篇与 WAM 论文站分开：那里按「原理分类」讲模型结构，这里只讲<strong>训练范式</strong>——尤其是 SFT 之后怎么用奖励信号继续优化，以及<strong>闭环训练</strong>（closed-loop training）有哪些可参考的工程做法。 证据纪律同前：<code>[论文 §X]</code> 为原文小节；<code>[代码]</code> 为官方仓库；数值为论文自评（L1/L2/L3 标注）。未给出的量不补写。</p></blockquote>
+<h2 id="0-tl-dr">0. TL;DR</h2>
+<ol><li>VLA / WAM 的 SFT 有三个天花板：<strong>分布漂移</strong>（covariate shift）、<strong>长程复合误差</strong>、<strong>执行性 gap</strong>（视频看着合理但动作不可执行）。RL 后训练针对的是这三件事，而不是「更多演示」。</li><li>奖励信号几乎从不直接来自真机执行——五种常见替代：<strong>世界模型价值 / IDM 动作平滑度 / LTL 逻辑验证 / 专家潜距离 / 稀疏 episode 成功</strong>。</li><li>算法上只有两大族：<strong>GRPO</strong>（组归一化优势 + 截断代理，无 critic）与 <strong>KL-RL 的闭式解改写为加权 NLL</strong>（advantage-conditioned）。少数走 DiffusionNFT（稀疏奖励）。</li><li><strong>闭环训练</strong>不是单一算法：HILR、DAgger 式恢复、失败数据回流、世界模型 rollout、测试时闭环，是五条可组合的工程路径。</li></ol>
+<hr>
+<h2 id="1-为什么-sft-之后还要后训练">1. 为什么 SFT 之后还要后训练</h2>
+<table><thead><tr><th>失败模式</th><th>表现</th><th>后训练如何介入</th></tr></thead><tbody><tr><td>分布漂移</td><td>偏离演示分布后误差累积</td><td>闭环 rollout 采自己的状态（DAgger/HILR）</td></tr><tr><td>长程复合</td><td>单步像、多步崩</td><td>段级/子任务级奖励，或世界模型长程评分</td></tr><tr><td>执行性 gap</td><td>视频合理但动作抖动/越限</td><td>IDM 解码后按动作空间约束给奖励（EVA）</td></tr><tr><td>指令接地差</td><td>靠视觉捷径而非指令</td><td>语言教练重标注 / 视觉指令目标（CoachSI、JEPA-WAM）</td></tr></tbody></table>
+<p>WorldVLN 的原文把动机说得很直白：<code>[论文 §2]</code> "Such imitation-based training fits the demonstration distribution but remains vulnerable to covariate shift and accumulated errors."</p>
+<hr>
+<h2 id="2-后训练的三种形态">2. 后训练的三种形态</h2>
+<ol><li><strong>离线偏好 / 加权模仿</strong>：不改环境交互，只用「好/坏」标签或优势加权 NLL。</li><li>GigaBrain：把 KL-RL 闭式解改写成两项加权 NLL（见 §4.1）。</li><li><strong>在线 RL</strong>：训练内环生成 rollout、算奖励、更新策略。</li><li>VAMPO / EVA / CreFlow / WorldVLN。</li><li><strong>闭环数据回流</strong>：用执行结果制造新训练数据（不一定是梯度 RL）。</li><li>HILR、DAgger 恢复、失败数据掩码、语言教练 relabel。</li></ol>
+<blockquote><p>注意：<strong>DreamGen 不是 RL</strong>——生成→伪标注→行为克隆是单向数据管线，没有回报回环 <code>[论文 §2]</code>。</p></blockquote>
+<hr>
+<h2 id="3-奖励从哪来-五种可核实的替代信号">3. 奖励从哪来：五种可核实的替代信号</h2>
+<table><thead><tr><th>奖励</th><th>代表</th><th>怎么算</th><th>代价</th></tr></thead><tbody><tr><td>稀疏 episode 成功</td><td>GigaBrain</td><td>成功 0 / 失败 −C_fail / 其它 −1，再经世界模型价值 n 步 TD 变优势</td><td>需要世界模型价值网 + 真机日志</td></tr><tr><td>专家潜距离</td><td>VAMPO</td><td><code>r = −λ1·L1(x̂, x*) + λ2·cos(x̂, x*)</code>，在视频 VAE 潜空间算</td><td>完全离线，只需专家视频</td></tr><tr><td>动作平滑/限幅</td><td>EVA</td><td>冻结 IDM 解码关节 → jerk/加速度 Huber + 速度/加速度限幅惩罚</td><td>需要冻结 IDM</td></tr><tr><td>LTL 逻辑验证</td><td>CreFlow</td><td>监视器输出二值通过 + 违例 witness（哪帧违反哪条）</td><td>需要离线合成 LTL 规格</td></tr><tr><td>进度/价值标量</td><td>FACT / τ0-WM</td><td>子任务级进度标签 + 蒙特卡洛传播；或 [0,1] 进度值头</td><td>需要任务分段标注</td></tr></tbody></table>
+<hr>
+<h2 id="4-算法层-两条主线-一个变体">4. 算法层：两条主线 + 一个变体</h2>
+<h3 id="4-1-kl-rl-加权-nll-gigabrain-ramp">4.1 KL-RL → 加权 NLL（GigaBrain / RAMP）</h3>
+<p><code>[论文 §3.2.1]</code> "we extend the KL-regularized reinforcement learning framework to our augmented state space"，闭式解 <code>π̂(a|S) ∝ π_ref(a|S)·exp(A/β)</code>；再用 Bayes 把「优势条件化」写成两项 SFT：</p>
+<pre><code class="language-text">A = Σ γ^k r_{t+k} + γ^n v_{t+n} − v_t     # 世界模型价值 n 步 TD
+I = 1[A &gt; ε]                              # 二值优势（简化条件）
+L = −log π(a|o,z,l) − α·log π(a|I,o,z,l)   # 两项 NLL，不需要策略梯度</code></pre>
+<p>工程要点：世界模型 token 用 <strong>p=0.2 随机注意力掩码</strong>训练，推理可关闭世界模型；Stage 4 世界模型与策略联合续训，防优势坍缩（A≈0）。</p>
+<h3 id="4-2-grpo-vampo-eva-worldvln">4.2 GRPO（VAMPO / EVA / WorldVLN）</h3>
+<p>组内归一化优势 + PPO 式截断，<strong>没有 critic</strong>：</p>
+<pre><code class="language-text">G 条 rollout（共享初始噪声）→ 每条算奖励 r_g
+A_g = (r_g − mean(r)) / (std(r) + ε)       # 组归一化
+loss = mean( min(A_g·ρ, A_g·clip(ρ, 1−c, 1+c)) )   # ρ = π_new/π_old</code></pre>
+<p>三个实现差异：</p>
+<ul><li><strong>VAMPO</strong>：把多步去噪当 MDP，<strong>只有首步 SDE</strong>（其余 ODE）。原文理由 <code>[§3.3]</code>："introducing stochasticity at all denoising steps leads to severe credit assignment issues"。</li><li><strong>EVA</strong>：Flow-GRPO 只更新生成器 LoRA，奖励来自冻结 IDM。</li><li><strong>WorldVLN</strong>：段级（非 token 级）优势，<code>r_j = γ^{j−1}(λ_traj r_traj + λ_task r_task + λ_ref log π_ref)</code>。</li></ul>
+<h3 id="4-3-变体-稀疏奖励-diffusionnft-creflow">4.3 变体：稀疏奖励 DiffusionNFT（CreFlow）</h3>
+<ul><li>二值 LTL 奖励 + 组共享掩码：只在违例帧/实体上加梯度，其余锚定预训练先验；</li><li>失败样本向「组内正样本均值」纠正（corrective reflow）；</li><li>KL 到冻结参考策略，防止 off-manifold。</li></ul>
+<hr>
+<h2 id="5-五个案例的完整训练循环-伪代码">5. 五个案例的完整训练循环（伪代码）</h2>
+<h3 id="5-1-gigabrain-ramp-vla-自身">5.1 GigaBrain RAMP（VLA 自身）</h3>
+<pre><code class="language-text">① 世界模型预训练：4K 小时真机数据，输入 [z_t; Ψ(v_t); Ψ(p_t)]，预测未来帧 offsets{12,24,36,48}
+② 优势条件化微调：L = −log π(a|o,z,l) − α·log π(a|I,o,z,l)，掩码 p=0.2
+③ HILR rollout：自主执行 + 专家介入，软件自动剔除干预边界伪影
+④ 联合续训：世界模型 + 策略同时更新（HILR + base 数据）</code></pre>
+<h3 id="5-2-vampo-只训视频预测器">5.2 VAMPO（只训视频预测器）</h3>
+<pre><code class="language-text">for each step:
+  z0 ~ N(0,I); rollout = sample_denoise(z0, steps=20)   # 首步 SDE，其余 ODE
+  r = latent_reward(rollout.final, expert_latent)        # −L1 + cos
+  A = group_normalize(r, G=8)
+  update VPM by clipped surrogate（lr=1e-6, clip=0.2, adv_clip=2.0）</code></pre>
+<h3 id="5-3-eva-视频规划器-idm-奖励">5.3 EVA（视频规划器 + IDM 奖励）</h3>
+<pre><code class="language-text">q = IDM(video)                             # 冻结 IDM
+R = −(λj·Huber(jerk) + λα·Huber(acc) + λv·max(|v|−vmax,0)² + λa·max(|a|−amax,0)²)
+update generator LoRA by Flow-GRPO（组优势 + clip + β·KL(π‖π_ref)）</code></pre>
+<h3 id="5-4-creflow-稀疏奖励">5.4 CreFlow（稀疏奖励）</h3>
+<pre><code class="language-text">(r, witness, mask) = LTL_monitor(rollout)          # 二值 + 违例位置
+L_NFT  = 组共享掩码 M 门控的 NFT 损失（正/负分支）
+L_CR   = ‖M ⊙ (x̂0 − mean(正样本 x0))‖²             # 只对失败样本
+L      = L_NFT + L_CR + β·KL(π‖π_ref)</code></pre>
+<h3 id="5-5-worldvln-自回归-wam-的在线-rl">5.5 WorldVLN（自回归 WAM 的在线 RL）</h3>
+<pre><code class="language-text">for each decision segment j:
+  在线 rollout（真观测回灌，替换模型预测的潜）
+  r_j = γ^{j−1}(λ_traj·r_traj + λ_task·r_task + λ_ref·log π_ref)
+  A_j = (r_j − μ_j)/σ_j                  # 段级组归一化
+  update policy by clipped surrogate</code></pre>
+<hr>
+<h2 id="6-闭环训练-closed-loop-training-六类参考方法">6. 闭环训练（closed-loop training）：六类参考方法</h2>
+<blockquote><p>定义：训练期让策略/世界模型<strong>执行自己的动作并利用执行后果</strong>，而不是只看演示。以下六类都可单独用，也可组合。</p></blockquote>
+<h3 id="6-1-人机接力-hilr-dagger-式干预">6.1 人机接力（HILR / DAgger 式干预）</h3>
+<ul><li><strong>做法</strong>：策略自主执行，失败边界由人（或模拟器）接管；记录后做行为克隆，且<strong>软件剔除干预切换处的抖动</strong>。</li><li><strong>参考</strong>：GigaBrain Stage 3（HILR）；XPACE 用模拟器合成 deviation–recovery 轨迹并仅以 8% 合成恢复数据微调，恢复消融 61.7→86.7（异套件）。</li><li><strong>要点</strong>：干预点是最值钱的分布边界样本；但 before/after 混淆训练时长（XPACE 自认）。</li></ul>
+<h3 id="6-2-自生成恢复数据-recovery-correction">6.2 自生成恢复数据（Recovery / Correction）</h3>
+<ul><li><strong>做法</strong>：在专家轨迹附近注入扰动，由世界模型/模拟器推演恢复路径，过滤后加入训练。</li><li><strong>参考</strong>：XPACE（simulator 适配自身生成上下文后合成恢复轨迹）；<code>[摘要]</code> "synthesize deviation–recovery trajectories around expert demonstrations, and fine-tune the policy on filtered recovery examples"。</li><li><strong>要点</strong>：过滤（一致性）是关键；恢复数据比例低（8%）即可显著提升。</li></ul>
+<h3 id="6-3-失败数据闭环-failure-aware-training">6.3 失败数据闭环（Failure-aware training）</h3>
+<ul><li><strong>做法</strong>：保留失败 rollout，但<strong>掩掉其中的动作模仿损失</strong>，只学「失败后果」与下调的进度；再用进度值头做候选打分。</li><li><strong>参考</strong>：FACT <code>[§3.1–3.3]</code>；DreamAvoid 用成功/失败/边界混合数据训 dream evaluator，测试时选动作。</li><li><strong>要点</strong>：失败数据不能当正样本；掩码对象选错会把策略拉坏。</li></ul>
+<h3 id="6-4-世界模型-rollout-闭环-model-based-rl">6.4 世界模型 rollout 闭环（Model-based RL）</h3>
+<ul><li><strong>做法</strong>：在世界模型/模拟器里跑长程 rollout，用预测后果算奖励或优势，再更新策略。</li><li><strong>参考</strong>：WorldVLN（在线模拟器 + 真实观测回灌）；CreFlow（从行为策略采样 rollout 做 LTL 验证）；GigaBrain Stage 4（联合续训防优势坍缩）。</li><li><strong>要点</strong>：仿真到真实的偏差需要「真观测回灌」或 KL 锚定来兜底。</li></ul>
+<h3 id="6-5-语言-语义教练闭环-relabeling">6.5 语言/语义教练闭环（Relabeling）</h3>
+<ul><li><strong>做法</strong>：冻结 VLM 观察执行并命名「下一步」，成功的 rollout 用原任务指令 hindsight relabel 后微调；动作骨干冻结。</li><li><strong>参考</strong>：CoachSI（长程未见场景 47.4→59.3，动作骨干冻结）；GR-MG/JEPA-WAM 用生成式视觉指令做目标侧接地。</li><li><strong>要点</strong>：解决的是「知道下一步」而非「会不会做」，与技能 RL 互补。</li></ul>
+<h3 id="6-6-测试时闭环-acting-loop-re-planning">6.6 测试时闭环（Acting loop / Re-planning）</h3>
+<ul><li><strong>做法</strong>：不改参数，改推理：动作块执行中持续回灌真实观测，按需重规划/评估。</li><li><strong>参考</strong>：τ0-WM 的 propose–evaluate–revise；DreamAvoid 的 trigger→propose→evaluate；WAMotor/Rolling-WAM 的推理侧加速；DreamZero 7Hz 闭环。</li><li><strong>要点</strong>：这是「闭环」成本最低的落点；但只改善执行，不改善表征。</li></ul>
+<h3 id="6-7-反例-开环数据管线">6.7 反例：开环数据管线</h3>
+<p>DreamGen：生成→伪标注→行为克隆，无回报回环 <code>[§2]</code>。它的收益来自数据分布外扩（43.2%/28.5%），<strong>不是闭环</strong>——评估时要区分。</p>
+<hr>
+<h2 id="7-工程清单-决定要不要上-rl">7. 工程清单（决定要不要上 RL）</h2>
+<ol><li><strong>先问奖励</strong>：能否离线算出（潜距离/IDM/进度）？能 → 先做「离线 GRPO」；不能 → 才考虑在线 rollout。</li><li><strong>再问数据</strong>：有没有真机失败日志？（失败数据比成功数据更稀缺，价值更高。）</li><li><strong>三件套防退化</strong>：KL/参考锚定 + 优势裁剪（adv_clip）+ 混合 SFT（保留一部分原始损失）。</li><li><strong>评测口径</strong>：闭环任务看成功率 + 完成时间 + 进度；同时报告「相对 SFT 的增量」，不要只报绝对值。</li><li><strong>算力</strong>：在线 RL 的 rollout 成本 ≈ 推理成本 × 组大小 G；G=8、20 步去噪时约为单次推理的 160 倍。</li></ol>
+<hr>
+<h2 id="8-坑">8. 坑</h2>
+<ul><li><strong>自评数字</strong>：本领域几乎没有第三方复现，跨论文比较必须看协议（trials、任务套件、是否同套件）。</li><li><strong>奖励 hacking</strong>：IDM 平滑度可被「不动」骗过——EVA 加了限幅惩罚正是为此。</li><li><strong>闭环≠更好</strong>：世界模型偏差会被 RL 放大（GigaBrain 需要 Stage 4 联合续训）。</li><li><strong>不要把「post-training」都当 RL</strong>：V-JEPA 2 的「post-training」是加动作条件的微调，不是回报优化。</li></ul>
+<hr>
+<h2 id="9-参考">9. 参考</h2>
+<ul><li>GigaBrain-0.5M*（RAMP，KL-RL→加权 NLL）：arXiv 2602.12099</li><li>VAMPO（GRPO 训视频预测器，含官方代码）：arXiv 2603.19370 · github.com/OpenHelix-Team/VAMPO</li><li>EVA（IDM 奖励 + Flow-GRPO）：arXiv 2603.17808</li><li>CreFlow（LTL 稀疏奖励 + DiffusionNFT）：arXiv 2605.14274</li><li>WorldVLN（自回归 WAM 的在线 GRPO）：arXiv 2605.15964</li><li>DreamAvoid（混合数据评估器，测试时选优）：arXiv 2605.11750</li><li>FACT（act-then-imagine + 失败掩码）：arXiv 2608.10232</li><li>τ0-WM（propose–evaluate–revise）：arXiv 2606.01027</li><li>XPACE（deviation–recovery 自改进）：arXiv 2609.17372</li><li>CoachSI（语言教练 relabel）：arXiv 2611.25529</li><li>DreamGen（开环数据管线，反例）：arXiv 2505.12705</li><li>WAM 论文站：/blog/wam-survey/</li></ul>]]></content:encoded>
+    </item>
+    <item>
       <title>How a world model actually earns its keep in production: four questions it has to answer</title>
       <link>https://lidongyv.github.io/en/blog/world-model-in-production.html</link>
       <guid isPermaLink="true">https://lidongyv.github.io/en/blog/world-model-in-production.html</guid>
