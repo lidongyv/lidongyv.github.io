@@ -1,0 +1,79 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>联合扩散（Joint WAM） · WAM 调研</title><style>
+:root{--ink:#1a2430;--dim:#5f6d7b;--line:#dfe6ee;--bg:#f8fafc;--card:#fff;--acc:#0b6bcb;--acc2:#e8f2fc;--warn:#8a5a00;--warnbg:#fdf3e0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.7}
+a{color:var(--acc)} a:hover{text-decoration:underline}
+.nav{background:#0b2a4a;color:#fff;padding:10px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:14px}
+.nav a{color:#d7e6f7;text-decoration:none}.nav a:hover{color:#fff}
+.nav b{color:#fff;font-size:15px}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 20px 90px}
+h1{font-size:26px;margin:6px 0 8px}
+h2{font-size:20px;margin:26px 0 10px;padding-left:10px;border-left:4px solid var(--acc);color:#0b2a4a}
+h3{font-size:16px;margin:16px 0 8px;color:#123c66}
+p{margin:8px 0}
+.meta{color:var(--dim);font-size:13.5px;margin-bottom:14px}
+.tag{display:inline-block;font-size:12px;border-radius:20px;padding:1px 9px;margin-right:6px;border:1px solid var(--line);background:#f1f5f9;color:var(--dim)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 22px;margin:14px 0}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px;background:#fff}
+th{background:#eef4fa;color:#123c66} th,td{border:1px solid var(--line);padding:7px 10px;vertical-align:top;text-align:left}
+code{font-family:Consolas,"Cascadia Mono",monospace;font-size:13px;background:#f1f5f9;border:1px solid #e2e9f1;border-radius:4px;padding:1px 5px;word-break:break-word}
+pre{background:#0f1c2b;color:#d7e6f7;border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:12.8px;line-height:1.55}
+pre code{background:none;border:none;color:inherit;padding:0}
+blockquote{margin:10px 0;padding:12px 16px;border-left:3px solid var(--acc);background:var(--acc2);border-radius:0 10px 10px 0}
+blockquote .lbl{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}
+.warn{background:var(--warnbg);border:1px solid #ecd9ae;border-radius:10px;padding:12px 16px;font-size:14px;color:var(--warn)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.pcard h3{margin:0 0 4px;font-size:15.5px}
+.pcard .s{font-size:13px;color:var(--dim)}
+.foot{color:var(--dim);font-size:13px;margin-top:18px}
+li{margin:4px 0}
+</style></head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div><div class="nav"><b>WAM 调研</b>
+<a href="index.html">总览</a><a href="taxonomy.html">原理分类</a>
+<a href="cat-joint.html">联合扩散</a><a href="cat-latent.html">潜空间</a><a href="cat-cascaded.html">级联</a><a href="cat-ar.html">自回归</a><a href="cat-geo.html">几何锚定</a><a href="cat-rl.html">RL 后训练</a>
+<a href="code.html">代码对比</a><a href="refs.html">来源</a></div><div class="wrap"><h1>联合扩散（Joint WAM）</h1><p class="meta">视频潜与动作在同一去噪过程中联合生成（MoT 双专家、共享注意力、流匹配）。训练期视频监督塑形表征，推理期可只解码动作。</p>
+<div class="grid"><div class="pcard"><h3><a href="papers/fast-wam.html">Fast-WAM：世界动作模型需要测试时未来想象吗？</a></h3>
+<div class="s">Fast-WAM: Do World Action Models Need Test-time Future Imagination?</div>
+<div class="s" style="margin-top:6px">用受控变体把「训练期视频共训」与「推理期未来想象」解耦：去掉视频共训掉 8 点，去掉测试时想象只差约 1 点；无具身预训练达到 RoboTw…</div>
+<div style="margin-top:8px"><span class="tag">joint</span><span class="tag">2026-03</span><span class="tag">arXiv 2603.16666</span></div></div><div class="pcard"><h3><a href="papers/motus.html">Motus：统一潜动作世界模型</a></h3>
+<div class="s">Motus: A Unified Latent Action World Model</div>
+<div class="s" style="margin-top:6px">一个模型五种模式；用光流学习潜动作（DPFlow→DC-AE→14 维）实现大规模动作预训练；仿真较 X-VLA +15%、较 π0.5 +…</div>
+<div style="margin-top:8px"><span class="tag">joint</span><span class="tag">2025-12</span><span class="tag">arXiv 2512.13030</span></div></div><div class="pcard"><h3><a href="papers/dit4dit.html">DiT4DiT：联合建模视频动态与动作</a></h3>
+<div class="s">DiT4DiT: Jointly Modeling Video Dynamics and Actions</div>
+<div class="s" style="margin-top:6px">不用重建帧，而用视频去噪中间层特征作动作条件；双流匹配（τv/τf/τa 解耦）；LIBERO 98.6%、RoboCasa-GR1 50.…</div>
+<div style="margin-top:8px"><span class="tag">joint</span><span class="tag">2026-03</span><span class="tag">arXiv 2603.10448</span></div></div><div class="pcard"><h3><a href="papers/rolling-wam.html">Rolling-WAM：滚动想象的世界动作模型</a></h3>
+<div class="s">Rolling-WAM: World Action Models with Rolling Imagination</div>
+<div class="s" style="margin-top:6px">维护错峰噪声的视频-动作块滑动窗口：每步只完全去噪最近的块、部分精炼更远的块；稳态重规划提速 4.5×。…</div>
+<div style="margin-top:8px"><span class="tag">joint</span><span class="tag">2026-09</span><span class="tag">arXiv 2609.30247</span></div></div><div class="pcard"><h3><a href="papers/x-wam.html">X-WAM：统一 4D 世界动作建模与异步去噪</a></h3>
+<div class="s">X-WAM: Unified 4D World Action Modeling with Asynchronous Denoising</div>
+<div class="s" style="margin-top:6px">预测多视角 RGB-D 未来；把视频 DiT 末端若干块复制成深度分支；异步噪声采样让动作少步解码、视频满步生成；RoboCasa 79.2…</div>
+<div style="margin-top:8px"><span class="tag">joint</span><span class="tag">2026-04</span><span class="tag">arXiv 2604.26694</span></div></div></div><p class="foot">本站内容基于论文原文（verbatim 引文 + 中译标注）与官方代码；未给出处一律标注。生成于 2026-11。</p></div></body></html>

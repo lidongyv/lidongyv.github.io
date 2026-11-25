@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Rolling-WAM：滚动想象的世界动作模型 · WAM 调研</title><style>
+:root{--ink:#1a2430;--dim:#5f6d7b;--line:#dfe6ee;--bg:#f8fafc;--card:#fff;--acc:#0b6bcb;--acc2:#e8f2fc;--warn:#8a5a00;--warnbg:#fdf3e0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.7}
+a{color:var(--acc)} a:hover{text-decoration:underline}
+.nav{background:#0b2a4a;color:#fff;padding:10px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:14px}
+.nav a{color:#d7e6f7;text-decoration:none}.nav a:hover{color:#fff}
+.nav b{color:#fff;font-size:15px}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 20px 90px}
+h1{font-size:26px;margin:6px 0 8px}
+h2{font-size:20px;margin:26px 0 10px;padding-left:10px;border-left:4px solid var(--acc);color:#0b2a4a}
+h3{font-size:16px;margin:16px 0 8px;color:#123c66}
+p{margin:8px 0}
+.meta{color:var(--dim);font-size:13.5px;margin-bottom:14px}
+.tag{display:inline-block;font-size:12px;border-radius:20px;padding:1px 9px;margin-right:6px;border:1px solid var(--line);background:#f1f5f9;color:var(--dim)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 22px;margin:14px 0}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px;background:#fff}
+th{background:#eef4fa;color:#123c66} th,td{border:1px solid var(--line);padding:7px 10px;vertical-align:top;text-align:left}
+code{font-family:Consolas,"Cascadia Mono",monospace;font-size:13px;background:#f1f5f9;border:1px solid #e2e9f1;border-radius:4px;padding:1px 5px;word-break:break-word}
+pre{background:#0f1c2b;color:#d7e6f7;border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:12.8px;line-height:1.55}
+pre code{background:none;border:none;color:inherit;padding:0}
+blockquote{margin:10px 0;padding:12px 16px;border-left:3px solid var(--acc);background:var(--acc2);border-radius:0 10px 10px 0}
+blockquote .lbl{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}
+.warn{background:var(--warnbg);border:1px solid #ecd9ae;border-radius:10px;padding:12px 16px;font-size:14px;color:var(--warn)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.pcard h3{margin:0 0 4px;font-size:15.5px}
+.pcard .s{font-size:13px;color:var(--dim)}
+.foot{color:var(--dim);font-size:13px;margin-top:18px}
+li{margin:4px 0}
+</style></head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div><div class="nav"><b>WAM 调研</b>
+<a href="../index.html">总览</a><a href="../taxonomy.html">原理分类</a>
+<a href="../cat-joint.html">联合扩散</a><a href="../cat-latent.html">潜空间</a><a href="../cat-cascaded.html">级联</a><a href="../cat-ar.html">自回归</a><a href="../cat-geo.html">几何锚定</a><a href="../cat-rl.html">RL 后训练</a>
+<a href="../code.html">代码对比</a><a href="../refs.html">来源</a></div><div class="wrap"><p class="meta"><a href="../index.html">← 返回总览</a> ｜ <a href="../cat-joint.html">类别：joint</a></p>
+<h1>Rolling-WAM：滚动想象的世界动作模型</h1>
+<p class="meta">Rolling-WAM: World Action Models with Rolling Imagination<br>arXiv:2609.30247 ｜ USC / TRI 等 ｜ 2026-09 ｜ <a href="../code.html">代码对比页</a> ｜ <a href="https://arxiv.org/abs/2609.30247">arXiv</a> · <a href="https://rolling-wam.github.io/">项目页</a></p>
+<h2>核心贡献</h2>
+<div class="card"><p><b>中文：</b>维护错峰噪声的视频-动作块滑动窗口：每步只完全去噪最近的块、部分精炼更远的块；稳态重规划提速 4.5×。</p><p><b>English:</b> Maintains a sliding window of video-action chunks at staggered noise levels; fully denoises the imminent chunk each step while partially refining farther ones; 4.5x steady-state replanning speedup.</p></div>
+<h2>原文断言（摘要）+ 中译</h2>
+<blockquote><span class="lbl">原文（Abstract，verbatim）</span>We present Rolling-WAM, a formulation that distributes joint denoising across successive replanning cycles.</blockquote>
+<blockquote><span class="lbl">中译（译者译，非论文原文语言）</span>Rolling-WAM 把联合去噪分摊到连续的多个重规划周期上。</blockquote>
+<h2>核心机制（原文 + 中译）</h2>
+<blockquote><span class="lbl">原文（论文方法节，verbatim）</span>At each step, a rolling noise schedule fully denoises the imminent action chunk for execution, while partially refining farther-future chunks.</blockquote>
+<blockquote><span class="lbl">中译（译者译）</span>每一步的滚动噪声调度完全去噪即将执行的动作块，同时部分精炼更远的未来块。</blockquote>
+<h2>核心代码实现</h2>
+<p class="meta">类型：论文伪代码（按 §III 结构化）。参数 K=16/W=5/N=10/ρ=5 来自 L2 笔记 03b；真机 G1 78-D（64 SONIC + 7×2）。</p>
+<pre><code># 错峰噪声 + 滑动窗口（§III；参数见 03b 笔记）
+def rolling_step(window, obs, K=16, W=5, rho=5):
+    for j, chunk in enumerate(window):                # j=1..W
+        σ = rho * (j/W) / (1 + (rho-1) * (j/W))       # 近端低噪声、远端高噪声
+        chunk.add_noise(σ)
+    for _ in range(2):                                # 稳态每周期 2 步
+        video, action = denoise_joint(window, obs, N=10)
+    window.pop(0); window.append(new_chunk(action))
+    return action[:K]                                 # 执行 16 步</code></pre>
+<h2>关键数值（标注来源级别）</h2>
+<table><tr><th>指标</th><th>数值</th><th>级别</th></tr><tr><td>LIBERO</td><td>98.1%</td><td>L3</td></tr><tr><td>RoboTwin 2.0</td><td>93.3%（100 rollouts/档）</td><td>L3</td></tr><tr><td>真机 G1</td><td>85.0%（3 任务×20 trials）</td><td>L3</td></tr><tr><td>重规划</td><td>215 ms（4.5×）</td><td>L3</td></tr></table>
+<div class="warn">来源级别：L3=全文核实（含官方代码）/ L2=部分正文 / L1=仅摘要。数值为提出方自评。</div><p class="foot">本站内容基于论文原文（verbatim 引文 + 中译标注）与官方代码；未给出处一律标注。生成于 2026-11。</p></div></body></html>

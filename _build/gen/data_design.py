@@ -11,9 +11,9 @@ Optional: root ("design"|"demos"), images ("webp"), skip, exclude, unlock,
 
 DESIGN = [
     # ------------------------------------------------------------- research/
-    {"slug": "wam-survey", "src": "wam-survey-project",
+    {"slug": "wam-survey", "root": "repo", "src": "wam-survey-site",
      "title": "世界模型（WAM）综述", "title_en": "World-Action Model survey",
-     "summary": "2024—2026 年世界模型、驾驶世界模型与 WAM 的工作梳理，含能力分类与评测口径。",
+     "summary": "68 篇次精读：按 6 类原理重排的 WAM 论文站，每篇含中英核心贡献、原文引文与中译、核心代码；附代码对比页。",
      "summary_en": "World models, driving world models and WAMs from 2024-2026, with a capability taxonomy.",
      "tags": ["世界模型", "WAM", "综述"], "tags_en": ["World models", "WAM", "Survey"]},
     {"slug": "gs-reading", "src": "gs-reading-site",

@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>代码对比 · WAM 调研</title><style>
+:root{--ink:#1a2430;--dim:#5f6d7b;--line:#dfe6ee;--bg:#f8fafc;--card:#fff;--acc:#0b6bcb;--acc2:#e8f2fc;--warn:#8a5a00;--warnbg:#fdf3e0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.7}
+a{color:var(--acc)} a:hover{text-decoration:underline}
+.nav{background:#0b2a4a;color:#fff;padding:10px 20px;display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:14px}
+.nav a{color:#d7e6f7;text-decoration:none}.nav a:hover{color:#fff}
+.nav b{color:#fff;font-size:15px}
+.wrap{max-width:1040px;margin:0 auto;padding:26px 20px 90px}
+h1{font-size:26px;margin:6px 0 8px}
+h2{font-size:20px;margin:26px 0 10px;padding-left:10px;border-left:4px solid var(--acc);color:#0b2a4a}
+h3{font-size:16px;margin:16px 0 8px;color:#123c66}
+p{margin:8px 0}
+.meta{color:var(--dim);font-size:13.5px;margin-bottom:14px}
+.tag{display:inline-block;font-size:12px;border-radius:20px;padding:1px 9px;margin-right:6px;border:1px solid var(--line);background:#f1f5f9;color:var(--dim)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 22px;margin:14px 0}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px;background:#fff}
+th{background:#eef4fa;color:#123c66} th,td{border:1px solid var(--line);padding:7px 10px;vertical-align:top;text-align:left}
+code{font-family:Consolas,"Cascadia Mono",monospace;font-size:13px;background:#f1f5f9;border:1px solid #e2e9f1;border-radius:4px;padding:1px 5px;word-break:break-word}
+pre{background:#0f1c2b;color:#d7e6f7;border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:12.8px;line-height:1.55}
+pre code{background:none;border:none;color:inherit;padding:0}
+blockquote{margin:10px 0;padding:12px 16px;border-left:3px solid var(--acc);background:var(--acc2);border-radius:0 10px 10px 0}
+blockquote .lbl{display:block;font-size:12px;color:var(--dim);margin-bottom:4px}
+.warn{background:var(--warnbg);border:1px solid #ecd9ae;border-radius:10px;padding:12px 16px;font-size:14px;color:var(--warn)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.pcard h3{margin:0 0 4px;font-size:15.5px}
+.pcard .s{font-size:13px;color:var(--dim)}
+.foot{color:var(--dim);font-size:13px;margin-top:18px}
+li{margin:4px 0}
+</style></head>
+<body><div class="nav"><b>WAM 调研</b>
+<a href="index.html">总览</a><a href="taxonomy.html">原理分类</a>
+<a href="cat-joint.html">联合扩散</a><a href="cat-latent.html">潜空间</a><a href="cat-cascaded.html">级联</a><a href="cat-ar.html">自回归</a><a href="cat-geo.html">几何锚定</a><a href="cat-rl.html">RL 后训练</a>
+<a href="code.html">代码对比</a><a href="refs.html">来源</a></div><div class="wrap"><h1>实战手册：代码页对比</h1>
+<p class="meta">同一类问题（如何让未来参与动作？如何部署更快？）的不同实现。每块上方标注方法，代码为官方源码节选（标注）或论文结构化伪代码。</p>
+<div class="card"><b>对比维度</b>
+<table><tr><th>问题</th><th>方法</th><th>核心机制</th><th>代价</th></tr>
+<tr><td>测试时还要不要想象未来</td><td>Fast-WAM</td><td>训练共训、推理只过首帧</td><td>去掉共训掉 8 点</td></tr>
+<tr><td>去噪太慢</td><td>WAMotor / Rolling-WAM / LoopedWAM</td><td>投机验证 / 错峰窗口 / 循环深度</td><td>训练-free / 需调度 / 需蒸馏</td></tr>
+<tr><td>机器人信号怎么进视频模型</td><td>MetaWAM</td><td>频带打包 meta-frame</td><td>需固定频带布局</td></tr>
+<tr><td>何时该想象</td><td>Bind-WAM / Elastic-WAM</td><td>不确定性路由 / 需求场</td><td>需离线标注 / 需三阶段监督</td></tr>
+<tr><td>如何用 RL 后训练</td><td>VAMPO / GigaBrain</td><td>GRPO（组优势） / KL-RL→加权 NLL</td><td>奖励设计 / 世界模型价值</td></tr>
+</table></div>
+<div class="card"><h3>投机推理（训练-free 加速）　<span class="tag">WAMotor</span><span class="tag">arXiv 2609.25413</span></h3>
+<pre><code># 官方代码 speculative/action.py
+thr = eps * (median(|Δ|)/|Δ|)**2        # 时间步感知阈值（步长大→更严）
+u = predict(a, t[0]); a = euler(a, u, Δ[0])   # 首步强制 Euler（推迟投机）
+draft = a + u * cumsum(Δ[m:end])              # 一个 anchor 速度外推 w 步
+v = predict_batched(draft)                     # 一次前向验证全部候选
+acc = longest_prefix(mse(v, u) &lt; thr)          # 接受最长前缀
+a = euler(a, v[acc-1], Δ[m+acc])               # 边界回退一步</code></pre></div><div class="card"><h3>循环深度 + 弹性蒸馏　<span class="tag">LoopedWAM</span><span class="tag">arXiv 2611.25595</span></h3>
+<pre><code># 12 blocks/expert = 3+6+3；core 循环 K 次
+h = prelude(x)
+for _ in range(K): h = core(h)          # 语义层数 3+K*6+3
+y = coda(h, step_mlp(1/N))              # 弹性：步长嵌入
+# 蒸馏：学生从自身状态问教师
+for j in range(N):
+    v = student.step(z, K_a, 1/N); zT = teacher.euler(z, τ→τ&#x27;)   # 教师细步
+    L_local += mse(v, stop_grad((zT - z)/Δτ))</code></pre></div><div class="card"><h3>频带打包统一 meta-frame　<span class="tag">MetaWAM</span><span class="tag">arXiv 2611.14365</span></h3>
+<pre><code>F = zeros(C,H,W)
+for s in [task, ρ_t, a, ρ_tH, v]:
+    F[band[s], kH=0] = pack(s)          # 固定槽，无学习参数
+z_m = idct2(F)                          # 逆 DCT → 空间潜
+# 读出：dct2 + unpack（解析，无解码头）
+# 路由：policy 开 task+ρ_t；world 再开 a；value 再开 ρ_tH</code></pre></div><div class="card"><h3>需求场驱动稀疏精炼　<span class="tag">Elastic-WAM</span><span class="tag">arXiv 2611.14257</span></h3>
+<pre><code>D, B0 = need_field(s)                   # 总需求 + Beta 形状
+if 1 - F_prev*D &gt;= 0.5: COMMIT          # WHEN（η=0.5）
+z = mode(B0); Δσ = 0.05 + z*(0.2-0.05)  # HOW FAR（δ∈[0.05,0.20]）
+M = topk_groups(n_g*Δu_g, budget=96)    # WHERE（K0=96 tokens）
+sparse_refine(selected=M, step=Δσ)</code></pre></div><div class="card"><h3>不确定性路由：何时想象　<span class="tag">Bind-WAM</span><span class="tag">arXiv 2611.15368</span></h3>
+<pre><code>U = router(o, l)                        # 6.65M ViT
+ΔU = |U - U_prev|
+mode = &#x27;joint&#x27; if (U &gt;= τ_U or ΔU &gt;= τ_Δ) else &#x27;direct&#x27;
+wam(o, l, mask=M_joint if joint else M_direct)</code></pre></div><div class="card"><h3>滚动错峰窗口　<span class="tag">Rolling-WAM</span><span class="tag">arXiv 2609.30247</span></h3>
+<pre><code>σ_j = ρ(j/W)/(1+(ρ-1)(j/W))             # 近低远高
+for _ in range(2): denoise_joint(window, N=10)
+window = window[1:] + [new_chunk(a)]    # K=16/W=5/ρ=5</code></pre></div><div class="card"><h3>视频共训、推理免想象　<span class="tag">Fast-WAM</span><span class="tag">arXiv 2603.16666</span></h3>
+<pre><code># 训练：L = L_act + λ*L_vid（未来潜 flow matching）
+# 推理：只过首帧、动作专家单次前向
+lat = vae.encode(first_frame); kv = video_dit.prefill(lat)
+a = action_expert.sample(cond=kv, steps=10)</code></pre></div><div class="card"><h3>GRPO 训练视频去噪器　<span class="tag">VAMPO</span><span class="tag">arXiv 2603.19370</span></h3>
+<pre><code>r = -l1(pred, true) + cos(pred, true)   # 潜空间奖励
+adv = (r - r.mean(g)) / (r.std(g)+1e-8) # 组归一化
+loss = min(-adv*ratio, -adv*clip(ratio,.8,1.2))  # 截断代理
+# 只首步 SDE：sde_start=0, sde_end=1</code></pre></div><p class="foot">本站内容基于论文原文（verbatim 引文 + 中译标注）与官方代码；未给出处一律标注。生成于 2026-11。</p></div></body></html>
