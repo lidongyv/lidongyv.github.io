@@ -34,12 +34,11 @@ WorldVLN 的原文把动机说得很直白：`[论文 §2]` "Such imitation-base
 
 ## 2. 后训练的三种形态
 
-1. **离线偏好 / 加权模仿**：不改环境交互，只用「好/坏」标签或优势加权 NLL。
-   - GigaBrain：把 KL-RL 闭式解改写成两项加权 NLL（见 §4.1）。
-2. **在线 RL**：训练内环生成 rollout、算奖励、更新策略。
-   - VAMPO / EVA / CreFlow / WorldVLN。
-3. **闭环数据回流**：用执行结果制造新训练数据（不一定是梯度 RL）。
-   - HILR、DAgger 恢复、失败数据掩码、语言教练 relabel。
+**形态一：离线偏好 / 加权模仿**。不改环境交互，只用「好/坏」标签或优势加权 NLL。代表：GigaBrain（把 KL-RL 闭式解改写成两项加权 NLL，见 §4.1）。
+
+**形态二：在线 RL**。训练内环生成 rollout、算奖励、更新策略。代表：VAMPO / EVA / CreFlow / WorldVLN。
+
+**形态三：闭环数据回流**。用执行结果制造新训练数据（不一定是梯度 RL）。代表：HILR、DAgger 恢复、失败数据掩码、语言教练 relabel。
 
 > 注意：**DreamGen 不是 RL**——生成→伪标注→行为克隆是单向数据管线，没有回报回环 `[论文 §2]`。
 
@@ -82,6 +81,7 @@ loss = mean( min(A_g·ρ, A_g·clip(ρ, 1−c, 1+c)) )   # ρ = π_new/π_old
 ```
 
 三个实现差异：
+
 - **VAMPO**：把多步去噪当 MDP，**只有首步 SDE**（其余 ODE）。原文理由 `[§3.3]`："introducing stochasticity at all denoising steps leads to severe credit assignment issues"。
 - **EVA**：Flow-GRPO 只更新生成器 LoRA，奖励来自冻结 IDM。
 - **WorldVLN**：段级（非 token 级）优势，`r_j = γ^{j−1}(λ_traj r_traj + λ_task r_task + λ_ref log π_ref)`。

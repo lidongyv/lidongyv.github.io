@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WAM 蒸馏：按原理分类的核心代码与中英说明</title>
+<style>
+:root{--ink:#1b2430;--dim:#5d6b7a;--line:#dfe5ec;--bg:#f6f8fb;--card:#fff;--acc:#0b6bcb;--soft:#eaf2fb;--warn:#8a5a00;--warnbg:#fdf4e3;--ok:#1d6b38;--okbg:#eaf7ee}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.75}
+.wrap{max-width:1060px;margin:0 auto;padding:26px 20px 80px}
+header.hero{background:linear-gradient(135deg,#0b2a4a,#0b6bcb);color:#fff;border-radius:14px;padding:28px 32px;margin-bottom:18px}
+header.hero h1{margin:0 0 8px;font-size:25px}
+header.hero .sub{margin:0 0 6px;color:#d9e8f8;font-size:15px}
+header.hero .meta{margin:0;color:#bcd6ef;font-size:13px}
+nav.toc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 18px;margin-bottom:18px;font-size:14px}
+nav.toc a{color:var(--ink);text-decoration:none;margin-right:14px;line-height:2}
+nav.toc a:hover{color:var(--acc);text-decoration:underline}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:22px 26px;margin-bottom:18px}
+h2{font-size:20px;margin:4px 0 12px;color:#0b2a4a;border-left:4px solid var(--acc);padding-left:10px}
+h3{font-size:16.5px;margin:22px 0 6px;color:#123c66}
+p{margin:8px 0}
+.zh{margin:6px 0}
+.en{color:#4b5d70;font-size:14px;margin:4px 0 8px;font-style:italic}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px;background:#fff}
+th{background:#eef4fa;color:#123c66;font-weight:600}
+th,td{border:1px solid var(--line);padding:6px 9px;vertical-align:top;text-align:left}
+tr:nth-child(even) td{background:#fafcfe}
+pre{margin:10px 0;background:#0f1720;color:#dbe7f3;border-radius:10px;padding:14px 16px;overflow:auto;font-size:12.8px;line-height:1.55}
+code{font-family:Consolas,"Cascadia Mono",monospace}
+pre .c{color:#7f9bb3}
+pre .k{color:#7cc4ff}
+.badge{display:inline-block;font-size:11.5px;border-radius:20px;padding:0 8px;margin-left:6px;border:1px solid var(--line);color:var(--dim);background:#f4f7fa;vertical-align:middle;font-weight:400}
+.l3{background:var(--okbg);border-color:#9fd4ad;color:var(--ok)}
+.l2{background:var(--warnbg);border-color:#ecd9ae;color:var(--warn)}
+.l1{background:#fdeeee;border-color:#ecc6c6;color:#9c2b2b}
+.meta{color:var(--dim);font-size:13px;margin-top:6px}
+.warn{background:var(--warnbg);border:1px solid #ecd9ae;border-radius:8px;padding:12px 16px;font-size:13.5px;color:var(--warn)}
+.ok{background:var(--okbg);border:1px solid #c4e5cc;border-radius:8px;padding:12px 16px;font-size:13.5px;color:var(--ok)}
+.foot{color:var(--dim);font-size:13px;margin-top:8px}
+a{color:var(--acc)}
+ul,ol{margin:6px 0;padding-left:22px}
+li{margin:4px 0}
+</style>
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<div class="wrap">
+
+<header class="hero">
+  <h1>WAM 蒸馏：按原理分类的核心代码与中英说明</h1>
+  <p class="sub">World-Action-Model Distillation: Principle-based Taxonomy, Core Code, Bilingual Notes</p>
+  <p class="meta">2026-11-25 · 13 methods · 每个方法：中文说明 + English note + 核心代码 · 来源级别 L3/L2/L1 逐条标注</p>
+</header>
+
+<nav class="toc">
+  <a href="#taxonomy">分类总览</a>
+  <a href="#A">A 教师→学生</a>
+  <a href="#B">B 自蒸馏/步数压缩</a>
+  <a href="#C">C 表征→策略</a>
+  <a href="#D">D 数据/标签</a>
+  <a href="#E">E On-policy</a>
+  <a href="#notes">级别与缺口</a>
+</nav>
+
+<section id="taxonomy">
+  <h2>分类总览：按「蒸什么」分五族</h2>
+  <p class="zh">蒸馏 WAM 的差异不在模型大小，而在<strong>知识以什么形式从教师流向学生</strong>。五族：A 直接把教师隐状态变成学生的上下文条件；B 把多步去噪能力压成少步；C 把教师表征蒸进策略（部署无教师）；D 用大模型生成数据/伪动作；E 在学生的轨迹上做 on-policy 蒸馏。</p>
+  <p class="en">What differs across WAM distillation methods is not model size but <strong>the form in which knowledge flows from teacher to student</strong>: A) teacher hidden states become student context; B) multi-step denoising is compressed into few steps; C) teacher representations are distilled into a policy that deploys without the teacher; D) a large model generates data / pseudo-actions; E) on-policy distillation on the student's own trajectories.</p>
+  <table>
+    <tr><th>族</th><th>蒸什么</th><th>方法</th><th>部署时是否需要教师</th></tr>
+    <tr><td>A 教师→学生</td><td>中间层隐状态 → 上下文 token</td><td>CKT-WAM</td><td>需要（一次前向）</td></tr>
+    <tr><td>B 自蒸馏/步数压缩</td><td>多步去噪 → 一步/少步</td><td>S-VAM、DIDO、APM、AnyStep、LoopedWAM</td><td>不需要</td></tr>
+    <tr><td>C 表征→策略</td><td>冻结教师特征 → 学生表征</td><td>THAW-VLA、DreamFree、W2A、ForeTime-VLA</td><td>不需要</td></tr>
+    <tr><td>D 数据/标签</td><td>视频/潜动作/伪动作</td><td>GR00T N1 管线（LAPA/DreamGen/IDM）</td><td>不需要</td></tr>
+    <tr><td>E On-policy</td><td>教师在学生轨迹上的条件分布</td><td>WAM-OPD、HINT-WAM、WAM-Policy</td><td>不需要（训练期）</td></tr>
+  </table>
+</section>
+
+<section id="A">
+  <h2>A. 教师→学生：隐状态变成上下文（Teacher → Student Knowledge Transfer）</h2>
+
+  <h3>CKT-WAM <span class="badge l3">L3</span></h3>
+  <p class="zh"><b>核心：</b>14B 教师 WAM 只做一次观测编码（取第 20/40 层隐状态），经可学习 query 压成 32（通用）+32（专家）个 token，拼到 2B 学生 WAM 的<strong>文本条件序列</strong>；教师、学生全冻结，只训 CKT 模块（187.4M，1.17%）。专家只有 top-2/8 激活。</p>
+  <p class="en"><b>Core:</b> the 14B teacher runs once as an observation encoder (layer 20 of 40); learnable-query cross-attention compresses its states into 32 general + 32 specialized tokens, appended to the 2B student's <strong>text-conditioning sequence</strong>. Both backbones stay frozen; only the CKT module (187.4M, 1.17%) is trained, with top-2-of-8 experts active.</p>
+  <pre><code><span class="c"># inputs : obs [B,N_img,d_tea], text [B,N_txt,d_tea], future_video, future_action</span>
+<span class="c"># output : v_hat, a_hat (student's clean latents); loss</span>
+<span class="k">for</span> (obs, text, fv, fa) <span class="k">in</span> loader:
+    H  = teacher.encode(obs, text, t=0).layer[20].detach()   <span class="c"># one pass, stop-grad</span>
+    Z  = LN(up(down(H)))                                      <span class="c"># [B,N,d_stu], d_b=512</span>
+    Cg0 = LN(MHCA(Qg, Z, Z) + Qg)                             <span class="c"># 32 general tokens</span>
+    Cs0 = LN(MHCA(Qs, Z, Z) + Qs)                             <span class="c"># 32 specialized tokens</span>
+    Cg  = Cg0 + up_g(act(down_g(Cg0)))                        <span class="c"># always-on adapter</span>
+    p   = softmax(router(mean_pool(H)))                       <span class="c"># [B,8]</span>
+    idx = topk(p, 2)
+    Cs  = sum(renorm(p,m) * (Cs0 + up_m(act(down_m(Cs0)))) <span class="k">for</span> m <span class="k">in</span> idx)
+    CA  = concat([Cg, Cs], dim=1)                             <span class="c"># [B,64,d_stu]</span>
+    Et  = concat([student.text_emb(text), SEP, CA], dim=1)    <span class="c"># inject</span>
+    v_hat, a_hat = student.denoise(noisy_v, noisy_a, cond=Et) <span class="c"># frozen student</span>
+    loss = L_act + 1.0*L_vid + 0.01*L_bal; opt.step(ckt)      <span class="c"># only CKT</span>
+</code></pre>
+  <p class="zh"><b>推理：</b>教师一次 + CKT 一次，CA 在所有去噪步复用（不再查教师）。<b>坑：</b>教师必须 t*=0；top-k 路由必须重归一化。</p>
+  <p class="en"><b>Inference:</b> one teacher pass + one CKT pass; the context is reused across all denoising steps. <b>Pitfalls:</b> teacher must be queried at t*=0; renormalize top-k routing.</p>
+  <p class="meta">结果：LIBERO-Plus 86.1%（零样本）、真机 4 任务均值 83.3% ｜ 来源：arXiv:2605.06247</p>
+</section>
+
+<section id="B">
+  <h2>B. 自蒸馏 / 步数压缩（Self-Distillation &amp; Step Compression）</h2>
+
+  <h3>S-VAM <span class="badge l3">L3</span></h3>
+  <p class="zh"><b>核心：</b>教师不是外部模型，而是<strong>SVD 自己多步生成的视频</strong>：用冻结 DPAv3 提几何、DINOv2 提语义特征当目标；两个轻量时空 decoupler 把「一步去噪的噪声特征」映射成这两类前瞻表征。推理单次前向，不做视频 rollout。</p>
+  <p class="en"><b>Core:</b> the teacher is the diffusion model's <strong>own multi-step generated video</strong>; frozen DPAv3 (geometry) and DINOv2 (semantics) extract teacher features. Two lightweight spatio-temporal decouplers map noisy one-step features onto these foresight representations; inference is a single forward pass with no video rollout.</p>
+  <pre><code><span class="c"># stage 2: self-distillation (SVD frozen; 50k steps, 1x H100)</span>
+<span class="k">for</span> (obs, instr) <span class="k">in</span> data:
+    V_hat  = SVD.sample(obs, steps=S)                  <span class="c"># teacher: own multi-step video</span>
+    Y_geo  = DPAv3(interp(V_hat)); Y_sem = DINOv2(interp(V_hat))
+    F      = concat([interp(f) <span class="k">for</span> f <span class="k">in</span> SVD.step1.upsample_feats])
+    <span class="k">for</span> i <span class="k">in</span> [geo, sem]:
+        Y_ref = Phi_i(interp(obs))                     <span class="c"># anchor from CURRENT obs</span>
+        F_i0  = concat([F, repeat(Y_ref, T)], dim=ch)
+        F_iK  = decoupler_i(F_i0)                      <span class="c"># student</span>
+        loss_i = mse(F_iK, Y_i)
+    update(decouplers, loss_geo + loss_sem)            <span class="c"># SVD/VFM frozen</span>
+</code></pre>
+  <p class="en"><b>Pitfalls:</b> scoring with own generated video (not ground-truth future) avoids trajectory misalignment; the reference feature must come from the current observation.</p>
+  <p class="meta">结果：CALVIN 平均序列长度 4.16（VPP 3.58）｜ 来源：arXiv:2603.16195</p>
+
+  <h3>DIDO <span class="badge l1">L1</span></h3>
+  <p class="zh"><b>核心：</b>把多步视频模型的收敛交互动态蒸成一步：分布匹配（DMD）+ 交互中心引导（夹爪/物体 bbox 视觉推理 token，目标物体多层特征对齐冻结 DINOv3）。</p>
+  <p class="en"><b>Core:</b> distill the converged interaction dynamics of a multi-step video model into one step: distribution matching (DMD) plus interaction-centric guidance (bbox tokens for gripper/object and multi-layer alignment to frozen DINOv3).</p>
+  <pre><code><span class="c"># per sample: teacher multi-step -> converged dynamics; student one step</span>
+z_t = teacher.multi_step(obs)                       <span class="c"># frozen</span>
+z_s = student.one_step(obs)
+L = DMD(z_s, z_t)                                   <span class="c"># distribution matching</span>
+  + BCE(token_head(feat), boxes)                    <span class="c"># gripper / object bbox tokens</span>
+  + mse(proj(student.layers), dinov3(target_obj))   <span class="c"># semantic anchor</span>
+update(student, token_head, proj)
+</code></pre>
+  <p class="meta">结果：LIBERO 99.0 / LIBERO-Plus 76.6 / RoboTwin 92.0 ｜ 来源：arXiv:2609.15570（摘要级）</p>
+
+  <h3>APM（Anchored Path Matching） <span class="badge l1">L1</span></h3>
+  <p class="zh"><b>核心：</b>从<strong>学生自己到达的状态</strong>继续教师到零噪声，取教师终点与首个中间态作锚；两个模态路由 adapter 同时拟合；梯度冲突时「锚优先」（保端点梯度、去掉局部冲突分量）。一个 checkpoint 支持 1/2/4 步。</p>
+  <p class="en"><b>Core:</b> from the <strong>state the student itself reaches</strong>, continue the teacher to zero noise and use its endpoint plus first intermediate state as anchors; two modality-routed adapters match both; on gradient conflict, anchor-priority keeps the endpoint gradient. One checkpoint serves 1/2/4 steps.</p>
+  <pre><code><span class="k">for</span> (obs, a0) <span class="k">in</span> data:
+    s = student.sample_state(obs, steps=k)          <span class="c"># student's own state</span>
+    a_end, a_mid = teacher.continue_to_zero(s)      <span class="c"># anchors</span>
+    L_end, L_mid = mse(adapter_end(s), a_end), mse(adapter_mid(s), a_mid)
+    <span class="k">if</span> cos(grad(L_end), grad(L_mid)) &lt; 0:
+        g = grad(L_end) - project(grad(L_mid), grad(L_end))  <span class="c"># anchor priority</span>
+    <span class="k">else</span>:
+        g = grad(L_end) + grad(L_mid)
+    update(adapters, g)
+</code></pre>
+  <p class="meta">结果：RoboTwin +2.0 Clean / +1.4 Rand；PSNR 30.169→32.317；真机延迟 21.3× 低于 8 步教师 ｜ 来源：arXiv:2611.22592（摘要级）</p>
+
+  <h3>AnyStep-WAM <span class="badge l1">L1</span></h3>
+  <p class="zh"><b>核心：</b>用冻结教师的真实转移训练「区间条件 flow map」+ 共享 LoRA，一次训练覆盖 1…K 步；推理时一个轻量调度器用一步预览预测难度，选满足风险的最小预算。</p>
+  <p class="en"><b>Core:</b> train interval-conditioned flow maps with shared LoRA on frozen-teacher transitions, covering 1..K steps in one model; at inference a light scheduler predicts difficulty from a one-step preview and picks the smallest budget that meets the risk target.</p>
+  <pre><code><span class="c"># training: teacher rollouts provide interval targets</span>
+traj = teacher.rollout(obs)                         <span class="c"># frozen</span>
+<span class="k">for</span> k <span class="k">in</span> budgets:
+    <span class="k">for</span> (x_t, x_next) <span class="k">in</span> subsample(traj, k):
+        loss = mse(flow_map(x_t, k), x_next); update(flow_map, LoRA)
+<span class="c"># inference</span>
+preview = student.one_step(obs); k = scheduler(preview)
+a = student.sample(obs, steps=k)
+</code></pre>
+  <p class="meta">结果：Motus/FastWAM/LingBotVA 去噪步 -60.2% / -49.8% / -85.28% ｜ 来源：arXiv:2609.33748（摘要级）</p>
+
+  <h3>LoopedWAM <span class="badge l1">L1</span></h3>
+  <p class="zh"><b>核心：</b>共享 6-block core 循环 5 次——只存 12 个 block 却执行 30 层；视频专家每 query 算一次、动作专家每采样步重复；用弹性自蒸馏训练单一 checkpoint，跨 action-depth 与采样步预算。</p>
+  <p class="en"><b>Core:</b> a shared 6-block core is applied 5 times, storing 12 blocks but executing 30 layers; the video expert runs once per query while the action expert repeats per sampling step; elastic self-distillation trains one checkpoint across action-depth and sampling-step budgets.</p>
+  <pre><code><span class="c"># shared core + looped depth; elastic budgets</span>
+<span class="k">for</span> (depth, steps) <span class="k">in</span> budgets:
+    y = loop(shared_core, depth)                    <span class="c"># 6 blocks x 5</span>
+    loss = distill(teacher_30step, y, steps=steps)
+update(shared_core)
+<span class="c"># one checkpoint: 1/2/4 steps x different action depths</span>
+</code></pre>
+  <p class="meta">结果：0.58B；LIBERO 96.1 / RoboTwin 91.9 / RoboCasaGR1 52.2；比 Fast-WAM 少 7.4× 显存；27.6ms ｜ 来源：arXiv:2611.25595（摘要级）</p>
+</section>
+
+<section id="C">
+  <h2>C. 表征 → 策略：部署不带教师（Representation Distillation to Policy）</h2>
+
+  <h3>THAW-VLA <span class="badge l2">L2</span></h3>
+  <p class="zh"><b>核心：</b>冻结世界模型（Cosmos3-Nano 理解塔，layer-24、每视图 mean-pool、4096-D）<strong>只离线跑一次</strong>，特征写进 memory-mapped 缓存；0.8B 学生训练时只加视图级 cosine 对齐（λ=0.5）；部署删掉投影器，与未蒸馏基线逐位一致。</p>
+  <p class="en"><b>Core:</b> a frozen world model (Cosmos3-Nano understanding tower, layer 24, per-view mean-pool, 4096-D) runs <strong>once offline</strong>; features go into a memory-mapped cache. The 0.8B student adds only view-level cosine alignment (λ=0.5) during training; the projector is dropped at deployment, matching the undistilled baseline exactly.</p>
+  <pre><code><span class="c"># 0) offline: teacher runs once</span>
+<span class="k">for</span> (traj, idx, frame) <span class="k">in</span> train_frames:
+    cache[traj, idx] = teacher.layer24(mean_pool_views(frame))
+<span class="c"># 1) student training (teacher not in memory)</span>
+h = student.prefill(obs, instr)
+s = projector(view_mean_pool(h))
+loss = flow_loss(a, h) + 0.5 * (1 - cos(s, cache[traj, idx]))
+update(student)
+<span class="c"># 2) deployment: drop projector + cache; 4 flow steps</span>
+</code></pre>
+  <p class="meta">结果：LIBERO 97.9（+2.6）；RoboCasa-GR1 50.5；真机 28/30；32ms / 1.86GB ｜ 来源：arXiv:2609.24682（L2 正文）</p>
+
+  <h3>DreamFree <span class="badge l1">L1</span></h3>
+  <p class="zh"><b>核心：</b>把视频扩散模型当「预测性视觉编码器」：学生编码器<strong>只用当前观测</strong>预测冻结教师对未来的表征；动作模块从中抽动作相关信息。推理不生成未来视频（14B 骨干 11Hz）。</p>
+  <p class="en"><b>Core:</b> repurpose the video diffusion model as a predictive visual encoder: the student encoder predicts the frozen teacher's future representation from the <strong>current observation only</strong>; an action module reads it. No future video at inference (11Hz with a 14B backbone).</p>
+  <pre><code><span class="k">for</span> (obs, future, a) <span class="k">in</span> data:
+    z_t = stopgrad(video_model.encode(future))      <span class="c"># teacher representation</span>
+    z_p = visual_encoder(obs)                       <span class="c"># student, current obs only</span>
+    loss = mse(z_p, z_t) + L_action(a, action_head(z_p))
+update(visual_encoder, action_head)
+</code></pre>
+  <p class="meta">结果：14B 骨干下 11Hz 闭环 ｜ 来源：arXiv:2611.04527（摘要级）</p>
+
+  <h3>W2A <span class="badge l1">L1</span></h3>
+  <p class="zh"><b>核心：</b>两阶段：训练期把视频模型中间去噪表征蒸进动作模型（低维子空间足够），测试期完全丢弃视频模型。LIBERO 95.9%，约 21× 加速。</p>
+  <p class="en"><b>Core:</b> two stages: distill intermediate denoising representations from the video model into the action model during training (a low-dimensional subspace suffices); drop the video model entirely at test time. 95.9% on LIBERO, ~21x faster.</p>
+  <pre><code>h_t = video_model.denoise(obs, instr, step=t)      <span class="c"># intermediate rep</span>
+h   = compress(h_t)                                 <span class="c"># low-dim subspace</span>
+loss = L_action(a, action_model(obs, h))
+update(action_model, compress)                      <span class="c"># video model frozen</span>
+</code></pre>
+  <p class="meta">结果：LIBERO 95.9%；约 21× 加速 ｜ 来源：arXiv:2611.02600（摘要级；推理时 h 的来源待回原文核对）</p>
+
+  <h3>ForeTime-VLA <span class="badge l1">L1</span></h3>
+  <p class="zh"><b>核心：</b>因果未来 token 蒸馏：当前+未来视频潜压成「白化 64-D 目标」；8 帧历史编码器在线预测它，并同时预测操作阶段与归一化 transition 时间；4 个 future token + 1 个 phase token 进 VLM 前缀，预测的未来与 horizon 条件化动作专家。</p>
+  <p class="en"><b>Core:</b> causal future-token distillation: current+future video latents are compressed into a whitened 64-D target; an 8-frame history encoder predicts it online together with manipulation phase and normalized time-to-transition. Four future tokens plus one phase token condition the VLM prefix; the predicted future and horizon condition the action expert.</p>
+  <pre><code>target = whitening(compress64D(video_latent(cur) + video_latent(fut)))
+pred   = history_encoder_8frames(obs_hist)
+loss = L_flow + cos(pred, target) + L_relational_geom
+     + L_phase + L_T2T + L_action_equiv
+prefix = concat(detach(future_token * 4), phase_token)
+</code></pre>
+  <p class="meta">结果：传送带抓取 81.1%（静止）/ 58.9%（慢速）；44/90 vs pi0.5 23/90 ｜ 来源：arXiv:2608.20735（摘要级）</p>
+</section>
+
+<section id="D">
+  <h2>D. 数据 / 标签蒸馏：用大模型造监督（Data &amp; Label Distillation）</h2>
+
+  <h3>GR00T N1 管线（含 LAPA / DreamGen / IDM） <span class="badge l3">L3</span></h3>
+  <p class="zh"><b>核心：</b>三条数据蒸馏同时做：①潜动作——VQ-VAE 在帧对上学习，编码器当 IDM；②神经轨迹——视频生成模型在 88h 遥操作上微调，生成 827h（10×）；③IDM 伪动作——把生成视频标成动作。后训练真机:神经轨迹 = 1:1。</p>
+  <p class="en"><b>Core:</b> three data-distillation tracks: (1) latent actions — a VQ-VAE trained on frame pairs, with its encoder reused as an IDM; (2) neural trajectories — a video generator fine-tuned on 88h of teleop, producing 827h (10x); (3) IDM pseudo-actions — labeling generated video with actions. Post-training mixes real and neural trajectories 1:1.</p>
+  <pre><code><span class="c"># 1) latent action (LAPA-style)</span>
+train(VQVAE, pairs=(x_t, x_tH)); z = VQVAE.encode(x_t, x_tH)
+<span class="c"># 2) neural trajectories</span>
+finetune(image2video, 88h teleop); gen = image2video(prompts)   <span class="c"># 827h</span>
+<span class="c"># 3) IDM pseudo actions</span>
+train(IDM, real_pairs); a_hat = IDM(x_t, x_tH)
+<span class="c"># 4) mixed flow-matching training</span>
+loss = flow_matching(a_or_z, cond=obs, instr)
+</code></pre>
+  <p class="meta">结果：88h→827h 视频；78 万仿真轨迹（6500h，11h 计算）；预训练 5 万 H100 小时 ｜ 来源：arXiv:2503.14734（L3）</p>
+</section>
+
+<section id="E">
+  <h2>E. On-policy 蒸馏：在学生的轨迹上教（On-Policy Distillation）</h2>
+
+  <h3>WAM-OPD <span class="badge l1">L1</span></h3>
+  <p class="zh"><b>核心：</b>闭式模仿的分布漂移问题用 on-policy 蒸馏解决：用固定轨迹池（初学生 rollout + 任务教师 rollout）重放历史，在每个决策点让当前学生重新采样去噪路径，教师在这些路径上给监督；用前缀累积分数做代理重要性权重，补偿历史分布偏移。</p>
+  <p class="en"><b>Core:</b> fix the distribution shift of off-policy imitation with on-policy distillation: replay stored histories from a fixed pool (initial-student rollouts plus task-teacher rollouts), let the current student re-sample fresh denoising paths at each decision, and have the teacher supervise on those paths; prefix-accumulated scores give proxy importance weights.</p>
+  <pre><code>pool = initial_student_rollouts + teacher_rollouts
+<span class="k">for</span> traj <span class="k">in</span> pool:
+    <span class="k">for</span> t <span class="k">in</span> decisions(traj):
+        hist = traj.history[:t]
+        path = student.denoise(hist)                <span class="c"># fresh path</span>
+        L_t  = KL(teacher(hist, privileged) || student(hist))
+        update(student, w_t * L_t)                  <span class="c"># prefix weight</span>
+</code></pre>
+  <p class="meta">结果：任务适配不增加环境交互 ｜ 来源：arXiv:2609.34250（摘要级）</p>
+
+  <h3>HINT-WAM <span class="badge l1">L1</span></h3>
+  <p class="zh"><b>核心：</b>学生用自己的去噪轨迹生成动作；同一模型再以「示教未来视频」为特权信息当教师；用 energy score 做分布级匹配，而不是回归速度场。</p>
+  <p class="en"><b>Core:</b> the student generates its action through its own denoising trajectory; the same model conditioned on the demonstration's future video acts as the teacher; an energy score matches distributions instead of regressing the velocity field.</p>
+  <pre><code>a_s = student.sample(obs)                           <span class="c"># own trajectory</span>
+p_t = student.sample(obs, cond=hindsight_video)     <span class="c"># teacher distribution</span>
+L   = energy_score(p_t, a_s)
+update(student)
+</code></pre>
+  <p class="meta">结果：无需环境奖励 / 仿真交互 ｜ 来源：arXiv:2611.24789（摘要级）</p>
+
+  <h3>WAM-Policy <span class="badge l1">L1</span></h3>
+  <p class="zh"><b>核心：</b>两阶段：①跨形态适配把手臂 WAM 转到四足，并用 OPSD 蒸成「一视频+两动作步」的学生（14× 快）；②任务 RL 教师 + 多教师 M-OPD 合并多个慢专家成少步学生。</p>
+  <p class="en"><b>Core:</b> two stages: (1) adapt an arm-centric WAM to a quadruped and distill the transferred policy into a student with one video and two action steps via OPSD (14x faster); (2) tune teachers with task RL, then merge slow specialists into one few-step student with multi-teacher OPD.</p>
+  <pre><code><span class="c"># stage 1: OPSD (one video, two action steps)</span>
+student = OPSD(teacher, budgets=(video=1, action=2))
+<span class="c"># stage 2: task RL teachers -> multi-teacher OPD merge</span>
+student = M_OPD(teachers=[rl_teacher_1, ...], student)
+</code></pre>
+  <p class="meta">结果：77.0→OPSD 76.7（14× 快）→85.0；Unitree Go2 真机 ｜ 来源：arXiv:2611.24011（摘要级）</p>
+</section>
+
+<section id="notes">
+  <h2>级别、来源与缺口</h2>
+  <div class="warn">
+    <b>级别：</b>L3 = 论文方法节逐字核对（CKT-WAM、S-VAM、GR00T N1）；L2 = 部分正文（THAW-VLA）；L1 = 摘要级（其余 9 个），其代码为「按摘要重构」，模块形状/超参需回原文核对。<br>
+    <b>诚实缺口：</b>W2A 的「推理时条件从哪来」、DIDO 的 bbox 标注要求、APM 的梯度冲突阈值、AnyStep 的调度器输入、LoopedWAM 的弹性采样策略——摘要均未给全。
+  </div>
+  <p class="zh"><b>实现顺序建议：</b>先做 CKT-WAM（最接近「标准」蒸馏，接口最小改动）→ 再做 THAW-VLA（部署零开销）→ 需要少步时上 APM/AnyStep → 有视频无动作时走 GR00T 数据管线。</p>
+  <p class="en"><b>Suggested order:</b> start with CKT-WAM (minimal interface change) -> THAW-VLA (zero deployment overhead) -> APM/AnyStep for few-step budgets -> GR00T data pipeline when videos lack actions.</p>
+  <p class="foot">来源：arXiv:2605.06247、2603.16195、2609.15570、2611.22592、2609.33748、2611.25595、2609.24682、2611.04527、2611.02600、2608.20735、2503.14734、2609.34250、2611.24789、2611.24011 ｜ 生成：2026-11-25</p>
+</section>
+
+</div>
+</body>
+</html>

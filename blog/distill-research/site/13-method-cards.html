@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>13 · 方法卡片 · 大模型→VLA/WAM 蒸馏研究</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<nav class="topnav"><div class="inner"><a href="index.html">首页</a><a class="" href="00-evidence.html">00 · 证据与核实</a><a class="" href="01-taxonomy.html">01 · 分类框架</a><a class="" href="02-vla-distill.html">02 · VLA 蒸馏</a><a class="" href="03-wam-distill.html">03 · WAM 蒸馏</a><a class="" href="04-step-distill.html">04 · 步数蒸馏</a><a class="" href="05-feature-latent.html">05 · 特征与 latent</a><a class="" href="06-on-policy.html">06 · On-policy 蒸馏</a><a class="" href="07-data-distill.html">07 · 数据蒸馏</a><a class="" href="08-tricks.html">08 · Trick 总谱</a><a class="" href="09-benchmarks.html">09 · 教师 vs 学生</a><a class="" href="10-recent.html">10 · 最近三个月</a><a class="" href="11-pitfalls.html">11 · 陷阱与复现</a><a class="" href="12-implementation.html">12 · 实现手册</a><a class="" href="13-method-cards.html">13 · 方法卡片</a></div></nav>
+<main>
+<h1>13 · 方法卡片：按原理分类 × 中英核心说明 × 核心代码</h1>
+<p class="meta">来源 docs/13-method-cards.md · 生成于 2026-11-21</p>
+<details class="toc" open><summary>本页目录</summary><ol><li class=""><a href="#sec-1">A. S1 · 输出级蒸馏：对齐教师的动作 / 速度场 / 端点</a></li><li class="toc-h3"><a href="#sec-2">5. SnapFlow（2604.05656，操作）</a></li><li class="toc-h3"><a href="#sec-3">6. VLA-SSD（2611.20460，操作）</a></li><li class="toc-h3"><a href="#sec-4">7. FastOPD（2610.02832，操作）</a></li><li class="toc-h3"><a href="#sec-5">8. VLA-MOPD（2611.12286，操作）</a></li><li class="toc-h3"><a href="#sec-6">9. APM（2611.22592，WAM 双臂）</a></li><li class="toc-h3"><a href="#sec-7">10. RealtimeWAM / TACD（2610.06617，WAM）</a></li><li class="toc-h3"><a href="#sec-8">11. WAM-Policy（2611.24011，WAM 四足）</a></li><li class=""><a href="#sec-9">B. S2 · 表示级蒸馏：对齐隐层 / latent / 世界模型特征</a></li><li class="toc-h3"><a href="#sec-10">1. Orion-Lite（2604.08266，驾驶）</a></li><li class="toc-h3"><a href="#sec-11">2. THAW-VLA（2609.24682，操作）</a></li><li class="toc-h3"><a href="#sec-12">3. CKT-WAM（2605.06247，WAM）</a></li><li class="toc-h3"><a href="#sec-13">4. S-VAM（2603.16195，WAM 自蒸馏）</a></li><li class="toc-h3"><a href="#sec-14">12. W2A（2611.02600，WAM）</a></li><li class="toc-h3"><a href="#sec-15">15. 剪枝 + 离线隐层（2609.19579，操作）</a></li><li class=""><a href="#sec-16">C. S3 · 行为级蒸馏：蒸馏成功交互经验</a></li><li class="toc-h3"><a href="#sec-17">14. H2E（2611.16246，导航）</a></li><li class=""><a href="#sec-18">D. S6 · 信号级蒸馏：把 verifier / 测试时计算的增益固化</a></li><li class="toc-h3"><a href="#sec-19">13. VAD（2610.14885，操作）</a></li><li class=""><a href="#sec-20">E. S4 · 数据级蒸馏：教师只当标注器</a></li><li class="toc-h3"><a href="#sec-21">16. AutoVLA（2506.13757，驾驶）</a></li><li class=""><a href="#sec-22">F. T3 · 训练期对齐：教师只在训练期存在</a></li><li class="toc-h3"><a href="#sec-23">17. VLP（2401.05577，驾驶）</a></li></ol></details>
+<h1>13 · 方法卡片：按原理分类 × 中英核心说明 × 核心代码</h1>
+<blockquote>每张卡片给「中文核心说明 + English core idea + 核心代码」；分类沿用 01 章的 S1–S6 原理轴。<br>代码取自 12 章已核对的实现（逐字），未核实处不改写；证据级别沿用对应章节的分级。</blockquote>
+<h2 id="sec-1">A. S1 · 输出级蒸馏：对齐教师的动作 / 速度场 / 端点</h2>
+<h3 id="sec-2">5. SnapFlow（2604.05656，操作）</h3>
+<p><strong>核心说明（中文）</strong>：在标准 flow-matching 之外加一个 shortcut 分支：目标=模型自己的两步 Euler 端点（stop-grad）；零初始化的目标时间投影让同一个 action expert 同时服务两个目标，推理一次前向出动作。</p>
+<p><strong>Core idea (EN)</strong>：Add a shortcut branch on top of standard flow matching whose target is the model&#x27;s own two-step Euler endpoint under stop-grad; a zero-initialized destination-time projection lets one action expert serve both objectives, and inference is a single forward pass.</p>
+<pre class="code"><code>def snapflow_step(model, x0, cond, lam=1.0):
+    # 输入:
+    #   x0   [B,H,D]  真值动作
+    #   cond [B,N,C]  视觉语言条件
+    # 输出:
+    #   loss  : scalar
+    #   stats : dict {&quot;L_fm&quot;, &quot;L_sc&quot;}
+    B  = x0.size(0)
+    t  = torch.rand(B, 1, device=x0.device)
+    eps = torch.randn_like(x0)
+    x_t = (1 - t)[..., None] * x0 + t[..., None] * eps
+
+    # [S1] 标准 FM：目标时间=当前 t
+    v_pred = model(x_t, t, t_dst=t, cond=cond)
+    L_fm   = F.mse_loss(v_pred, eps - x0)
+
+    # [S2] shortcut：自己的两步 Euler 端点（整链 no_grad）
+    with torch.no_grad():
+        t_mid = 0.5 * t
+        v1    = model(x_t, t, t_dst=t_mid, cond=cond)
+        x_mid = x_t + (t_mid - t)[..., None] * v1
+        v2    = model(x_mid, t_mid, t_dst=torch.zeros_like(t), cond=cond)
+        x_dst = x_mid + (0 - t_mid)[..., None] * v2
+        v_tgt = (x_dst - x_t) / (0 - t)[..., None]
+
+    v_short = model(x_t, t, t_dst=torch.zeros_like(t), cond=cond)
+    L_sc    = F.mse_loss(v_short, v_tgt)
+
+    loss = L_fm + lam * L_sc                                   # [S4]
+    return loss, {&quot;L_fm&quot;: L_fm.item(), &quot;L_sc&quot;: L_sc.item()}</code></pre>
+<p>详见：<a href="04-step-distill.html">04 · 步数蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h3 id="sec-3">6. VLA-SSD（2611.20460，操作）</h3>
+<p><strong>核心说明（中文）</strong>：把 flow map 扩成 Itô map：输入初始动作 + 布朗路径，输出单跳动作；用一次 JVP 算动作 log-density，再用 GRPO 的 clipped 目标更新，不需要外部教师。</p>
+<p><strong>Core idea (EN)</strong>：Extend the flow map into an Itô map that maps an initial action plus a Brownian path to a single-jump action; compute the action log-density with one JVP and update with GRPO&#x27;s clipped objective — no external teacher.</p>
+<pre class="code"><code>def vla_ssd_train_step(ito, a0, state, reward_fn, logp_old, cfg):
+    # 输入:
+    #   ito       : Itô map 模块
+    #   a0        [B,L]   初始动作（噪声）
+    #   state     : 观测/语言条件（这里省略）
+    #   reward_fn : callable(a1) -&gt; R [B]
+    #   logp_old  [B]     上一版策略的 log-prob
+    # 输出:
+    #   loss  : scalar
+    #   stats : dict {&quot;reward_mean&quot;, &quot;zero_var_ratio&quot;}
+    W    = torch.randn(B, L, device=a0.device).cumsum(-1)      # [S1] 布朗路径
+    a1   = ito(a0, W, state)                                   # [S2] 单跳
+    logp, = jvp(lambda z: ito(z, W, state), (a0,), (torch.ones_like(a0),))  # [S3]
+
+    R = reward_fn(a1)                                          # [S3]
+    A = (R - R.mean()) / (R.std() + cfg.kappa)                 # [S4]
+    ratio = (logp - logp_old).exp()
+    loss = -torch.min(ratio * A,
+                      ratio.clamp(1 - cfg.eps, 1 + cfg.eps) * A).mean()   # [S4]
+    stats = {&quot;reward_mean&quot;: R.mean().item(),
+             &quot;zero_var_ratio&quot;: (R.std(0) &lt; 1e-6).float().mean().item()}
+    return loss, stats</code></pre>
+<p>详见：<a href="04-step-distill.html">04 · 步数蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h3 id="sec-4">7. FastOPD（2610.02832，操作）</h3>
+<p><strong>核心说明（中文）</strong>：学生冻结 VLM 主干只训 action expert；学生先自己跳一步得到落点，教师只在该落点查询速度场，另用「经中点的两段短跳」约束直跳，最终 2 步部署。</p>
+<p><strong>Core idea (EN)</strong>：Freeze the VLM and train only the action expert; the student jumps to a landing point and queries the teacher there, with a midpoint two-jump consistency term constraining the direct jump — 2-step deployment.</p>
+<pre class="code"><code>def fastopd_step(student, teacher, x1, cond, cfg):
+    # 输入:
+    #   x1   [B,H,D]  噪声（动作生成的起点）
+    #   cond [B,N,C]  视觉语言条件
+    # 输出:
+    #   loss  : scalar = L_sc + lam * L_opd
+    #   stats : dict
+    B = x1.size(0)
+
+    # [S2] 学生自己的落点（教师只查这一个点）
+    t   = torch.rand(B, 1) * 0.9 + 0.05
+    x_t = student.jump(x1, s=1.0, t=t, cond=cond).detach()
+
+    # [S3] 落点上的速度对齐
+    L_opd = F.mse_loss(student.velocity(x_t, t, cond),
+                       teacher.velocity(x_t, t, cond))
+
+    # [S4] 有限区间自一致
+    s   = t * torch.rand(B, 1)
+    m   = 0.5 * (s + t)
+    x_s = student.jump(x1, s=1.0, t=s, cond=cond).detach()
+    with torch.no_grad():
+        v_s  = student.velocity(x_s, s, cond)
+        x_m  = x_s + (m - s) * v_s
+        v_m  = student.velocity(x_m, m, cond)
+        tgt  = 0.5 * (v_s + v_m)
+    L_sc = F.mse_loss(student.interval_vel(x_s, s, t, cond), tgt)
+
+    loss = L_sc + cfg.lam * L_opd                             # [S5]
+    return loss, {&quot;L_opd&quot;: L_opd.item(), &quot;L_sc&quot;: L_sc.item()}</code></pre>
+<p>详见：<a href="06-on-policy.html">06 · On-policy 蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h3 id="sec-5">8. VLA-MOPD（2611.12286，操作）</h3>
+<p><strong>核心说明（中文）</strong>：学生自己跑收集访问到的观测；按指令选对应的冻结任务专家，在每个观测与 ODE 中间态上查教师 transition，只对有效动作维度算 masked 匹配损失，可加 reference 策略项防遗忘。</p>
+<p><strong>Core idea (EN)</strong>：Roll out the student to collect visited observations; pick the matching frozen task expert by instruction, query its transition at observations and ODE intermediate states, and match with a masked loss over valid action dims, optionally plus a reference-policy term.</p>
+<pre class="code"><code>def vla_mopd_step(student, teachers, task, ref, cfg):
+    # 输入:
+    #   student  : 共享学生
+    #   teachers : dict[task_id -&gt; frozen teacher]
+    #   task     : 含 instruction / obs
+    #   ref      : reference policy（可为 None）
+    # 输出:
+    #   loss  : scalar
+    #   stats : dict
+    traj = rollout(student, task)                             # [S1]
+    teacher = teachers[route(task.instruction)]               # [S2]
+
+    loss = 0.0
+    for obs, act in traj:
+        x = torch.randn_like(act)                             # 起点噪声
+        for k in range(cfg.K):                                # [S3] 逐 flow step
+            with torch.no_grad():
+                tgt = transition(teacher, obs, x, k, cfg.K)   # detach 目标
+            mask = valid_dims(act)                            # [S4] 有效维
+            loss = loss + masked_match(transition(student, obs, x, k, cfg.K), tgt, mask)
+            x = x + tgt / cfg.K                               # 沿教师轨迹推进
+
+    if ref is not None:
+        loss = loss + cfg.beta * ref_kl(student, ref, task)   # [S5]
+    return loss / max(len(traj), 1), {...}</code></pre>
+<p>详见：<a href="06-on-policy.html">06 · On-policy 蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h3 id="sec-6">9. APM（2611.22592，WAM 双臂）</h3>
+<p><strong>核心说明（中文）</strong>：两阶段：Stage I 用 AnyFlow 式有限区间蒸馏把整网变成「任意区间一步走」的 map；Stage II 冻结 base 只训 video/action 两组 LoRA，教师从学生自达状态给出端点锚与首步中间态，梯度冲突时用 anchor-priority 投影。</p>
+<p><strong>Core idea (EN)</strong>：Two stages: Stage I distills finite-interval flow into a one-step-in-any-interval map; Stage II freezes the base and trains video/action LoRAs, with teacher endpoint anchors and first-step states from student-reached states, using anchor-priority projection on gradient conflicts.</p>
+<pre class="code"><code>def apm_step(student, teacher, x1, cfg):
+    # 输入:
+    #   x1 [B,N,D] 噪声（视频/动作 latent）
+    # 输出:
+    #   loss  : scalar
+    #   stats : dict
+    r = torch.rand(B, 1) * 0.9 + 0.05
+    z_r = rollout(student, x1, K=cfg.K, to=r).detach()          # [S3]
+
+    s   = r - 1.0 / cfg.K_T                                      # 教师首步
+    with torch.no_grad():
+        y_0 = teacher.integrate(z_r, r, 0.0)                     # [S4] 端点锚
+        z_s = teacher.integrate(z_r, r, s)                       # [S4] 首步中间态
+
+    L_anchor = F.mse_loss(psi(student, z_r, r, 0.0), y_0)        # [S5]
+    L_field  = F.mse_loss(psi(student, z_r, r, s),   z_s)
+
+    g_a, g_f = grad(L_anchor, student.lora), grad(L_field, student.lora)
+    g_total  = project(g_a, g_f)                                 # [S5]
+    return L_anchor + cfg.lam * L_field, {...}</code></pre>
+<p>详见：<a href="03-wam-distill.html">03 · WAM 蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h3 id="sec-7">10. RealtimeWAM / TACD（2610.06617，WAM）</h3>
+<p><strong>核心说明（中文）</strong>：冻结 Video Expert 一次前向产出 block-wise KV；只训 action expert（另维护 EMA 目标），教师多步 rollout 的端点折算成区间平均速度作为监督；action block 只读对应 video block 的 KV。</p>
+<p><strong>Core idea (EN)</strong>：Freeze the video expert to produce block-wise KV in one forward; train only the action expert (with an EMA target), supervised by interval-averaged velocity folded from teacher multi-step rollouts; each action block reads only its matching video block&#x27;s KV.</p>
+<pre class="code"><code>def tacd_step(action_expert, ema, teacher, obs, a0, cfg):
+    # 输入:
+    #   obs  [B,V,3,H,W]
+    #   a0   [B,H,D]
+    # 输出:
+    #   loss  : scalar = L_CD + lam * L_TA
+    #   stats : dict
+    with torch.no_grad():
+        kv = video_expert.kv(obs)                             # [S1] 只算一次
+
+    t   = torch.rand(B, 1)
+    eps = torch.randn_like(a0)
+    a_t = (1 - t) * a0 + t * eps
+
+    v_S = action_expert(a_t, t, kv)                           # [S2]
+    with torch.no_grad():
+        a0_T = solver(a_t, t, 0.0, teacher, kv)               # [S3] 教师端点
+        u_T  = (a_t - a0_T) / t.clamp(min=1e-3)               # [S3] 区间平均速度
+
+    L_TA = F.mse_loss(v_S, u_T)                               # [S4]
+    L_CD = consistency_loss(action_expert, ema, a_t, t, kv)   # [S4]
+    return L_CD + cfg.lam * L_TA, {...}</code></pre>
+<p>详见：<a href="03-wam-distill.html">03 · WAM 蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h3 id="sec-8">11. WAM-Policy（2611.24011，WAM 四足）</h3>
+<p><strong>核心说明（中文）</strong>：教师=换四足接口微调后的 LingBot-VA 并冻结；学生=教师 + LoRA，采样器压到 1 步视频 / 2 步动作，视频与动作两个端点分别用 pseudo-Huber 回归，只更新 LoRA。</p>
+<p><strong>Core idea (EN)</strong>：Adapt a LingBot-VA teacher to quadruped control and freeze it; the student is teacher + LoRA with a 1-video-step / 2-action-step sampler, regressing both video and action endpoints with pseudo-Huber loss while only LoRA trains.</p>
+<pre class="code"><code>def wam_policy_step(student, teacher, cfg):
+    # 输入:
+    #   student : 教师 + LoRA（Δ 唯一可训）
+    #   teacher : 冻结
+    # 输出:
+    #   loss  : scalar = L_Z + lam_A * L_A
+    #   stats : dict
+    B = cfg.batch
+    eps_Z = torch.randn(B, cfg.N, cfg.Cz)
+    eps_A = torch.randn(B, cfg.H, cfg.D)
+
+    Z_hat = student.sample_video(eps_Z, H=cfg.H, steps=1)          # [S2]
+    A_hat = student.sample_action(eps_A, Z_hat.detach(), H=cfg.H, steps=2)  # [S2]
+
+    with torch.no_grad():
+        Z_T = teacher.sample_video(eps_Z, H=cfg.H, steps=cfg.K_T)  # [S3]
+        A_T = teacher.sample_action(eps_A, Z_T, H=cfg.H, steps=cfg.K_T)
+
+    L_Z = pseudo_huber(Z_hat - Z_T).mean()                         # [S4]
+    L_A = pseudo_huber(A_hat - A_T).mean()                         # [S4]
+    return L_Z + cfg.lam_A * L_A, {...}                            # [S5]
+
+
+def pseudo_huber(r, c=1e-3):
+    # 输入: r 任意形状；输出: 同形
+    return (r ** 2 + c ** 2).sqrt() - c</code></pre>
+<p>详见：<a href="06-on-policy.html">06 · On-policy 蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h2 id="sec-9">B. S2 · 表示级蒸馏：对齐隐层 / latent / 世界模型特征</h2>
+<h3 id="sec-10">1. Orion-Lite（2604.08266，驾驶）</h3>
+<p><strong>核心说明（中文）</strong>：把 7B 教师的 latent planning token 作为伪标签，用 L1 让 0.1B 学生 decoder 对齐，同时保留轨迹级 GT 损失；视觉塔、QT-Former、教师全部冻结，只训 decoder 与 planner。</p>
+<p><strong>Core idea (EN)</strong>：Distill the frozen 7B teacher&#x27;s latent planning token into a 0.1B six-layer decoder with L1 regression, while keeping trajectory-level GT losses; the vision tower, QT-Former and teacher stay frozen — only the decoder and planner train.</p>
+<pre class="code"><code>def orion_lite_step(batch, teacher, student, cfg):
+    # 输入:
+    #   batch.images [B,V,3,224,224] float32
+    #   batch.text   [B,T]           int64
+    #   batch.traj   [B,H,3]         float32   (x, y, heading)
+    # 输出:
+    #   loss  : scalar
+    #   stats : dict  {&quot;L_mimic&quot;: float, &quot;L_gt&quot;: float}
+    with torch.no_grad():                                      # [S1] 教师只前向
+        T_p = teacher.planning_token(batch.images, batch.text)  # [B,1,C_p]
+
+    vis = student.vision(batch.images)                         # [S2] 冻结视觉塔
+    T_s = student.decoder(vis)                                 # [S3] [B,1,C_p]
+
+    L_mimic = (T_s - T_p).abs().mean()                         # [S4] L1 对齐 ✓
+    pred    = student.planner(T_s, vis)                        # [B,H,3]
+    L_gt    = traj_losses(pred, batch.traj)                    # [S4] 四项 GT ✓
+
+    loss = L_gt + L_mimic                                      # [S5] ✓
+    return loss, {&quot;L_mimic&quot;: L_mimic.item(), &quot;L_gt&quot;: L_gt.item()}
+
+
+def traj_losses(pred, gt):
+    # 输入: pred [B,H,3], gt [B,H,3]
+    # 输出: scalar = L_col + 3*L_bd + 3*L_reg + 3*L_vae   ✓ λ=3
+    return (collision_loss(pred, gt)
+            + 3.0 * boundary_loss(pred, gt)
+            + 3.0 * regression_loss(pred, gt)
+            + 3.0 * vae_loss(pred, gt))</code></pre>
+<p>详见：<a href="02-vla-distill.html">02 · VLA 蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h3 id="sec-11">2. THAW-VLA（2609.24682，操作）</h3>
+<p><strong>核心说明（中文）</strong>：教师理解塔对每个视图产出 1 个 4096 维向量并离线缓存；学生把自己每个视图的图像 token 均值池化后经 2 层 MLP 投影对齐（cosine，λ=0.5）；部署时投影器与缓存全部丢弃。</p>
+<p><strong>Core idea (EN)</strong>：Cache one 4096-d teacher feature per view offline; the student mean-pools its own view tokens, projects them with a 2-layer MLP, and aligns with a cosine loss (λ=0.5). Both projector and cache are dropped at deployment.</p>
+<pre class="code"><code>def thaw_step(batch, student, p_phi, cfg):
+    # 输入:
+    #   batch.obs   [B,V,3,H,W]
+    #   batch.lang  [B,T]
+    #   batch.act   [B,H,D]
+    #   batch.keys  list[(traj_id, frame_idx)]
+    # 输出:
+    #   loss  : scalar = L_act + 0.5 * L_align
+    #   stats : dict
+    h   = student(batch.obs, batch.lang)                 # [S3] QwenGR00T 前向
+    f_S = h.image_tokens.mean(dim=1)                     # [B,V,D_s] 沿该视图 token 维池化
+
+    f_T = load_cache(batch.keys)                          # [S2] [B,V,4096] fp16→fp32
+
+    L_align = (1 - F.cosine_similarity(p_phi(f_S), f_T, dim=-1)).mean()   # [S4] ✓
+    L_act   = flow_matching(h, batch.act)                # 动作专家
+    loss    = L_act + 0.5 * L_align                      # ✓ λ=0.5
+    return loss, {&quot;L_align&quot;: L_align.item(), &quot;L_act&quot;: L_act.item()}</code></pre>
+<p>详见：<a href="05-feature-latent.html">05 · 特征与 latent</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h3 id="sec-12">3. CKT-WAM（2605.06247，WAM）</h3>
+<p><strong>核心说明（中文）</strong>：教师 WAM 单次前向、时间步固定 0 取第 20 层隐状态，经共享 bottleneck（512 维）和两组 32 个 query 压成 32+32 个条件 token，再由常开+8 个专用 adapter（top-k=2 路由）注入冻结的学生 DiT；只训 CKT 模块。</p>
+<p><strong>Core idea (EN)</strong>：One frozen teacher forward at t=0 gives a layer-20 hidden state; a shared 512-d bottleneck plus two 32-query cross-attentions compress it into 32+32 condition tokens, injected into a frozen student DiT through a always-on and 8 routed adapters (top-k=2). Only the CKT module trains.</p>
+<pre class="code"><code>def ckt_step(batch, teacher, ckt, student_dit, cfg):
+    # 输入:
+    #   batch.obs        [B,V,3,H,W]
+    #   batch.text       [B,T]
+    #   batch.latent     [B,Nz,Cl]   (视频+动作 latent)
+    # 输出:
+    #   loss  : scalar
+    #   stats : dict {&quot;L_fm&quot;, &quot;L_bal&quot;}
+    with torch.no_grad():                                    # [S1]
+        H_t = teacher.encode(batch.obs, batch.text, t=0, layer=20)  # [B,N,d_tea]
+
+    h   = ckt.bottleneck(H_t)                                # [S2] [B,N,d_stu]
+    C0g = ckt.lqca_g(ckt.q_g.expand(B, -1, -1), h, h)        # [S3] [B,32,d_stu]
+    C0s = ckt.lqca_s(ckt.q_s.expand(B, -1, -1), h, h)        # [S3] [B,32,d_stu]
+
+    logits = ckt.router(H_t.mean(1))                         # [S4] [B,8] 教师原始特征路由
+    w, idx = logits.topk(2, dim=-1); w = w.softmax(-1)       # ✓ top-k，配置 k=2
+    Cg = C0g + ckt.adapter_general(C0g)                      # 常开广义 adapter（残差）
+    Cs = C0s + sum(ckt.adapters[j](C0s) * w[:, k:k+1, None]
+                   for k, j in enumerate(idx.T))             # top-2 专家（残差）
+
+    cond = torch.cat([batch.text_tokens, ckt.sep, Cg, Cs], dim=1)   # [S5]
+    t    = torch.rand(B, device=obs.device)
+    noisy = add_noise(batch.latent, t)
+    v    = student_dit(noisy, t, cond)                       # 冻结，只前向
+    L_fm = F.mse_loss(v, target_velocity(batch.latent))      # [S6]
+    L_bal = 0.01 * ((logits.softmax(-1).mean(0) * 8 - 1) ** 2).mean()  # ✓
+    loss = L_fm + L_bal
+    return loss, {&quot;L_fm&quot;: L_fm.item(), &quot;L_bal&quot;: L_bal.item()}</code></pre>
+<p>详见：<a href="05-feature-latent.html">05 · 特征与 latent</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h3 id="sec-13">4. S-VAM（2603.16195，WAM 自蒸馏）</h3>
+<p><strong>核心说明（中文）</strong>：取去噪网络第一去噪步的上采样多尺度特征，经轻量 decoupler 对齐冻结 VFM（DPAv3 几何 / DINOv2 语义）特征；教师是模型自己的多步生成结果。</p>
+<p><strong>Core idea (EN)</strong>：Take the upsampled multi-scale features from the first denoising step and align them to frozen VFM features (DPAv3 geometry / DINOv2 semantics) through a lightweight decoupler; the teacher is the model&#x27;s own multi-step generation.</p>
+<pre class="code"><code>def svam_step(batch, denoiser, decoup, vfm, policy):
+    # 输入:
+    #   batch.obs   [B,V,3,H,W]
+    #   batch.act   [B,H,D]
+    # 输出:
+    #   loss  : scalar = L_geo + L_sem + L_action
+    #   stats : dict
+    F = concat_interp(denoiser.upsample_features(batch.obs, step=0))   # [S1] [B,N,C_F]
+    with torch.no_grad():
+        V_hat = svd_sample(denoiser, batch.obs, steps=K)                # [S2]
+        Y_geo = vfm.dpav3(interp_to(V_hat, N))                          # [S3]
+        Y_sem = vfm.dinov2(interp_to(V_hat, N))                          # [S3]
+
+    F_geo = decoup.geo(torch.cat([F, Y_geo_ref], -1))                   # [S4]
+    F_sem = decoup.sem(torch.cat([F, Y_sem_ref], -1))
+    L_geo = ((F_geo - Y_geo) ** 2).mean()
+    L_sem = ((F_sem - Y_sem) ** 2).mean()
+
+    tokens = uni_perceiver([F, F_geo, F_sem])                           # [S5]
+    L_act  = flow_loss(policy(tokens), batch.act)
+    return L_geo + L_sem + L_act, {...}</code></pre>
+<p>详见：<a href="03-wam-distill.html">03 · WAM 蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h3 id="sec-14">12. W2A（2611.02600，WAM）</h3>
+<p><strong>核心说明（中文）</strong>：视频 DiT（LoRA 适配）取中间层 / 中间步 latent，PCA 压到低维子空间；action DiT 从零训练，用 Q-Former 把动作侧中间层映射到同一空间，按去噪时间加权做 cosine 对齐，测试时丢掉视频模型。</p>
+<p><strong>Core idea (EN)</strong>：Take mid-layer / mid-step latents from a LoRA-adapted video DiT and compress them with PCA; a from-scratch action DiT maps its mid-layer into the same space via Q-Former and aligns with time-weighted cosine, dropping the video model at test time.</p>
+<pre class="code"><code>def w2a_step(action_dit, qformer, video_dit, pca, batch, cfg):
+    # 输入:
+    #   batch.future [B,F,3,H,W]  未来帧（仅训练期教师可见）
+    #   batch.act    [B,H,D]
+    # 输出:
+    #   loss  : scalar = L_fm + lam_dist * L_dist
+    #   stats : dict
+    with torch.no_grad():
+        Z_v = video_dit.latent(batch.future, layer=cfg.layer, step=cfg.tau)  # [S1]
+    mu, U = pca
+    Z_v_t = (Z_v - mu) @ U                                   # [S2] [B,N,K]
+
+    tau  = torch.rand(B, 1)
+    Z_a  = action_dit.hidden(add_noise(batch.act, tau), tau, cond=batch.cond)  # [S3]
+    Z_hat = qformer(cfg.query, Z_a)                          # [S3] [B,M,K]
+
+    w = torch.exp(-(tau - cfg.tau_c) ** 2 / (2 * cfg.sigma_w ** 2))   # [S4]
+    L_dist = (w * (1 - F.cosine_similarity(Z_hat, Z_v_t, dim=-1))).mean()
+
+    L_fm = flow_matching(action_dit, batch.act, batch.cond)
+    return L_fm + cfg.lam_dist * L_dist, {...}               # [S5]</code></pre>
+<p>详见：<a href="05-feature-latent.html">05 · 特征与 latent</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h3 id="sec-15">15. 剪枝 + 离线隐层（2609.19579，操作）</h3>
+<p><strong>核心说明（中文）</strong>：对 7B 模型做结构化宽度剪枝（63% 或 72%），教师对所有训练帧提 hidden state 写缓存；学生同层 hidden 与教师做 MSE（无 projector），加原任务损失，约 8 GPU-hours 完成恢复——最便宜、最稳的基线。</p>
+<p><strong>Core idea (EN)</strong>：Structurally prune the 7B model (63% or 72%), cache teacher hidden states for all training frames, apply same-layer MSE without a projector plus the task loss, and recover in roughly 8 GPU-hours — the cheapest, most stable baseline.</p>
+<pre class="code"><code>def prune_and_distill(teacher, loader, cfg):
+    # 输入: teacher（7B）, loader, cfg.ratio
+    # 输出: pruned 学生（已恢复）
+    pruned = prune_width(teacher, ratio=0.63)                  # [S1]
+
+    cache = {}
+    with torch.no_grad():
+        for batch in loader:                                   # [S2]
+            cache[batch.key] = teacher(batch.obs, return_hidden=True).half()
+
+    opt = torch.optim.AdamW(pruned.parameters(), lr=cfg.lr)
+    for batch in loader:
+        H_s = pruned(batch.obs, return_hidden=True)            # [S3] 同形状
+        L_align = F.mse_loss(H_s, cache[batch.key].float())
+        L_task  = task_loss(pruned(batch.obs), batch.label)
+        loss    = L_task + cfg.lam * L_align                   # [S4]
+        opt.zero_grad(); loss.backward(); opt.step()
+    return pruned                                              # [S5]</code></pre>
+<p>详见：<a href="02-vla-distill.html">02 · VLA 蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h2 id="sec-16">C. S3 · 行为级蒸馏：蒸馏成功交互经验</h2>
+<h3 id="sec-17">14. H2E（2611.16246，导航）</h3>
+<p><strong>核心说明（中文）</strong>：LLM planner + 冻结 VLA 组队跑任务，只保留成功 session；把规划器的子指令/工具移动/停止决策全部重标为 VLA 动作，按「是否朝目标前进」生成 progress mask、距目标 1m 内加停机标签，与导航数据混合做 masked L1 训练。</p>
+<p><strong>Core idea (EN)</strong>：Pair an LLM planner with a frozen VLA and keep successful sessions; relabel planner moves and stop decisions as VLA actions, build a progress mask from goal-ward motion, add stop labels within 1 m, and train with masked L1 mixed with navigation data.</p>
+<pre class="code"><code>def build_h2e_dataset(planner, vla, cfg):
+    # 输入: planner（LLM）, vla（冻结 8B）
+    # 输出: [{&quot;obs&quot;, &quot;label&quot;, &quot;mask&quot;}]，以及停机标签
+    data = []
+    for s in run_agent(planner, vla, cfg.tasks):          # [S1]
+        if not s.reached_goal:
+            continue
+        for t, step in enumerate(s):                      # [S2]
+            y = relabel(step)                             # 动作/子指令/停止
+            m = progress_mask(s.p[t], s.p[t + cfg.K], s.goal)   # [S3]
+            if dist(s.p[t], s.goal) &lt;= cfg.r_arr:         # [S4] 1m
+                y = STOP_LABEL
+            data.append({&quot;obs&quot;: step.obs, &quot;label&quot;: y, &quot;mask&quot;: m})
+    return data
+
+
+def progress_mask(p_t, p_tk, goal, delta=0.25):
+    # 输入: 位置（2D/3D），输出: 0/1
+    return float(dist(p_tk, goal) &lt;= dist(p_t, goal) + delta)   # [S3]
+
+
+def h2e_train_step(student, batch):
+    # 输入: batch.obs [B,V,3,H,W], batch.label [B,D], batch.mask [B]
+    # 输出: loss scalar
+    pred = student(batch.obs)                             # LoRA + waypoint head
+    return (batch.mask * (pred - batch.label).abs()).mean()   # [S5] masked L1</code></pre>
+<p>详见：<a href="06-on-policy.html">06 · On-policy 蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h2 id="sec-18">D. S6 · 信号级蒸馏：把 verifier / 测试时计算的增益固化</h2>
+<h3 id="sec-19">13. VAD（2610.14885，操作）</h3>
+<p><strong>核心说明（中文）</strong>：策略采 8 个候选，verifier 只评前 10 步，softmax 加权聚合成一条执行动作；只保留成功 episode，用标准 flow-matching 损失蒸进 LoRA，推理不再需要 verifier。</p>
+<p><strong>Core idea (EN)</strong>：Sample 8 candidates, score only the first 10 steps with a verifier, and execute the softmax-weighted aggregate; keep only successful episodes and distill them into LoRA with standard flow-matching loss — no verifier at inference.</p>
+<pre class="code"><code>def vae_collect_episode(student, verifier, env, cfg):
+    # 输入: student, verifier, env
+    # 输出: 成功则返回 [(obs, A_bar)]，否则 []
+    buf = []
+    for b in range(env.replan_steps):
+        obs = env.observe()
+        cands  = [student.sample(obs) for _ in range(cfg.N)]          # [S1]
+        scores = verifier(obs, [c[:10] for c in cands])               # [S1]
+        A_bar  = aggregate(cands, scores, cfg.lam)                    # [S2]
+        env.execute([c[:10] for c in cands]); buf.append((obs, A_bar))# [S3]
+    return buf if env.success else []                                 # [S4]
+
+
+def aggregate(cands, scores, lam=0.3):
+    # 输入: cands list[[B,H,D]], scores [N]
+    # 输出: A_bar [B,H,D]
+    w = torch.softmax(scores / lam, dim=0)
+    return sum(w[i] * cands[i] for i in range(len(cands)))
+
+
+def vae_distill_step(student, D):
+    # 输入: D = [(obs, A_bar)]
+    # 输出: loss scalar
+    o, A_bar = sample_batch(D)
+    tau = torch.rand(B, 1); eps = torch.randn_like(A_bar)
+    A_tau = (1 - tau) * A_bar + tau * eps
+    return F.mse_loss(student.velocity(A_tau, tau, o), eps - A_bar)   # [S5]</code></pre>
+<p>详见：<a href="06-on-policy.html">06 · On-policy 蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h2 id="sec-20">E. S4 · 数据级蒸馏：教师只当标注器</h2>
+<h3 id="sec-21">16. AutoVLA（2506.13757，驾驶）</h3>
+<p><strong>核心说明（中文）</strong>：72B 教师把 GT 动作作为 hint 生成 CoT 驾驶推理标注（nuPlan 45.6k + Waymo 7.2k），过滤后 SFT 进 3B 学生；学生从未对齐教师分布，教师只当标注器。</p>
+<p><strong>Core idea (EN)</strong>：A 72B teacher generates CoT driving rationales with GT actions as hints (45.6k nuPlan + 7.2k Waymo); after filtering, the annotations fine-tune a 3B student. The student never fits the teacher distribution — the teacher acts purely as an annotator.</p>
+<pre class="code"><code>def annotate(scene, teacher, hint_action):
+    # 输入: scene(多视角图像+指令+ego状态), hint_action(GT 动作, 抑制幻觉)
+    # 输出: CoT 推理文本（场景描述/关键物/意图/决策）
+    prompt = build_prompt(scene, hint=hint_action)
+    return teacher.generate(prompt)            # Qwen2.5-VL-72B
+
+def build_sft_set(scenes, teacher):
+    data = []
+    for s in scenes:
+        cot = annotate(s, teacher, s.gt_action)
+        if passes_quality_filter(cot):         # 一致性/长度过滤
+            data.append((s, cot))
+    return data
+
+def sft_step(batch, student, lam=1.0):
+    # 输入: batch=(多视角图像, 指令, ego状态, CoT, 动作token)
+    logits = student(batch.images, batch.instruction, batch.state)
+    L_lm  = ce(logits.text, batch.cot)         # 语言建模损失
+    L_act = ce(logits.action, batch.action)    # 动作 token 损失
+    return L_lm + lam * L_act</code></pre>
+<p>详见：<a href="07-data-distill.html">07 · 数据蒸馏</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<h2 id="sec-22">F. T3 · 训练期对齐：教师只在训练期存在</h2>
+<h3 id="sec-23">17. VLP（2401.05577，驾驶）</h3>
+<p><strong>核心说明（中文）</strong>：冻结 LLM 把 GT 感知/规划写成 prompt 并编码，用对比损失把 BEV 特征与规划特征向语言嵌入对齐；只训适配层，推理期 LLM 与对比分支完全移除。</p>
+<p><strong>Core idea (EN)</strong>：A frozen LLM encodes GT-grounded prompts; contrastive losses align BEV and planning features to the language embedding. Only an adapter is trained, and the LLM plus contrastive branch are removed at inference.</p>
+<pre class="code"><code>def vlp_step(batch, bev_encoder, lm, adapter):
+    # 输入: batch=(多视角图像, GT 3D 框/全景 mask, 指令, GT 轨迹)
+    # 输出: 对比损失（BEV 特征 ↔ 语言嵌入）
+    bev = bev_encoder(batch.images)                  # 冻结 BEV 编码器
+    agent_prompt = prompt_from_gt(batch.boxes, batch.masks)   # 感知 GT → prompt
+    plan_prompt  = prompt_from_gt(batch.command, batch.traj)  # 规划 GT → prompt
+    with torch.no_grad():
+        e_agent = lm.encode(agent_prompt)            # 冻结 LM，仅前向
+        e_plan  = lm.encode(plan_prompt)
+    h = adapter(bev)                                 # 只训适配层
+    L_agent = contrastive(h, e_agent)                # ALP：agent 级对齐
+    L_plan  = contrastive(h, e_plan)                 # SLP：样本级对齐
+    return L_agent + L_plan</code></pre>
+<p>详见：<a href="05-feature-latent.html">05 · 特征与 latent</a> · <a href="12-implementation.html">12 · 实现手册</a></p>
+<hr>
+<p>更新时间: 2026-11-25</p>
+<footer>大模型 → VLA/WAM 蒸馏研究 · 2026-11 · 数字均标证据级别（L3 全文 / L2 部分 / L1 摘要）</footer>
+</main>
+</body>
+</html>
