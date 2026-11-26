@@ -46,6 +46,7 @@
 | [09-gr00t-series.md](09-gr00t-series.md) | GR00T N1（L3 论文全文）/ N1.5（L1 官方研究页）/ GR00T 2（L1 官方研究页）：架构、数据金字塔、训练配方、关键数值、三代对比、S2 外延变化 | ✅ 完成（N1 论文全文；N1.5/GR00T 2 whitepaper 正文未取） |
 | [10-distillation.md](10-distillation.md) | WAM × 蒸馏：五条路线 + **最近三个月 15 篇新工作速查**（LoopedWAM/Phoenix/HINT-WAM/WAM-Policy/APM/ReLAP/CauSyncVLA/DreamFree/W2A/WAM-OPD/AnyStep/HapticWAM/DIDO/ForeTime-VLA/DreamMimic）+ **实现细节与伪代码**（CKT/S-VAM/THAW 为 L2–L3 原文级；近三月为 L1 摘要级重构，已标注） | ✅ 完成（近三月均为摘要级，引用前需回原文核对） |
 | [11-distillation-pseudocode.md](11-distillation-pseudocode.md) | 工程伪代码版：每个方法给出 角色/输入(含形状)/输出/模块表/训练伪代码/推理伪代码/超参/坑；覆盖 CKT-WAM、S-VAM、THAW-VLA、DreamFree、W2A、APM、DIDO、AnyStep、WAM-OPD 家族、LoopedWAM、GR00T 数据管线 | ✅ 完成（L1 方法形状标 `?` 并注明需回原文） |
+| [12-s2-s1-s0-stack.md](12-s2-s1-s0-stack.md) | 从 S2 到 S0 的实操链路：分层异步 + 潜动作接口；各层规格/频率/训练方式、G1+SONIC+GR00T 具体实现、多速率代码骨架、训练流水线、坑、与 WAM 的关系 | ✅ 完成 |
 
 多页面站点：
 

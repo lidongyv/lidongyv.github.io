@@ -288,4 +288,10 @@ DESIGN = [
      "summary": "13 个 WAM/VLA 蒸馏方法：按「蒸什么」分五族，每个方法给中文说明、English note 与核心伪代码，标注 L3/L2/L1 证据级别。",
      "summary_en": "13 distillation methods for WAM/VLA, grouped by what is distilled; each has a Chinese note, an English note and core pseudocode, with L3/L2/L1 evidence tags.",
      "tags": ["蒸馏", "WAM", "代码"], "tags_en": ["Distillation", "WAM", "Code"]},
+    {"slug": "s2-s1-s0-stack", "root": "repo", "src": "s2-s1-s0-stack",
+     "title": "从 S2 到 S0：具身分层控制选型与实现指南",
+     "title_en": "From S2 to S0: a practical guide to embodied hierarchical control",
+     "summary": "给非具身背景读者的分层实操指南：S2/S1/S0 选型矩阵、自下而上 7 步搭建流程图、带物理意义注释的关键代码、接口延迟补偿、五种备选方案与常见坑。",
+     "summary_en": "A non-expert-friendly practical guide: selection matrix for S2/S1/S0, bottom-up 7-step build flow, key code with physical-meaning comments, latency compensation, five alternative stacks and pitfalls.",
+     "tags": ["具身", "控制", "教程"], "tags_en": ["Embodied", "Control", "Tutorial"]},
 ]

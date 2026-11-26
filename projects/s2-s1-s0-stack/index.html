@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>从 S2 到 S0：具身分层控制选型与实现指南</title>
+<style>
+:root{--ink:#1b2430;--dim:#5b6a79;--line:#dfe5ec;--bg:#f6f8fb;--card:#fff;--acc:#0b6bcb;--soft:#eaf2fb;--warn:#8a5a00;--warnbg:#fdf4e3;--ok:#1d6b38;--okbg:#eaf7ee;--code:#0f1720}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.75}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 20px 80px}
+header.hero{background:linear-gradient(135deg,#0b2a4a,#0b6bcb);color:#fff;border-radius:14px;padding:28px 32px;margin-bottom:18px}
+header.hero h1{margin:0 0 8px;font-size:25px}
+header.hero .sub{margin:0 0 6px;color:#d9e8f8;font-size:15px}
+header.hero .meta{margin:0;color:#bcd6ef;font-size:13px}
+nav.toc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 18px;margin-bottom:18px;font-size:14px}
+nav.toc a{color:var(--ink);text-decoration:none;margin-right:14px;line-height:2}
+nav.toc a:hover{color:var(--acc);text-decoration:underline}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:22px 26px;margin-bottom:18px}
+h2{font-size:20px;margin:4px 0 12px;color:#0b2a4a;border-left:4px solid var(--acc);padding-left:10px}
+h3{font-size:16.5px;margin:22px 0 8px;color:#123c66}
+h4{font-size:15px;margin:16px 0 6px;color:#123c66}
+p{margin:8px 0}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px;background:#fff}
+th{background:#eef4fa;color:#123c66;font-weight:600}
+th,td{border:1px solid var(--line);padding:6px 9px;vertical-align:top;text-align:left}
+tr:nth-child(even) td{background:#fafcfe}
+pre{margin:10px 0;background:var(--code);color:#dbe7f3;border-radius:10px;padding:14px 16px;overflow:auto;font-size:12.8px;line-height:1.55}
+code{font-family:Consolas,"Cascadia Mono",monospace}
+pre .c{color:#7f9bb3}
+pre .k{color:#7cc4ff}
+pre .s{color:#9ae6b4}
+pre .n{color:#ffd479}
+.warn{background:var(--warnbg);border:1px solid #ecd9ae;border-radius:8px;padding:12px 16px;font-size:13.5px;color:var(--warn)}
+.ok{background:var(--okbg);border:1px solid #c4e5cc;border-radius:8px;padding:12px 16px;font-size:13.5px;color:var(--ok)}
+.foot{color:var(--dim);font-size:13px;margin-top:8px}
+a{color:var(--acc)}
+ul,ol{margin:6px 0;padding-left:22px}
+li{margin:4px 0}
+.svgbox{width:100%;overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}
+.svgbox svg{display:block;margin:0 auto;max-width:100%;height:auto}
+.tag{display:inline-block;font-size:11.5px;border-radius:20px;padding:0 8px;margin-left:6px;border:1px solid var(--line);color:var(--dim);background:#f4f7fa}
+.rec{background:var(--okbg);border:1px solid #9fd4ad;color:var(--ok);border-radius:6px;padding:1px 6px;font-size:12px}
+.alt{background:var(--warnbg);border:1px solid #ecd9ae;color:var(--warn);border-radius:6px;padding:1px 6px;font-size:12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:#fff}
+.card h4{margin:0 0 6px}
+.small{font-size:13px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>从 S2 到 S0：具身分层控制的选型与实现指南</h1>
+  <p class="sub">A practical guide from slow reasoning (S2) to fast control (S1) to physics (S0)</p>
+  <p class="meta">2026-11-27 · 面向非具身背景读者 · 含框图/流程图/选型矩阵/关键代码（带物理意义注释）/备选方案 · 参考 GR00T、SONIC、Helix、π0.5</p>
+</header>
+
+<nav class="toc">
+  <a href="#why">0 先看总图</a>
+  <a href="#why3">1 为什么分三层</a>
+  <a href="#matrix">2 选型矩阵</a>
+  <a href="#flow">3 搭建顺序</a>
+  <a href="#s0">4 S0 实现</a>
+  <a href="#s1">5 S1 实现</a>
+  <a href="#iface">6 接口实现</a>
+  <a href="#s2">7 S2 实现</a>
+  <a href="#alt">8 备选方案</a>
+  <a href="#budget">9 延迟预算与坑</a>
+  <a href="#refs">10 参考与术语</a>
+</nav>
+
+<section id="why">
+  <h2>0. 先看总图：一条链路</h2>
+  <div class="svgbox">
+  <svg viewBox="0 0 960 470" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
+    <defs>
+      <marker id="ar" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+        <path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/>
+      </marker>
+    </defs>
+    <!-- S2 -->
+    <rect x="30" y="20" width="900" height="86" rx="10" fill="#eaf2fb" stroke="#0b6bcb" stroke-width="1.5"/>
+    <text x="48" y="46" font-size="16" font-weight="700" fill="#0b2a4a">S2 慢思考（GPU，1–5Hz）</text>
+    <text x="48" y="70" font-size="13" fill="#1b2430">VLM/VLA：图像+语言+状态 → 子任务 / 目标图 / 64 维潜动作 token / 关键点位姿</text>
+    <text x="48" y="90" font-size="12" fill="#5b6a79">代表：GR00T N1.7、Qwen2.5-VL、Gemini Robotics（云）、WAM+agent（GR00T 2）</text>
+    <!-- arrow -->
+    <line x1="480" y1="106" x2="480" y2="146" stroke="#0b6bcb" stroke-width="2" marker-end="url(#ar)"/>
+    <text x="495" y="132" font-size="12" fill="#0b6bcb">接口：语言 / token / 位姿+导航（2.5–10Hz）</text>
+    <!-- S1 -->
+    <rect x="30" y="150" width="900" height="86" rx="10" fill="#eaf7ee" stroke="#1d6b38" stroke-width="1.5"/>
+    <text x="48" y="176" font-size="16" font-weight="700" fill="#123c66">S1 快控制（机载，50–200Hz）</text>
+    <text x="48" y="200" font-size="13" fill="#1b2430">全身/手臂策略：token 或参考运动 + 本体感知 → 关节目标位置（PD 指令）</text>
+    <text x="48" y="220" font-size="12" fill="#5b6a79">代表：SONIC（42M，50Hz）、Helix S1（80M，200Hz）、GR00T S1 DiT（120Hz）</text>
+    <!-- arrow -->
+    <line x1="480" y1="236" x2="480" y2="276" stroke="#1d6b38" stroke-width="2" marker-end="url(#ar)"/>
+    <!-- S0 -->
+    <rect x="30" y="280" width="900" height="86" rx="10" fill="#fdf4e3" stroke="#b07a1e" stroke-width="1.5"/>
+    <text x="48" y="306" font-size="16" font-weight="700" fill="#8a5a00">S0 物理层（驱动器/硬件，≥1kHz）</text>
+    <text x="48" y="330" font-size="13" fill="#1b2430">PD/阻抗控制（Kp/Kd）+ 力矩限幅 + 机械顺应（足底、关节柔性）+ 独立安全停机</text>
+    <text x="48" y="350" font-size="12" fill="#5b6a79">物理意义：刚度/阻尼决定跟踪与柔顺；形态与被动动力学本身承担一部分「计算」（Taniguchi S0）</text>
+    <!-- side labels -->
+    <text x="30" y="420" font-size="13" fill="#5b6a79">频率差 2–3 个数量级 → 必须异步、分进程、带时间戳；接口选「潜动作 token」可跨本体、可缓存、可加修正。</text>
+  </svg>
+  </div>
+  <p class="small">读图顺序：从下往上看（S0 是地基），从上看下看（S2 是意图）。三层各自独立开发，用接口解耦。</p>
+</section>
+
+<section id="why3">
+  <h2>1. 为什么必然分三层：三个物理约束</h2>
+  <table>
+    <tr><th>约束</th><th>数字</th><th>推论</th></tr>
+    <tr><td>大模型推理慢</td><td>VLM 单次 50–200ms（云更慢）；VLA 输出 1–5Hz</td><td>不能直接闭环控制；只能出「意图/子目标」</td></tr>
+    <tr><td>控制需要快</td><td>平衡/接触需 50–200Hz；力矩环 1kHz</td><td>S1 必须机载、低延迟；S0 在驱动器内闭环</td></tr>
+    <tr><td>物理安全</td><td>力矩/速度/姿态超限需 ms 级切断</td><td>安全层必须在 S0 独立实现，不能依赖 S1/S2</td></tr>
+  </table>
+  <div class="ok">一句话：<b>S2 决定「做什么」，S1 决定「怎么做」，S0 保证「做得动、不出事」。</b></div>
+</section>
+
+<section id="matrix">
+  <h2>2. 选型矩阵：每层有哪些选项</h2>
+  <h3>2.1 S2（慢思考）</h3>
+  <table>
+    <tr><th>选项</th><th>输入/输出</th><th>优点</th><th>缺点</th><th>适用</th></tr>
+    <tr><td><span class="rec">推荐</span> VLA（GR00T N1.7 / π0.5）</td><td>图像+语言 → 动作 token / 子任务</td><td>端到端、生态成熟（LeRobot 数据）</td><td>需示教数据；泛化有限</td><td>产品原型、任务明确</td></tr>
+    <tr><td>VLM 规划器（Qwen2.5-VL / GPT-4o）</td><td>图像+语言 → 子任务文本/目标点</td><td>零样本语义强、可解释</td><td>无动作先验、频率低</td><td>长程任务、开放指令</td></tr>
+    <tr><td>WAM + agent（GR00T 2 式）</td><td>图像+语言 → 未来视频+动作/工具调用</td><td>可想象、可验证</td><td>重、延迟高</td><td>复杂操作、研究</td></tr>
+    <tr><td>云-端（Gemini Robotics）</td><td>云端 VLM → 端侧解码</td><td>算力大、迭代快</td><td>网络依赖、隐私</td><td>联网场景</td></tr>
+  </table>
+  <h3>2.2 接口（S2→S1）</h3>
+  <table>
+    <tr><th>选项</th><th>形式</th><th>带宽</th><th>优点</th><th>缺点</th></tr>
+    <tr><td><span class="rec">推荐</span> 潜动作 token</td><td>64 维 × 40 步（SONIC）/ 动作 chunk</td><td>高（连续）</td><td>跨本体、可缓存、S1 不用改</td><td>token 语义受 S1 限制</td></tr>
+    <tr><td>语言子任务</td><td>“把苹果放进盘子”</td><td>低</td><td>可解释、易调试</td><td>丢细节、需 S1 懂语言</td></tr>
+    <tr><td>关键点位姿 + 导航</td><td>头/双腕 SE(3)、腰高、速度</td><td>中</td><td>人可标注、遥操作友好</td><td>需规划器补全下半身</td></tr>
+  </table>
+  <h3>2.3 S1（快控制）</h3>
+  <table>
+    <tr><th>选项</th><th>训练方式</th><th>频率</th><th>优点</th><th>缺点</th></tr>
+    <tr><td><span class="rec">推荐</span> RL 跟踪器（SONIC 式）</td><td>仿真 PPO + 域随机化</td><td>50Hz</td><td>鲁棒、通用、可复用</td><td>训练贵（万 GPU 小时级）</td></tr>
+    <tr><td>端到端 visuomotor（Helix S1）</td><td>遥操作 IL</td><td>200Hz</td><td>与 S2 联合训练、延迟小</td><td>需大量遥操作数据</td></tr>
+    <tr><td>VLA 动作头（DiT flow matching）</td><td>示教微调</td><td>10–50Hz</td><td>语义强、单模型</td><td>高频控制弱</td></tr>
+    <tr><td>经典 MPC/WBC</td><td>建模+优化</td><td>50–500Hz</td><td>可解释、约束硬</td><td>建模难、接触弱</td></tr>
+  </table>
+  <h3>2.4 S0（物理层）</h3>
+  <table>
+    <tr><th>选项</th><th>实现</th><th>优点</th><th>缺点</th></tr>
+    <tr><td><span class="rec">推荐</span> 关节 PD + 限幅</td><td>Kp/Kd + 力矩/速度/位置限幅</td><td>简单可靠、所有机器人标配</td><td>接触柔顺一般</td></tr>
+    <tr><td>阻抗控制</td><td>M(q)q̈ + C + G + K(q−q*) + Dq̇ = τ</td><td>接触友好、可调柔顺</td><td>需动力学模型</td></tr>
+    <tr><td>串联弹性/被动顺应</td><td>弹性关节、足底橡胶、柔性件</td><td>抗冲击、省控制</td><td>带宽低、设计复杂</td></tr>
+    <tr><td>纯力矩控制</td><td>力矩环</td><td>最柔顺</td><td>需高精度力矩传感</td></tr>
+  </table>
+</section>
+
+<section id="flow">
+  <h2>3. 搭建顺序：自下而上 7 步（流程图）</h2>
+  <div class="svgbox">
+  <svg viewBox="0 0 980 430" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
+    <defs>
+      <marker id="ar2" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+        <path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/>
+      </marker>
+    </defs>
+    <!-- row 1 -->
+    <rect x="20" y="20" width="200" height="84" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="34" y="48" font-size="14" font-weight="700" fill="#8a5a00">① S0 台架</text>
+    <text x="34" y="70" font-size="12" fill="#1b2430">单关节 PD 跟踪</text>
+    <text x="34" y="88" font-size="12" fill="#1b2430">限幅 / 急停 / 辨识</text>
+
+    <rect x="260" y="20" width="200" height="84" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="274" y="48" font-size="14" font-weight="700" fill="#123c66">② S1 仿真</text>
+    <text x="274" y="70" font-size="12" fill="#1b2430">IsaacLab 跟踪任务</text>
+    <text x="274" y="88" font-size="12" fill="#1b2430">域随机化 / 4096 envs</text>
+
+    <rect x="500" y="20" width="200" height="84" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="514" y="48" font-size="14" font-weight="700" fill="#123c66">③ Sim2Real</text>
+    <text x="514" y="70" font-size="12" fill="#1b2430">MuJoCo→实机</text>
+    <text x="514" y="88" font-size="12" fill="#1b2430">延迟/滤波标定</text>
+
+    <rect x="740" y="20" width="220" height="84" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="754" y="48" font-size="14" font-weight="700" fill="#0b2a4a">④ 接口</text>
+    <text x="754" y="70" font-size="12" fill="#1b2430">token/位姿通道</text>
+    <text x="754" y="88" font-size="12" fill="#1b2430">时间戳 / 超时 / 插值</text>
+
+    <!-- arrows row1 -->
+    <line x1="220" y1="62" x2="256" y2="62" stroke="#0b6bcb" stroke-width="2" marker-end="url(#ar2)"/>
+    <line x1="460" y1="62" x2="496" y2="62" stroke="#0b6bcb" stroke-width="2" marker-end="url(#ar2)"/>
+    <line x1="700" y1="62" x2="736" y2="62" stroke="#0b6bcb" stroke-width="2" marker-end="url(#ar2)"/>
+    <!-- down arrow -->
+    <line x1="850" y1="104" x2="850" y2="150" stroke="#0b6bcb" stroke-width="2" marker-end="url(#ar2)"/>
+    <!-- row 2 (right to left) -->
+    <rect x="740" y="154" width="220" height="84" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="754" y="182" font-size="14" font-weight="700" fill="#0b2a4a">⑤ S2</text>
+    <text x="754" y="204" font-size="12" fill="#1b2430">VLA/VLM 微调</text>
+    <text x="754" y="222" font-size="12" fill="#1b2430">50–100 条/任务</text>
+
+    <rect x="500" y="154" width="200" height="84" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="514" y="182" font-size="14" font-weight="700" fill="#0b2a4a">⑥ 联调</text>
+    <text x="514" y="204" font-size="12" fill="#1b2430">S2→接口→S1</text>
+    <text x="514" y="222" font-size="12" fill="#1b2430">超时→保持/停止</text>
+
+    <rect x="260" y="154" width="200" height="84" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="274" y="182" font-size="14" font-weight="700" fill="#0b2a4a">⑦ 回归与安全</text>
+    <text x="274" y="204" font-size="12" fill="#1b2430">扰动/长跑/回放</text>
+    <text x="274" y="222" font-size="12" fill="#1b2430">独立急停验证</text>
+
+    <line x1="740" y1="196" x2="704" y2="196" stroke="#0b6bcb" stroke-width="2" marker-end="url(#ar2)"/>
+    <line x1="500" y1="196" x2="464" y2="196" stroke="#0b6bcb" stroke-width="2" marker-end="url(#ar2)"/>
+    <text x="20" y="300" font-size="13" fill="#5b6a79">时间预估（单任务、有现成硬件）：① 1 天 ② 1–2 周 ③ 1 周 ④ 2–3 天 ⑤ 1 周 ⑥ 1 周 ⑦ 持续。</text>
+    <text x="20" y="326" font-size="13" fill="#5b6a79">原则：每层单独验收（S0 能跟踪、S1 能稳走、接口不丢帧），再往上接；任何一层没验收就不要联调。</text>
+    <text x="20" y="352" font-size="13" fill="#5b6a79">反模式：先训大模型再补控制（会返工）；S2 直接输出关节角（频率不够）；安全层依赖上层（危险）。</text>
+  </svg>
+  </div>
+</section>
+
+<section id="s0">
+  <h2>4. S0 实现：物理层的代码与物理意义</h2>
+  <h3>4.1 关节 PD（最常用）</h3>
+  <pre><code><span class="c"># 每个关节、每 1ms 执行一次（驱动器内）</span>
+<span class="c"># q: 当前位置(rad)  qd: 当前速度(rad/s)  q_des: S1 给的目标位置</span>
+tau = Kp * (q_des - q) - Kd * qd + tau_ff      <span class="c"># 单位 N·m</span>
+tau = clamp(tau, tau_min, tau_max)             <span class="c"># 保护减速器</span>
+motor.set_torque(tau)
+<span class="c"># 物理意义：</span>
+<span class="c">#   Kp: 刚度——越大跟得越紧，但太大激起结构共振/振荡（典型 20–200 Nm/rad，按关节调）</span>
+<span class="c">#   Kd: 阻尼——抑制超调；太小欠阻尼抖动，太大迟滞（典型 0.5–5 Nms/rad）</span>
+<span class="c">#   tau_ff: 重力/摩擦前馈——减小稳态误差，让 PD 不必靠大 Kp 硬顶</span>
+<span class="c">#   限幅：保护齿轮箱；遇到撞击时靠饱和+柔顺吸收能量</span>
+</code></pre>
+  <h3>4.2 阻抗控制（需要接触时）</h3>
+  <pre><code><span class="c"># 笛卡尔/关节空间阻抗：M q̈ + C(q,q̇) + G(q) + K(q−q*) + D q̇ = τ_ext + τ</span>
+tau = M @ qdd_des + C @ qd + G + K @ (q_des - q) + D @ (qd_des - qd)
+<span class="c"># 物理意义：M/C/G 补偿机器人自身动力学；K/D 设定「弹簧-阻尼」手感</span>
+<span class="c">#   K 小 → 柔顺（易被推、适合接触）；K 大 → 刚性（精确但危险）</span>
+</code></pre>
+  <h3>4.3 安全层（必须独立）</h3>
+  <pre><code><span class="c"># 与 S1 不同进程/不同看门狗；1kHz 检查</span>
+<span class="k">if</span> abs(tau) &gt; tau_limit <span class="k">or</span> abs(qd) &gt; vel_limit <span class="k">or</span> imu.tilt &gt; tilt_limit:
+    motor.disable()                 <span class="c"># 硬件级切断，不等上层</span>
+<span class="k">if</span> now - last_cmd_ts &gt; 200ms:       <span class="c"># 上层失联</span>
+    enter_damping_mode()             <span class="c"># 只保留阻尼，缓慢停下</span>
+</code></pre>
+  <h3>4.4 S0 的「选型」怎么定</h3>
+  <ul>
+    <li><b>有足底接触/人形</b>：关节 PD + 足底橡胶（被动顺应）+ 力矩限幅；必要时加阻抗。</li>
+    <li><b>臂/手做精细接触</b>：阻抗或力控；末端六维力传感器。</li>
+    <li><b>高动态（跑跳）</b>：低延迟力矩环 + 轻量腿（降低惯量）；PD 增益随相位调度。</li>
+    <li><b>低成本</b>：纯位置 PD + 机械限位 + 电流限幅，不追求力控。</li>
+  </ul>
+</section>
+
+<section id="s1">
+  <h2>5. S1 实现：快控制层</h2>
+  <h3>5.1 推理循环（50Hz）</h3>
+  <pre><code><span class="c"># 50Hz = 20ms 周期；jitter 要 &lt; 2ms，否则策略抖动</span>
+<span class="k">while</span> True:
+    t0 = now()
+    obs = read_proprio()                 <span class="c"># q, qd, imu(roll/pitch/yaw, gyro), last_action</span>
+    tok = token_buf.consume_fresh(now()) <span class="c"># 或 ref = planner.latest()</span>
+    q_des = policy(obs, tok)             <span class="c"># [n_joints]，网络输出</span>
+    q_des = rate_limit(q_des, q_des_prev, max_dq)   <span class="c"># 限速，防突变</span>
+    publish(q_des, ts=now())
+    sleep_until(t0 + 20ms)
+</code></pre>
+  <h3>5.2 RL 跟踪训练（SONIC 式）</h3>
+  <pre><code><span class="c"># 仿真：IsaacLab，4096 并行环境，PPO</span>
+<span class="k">for</span> it <span class="k">in</span> range(100_000):
+    <span class="k">for</span> t <span class="k">in</span> range(32):
+        enc = sample_encoder()           <span class="c"># robot / smpl / teleop</span>
+        tok = FSQ(Encoder[enc](obs_tokenizer))
+        a   = Decoder_dyn(tok, proprio)  <span class="c"># 关节目标</span>
+        obs, r, done = env.step(a)       <span class="c"># PD 在仿真里同样存在</span>
+    <span class="c"># 奖励：跟踪根/连杆位姿+速度 − 动作突变/足部加速度惩罚</span>
+    <span class="c"># 域随机化：摩擦/恢复系数/质心/推搡/指令扰动</span>
+</code></pre>
+  <h3>5.3 选型建议</h3>
+  <ul>
+    <li><b>要通用、可跨任务</b>：RL 跟踪器（SONIC），一次训练多任务复用。</li>
+    <li><b>要极致低延迟</b>：小 visuomotor（Helix S1 80M，200Hz）+ latent 接口。</li>
+    <li><b>要单模型端到端</b>：VLA 动作头（DiT flow matching），频率降到 10–50Hz，配动作 chunk。</li>
+    <li><b>约束硬/可解释</b>：MPC/WBC，但接触任务弱。</li>
+  </ul>
+</section>
+
+<section id="iface">
+  <h2>6. 接口实现：时间戳与延迟补偿（最容易翻车的地方）</h2>
+  <pre><code><span class="c"># S2 出 token，带时间戳；S1 只取「未过期」的最新一个</span>
+<span class="k">class</span> TokenBuffer:
+    <span class="k">def</span> push(self, tok, ts): self.buf.append((tok, ts))
+    <span class="k">def</span> consume_fresh(self, now, max_age_ms=400):
+        tok, ts = self.buf[-1]
+        <span class="k">if</span> now - ts &gt; max_age_ms:
+            <span class="k">return</span> None          <span class="c"># 过期：上层保持/停止，别用旧意图</span>
+        <span class="k">return</span> tok
+<span class="c"># 物理意义：S2 周期 400ms；max_age 取 1–2 个周期。用旧 token = 执行「过去的意图」，会滞后甚至撞。</span>
+</code></pre>
+  <pre><code><span class="c"># 位姿接口（3 点 VR 格式）：头/双腕位姿 + 腰高 + 导航速度</span>
+cmd = {<span class="s">"head"</span>: SE3, <span class="s">"lwrist"</span>: SE3, <span class="s">"rwrist"</span>: SE3,
+       <span class="s">"waist_h"</span>: 0.45, <span class="s">"v"</span>: 0.6, <span class="s">"w"</span>: 0.2}
+<span class="c"># 下半身由运动规划器补全：autoregressive，0.8–2.4s 段，100ms 重规划</span>
+</code></pre>
+  <h3>延迟补偿三件套</h3>
+  <ol>
+    <li><b>训练镜像部署</b>：训练时给 S1 输入加时间偏移 = 部署推理延迟（Helix 做法）。</li>
+    <li><b>时间戳对齐</b>：所有信号统一时钟；token 按采集时刻而不是到达时刻打戳。</li>
+    <li><b>插值/外推</b>：S0 按当前时刻在相邻目标间插值，避免阶跃。</li>
+  </ol>
+</section>
+
+<section id="s2">
+  <h2>7. S2 实现：慢思考层</h2>
+  <h3>7.1 推理（2.5Hz）</h3>
+  <pre><code><span class="c"># VLA：图像+语言 → 64 维 token × 40 步（SONIC 接口）</span>
+tok40 = vla.infer(images=ego_cam, prompt=<span class="s">"pick the apple and put it on the plate"</span>)
+token_buf.push(tok40, ts=now())      <span class="c"># 400ms 后才更新一次——正常</span>
+</code></pre>
+  <h3>7.2 微调（LeRobot 数据）</h3>
+  <pre><code>uv run python gr00t/experiment/launch_finetune.py \
+  --base-model-path nvidia/GR00T-N1.7-3B \
+  --dataset-path /path/to/dataset \
+  --embodiment-tag UNITREE_G1_SONIC \
+  --max-steps 20000 --global-batch-size 32 --num-gpus 4
+<span class="c"># 数据：50–100 条遥操作/任务；LeRobot v2.1（parquet + 视频 + meta）</span>
+</code></pre>
+  <h3>7.3 选型建议</h3>
+  <ul>
+    <li><b>任务固定、要稳</b>：VLA 微调（GR00T N1.7 / π0.5）。</li>
+    <li><b>指令开放、任务多变</b>：VLM 规划器 + 子任务接口。</li>
+    <li><b>需要想象/验证</b>：WAM（GR00T 2 式）+ agent。</li>
+    <li><b>要最低成本</b>：VLM 只出「目标点/抓取点」，S1 用现成 RL 控制器执行。</li>
+  </ul>
+</section>
+
+<section id="alt">
+  <h2>8. 备选方案：五种常见组合</h2>
+  <table>
+    <tr><th>组合</th><th>结构</th><th>优点</th><th>缺点</th><th>适合</th></tr>
+    <tr><td><b>A 端到端双系统</b>（Helix）</td><td>S2 VLM 7–9Hz → latent 向量 → S1 80M 200Hz</td><td>延迟小、一致性好</td><td>需大量遥操作；S1 难复用</td><td>产品化人形</td></tr>
+    <tr><td><b>B 分层+潜动作</b>（SONIC/GR00T）<span class="rec">推荐</span></td><td>S2 出 64 维 token → S1 预训练全身控制器</td><td>S1 通用可复用、跨本体</td><td>S1 训练贵；token 语义受限</td><td>大多数场景</td></tr>
+    <tr><td><b>C 语言子任务</b>（π0.5）</td><td>S2 出子任务文本 → S1 VLA</td><td>可解释、调试易</td><td>带宽低、细节丢</td><td>长程、多阶段</td></tr>
+    <tr><td><b>D 纯 RL 专家</b></td><td>单任务 RL 控制器</td><td>性能高、简单</td><td>不通用、重训</td><td>单一任务量产</td></tr>
+    <tr><td><b>E 云-端</b>（Gemini Robotics）</td><td>云端 S2 → 端侧 S1</td><td>算力大、迭代快</td><td>网络依赖</td><td>联网/服务机器人</td></tr>
+  </table>
+</section>
+
+<section id="budget">
+  <h2>9. 延迟预算与常见坑</h2>
+  <table>
+    <tr><th>环节</th><th>典型延迟</th><th>预算建议</th></tr>
+    <tr><td>S2 推理</td><td>100–400ms（云 300–800ms）</td><td>≥2.5Hz；输出带时间戳</td></tr>
+    <tr><td>接口/规划</td><td>5–12ms（Jetson Orin）</td><td>&lt; S1 周期</td></tr>
+    <tr><td>S1 推理</td><td>1–20ms</td><td>50Hz 留 50% 余量</td></tr>
+    <tr><td>S0 力矩环</td><td>1ms</td><td>独立看门狗</td></tr>
+  </table>
+  <div class="warn"><b>五个最常见的坑：</b>① S2 出 token 太慢、S1 用旧 token（滞后/撞）；② 训练不含推理延迟（部署振荡）；③ 接口版本漂移（训练 3 点、部署 token）；④ PD 增益没调好（S1 再强也抖）；⑤ 安全层依赖上层（危险）。</div>
+</section>
+
+<section id="refs">
+  <h2>10. 参考与术语小抄</h2>
+  <h3>关键参考</h3>
+  <ul>
+    <li>SONIC（人形全身控制，50Hz，64 维 token）：<a href="https://arxiv.org/abs/2511.07820">arXiv:2511.07820</a>；<a href="https://nvlabs.github.io/GR00T-WholeBodyControl/">代码/文档</a></li>
+    <li>GR00T N1.5/N1.7（VLA 微调与部署）：<a href="https://arxiv.org/abs/2503.14734">N1</a>；<a href="https://research.nvidia.com/labs/gear/gr00t-n1_5/">N1.5 官方页</a>；<a href="https://nvlabs.github.io/GR00T-WholeBodyControl/tutorials/vla_workflow.html">VLA workflow</a></li>
+    <li>Helix（双系统，200Hz S1）：<a href="https://www.figure.ai/news/helix">Figure 博客</a></li>
+    <li>π0.5（语言子任务分层）：<a href="https://arxiv.org/abs/2504.16054">arXiv:2504.16054</a></li>
+    <li>GR00T 2（WAM + agent S2 + SONIC S1）：<a href="https://research.nvidia.com/labs/gear/gr00t-2/">官方页</a></li>
+    <li>S0/S1/S2 概念来源：<a href="https://arxiv.org/abs/2503.06138">Taniguchi 2503.06138</a></li>
+  </ul>
+  <h3>术语小抄（给非具身读者）</h3>
+  <table>
+    <tr><th>术语</th><th>一句话</th></tr>
+    <tr><td>PD 控制</td><td>用「位置误差×刚度 − 速度×阻尼」算力矩：Kp 越大越硬，Kd 越大越稳</td></tr>
+    <tr><td>proprio（本体感知）</td><td>机器人自己的关节角、速度、IMU 姿态——不用摄像头也知道自己在哪</td></tr>
+    <tr><td>token（潜动作）</td><td>一串数字代表「未来一小段运动」，S1 能解码成关节动作；比关节角更抽象、跨本体</td></tr>
+    <tr><td>chunk（动作块）</td><td>一次预测多步动作（如 16/32/40 步），减少推理次数</td></tr>
+    <tr><td>sim2real</td><td>仿真训练的控制器搬到实机；靠域随机化+延迟标定缩小差距</td></tr>
+    <tr><td>阻抗控制</td><td>让机器人末端表现成「弹簧+阻尼」，碰到东西会退让而不是硬顶</td></tr>
+  </table>
+  <p class="foot">生成：2026-11-27 ｜ 数字与配置来源：NVIDIA 官方文档（SONIC/GR00T）、Figure 博客、π0.5 论文；标注「典型」的为工程经验值，需按机型实测。｜ 页面为纯静态，零依赖。</p>
+</section>
+
+</div>
+</body>
+</html>
