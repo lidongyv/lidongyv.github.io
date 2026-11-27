@@ -294,4 +294,10 @@ DESIGN = [
      "summary": "给非具身背景读者的分层实操指南：S2/S1/S0 选型矩阵、自下而上 7 步搭建流程图、带物理意义注释的关键代码、接口延迟补偿、五种备选方案与常见坑。",
      "summary_en": "A non-expert-friendly practical guide: selection matrix for S2/S1/S0, bottom-up 7-step build flow, key code with physical-meaning comments, latency compensation, five alternative stacks and pitfalls.",
      "tags": ["具身", "控制", "教程"], "tags_en": ["Embodied", "Control", "Tutorial"]},
+    {"slug": "embodied-methods", "root": "repo", "src": "embodied-methods",
+     "title": "具身控制方法精读：ASTRA / SONIC / GR00T / Helix / PD",
+     "title_en": "Embodied control methods: ASTRA, SONIC, GR00T, Helix, PD",
+     "summary": "每个方法的训练、推理、规模、数据构成与可抄代码：ASTRA 两篇评测（含触觉）、SONIC 全身控制器、GR00T N1/N1.5/N1.7/2、Helix 双系统、PD 调参。",
+     "summary_en": "Training, inference, scale and data for each method: ASTRA evaluations (incl. tactile), SONIC whole-body control, GR00T N1/N1.5/N1.7/2, Helix dual-system, PD tuning.",
+     "tags": ["具身", "方法精读", "控制"], "tags_en": ["Embodied", "Methods", "Control"]},
 ]

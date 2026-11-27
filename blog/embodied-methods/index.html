@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>具身控制方法精读：ASTRA / SONIC / GR00T / Helix / PD</title>
+<style>
+:root{--ink:#1b2430;--dim:#5b6a79;--line:#dfe5ec;--bg:#f6f8fb;--card:#fff;--acc:#0b6bcb;--warn:#8a5a00;--warnbg:#fdf4e3;--ok:#1d6b38;--okbg:#eaf7ee;--code:#0f1720}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.75}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 20px 80px}
+header.hero{background:linear-gradient(135deg,#0b2a4a,#0b6bcb);color:#fff;border-radius:14px;padding:28px 32px;margin-bottom:18px}
+header.hero h1{margin:0 0 8px;font-size:25px}
+header.hero .sub{margin:0 0 6px;color:#d9e8f8;font-size:15px}
+header.hero .meta{margin:0;color:#bcd6ef;font-size:13px}
+nav.toc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 18px;margin-bottom:18px;font-size:14px}
+nav.toc a{color:var(--ink);text-decoration:none;margin-right:14px;line-height:2}
+nav.toc a:hover{color:var(--acc);text-decoration:underline}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:22px 26px;margin-bottom:18px}
+h2{font-size:20px;margin:4px 0 12px;color:#0b2a4a;border-left:4px solid var(--acc);padding-left:10px}
+h3{font-size:16.5px;margin:22px 0 8px;color:#123c66}
+h4{font-size:15px;margin:16px 0 6px;color:#123c66}
+p{margin:8px 0}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px;background:#fff}
+th{background:#eef4fa;color:#123c66;font-weight:600}
+th,td{border:1px solid var(--line);padding:6px 9px;vertical-align:top;text-align:left}
+tr:nth-child(even) td{background:#fafcfe}
+pre{margin:10px 0;background:var(--code);color:#dbe7f3;border-radius:10px;padding:14px 16px;overflow:auto;font-size:12.8px;line-height:1.55}
+code{font-family:Consolas,"Cascadia Mono",monospace}
+pre .c{color:#7f9bb3}
+pre .k{color:#7cc4ff}
+pre .s{color:#9ae6b4}
+.warn{background:var(--warnbg);border:1px solid #ecd9ae;border-radius:8px;padding:12px 16px;font-size:13.5px;color:var(--warn)}
+.ok{background:var(--okbg);border:1px solid #c4e5cc;border-radius:8px;padding:12px 16px;font-size:13.5px;color:var(--ok)}
+.foot{color:var(--dim);font-size:13px;margin-top:8px}
+a{color:var(--acc)}
+ul,ol{margin:6px 0;padding-left:22px}
+li{margin:4px 0}
+.tag{display:inline-block;font-size:11.5px;border-radius:20px;padding:0 8px;margin-left:6px;border:1px solid var(--line);color:var(--dim);background:#f4f7fa;vertical-align:middle}
+.badge{display:inline-block;font-size:11.5px;border-radius:20px;padding:0 8px;border:1px solid #9fd4ad;color:var(--ok);background:var(--okbg);vertical-align:middle}
+.l2{border-color:#ecd9ae;color:var(--warn);background:var(--warnbg)}
+.l3{border-color:#9fd4ad;color:var(--ok);background:var(--okbg)}
+.l1{border-color:#ecc6c6;color:#9c2b2b;background:#fdeeee}
+</style>
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<div class="wrap">
+
+<header class="hero">
+  <h1>具身控制方法精读：ASTRA / SONIC / GR00T / Helix / PD</h1>
+  <p class="sub">每个方法的训练、推理、规模、数据构成与可抄的代码</p>
+  <p class="meta">2026-11-27 · 面向想上手实操的非具身读者 · 证据级别标注：L3=论文/官方文档逐字 / L2=部分 / L1=摘要或厂商页</p>
+</header>
+
+<nav class="toc">
+  <a href="#map">0 方法地图</a>
+  <a href="#astra">1 ASTRA</a>
+  <a href="#sonic">2 SONIC</a>
+  <a href="#groot">3 GR00T 家族</a>
+  <a href="#helix">4 Helix</a>
+  <a href="#pd">5 PD 控制</a>
+  <a href="#pick">6 怎么选/怎么上手</a>
+  <a href="#refs">7 参考</a>
+</nav>
+
+<section id="map">
+  <h2>0. 方法地图：它们各自是什么角色</h2>
+  <table>
+    <tr><th>方法</th><th>角色</th><th>一句话</th><th>证据级别</th></tr>
+    <tr><td><b>ASTRA</b>（GPT-6 Astra）</td><td>外部通用策略（S2/S2.5）</td><td>用通用大模型直接生成数值动作或审阅策略提案，不是专门训练的机器人模型</td><td>L3（两篇评测论文）</td></tr>
+    <tr><td><b>SONIC</b></td><td>S1 全身控制器</td><td>用运动跟踪做预训练任务的 RL 策略，50Hz 输出关节目标，64 维潜动作 token 接 VLA</td><td>L3（论文+官方文档）</td></tr>
+    <tr><td><b>GR00T N1/N1.5/N1.7</b></td><td>S2（VLA）</td><td>视觉语言动作模型：VLM 出语义 + DiT 出动作块；N1.5 冻结 VLM、N1.7 3B</td><td>L3（N1 论文）/ L1（N1.5/N1.7 官方页）</td></tr>
+    <tr><td><b>GR00T 2</b></td><td>S2（WAM）</td><td>世界-动作模型：一个 DiT 联合去噪未来视频+动作；外部 agent 当 S2</td><td>L1（官方页）</td></tr>
+    <tr><td><b>Helix</b></td><td>S1+S2 一体（双系统 VLA）</td><td>7B VLM（7–9Hz）+ 80M visuomotor（200Hz），单 latent 向量接口，端到端训练</td><td>L1（厂商博客，信息很全）</td></tr>
+    <tr><td><b>PD 控制</b></td><td>S0</td><td>用刚度/阻尼把目标位置变成力矩，所有机器人最终都落到这一层</td><td>工程常识 + 代码</td></tr>
+  </table>
+  <div class="ok">读法：ASTRA 是「外部大脑」的极限测试；SONIC/GR00T/Helix 是「机器人自己怎么训」；PD 是「最后怎么动」。</div>
+</section>
+
+<section id="astra">
+  <h2>1. ASTRA：GPT-6 Astra 当具身策略（最新外部基线）</h2>
+  <p><b>它是什么</b>：GPT-6 Astra 是通用大模型，本身不是机器人策略。两篇 2026 年 9–10 月的系统评测把它接到机器人上，测「通用模型能不能直接当策略」。</p>
+  <h3>1.1 两种用法（论文 2609.38537 原文框架）</h3>
+  <table>
+    <tr><th>模式</th><th>做什么</th><th>底层控制</th></tr>
+    <tr><td><b>Direct</b></td><td>Astra 直接生成数值动作（末端/关节目标、夹爪、底盘指令、导航原语）</td><td>IK / 关节或操作空间控制 / 离散导航原语</td></tr>
+    <tr><td><b>Hybrid</b></td><td>Astra 审阅/修改/替换学习策略的提案，或给冻结全身控制器提供密集运动参考、速度指令、稀疏身体目标</td><td>学习任务策略 / 冻结 WBC（如 ScaleTrack）</td></tr>
+  </table>
+  <h3>1.2 关键结果（原论文数字）</h3>
+  <table>
+    <tr><th>域</th><th>结果</th><th>解读</th></tr>
+    <tr><td>夹爪操作（RoboDojo 子集）</td><td>与 π0.5 混合控制 <b>48%</b> 成功</td><td>Astra 能纠正目标、准备接触条件，但不替代策略</td></tr>
+    <tr><td>灵巧操作（DexJoCo 10 次）</td><td>混合控制 <b>50%</b>；直接手内控制难协调手指接触</td><td>接触密集任务仍是专用策略强项</td></tr>
+    <tr><td>移动操作（RoboCasa365）</td><td>混合 <b>38.7%</b></td><td>底盘+手臂协调有增益但不稳</td></tr>
+    <tr><td>导航</td><td>RxR 指令跟随 <b>92%</b>；HM3D 物体搜索 <b>82%</b></td><td>局部对比领先，但绕路多、搜索低效</td></tr>
+    <tr><td>运动（locomotion）</td><td>单障碍赛道 5 次连续尝试 <b>0 次</b>到达终点</td><td>密集运动参考生成不可靠</td></tr>
+    <tr><td>人形 loco-manipulation</td><td>30 个 HumanoidBench 任务中 <b>13 个</b>超过基线（配预训练全身控制器）</td><td>配合 WBC 才可用</td></tr>
+  </table>
+  <h3>1.3 成本（论文里最有价值的数据）</h3>
+  <ul>
+    <li>50 个 RoboDojo 实例/条件：策略辅助消耗 <b>6.248 亿</b> token；直接控制 <b>11.32 亿</b> token。</li>
+    <li>30 秒运动跑：<b>250 次</b>模型调用，平均每次 <b>39.86 秒</b>，推理期间物理暂停。</li>
+    <li>结论：通用模型做 S2 可行，但延迟/成本离实时控制很远；适合「慢决策 + 快控制器」的分层。</li>
+  </ul>
+  <h3>1.4 触觉版本（论文 2610.26846，2026-10-19）</h3>
+  <p>把视触觉（Tactile RGB）当普通图像输入 Astra 的视觉接口，在 19 个 UniVTAC / OpenViTAC 任务、每设定 210 个种子：<b>视觉+触觉 93.8% / 81.8%</b>（比最强专用基线 +22.9 / +13.1 个百分点）；纯视觉也有 76.3% / 80.6%。行为分析看到主动探测、谨慎抓取、接触对齐与恢复，但切向加载与纠错执行仍弱。</p>
+  <div class="warn">对上手者的意义：ASTRA 不是可直接部署的方案，而是告诉你「S2 用通用模型时，接口（Direct/Hybrid）和延迟决定成败」。</div>
+</section>
+
+<section id="sonic">
+  <h2>2. SONIC：人形全身控制器（S1）的实现</h2>
+  <h3>2.1 定位与总体</h3>
+  <p>把「动作跟踪」当预训练任务：给定参考运动，输出关节目标，用 PD 跟踪。一个策略覆盖走、跑、跳、爬、拳击等；部署在 Unitree G1。</p>
+  <table>
+    <tr><th>项</th><th>数值/做法</th><th>来源</th></tr>
+    <tr><td>模型规模</td><td>1.2M → 16M → <b>42M</b> 参数（MLP 编码器/解码器）</td><td>L3 论文</td></tr>
+    <tr><td>数据</td><td><b>700 小时</b>动捕、<b>1 亿+帧</b>@50Hz、<b>170 名</b>受试者（145–199cm）；用 <b>GMR</b> 重定向到人形</td><td>L3 论文 §3.1</td></tr>
+    <tr><td>训练</td><td>Isaac Lab，<b>4096</b> 并行环境，PPO：100k 迭代、每轮 32 步、5 epochs、4 minibatch、actor LR 2e-5、critic 1e-3、clip 0.2、初始噪声 0.05</td><td>L3 官方文档（训练代码结构）</td></tr>
+    <tr><td>算力</td><td>16/32/128 GPU ≈ 2k/9k/<b>21k GPU 小时</b>（128 卡 × 7 天）</td><td>L3 论文（最终版）</td></tr>
+    <tr><td>推理</td><td><b>50Hz</b> 关节目标；C++/TensorRT/ZMQ 部署栈；VLA 接口为 <b>64 维 token ×40 步 @2.5Hz</b>；动作空间 78 维 = 64 + 7 + 7（双手）</td><td>L3 官方文档</td></tr>
+    <tr><td>效果</td><td>test-content <b>98.5%</b> / test-repetition 99.2% / PHUMA 97.2%；真机 124 条动作 <b>99.2%</b> 成功；vs 专用 OpenHomie 存活率 98.5% vs 43.0%</td><td>L3 论文</td></tr>
+  </table>
+  <h3>2.2 网络结构（官方文档）</h3>
+  <pre><code><span class="c"># UniversalTokenModule（SONIC 的动作变换模块 ATM）</span>
+G1 obs    ──► G1 Encoder (MLP) ─┐
+Teleop    ──► Teleop Encoder   ─┼──► <b>FSQ 量化</b> ──► G1 Dynamic Decoder ──► 关节目标（部署只用这个）
+SMPL      ──► SMPL Encoder    ─┘        │
+                                        └──► G1 Kinematic Decoder ──► 重建未来帧（仅训练辅助损失）</code></pre>
+  <ul>
+    <li><b>三个编码器</b>：机器人关节位/速（F_r 帧）、人体 3D 关节（F_h 帧，SMPL）、混合（上体关键点+下体机器人动作，F_m 帧）——多帧输入让策略能「预判」。</li>
+    <li><b>FSQ 量化</b>：每个 latent 维独立量化到离散级；论文默认配置记为 <b>FSQ-32-32</b>（精确 level 列表以仓库 config 为准）。</li>
+    <li><b>双解码器</b>：`g1_dyn` 出关节动作（部署唯一使用）；`g1_kin` 重建未来运动帧（训练辅助损失，起隐式重定向作用）。</li>
+    <li><b>latent residual</b>：下游策略可在量化前/后注入修正（`post_quantization` / `pre_quantization` / `pre_quantization_replace`）。</li>
+  </ul>
+  <h3>2.3 训练与推理代码骨架</h3>
+  <pre><code><span class="c"># 训练：PPO + 辅助损失（IsaacLab，4096 envs）</span>
+<span class="k">for</span> it <span class="k">in</span> range(100_000):
+    <span class="k">for</span> t <span class="k">in</span> range(32):
+        enc = sample_encoder()                    <span class="c"># robot / smpl / teleop</span>
+        tok = FSQ(Encoder[enc](obs_tokenizer))
+        a   = Decoder_dyn(tok, proprio)           <span class="c"># 关节目标</span>
+        obs, r, done = env.step(a)                <span class="c"># 仿真里同样有 PD</span>
+    <span class="c"># 奖励：跟踪根/连杆位姿+速度 − 动作突变/足部加速度惩罚</span>
+    <span class="c"># 域随机化：摩擦/恢复/质心/推搡/指令扰动；aux：重构+潜对齐</span>
+    loss = ppo + 0.5*v_loss + aux_coef*(recon + latent_align)
+    opt.step(loss)
+
+<span class="c"># 推理：50Hz</span>
+tok = token_buf.consume_fresh()                   <span class="c"># VLA 每 400ms 给一次 [40,64]</span>
+q_des = sonic.decode(tok, proprio)                <span class="c"># [n_joints]</span>
+publish(q_des)                                    <span class="c"># → S0 PD</span></code></pre>
+  <h3>2.4 数据构成（可直接照抄的清单）</h3>
+  <ul>
+    <li>自建动捕：700h、170 人、日常/格斗/舞蹈/工具操作等，1–180 秒片段；GMR 重定向 → 关节轨迹。</li>
+    <li>公开：BONES-SEED 142K+ 动作（约 288h，含 G1 MuJoCo 轨迹）。</li>
+    <li>训练输入拼接：参考运动（未来 F 帧）+ 本体感知（关节位/速、根角速度、重力方向、上一动作）。</li>
+  </ul>
+</section>
+
+<section id="groot">
+  <h2>3. GR00T 家族：N1 / N1.5 / N1.7 / N2</h2>
+  <h3>3.1 三代速览</h3>
+  <table>
+    <tr><th>版本</th><th>结构</th><th>规模</th><th>数据</th><th>训练</th><th>推理</th></tr>
+    <tr><td><b>N1</b><span class="tag">L3</span></td><td>Eagle-2 VLM（S2）+ DiT 动作头（S1），MoT 联合</td><td><b>2.2B</b>（VLM 1.34B + DiT）</td><td>88h 遥操作 → 827h 神经轨迹（10×）；78 万仿真轨迹（6500h/11h 计算）；OXE + AgiBot</td><td>1024×H100，<b>5 万 GPU 小时</b>；flow matching；H=16、K=4 步</td><td>S2 ~10Hz、S1 ~120Hz（L40）；16 步 63.9ms</td></tr>
+    <tr><td><b>N1.5</b><span class="tag">L1</span></td><td>N1 + 冻结 VLM + 简化 adapter/LayerNorm + FLARE</td><td>VLM 2.1B（Eagle 2.5）</td><td>同 N1 + DreamGen/AgiBot-Beta</td><td><b>250K 步</b>，1K×H100，GBS 16384；FLARE loss 0.2</td><td>同 N1</td></tr>
+    <tr><td><b>N1.7</b><span class="tag">L1</span></td><td>GR00T 系列 3B 版（官方文档微调默认）</td><td><b>3B</b></td><td>LeRobot 数据（自采 50–100 条/任务）</td><td>20k steps、bs 32、4 GPU（官方命令）</td><td>PolicyServer + SONIC 50Hz</td></tr>
+    <tr><td><b>GR00T 2</b><span class="tag">L1</span></td><td><b>WAM</b>：一个 DiT 联合去噪未来视频+动作；外部 agent 当 S2</td><td>Turbo 版 <b>2B</b></td><td>402,730h 人视频（Human-1M）+ 10,184h UMI + 23,500h 遥操作</td><td>未公开；真机 RL（GRPO）+ 30 分钟 LoRA（5 示教）</td><td>Turbo <b>124ms</b>（Jetson Thor），SONIC 50Hz；5 示教→95%</td></tr>
+  </table>
+  <h3>3.2 N1 的实现细节（可抄）</h3>
+  <ul>
+    <li><b>VLM 用第 12 层</b>（不是最后一层）：更快且下游成功率更高；图像 224×224 + pixel shuffle → 64 token/帧。</li>
+    <li><b>动作头</b>：DiT（交叉+自注意力交替），embodiment-specific MLP 编码 state/action；<b>H=16</b>；flow matching 损失，τ~Beta((s−τ)/s;1.5,1)，s=0.999；推理 Euler <b>K=4</b> 步。</li>
+    <li><b>潜动作</b>：VQ-VAE 学帧间潜动作（encoder 当 IDM），把无动作视频当作 "LAPA" embodiment。</li>
+    <li><b>后训练</b>：真机:神经轨迹 = <b>1:1</b>；IDM 只在低数据场景训练。</li>
+  </ul>
+  <h3>3.3 训练/微小调代码</h3>
+  <pre><code><span class="c"># N1 预训练（概念）：动作+未来视频联合 flow matching</span>
+loss = L_act(a_hat, a) + λ * L_vid(v_hat, v_future)
+<span class="c"># N1.5：VLM 冻结；加 FLARE（对齐目标未来嵌入）</span>
+loss = L_act + 0.2 * L_flare(z_pred, stopgrad(z_target))
+<span class="c"># N1.7 微调（官方命令）</span>
+uv run python gr00t/experiment/launch_finetune.py \
+  --base-model-path nvidia/GR00T-N1.7-3B \
+  --embodiment-tag UNITREE_G1_SONIC \
+  --max-steps 20000 --global-batch-size 32 --num-gpus 4</code></pre>
+  <h3>3.4 数据构成（N1 数据金字塔）</h3>
+  <ul>
+    <li>底层：互联网视频 + 人类 egocentric 视频（OXE：RT-1/Bridge-v2/Language Table/DROID 等；AgiBot-Alpha 14 万轨迹）。</li>
+    <li>中层：潜动作（VQ-VAE）+ 神经轨迹（视频生成 88h→827h）。</li>
+    <li>顶层：真机遥操作（Fourier GR-1）；仿真 78 万轨迹。</li>
+  </ul>
+</section>
+
+<section id="helix">
+  <h2>4. Helix：双系统一体 VLA 的实现</h2>
+  <table>
+    <tr><th>项</th><th>细节</th></tr>
+    <tr><td>数据</td><td><b>约 500 小时</b>高质量多机器人、多操作员遥操作数据（不到同类 VLA 数据集的 5%）；用<b>自动标注 VLM</b>做 hindsight 指令（"如果想让机器人做出视频里的动作，你会给什么指令？"）；训练物品全部排除出评测。</td></tr>
+    <tr><td>S2</td><td><b>7B</b> 开源开放权重 VLM；输入单目图像 + 机器人状态（腕位姿+手指位置）+ 语言；输出<b>单个连续 latent 向量</b>；<b>7–9Hz</b>。</td></tr>
+    <tr><td>S1</td><td><b>80M</b> 交叉注意力 encoder-decoder transformer；卷积多尺度视觉骨干（仿真预训练）；把 latent 投影进 token 空间与视觉特征拼接；<b>200Hz</b>；35-DoF 上半身（腕位姿、手指屈伸/外展、躯干/头朝向）+ 一个「任务完成百分比」动作（自预测终止）。</td></tr>
+    <tr><td>训练</td><td><b>单阶段端到端</b>，像素+文本 → 连续动作，标准回归损失；梯度经 latent 从 S1 回传 S2；<b>训练时给 S1/S2 输入加时间偏移</b>，校准到部署推理延迟差；无任务头、无 per-task 微调。</td></tr>
+    <tr><td>部署</td><td>每台机器人<b>双低功耗板载 GPU</b>：S2 异步后台进程持续更新共享内存 latent；S1 独立实时进程跑 200Hz 环；训练-部署时间偏移一致。</td></tr>
+    <tr><td>结果</td><td>单套权重（7B+80M）覆盖抓放/抽屉/冰箱/双机协作/数千新物体；两机器人同权重协作搬运未见过的杂货。</td></tr>
+  </table>
+  <pre><code><span class="c"># Helix 推理（双 GPU 异步）</span>
+<span class="c"># GPU0：S2 后台</span>
+<span class="k">while</span> True:
+    z = s2(image, state, instruction)     <span class="c"># latent [d]</span>
+    shared_latent.write(z)                <span class="c"># 7–9Hz</span>
+<span class="c"># GPU1：S1 实时</span>
+<span class="k">while</span> True:
+    x = vision_s1(image) + project(shared_latent.read())
+    a = s1(x)                             <span class="c"># 35-DoF + 完成度</span>
+    robot.set_targets(a); sleep(5ms)      <span class="c"># 200Hz</span></code></pre>
+  <div class="warn">关键工程点：Helix 不需要动作 token 化；S2/S1 分离带来「各自最优频率」；时间偏移是训练-部署一致性的核心。</div>
+</section>
+
+<section id="pd">
+  <h2>5. PD 控制：S0 的实现与调参</h2>
+  <h3>5.1 代码（带物理意义）</h3>
+  <pre><code><span class="c"># 1kHz 力矩环（驱动器内）；q=位置 rad，qd=速度 rad/s</span>
+tau = Kp*(q_des - q) - Kd*qd + tau_ff
+tau = clamp(tau, tau_min, tau_max)
+<span class="c"># Kp 刚度：越大跟踪越紧、越易振荡（典型 20–200 Nm/rad，按关节）</span>
+<span class="c"># Kd 阻尼：抑制超调；太小欠阻尼抖动，太大迟滞（典型 0.5–5 Nms/rad）</span>
+<span class="c"># tau_ff：重力/摩擦前馈，减小稳态误差（可由模型 G(q) 或积分项给）</span>
+<span class="c"># 限幅：保护减速器；撞击时饱和+柔顺吸能</span></code></pre>
+  <h3>5.2 参数怎么定（按物理算）</h3>
+  <ul>
+    <li>目标闭环带宽 f_n（如 2–5Hz）与关节惯量 J：<b>Kp = J·(2πf_n)²</b>，<b>Kd = 2ζJ·(2πf_n)</b>，ζ=1 临界阻尼。</li>
+    <li>例：J=0.1 kg·m²、f_n=2Hz → Kp≈15.8、Kd≈2.5；先从一半增益起，逐步加。</li>
+    <li>流程：低 Kp → 加 Kd → 提到刚出现振荡 → 回退 30–50%；带负载/带线缆复测；记录阶跃响应。</li>
+    <li>重力补偿：tau_ff = G(q)（模型）或慢积分；摩擦补偿：Coulomb + 粘滞项。</li>
+  </ul>
+  <h3>5.3 安全（必须独立于上层）</h3>
+  <pre><code><span class="k">if</span> abs(tau) &gt; tau_limit <span class="k">or</span> abs(qd) &gt; vel_limit <span class="k">or</span> imu.tilt &gt; tilt_limit:
+    motor.disable()            <span class="c"># 硬件级切断</span>
+<span class="k">if</span> now - last_cmd_ts &gt; 200ms:
+    enter_damping_mode()       <span class="c"># 上层失联→只留阻尼</span></code></pre>
+</section>
+
+<section id="pick">
+  <h2>6. 怎么选 / 怎么上手（给非专家）</h2>
+  <table>
+    <tr><th>场景</th><th>推荐组合</th><th>理由</th></tr>
+    <tr><td>课堂/原型，要快出效果</td><td>LeRobot + GR00T N1.7 微调 + 简单 PD</td><td>数据格式统一、微调命令固定、无需自研控制器</td></tr>
+    <tr><td>人形全身</td><td>SONIC（S1）+ GR00T/π0.5（S2）</td><td>SONIC 开源、50Hz、token 接口现成</td></tr>
+    <tr><td>精细操作/接触</td><td>Helix 式双系统 或 专用 IL 策略 + PD 阻抗</td><td>高频 S1 + 接触柔顺</td></tr>
+    <tr><td>开放指令/长程</td><td>VLM 规划器（或 ASTRA Hybrid）+ 现成 S1</td><td>语义强，但延迟高，别做实时闭环</td></tr>
+    <tr><td>纯研究基线</td><td>ASTRA Direct/Hybrid 评测</td><td>快速知道「通用模型能做到哪」</td></tr>
+  </table>
+  <h3>上手顺序（两周版）</h3>
+  <ol>
+    <li>第 1–2 天：单关节 PD 台架，跑通阶跃响应与限幅。</li>
+    <li>第 3–7 天：IsaacLab/MuJoCo 跑一个跟踪任务（可用 SONIC 开源配置）。</li>
+    <li>第 2 周：采 50 条遥操作数据（LeRobot），微调 GR00T N1.7，接到 PD/SONIC。</li>
+    <li>之后：再考虑 S2 换 VLM/ASTRA、加触觉、做 sim2real。</li>
+  </ol>
+</section>
+
+<section id="refs">
+  <h2>7. 参考（按方法）</h2>
+  <ul>
+    <li><b>ASTRA</b>：<a href="https://arxiv.org/abs/2609.38537">arXiv:2609.38537</a>（六域评测）｜<a href="https://arxiv.org/abs/2610.26846">arXiv:2610.26846</a>（视触觉）｜<a href="https://galaxygeneralrobotics.github.io/astra-policy/">项目页</a></li>
+    <li><b>SONIC</b>：<a href="https://arxiv.org/abs/2511.07820">arXiv:2511.07820</a>｜<a href="https://nvlabs.github.io/GEAR-SONIC/">项目页</a>｜<a href="https://nvlabs.github.io/GR00T-WholeBodyControl/">代码/文档</a>（训练代码结构、VLA workflow）</li>
+    <li><b>GR00T</b>：<a href="https://arxiv.org/abs/2503.14734">N1</a>｜<a href="https://research.nvidia.com/labs/gear/gr00t-n1_5/">N1.5</a>｜<a href="https://research.nvidia.com/labs/gear/gr00t-2/">GR00T 2</a>｜<a href="https://nvlabs.github.io/GR00T-WholeBodyControl/tutorials/vla_workflow.html">VLA workflow</a></li>
+    <li><b>Helix</b>：<a href="https://www.figure.ai/news/helix">Figure 博客</a></li>
+    <li><b>PD/阻抗</b>：经典控制教材（如 Siciliano《Robotics: Modelling, Planning and Control》）；本文档的调参公式为工程经验。</li>
+  </ul>
+  <p class="foot">生成：2026-11-27 ｜ 数字均标来源；「典型」值为工程经验，需按机型实测。配套阅读：<a href="../s2-s1-s0-stack/">《从 S2 到 S0：选型与实现指南》</a>。</p>
+</section>
+
+</div>
+</body>
+</html>
