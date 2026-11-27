@@ -318,7 +318,7 @@ def worldvln_step(model, segs, goal, gamma, lam):
 
 ### 3.1 HILR（Human-in-the-Loop Rollout，人机接力）
 
-> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · HILR / DAgger](/blog/method-wiki/data-loops.html)
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · HILR](/blog/method-wiki/hilr.html)
 
 **输入 / 输出（物理）**：输入=当前策略、环境、人类接管判断；输出=一条带「是否人接管」标记的轨迹（已剔除切换抖动）。
 

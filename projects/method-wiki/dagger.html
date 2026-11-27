@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DAgger 精读：Dataset Aggregation</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>DAgger 精读：Dataset Aggregation</h1>
+  <p class="sub">行为克隆初始化 → 学生 rollout 收集状态 → 专家标注 → 聚合重训 → 迭代 N 轮</p>
+  <p class="meta">L3（经典算法） · Ross, Gordon, Bagnell, AISTATS 2011 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a><a href="vampo.html">VAMPO</a><a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a><a href="worldvln.html">WorldVLN</a><a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a><a href="tau0-wm.html">τ0-WM</a>
+  <a href="hilr.html">HILR</a><a href="dagger.html">DAgger</a><a href="xpace.html">XPACE</a><a href="coachsi.html">CoachSI</a>
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>DAgger（Dataset Aggregation）解决模仿学习的分布漂移：训练在专家轨迹上，部署却进入学生自己的状态分布。做法是**用学生跑、在它访问到的状态上问专家**，把数据聚合回训练集再重训。</p>
+  <table><tr><th>项</th><th>值</th></tr><tr><td>输入</td><td>专家策略 π*、初始演示 D、迭代轮数 N</td></tr><tr><td>输出</td><td>在学生状态分布上也正确的策略</td></tr><tr><td>关键</td><td>状态分布来自学生，标签来自专家</td></tr><tr><td>变体</td><td>β 混合（以概率 β 执行专家动作）稳定探索</td></tr></table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="dagger-flow.svg" alt="DAgger 精读：Dataset Aggregation 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：把「机器人实际会走到哪里」与「那里该怎么做」对齐，而不是只对齐「专家会走到哪里」。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">D_i = {(s, π*(s)) : s ∼ d_{π_i}}</div><p class="foot">物理：第 i 轮数据：学生策略访问到的状态 + 专家标签。</p>
+<div class="eq">D = ⋃_{i=1..N} D_i</div><p class="foot">物理：聚合（Dataset Aggregation 的名字来源）。</p>
+<div class="eq">L(π) = −E_{(s,a*)∼D}[log π(a*|s)]</div><p class="foot">物理：在聚合后的状态分布上最大化专家动作似然。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">标准 DAgger（Ross et al., 2011）；工程实现中的 β 混合与在线查询接口由具体系统决定。</p>
+  <pre><code>def dagger(expert, D, N):
+    # 物理：学生跑、专家标、聚合重训
+    pi = train_bc(D)                          # ① 初始行为克隆
+    for i in range(N):
+        states = rollout_states(pi)           # ② 学生自己的状态分布
+        labels = [expert.act(s) for s in states]  # ③ 专家标签
+        D = D + list(zip(states, labels))     # ④ 聚合
+        pi = train_bc(D)                      # ⑤ 重训
+    return pi</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果与边界</h2>
+  <ul><li>理论上无 regret 上界（原论文）</li><li>GigaBrain §2.3 引用 DAgger 家族解释分布漂移</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑</h2>
+  <ul><li>需要专家可在线查询（人或模拟器）</li><li>学生早期状态分布差时专家标注成本高</li><li>聚合数据不均衡时需重加权</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="ok">L3：经典算法原文（Ross et al., 2011）。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>

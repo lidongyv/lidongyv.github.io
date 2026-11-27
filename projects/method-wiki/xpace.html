@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XPACE 精读：deviation–recovery 恢复数据</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>XPACE 精读：deviation–recovery 恢复数据</h1>
+  <p class="sub">模拟器适配策略上下文 → 注入偏差 → 推演恢复 → 一致性过滤 → 约 8% 混合微调</p>
+  <p class="meta">L2（论文摘要/项目页，无公开代码） · DAgger 式恢复微调 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a><a href="vampo.html">VAMPO</a><a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a><a href="worldvln.html">WorldVLN</a><a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a><a href="tau0-wm.html">τ0-WM</a>
+  <a href="hilr.html">HILR</a><a href="dagger.html">DAgger</a><a href="xpace.html">XPACE</a><a href="coachsi.html">CoachSI</a>
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>XPACE 不依赖真机犯错：在模拟器里人为制造「偏离专家轨迹」的状态，推演怎么回来，过滤后作为恢复数据（约 8%）与专家数据混合微调。</p>
+  <table><tr><th>项</th><th>值</th></tr><tr><td>输入</td><td>专家轨迹、可自适应模拟器、策略</td></tr><tr><td>输出</td><td>deviation–recovery 恢复轨迹</td></tr><tr><td>比例</td><td>恢复数据约 8%</td></tr><tr><td>结果</td><td>恢复消融 61.7→86.7（异套件）</td></tr></table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="xpace-flow.svg" alt="XPACE 精读：deviation–recovery 恢复数据 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：真实部署一定偏离；在模拟器里批量制造偏离-恢复对，比等真机犯错便宜。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">s_dev = inject(tau, δ)</div><p class="foot">物理：在专家轨迹上注入偏差，模拟学生状态。</p>
+<div class="eq">tau_rec = Sim.rollout_recovery(s_dev)</div><p class="foot">物理：模拟器推演恢复动作（专家标签的代理）。</p>
+<div class="eq">D = D_expert ∪ Filter({tau_rec})</div><p class="foot">物理：一致性过滤后聚合，混合微调。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">依 XPACE 摘要/项目页重建；无官方代码。</p>
+  <pre><code>def recovery_data(expert_traj, simulator, policy):
+    # 物理：制造偏离，教机器人怎么回来
+    sim = simulator.adapt_to(policy)          # 对齐策略视觉上下文
+    recs = []
+    for tau in expert_traj:
+        s_dev = inject_deviation(tau, scale=delta)   # 偏离
+        tau_rec = sim.rollout_recovery(s_dev)        # 推演恢复
+        if consistency_filter(tau_rec):              # 物理一致才保留
+            recs.append(tau_rec)
+    return recs                                  # ~8% 混合微调</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果与边界</h2>
+  <ul><li>恢复消融 61.7→86.7（异套件，不能与 68.3% 直接比）</li><li>恢复数据占比约 8%</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑</h2>
+  <ul><li>模拟器必须适配策略自己的视觉上下文</li><li>一致性过滤阈值未给</li><li>异套件对比不可直接横比</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="warn">L2：XPACE 摘要与项目页；代码为依描述重建。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>

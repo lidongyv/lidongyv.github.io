@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CoachSI 精读：语言教练重标注</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>CoachSI 精读：语言教练重标注</h1>
+  <p class="sub">冻结 VLM 把成功轨迹切段命名「下一步」· hindsight relabel · 只训指令跟随</p>
+  <p class="meta">L2（论文摘要，无公开代码） · 语义监督补强 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a><a href="vampo.html">VAMPO</a><a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a><a href="worldvln.html">WorldVLN</a><a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a><a href="tau0-wm.html">τ0-WM</a>
+  <a href="hilr.html">HILR</a><a href="dagger.html">DAgger</a><a href="xpace.html">XPACE</a><a href="coachsi.html">CoachSI</a>
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>机器人失败常因「不知道该干哪一步」而非「不会动」。CoachSI 用冻结 VLM 给成功轨迹的每一段命名下一步，作为新的指令监督；动作骨干不动，只补语义接地。</p>
+  <table><tr><th>项</th><th>值</th></tr><tr><td>输入</td><td>冻结 VLM、成功轨迹、原任务指令</td></tr><tr><td>输出</td><td>带「下一步」标签的轨迹</td></tr><tr><td>训练</td><td>指令跟随；动作骨干冻结</td></tr><tr><td>结果</td><td>长程未见场景 47.4→59.3（论文自评）</td></tr></table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="coachsi-flow.svg" alt="CoachSI 精读：语言教练重标注 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：把「动作」与「意图」对齐；模型学会「当前该做哪一步」，而不只是模仿轨迹。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">step_j = VLM(seg_j.frames, task)</div><p class="foot">物理：VLM 给第 j 段命名「下一步」。</p>
+<div class="eq">L = −E[log π(a|o, step_j)]</div><p class="foot">物理：用命名后的指令作为条件重训；物理：补语义接地。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">依 CoachSI 摘要重建；无公开代码。</p>
+  <pre><code>def coach_relabel(traj, vlm, task):
+    # 物理：VLM 把成功轨迹命名成「下一步」
+    steps = [vlm.describe(seg.frames, task, &quot;next step?&quot;) for seg in segment(traj)]
+    return [(seg.obs, seg.action, s) for seg, s in zip(segment(traj), steps)]
+
+def coach_finetune(policy, relabeled):
+    # 物理：只训指令跟随，动作骨干冻结
+    for obs, a, step in relabeled:
+        loss = -logp(policy, a, cond=(obs, step))
+        policy.semantic_head.update(loss)</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果与边界</h2>
+  <ul><li>长程未见场景 47.4→59.3（L2，论文自评）</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑</h2>
+  <ul><li>只解决指令接地，不解决技能本身</li><li>VLM 命名质量决定上限</li><li>需要成功轨迹做种子</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="warn">L2：CoachSI 摘要；代码为依论文重建。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>
