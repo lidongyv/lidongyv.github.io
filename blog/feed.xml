@@ -124,41 +124,83 @@ def joint_continue(W, pi, D_hilr, D_base):
         W.update(world_model_step(W, W.vae, batch, tau=rand()))   # 防优势坍缩
         pi.update(policy_loss(pi, batch, build_states(batch), A=batch.A))</code></pre>
 <h3 id="2-2-vampo-grpo-训练视频去噪器-官方代码">2.2 VAMPO：GRPO 训练视频去噪器（<strong>官方代码</strong>）</h3>
-<p><strong>输入 / 输出</strong>：输入=专家视频（SVD VAE 潜）、SFT 后的 VPM、初始噪声；输出=后训练 VPM（动作侧冻结）。</p>
+<p><strong>输入 / 输出</strong>：输入=专家视频（SVD VAE 潜 <code>[B,F,C,H,W]</code>）、SFT 后的 VPM、初始噪声；输出=后训练 VPM（动作侧 AGM 冻结）。</p>
 <p><strong>代码解读</strong></p>
-<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>同一条当前观测下想象 G 种未来；与专家未来越接近的想象越可执行。</td></tr><tr><td>为什么这么做</td><td>直接对动作策略做 RL 需要真机 rollout；这里把「视频预测器」当策略，奖励来自专家潜距离，<strong>完全离线</strong>、无需环境交互。</td></tr><tr><td>方法出处</td><td>仓库 <code>OpenHelix-Team/VAMPO</code>：<code>grpo/reward_fn.py</code>、<code>step1_train_svd_grpo.py</code>、<code>grpo/eas_with_logprob.py</code>（源码级）；GRPO 谱系来自 DeepSeek-R1 的组相对优势。</td></tr><tr><td>优势与代价</td><td>优势：离线、无 critic、见效快；代价：只改进视频预测，不直接改动作策略；首步 SDE 的方差需调 clip。</td></tr></tbody></table>
-<pre><code class="language-python"># ── 采样：G 条未来，只有首步随机（eas_with_logprob.py）──────────
-def rollout_group(vpm, z0, cond, G=8, steps=20):
-    &quot;&quot;&quot;物理：首步加噪让不同想象分叉，后续走 ODE 保证轨迹可比。&quot;&quot;&quot;
-    trajs, logps = [], []
-    for g in range(G):
-        z, logp = z0.clone(), 0.0
-        for i, t in enumerate(scheduler.timesteps(steps)):
-            if i == 0:
-                z, logp = eas_step_with_logprob(vpm, z, t, cond)   # 仅首步 SDE
-            else:
-                z = euler_step(vpm, z, t, cond)                    # 其余 ODE
-        trajs.append(z); logps.append(logp)
-    return trajs, logps
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>同一条当前观测下想象 G 种未来；与专家未来越接近的想象越可执行。</td></tr><tr><td>为什么这么做</td><td>直接对动作策略做 RL 需要真机 rollout；这里把「视频预测器」当策略，奖励来自专家潜距离，<strong>完全离线</strong>、无需环境交互。</td></tr><tr><td>方法出处</td><td>仓库 <code>OpenHelix-Team/VAMPO</code>：<code>grpo/eas_with_logprob.py</code>、<code>grpo/reward_fn.py</code>、<code>step1_train_svd_grpo.py</code>（源码级）；GRPO 谱系来自 DeepSeek-R1 的组相对优势。</td></tr><tr><td>优势与代价</td><td>优势：离线、无 critic、见效快；代价：只改进视频预测，不直接改动作策略；首步 SDE 的方差需调 clip。</td></tr></tbody></table>
+<h4 id="①-采样器-euler_step-到底怎么算">① 采样器：<code>euler_step</code> 到底怎么算</h4>
+<p>仓库里没有叫 <code>euler_step</code> 的函数；实际是 <strong>diffusers 的 <code>EulerDiscreteScheduler</code></strong>：首步走 <code>eas_step_with_logprob</code>（Euler <strong>Ancestral</strong>，即带噪声的 SDE 步），其余步走普通 <code>scheduler.step</code>（纯 Euler，<code>sigma_up=0</code>，无噪声）。源码核心（<code>grpo/eas_with_logprob.py</code>）：</p>
+<pre><code class="language-python"># 输入：model_output=模型预测的噪声 v̂ [B,F,C,H,W]；sample=当前潜 x_σ; sigma=σ_k
+# 1) 先从噪声预测反推「干净样本」x0（epsilon 参数化）
+pred_original_sample = sample - sigma * model_output        # x0 = x − σ·ε̂
+# 2) Euler 的导数 = (x − x0)/σ，即「指向 x0 的方向 / σ」
+derivative = (sample - pred_original_sample) / sigma
+# 3) 步长：sigma_down 是去掉噪声后的目标 σ；sigma_up 是本步注入的噪声量
+sigma_up   = (sigma_to**2 * (sigma_from**2 - sigma_to**2) / sigma_from**2) ** 0.5
+sigma_down = (sigma_to**2 - sigma_up**2) ** 0.5
+dt = sigma_down - sigma
+# 4) 确定性部分：Euler 一步
+prev_sample_mean = sample + derivative * dt
+# 5) 随机部分：只有首步（prev_sample 未提供）才真采样噪声
+if first_step:            # 首步：prev_sample 未提供
+    noise = randn_tensor(sample.shape)
+    prev_sample = prev_sample_mean + noise * sigma_up       # SDE 步
+    self._step_index += 1
+# 6) 反推本步实际用的噪声，算对数概率（用于 PPO/GRPO 的重要性比）
+noise = (prev_sample - prev_sample_mean) / sigma_up
+log_prob = (-0.5*noise**2 - torch.log(sigma_up) - 0.5*math.log(2*math.pi)) \
+             .mean(dim=tuple(range(2, prev_sample.ndim)))   # 空间维平均 → [B,C]</code></pre>
+<ul><li><strong>为什么 <code>sigma_up</code> 随 σ 变化</strong>：ancestral 采样在 σ 大时注入更多噪声（探索），σ 小时几乎不加（收敛）；</li><li><strong>为什么只首步要 log-prob</strong>：后续 ODE 步 <code>sigma_up=0</code>，是确定性的，概率为 1（无梯度信号）；只有首步的随机转移有密度，才有策略梯度。</li><li>论文原话（为什么不全步随机）：<code>[§3.3]</code> "introducing stochasticity at all denoising steps leads to severe credit assignment issues"。</li></ul>
+<h4 id="②-奖励-latent_reward-的实现-不改像素">② 奖励：<code>latent_reward</code> 的实现（不改像素）</h4>
+<p>源码（<code>grpo/reward_fn.py</code>），形状标注为 <code>[B,F,C,H,W]</code>：</p>
+<pre><code class="language-python">def latent_reward_fn(pred_latents, true_latents, vae,
+                     decode_chunk_size=8, use_mae=True, use_cosine=True,
+                     mae_weight=1.0, cosine_weight=1.0):
+    &quot;&quot;&quot;物理：预测未来与专家未来在潜空间的接近程度。
+    L1 管结构（物体在哪、多大），cosine 管方向（整体变化趋势）。&quot;&quot;&quot;
+    bsz, num_frames = pred_latents.shape[0], pred_latents.shape[1]
+    all_mae, all_cos = [], []
+    with torch.no_grad():                       # 奖励不回传梯度
+        for i in range(0, bsz, decode_chunk_size):
+            p = pred_latents[i:i+decode_chunk_size]      # [b,F,C,H,W]
+            t = true_latents[i:i+decode_chunk_size]
+            if use_mae:
+                mae = F.l1_loss(p, t, reduction=&#x27;none&#x27;).mean(dim=[2,3,4])  # [b,F]
+                all_mae.append(-mae)                                # 负 L1 作奖励
+            if use_cosine:
+                pf = p.view(p.shape[0], num_frames, -1)             # [b,F,C*H*W]
+                tf = t.view(t.shape[0], num_frames, -1)
+                cos = (F.normalize(pf, dim=-1) * F.normalize(tf, dim=-1)).sum(-1)  # [b,F]
+                all_cos.append(cos)
+    reward = mae_weight*torch.cat(all_mae) + cosine_weight*torch.cat(all_cos)  # [B,F]
+    return reward                               # 逐帧奖励，训练时再按帧平均/求和</code></pre>
+<p>注意：repo 里另有 <code>pixel_reward_fn</code>——先 <code>vae.decode</code> 再算 MAE + <strong>LPIPS</strong>（感知奖励），用于需要像素感知差异的场景；默认的 <code>latent_reward_fn</code> 不解码，省算力。</p>
+<h4 id="③-grpo-更新-逐行注释">③ GRPO 更新：逐行注释</h4>
+<p>源码（<code>step1_train_svd_grpo.py</code>）：</p>
+<pre><code class="language-python"># 组归一化优势：同一观测的 G=8 条想象里，谁更接近专家
+rewards = rewards.reshape(sample_batch_size, num_generations, num_frames)  # [B,G,F]
+advantages = (rewards - rewards.mean(dim=1, keepdim=True)) \
+             / (rewards.std(dim=1, keepdim=True) + 1e-8)                   # [B,G,F]
+# ↑ 物理：没有 critic，用「同组平均」当基线——这就是 GRPO 与 PPO 的区别
 
-# ── 奖励：与专家未来的潜空间一致性（reward_fn.py）───────────────
-def latent_reward(pred_latents, expert_latents):
-    &quot;&quot;&quot;物理：L1 保结构一致，cosine 保方向一致；不解码像素，省算力。&quot;&quot;&quot;
-    mae    = l1(pred_latents, expert_latents).mean(dim=[2,3,4])
-    cosine = cosine_sim(pred_latents.flatten(2), expert_latents.flatten(2))
-    return -mae + cosine                    # 两权重默认 1.0
-
-# ── 更新：组归一化优势 + 截断代理（step1_train_svd_grpo.py）─────
-def grpo_update(vpm, trajs, logps, expert_latents, clip=0.2):
-    &quot;&quot;&quot;物理：比同组平均更接近专家（优势&gt;0）的想象被强化，差的被压制；
-    截断防止单步更新把 VPM 推离预训练分布。&quot;&quot;&quot;
-    r   = [latent_reward(z, expert_latents) for z in trajs]
-    adv = (r - mean(r)) / (std(r) + 1e-8)                        # 组归一化
-    loss = 0
-    for z, lp, a in zip(trajs, logps, adv):
-        ratio = exp(new_logprob(vpm, z) - lp)
-        loss += min(-a*ratio, -a*clip(ratio, 1-clip, 1+clip))
-    vpm.update(loss)                          # 只更新 VPM</code></pre>
+# 重要性比：当前策略 vs 采样时策略，对同一条轨迹的概率比
+ratio = torch.exp(log_prob - batch_log_probs)          # π_new / π_old，标量/张量
+clipped_ratio = torch.clamp(ratio, 1.0 - clip_range, 1.0 + clip_range)  # 0.8~1.2
+# 截断代理：min(未截断, 截断) = 悲观估计，防止单步更新过猛
+unclipped_loss = -advantages * ratio                   # 优势&gt;0 时希望 ratio 变大
+clipped_loss   = -advantages * clipped_ratio
+loss = torch.mean(torch.minimum(unclipped_loss, clipped_loss))
+# 诊断指标（不参与反传）
+approx_kl = 0.5 * torch.mean((log_prob - batch_log_probs) ** 2)        # 策略漂移
+clipfrac  = torch.mean((torch.abs(ratio - 1.0) &gt; clip_range).float())  # 被截断比例</code></pre>
+<ul><li><strong>优势&gt;0</strong>：这条想象比组内平均更接近专家 → 提高其概率（ratio↑）；<strong>优势&lt;0</strong> → 压低；</li><li><strong>为什么取 min</strong>：未截断项在 ratio 很大时仍线性增长，可能被单条样本带飞；截断项把它压住，取 min 得到保守更新（PPO 的标准做法）；</li><li><strong><code>clip_range=0.2</code>、<code>adv_clip_max=2.0</code>、<code>lr=1e-6</code>、<code>G=8</code>、<code>I=20 步</code>、<code>guidance=7.5</code></strong>：均来自 <code>scripts/train_calvin_svd_grpo.sh</code> 的实参；</li><li><strong><code>log_prob</code> 从哪来</strong>：首步 SDE 的 <code>eas_step_with_logprob</code> 返回值（见 ①），后续 ODE 步没有 log-prob。</li></ul>
+<pre><code class="language-python"># 训练主干（按源码结构）
+def grpo_step(vpm, expert_latents, cond, G=8, steps=20, clip=0.2):
+    z0 = randn_like(expert_latents)                 # 共享初始噪声 [B,F,C,H,W]
+    trajs, logps = rollout_group(vpm, z0, cond, G, steps)   # 只首步 SDE
+    r   = latent_reward_fn(torch.stack(trajs), expert_latents)  # [B,G,F]
+    adv = (r - r.mean(1, keepdim=True)) / (r.std(1, keepdim=True) + 1e-8)
+    loss = clipped_surrogate(vpm, trajs, logps, adv, clip)     # 见上
+    vpm.update(loss)                                # 只更新 VPM；VAE/文本编码器冻结</code></pre>
 <h3 id="2-3-eva-idm-动作平滑度奖励-flow-grpo">2.3 EVA：IDM 动作平滑度奖励 + Flow-GRPO</h3>
 <p><strong>代码解读</strong></p>
 <table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>把生成视频解码成关节角，惩罚抖动/急加速/超限——机械臂真实执行时最容易出问题的三种运动。</td></tr><tr><td>为什么这么做</td><td>视频看着合理不代表能动；用冻结 IDM 把「画面质量」翻译成「动作可执行性」，补上执行性 gap。</td></tr><tr><td>方法出处</td><td>论文 §4.2–4.3（Eq.3–7）；<strong>无官方代码，依论文重建</strong>；Flow-GRPO 谱系来自 GRPO 在扩散/流模型上的适配。</td></tr><tr><td>优势与代价</td><td>优势：奖励无需真机、物理可解释；代价：依赖 IDM 精度，平滑奖励可被「不动」骗过（用限幅惩罚堵）。</td></tr></tbody></table>
