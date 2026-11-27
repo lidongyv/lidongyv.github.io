@@ -314,27 +314,69 @@ def flow_grpo_step(gen, videos, prompts):
 
 ### 2.4 CreFlow：LTL 稀疏奖励 + DiffusionNFT + corrective reflow
 
+**输入 / 输出**：输入=rollout 视频、离线合成的 LTLf 规格、冻结的参考策略（Vidar）；输出=生成器梯度（监视器、IDM 冻结）。
 **代码解读**
+
 | 项 | 内容 |
 |---|---|
 | 物理意义 | 用线性时序逻辑检查「抓取→移动→放下」是否按顺序完成；违例帧就是不能学的区域。 |
 | 为什么这么做 | 稀疏成功奖励下，失败 rollout 不能整段模仿；把失败样本推向同组成功样本的均值，给出物理可执行的改进方向。 |
-| 方法出处 | 论文 §4.1–4.3（Eq.5–9）；**无官方代码，依论文重建**；NFT 谱系来自 DiffusionNFT，reflow 来自 Rectified Flow。 |
-| 优势与代价 | 优势：只用二值奖励就能训、且更新被限制在违例区；代价：需要离线合成 LTL 规格，规格错了奖励就错。 |
+| 方法出处 | 论文 §3–§4.3（Eq.2–9）；**无官方代码，依论文重建**；NFT 谱系来自 DiffusionNFT，reflow 来自 Rectified Flow。 |
+| 优势与代价 | 优势：只用二值奖励就能训、更新被限制在违例区；代价：需要离线合成 LTL 规格，规格错了奖励就错。 |
+
+#### 公式逐条：Eq.5–Eq.9 分别在说什么
+
+| 公式 | 内容 | 物理意义 |
+|---|---|---|
+| **Eq.(5)** `(r,𝒱,𝒮)=ℳ_c(x0;y)` | LTL 监视器输出：二值奖励 `r∈{0,1}`、违例 witness `𝒱`（哪一帧违反哪条子句）、实体 mask `𝒮`（SAM3 跟踪的物体） | 「这一遍到底错在哪一帧、哪个物体上」——不是只给一个 0/1 |
+| **Eq.(6)** `M = M_T ⊗ M_S` | 组共享掩码：`M_T=⋃` 失败子句的帧，`M_S=⋃` 全部 rollout 的实体 mask | 只在「出错的时空区域」加梯度；整组都成功时 `M≡0`，等价于组相对优势为 0（不更新） |
+| **Eq.(7)** `L_CA-NFT(θ)=E[r‖M⊙(v⁺−v̂)‖²+(1−r)‖M⊙(v⁻−v̂)‖²]` | 带掩码的 NFT 损失；`v⁺=(1−β)v_old+βv_θ`（正分支），`v⁻=(1+β)v_old−βv_θ`（负分支） | 好样本：把速度场往「数据速度 `v̂`」拉；坏样本：把速度场**反射**着推离——用模型自身构造正负分支，不需要奖励模型或偏好对 |
+| **Eq.(8)** `x̄₀⁺ := (1/|P|)Σ_{j∈P} x₀^(j)` | 组内**成功样本**的干净潜均值（`P`=成功集合） | 「同一指令下，成功的样子平均长什么样」——给失败样本一个具体的靠拢目标 |
+| **Eq.(9)** `L_CR(θ)=E_{i∈N}‖M⊙(x̂₀^(i)−x̄₀⁺)‖²` | corrective reflow：失败样本的单步 `x0` 预测 `x̂₀=x_t−t·v_θ` 拉向 `x̄₀⁺` | 「别只告诉我错，告诉我该往哪走」；只对失败样本 `N`，且只在掩码区 |
+
+**为什么 Eq.(8) 不能换成「最近的成功样本」**：论文原话（§4.3）用组内均值是「within-condition positive mean 的无偏估计」，而「nearest-positive selection」会引入 matching bias（挑到谁取决于度量，方差更大、容易过拟合到单条轨迹）。
+
+**为什么 Eq.(7) 要取 min/反射而不是直接回归**：直接对失败样本回归会「学会失败」；反射分支让更新方向与坏样本相反。**为什么 Eq.(9) 只对失败样本**：成功样本已经在 `x̄₀⁺` 里，重复约束没有增益，还会压制多样性。
+
+#### 代码（Eq.5–9 逐行对应）
 
 ```python
 def ltl_monitor(video, spec):
-    """物理：返回 0/1 + 违例发生在哪帧（witness），供损失只惩罚违例区。"""
-    return spec.check(frames(video))            # Eq.(5)
+    """Eq.5：返回 (r, witness, entity_masks)。
+    r∈{0,1}；witness=违例的帧/子句；masks=SAM3 实体 mask（[T,H,W]）。"""
+    return spec.check(frames(video))          # ℳ_c(x0;y)
 
-def creflow_loss(rollouts, spec, ref_policy, beta):
-    """物理：成功样本正常学；失败样本向组内成功均值纠正。"""
-    rs = [ltl_monitor(v, spec)[0] for v in rollouts]
-    M  = union_witness_masks(rollouts, spec)    # 违例帧/实体掩码
-    loss_nft = token_masked_nft(rollouts, rs, M)                    # Eq.(7)
-    x_pos = mean([v for v, r in zip(rollouts, rs) if r == 1])
-    loss_cr = mse(M * (x0_hat(failed) - x_pos))                     # Eq.(9)
-    return loss_nft + loss_cr + beta * KL(gen, ref_policy)
+def group_mask(witnesses, entity_masks):
+    """Eq.6：组共享掩码 = 违例帧 ⊗ 相关实体。
+    物理：只惩罚『错的那几帧、那几个物体』；整组全成功 → M=0，训练自动跳过。"""
+    M_T = union_frames(witnesses)             # [T]
+    M_S = union_entities(entity_masks)        # [T,H,W] 或 token 级
+    return M_T[:, None, None] * M_S           # [T,H,W]
+
+def ca_nft_loss(vpm, x_t, v_hat, r, M, beta):
+    """Eq.7：credit-aware NFT。
+    v_hat = 数据速度（ε−x0）；v_θ = 模型输出；v_old = 采样时策略（stop-grad）。"""
+    v_plus  = (1 - beta) * v_old + beta * v_theta        # 正分支：更靠近数据
+    v_minus = (1 + beta) * v_old - beta * v_theta        # 负分支：反射离开坏样本
+    loss_pos = r       * (M[None] * (v_plus  - v_hat)).pow(2)   # r=1 的样本
+    loss_neg = (1 - r) * (M[None] * (v_minus - v_hat)).pow(2)   # r=0 的样本
+    return (loss_pos + loss_neg).mean()
+
+def corrective_reflow(vpm, rollouts, rewards, M, t):
+    """Eq.8 + Eq.9：失败样本向组内成功均值纠正。"""
+    # Eq.8：成功 rollout 的干净潜均值（同一指令下的『平均成功结局』）
+    x0_pos = [r.x0 for r in rollouts if r.reward == 1]          # 每个 [C,F,H,W]
+    x_bar_pos = torch.mean(torch.stack(x0_pos), dim=0)
+    loss = 0.0
+    for r in rollouts:
+        if r.reward != 0:            continue                    # 只对失败样本 N
+        x0_hat = r.x_t - t * vpm(r.x_t, t, r.cond)              # 单步反推 x0
+        loss = loss + (M[None] * (x0_hat - x_bar_pos)).pow(2).mean()   # Eq.9
+    return loss
+
+# 总目标（§4.3）：两项 + 到冻结参考 Vidar 的 KL，λ/β 论文未给
+loss = ca_nft_loss(...) + lambda_cr * corrective_reflow(...) \
+       + beta_kl * KL(gen, vidar_ref)
 ```
 
 ### 2.5 WorldVLN：自回归 WAM 的段级 GRPO
