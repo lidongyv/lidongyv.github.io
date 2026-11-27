@@ -37,75 +37,140 @@ tags_en: ["RL", "Post-training", "Closed-loop", "VLA", "WAM", "Code"]
 
 ### 2.1 GigaBrain RAMP：KL-RL 闭式解 → 加权 NLL
 
-**输入 / 输出**：输入=4K 小时真机数据、episode 成功标签、预训练 VLA、Wan2.2 世界模型；输出=后训练策略 + 联合续训后的世界模型。
+**先给符号表**（shape 中 `C_z`=VAE 潜通道数、`h×w`=潜分辨率、`d_p`=本体维、`H_a`=动作块长、`d_a`=动作维；论文未给的数值标「未给」）：
+
+| 符号 | 形状 | 物理含义 | 从哪来 |
+|---|---|---|---|
+| `o_t` | `[3,H,W]` | t 时刻 RGB 观测 | 数据 |
+| `p_t` | `[d_p]` | 本体感知（关节/夹爪） | 数据 |
+| `a_t` | `[H_a,d_a]` | 动作块（策略输出） | 数据/策略 |
+| `l` | token ids | 语言指令 | 数据 |
+| `success` | bool | episode 级成功标签 | 数据（遥操作日志） |
+| `z_t` | `[C_z,h,w]` | 当前帧的 VAE 潜 | `z_t = E_vae(o_t)` |
+| `z_future_i` | `[C_z,h,w]` | 未来帧潜，`i∈{12,24,36,48}` 步后 | `E_vae(o_{t+i})`，仅训练期 |
+| `v_t` | 标量 | 价值估计≈「负的期望剩余步数」 | 价值头 `W.value(s_t)` |
+| `Ψ(·)` | — | 轻量 MLP：把标量价值/本体向量投影到潜通道 | 论文只说「MLP 对齐维度」，结构未给 |
+| `s_t` | `[C_z+1+C_p,h,w]` | 增强状态：潜 + 价值图 + 本体图（通道拼接，Eq.6） | `s_t=[z_t;Ψ(v_t);Ψ(p_t)]` |
+| `W.flow(u,τ,s_t,a_t)` | → `[C_z,h,w]` | 流匹配速度场：给定加噪潜、流时间、状态、动作，预测「往干净未来走的速度」 | 世界模型骨干（Wan2.2 + flow matching） |
+| `u_τ` | `[C_z,h,w]` | 加噪插值潜 `(1−τ)ε+τz_future` | 训练时构造 |
+| `ε`（噪声） | `[C_z,h,w]` | 流匹配噪声 | `randn_like` |
+| `r_t` | 标量 | 稀疏奖励（Eq.5） | 由 `success` 与步数算出 |
+| `A_t` | 标量 | n 步 TD 优势（Eq.8） | 由 `r_t`、`v_t` 算出 |
+| `I_t` | `{0,1}` | 改进指示：`1[A_t>ε_thr]` | 由 `A_t` 与阈值算出 |
+| `γ, n, ε_thr, α, C_fail, β` | 标量 | 折扣/TD 步长/二值阈值/权重/失败代价/KL 温度 | **数值论文未给** |
+
+**数据流闭环（先看这个，再看代码）**
+
+```
+数据 episode ──► (o_t, o_{t+i}, p_t, a_t, l, success)
+                        │
+        ┌───────────────┴────────────────┐
+        ▼                                ▼
+   VAE 编码 o_t / o_{t+i}           稀疏奖励 r_t（Eq.5）
+        │  z_t / z_future_i              │
+        ▼                                ▼
+   s_t=[z_t;Ψ(v_t);Ψ(p_t)] ──► W.flow 训练（Eq.7）──► 价值头 v_t（TD）
+        │                                              │
+        └────────────► A_t（Eq.8） ◄──────────────────┘
+                        │
+                 I_t=1[A_t>ε_thr]
+                        │
+                        ▼
+             策略损失（Eq.3，两项 NLL）
+```
 
 **代码解读**
 | 项 | 内容 |
 |---|---|
-| 物理意义 | 世界模型学「给当前观测+本体+动作，12/24/36/48 步后画面变成什么」；它不输出动作，只提供未来潜与价值，供策略条件化。 |
-| 为什么这么做 | 真机奖励极稀疏，直接用策略梯度方差太大；把 KL-RL 闭式解改写成「无条件 + 改进条件」两项 NLL，等价于用优势当条件做加权模仿，训练更稳。 |
-| 方法出处 | 论文 §3.2.1–3.2.2（Eq.2/3/5/8）；**无官方代码，本文依论文重建**；KL-RL 谱系来自 LLM 的 RLHF/DPO，RECAP 是其特例。 |
-| 优势与代价 | 优势：无需 critic、可用离线日志、训练稳定；代价：依赖世界模型价值精度，β/γ/n/ε 论文未给，需自调。 |
+| 物理意义 | 世界模型学「给当前观测+本体+动作，12/24/36/48 步后画面变成什么」；价值头学「还剩多少步能成功」；策略学「在 I=1 的条件下更像专家」。 |
+| 为什么这么做 | 真机奖励极稀疏，直接用策略梯度方差太大；把 KL-RL 闭式解改写成两项 NLL，等价于用优势当条件做加权模仿，训练更稳。 |
+| 方法出处 | 论文 §3.2.1–3.2.2（Eq.2/3/5/6/7/8）；**无官方代码，本文依论文重建**；KL-RL 谱系来自 LLM 的 RLHF/DPO，RECAP 是同族特例。 |
+| 优势与代价 | 优势：无需 critic、可用离线日志、训练稳定；代价：依赖价值头精度，β/γ/n/ε/α 论文未给需自调。 |
 
 ```python
-# ── Stage 0：世界模型预训练（§3.2.2 Stage 1，Eq.7）──────────────
-def train_world_model(D_robot, W, steps):
-    """物理：学「动作作用后世界怎么变」。
-    z_t 是当前帧潜；s_t 把当前潜、价值、本体征组合成增强状态。"""
-    for (o_t, o_future, p_t, v_t, a_t, l) in D_robot:
-        z_t   = W.vae.encode(o_t)                      # [B,C,T,H,W]
-        s_t   = concat([z_t, psi(v_t), psi(p_t)])      # §3.2.1 增强状态 S=(o,z,l)
-        for i in [12, 24, 36, 48]:                     # 四个未来时刻
-            eps = randn_like(z_future_i)               # 流匹配噪声
-            loss += mse(W.flow(s_t, a_t, t), z_future_i - eps)   # Eq.(7)
-        W.update(loss)
+# ── 采样：一条 episode 的字段（success 是 episode 级标签）──────────
+def sample_episode(D):
+    """返回：o [T,3,H,W]；p [T,d_p]；a [T,H_a,d_a]；l；success: bool。"""
+    return {"o": o, "p": p, "a": a, "l": l, "success": success}
 
-# ── Stage 1：稀疏奖励（§3.2.2 Stage 1，Eq.5）────────────────────
-def sparse_reward(episode, C_fail):
-    """物理：成功=0，失败=固定惩罚，中间每步 −1（时间成本）。
-    价值函数因此等价于「负的期望剩余步数」——这是把稀疏成功变成稠密信号的关键。"""
+# ── 编码：图像 → 潜（VAE 冻结）──────────────────────────────────
+def encode(vae, img):                       # img [3,H,W] → [C_z,h,w]
+    return vae.encode(img).latent_dist.mode()
+
+# ── 构造增强状态 s_t（Eq.6）────────────────────────────────────
+def build_state(z_t, v_t, p_t, psi_v, psi_p):
+    """物理：把标量价值与本体向量『画』成与潜同尺寸的通道图，再通道拼接。
+    z_t [C_z,h,w]；Ψ(v_t)→[1,h,w]；Ψ(p_t)→[C_p,h,w]；输出 [C_z+1+C_p,h,w]。"""
+    v_map = psi_v(v_t).view(1, h, w)        # 标量 → 单通道图
+    p_map = psi_p(p_t).view(C_p, h, w)      # MLP 投影到 C_p 通道
+    return cat([z_t, v_map, p_map], dim=0)  # Eq.6 channel-wise concat
+
+# ── 世界模型一步：流匹配（Eq.7）──────────────────────────────────
+def world_model_step(W, vae, ep, tau):
+    """物理：给『加噪的未来潜』和『当前状态+动作』，预测往干净未来走的速度。
+    目标速度 = z_future − ε（流匹配的标准目标）。"""
+    z_t   = encode(vae, ep["o"][t])
+    v_t   = W.value(build_state(z_t, W.value(build_state(z_t, 0, ep["p"][t]), ep["p"][t]), ep["p"][t]))  # 价值头估计
+    s_t   = build_state(z_t, v_t, ep["p"][t], W.psi_v, W.psi_p)
+    z_future = [encode(vae, ep["o"][t+i]) for i in (12, 24, 36, 48)]   # 四个未来目标
+    eps   = randn_like(z_future[0])                 # ε [C_z,h,w]
+    u     = (1 - tau) * eps + tau * z_future[0]     # 插值潜 u_τ
+    target = z_future[0] - eps                      # 目标速度
+    return mse(W.flow(u, tau, s_t, ep["a"][t]), target)   # Eq.7
+
+# ── 稀疏奖励（Eq.5）：输入是 episode，输出每步 r_t ────────────────
+def sparse_reward(ep, C_fail):
+    """物理：成功=0（不罚），失败=固定代价，中间每步 −1（时间成本）。
+    v 头学到的就是『负的期望剩余步数』。"""
+    T = len(ep["a"]); r = [-1.0] * T
+    r[T-1] = 0.0 if ep["success"] else -C_fail
+    return r                                     # [T]
+
+# ── n 步 TD 优势（Eq.8）──────────────────────────────────────────
+def n_step_advantage(r, v, gamma, n):
+    """物理：A_t = 这段动作实际拿到的折扣回报 + 未来价值基线 − 当前价值基线。
+    A_t>0 表示『这一步比价值函数的预期更好』。"""
+    T = len(r); A = [0.0] * T
     for t in range(T):
-        if t == T-1 and episode.success:  r_t = 0
-        elif t == T-1:                    r_t = -C_fail
-        else:                             r_t = -1
-    return r
+        k = min(n, T - 1 - t)
+        A[t] = sum(gamma**i * r[t+i] for i in range(k)) \
+               + gamma**k * v[min(t+k, T-1)] - v[t]     # Eq.8
+    return A                                     # [T]
 
-# ── Stage 2：优势 + 二值化 + 加权 NLL（Eq.8 / Eq.3）─────────────
-def advantage_and_loss(rollouts, W, pi_theta, gamma, n, eps, alpha):
-    """物理：A>ε 表示「这一步比参考策略平均更好」。二值化成 I 后，
-    策略只需学会「在 I=1 的条件下更像专家」，不需要策略梯度。"""
-    for tau in rollouts:
-        for t in range(T):
-            A_t = sum(gamma**k * tau.r[t+k] for k in range(n)) \
-                  + gamma**n * W.value(tau.s[t+n]) - W.value(tau.s[t])   # Eq.(8)
-            I_t = 1.0 if A_t > eps else 0.0                              # 二值优势
-            loss += -log pi_theta(a_t | o_t, z_t, l) \
-                    - alpha * log pi_theta(a_t | I_t, o_t, z_t, l)       # Eq.(3)
-        mask_world_tokens(pi_theta, p=0.2)   # 随机掩世界模型 token，防过度依赖
-        pi_theta.update(loss)
+# ── 策略损失（Eq.3）：两项 NLL ───────────────────────────────────
+def policy_loss(pi, ep, s_t, A, eps_thr, alpha):
+    """物理：第一项=正常模仿；第二项=『在 I=1（这步更好）条件下』模仿。
+    I 是优势的二值化，作为额外的条件 token 喂给策略。"""
+    I = [1.0 if a > eps_thr else 0.0 for a in A]        # I_t ∈ {0,1}
+    loss = 0.0
+    for t in range(len(A)):
+        loss += -logp(pi, ep["a"][t], cond=(ep["o"][t], s_t[t], ep["l"])) \
+                - alpha * logp(pi, ep["a"][t], cond=(ep["o"][t], s_t[t], ep["l"], I[t]))
+    return loss                                  # Eq.3
+```
 
-# ── Stage 3：HILR 数据采集（§3.2.2 Stage 3）────────────────────
-def hilr_collect(pi_theta, env, human, n_episodes):
-    """物理：机器人自己跑，快失败时人接管；只保留「边界样本」并剔除切换抖动。"""
-    data = []
-    for _ in range(n_episodes):
-        traj, intervened = [], False
-        while not done:
-            a = pi_theta.act(obs)
-            if human.wants_control(obs):        # 人判断要接管
-                a = human.act(obs); intervened = True
-            traj.append((obs, a, intervened))
-            obs, done = env.step(a)
-        data.append(scrub_boundary(traj))       # 去切换边界伪影
-    return data
+**HILR（Stage 3）到底算什么**：它不是公式，是**数据采集过程**——输入策略/环境/人类接管策略，输出带干预标记的轨迹。
 
-# ── Stage 4：联合续训（§3.2.2 Stage 4）──────────────────────────
-def joint_continue(pi_theta, W, D_hilr, D_base):
-    """物理：只训策略会让世界模型的优势估计越来越偏（A→0），
-    所以世界模型要跟着新数据继续训，保持价值判断与策略行为同步。"""
-    for batch in mix(D_hilr, D_base, ratio=1):
-        W.update(flow_loss(batch))
-        pi_theta.update(weighted_nll(batch))
+```python
+def hilr_episode(policy, env, human):
+    """物理：机器人自己跑；人只在『即将失败』时接管。
+    输出 [(obs, a, intervened)]，并剔除切换瞬间的抖动样本（否则策略学到突变动作）。"""
+    traj, obs, done = [], env.reset(), False
+    while not done:
+        a = policy.act(obs)
+        if human.wants_control(obs):
+            a, flag = human.act(obs), 1      # 人接管
+        else:
+            a, flag = a, 0
+        traj.append((obs, a, flag))
+        obs, done = env.step(a)
+    return scrub(traj)                       # 去切换边界伪影
+
+# Stage 4：世界模型 + 策略在 HILR+base 上联合续训（混合比例论文未给）
+def joint_continue(W, pi, D_hilr, D_base):
+    for batch in sample_mix(D_hilr, D_base):     # ratio 未给
+        W.update(world_model_step(W, W.vae, batch, tau=rand()))   # 防优势坍缩
+        pi.update(policy_loss(pi, batch, build_states(batch), A=batch.A))
 ```
 
 ### 2.2 VAMPO：GRPO 训练视频去噪器（**官方代码**）

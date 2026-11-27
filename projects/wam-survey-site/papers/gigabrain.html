@@ -53,12 +53,27 @@ li{margin:4px 0}
 <tr><th>优势与代价</th><td>优势：离线日志可用；代价：依赖世界模型价值精度。</td></tr>
 </table></div>
 <p class="meta">代码类型：论文伪代码（按 §3.2 结构化）。4K 小时世界模型数据；&gt;10K 小时 VLA 预训练；掩码 p=0.2。</p>
-<pre><code># RAMP：奖励/优势/损失（§3.2）
-r_t = 0 if success at T else (-C_fail if fail else -1)   # 稀疏 episode 奖励
-A   = n_step_td(r, v)                                     # 世界模型价值
-I   = 1[A &gt; ε]                                            # 二值优势
-L   = -log π(a|o,z,l) - α*log π(a|I,o,z,l)                # 加权 NLL（RL 闭式解）
-mask_world_tokens(p=0.2)                                  # 随机注意力掩码</code></pre>
+<pre><code># 符号：o_t[3,H,W] 观测；p_t[d_p] 本体；a_t[H_a,d_a] 动作块；l 指令
+# z_t=E_vae(o_t)[C_z,h,w]；z_future_i=E_vae(o_{t+i}) i∈{12,24,36,48}（仅训练）
+# v_t=W.value(s_t) 标量；s_t=[z_t;Ψ(v_t);Ψ(p_t)] [C_z+1+C_p,h,w]（Eq.6）
+# r_t 稀疏奖励（Eq.5）；A_t n 步 TD 优势（Eq.8）；I_t=1[A_t&gt;ε]；α/γ/n/ε 论文未给
+
+# ① 世界模型流匹配（Eq.7）
+z_t = vae.encode(o_t)                      # [C_z,h,w]
+z_fut = vae.encode(o_{t+i})                # [C_z,h,w] 目标
+eps = randn_like(z_fut)                    # [C_z,h,w]
+u = (1-tau)*eps + tau*z_fut                # 插值潜
+loss_wm = mse(W.flow(u, tau, s_t, a_t), z_fut - eps)
+
+# ② 稀疏奖励（Eq.5）：成功 0 / 失败 −C_fail / 其余 −1
+r[T-1] = 0 if success else -C_fail; r[:T-1] = -1
+
+# ③ 优势（Eq.8）→ 二值化 → 策略损失（Eq.3）
+A[t] = sum(gamma**k * r[t+k] for k&lt; n) + gamma**n * v[t+n] - v[t]
+I[t] = 1 if A[t] &gt; eps_thr else 0
+loss_pi = -logp(pi, a_t, o_t, s_t, l) - alpha*logp(pi, a_t, o_t, s_t, l, I[t])
+
+# ④ 掩码 p=0.2 + HILR 采数据 + Stage4 联合续训（防 A 坍缩）</code></pre>
 <h2>关键数值（标注来源级别）</h2>
 <table><tr><th>指标</th><th>数值</th><th>级别</th></tr><tr><td>相对 RECAP</td><td>≈30% 提升</td><td>L3</td></tr><tr><td>世界模型数据</td><td>4K 小时</td><td>L3</td></tr></table>
 <div class="warn">来源级别：L3=全文核实（含官方代码）/ L2=部分正文 / L1=仅摘要。数值为提出方自评。</div><p class="foot">本站内容基于论文原文（verbatim 引文 + 中译标注）与官方代码；未给出处一律标注。生成于 2026-11。</p></div></body></html>

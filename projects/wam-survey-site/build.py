@@ -427,12 +427,27 @@ ratio = exp(logp - logp_old); loss = mean(min(-adv*ratio, -adv*clamp(ratio,.8,1.
    contrib_cn="RAMP 四阶段闭环：世界模型预训练→优势条件化策略微调（KL-RL 闭式解改写为加权 NLL）→HILR rollout→联合持续训练；较 RECAP 约 +30%。",
    mech_en="A(s_t,a_t)=Σ γ^k r_{t+k} + γ^n v_{t+n} − v_t; advantages are discretized into a binary indicator",
    mech_cn="用 n 步 TD 计算优势，并把优势二值化为指示变量 I。",
-   code="""# RAMP：奖励/优势/损失（§3.2）
-r_t = 0 if success at T else (-C_fail if fail else -1)   # 稀疏 episode 奖励
-A   = n_step_td(r, v)                                     # 世界模型价值
-I   = 1[A > ε]                                            # 二值优势
-L   = -log π(a|o,z,l) - α*log π(a|I,o,z,l)                # 加权 NLL（RL 闭式解）
-mask_world_tokens(p=0.2)                                  # 随机注意力掩码""",
+   code="""# 符号：o_t[3,H,W] 观测；p_t[d_p] 本体；a_t[H_a,d_a] 动作块；l 指令
+# z_t=E_vae(o_t)[C_z,h,w]；z_future_i=E_vae(o_{t+i}) i∈{12,24,36,48}（仅训练）
+# v_t=W.value(s_t) 标量；s_t=[z_t;Ψ(v_t);Ψ(p_t)] [C_z+1+C_p,h,w]（Eq.6）
+# r_t 稀疏奖励（Eq.5）；A_t n 步 TD 优势（Eq.8）；I_t=1[A_t>ε]；α/γ/n/ε 论文未给
+
+# ① 世界模型流匹配（Eq.7）
+z_t = vae.encode(o_t)                      # [C_z,h,w]
+z_fut = vae.encode(o_{t+i})                # [C_z,h,w] 目标
+eps = randn_like(z_fut)                    # [C_z,h,w]
+u = (1-tau)*eps + tau*z_fut                # 插值潜
+loss_wm = mse(W.flow(u, tau, s_t, a_t), z_fut - eps)
+
+# ② 稀疏奖励（Eq.5）：成功 0 / 失败 −C_fail / 其余 −1
+r[T-1] = 0 if success else -C_fail; r[:T-1] = -1
+
+# ③ 优势（Eq.8）→ 二值化 → 策略损失（Eq.3）
+A[t] = sum(gamma**k * r[t+k] for k< n) + gamma**n * v[t+n] - v[t]
+I[t] = 1 if A[t] > eps_thr else 0
+loss_pi = -logp(pi, a_t, o_t, s_t, l) - alpha*logp(pi, a_t, o_t, s_t, l, I[t])
+
+# ④ 掩码 p=0.2 + HILR 采数据 + Stage4 联合续训（防 A 坍缩）""",
    code_kind="论文伪代码（按 §3.2 结构化）", code_note="4K 小时世界模型数据；>10K 小时 VLA 预训练；掩码 p=0.2。",
    metrics=[("相对 RECAP", "≈30% 提升", "L3"), ("世界模型数据", "4K 小时", "L3")],
    links=[("arXiv", "https://arxiv.org/abs/2602.12099"), ("项目页", "https://gigabrain05m.github.io")]),
