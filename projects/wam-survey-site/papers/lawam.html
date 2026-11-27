@@ -45,7 +45,14 @@ li{margin:4px 0}
 <blockquote><span class="lbl">原文（论文方法节，verbatim）</span>p(a_{1:T}, û_T, ẑ | o,l) = p_θ(ẑ|o,l)[Policy Prior] p_ω(û_T|u,ẑ)[LaWM] p_η(a_{1:T}|o,l,u,û_T)[Action Expert]</blockquote>
 <blockquote><span class="lbl">中译（译者译）</span>联合分布分解为三段：策略先验给潜动作 ẑ、LaWM 给潜子目标 û_T、动作专家以三者条件出动作。</blockquote>
 <h2>核心代码实现</h2>
-<p class="meta">类型：论文伪代码（按 §3 结构化）。LaWM 230M、总 2.3B、187ms；LIBERO 98.6 / RoboTwin 91.22。</p>
+<div class="card"><b>代码解读</b><table style="margin-top:8px">
+<tr><th style="width:96px">证据级别</th><td>论文重建</td></tr>
+<tr><th>物理意义</th><td>潜动作=「意图」，LaWM 解码成潜视觉子目标，避免生成像素未来。</td></tr>
+<tr><th>为什么这么做</th><td>像素级未来冗余且慢；潜子目标保留语义、快约 24×。</td></tr>
+<tr><th>方法出处</th><td>论文 §3.1（L2）；LaWM 230M、总 2.3B。</td></tr>
+<tr><th>优势与代价</th><td>优势：LIBERO 98.6/187ms；代价：潜子目标可解释性差。</td></tr>
+</table></div>
+<p class="meta">代码类型：论文伪代码（按 §3 结构化）。LaWM 230M、总 2.3B、187ms；LIBERO 98.6 / RoboTwin 91.22。</p>
 <pre><code># 三段式潜空间管线（§3.1）
 u   = DINOv3(o)                                  # 冻结特征
 z   = policy_prior(o, l)                         # 潜动作（编码器推断）

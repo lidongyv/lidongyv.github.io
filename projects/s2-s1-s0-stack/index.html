@@ -450,6 +450,74 @@ q_des = sonic.decode(tok, proprio)         <span class="c"># 78 维动作空间 
 <span class="c"># 可加 latent residual（post/pre quantization）做下游修正</span></code></pre>
   <h3>11.5 结果</h3>
   <p>test-content <b>98.5%</b> / test-repetition 99.2% / PHUMA 97.2%；真机 124 条动作 <b>99.2%</b>（仿真 100%），MPJPE-L 25.7mm（仿真 22.3mm，脚部 53.7 vs 29.0mm）；对比 BeyondMimic 82.0/85.4/73.8%、Any2Track 61.6/69.4/78.5%；vs 专用 OpenHomie 存活率 98.5% vs 43.0%。</p>
+
+  <h3>11.6 张量流与形状（从官方源码/配置读出）</h3>
+  <table>
+    <tr><th>张量</th><th>形状 / 值</th><th>说明</th></tr>
+    <tr><td>`command_multi_future_nonflat`</td><td>[B, 10, 58]</td><td>每帧 29 关节位置 + 29 关节速度；源码注释提示该张量时间轴有 flatten bug，复现时按 10 帧×58 重排</td></tr>
+    <tr><td>`motion_anchor_ori_b_mf_nonflat`</td><td>[B, 10, 6]</td><td>相对根朝向的 6D 旋转（前两列行主序）；两处噪声 ±0.05</td></tr>
+    <tr><td>`command_z(_multi_future)`</td><td>[B, 10] / [B]</td><td>高度指令（蹲/跪/爬用）</td></tr>
+    <tr><td>`vr_3point_local_target/orn`</td><td>[B, 3, 3] / [B, 3, 6]</td><td>头+双腕位置与 6D 朝向（teleop 编码器）</td></tr>
+    <tr><td>`smpl_joints_multi_future_local_nonflat`</td><td>[B, 10, J×3]</td><td>SMPL 关节未来 10 帧，Δt=0.02s；噪声 ±0.05</td></tr>
+    <tr><td>proprio（actor_obs）</td><td>历史 <b>10</b> 帧</td><td>`actor_prop_history_length=10`、动作历史 10</td></tr>
+    <tr><td>编码器输出</td><td><b>[B, 2, 32]</b> → flatten <b>[B, 64]</b></td><td>`max_num_tokens=2`、`num_fsq_levels=32` → token_dim=32；2×32=64</td></tr>
+    <tr><td>FSQ</td><td>32 级/维 × 32 维/token</td><td>`fsq_level_list=32`；每维独立量化，直通估计器回传梯度</td></tr>
+    <tr><td>g1_dyn 解码器</td><td>token(64)+proprio → action</td><td>MLP [2048,2048,1024,1024,512,512]+SiLU；action=29 关节（日志 `action.csv` 为 29 列）</td></tr>
+    <tr><td>g1_kin 解码器（辅助）</td><td>[B,2,32] → [B,10,(58+6)]</td><td>重建未来 10 帧运动（仅训练用，隐含重定向）</td></tr>
+  </table>
+  <pre><code><span class="c"># token 流（源码 UniversalTokenModule docstring）</span>
+tokenizer_obs ──► encoder(g1|teleop|smpl) ──► [latent_residual (pre)]
+              ──► FSQ 量化 ──► [latent_residual (post)]
+              ──► decoder(g1_dyn) ──► action_mean
+                              └► decoder(g1_kin) ──► 未来 10 帧（辅助）
+<span class="c"># latent residual 三种模式：post_quantization（默认）/ pre_quantization / pre_quantization_replace</span></code></pre>
+
+  <h3>11.7 损失函数（aux loss 配置逐项）</h3>
+  <table>
+    <tr><th>损失</th><th>系数</th><th>作用</th></tr>
+    <tr><td>PPO（clip 0.2，entropy 0.01）</td><td>主损失</td><td>策略梯度；GAE(γ=0.99, λ=0.95)</td></tr>
+    <tr><td>`g1_recon`</td><td><b>0.01</b></td><td>用 token 重建未来 10 帧运动（58+6 维）</td></tr>
+    <tr><td>`g1_smpl_latent`</td><td><b>1.0</b></td><td>G1 token 与 SMPL token 的潜空间对齐</td></tr>
+    <tr><td>`g1_teleop_latent`</td><td><b>1.0</b></td><td>G1 token 与 teleop token 对齐</td></tr>
+    <tr><td>`teleop_smpl_latent`</td><td><b>1.0</b></td><td>teleop token 与 SMPL token 对齐</td></tr>
+    <tr><td>`reencoded_smpl_g1_latent`</td><td><b>1.0</b></td><td>SMPL 重编码后再对齐 G1（`reencode_smpl_g1_recon=true`）</td></tr>
+    <tr><td>skating loss</td><td>（项内权重）</td><td>脚接触时惩罚预测脚速 ‖p<sub>t+1</sub>−p<sub>t</sub>‖/dt，防滑步</td></tr>
+    <tr><td>geodesic 旋转损失</td><td>（项内权重）</td><td>6D 旋转转矩阵后算测地误差</td></tr>
+  </table>
+
+  <h3>11.8 部署栈（C++ 文档逐项）</h3>
+  <ul>
+    <li><b>模型导出</b>：encoder 与 decoder 分开导出 ONNX（`model_encoder.onnx` / `model_decoder.onnx`），TensorRT 推理；`--encoder-file` 指定编码器。</li>
+    <li><b>观测配置</b>：YAML 里 `encoder.dimension: 64`，`use_fp16` 可选；`token_state` 经编码器，其余直连观测。</li>
+    <li><b>控制频率</b>：控制/日志 <b>~50Hz</b>；规划器 <b>~10Hz</b> 更新，每次产 ~100 帧参考段；29 关节。</li>
+    <li><b>输入接口</b>：keyboard / gamepad / ZMQ / ROS2 / manager（动态切换）；<b>输出</b>：ZMQ 或 ROS2。</li>
+    <li><b>手部/柔顺</b>：`--set-compliance`（0.01 刚性 … 0.5 柔顺）、`--max-close-ratio`（0.2–1.0）。</li>
+    <li><b>仿真</b>：MuJoCo loop（`run_sim_loop.py`），`--disable-crc-check` 关 CRC。</li>
+    <li><b>日志</b>：`q.csv`/`dq.csv`/`action.csv`（各 29 列）、target motion CSV（pos/quat/29 dof）。</li>
+    <li><b>注意</b>：`freq_test` 打印的频率不是 TensorRT 实际推理速度，别拿它当延迟指标。</li>
+  </ul>
+
+  <h3>11.9 可直接抄的代码骨架</h3>
+  <pre><code><span class="c"># 训练一步（伪代码，形状按配置）</span>
+obs = {
+  <span class="s">"tokenizer"</span>: {<span class="s">"command_multi_future_nonflat"</span>: [B,10,58],
+                <span class="s">"motion_anchor_ori_b_mf_nonflat"</span>: [B,10,6], ...},
+  <span class="s">"actor_obs"</span>: [B,10,D_prop],          <span class="c"># 10 帧历史</span>
+}
+tok = FSQ(Encoder[enc](obs[<span class="s">"tokenizer"</span>]))   <span class="c"># [B,2,32]</span>
+tok_flat = tok.reshape(B, 64)
+action = Decoder_dyn(tok_flat, obs[<span class="s">"actor_obs"</span>])  <span class="c"># [B,29]</span>
+loss = ppo_loss(action, ...) \
+     + 0.01*recon(Decoder_kin(tok), future_10frames) \
+     + 1.0*align(tok_g1, tok_smpl) + 1.0*align(tok_g1, tok_teleop) \
+     + skating_loss(...)
+
+<span class="c"># 实机推理（50Hz）</span>
+s = robot.state()                            <span class="c"># q,dq,imu</span>
+obs = build_obs(s, ref_motion, hist10)
+tok = trt_encoder(obs)                       <span class="c"># [1,64]</span>
+a   = trt_decoder(tok, obs.proprio)          <span class="c"># [1,29]</span>
+robot.set_joint_targets(a)                   <span class="c"># → PD 1kHz</span></code></pre>
 </section>
 
 <section id="groot">

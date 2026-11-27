@@ -45,7 +45,14 @@ li{margin:4px 0}
 <blockquote><span class="lbl">原文（论文方法节，verbatim）</span>At each step, a rolling noise schedule fully denoises the imminent action chunk for execution, while partially refining farther-future chunks.</blockquote>
 <blockquote><span class="lbl">中译（译者译）</span>每一步的滚动噪声调度完全去噪即将执行的动作块，同时部分精炼更远的未来块。</blockquote>
 <h2>核心代码实现</h2>
-<p class="meta">类型：论文伪代码（按 §III 结构化）。参数 K=16/W=5/N=10/ρ=5 来自 L2 笔记 03b；真机 G1 78-D（64 SONIC + 7×2）。</p>
+<div class="card"><b>代码解读</b><table style="margin-top:8px">
+<tr><th style="width:96px">证据级别</th><td>论文重建</td></tr>
+<tr><th>物理意义</th><td>错峰噪声把「想象未来」的成本摊到多个控制周期：近端块先干净可执行，远端块继续演化。</td></tr>
+<tr><th>为什么这么做</th><td>每周期从头去噪整段未来太慢；滑动窗口复用上一周期结果。</td></tr>
+<tr><th>方法出处</th><td>论文 §III（L2，03b 笔记）；参数 K=16/W=5/N=10/ρ=5。</td></tr>
+<tr><th>优势与代价</th><td>优势：4.5× 重规划提速；代价：窗口/噪声调度敏感，跨 chunk 动作不可见。</td></tr>
+</table></div>
+<p class="meta">代码类型：论文伪代码（按 §III 结构化）。参数 K=16/W=5/N=10/ρ=5 来自 L2 笔记 03b；真机 G1 78-D（64 SONIC + 7×2）。</p>
 <pre><code># 错峰噪声 + 滑动窗口（§III；参数见 03b 笔记）
 def rolling_step(window, obs, K=16, W=5, rho=5):
     for j, chunk in enumerate(window):                # j=1..W

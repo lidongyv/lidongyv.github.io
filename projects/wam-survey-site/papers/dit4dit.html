@@ -45,7 +45,14 @@ li{margin:4px 0}
 <blockquote><span class="lbl">原文（论文方法节，verbatim）</span>Instead of relying on reconstructed future frames, DiT4DiT extracts intermediate denoising features from the video generation process and uses them as temporally grounded conditions for action prediction.</blockquote>
 <blockquote><span class="lbl">中译（译者译）</span>不依赖重建的未来帧，而是从视频生成过程抽取中间去噪特征，作为时间接地条件供动作预测使用。</blockquote>
 <h2>核心代码实现</h2>
-<p class="meta">类型：论文伪代码（按 §3/§4 结构化）。config 实锤：LIBERO action_dim=8、horizon=8；G1 真机 action_dim=32、horizon=16；action_type=joint_position。</p>
+<div class="card"><b>代码解读</b><table style="margin-top:8px">
+<tr><th style="width:96px">证据级别</th><td>论文重建+config</td></tr>
+<tr><th>物理意义</th><td>不重建未来帧，直接取视频 DiT 中间层特征作动作条件——特征比像素更贴近物理动态。</td></tr>
+<tr><th>为什么这么做</th><td>重建像素有信息瓶颈；中间特征保留时空结构且省算力。</td></tr>
+<tr><th>方法出处</th><td>论文 §3/§4（L2）；config 实锤 action_dim=8/horizon=8（LIBERO）。</td></tr>
+<tr><th>优势与代价</th><td>优势：LIBERO 98.6、样本效率 &gt;10×；代价：τf 固定、需前向钩子，训练不稳时难调。</td></tr>
+</table></div>
+<p class="meta">代码类型：论文伪代码（按 §3/§4 结构化）。config 实锤：LIBERO action_dim=8、horizon=8；G1 真机 action_dim=32、horizon=16；action_type=joint_position。</p>
 <pre><code># 双流匹配：τv 均匀采样、τf 固定、τa ~ Beta(α,β)（§4.3）
 def train_step(video, actions):
     τv = uniform(0, 1)

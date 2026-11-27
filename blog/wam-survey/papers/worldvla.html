@@ -72,7 +72,14 @@ li{margin:4px 0}
 <blockquote><span class="lbl">原文（论文方法节，verbatim）</span>The text inputs are &quot;What action should the robot take to + task instruction + ?&quot;. The overall token sequence is: [BOS]{text}[BOI]{image}...[EOI]×M [EOS][BOA]{action}...[EOA]×K</blockquote>
 <blockquote><span class="lbl">中译（译者译）</span>输入为固定模板文本 + M 帧图像 token，输出 K 个动作 token；动作块用并行掩码生成。</blockquote>
 <h2>核心代码实现</h2>
-<p class="meta">类型：论文伪代码（按 §3.2/§3.3 结构化）。动作=7 tokens（3 相对位置+3 相对角度+1 夹爪），每维 256 bins；LIBERO 81.8(512)。</p>
+<div class="card"><b>代码解读</b><table style="margin-top:8px">
+<tr><th style="width:96px">证据级别</th><td>论文重建</td></tr>
+<tr><th>物理意义</th><td>把图像/动作/文本都离散成 token，同一 LLM 自回归出动作与下一帧。</td></tr>
+<tr><th>为什么这么做</th><td>统一词表可复用 LLM；世界模型分支提供未来监督。</td></tr>
+<tr><th>方法出处</th><td>论文 §3.2/§3.3（L2）；Chameleon 初始化。</td></tr>
+<tr><th>优势与代价</th><td>优势：单一模型两用；代价：自回归误差累积（action mask 缓解）。</td></tr>
+</table></div>
+<p class="meta">代码类型：论文伪代码（按 §3.2/§3.3 结构化）。动作=7 tokens（3 相对位置+3 相对角度+1 夹爪），每维 256 bins；LIBERO 81.8(512)。</p>
 <pre><code># 序列与掩码（§3.3）
 seq = [BOS] + text_tokens + repeat([BOI]+img_tokens+[EOI], M) + [BOA] + action_tokens + [EOA]
 # action 分支掩码：当前动作只能看文本+图像，不能看先前动作

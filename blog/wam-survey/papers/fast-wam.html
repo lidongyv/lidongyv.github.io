@@ -72,7 +72,14 @@ li{margin:4px 0}
 <blockquote><span class="lbl">原文（论文方法节，verbatim）</span>At inference time, Fast-WAM removes the future video branch entirely: only the clean latent tokens of the first observation frame are retained and passed through the video backbone once to produce latent world features for the action expert.</blockquote>
 <blockquote><span class="lbl">中译（译者译）</span>推理时整体移除未来视频分支：只保留第一帧的干净潜 token，过一次视频骨干产生潜世界特征，供动作专家使用。</blockquote>
 <h2>核心代码实现</h2>
-<p class="meta">类型：官方代码（节选，含 config）。仓库 yuantianyuan01/FastWAM：src/fastwam/models/wan22/fastwam.py、configs/model/fastwam.yaml；act dim=7(Δxyz+Δrpy+gripper)/chunk=32/9 视频帧。</p>
+<div class="card"><b>代码解读</b><table style="margin-top:8px">
+<tr><th style="width:96px">证据级别</th><td>源码级</td></tr>
+<tr><th>物理意义</th><td>训练期让动作专家从未来帧学表征，推理期只过首帧；动作分支看不到未来 token，避免训练-推理输入分布漂移。</td></tr>
+<tr><th>为什么这么做</th><td>受控四臂证明：去掉视频共训掉 8 点，去掉测试时想象只差约 1 点——收益在训练期表征而非推理期生成。</td></tr>
+<tr><th>方法出处</th><td>官方仓库 yuantianyuan01/FastWAM：fastwam.py、configs/model/fastwam.yaml；Wan2.2 视频 DiT + ActionDiT。</td></tr>
+<tr><th>优势与代价</th><td>优势：190ms 实时、无具身预训练达 RoboTwin 91.8；代价：视频共训算力大，多相机拼接损失视角结构。</td></tr>
+</table></div>
+<p class="meta">代码类型：官方代码（节选，含 config）。仓库 yuantianyuan01/FastWAM：src/fastwam/models/wan22/fastwam.py、configs/model/fastwam.yaml；act dim=7(Δxyz+Δrpy+gripper)/chunk=32/9 视频帧。</p>
 <pre><code># 官方代码（yuantianyuan01/FastWAM）
 # 1) proprio 作为 1 个 token 追加到 T5 条件序列（论文未写，代码实锤）
 self.proprio_encoder = nn.Linear(self.proprio_dim, self.text_dim)

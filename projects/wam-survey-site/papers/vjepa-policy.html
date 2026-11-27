@@ -45,7 +45,14 @@ li{margin:4px 0}
 <blockquote><span class="lbl">原文（论文方法节，verbatim）</span>We encode the task instruction with a frozen T5 encoder and concatenate the resulting text tokens with one state token projected from q_t to form a conditioning sequence.</blockquote>
 <blockquote><span class="lbl">中译（译者译）</span>用冻结 T5 编码指令，把文本 token 与一个由 q_t 投影的状态 token 拼接成条件序列。</blockquote>
 <h2>核心代码实现</h2>
-<p class="meta">类型：论文伪代码（按 §3 结构化）。LIBERO 97.25 / LIBERO-Plus 79.25 / RoboCasa-GR1 50.92 / 真机 45%→80%（2 任务×20 trials）。</p>
+<div class="card"><b>代码解读</b><table style="margin-top:8px">
+<tr><th style="width:96px">证据级别</th><td>论文重建</td></tr>
+<tr><th>物理意义</th><td>冻结 V-JEPA 2.1 提供预测性视觉潜；动作专家以未来潜的逐层 K/V 为条件。</td></tr>
+<tr><th>为什么这么做</th><td>不必继承完整视频生成器：预测潜足够支撑 WAM，省参数。</td></tr>
+<tr><th>方法出处</th><td>论文 §3.1（L2）；ViT-L 0.3B + predictor 0.5B + action 0.1B。</td></tr>
+<tr><th>优势与代价</th><td>优势：0.9B 总参、分布偏移下更强；代价：依赖编码器质量，预测器与动作专家需联合训练。</td></tr>
+</table></div>
+<p class="meta">代码类型：论文伪代码（按 §3 结构化）。LIBERO 97.25 / LIBERO-Plus 79.25 / RoboCasa-GR1 50.92 / 真机 45%→80%（2 任务×20 trials）。</p>
 <pre><code># 冻结编码器 + 未来潜预测器 + flow-matching 动作专家（§3.1）
 ctx   = VJEPA21.encode(obs)                       # 冻结 ViT-L，tubelet=2
 cond  = concat(T5(instruction), proj(q_t))        # 文本 + 1 个 proprio token

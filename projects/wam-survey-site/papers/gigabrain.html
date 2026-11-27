@@ -45,7 +45,14 @@ li{margin:4px 0}
 <blockquote><span class="lbl">原文（论文方法节，verbatim）</span>A(s_t,a_t)=Σ γ^k r_{t+k} + γ^n v_{t+n} − v_t; advantages are discretized into a binary indicator</blockquote>
 <blockquote><span class="lbl">中译（译者译）</span>用 n 步 TD 计算优势，并把优势二值化为指示变量 I。</blockquote>
 <h2>核心代码实现</h2>
-<p class="meta">类型：论文伪代码（按 §3.2 结构化）。4K 小时世界模型数据；&gt;10K 小时 VLA 预训练；掩码 p=0.2。</p>
+<div class="card"><b>代码解读</b><table style="margin-top:8px">
+<tr><th style="width:96px">证据级别</th><td>论文重建</td></tr>
+<tr><th>物理意义</th><td>世界模型价值 n 步 TD 变优势，二值化后当条件做加权模仿。</td></tr>
+<tr><th>为什么这么做</th><td>稀疏奖励下方差大；KL-RL 闭式解转 NLL 更稳。</td></tr>
+<tr><th>方法出处</th><td>论文 §3.2（L2）；无官方代码。</td></tr>
+<tr><th>优势与代价</th><td>优势：离线日志可用；代价：依赖世界模型价值精度。</td></tr>
+</table></div>
+<p class="meta">代码类型：论文伪代码（按 §3.2 结构化）。4K 小时世界模型数据；&gt;10K 小时 VLA 预训练；掩码 p=0.2。</p>
 <pre><code># RAMP：奖励/优势/损失（§3.2）
 r_t = 0 if success at T else (-C_fail if fail else -1)   # 稀疏 episode 奖励
 A   = n_step_td(r, v)                                     # 世界模型价值

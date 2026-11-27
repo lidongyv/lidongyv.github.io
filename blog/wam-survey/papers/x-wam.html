@@ -72,7 +72,14 @@ li{margin:4px 0}
 <blockquote><span class="lbl">原文（论文方法节，verbatim）</span>ANS applies a specialized asynchronous denoising schedule during inference, which rapidly decodes actions with fewer steps to enable efficient real-time execution, while dedicating the full sequence of steps to generate high-fidelity video.</blockquote>
 <blockquote><span class="lbl">中译（译者译）</span>ANS 在推理时使用专门的异步去噪调度：动作用更少步快速解码以支持实时执行，而视频仍用完整步数保高保真。</blockquote>
 <h2>核心代码实现</h2>
-<p class="meta">类型：论文伪代码（按 §3 结构化）。动作=双臂 EEF 位姿+夹爪「变化量」（维度附录未取到）；视频 K=32。</p>
+<div class="card"><b>代码解读</b><table style="margin-top:8px">
+<tr><th style="width:96px">证据级别</th><td>论文重建</td></tr>
+<tr><th>物理意义</th><td>动作与视频用不同步数去噪：动作要快（实时执行），视频要全（保真）。</td></tr>
+<tr><th>为什么这么做</th><td>动作解码不需要视频那么高的保真度；异步采样让两者各取所需。</td></tr>
+<tr><th>方法出处</th><td>论文 §3.3/§3.4（L2）；ANS 异步噪声采样。</td></tr>
+<tr><th>优势与代价</th><td>优势：4D 重建+动作一体；代价：训练需保证联合分布对齐。</td></tr>
+</table></div>
+<p class="meta">代码类型：论文伪代码（按 §3 结构化）。动作=双臂 EEF 位姿+夹爪「变化量」（维度附录未取到）；视频 K=32。</p>
 <pre><code># ANS：动作与视频不同步数去噪（§3.3/§3.4）
 def infer(x0, steps_video=8, steps_action=2):
     video = randn_like(x0); action = randn_like(a0)

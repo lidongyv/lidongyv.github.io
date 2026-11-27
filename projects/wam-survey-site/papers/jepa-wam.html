@@ -45,7 +45,14 @@ li{margin:4px 0}
 <blockquote><span class="lbl">原文（论文方法节，verbatim）</span>Let E_J denote a frozen V-JEPA 2.1 encoder and let P_ψ denote a learnable projector... Z_ℓ = P_ψ(Pool_{8×8}(E_J([g, g]))) ∈ R^{64×d_c}.</blockquote>
 <blockquote><span class="lbl">中译（译者译）</span>E_J 为冻结 V-JEPA 2.1 编码器、P_ψ 为可学习投影：把生成图复制成两帧编码、8×8 池化后得 64 个 goal token。</blockquote>
 <h2>核心代码实现</h2>
-<p class="meta">类型：论文伪代码（按 §3 结构化）。真机三设定 87.3/74.5/80.9；K=1024 bank；JEPA 编码器 ViT-B/16 80M。</p>
+<div class="card"><b>代码解读</b><table style="margin-top:8px">
+<tr><th style="width:96px">证据级别</th><td>论文重建</td></tr>
+<tr><th>物理意义</th><td>生成的目标图 bank 提供「任务完成的样子」，V-JEPA 编成 64 token 去外观保语义。</td></tr>
+<tr><th>为什么这么做</th><td>纯文本指令太稀疏，模型会走视觉捷径；goal token 补语义接地。</td></tr>
+<tr><th>方法出处</th><td>论文 §3.1/§3.2（L2）；K=1024 bank、ViT-B/16 80M。</td></tr>
+<tr><th>优势与代价</th><td>优势：真机三设定 87.3/74.5/80.9；代价：需文生图生成器与离线建库。</td></tr>
+</table></div>
+<p class="meta">代码类型：论文伪代码（按 §3 结构化）。真机三设定 87.3/74.5/80.9；K=1024 bank；JEPA 编码器 ViT-B/16 80M。</p>
 <pre><code># 离线建库 + 冻结 JEPA 编码 + 条件序列（§3.1/§3.2）
 bank = [T2I(prompt=instruction, seed=k) for k in range(K)]   # K=1024
 Z    = P_psi(pool8x8(E_J([g, g])))                            # 64 tokens

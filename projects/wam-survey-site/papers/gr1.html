@@ -45,7 +45,14 @@ li{margin:4px 0}
 <blockquote><span class="lbl">原文（论文方法节，verbatim）</span>The robot state s contains the 6D pose of the robot end-effector and a binary status of the gripper</blockquote>
 <blockquote><span class="lbl">中译（译者译）</span>机器人状态 s 含末端执行器 6D 位姿与二值夹爪状态。</blockquote>
 <h2>核心代码实现</h2>
-<p class="meta">类型：论文伪代码（按 §3 结构化）。动作 7 维（6 连续 + 1 二值）；无 action chunk（horizon=1）。</p>
+<div class="card"><b>代码解读</b><table style="margin-top:8px">
+<tr><th style="width:96px">证据级别</th><td>论文重建</td></tr>
+<tr><th>物理意义</th><td>GPT 式因果 transformer 同时预测未来帧与动作；动作为 ΔXYZ+Δ欧拉+夹爪。</td></tr>
+<tr><th>为什么这么做</th><td>视频预训练提供物理先验；单步动作回归简单可靠。</td></tr>
+<tr><th>方法出处</th><td>论文 §3.2（L3）。</td></tr>
+<tr><th>优势与代价</th><td>优势：CALVIN 94.9；代价：无 chunk、单步，高频控制需外推。</td></tr>
+</table></div>
+<p class="meta">代码类型：论文伪代码（按 §3 结构化）。动作 7 维（6 连续 + 1 二值）；无 action chunk（horizon=1）。</p>
 <pre><code># 因果 transformer + 线性动作头（§3.2）
 h = GPT(video_tokens, lang_tokens, state_tokens)   # [OBS]/[ACT] 掩蔽
 obs_pred = head_obs(h)                             # 未来帧（像素 MSE）
