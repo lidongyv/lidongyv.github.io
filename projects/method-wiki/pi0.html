@@ -518,7 +518,26 @@ x_0, _ = jax.lax.while_loop(<span class="k">lambda</span> c: c[1] &gt;= -dt / 2,
     <tr><td>Takeaway</td><td>「VLM 出条件、flow 出连续动作块」是高频灵巧操作的可用形态；关键是让两个专家只通过 self-attention 交互，且把贵的前向放进循环外</td><td>泛化的瓶颈不是机器人数据量，而是<strong>知识的异构性</strong>；在目标形态数据只占 2.4% 时，跨构型 + 网页 + 子任务标注 + 语言示范才是泛化的真正来源</td></tr>
   </table>
   <div class="ok"><b>一句话记住这一对：</b>π0 = 「怎么把 VLM 变成能出连续动作块的策略」（架构问题）；π0.5 = 「怎么用别人的数据学会自己家的事」（数据/配方问题）。两者共享同一副骨架，差别全在训练阶段划分与数据构成。</div>
-  <p class="foot">对照读：<a href="helix.html">Helix</a> 走「双系统 + 单 latent + 双频」路线，与 π0 的单模型 + 动作块形成直接对照——Helix 换实时性，π0 换动作精度与多模态；<a href="sonic.html">SONIC</a> 则是更下一层的全身控制器。参考：<a href="https://arxiv.org/abs/2410.24164">π0 (arXiv:2410.24164)</a> ｜ <a href="https://arxiv.org/abs/2504.16054">π0.5 (arXiv:2504.16054)</a> ｜ <a href="https://github.com/Physical-Intelligence/openpi">openpi 源码</a> ｜ 返回 <a href="index.html">wiki 索引</a></p>
+  <section>
+  <h2>论文原图（原文 caption）</h2>
+  <figure style="margin:14px 0">
+    <img src="figs/pi0-fig1.webp" alt="总体思路：预训练 VLM + 跨本体灵巧操作数据" style="width:100%;border:1px solid #dfe5ec;border-radius:8px">
+    <figcaption style="font-size:13px;color:#5b6a79;margin-top:6px"><b>原文 caption：</b>Fig. 1: Our generalist robot policy uses a pre-trained vision-language model (VLM) backbone, as well as a diverse cross-embodiment dataset with a variety of dexterous manipulation tasks. The model is adapted to robot control by adding a separate action expert that produces continuous actions via flow matching, enabling precise and fluent manipulation skills. The model can then be used directly to perform tasks based on a prompt, or fine-tuned on high-quality data to enable complex multi-stage tasks, such as folding multiple articles of laundry or assembling a box.<br><b>中文一句话：</b>总体思路：预训练 VLM + 跨本体灵巧操作数据</figcaption>
+  </figure>
+  <figure style="margin:14px 0">
+    <img src="figs/pi0-fig2.webp" alt="框架总览：预训练混合数据 → flow matching VLA" style="width:100%;border:1px solid #dfe5ec;border-radius:8px">
+    <figcaption style="font-size:13px;color:#5b6a79;margin-top:6px"><b>原文 caption：</b>Fig. 3: Overview of our framework. We start with a pre-training mixture, which consists of both our own dexterous manipulation datasets and open-source data. We use this mixture to train our flow matching VLA model, which consists of a larger VLM backbone and a smaller action expert for processing robot states and actions. The VLM backbone weights are initialized from PaliGemma [ 5 ] , providing representations learned from large-scale Internet pre-training. The resulting π 0 \pi_{0} model can be used to control multiple robot embodiments with differing action spaces to accomplish a wide variety of tasks.<br><b>中文一句话：</b>框架总览：预训练混合数据 → flow matching VLA</figcaption>
+  </figure>
+  <figure style="margin:14px 0">
+    <img src="figs/pi05-fig3.webp" alt="π0.5 从异构数据源迁移知识：其它机器人、高层子任务、网页数据" style="width:100%;border:1px solid #dfe5ec;border-radius:8px">
+    <figcaption style="font-size:13px;color:#5b6a79;margin-top:6px"><b>原文 caption：</b>Fig. 1 : The π 0.5 \pi_{0.5} model transfers knowledge from a heterogeneous range of data sources, including other robots, high-level subtask prediction, verbal instructions, and data from the web, in order to enable broad generalization across environments and objects. π 0.5 \pi_{0.5} can control a mobile manipulator to clean kitchens and bedrooms in new homes that were not present in the training data, performing complex multi-stage behaviors with durations of 10 to 15 minutes.<br><b>中文一句话：</b>π0.5 从异构数据源迁移知识：其它机器人、高层子任务、网页数据</figcaption>
+  </figure>
+  <figure style="margin:14px 0">
+    <img src="figs/pi05-fig4.webp" alt="两阶段：预训练（离散 token）→ 后训练（动作专家）" style="width:100%;border:1px solid #dfe5ec;border-radius:8px">
+    <figcaption style="font-size:13px;color:#5b6a79;margin-top:6px"><b>原文 caption：</b>Fig. 3 : Model overview. π 0.5 \pi_{0.5} is trained in two stages. First, a pre-training stage combines all of the different data sources to produce an initial VLA with discrete tokens. This stage uses data from diverse robotic platforms, high-level semantic action prediction, and data from the web. Robotic data uses the FAST action tokenizer to represent actions as discrete tokens [ 64 ] . Second, a post-training stage specializes the model for low-level and high-level inferences for mobile manipulation, leveraging the most task-relevant data, including verbal instructions from human supervisors. This stage uses flow matching to represent the action distribution, enabling efficient real-time inference and the ability to represent fine-grained continuous action sequences. At inference time, the model first infers a high-level subtask, and then predicts the actions based on this subtask.<br><b>中文一句话：</b>两阶段：预训练（离散 token）→ 后训练（动作专家）</figcaption>
+  </figure>
+</section>
+<p class="foot">对照读：<a href="helix.html">Helix</a> 走「双系统 + 单 latent + 双频」路线，与 π0 的单模型 + 动作块形成直接对照——Helix 换实时性，π0 换动作精度与多模态；<a href="sonic.html">SONIC</a> 则是更下一层的全身控制器。参考：<a href="https://arxiv.org/abs/2410.24164">π0 (arXiv:2410.24164)</a> ｜ <a href="https://arxiv.org/abs/2504.16054">π0.5 (arXiv:2504.16054)</a> ｜ <a href="https://github.com/Physical-Intelligence/openpi">openpi 源码</a> ｜ 返回 <a href="index.html">wiki 索引</a></p>
 </section>
 
 </div>
