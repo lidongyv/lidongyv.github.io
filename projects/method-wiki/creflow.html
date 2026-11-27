@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CreFlow 精读：LTL 稀疏奖励 + CA-NFT + corrective reflow</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>CreFlow 精读：LTL 稀疏奖励 + CA-NFT + corrective reflow</h1>
+  <p class="sub">LTLf 监视器 (r, witness, mask) → 组共享掩码 → 带掩码 NFT → 失败样本向成功均值纠正</p>
+  <p class="meta">L2（论文正文，无官方代码） · arXiv:2605.14274 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a>
+  <a href="vampo.html">VAMPO</a>
+  <a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a>
+  <a href="worldvln.html">WorldVLN</a>
+  <a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a>
+  <a href="tau0-wm.html">τ0-WM</a>
+  <a href="data-loops.html">闭环数据</a>
+
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>CreFlow 用线性时序逻辑（LTLf）把长程任务写成规格，监视器给二值奖励与违例位置；训练用 credit-aware NFT（Eq.7）+ corrective reflow（Eq.9），只在违例区更新。</p>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>规格</td><td>离线 coding agent 每任务合成 LTLf，RL 期间冻结</td></tr><tr><td>监视器</td><td>r∈{0,1} + witness（帧/子句）+ SAM3 实体 mask</td></tr><tr><td>损失</td><td>Eq.7 CA-NFT + Eq.9 corrective reflow + KL 到冻结 Vidar</td></tr><tr><td>结果</td><td>组合约束满足率提升（论文表格，L2）</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="creflow-flow.svg" alt="CreFlow 精读：LTL 稀疏奖励 + CA-NFT + corrective reflow 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：监视器指出「错在哪一帧、哪个物体」；掩码把梯度限制在违例区，其余保留预训练先验。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">Eq.(5)  (r,𝒱,𝒮) = ℳ_c(x0;y)</div><p class="foot">物理：哪一帧违反了哪条时序约束、涉及哪个物体。</p>
+<div class="eq">Eq.(6)  M = M_T ⊗ M_S</div><p class="foot">物理：只在「出错帧 × 相关实体」加梯度；整组成功则 M≡0（组优势为 0）。</p>
+<div class="eq">Eq.(7)  L_CA-NFT = E[r‖M⊙(v⁺−v̂)‖² + (1−r)‖M⊙(v⁻−v̂)‖²]</div><p class="foot">物理：好样本拉向数据速度；坏样本反射推开（v⁺=(1−β)v_old+βv_θ，v⁻=(1+β)v_old−βv_θ）。</p>
+<div class="eq">Eq.(8)  x̄₀⁺ = mean_{j∈P} x₀^(j)</div><p class="foot">物理：同条件下成功样本的「平均结局」，给失败样本具体靠拢点。</p>
+<div class="eq">Eq.(9)  L_CR = E_{i∈N}‖M⊙(x̂₀^(i)−x̄₀⁺)‖²</div><p class="foot">物理：失败样本单步反推 x0 → 拉向成功均值；只对失败集。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">按论文 §3–§4.3 重建；无官方代码。</p>
+  <pre><code>def ltl_monitor(video, spec):
+    # 物理：视频 → 实体状态轨迹 → 逐子句验证
+    return spec.check(frames(video))          # (r, witness, entity_masks)，Eq.5
+
+def group_mask(witnesses, entity_masks):
+    # 物理：只惩罚「错的那几帧、那几个物体」
+    M_T = union_frames(witnesses)             # [T]
+    M_S = union_entities(entity_masks)        # [T,H,W]
+    return M_T.view(-1,1,1) * M_S             # Eq.6
+
+def ca_nft_loss(vpm, x_t, v_hat, r, M, beta):
+    # 物理：正分支强化好样本，负分支反射坏样本
+    v_plus  = (1-beta)*v_old + beta*v_theta
+    v_minus = (1+beta)*v_old - beta*v_theta
+    loss_pos = r       * (M.unsqueeze(0)*(v_plus -v_hat)).pow(2)
+    loss_neg = (1-r)   * (M.unsqueeze(0)*(v_minus-v_hat)).pow(2)
+    return (loss_pos + loss_neg).mean()       # Eq.7
+
+def corrective_reflow(vpm, rollouts, M, t):
+    # 物理：成功均值 + 失败样本单步 x0 靠拢
+    x_bar = mean([r.x0 for r in rollouts if r.reward == 1])     # Eq.8
+    loss = 0.0
+    for r in rollouts:
+        if r.reward != 0: continue
+        x0_hat = r.x_t - t*vpm(r.x_t, t, r.cond)
+        loss += (M.unsqueeze(0)*(x0_hat - x_bar)).pow(2).mean()  # Eq.9
+    return loss</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果数字</h2>
+  <ul><li>组合约束满足率提升（论文表格）</li><li>需要离线 LTLf 规格；监视器与 IDM 冻结</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑与边界</h2>
+  <ul><li>规格写错，奖励就错</li><li>M 必须组共享，否则正负分支不在同一坐标竞争</li><li>全成功组 M=0，训练自动跳过</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="warn">L2：论文 §3–§4.3 公式；代码为依论文重建。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>

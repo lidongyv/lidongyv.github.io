@@ -35,6 +35,8 @@ tags_en: ["RL", "Post-training", "Closed-loop", "VLA", "WAM", "Code"]
 
 ### 2.1 GigaBrain RAMP：KL-RL 闭式解 → 加权 NLL
 
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · GigaBrain RAMP](/blog/method-wiki/giga-brain.html)
+
 **输入 / 输出（物理）**：输入=真机 episode（观测、本体、动作、指令、成功标签）+ 预训练 VLA + Wan2.2 世界模型；输出=会「看价值信号做动作」的策略，以及同步续训的世界模型。
 
 **代码解读**
@@ -135,6 +137,8 @@ def policy_loss(pi, ep, s_t, A, eps_thr, alpha):
 
 ### 2.2 VAMPO：GRPO 训练视频去噪器（**官方代码**）
 
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · VAMPO](/blog/method-wiki/vampo.html)
+
 **输入 / 输出（物理）**：输入=专家视频（SVD VAE 潜 `[B,F,C,H,W]`）+ SFT 后的视频预测器 VPM；输出=后训练 VPM（动作侧冻结）。
 
 **变量表**
@@ -189,6 +193,8 @@ def grpo_update(vpm, trajs, logps, expert_latents, clip=0.2):
 
 ### 2.3 EVA：IDM 动作平滑度奖励 + Flow-GRPO
 
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · EVA](/blog/method-wiki/eva.html)
+
 **输入 / 输出（物理）**：输入=生成视频 + 冻结 IDM；输出=生成器 LoRA 的梯度。
 
 **变量表**
@@ -220,6 +226,8 @@ def flow_grpo_step(gen, videos, prompts):
 ```
 
 ### 2.4 CreFlow：LTL 稀疏奖励 + DiffusionNFT + corrective reflow
+
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · CreFlow](/blog/method-wiki/creflow.html)
 
 **输入 / 输出（物理）**：输入=rollout 视频 + 离线 LTLf 规格 + 冻结参考 Vidar；输出=生成器梯度。
 
@@ -268,6 +276,8 @@ def corrective_reflow(vpm, rollouts, rewards, M, t):
 
 ### 2.5 WorldVLN：自回归 WAM 的段级 GRPO
 
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · WorldVLN](/blog/method-wiki/worldvln.html)
+
 **输入 / 输出（物理）**：输入=在线模拟器、真实观测流、目标；输出=整段动作的策略梯度。
 
 **变量表 / 公式**
@@ -307,6 +317,8 @@ def worldvln_step(model, segs, goal, gamma, lam):
 ![RL 后训练总流程](/assets/blog/rl-loop.svg)
 
 ### 3.1 HILR（Human-in-the-Loop Rollout，人机接力）
+
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · HILR / DAgger](/blog/method-wiki/data-loops.html)
 
 **输入 / 输出（物理）**：输入=当前策略、环境、人类接管判断；输出=一条带「是否人接管」标记的轨迹（已剔除切换抖动）。
 
@@ -363,6 +375,8 @@ def dagger(expert, D, N):
 
 ### 3.3 FACT：失败数据闭环（**官方代码**）
 
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · FACT](/blog/method-wiki/fact.html)
+
 **输入 / 输出（物理）**：输入=成功演示 + 失败 rollout（带结果与失败起点）；输出=同时会出动作、预测未来、估进度的因果 WAM。
 
 ![FACT 训练与推理](/assets/blog/fact-train-infer.svg)
@@ -417,6 +431,8 @@ def fact_infer(obs, instruction, N=1):
 
 ### 3.4 DreamAvoid：混合数据价值模型 + 触发式 dreaming（**官方代码**）
 
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · DreamAvoid](/blog/method-wiki/dreamavoid.html)
+
 **输入 / 输出（物理）**：输入=当前画面、候选动作块、该动作预测出的未来帧、任务、状态；输出=标量价值（越高越不会失败）。
 
 | 变量 | 形状 | 物理意义 |
@@ -448,6 +464,8 @@ def dream_avoid_step(policy, value_model, obs, state, task):
 **公式**：`V=f(obs,future,a,state,task)`——**物理**：价值不是「动作本身好不好」，而是「这个动作导致的未来看起来会不会失败」。
 
 ### 3.5 τ0-WM：propose → RCS 排序 → 模拟器精炼（**官方代码**）
+
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · τ0-WM](/blog/method-wiki/tau0-wm.html)
 
 **输入 / 输出（物理）**：输入=观测、状态、候选数 N；输出=选中动作块（可截短执行步数）。
 

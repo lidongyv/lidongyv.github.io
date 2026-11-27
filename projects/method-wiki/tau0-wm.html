@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>τ0-WM 精读：propose → RCS 排序 → 模拟器精炼</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>τ0-WM 精读：propose → RCS 排序 → 模拟器精炼</h1>
+  <p class="sub">一次生成 N 个候选动作块 · RCS 重去噪一致性 · 动作条件模拟器回报 · 回报峰值截短执行</p>
+  <p class="meta">L3（论文 + 官方代码） · arXiv:2606.01027 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a>
+  <a href="vampo.html">VAMPO</a>
+  <a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a>
+  <a href="worldvln.html">WorldVLN</a>
+  <a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a>
+  <a href="tau0-wm.html">τ0-WM</a>
+  <a href="data-loops.html">闭环数据</a>
+
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>τ0-WM 在推理期做闭环：一次生成 N 个候选，用 RCS 判断哪个不是偶然采样；再用动作条件模拟器推演回报，按回报峰值决定执行几步。</p>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>候选</td><td>N 个动作块；RCS 用若干随机时间步重去噪误差</td></tr><tr><td>精炼</td><td>模拟器推演 → 逐步回报</td></tr><tr><td>执行</td><td>回报峰值前 k 步；全差则用模拟器潜重生成</td></tr><tr><td>结果</td><td>长程任务成功率提升（论文表格，L3）</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="tau0-wm-flow.svg" alt="τ0-WM 精读：propose → RCS 排序 → 模拟器精炼 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：RCS 高=不是偶然采样；模拟回报决定「执行几步」，避免开环执行整段。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">RCS = −E_{K 个随机时间步}[‖ε−ε̂(z_t,t)‖²]</div><p class="foot">物理：重去噪误差的负值：候选越可复现，越可信。</p>
+<div class="eq">a* = argmax_{k} RCS(cand_k)</div><p class="foot">物理：先按可信度选候选。</p>
+<div class="eq">step = argmax_t sim_reward_t + 1</div><p class="foot">物理：按模拟回报峰值决定执行几步。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">仓库 sii-research/tau-0-wm：web_infer_utils/posttrain_taco_play_withTTC/TauPolicyTTC.py（源码级）。</p>
+  <pre><code>def play(obs, state, N_proposals=8):
+    # 物理：候选 → 可信度 → 模拟回报 → 截短执行
+    pred = pipeline.infer(obs, state, N_proposals=N_proposals, get_RCS=True)
+    cands, rcs = pred[&#x27;action&#x27;], pred[&#x27;rcs&#x27;]       # [N,T,C], [N]
+    best = cands[rcs.max(dim=0).indices]           # RCS 最高者
+    if sim_refine:
+        sim_rewards = sim_pipeline.infer(actions=cands, return_reward=True)
+        if sim_rewards.max() &lt; 0:
+            best = re_predict_with_sim_latent(...) # 全差 → 用模拟器潜重生成
+        else:
+            best = cands[best_idx, :argmax(sim_rewards)+1]
+    return best</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果数字</h2>
+  <ul><li>长程任务成功率提升（论文表格）</li><li>N=8 候选为脚本默认之一</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑与边界</h2>
+  <ul><li>N 倍推理算力</li><li>模拟器误差会传导</li><li>RCS 的时间步选择影响排序</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="ok">L3：官方仓库代码。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VAMPO 精读：GRPO 训练视频预测器</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<div class="wrap">
+<header class="hero">
+  <h1>VAMPO 精读：GRPO 训练视频预测器</h1>
+  <p class="sub">SVD VAE 潜 + 视频预测器（VPM） · 首步 SDE 采样 G 条未来 · 奖励=−L1+cosine · 组归一化 TRPO/GRPO 更新</p>
+  <p class="meta">L3（官方代码） · arXiv:2603.19370 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a>
+  <a href="vampo.html">VAMPO</a>
+  <a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a>
+  <a href="worldvln.html">WorldVLN</a>
+  <a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a>
+  <a href="tau0-wm.html">τ0-WM</a>
+  <a href="data-loops.html">闭环数据</a>
+
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>把「视频预测器」当策略：同一观测下想象 G 条未来，奖励由与专家未来的潜距离给出；用 GRPO 更新 VPM，动作生成器（AGM）冻结。</p>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>训练对象</td><td>仅 VPM（UNet）；VAE/文本编码器冻结</td></tr><tr><td>组大小/步数</td><td>G=8；20 步去噪；guidance 7.5</td></tr><tr><td>优化</td><td>lr=1e-6；clip=0.2；adv_clip_max=2.0；10k steps</td></tr><tr><td>结果</td><td>CALVIN/LIBERO 视频预测指标提升（论文表格，L3）</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="vampo-flow.svg" alt="VAMPO 精读：GRPO 训练视频预测器 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：同一条当前观测下想象多种未来；与专家未来越接近的想象越可执行。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">奖励  r = −L1(pred,expert) + cos(pred,expert)</div><p class="foot">物理：结构像 + 方向像；潜空间计算，不解码像素。</p>
+<div class="eq">优势  A = (r − mean_G(r)) / (std_G(r)+ε)</div><p class="foot">物理：同组比较，组均值当基线——GRPO 与 PPO 的核心区别。</p>
+<div class="eq">目标  min(ρA, clip(ρ,1−c,1+c)A)</div><p class="foot">物理：ρ=π_new/π_old；取 min 得到悲观更新，防单样本带飞。</p>
+<div class="eq">首步 SDE：x←mean+noise·σ_up；其余步 σ_up=0</div><p class="foot">物理：只有首步的随机转移有密度，才有 log-prob 与策略梯度。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">仓库 OpenHelix-Team/VAMPO：grpo/reward_fn.py、step1_train_svd_grpo.py（源码级）。</p>
+  <pre><code># 输入：expert_latents [B,F,C,H,W]；输出：更新后的 VPM
+def rollout_group(vpm, z0, cond, G=8, steps=20):
+    # 物理：首步加噪让想象分叉；后续 ODE 保证轨迹可比
+    trajs, logps = [], []
+    for g in range(G):
+        z, logp = z0.clone(), 0.0
+        for i, t in enumerate(scheduler.timesteps(steps)):
+            if i == 0:  z, logp = eas_step_with_logprob(vpm, z, t, cond)   # SDE
+            else:       z = euler_step(vpm, z, t, cond)                    # ODE
+        trajs.append(z); logps.append(logp)
+    return trajs, logps
+
+def latent_reward(pred, expert):
+    # 物理：L1 管结构，cosine 管方向
+    mae = l1(pred, expert).mean(dim=[2,3,4])          # [B,F]
+    cos = cosine_sim(pred.flatten(2), expert.flatten(2))
+    return -mae + cos
+
+def grpo_update(vpm, trajs, logps, expert, clip=0.2):
+    r = [latent_reward(z, expert) for z in trajs]
+    adv = (r - mean(r)) / (std(r) + 1e-8)             # 组归一化
+    loss = 0
+    for z, lp, a in zip(trajs, logps, adv):
+        ratio = exp(new_logprob(vpm, z) - lp)
+        loss += min(-a*ratio, -a*clip(ratio, 1-clip, 1+clip))
+    vpm.update(loss)</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果数字</h2>
+  <ul><li>视频预测指标提升（论文表格）</li><li>G=8、20 步去噪、10k steps 为脚本实参</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑与边界</h2>
+  <ul><li>只改视频预测，不直接改动作策略</li><li>首步 SDE 的方差需 clip 控制</li><li>奖励只在潜空间，像素级感知差异可能漏掉</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="ok">L3：官方仓库代码 + 论文；以上代码为仓库实现的节选。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>

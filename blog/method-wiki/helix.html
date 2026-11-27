@@ -35,108 +35,415 @@
 </style>
 <div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
 <div class="wrap">
+
 <header class="hero">
-  <h1>Helix：双系统一体的全身 VLA</h1>
-  <p class="sub">Figure · 7B VLM（7–9Hz）+ 80M visuomotor（200Hz）· 单 latent 向量接口 · 35-DoF 上半身</p>
-  <p class="meta">L1（Figure 官方博客，信息很全但无源码） · 2025-02 · 无 arXiv</p>
+  <h1>Helix：双系统一体的全身 VLA（paper-reading 级精读）</h1>
+  <p class="sub">Figure AI · S2 = 7B VLM @ 7–9Hz · S1 = 80M visuomotor @ 200Hz · 单 latent 向量接口 · 35-DoF 上半身 + 1 维完成度</p>
+  <p class="meta">证据级别 L1（官方博客全文；无论文、无源码） · 发布 2025-02-20 · 精读更新 2026-11-27</p>
 </header>
+
 <nav class="top">
-  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
-  <a class="on" href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="index.html">索引</a>
+  <a href="sonic.html">SONIC</a>
+  <a href="groot.html">GR00T</a>
+  <a class="on" href="helix.html">Helix</a>
+  <a href="pi0.html">π0 / π0.5</a>
+  <a href="astra.html">ASTRA</a>
+  <a href="fast-wam.html">Fast-WAM</a>
 </nav>
 
 <section>
-  <h2>1. 定位与关键数字</h2>
+  <h2>1. 论文信息表</h2>
   <table>
-    <tr><th>项</th><th>值</th></tr>
-    <tr><td>角色</td><td>S2+S1 一体（双系统 VLA），输出上半身连续控制</td></tr>
-    <tr><td>S2</td><td><b>7B</b> 开源 VLM；单目图+状态+语言 → 单个连续 latent；<b>7–9Hz</b></td></tr>
-    <tr><td>S1</td><td><b>80M</b> 交叉注意力 encoder-decoder；卷积多尺度视觉；<b>200Hz</b>；35-DoF + 任务完成度</td></tr>
-    <tr><td>数据</td><td>约 <b>500h</b> 多机器人多操作员遥操作（&lt;同类 VLA 数据集的 5%）；自动标注 VLM 生成 hindsight 指令</td></tr>
-    <tr><td>训练</td><td><b>单阶段端到端</b>回归；梯度经 latent 回传；训练加时间偏移对齐部署延迟</td></tr>
-    <tr><td>部署</td><td>每机器人双低功耗板载 GPU；S2 异步后台、S1 实时；单套权重覆盖全部行为</td></tr>
+    <tr><th>项</th><th>值</th><th>核实状态</th></tr>
+    <tr><td>标题</td><td>Helix: A Vision-Language-Action Model for Generalist Humanoid Control</td><td>博客页面标题，逐字</td></tr>
+    <tr><td>作者 / 机构</td><td>Figure AI（页面正文未列个人作者名单，只有机构）</td><td>页面无作者署名栏</td></tr>
+    <tr><td>时间</td><td>2025-02-20</td><td>页面日期行，逐字</td></tr>
+    <tr><td>venue</td><td>无。厂商技术博客，非同行评议、无 arXiv 编号、无 PDF</td><td>官方唯一发布物</td></tr>
+    <tr><td>链接</td><td><a href="https://www.figure.ai/news/helix">https://www.figure.ai/news/helix</a></td><td>HTTP 200，抓取于 2026-11-27</td></tr>
+    <tr><td>证据级别</td><td><b>L1</b>：厂商官方页全文可逐字引用；但所有实现细节以散文描述，无公式、无表格、无成功率数字、无源码</td><td>按本站分级：L3 论文/官方源码 · L2 部分正文 · L1 摘要或厂商页</td></tr>
+    <tr><td>可复现性上限</td><td>能复现「双系统 + 单 latent + 单阶段端到端 + 时间偏移」这套<strong>结构决策</strong>；不能复现任何具体张量维度、损失权重、训练步数</td><td>见第 12 节未公开清单</td></tr>
+  </table>
+  <p class="foot">本文所有「原文：」均为博客正文英文原句逐字摘录（保留原文标点）；括号内为抓取位置说明（如 “Architecture” 段）。凡博客未写的维度、权重、数字，本页一律标「未公开」，不做推断填充；确有必要的推算单独标「推算」。</p>
+  <h3>可核实点逐条对账（任务给的 11 个点）</h3>
+  <table>
+    <tr><th>声称</th><th>博客出处（段落）</th><th>判定</th></tr>
+    <tr><td>7B VLM</td><td>Architecture： “S2 is built on a 7B-parameter open-source, open-weight VLM”</td><td>✅</td></tr>
+    <tr><td>80M visuomotor</td><td>Architecture： “S1, an 80M parameter cross-attention encoder-decoder transformer”</td><td>✅</td></tr>
+    <tr><td>7–9Hz / 200Hz</td><td>System 1, System 2 段 + Architecture： “operating at 7-9 Hz” / “at 200 Hz”</td><td>✅（区间，不是定值）</td></tr>
+    <tr><td>35-DoF</td><td>Results： “Helix coordinates a 35-DoF action space at 200Hz”</td><td>✅</td></tr>
+    <tr><td>约 500 小时遥操作</td><td>Data： “~500 hours in total”</td><td>✅（“~”，约数）</td></tr>
+    <tr><td>自动标注 VLM hindsight 指令</td><td>Data： “we use an auto-labeling VLM to generate hindsight instructions”</td><td>✅（prompt 原文见第 6 节）</td></tr>
+    <tr><td>单阶段端到端</td><td>Training： “it maintains a single training stage and single set of neural network weights”</td><td>✅</td></tr>
+    <tr><td>时间偏移</td><td>Training： “we add a temporal offset between S1 and S2 inputs”</td><td>✅（偏移量未给）</td></tr>
+    <tr><td>双板载 GPU</td><td>Optimized Streaming Inference： “each equipped with dual low-power-consumption embedded GPUs”</td><td>✅（型号/算力未给）</td></tr>
+    <tr><td>单套权重</td><td>A single set of weights： “Using just one set of neural network weights (7B for System 2, 80M for System 1)”</td><td>✅</td></tr>
+    <tr><td>&lt; 同类 VLA 数据集 5%</td><td>Discussion： “a small fraction of the size of previously collected VLA datasets (&lt;5%)”</td><td>✅（比较对象未点名）</td></tr>
   </table>
 </section>
 
 <section>
-  <h2>2. 流程图</h2>
+  <h2>2. 原文引用（5 句英 + 中译）</h2>
+  <p class="warn">按精读规范，先给「整篇的 5 句骨架」，后面每一节再各引 1 句落到机制。所有英文原句逐字，不删改。</p>
+
+  <h3>Q1 · 问题定义</h3>
+  <p>原文： "Prior approaches face a fundamental tradeoff: VLM backbones are general, but not fast, and robot visuomotor policies are fast but not general."（System 1, System 2 段）</p>
+  <p>中译：先前的方法面临一个根本性权衡：VLM 骨干通用，但不快；机器人 visuomotor 策略快，但不通用。</p>
+
+  <h3>Q2 · 慢系统的定义</h3>
+  <p>原文： "System 2 (S2): An onboard internet-pretrained VLM operating at 7-9 Hz for scene understanding and language comprehension, enabling broad generalization across objects and contexts."（System 1, System 2 段）</p>
+  <p>中译：System 2（S2）：一个机载、经互联网预训练的 VLM，以 7–9 Hz 运行，负责场景理解与语言理解，从而在物体与场景上获得广泛泛化。</p>
+
+  <h3>Q3 · 接口（全篇最关键的一句）</h3>
+  <p>原文： "S2 distills all semantic task-relevant information into a single continuous latent vector, passed to S1 to condition its low-level actions."（Architecture 段）</p>
+  <p>中译：S2 把所有与任务相关的语义信息蒸馏成<strong>单个连续 latent 向量</strong>，交给 S1 作为其低层动作的条件。</p>
+
+  <h3>Q4 · 动作空间里的「自终止」</h3>
+  <p>原文： "We append to the action space a synthetic "percentage task completion" action, allowing Helix to predict its own termination condition, which makes it easier to sequence multiple learned behaviors."（Architecture 段）</p>
+  <p>中译：我们在动作空间里追加了一个合成的「任务完成百分比」动作，让 Helix 自己预测终止条件，从而使多个已学行为的串接更容易。</p>
+
+  <h3>Q5 · 部署与训练的镜像关系</h3>
+  <p>原文： "This deployment strategy deliberately mirrors the temporal offset introduced in training, minimizing the train-inference distribution gap."（Optimized Streaming Inference 段）</p>
+  <p>中译：这套部署策略刻意镜像了训练时引入的时间偏移，从而最小化训练-推理之间的分布差。</p>
+  <div class="ok">这 5 句正好构成一条链：<b>权衡 → 慢系统职责 → 唯一接口 → 终止条件 → 训练/部署对齐</b>。全文其余细节都是这条链的实现注脚。</div>
+</section>
+
+<section>
+  <h2>3. Problem：为什么「再快一点」不是解法</h2>
+  <p>原文： "The current state of robotics will not scale to the home without a step change."（New Scaling for Humanoid Robotics 段）</p>
+  <p>中译：没有一次台阶式的跃变，当前机器人技术水平无法扩展到家庭场景。</p>
+  <p>原文： "Teaching robots even a single new behavior currently requires substantial human effort: either hours of PhD-level expert manual programming or thousands of demonstrations. Both are prohibitively expensive when we consider how vast the problem of the home truly is."（同段）</p>
+  <p>中译：今天教机器人一个新行为都需要大量人力：要么是数小时的博士级专家手工编程，要么是上千条示教。考虑到家庭问题本身的规模之大，这两条路都贵到不可接受。</p>
+  <p>原文： "The home presents robotics' greatest challenge. Unlike controlled industrial settings, homes are filled with countless objects–delicate glassware, crumpled clothing, scattered toys–each with unpredictable shapes, sizes, colors, and textures."（同段）</p>
+  <p>中译：家庭是机器人最大的挑战。与受控的工业环境不同，家里充满无数物体——易碎的玻璃器皿、揉皱的衣物、散落的玩具——它们的形状、尺寸、颜色、材质都不可预测。</p>
+
+  <h3>把问题写成成本函数</h3>
+  <div class="eq">成本 = 每技能成本 × 技能数 ≈ (专家编程 数小时 + 示教 10³ 条) × N_行为</div>
+  <p><b>一行物理意义：</b>传统路线里「技能」是离散资产，每加一个行为就要重付一次固定成本；而家场景的长尾意味着 N_行为 趋向无穷，所以线性成本必然爆掉——瓶颈不在单点精度，而在<strong>边际成本</strong>。</p>
+  <p>这正是博客 Figure 1（scaling curves）想表达的：heuristic manipulation 的技能数随「博士数」增长，imitation learning 的技能数随「采集数据量」增长，而 Helix 想让技能数随「语言指令」增长。区别是：前两者要为新技能重新采集/编程，后者只要「说出来」。</p>
+  <p class="foot">注意：博客没有给 Figure 1 的坐标数值，只有定性曲线；本页不编造曲线上的数。</p>
+</section>
+
+<section>
+  <h2>4. Core idea：按「时间尺度」切两半，再用一个向量焊起来</h2>
+  <p>原文： "Helix resolves this tradeoff through two complementary systems, trained end-to-end to communicate:"（System 1, System 2 段）</p>
+  <p>中译：Helix 通过两个互补的、端到端训练以互相通信的系统来解决这个权衡。</p>
+  <p>原文： "System 1 (S1): A fast reactive visuomotor policy that translates the latent semantic representations produced by S2 into precise continuous robot actions at 200 Hz."（同段）</p>
+  <p>中译：System 1（S1）：一个快速反应式的 visuomotor 策略，把 S2 产生的 latent 语义表示翻译成 200 Hz 的精确连续机器人动作。</p>
+  <p>原文： "This decoupled architecture allows each system to operate at its optimal timescale. S2 can "think slow" about high-level goals, while S1 can "think fast" to execute and adjust actions in real-time."（同段）</p>
+  <p>中译：这种解耦架构让每个系统在自己最优的时间尺度上运行。S2 可以「慢想」高层目标，S1 则「快想」以实时执行和调整动作。</p>
+
+  <h3>频率不是玄学，是算出来的</h3>
+  <table>
+    <tr><th>环节</th><th>频率</th><th>单步预算</th><th>这一档频率能做什么 / 不能做什么</th></tr>
+    <tr><td>S2（7B VLM）</td><td>7–9Hz</td><td>111–143 ms</td><td>能跑一次 7B 级前向 + 语义推理；不能做闭环纠偏（143ms 内物体已移动）</td></tr>
+    <tr><td>S1（80M visuomotor）</td><td>200Hz</td><td>5 ms</td><td>能做接触、抓取滑移、协作避让的实时纠偏；不能承担开放语义推理</td></tr>
+    <tr><td>比值</td><td colspan="2">200 / 9 ≈ 22.2，200 / 7 ≈ 28.6</td><td>S1 每跑 22–29 步，S2 才更新一次意图（推算，由两个公开频率直接相除）</td></tr>
+  </table>
+  <p><b>为什么这个切分是「自然」的：</b>参数量的差（7B vs 80M = 87.5 倍）与频率的差（200/8 ≈ 25 倍）同量级——单步算力预算 ≈ 参数量 × 频率，二者相乘近似守恒。也就是说，Helix 不是随便选了 80M，而是<strong>先用 5 ms 的硬预算反推出 S1 只能是小模型</strong>，再把语义能力全部推给 7B。这条推理链是本页对博客的解读，博客只给了两个数字，没有给这个推导。</p>
+  <p class="warn">代价（博客自己点出的，也是它相对 π0 的取舍）：为了不引入 action tokenization，S1 直接输出连续控制；而 π0 走的是「动作块 + flow matching 去噪」，单次推理要 10 步网络前向（π0 论文 Table I：10 步 flow 共 27 ms）。两条路线在「如何把 VLM 语义变成高频动作」上分叉：Helix 换小模型换频率，π0 换并行去噪换精度。详见 <a href="pi0.html">π0 / π0.5 页</a>。</p>
+</section>
+
+<section>
+  <h2>5. 架构细节：S2 / latent / S1 / 动作空间</h2>
+  <h3>5.1 S2：7B 开源开放权重 VLM，只做一件事——吐一个向量</h3>
+  <p>原文： "S2 is built on a 7B-parameter open-source, open-weight VLM pretrained on internet-scale data. It processes monocular robot images and robot state information (consisting of wrist pose and finger positions) after projecting them into vision-language embedding space."（Architecture 段）</p>
+  <p>中译：S2 构建在一个 7B 参数、开源、开放权重的 VLM 之上，该 VLM 在互联网规模数据上预训练。它处理单目机器人图像与机器人状态信息（由腕部位姿与手指位置构成），先把它们投影进视觉-语言嵌入空间。</p>
+  <p><b>读法：</b>注意两个「小」设计——① 输入是<strong>单目</strong>，不是多相机堆叠；② 状态只取腕位姿 + 手指，不喂全身关节。这两点都是为了把 S2 的输入对齐到 VLM 原生模态（一张图 + 一段文本），从而<strong>不需要为机器人新增视觉编码器</strong>。代价是 S2 看不到躯干与底座状态——它只负责「看到什么、该做什么」，不负责「身体在哪」。</p>
+  <h3>5.2 latent：一个向量，不是 token 序列</h3>
+  <p>原文： "Combined with natural language commands specifying desired behaviors, S2 distills all semantic task-relevant information into a single continuous latent vector, passed to S1 to condition its low-level actions."（同段）</p>
+  <p>中译：结合描述目标行为的自然语言指令，S2 把所有与任务相关的语义信息蒸馏成单个连续 latent 向量，交给 S1 作为低层动作的条件。</p>
+  <p><b>为什么是「一个」而不是「一串」：</b>接口带宽等于跨系统每次通信的固定开销。若传 L 个 token，S1 的交叉注意力序列长度为 N_v + L，且 S2 侧还要维护 L 个输出槽；传 1 个向量则 S1 只需 proj(z) 拼接一次。博客没给 d，但从「单向量」这个措辞可以确定：<strong>语义压缩比 = 7B 内部表示 → d 维</strong>，d 必然远小于 S2 隐藏维，这就是本方法的信息瓶颈，也是它唯一可能的失效点（见 Q&amp;A 3）。</p>
+  <h3>5.3 S1：80M 交叉注意力 encoder-decoder，视觉骨干在仿真里预训练</h3>
+  <p>原文： "S1, an 80M parameter cross-attention encoder-decoder transformer, handles low-level control. It relies on a fully convolutional, multi-scale vision backbone for visual processing, initialized from pretraining done entirely in simulation."（同段）</p>
+  <p>中译：S1 是一个 80M 参数的交叉注意力 encoder-decoder transformer，负责低层控制。它依赖一个全卷积、多尺度的视觉骨干做视觉处理，该骨干的初始化来自完全在仿真中完成的预训练。</p>
+  <p>原文： "While S1 receives the same image and state inputs as S2, it processes them at a higher frequency to enable more responsive closed-loop control. The latent vector from S2 is projected into S1's token space and concatenated with visual features from S1's vision backbone along the sequence dimension, providing task conditioning."（同段）</p>
+  <p>中译：S1 接收与 S2 相同的图像与状态输入，但以更高频率处理它们，以获得更灵敏的闭环控制。来自 S2 的 latent 向量被投影进 S1 的 token 空间，并沿序列维与 S1 视觉骨干的视觉特征拼接，从而提供任务条件。</p>
+  <p><b>三个可复现的设计要点：</b>① <b>全卷积</b>骨干 → 输出是多尺度特征图，不是固定 patch 序列，分辨率改变时不必重训位置编码；② <b>仿真预训练</b> → S1 的视觉先验与语言无关，纯粹学「像素 → 可操作几何」；③ <b>沿序列维拼接</b> → z 不是加性调制（不像 FiLM/AdaLN），而是作为额外 token 参与注意力，因此 S1 可以「选择性读取」意图的某几维。</p>
+  <h3>5.4 动作空间：35-DoF + 1 维完成度</h3>
+  <p>原文： "S1 outputs full upper body humanoid control at 200hz, including desired wrist poses, finger flexion and abduction control, and torso and head orientation targets."（同段）</p>
+  <p>中译：S1 以 200 Hz 输出完整的类人上半身控制，包括期望的腕部位姿、手指屈曲与外展控制，以及躯干与头部朝向目标。</p>
+  <p>原文： "Head and torso control pose unique challenges—as they move, they change both what the robot can reach and what it can see, creating feedback loops that have historically caused instability."（Results 段）</p>
+  <p>中译：头部与躯干控制带来独特挑战——它们一动，既改变机器人能够到的范围，也改变它能看见的东西，形成历史上导致不稳定的反馈回路。</p>
+  <table>
+    <tr><th>块</th><th>内容</th><th>为什么难</th></tr>
+    <tr><td>腕部（双臂）</td><td>期望位姿</td><td>与手指耦合：位姿错 1cm，抓取点就偏</td></tr>
+    <tr><td>手指</td><td>屈曲 + 外展</td><td>高维且冗余，多解；需要接触反馈才能选对解</td></tr>
+    <tr><td>躯干 / 头</td><td>朝向目标</td><td>改变可达域与视野 → 与视觉输入构成闭环，容易自激振荡</td></tr>
+    <tr><td>+1 完成度</td><td>[0,1] 标量</td><td>自终止：把「什么时候停」也学成动作，从而能串接多行为</td></tr>
+  </table>
+  <p><b>为什么把「完成度」塞进动作空间而不是单独分类头：</b>分类头是离散决策，需要额外标注「成功/失败」；而完成度是<strong>连续回归量</strong>，可以复用同一条动作回归损失、同一个 S1 前向、同一个 200Hz 节拍，不需要额外的推理路径（博客原文用词 “append to the action space”）。这也解释了它为什么能「串接多个已学行为」：完成度是时序上的分段信号。</p>
+</section>
+
+<section>
+  <h2>6. 训练：500 小时 + hindsight 标注 + 时间偏移</h2>
+  <p>原文： "We collect a high quality, multi-robot, multi-operator dataset of diverse teleoperated behaviors, ~500 hours in total."（Data 段）</p>
+  <p>中译：我们采集了一个高质量、多机器人、多操作员的多样化遥操作行为数据集，总计约 500 小时。</p>
+  <p>原文： "To generate natural language-conditioned training pairs, we use an auto-labeling VLM to generate hindsight instructions. The VLM processes segmented video clips from the onboard robot cameras, prompted with: "What instruction would you have given the robot to get the action seen in this video?""（同段）</p>
+  <p>中译：为了生成以自然语言为条件的训练对，我们用一个自动标注 VLM 生成事后（hindsight）指令。该 VLM 处理来自机载相机的分段视频片段，提示词为：「如果想让机器人做出视频里看到的动作，你会给什么指令？」</p>
+  <p>原文： "All items handled during training are excluded from evaluations to prevent contamination."（同段）</p>
+  <p>中译：训练中接触过的所有物品都被排除在评估之外，以防止数据污染。</p>
+  <h3>6.1 为什么是 hindsight（事后）标注</h3>
+  <p>遥操作采集时，操作员手上做动作、嘴上不一定同步说出精确指令；如果事后人工补标，500 小时的标注成本与采集同量级。hindsight 做法把「指令」变成对已发生视频的<strong>逆问题</strong>：给定结果反推指令。代价是标注质量受标注 VLM 上限约束（该 VLM 型号未公开），且会引入 VLM 的系统性偏差——比如更倾向输出「把 X 放进 Y」这种模板化句式。博客没有讨论这个偏差，这是本页标出的一个隐含风险。</p>
+  <h3>6.2 单阶段端到端，梯度穿过 latent 回传到 7B</h3>
+  <p>原文： "Helix is trained fully end-to-end, mapping from raw pixels and text commands to continuous actions with a standard regression loss. Gradients are backpropagated from S1 into S2 via the latent communication vector used to condition S1's behavior, allowing joint optimization of both components."（Training 段）</p>
+  <p>中译：Helix 完全端到端训练，用标准回归损失把原始像素与文本命令映射到连续动作。梯度经由那个用于条件化 S1 行为的 latent 通信向量，从 S1 回传到 S2，从而联合优化两个组件。</p>
+  <p>原文： "Helix requires no task-specific adaptation; it maintains a single training stage and single set of neural network weights without separate action heads or per-task fine-tuning stages."（同段）</p>
+  <p>中译：Helix 不需要任何任务特定适配；它只保留单一训练阶段与单一套网络权重，没有单独的动作头，也没有按任务的微调阶段。</p>
+  <p><b>关键工程含义：</b>「梯度经一个 d 维向量回传」意味着 S2 的唯一学习信号是「你给的意图是否让 S1 的动作更像示教」。这带来两个后果——① S2 不需要任何 VQA/指令标注的辅助损失（博客明确没提辅助损失）；② 如果 d 太小，S2 收到的梯度被压缩，7B 的大部分容量学不到东西（本页推断，博客未讨论）。这与 π0.5 的做法形成对照：π0.5 显式给子任务做文本交叉熵监督，Helix 完全隐式。</p>
+  <h3>6.3 时间偏移：把部署的延迟搬进训练</h3>
+  <p>原文： "During training, we add a temporal offset between S1 and S2 inputs. This offset is calibrated to match the gap between S1 and S2's deployed inference latency, ensuring that the real-time control requirements during deployment are accurately reflected in training."（Training 段）</p>
+  <p>中译：训练时，我们在 S1 与 S2 的输入之间加入一个时间偏移。该偏移经过标定，以匹配部署时 S1 与 S2 推理延迟之间的差，从而保证部署时的实时控制要求被准确反映到训练中。</p>
+  <p><b>一句话物理意义：</b>部署时 S1 手里的 z 一定是「过去」的意图（S2 要 111–143 ms 才算完），如果训练时让 S1 见到「此刻」的 z，它就会学到「意图与画面同步」这个部署时不成立的假设；加入偏移后，训练与部署看到的是同一种「意图落后于画面」的世界。</p>
+  <p class="foot">偏移的具体帧数/毫秒数博客未给。若按 200Hz 控制周期折算，S2 的一次推理跨 22–29 个控制步（推算：0.111–0.143 s × 200 Hz）。这个数字只用于理解量级，不是博客原文。</p>
+</section>
+
+<section>
+  <h2>7. 部署：双 GPU、异步流式推理、一套权重</h2>
+  <p>原文： "Helix's training design enables efficient model parallel deployment on Figure robots, each equipped with dual low-power-consumption embedded GPUs. The inference pipeline splits across S2 (high-level latent planning) and S1 (low-level control) models, each running on dedicated GPUs."（Optimized Streaming Inference 段）</p>
+  <p>中译：Helix 的训练设计使其能在 Figure 机器人上高效地做模型并行部署，每台机器人配备两块低功耗嵌入式 GPU。推理管线在 S2（高层 latent 规划）与 S1（低层控制）之间切分，各自跑在专用 GPU 上。</p>
+  <p>原文： "S2 operates as an asynchronous background process, consuming the latest observation (onboard camera and robot state) and natural language commands. It continuously updates a shared memory latent vector that encodes the high-level behavioral intent."（同段）</p>
+  <p>中译：S2 作为异步后台进程运行，消费最新的观测（机载相机与机器人状态）与自然语言指令。它持续更新一个共享内存中的 latent 向量，该向量编码高层行为意图。</p>
+  <p>原文： "S1 executes as a separate real-time process, maintaining the critical 200Hz control loop required for smooth whole upper body action. It takes both the latest observation and the most recent S2 latent vector."（同段）</p>
+  <p>中译：S1 作为独立的实时进程运行，维持平稳上半身动作所需的、关键的 200Hz 控制回路。它同时取用最新观测与最近一次的 S2 latent 向量。</p>
+  <p>原文： "The asynchronous execution model allows both processes to run at their optimal frequencies, allowing us to run Helix as fast as our fastest single task imitation learning policies."（同段）</p>
+  <p>中译：这种异步执行模型让两个进程都在各自最优频率上运行，使我们能把 Helix 跑得像我们最快的单任务模仿学习策略一样快。</p>
+  <table>
+    <tr><th>部署要点</th><th>做法</th><th>为什么必须这样</th></tr>
+    <tr><td>切分维度</td><td>按<strong>频率</strong>切（不是按层切）</td><td>按层切需要每步通信激活值；按频率切只需跨进程传 d 维向量</td></tr>
+    <tr><td>通信</td><td>共享内存，单向量，单向（S1 读，S2 不读 S1）</td><td>单向依赖 → 无死锁、无同步等待；S1 迟到只用旧值，不会阻塞</td></tr>
+    <tr><td>实时性</td><td>S1 是硬实时进程，S2 尽力而为</td><td>200Hz 断一拍就是抖动；S2 掉一帧只是意图旧了 143ms</td></tr>
+    <tr><td>硬件</td><td>两块低功耗嵌入式 GPU（型号/算力未公开）</td><td>两块独立显存 → 7B 与 80M 不抢同一份 KV cache</td></tr>
+    <tr><td>权重</td><td>单套（7B + 80M），无 per-task 头</td><td>任务切换靠语言，不靠换权重 → 避免 N 次微调与 N 份部署包</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>8. 流程图（输入/输出、频率、张量形状）</h2>
   <div class="svgbox">
-  <svg viewBox="0 0 980 340" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
-    <defs><marker id="h" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker></defs>
-    <rect x="20" y="40" width="190" height="80" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="66" font-size="13" font-weight="700">单目图像</text>
-    <text x="34" y="86" font-size="11.5">+ 机器人状态（腕位姿/手指）</text>
-    <text x="34" y="104" font-size="11.5">+ 语言指令</text>
-    <rect x="20" y="180" width="190" height="70" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="206" font-size="13" font-weight="700">共享内存 latent</text>
-    <text x="34" y="226" font-size="11.5">S2 异步写入</text>
+  <svg viewBox="0 0 1000 470" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
+    <defs>
+      <marker id="hx" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker>
+      <marker id="hx2" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#8a5a00"/></marker>
+    </defs>
 
-    <rect x="270" y="40" width="200" height="110" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
-    <text x="284" y="68" font-size="13" font-weight="700">S2：7B VLM</text>
-    <text x="284" y="88" font-size="11.5">视觉编码 + 语言</text>
-    <text x="284" y="106" font-size="11.5">→ latent z（单向量）</text>
-    <text x="284" y="124" font-size="11.5">7–9Hz</text>
-    <text x="284" y="142" font-size="11.5">不直接出动作</text>
+    <text x="20" y="18" font-size="12" fill="#5b6a79">S2 被动速率：7–9Hz（周期 111–143ms）｜S1 实时速率：200Hz（周期 5ms）｜形状为公开项，标「未公开」者博客未给</text>
 
-    <rect x="530" y="40" width="220" height="110" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
-    <text x="544" y="68" font-size="13" font-weight="700">S1：80M 交叉注意力</text>
-    <text x="544" y="88" font-size="11.5">多尺度卷积视觉（仿真预训练）</text>
-    <text x="544" y="106" font-size="11.5">+ project(z) 拼 token</text>
-    <text x="544" y="124" font-size="11.5">200Hz 解码</text>
-    <text x="544" y="142" font-size="11.5">35-DoF + 完成度</text>
+    <rect x="20" y="30" width="230" height="96" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="52" font-size="13" font-weight="700" fill="#0b2a4a">S2 输入（7–9Hz）</text>
+    <text x="34" y="72" font-size="11.5">单目 RGB 图像 (H, W, 3)</text>
+    <text x="34" y="90" font-size="11.5">状态：腕位姿 + 手指位置 (·)</text>
+    <text x="34" y="108" font-size="11.5">语言指令 (T,)｜H/W/T 未公开</text>
 
-    <rect x="810" y="40" width="150" height="110" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
-    <text x="824" y="68" font-size="13" font-weight="700">执行</text>
-    <text x="824" y="88" font-size="11.5">腕/手指/头</text>
-    <text x="824" y="106" font-size="11.5">躯干朝向</text>
-    <text x="824" y="124" font-size="11.5">完成度→终止</text>
+    <rect x="300" y="30" width="460" height="96" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="316" y="52" font-size="13" font-weight="700" fill="#0b2a4a">S2：7B 开放权重 VLM（型号未公开）</text>
+    <text x="316" y="72" font-size="11.5">图像/状态 → 线性投影进视觉-语言嵌入空间 → 与指令共处同一序列</text>
+    <text x="316" y="90" font-size="11.5">输出槽：只保留 1 个连续 latent（不做动作 token 化、不做自回归解码）</text>
+    <text x="316" y="108" font-size="11.5">层数/宽度/token 数：未公开</text>
 
-    <line x1="210" y1="80" x2="266" y2="90" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#h)"/>
-    <line x1="470" y1="95" x2="526" y2="95" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#h)"/>
-    <line x1="210" y1="215" x2="526" y2="150" stroke="#5b6a79" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#h)"/>
-    <line x1="750" y1="95" x2="806" y2="95" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#h)"/>
-    <text x="20" y="300" font-size="12" fill="#5b6a79">关键：S2 只更新 latent（异步），S1 每 5ms 读最新 latent 跑闭环；训练时给 S2/S1 输入加时间偏移，模拟部署延迟差。</text>
+    <rect x="300" y="140" width="460" height="46" rx="8" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="316" y="160" font-size="12.5" font-weight="700" fill="#8a5a00">共享内存：z ∈ ℝ^d（d 未公开）</text>
+    <text x="316" y="178" font-size="11.5">S2 异步写（每 111–143ms）｜S1 每 5ms 读最新值（可能读到旧值）</text>
+
+    <rect x="20" y="212" width="230" height="96" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="234" font-size="13" font-weight="700" fill="#0b2a4a">S1 输入（200Hz）</text>
+    <text x="34" y="254" font-size="11.5">最新帧图像（与 S2 同源）</text>
+    <text x="34" y="272" font-size="11.5">最新状态 (·)</text>
+    <text x="34" y="290" font-size="11.5">proj(z)：d → S1 token 维</text>
+
+    <rect x="300" y="206" width="250" height="108" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="314" y="228" font-size="13" font-weight="700" fill="#166b38">S1：80M 交叉注意力</text>
+    <text x="314" y="246" font-size="11.5">encoder-decoder</text>
+    <text x="314" y="264" font-size="11.5">全卷积多尺度视觉骨干</text>
+    <text x="314" y="281" font-size="11.5">（纯仿真预训练初始化）</text>
+    <text x="314" y="299" font-size="11.5">proj(z) 沿序列维拼到视觉特征后</text>
+
+    <rect x="580" y="206" width="180" height="108" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="594" y="228" font-size="13" font-weight="700" fill="#166b38">a ∈ ℝ^36</text>
+    <text x="594" y="246" font-size="11.5">35-DoF：腕位姿 / 手指</text>
+    <text x="594" y="263" font-size="11.5">屈曲+外展 / 躯干+头朝向</text>
+    <text x="594" y="281" font-size="11.5">+1：完成度 [0,1]</text>
+    <text x="594" y="299" font-size="11.5">→ 自终止 / 行为串接</text>
+
+    <rect x="790" y="206" width="190" height="108" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="804" y="228" font-size="13" font-weight="700" fill="#8a5a00">执行（200Hz）</text>
+    <text x="804" y="246" font-size="11.5">目标位姿/关节 → 控制器</text>
+    <text x="804" y="263" font-size="11.5">5ms 一拍，闭环纠偏</text>
+    <text x="804" y="281" font-size="11.5">完成度 → 结束当前行为</text>
+    <text x="804" y="299" font-size="11.5">切下一段语言指令</text>
+
+    <line x1="250" y1="78" x2="296" y2="78" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#hx)"/>
+    <text x="252" y="70" font-size="10.5" fill="#5b6a79">7–9Hz</text>
+    <line x1="530" y1="126" x2="530" y2="136" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#hx2)"/>
+    <line x1="530" y1="186" x2="530" y2="202" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#hx2)"/>
+    <line x1="250" y1="260" x2="296" y2="260" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#hx)"/>
+    <text x="252" y="252" font-size="10.5" fill="#5b6a79">200Hz</text>
+    <line x1="550" y1="260" x2="576" y2="260" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#hx)"/>
+    <line x1="760" y1="260" x2="786" y2="260" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#hx2)"/>
+    <line x1="135" y1="126" x2="135" y2="208" stroke="#5b6a79" stroke-width="1.4" stroke-dasharray="5,4" marker-end="url(#hx)"/>
+    <text x="140" y="170" font-size="10.5" fill="#5b6a79">同一路相机，S1 取更新帧</text>
+
+    <text x="20" y="352" font-size="12" font-weight="700" fill="#0b2a4a">GPU 划分（博客明确：每机器人双低功耗嵌入式 GPU）</text>
+    <text x="20" y="372" font-size="11.5" fill="#5b6a79">GPU0：S2 后台进程，7B，7–9Hz，只写 z；GPU1：S1 硬实时进程，80M，200Hz，只读 z。</text>
+    <text x="20" y="392" font-size="11.5" fill="#5b6a79">训练时在 S1/S2 输入间加时间偏移 Δ ≈ 部署延迟差（约 111–143ms，推算），使训练与部署分布一致。</text>
+    <text x="20" y="412" font-size="11.5" fill="#5b6a79">梯度：动作回归误差 → S1 → 经 z 回传到 7B S2（博客 Training 段）；z 没有任何独立监督信号。</text>
+    <text x="20" y="432" font-size="11.5" fill="#5b6a79">虚线仅表示同一路相机喂两个系统；实线为数据/控制流。未公开项一律不画成确定形状。</text>
+    <text x="20" y="456" font-size="11.5" fill="#8a5a00">待补（若后续出现论文/源码）：d、S1 层宽、图像分辨率、Δ 具体帧数、完成度阈值。</text>
   </svg>
   </div>
+  <p class="foot">图中 36 = 35-DoF + 1 完成度；d 与 35 的内部拆分博客未给明细，只给了「腕部 / 手指屈伸+外展 / 躯干+头」三类。</p>
 </section>
 
 <section>
-  <h2>3. 关键公式与训练</h2>
-  <div class="eq">训练：L = Σ_t ‖ a_t − π_S1(vision_t, proj(z), state_t) ‖²，梯度经 z 回传到 S2</div>
-  <div class="eq">时间偏移：训练时用 x_{t+Δ} 作为 S1 输入，Δ = 部署时 S2 推理延迟（帧）</div>
-  <div class="eq">接口：z = S2(img, state, lang) ∈ R^d（d 未公开；建议先试 256–1024）</div>
-  <ul>
-    <li>单阶段端到端：像素+文本 → 连续动作，无任务头、无 per-task 微调。</li>
-    <li>数据：500h 遥操作；用 VLM 对视频做 hindsight 指令标注（"如果想让机器人做出视频里的动作，你会给什么指令？"）。</li>
-    <li>35-DoF：腕位姿、手指屈伸/外展、躯干/头朝向；外加「任务完成百分比」动作（自预测终止）。</li>
-  </ul>
-</section>
+  <h2>9. 公式 + 物理意义 + 映射到代码</h2>
+  <p class="warn">博客<strong>没有任何公式</strong>（L1 证据的硬限制）。下面两条是按博客文字描述重写的形式化表达，标注为「改写」，不是原文公式；第三条是纯算术。</p>
 
-<section>
-  <h2>4. 核心代码（带物理意义注释）</h2>
-  <pre><code><span class="c"># —— 训练（单阶段端到端）——</span>
-z = s2(img_t, state_t, lang)            <span class="c"># 语义意图：慢、低频，但决定「做什么」</span>
-a = s1(vision_s1(img_t), proj(z), state_t)  <span class="c"># 80M：像素+意图 → 35 维动作</span>
-loss = mse(a, a_gt)                     <span class="c"># 标准回归；梯度经 z 回传，S2 也被动作监督</span>
-
-<span class="c"># —— 部署（双 GPU 异步）——</span>
-<span class="c"># GPU0：S2 后台，7–9Hz</span>
-shared_latent.write(s2(latest_img, state, lang))
-<span class="c"># GPU1：S1 实时，200Hz</span>
-a = s1(vision_s1(img), proj(shared_latent.read()), state)  <span class="c"># 读最新意图，不追旧</span>
-robot.set_targets(a); sleep(5ms)        <span class="c"># 5ms = 200Hz 周期</span>
-<span class="c"># 完成度 &gt; 阈值 → 终止当前子任务（自预测，不依赖外部成功检测）</span></code></pre>
-</section>
-
-<section>
-  <h2>5. 结果与可复现缺口</h2>
+  <h3>式 1 · 单阶段端到端回归（改写，博客：standard regression loss）</h3>
+  <div class="eq">L(θ₂, θ₁) = E_{(I, s, ℓ, a) ~ D} ‖ a − π₁( φ(I_t), W·z_t, s_t ) ‖²，其中 z_t = π₂( I_{t−Δ}, s_{t−Δ}, ℓ )</div>
+  <p><b>一行物理意义：</b>用动作误差一次性监督「7B 语义 → d 维意图 → 200Hz 动作」整条链路，z 没有标签也没有辅助损失，它唯一的义务是让下游动作更准。</p>
+  <p>三项符号各自的物理含义：φ(·) 是 S1 的全卷积多尺度视觉骨干（只吃像素，与语言无关）；W 是 d → S1 token 维的线性投影；Δ 是训练时人为加入的时间偏移，模拟部署时 S2 落后于 S1 的那一段。</p>
+  <p>映射到代码（第 11 节的三行对应）：</p>
   <table>
-    <tr><th>可复现（博客明确）</th><th>未公开（不要臆造）</th></tr>
-    <tr><td>7B/80M、7–9Hz/200Hz、35-DoF、单 latent、单阶段端到端、时间偏移、双板载 GPU、500h 数据</td><td>VLM 具体型号、S1 层数/隐藏维、latent 维度、数据采集频率、损失权重、训练步数、GPU 型号</td></tr>
+    <tr><th>式 1 中的量</th><th>代码行</th><th>形状</th></tr>
+    <tr><td>z_t</td><td><code>z = s2(img_s2, state, lang)</code></td><td>(b, d)</td></tr>
+    <tr><td>W·z_t 与 φ(I_t) 拼接</td><td><code>a = s1(vis, proj(z), state)</code></td><td>vis (b, N_v, c)；proj(z) (b, 1, c)</td></tr>
+    <tr><td>回归误差</td><td><code>loss = mse(a, a_gt)</code></td><td>a, a_gt (b, 36)</td></tr>
   </table>
-  <div class="warn">复现优先级：① 时间偏移（训练镜像部署延迟）；② latent 接口维度与投影；③ S1 视觉骨干的多尺度设计；④ 完成度自终止。</div>
-  <p class="foot">参考：<a href="https://www.figure.ai/news/helix">Figure Helix 博客</a> ｜ 返回 <a href="index.html">索引</a> ｜ <a href="../s2-s1-s0-stack/">S2→S0 指南</a></p>
+
+  <h3>式 2 · 时间偏移（改写，博客：temporal offset）</h3>
+  <div class="eq">训练：S1 输入 (I_t, s_t, z_{t−Δ})｜部署：S1 输入 (I_t, s_t, z_{t−τ_deploy})，标定使 Δ ≈ τ_deploy</div>
+  <p><b>一行物理意义：</b>让训练时 S1 见到的「意图滞后量」等于部署时真实存在的滞后量，把 train-inference gap 从「分布错配」压成「零」。</p>
+  <p class="foot">博客原话只说「calibrated to match the gap」，没有说偏移方向（S2 看更早的帧，还是 S1 看更晚的 z）。从因果上只能是前者：部署时 z 必然滞后，所以训练也必须让 z 滞后。此处为逻辑推断，已标注。</p>
+
+  <h3>式 3 · 频率预算（纯算术，由公开两个频率得出）</h3>
+  <div class="eq">T_S2 = 1/8 s ≈ 125 ms（区间 111–143 ms）｜T_S1 = 1/200 s = 5 ms｜N_latent ≈ T_S2 / T_S1 = 22 ~ 29</div>
+  <p><b>一行物理意义：</b>S1 每 22–29 个控制拍才拿到一次新意图，其余时间必须靠自己的 80M 网络把「旧意图 + 新画面」补成动作——这正是 S1 必须足够快、又必须带视觉的原因。</p>
 </section>
+
+<section>
+  <h2>10. 实验与数字：能核实什么、不能核实什么</h2>
+  <p class="warn">这是本页最重要的诚实性段落：<b>博客没有给出任何成功率百分比、没有表格、没有逐任务数值</b>。所有「效果」都是定性描述 + 量级词（near / thousands / as fast as）。因此下表的「数字」列只放博客真正写出来的数；「未公开」列明确列出读者通常最想看但博客没给的东西。</p>
+  <h3>10.1 原文数字表（逐条标注来源）</h3>
+  <table>
+    <tr><th>维度</th><th>原文数字（逐字）</th><th>来源段落</th><th>说明</th></tr>
+    <tr><td>数据规模</td><td>~500 hours，多机器人、多操作员遥操作</td><td>Data</td><td>“~” 约数；采集频率、机器人台数未给</td></tr>
+    <tr><td>相对数据量</td><td>&lt;5%（相对此前 VLA 数据集）</td><td>Discussion</td><td>比较对象未点名；按 π0 的 10,000h 计，5% = 500h，与上一行自洽（外部对照，非博客原文）</td></tr>
+    <tr><td>模型规模</td><td>S2 = 7B；S1 = 80M</td><td>Architecture</td><td>总参数约 7.08B（7B + 80M 相加，算术）</td></tr>
+    <tr><td>频率</td><td>S2 = 7–9 Hz；S1 = 200 Hz</td><td>S1/S2 段、Architecture</td><td>是区间；不是「8Hz 定值」</td></tr>
+    <tr><td>动作空间</td><td>35-DoF，200Hz</td><td>Results</td><td>外加 1 维完成度（同段）</td></tr>
+    <tr><td>硬件</td><td>每机器人 2 块低功耗嵌入式 GPU</td><td>Optimized Streaming Inference</td><td>型号、显存、功耗均未公开</td></tr>
+    <tr><td>泛化（定性）</td><td>“thousands of novel items in clutter”</td><td>Emergent Pick up anything</td><td>“thousands” 非精确计数；无成功率</td></tr>
+    <tr><td>速度（定性）</td><td>“matches the speed of specialized single-task behavioral cloning policies”</td><td>Helix's design offers several key advantages</td><td>无具体 ms/Hz 对照值</td></tr>
+    <tr><td>多机协作</td><td>2 台机器人、单套权重、无角色分配</td><td>Zero-shot multi-robot coordination</td><td>任务：协作收纳未见过的日用品</td></tr>
+    <tr><td>成功率 / 延迟 / 训练步数 / batch / GPU 型号 / 训练时长 / latent 维 / S1 层宽 / 图像分辨率 / 损失权重</td><td>未公开</td><td>—</td><td>不要从别处补数，也不要按参数量猜</td></tr>
+  </table>
+  <h3>10.2 原文里可核实的「实验设置」而非结果</h3>
+  <ul>
+    <li>评估污染控制：训练中接触过的物品全部排除（Data 段）——这是唯一可核实的评估协议细节。</li>
+    <li>双机协作的任务设定：两台机器人用<strong>完全相同</strong>的权重，靠语言指令区分角色（「把你右边的饼干袋递给右边的机器人」），没有显式角色分配或 robot-specific 训练。</li>
+    <li>「Pick up the desert item」这类抽象概念 → 选最近的手 → 执行抓取的完整链路，是博客用来论证「语义 → 动作」打通的例子。</li>
+  </ul>
+  <h3>10.3 结论（本页判断，非原文）</h3>
+  <div class="ok">Helix 的实验证据强度是「<b>演示级</b>」而非「<b>基准级</b>」：它证明了这套架构能跑起来、能泛化到数千个新物体、能双机协作，但没有给出可与 π0/OpenVLA 横向比较的成功率。因此正确的引用姿势是：引用其<strong>架构决策与工程约束</strong>（7–9Hz/200Hz 双频、单 latent、时间偏移、双板载 GPU、单套权重），而不是引用其「效果有多好」。</div>
+</section>
+
+<section>
+  <h2>11. 代码：变量表 + 逐步物理意义 + 出处</h2>
+  <p class="warn"><b>出处声明：Figure 未发布 Helix 源码。</b>下面的代码是<strong>依据博客文字描述的示意实现</strong>（pseudo-code，可直接读、不可直接跑），用于把第 5–7 节的机制落到变量上；每一行的「物理意义」与「依据」都已标注。它不是官方实现，不能当作 API 文档。</p>
+  <h3>11.1 变量表</h3>
+  <table>
+    <tr><th>变量</th><th>形状</th><th>物理意义</th><th>形状来源</th></tr>
+    <tr><td><code>img_s2</code></td><td>(H, W, 3)</td><td>S2 看到的一帧：决定「这是什么场景、该干什么」的语义上下文</td><td>单目（博客）；H/W 未公开</td></tr>
+    <tr><td><code>state</code></td><td>(n_state,)</td><td>腕位姿 + 手指位置：让 S2 知道自己当前的手在哪、手型如何</td><td>博客列举项；n_state 未公开</td></tr>
+    <tr><td><code>lang</code></td><td>(T,)</td><td>自然语言指令的 token 序列：唯一能在线切换任务的条件变量</td><td>T 未公开</td></tr>
+    <tr><td><code>z</code></td><td>(d,)</td><td>单个连续 latent：7B 的语义被压成「一个意图向量」，是两系统间唯一通道</td><td>d 未公开（博客只说 single vector）</td></tr>
+    <tr><td><code>img_s1</code></td><td>(H, W, 3)</td><td>S1 的高频帧：同一路相机、更新更勤，用于闭环纠偏</td><td>博客：S1 接收与 S2 相同的输入</td></tr>
+    <tr><td><code>vis</code></td><td>(N_v, c)</td><td>全卷积多尺度视觉特征 token：像素 → 可操作几何</td><td>N_v / c 未公开</td></tr>
+    <tr><td><code>a</code></td><td>(36,)</td><td>35 维上半身目标 + 1 维完成度（自终止信号）</td><td>35-DoF（博客）+ 1（博客）</td></tr>
+    <tr><td><code>delta</code></td><td>标量（帧）</td><td>训练时 S2 输入相对 S1 的时间偏移，标定为部署延迟差</td><td>博客提到，数值未公开</td></tr>
+    <tr><td><code>z_shared</code></td><td>(d,)</td><td>共享内存中的最新意图：S2 写、S1 读，单向依赖</td><td>博客：shared memory latent vector</td></tr>
+  </table>
+  <h3>11.2 训练一步（示意）</h3>
+  <pre><code><span class="c"># ===== 训练：单阶段、端到端、一个回归损失 =====</span>
+<span class="c"># 依据：博客 Training 段 + Architecture 段（非官方源码）</span>
+img_s2, state_s2 = history.at(t - delta)      <span class="c"># 时间偏移：S2 看「更旧」的一帧，模拟部署时滞后的意图</span>
+z = s2(img_s2, state_s2, lang)                <span class="c"># (b, d) 语义意图：慢、低频，但决定「做什么」；无独立标签</span>
+
+vis = s1_backbone(img_s1)                    <span class="c"># (b, N_v, c) 全卷积多尺度特征：仿真预训练初始化，只学「像素→几何」</span>
+tok = concat(proj(z), vis, axis=1)           <span class="c"># (b, 1 + N_v, c) 沿序列维拼：z 作为额外 token，参与注意力而非加性调制</span>
+a = s1_head(s1_encoder_decoder(tok, state_s1))  <span class="c"># (b, 36) 200Hz 目标：35 关节/位姿 + 1 完成度</span>
+
+loss = mse(a, a_gt)                          <span class="c"># 标准回归；梯度经 z 回传到 7B S2（博客明确 joint optimization）</span>
+loss.backward()                              <span class="c"># S1 与 S2 同时更新；无 per-task 头、无第二阶段</span></code></pre>
+  <p class="foot">逐行物理意义已写在注释里。注意 <code>delta</code> 只作用于 S2 的输入，不作用于 S1——因为部署时只有 z 会滞后，画面不会。</p>
+
+  <h3>11.3 部署两个进程（示意）</h3>
+  <pre><code><span class="c"># ===== 部署：GPU0 跑 S2（后台），GPU1 跑 S1（硬实时） =====</span>
+<span class="c"># 依据：博客 Optimized Streaming Inference 段（非官方源码）</span>
+
+<span class="k">def</span> s2_loop():                                <span class="c"># 后台进程，7–9Hz</span>
+    <span class="k">while</span> robot.running:
+        img, state = camera.latest(), robot.state()
+        z_shared.write(s2(img, state, lang))   <span class="c"># 只写一个向量：跨进程通信量 ~d 个 float，不是 token 序列</span>
+
+<span class="k">def</span> s1_loop():                                <span class="c"># 硬实时进程，200Hz</span>
+    <span class="k">while</span> robot.running:
+        img, state = camera.latest(), robot.state()
+        a = s1(vis(img), proj(z_shared.read()), state)   <span class="c"># 读最新意图：可能落后 111–143ms，这正是训练时 delta 模拟的情形</span>
+        robot.set_targets(a[:35])              <span class="c"># 35-DoF 目标交给控制器</span>
+        <span class="k">if</span> a[35] &gt; done_threshold:            <span class="c"># 完成度：自预测终止（阈值未公开）</span>
+            robot.finish_current_skill()
+        sleep(0.005)                            <span class="c"># 5ms = 200Hz；这一拍绝不能等 S2</span></code></pre>
+  <p class="foot">为什么 S1 不能在循环里等 S2：等一次就是 111–143ms ≈ 22–29 个控制周期，PD 环会抖成不可控。异步 + 共享内存是这套架构唯一可行的工程形态。</p>
+</section>
+
+<section>
+  <h2>12. 局限与未公开项</h2>
+  <table>
+    <tr><th>类型</th><th>条目</th><th>影响</th></tr>
+    <tr><td>证据级别</td><td>无论文、无源码、无基准表；页面无个人作者</td><td>无法核验实现细节，也无法复现数字</td></tr>
+    <tr><td>未公开（架构）</td><td>VLM 具体型号、S1 层数/宽度/注意力头数、latent 维度 d、视觉骨干层数、图像分辨率、token 数</td><td>直接决定复现成本；d 是最关键的未知量</td></tr>
+    <tr><td>未公开（训练）</td><td>损失具体形式与权重、batch size、训练步数、优化器、学习率、GPU 型号与训练时长、时间偏移的具体帧数</td><td>无法判断训练是否依赖大规模算力</td></tr>
+    <tr><td>未公开（数据）</td><td>机器人台数、操作员人数、采集频率、任务清单、语言标注 VLM 型号、片段切分长度</td><td>无法评估数据多样性来源</td></tr>
+    <tr><td>未公开（评估）</td><td>成功率、试次数量、评估任务清单、基线对比、消融（去掉时间偏移会怎样）</td><td>「有多好」只能定性引用</td></tr>
+    <tr><td>论文自身风险 1</td><td>单 latent 是信息瓶颈：S2 的全部语义要挤进 d 维，复杂多阶段任务可能丢信息（本页推断）</td><td>与 π0.5 显式子任务文本形成对照</td></tr>
+    <tr><td>论文自身风险 2</td><td>hindsight 标注继承标注 VLM 的偏差与模板化句式；博客未讨论</td><td>语言条件分布可能偏窄，影响新指令泛化</td></tr>
+    <tr><td>论文自身风险 3</td><td>仅上半身 35-DoF，不含行走/平衡</td><td>与 SONIC（全身 29 关节 + 50Hz 控制）不是同一层问题，不能直接比较</td></tr>
+    <tr><td>论文自身风险 4</td><td>双机协作依赖语言指代（左/右），场景一变指代就失效</td><td>跨机器人指代的可扩展性未验证</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>13. Q&amp;A（追问 why，带数值或反例）</h2>
+
+  <h3>Q1：为什么 S1 只有 80M？把 S1 也做到 7B 会怎样？</h3>
+  <p><b>反例算术：</b>S1 的预算被 200Hz 钉死为 5ms/次。若 S1 用 7B（= 80M 的 87.5 倍），单次前向至少要 87.5 倍算力；除非同时把控制频率降到 200/87.5 ≈ 2.3Hz，否则物理上跑不动。而 2.3Hz 的控制连「抓滑落的杯子」都做不到（100ms 内物体已下落约 5cm，按自由落体 g=9.8，0.1s 位移 ≈ 4.9cm）。所以 80M 不是保守选择，是 5ms 预算的<strong>上界</strong>。</p>
+  <p><b>另一面：</b>把语义全压给 S2 的代价是 z 必须承载全部意图——这就是 Q3 讨论的瓶颈。</p>
+
+  <h3>Q2：时间偏移不做会怎样？能省掉吗？</h3>
+  <p><b>数值：</b>部署时 z 的滞后 = S2 一次推理时间 ≈ 111–143ms = 22–29 个 5ms 控制拍。若训练时 z 与画面严格对齐，S1 会学到「意图总是新鲜的」，于是把 z 当作高置信度的当前目标。<b>反例场景：</b>双机协作递物——伙伴机器人的手在 143ms 内可能移动数厘米，S1 若相信「旧意图对应新手位」，就会提前合拢手指或撞上对方。训练偏移把这段延迟显式编码进策略，让 S1 学会「对旧意图保持一定的保守度」。这不是精度问题，是<strong>因果结构</strong>问题：不偏移等于训练一个在部署时不存在的时间关系。</p>
+
+  <h3>Q3：单个 latent 向量会不会丢信息？为什么不用一串 token？</h3>
+  <p><b>why：</b>接口带宽是跨系统固定成本。传 L 个 token 时 S1 的注意力序列长 N_v + L、S2 要维护 L 个输出槽、跨进程拷贝 L×c 个 float；传 1 个向量则是 d 个 float。若 d = 1024、L = 64、c = 2048，则 L×c = 131,072 vs d = 1,024，差 128 倍（示意量级，d 未公开）。<b>反例：</b>任务需要「先开抽屉、再取物、再关抽屉」的精确时序时，单向量可能只编码了「当前该做什么」，而丢掉了剩余步骤——这正是 π0.5 要用显式子任务文本（可自回归、可多步）的理由。两条路线的取舍点因此很清楚：<b>Helix 用带宽换实时性，π0.5 用 token 换长程结构</b>。</p>
+
+  <h3>Q4：把「完成度」放进动作空间，为什么比单独训一个成功检测器好？</h3>
+  <p><b>why：</b>① 零额外标注：完成度是连续回归量，可以直接由示教片段的进度折算，不需要人工标「成功/失败」二元标签；② 零额外推理：它和 35 维动作共享同一个 S1 前向与同一个 200Hz 节拍，不引入第二条推理路径（若单独训检测器，200Hz 下每拍多一次前向，预算直接翻倍）；③ 可串接：完成度是时序信号，天然支持「做完 A 再做 B」的分段。<b>反例：</b>外挂检测器在分布外物品上会把「正在靠近」误判成「已完成」，而完成度是随动作一起被回归监督的，误差与动作误差同源、同步收敛。</p>
+</section>
+
+<section>
+  <h2>14. 全文总结（problem → method → experiment → takeaway）</h2>
+  <table>
+    <tr><th>环节</th><th>一句话</th><th>关键数字</th></tr>
+    <tr><td>Problem</td><td>家场景长尾使「每技能一次采集/编程」线性爆炸；VLM 通用但慢，visuomotor 快但窄，二者不可兼得</td><td>一技能 = 数小时专家编程 或 10³ 条示教</td></tr>
+    <tr><td>Method</td><td>按时间尺度切成 7B S2（7–9Hz 出单 latent）+ 80M S1（200Hz 出 35-DoF + 完成度），单阶段端到端、梯度经 z 回传、训练加时间偏移、部署双 GPU 异步</td><td>7B / 80M / 35+1 维 / 500h</td></tr>
+    <tr><td>Experiment</td><td>定性演示级：数千未见物体抓取、双机零样本协作、上半身 35-DoF 高频协调；无成功率表</td><td>&lt;5% 数据量、10³ 级新物体</td></tr>
+    <tr><td>Takeaway</td><td>「双频双系统 + 单向量接口 + 延迟镜像训练」是一套可迁移的工程范式：先按控制周期反推小模型上界，再把语义全部外推到 VLM；接口越窄，越要在训练里补偿它带来的时间错配</td><td>5ms vs 111–143ms（22–29 拍）</td></tr>
+  </table>
+  <div class="ok"><b>一句话记住 Helix：</b>它不是「更大的 VLA」，而是「按控制周期把 VLA 拆成两个不同物种，再用一个向量和一次时间偏移把它们的时差焊死」。</div>
+  <p class="foot">延伸：与 <a href="pi0.html">π0 / π0.5</a> 对照读——π0 用动作块 + flow matching 解决「动作分布多模态」，Helix 用双频 + 单 latent 解决「语义慢/控制快」；<a href="sonic.html">SONIC</a> 则是把「全身 29 关节 50Hz」做成 S1 级控制器。三者在 S2→S1→S0 栈里各占一层。</p>
+  <p class="foot">参考：<a href="https://www.figure.ai/news/helix">Figure 官方 Helix 博客（2025-02-20，L1）</a> ｜ 返回 <a href="index.html">wiki 索引</a> ｜ <a href="../s2-s1-s0-stack/">S2→S0 指南</a></p>
+</section>
+
 </div>
 </body>
 </html>

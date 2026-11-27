@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EVA 精读：IDM 动作平滑奖励 + Flow-GRPO</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<div class="wrap">
+<header class="hero">
+  <h1>EVA 精读：IDM 动作平滑奖励 + Flow-GRPO</h1>
+  <p class="sub">生成视频 → 冻结 IDM 解出关节序列 q[T,D] → 平滑/限幅奖励 → 只更新生成器 LoRA</p>
+  <p class="meta">L2（论文正文，无官方代码） · arXiv:2603.17808 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a>
+  <a href="vampo.html">VAMPO</a>
+  <a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a>
+  <a href="worldvln.html">WorldVLN</a>
+  <a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a>
+  <a href="tau0-wm.html">τ0-WM</a>
+  <a href="data-loops.html">闭环数据</a>
+
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>EVA 解决「视频看着合理但机械臂执行不了」：用逆动力学模型把生成视频解成关节序列，按运动学（jerk/加速度/限幅）给奖励，再用 Flow-GRPO 更新生成器。</p>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>动作表示</td><td>ONNX 版 ONNX CVAE UNet；动作空间由真实机器人 ONNX 表示定义</td></tr><tr><td>奖励</td><td>−[λj·Huber(j)+λα·Huber(a)+λv·max(|v|−vmax,0)²+λa·max(|a|−amax,0)²]</td></tr><tr><td>更新</td><td>Flow-GRPO；只训生成器 LoRA</td></tr><tr><td>结果</td><td>Kinematic 70.5→91.4（论文自评，L2）</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="eva-flow.svg" alt="EVA 精读：IDM 动作平滑奖励 + Flow-GRPO 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：把「画面质量」翻译成「动作可执行性」，惩罚抖动/急加速/越限。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">R = −(λj·Huber(j) + λα·Huber(a) + λv·max(|v|−vmax,0)² + λa·max(|a|−amax,0)²)</div><p class="foot">物理：jerk/加速度抑制抖动，限幅防止超速——机械臂真实执行的三类风险。</p>
+<div class="eq">A = (r − mean_G(r)) / std_G(r)</div><p class="foot">物理：组内比较，无 critic。</p>
+<div class="eq">L = clipped_surrogate(A, ρ) − β·KL(gen, gen_ref)</div><p class="foot">物理：KL 防止只讨好奖励、丢掉预训练画面先验。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">按论文 §4.2–4.3 重建；无官方代码。</p>
+  <pre><code># 输入：video [T_v,3,H,W]；输出：标量奖励
+def eva_reward(video, idm, vmax, amax, lam):
+    q = idm.decode(video)                 # 物理：视频→关节序列 q[T,D]
+    v = diff(q); a = diff(v); j = diff(a) # 物理：速度/加速度/jerk
+    return -(lam.j*huber(j) + lam.a*huber(a)
+             + lam.v*relu(abs(v)-vmax).pow(2)
+             + lam.a2*relu(abs(a)-amax).pow(2))
+
+def flow_grpo_step(gen, videos, prompts):
+    # 物理：同提示词多生成，谁动作更平滑就强化谁
+    rs  = [eva_reward(v, idm) for v in videos]
+    adv = (rs - mean(rs)) / (std(rs) + 1e-8)
+    gen.update(clipped_surrogate(adv, ratio) - beta*KL(gen, gen_ref))  # 仅 LoRA</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果数字</h2>
+  <ul><li>Kinematic 70.5→91.4（L2，论文自评）</li><li>动作空间：双臂 14 维 / 单臂 7 维（IDM 输出）</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑与边界</h2>
+  <ul><li>依赖 IDM 精度</li><li>平滑奖励可被「不动」骗过——必须保留限幅惩罚</li><li>q 的 T/D 论文未给，按任务定</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="warn">L2：论文方法节与结果表；代码为依论文重建。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>

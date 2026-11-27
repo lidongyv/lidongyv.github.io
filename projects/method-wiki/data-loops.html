@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>闭环数据采集精读：HILR / DAgger / XPACE / CoachSI</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>闭环数据采集精读：HILR / DAgger / XPACE / CoachSI</h1>
+  <p class="sub">人机接力、学生状态分布、模拟器恢复、语言教练重标注——四类把「执行后果」变成训练数据的做法</p>
+  <p class="meta">L2（GigaBrain/XPACE/CoachSI） · 综合页 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a>
+  <a href="vampo.html">VAMPO</a>
+  <a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a>
+  <a href="worldvln.html">WorldVLN</a>
+  <a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a>
+  <a href="tau0-wm.html">τ0-WM</a>
+  <a href="data-loops.html">闭环数据</a>
+
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>闭环训练的第一步是「拿到策略自己会遇到的失败/纠正数据」。本页把四类采集方式放在一起：HILR（人接管）、DAgger（学生状态+专家标签）、XPACE（模拟器恢复）、CoachSI（VLM 命名）。</p>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>HILR</td><td>人只在快失败时接管；剔除切换伪影（GigaBrain §3.2.2）</td></tr><tr><td>DAgger</td><td>Dataset Aggregation：学生状态 + 专家动作，迭代聚合</td></tr><tr><td>XPACE</td><td>注入偏差 + 模拟器推演恢复 + 一致性过滤；恢复数据 ~8%</td></tr><tr><td>CoachSI</td><td>冻结 VLM 给成功轨迹命名「下一步」，补语义监督</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="data-loops-flow.svg" alt="闭环数据采集精读：HILR / DAgger / XPACE / CoachSI 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：四种方式都在回答同一个问题——「策略会在哪里失败、失败后该怎么纠正」。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">HILR=Human-in-the-Loop Rollout</div><p class="foot">物理：人机接力：只在边界上采集，样本价值最高。</p>
+<div class="eq">DAgger=Dataset Aggregation</div><p class="foot">物理：在线聚合学生访问到的状态与专家动作，解决分布漂移。</p>
+<div class="eq">L_BC = −E_{(s,a*)∼D}[log π(a*|s)]</div><p class="foot">物理：在聚合后的状态分布上最大化专家动作似然。</p>
+<div class="eq">CoachSI: 步骤 = VLM(轨迹段, 任务)</div><p class="foot">物理：把成功轨迹切成子任务并命名，作为下一步指令监督。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">HILR 依 GigaBrain §3.2.2 重建；DAgger 为标准算法（Ross et al., 2011）；XPACE/CoachSI 依论文描述重建。</p>
+  <pre><code>def hilr_episode(policy, env, human):
+    # 物理：策略自主跑；人判断快失败就接管
+    traj, obs, done = [], env.reset(), False
+    while not done:
+        a = policy.act(obs); flag = 0
+        if human.wants_control(obs):
+            a, flag = human.act(obs), 1
+        traj.append((obs, a, flag)); obs, done = env.step(a)
+    return scrub(traj)                    # 剔除切换边界
+
+def dagger(expert, D, N):
+    # 物理：学生状态 + 专家标签，聚合重训
+    pi = train_bc(D)
+    for i in range(N):
+        states = rollout_states(pi)
+        labels = [expert.act(s) for s in states]
+        D = D + list(zip(states, labels))
+        pi = train_bc(D)
+    return pi
+
+def coach_relabel(traj, vlm, task):
+    # 物理：VLM 把成功轨迹命名成「下一步」
+    steps = [vlm.describe(seg.frames, task, &quot;next step?&quot;) for seg in segment(traj)]
+    return [(seg.obs, seg.action, s) for seg, s in zip(segment(traj), steps)]</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果数字</h2>
+  <ul><li>XPACE 恢复消融 61.7→86.7（异套件）</li><li>CoachSI 长程未见场景 47.4→59.3（论文自评）</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑与边界</h2>
+  <ul><li>HILR 切换伪影必须剔除</li><li>DAgger 需要专家可在线查询</li><li>XPACE 模拟器需适配策略视觉上下文</li><li>CoachSI 只解决指令接地，不解决技能</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="warn">L2：GigaBrain §3.2.2、XPACE 摘要/项目页、CoachSI 摘要；DAgger 为经典算法。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>

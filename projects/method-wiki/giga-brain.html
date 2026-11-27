@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GigaBrain RAMP 精读：世界模型条件化的 KL-RL</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>GigaBrain RAMP 精读：世界模型条件化的 KL-RL</h1>
+  <p class="sub">世界模型（Wan2.2 flow）+ 价值头 + n 步 TD 优势 → 二值化 I → 两项 NLL；HILR 采集与联合续训</p>
+  <p class="meta">L2（论文正文，无官方代码） · arXiv:2602.12099 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a>
+  <a href="vampo.html">VAMPO</a>
+  <a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a>
+  <a href="worldvln.html">WorldVLN</a>
+  <a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a>
+  <a href="tau0-wm.html">τ0-WM</a>
+  <a href="data-loops.html">闭环数据</a>
+
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>RAMP = Reinforcement leArning via world Model-conditioned Policy：把 KL 正则 RL 的闭式解改写成「无条件模仿 + 优势条件化模仿」两项 NLL，用世界模型价值提供基线，从而离线可用、无需 critic。</p>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>骨干</td><td>Wan2.2 视频 DiT + flow matching；策略 π_θ 为预训练 VLA</td></tr><tr><td>数据</td><td>4K 小时真机操作数据；>10K 小时 VLA 预训练</td></tr><tr><td>关键超参</td><td>掩码率 p=0.2；β/γ/n/ε/α/C_fail 论文未给</td></tr><tr><td>结果</td><td>较 RECAP 约 +30%；真机长程任务提升（论文 §4.2）</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="giga-brain-flow.svg" alt="GigaBrain RAMP 精读：世界模型条件化的 KL-RL 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：世界模型学「动作后世界怎么变」，价值头学「还剩几步成功」，策略学「在 I=1 条件下更像专家」。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">Eq.(5)  r_t = 0(成功) / −C_fail(失败) / −1(其余)</div><p class="foot">物理：成功不罚、失败重罚、每步扣一分；价值因此等于负的期望剩余步数。</p>
+<div class="eq">Eq.(6)  s_t = [z_t; Ψ(v_t); Ψ(p_t)]</div><p class="foot">物理：把价值与本体「画」成图，与视觉潜通道拼接，一次前向同时看到画面、进度、关节。</p>
+<div class="eq">Eq.(7)  L_WM = E‖W(s_future^τ,ε) − (s_future − ε)‖²</div><p class="foot">物理：流匹配学「从噪声到未来潜的速度场」。</p>
+<div class="eq">Eq.(8)  A_t = Σ_{k&lt;n} γ^k r_{t+k} + γ^n v_{t+n} − v_t</div><p class="foot">物理：这一步实得回报 + 未来价值 − 当前价值基线；>0 表示比预期好。</p>
+<div class="eq">Eq.(3)  L = −logπ(a|o,z,l) − α logπ(a|I,o,z,l)</div><p class="foot">物理：正常模仿 + 在「更好」条件下的模仿；来自 KL-RL 闭式解。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">对应论文 §3.2.1–3.2.2；无官方实现，以上为按公式重建。</p>
+  <pre><code># 符号：o_t[3,H,W]；p_t[d]；a_t[H_a,d_a]；l；success
+# z_t[E&#x27;,W&#x27;,C&#x27;]；z_future[E&#x27;,W&#x27;,C&#x27;]；v_t 标量；A_t/I_t 标量
+def world_model_step(W, vae, ep, tau):
+    # 物理：学「给当前状态+动作，未来潜往哪走」
+    z_t = vae.encode(ep[&#x27;o&#x27;][t])
+    s_t = cat([z_t, psi_v(W.value(z_t)), psi_p(ep[&#x27;p&#x27;][t])], dim=0)  # Eq.6
+    z_fut = vae.encode(ep[&#x27;o&#x27;][t+i])          # 目标（仅训练期）
+    eps = randn_like(z_fut)
+    u = (1-tau)*eps + tau*z_fut               # 插值潜
+    return mse(W.flow(u, tau, s_t, ep[&#x27;a&#x27;][t]), z_fut - eps)   # Eq.7
+
+def sparse_reward(ep, C_fail):
+    # 物理：成功 0，失败 -C_fail，其余 -1（时间成本）
+    T = len(ep[&#x27;a&#x27;]); r = [-1.0]*T
+    r[T-1] = 0.0 if ep[&#x27;success&#x27;] else -C_fail
+    return r
+
+def n_step_advantage(r, v, gamma, n):
+    # 物理：实得回报 + 未来价值 - 当前价值
+    T = len(r); A = [0.0]*T
+    for t in range(T):
+        k = min(n, T-1-t)
+        A[t] = sum(gamma**i*r[t+i] for i in range(k)) + gamma**k*v[min(t+k,T-1)] - v[t]
+    return A
+
+def policy_loss(pi, ep, s_t, A, eps_thr, alpha):
+    # 物理：I 是「这步更好」的二值条件，作为额外 token
+    I = [1.0 if a &gt; eps_thr else 0.0 for a in A]
+    return sum(-logp(pi, ep[&#x27;a&#x27;][t], cond=(ep[&#x27;o&#x27;][t], s_t[t], ep[&#x27;l&#x27;]))
+               - alpha*logp(pi, ep[&#x27;a&#x27;][t], cond=(ep[&#x27;o&#x27;][t], s_t[t], ep[&#x27;l&#x27;], I[t]))
+               for t in range(len(A)))</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果数字</h2>
+  <ul><li>较 RECAP 约 +30%（论文 §4.2）</li><li>真机长程操作任务提升；细节见论文表格（L2）</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑与边界</h2>
+  <ul><li>β/γ/n/ε/α/C_fail 均未给，需自调</li><li>依赖世界模型价值精度；只训策略会让 A 坍缩，必须联合续训</li><li>HILR 的切换边界必须剔除</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="warn">L2：论文正文（§3.2）与公式；无官方代码，代码为依论文重建。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>

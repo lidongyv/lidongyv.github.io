@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WorldVLN 精读：自回归 WAM 的段级 GRPO</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<div class="wrap">
+<header class="hero">
+  <h1>WorldVLN 精读：自回归 WAM 的段级 GRPO</h1>
+  <p class="sub">在线模拟器 rollout + 真观测回灌 · 轨迹/任务/参考三奖励 · γ 衰减合成 · 段级组相对优势</p>
+  <p class="meta">L2（论文正文，无官方代码） · arXiv:2605.15964 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a>
+  <a href="vampo.html">VAMPO</a>
+  <a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a>
+  <a href="worldvln.html">WorldVLN</a>
+  <a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a>
+  <a href="tau0-wm.html">τ0-WM</a>
+  <a href="data-loops.html">闭环数据</a>
+
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>WorldVLN 把导航拆成段：每段在模拟器里走，段末用真实观测替换想象潜（防漂移）；奖励=轨迹相似 + 任务进度 + 参考策略锚定，按段做 GRPO。</p>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>单位</td><td>段（segment），同一 goal 下 J 段</td></tr><tr><td>奖励</td><td>r_j = γ^{j−1}(λ_traj r_traj + λ_task r_task + λ_ref r_ref)</td></tr><tr><td>优势</td><td>段级组归一化 (r_j−mean)/std</td></tr><tr><td>结果</td><td>导航成功率提升（论文表格，L2）</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="worldvln-flow.svg" alt="WorldVLN 精读：自回归 WAM 的段级 GRPO 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：真观测回灌防止长程想象误差累积；越早的段权重越大（后面还能纠）。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">r_traj = 1/(1+‖a−a*‖)</div><p class="foot">物理：轨迹项：与专家路点的距离，越像越高。</p>
+<div class="eq">r_task = 1/(1+终点距目标)</div><p class="foot">物理：任务项：段末离目标越近越高。</p>
+<div class="eq">r_ref = log π_ref(a|s)</div><p class="foot">物理：参考项：别漂出 SFT 分布（KL 的奖励版）。</p>
+<div class="eq">r_j = γ^{j−1}(λ_traj r_traj+λ_task r_task+λ_ref r_ref)</div><p class="foot">物理：段级合成，早段权重更大。</p>
+<div class="eq">A_j = (r_j−mean_group)/std_group</div><p class="foot">物理：段级组相对优势；正→提高该段概率，负→降低。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">按论文 §4.2–4.3 重建；无官方代码。</p>
+  <pre><code>def worldvln_step(model, segs, goal, gamma, lam):
+    # 物理：同一 goal 下比较哪段走得更好
+    R = []
+    for j, seg in enumerate(segs, start=1):
+        r_traj = 1/(1+dist(seg.a, seg.a_star))    # 像专家
+        r_task = 1/(1+dist(seg.end, goal))        # 到目标
+        r_ref  = logp_ref(seg.a, seg.s)           # 别漂
+        R.append(gamma**(j-1)*(lam.traj*r_traj + lam.task*r_task + lam.ref*r_ref))
+    R = tensor(R)
+    A = (R - R.mean()) / (R.std() + 1e-8)         # 组相对优势（无 critic）
+    loss = -min(ratio*A, clip(ratio, .8, 1.2)*A).mean()
+    model.update(loss)</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果数字</h2>
+  <ul><li>导航成功率提升（论文表格）</li><li>λ/γ/G/J 数值未给</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑与边界</h2>
+  <ul><li>需要在线模拟器与真观测同步</li><li>距离范数与 a* 定义论文未逐字写明</li><li>组内奖励方差大时优势噪声大</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="warn">L2：论文 §4.2–4.3；代码为依论文重建。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>

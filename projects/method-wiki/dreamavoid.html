@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DreamAvoid 精读：触发式 dreaming + 混合数据价值模型</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>DreamAvoid 精读：触发式 dreaming + 混合数据价值模型</h1>
+  <p class="sub">DINOv2 帧编码 + value token · 成功/失败/边界数据训练价值 · 关键阶段才展开候选想象</p>
+  <p class="meta">L3（官方代码） · arXiv:2605.11750 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a>
+  <a href="vampo.html">VAMPO</a>
+  <a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a>
+  <a href="worldvln.html">WorldVLN</a>
+  <a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a>
+  <a href="tau0-wm.html">τ0-WM</a>
+  <a href="data-loops.html">闭环数据</a>
+
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>DreamAvoid 不在每一步想象：由 trigger 判断「是否关键阶段」，只有关键阶段才采样多个候选动作、想象它们的未来、用价值模型挑最安全的执行。</p>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>价值模型</td><td>冻结 DINOv2 + 3 层时序注意力 + 标量头</td></tr><tr><td>数据</td><td>成功/失败/边界混合训练</td></tr><tr><td>触发</td><td>关键阶段由 trigger 判定；候选 8 个</td></tr><tr><td>结果</td><td>成功率提升（论文表格，L3）</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="dreamavoid-flow.svg" alt="DreamAvoid 精读：触发式 dreaming + 混合数据价值模型 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：价值不是「动作本身好不好」，而是「这个动作导致的未来会不会失败」。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">V = f_θ(obs, future, action, state, task)</div><p class="foot">物理：价值模型输入当前画面、未来帧、动作、本体、任务，输出标量。</p>
+<div class="eq">a* = argmax_{a∈候选} V(obs, rollout(a), a, state, task)</div><p class="foot">物理：从候选里挑最安全的执行。</p>
+<div class="eq">触发条件：仅在关键阶段展开候选</div><p class="foot">物理：平时直接执行，控制算力。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">仓库 XianzheFan/DreamAvoid：DreamDojo-da/examples/value_model.py、openpi-da/agilex/agilex_infer_dream_trigger.py（源码级）。</p>
+  <pre><code>class ValueModel(nn.Module):
+    def forward(self, obs, future, action, state, task_id):
+        # 物理：当前帧与未来帧各自编码，value token 汇总
+        obs_tok = encoder(obs) + frame_emb[0]
+        fut_tok = encoder(future) + frame_emb[1] + time_emb[:L]
+        seq = transformer([value_token] + obs_tok + fut_tok)
+        x = cat([seq[:,0], proj(action), task_emb(task_id), proj(state)])
+        return head(x).squeeze(-1)               # 标量价值
+
+def dream_avoid_step(policy, value_model, obs, state, task):
+    # 物理：只在关键阶段花算力想象
+    if not trigger(obs): return policy.act(obs)
+    cands = [policy.sample_action(obs) for _ in range(8)]
+    return max(cands, key=lambda a: value_model.score(
+        obs, rollout_future(policy, obs, a), a, state, task))</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果数字</h2>
+  <ul><li>成功率提升（论文表格）</li><li>候选 8 个、触发阈值可调</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑与边界</h2>
+  <ul><li>关键阶段标注与触发阈值需调</li><li>价值模型依赖想象的未来质量</li><li>候选数×想象步数的算力成本</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="ok">L3：官方仓库代码。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>

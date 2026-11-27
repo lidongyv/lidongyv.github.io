@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FACT 精读：失败感知的因果世界-动作模型</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>FACT 精读：失败感知的因果世界-动作模型</h1>
+  <p class="sub">act-then-imagine：动作条件未来 + 进度价值；失败样本掩动作、保留后果；两阶段推理 + best-of-N</p>
+  <p class="meta">L3（论文 + 官方代码） · arXiv:2608.10232 · <a href="../wam-rl-posttraining.html" style="color:#bcd6ef">对应博客：RL 后训练实现版</a></p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="giga-brain.html">GigaBrain</a>
+  <a href="vampo.html">VAMPO</a>
+  <a href="eva.html">EVA</a>
+  <a href="creflow.html">CreFlow</a>
+  <a href="worldvln.html">WorldVLN</a>
+  <a href="fact.html">FACT</a>
+  <a href="dreamavoid.html">DreamAvoid</a>
+  <a href="tau0-wm.html">τ0-WM</a>
+  <a href="data-loops.html">闭环数据</a>
+
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>FACT 把「该模仿什么」和「该预测什么」分开：失败轨迹的动作不学，但失败的后果（未来视频、进度价值）要学——所以价值头能识别坏动作。</p>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>骨干</td><td>Wan2.2-5B 初始化；动作 adapter + 共享 DiT</td></tr><tr><td>动作块</td><td>H=48；未来帧偏移 [0,H/4,H/2,3H/4,H]</td></tr><tr><td>损失权重</td><td>w_a=20，w_v=w_I=1；λ_fail=1</td></tr><tr><td>结果</td><td>RoboTwin Clean/Rand. 平均提升（论文表 1）</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox"><img src="fact-flow.svg" alt="FACT 精读：失败感知的因果世界-动作模型 流程图" style="max-width:100%"></div>
+  <p class="foot">物理：失败教「后果」，不教「动作」；价值头因此能识别坏动作。</p>
+</section>
+
+<section>
+  <h2>3. 关键公式与物理意义</h2>
+  <div class="eq">Eq.(2)  p(o&#x27;,v|o,l,a)</div><p class="foot">物理：动作条件的世界分支：这个动作导致什么。</p>
+<div class="eq">Eq.(3)  p_t=G_t/G_T（均匀奖励 t/T）</div><p class="foot">物理：跨 episode 可比的进度。</p>
+<div class="eq">Eq.(6)  成功 v=p_{t+H}；失败 clip(p−λ_fail,0,1)</div><p class="foot">物理：失败动作的进度目标下调（λ_fail=1）。</p>
+<div class="eq">Eq.(8/9)  成功三路损失；失败只保留价值+未来</div><p class="foot">物理：行为与后果解耦。</p>
+<div class="eq">Eq.(10)  a*=argmax_k V(o,l,a^(k))</div><p class="foot">物理：推理期用价值给候选打分。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <p class="foot">仓库 Bariona/FACT：world_action_model/trainer/wa_casual_trainer.py（源码级）。</p>
+  <pre><code>action_loss_mask = batch[&#x27;action_loss_mask&#x27;]   # 1=成功, 0=失败
+def _masked_mean(loss, mask):
+    # 物理：失败样本动作项置零（Eq.9）
+    m = mask.reshape(-1)
+    return (loss*m).sum() / m.sum().clamp_min(1e-8)
+
+def fact_train_step(batch, model):
+    # 物理：动作只学成功；价值/未来全样本学
+    pred_action, pred_value, pred_future = model(batch)
+    L_act = _masked_mean(action_loss(pred_action, batch.a), action_loss_mask)
+    L_val = mse(pred_value, batch.value_target)     # Eq.6
+    L_fut = flow_mse(pred_future, batch.future_latents)
+    return 20.0*L_act + 1.0*L_val + 1.0*L_fut
+
+def fact_infer(obs, instruction, N=1):
+    # 物理：先出动作；需要时再评估后果
+    a = denoise_action(obs, instruction, steps=20)  # Stage 1
+    if N == 1: return a
+    cands = [denoise_action(obs, instruction) for _ in range(N)]
+    scores = [value_head(obs, instruction, c) for c in cands]  # Stage 2
+    return cands[argmax(scores)]                    # Eq.10</code></pre>
+</section>
+
+<section>
+  <h2>5. 结果数字</h2>
+  <ul><li>RoboTwin Clean/Rand. 平均提升（论文表 1）</li><li>失败数据减少未来幻觉（论文 §4.3 消融）</li></ul>
+</section>
+
+<section>
+  <h2>6. 坑与边界</h2>
+  <ul><li>失败样本动作掩码的对象要选对</li><li>Stage 2 价值依赖干净动作条件化</li><li>w_a=20 的权重要按数据量调</li></ul>
+</section>
+
+<section>
+  <h2>7. 证据级别</h2>
+  <div class="ok">L3：论文 + 官方仓库训练器代码。</div>
+  <p class="foot">返回 <a href="index.html">方法精读 Wiki 索引</a> ｜ 博客：<a href="../wam-rl-posttraining.html">VLA/WAM 的 RL 后训练实现版</a></p>
+</section>
+</div>
+</body>
+</html>

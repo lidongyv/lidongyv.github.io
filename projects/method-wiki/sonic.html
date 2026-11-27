@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SONIC 精读：人形全身控制器（训练/推理/代码）</title>
+<title>SONIC 精读：把人形运动跟踪做大（论文/公式/代码/实验）</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
 
 <header class="hero">
-  <h1>SONIC：人形全身控制器</h1>
-  <p class="sub">Supersizing Motion Tracking for Natural Humanoid Whole-Body Control · Unitree G1 · 50Hz · 42M</p>
-  <p class="meta">L3（论文 + 官方源码/配置） · arXiv:2511.07820 · Science Robotics 2026 · 代码：GR00T-WholeBodyControl</p>
+  <h1>SONIC：把人形全身控制「做大」</h1>
+  <p class="sub">Supersizing Motion Tracking for Natural Humanoid Whole-Body Control · 三编码器 → FSQ 64 维 token → 双解码器 · Unitree G1 · 50Hz</p>
+  <p class="meta">L3 证据（论文 v4 全文 + 官方训练/部署配置）· arXiv:2511.07820v4 · 代码：NVlabs/GR00T-WholeBodyControl</p>
 </header>
 
 <nav class="top">
@@ -26,142 +26,597 @@
 </nav>
 
 <section>
-  <h2>1. 定位与关键数字</h2>
+  <h2>0. 论文信息表</h2>
   <table>
-    <tr><th>项</th><th>值</th></tr>
-    <tr><td>角色</td><td>S1 全身控制器（System 1）：吃参考运动/VR 指令，出关节目标，PD 跟踪</td></tr>
-    <tr><td>机器人</td><td>Unitree G1（`g1_model_12_dex`，29 身体关节；12-DoF 手另管）</td></tr>
-    <tr><td>规模/频率</td><td><b>42M</b> 参数；控制 <b>50Hz</b>；VLA 接口 64 维 token ×40 @2.5Hz</td></tr>
-    <tr><td>训练</td><td>PPO + 辅助损失；<b>4096</b> 并行环境；<b>21k GPU 小时</b>（128 卡 ×7 天）</td></tr>
-    <tr><td>数据</td><td><b>700h</b> 动捕、<b>1 亿+帧</b>@50Hz、<b>170 人</b>；GMR 重定向；BONES-SEED 142K 动作</td></tr>
-    <tr><td>效果</td><td>test-content 98.5%；真机 124 条动作 99.2%；vs OpenHomie 存活 98.5% vs 43.0%</td></tr>
+    <tr><th>项</th><th>内容</th></tr>
+    <tr><td>标题</td><td>SONIC: Supersizing Motion Tracking for Natural Humanoid Whole-Body Control</td></tr>
+    <tr><td>作者</td><td>Zhengyi Luo†, Ye Yuan†, Tingwu Wang†, Chenran Li†, Fernando Castañeda†（共同一作）；Sirui Chen, Zi-Ang Cao, Jiefeng Li, David Minor, Qingwei Ben, Jinhyung Park, David Sami, Zi Wang, Xingye Da 等（核心贡献）；Linxi “Jim” Fan‡、Yuke Zhu‡（共同指导）。共 27 位作者署名。</td></tr>
+    <tr><td>机构</td><td>NVIDIA（2788 San Tomas Expressway, Santa Clara, CA, USA），GEAR 团队</td></tr>
+    <tr><td>时间</td><td>arXiv v4：2026-08-13（页面标注 <code>arXiv:2511.07820v4 [cs.RO] 13 Aug 2026</code>）；v1 为 2025-11</td></tr>
+    <tr><td>Venue</td><td>arXiv 预印本（Science Robotics 格式排版：Results 前置、Materials and Methods 后置、含 Supplementary）。期刊录用状态本页不作断言</td></tr>
+    <tr><td>链接</td><td><a href="https://arxiv.org/abs/2511.07820">arXiv:2511.07820</a> ·
+      <a href="https://arxiv.org/html/2511.07820v4">HTML v4</a> ·
+      <a href="https://nvlabs.github.io/GEAR-SONIC/">项目页 GEAR-SONIC</a> ·
+      <a href="https://nvlabs.github.io/GR00T-WholeBodyControl/">代码文档</a> ·
+      <a href="https://github.com/NVlabs/GR00T-WholeBodyControl">GitHub</a></td></tr>
+    <tr><td>数据/代码可用性</td><td>训练+部署代码开源；动捕数据部分开源为 BONES-SEED（142,220 条序列 / 288 小时 / 522 位演员，HuggingFace <code>bones-studio/seed</code>）；代码快照与全部图表的表格数据存 Zenodo（DOI 10.5281/zenodo.21273312）</td></tr>
+    <tr><td>证据级别</td><td><b>L3</b>：论文全文（含 Supplementary Tables S1–S4）+ 官方 Hydra 配置（<code>sonic_release.yaml</code>、<code>all_mlp_v1.yaml</code>、<code>ppo_im_phc.yaml</code>）+ 官方 loss 实现（<code>token_losses.py</code>）+ 部署侧 observation 配置。<b>本页所有数字均标注来源（Fig./Table/§/文件路径）</b></td></tr>
   </table>
+  <div class="ok"><b>一句话结论</b>：把「物理仿真里的运动跟踪」当成可规模化的预训练任务，用 1 亿+ 帧（611 小时可用动捕）密集逐帧监督训练 42M 参数 PPO 策略，得到单一通用策略；再用「共享量化 token 空间」把机器人运动/人体 SMPL/遥操作三种输入接到同一个解码器，从而一个策略同时支撑导航、VR 遥操作、视频/文本/音乐驱动和 VLA 全身 loco-manipulation。</div>
 </section>
 
 <section>
-  <h2>2. 流程图</h2>
+  <h2>1. Abstract 原文（英文原句）+ 中译</h2>
+
+  <h3>原文（逐句引用，共 5 句）</h3>
+  <div class="eq" style="font-family:inherit;font-size:13.8px">
+    <p>(1) “We show that scaling model capacity, data, and compute yields a generalist humanoid controller capable of natural, robust whole-body movements.”</p>
+    <p>(2) “We position motion tracking as a scalable task for humanoid control, leveraging dense supervision from diverse motion-capture data to acquire human motion priors without manual reward engineering.”</p>
+    <p>(3) “We build a foundation model for motion tracking by scaling along three axes: network size (1.2M to 42M parameters), dataset volume (100M+ frames from 700 hours of motion capture), and compute (21k GPU hours).”</p>
+    <p>(4) “Beyond demonstrating the benefits of scale, we further show downstream utility through a real-time kinematic planner that bridges motion tracking to tasks such as navigation, enabling natural and interactive control, as well as a unified token space that supports virtual reality (VR) teleoperation and vision-language-action (VLA) models with a single policy.”</p>
+    <p>(5) “Scaling motion tracking exhibits favorable properties: performance improves steadily with compute and data diversity, and learned policies generalize to unseen motions, establishing motion tracking at scale as a practical foundation for humanoid control.”</p>
+  </div>
+  <p class="foot">出处：arXiv:2511.07820v4，Abstract。上文开头的过渡句 “Current neural controllers for humanoids remain modest in size, target a limited set of behaviors, and are trained on a handful of GPUs.” 也是原句，给出问题背景。</p>
+
+  <h3>中译</h3>
+  <p>（1）我们证明：同时放大模型容量、数据与算力，可以得到一个能做自然、鲁棒全身运动的通用人形控制器。</p>
+  <p>（2）我们把「运动跟踪」定位为人形控制的可规模化任务——它利用多样动捕数据提供的密集监督，无需求解手工奖励工程就能获得人体运动先验。</p>
+  <p>（3）我们沿三条轴放大运动跟踪，构建其基础模型：网络规模（1.2M → 42M 参数）、数据规模（来自 700 小时动捕的 1 亿+ 帧）、算力（2.1 万 GPU 小时）。</p>
+  <p>（4）除了展示规模收益，我们进一步给出下游可用性：一个实时运动学规划器把运动跟踪接到导航等任务上，实现自然、可交互的控制；以及一个统一 token 空间，让同一个策略同时支持 VR 遥操作与 VLA 模型。</p>
+  <p>（5）规模化的运动跟踪呈现良好性质：性能随算力与数据多样性稳定提升，学到的策略能泛化到未见运动，从而把「规模化运动跟踪」确立为人形控制的实用基础。</p>
+
+  <div class="warn"><b>读摘要要抓的两件事</b>：① 论文的核心论证不是「网络更大所以更好」，而是「运动跟踪这个任务本身具备可规模化性」（有逐帧稠密监督）；② 真正的工程创新在接口——三编码器共享 FSQ token，使 VLA 只需预测 64 维 token 就能驱动全身 29 关节。第 5 节的方法精读会围绕这两点展开。</div>
+</section>
+
+<section>
+  <h2>2. Problem：为什么人形控制一直没有「规模化」</h2>
+
+  <h3>2.1 现象</h3>
+  <p>原文：“Yet for sim-to-real humanoid control, similar scaling gains have not been achieved. State-of-the-art humanoid control policies are often small neural networks, such as three-layer multilayer perceptrons (MLPs), trained on a few GPUs for a single task.”（§1 Introduction）</p>
+
+  <h3>2.2 根因：任务选择错了</h3>
+  <p>原文：“Why hasn’t humanoid control scaled? The fundamental issue is task selection.”（§1）</p>
+  <p>论文给出的推理链：</p>
+  <ul>
+    <li>任务级奖励工程无法复用：走路的前进奖励对跳舞、起身、遥操作几乎无信号（“walking forward naturally provides little signal for dancing, getting up from the ground, or teleoperation”）。</li>
+    <li>对抗式模仿（AMP / ASE / CALM）看似统一了目标，但判别器随数据多样性增大而失效：“prior work has shown that their discriminator-based training signal is prone to mode collapse as the motion dataset grows in size and diversity”。</li>
+    <li>即使找到可规模化的目标，还要解决「同一控制器要服务多种真实应用」的第二重挑战：遥操作、目标导向任务、导航、语言指令。</li>
+  </ul>
+
+  <h3>2.3 论文的答案</h3>
+  <p>原文：“In this work, we address both challenges by identifying motion tracking as the scalable foundational task for humanoid control. Motion tracking leverages human motion capture data, which provides dense, frame-by-frame supervision without reward engineering.”（§1）</p>
+  <p>并明确指出前人局限：“they are mostly limited to showing whole-body motion tracking results on training data and have not demonstrated many downstream tasks beyond motion tracking or navigation.”（§1）——SONIC 的「新」就落在（a）把跟踪放大 10× 以上、（b）证明能接下游（规划器 + VLA）。</p>
+</section>
+
+<section>
+  <h2>3. Core idea：一个策略、三种输入、一个 token 空间</h2>
+  <table>
+    <tr><th>组件</th><th>作用</th><th>关键事实</th><th>出处</th></tr>
+    <tr><td>任务选择</td><td>用动捕参考运动做逐帧监督，替代奖励工程</td><td>611 小时可用 / 1 亿+ 帧 @50Hz；33 主类 / 8,447 子类</td><td>§3.1, Table 2</td></tr>
+    <tr><td>三编码器</td><td>机器人关节运动 E_r、人体 SMPL E_h、上体关键点+下体机器人 E_m</td><td>均为 MLP [2048,1024,512,512] + SiLU</td><td>§3.2, Table S1</td></tr>
+    <tr><td>统一量化</td><td>FSQ 把三路 latent 压到同一离散 token</td><td>2 tokens × 32 维，32 级/维；展平 64 维</td><td>§3.2, Table S1, 部署 <code>encoder.dimension: 64</code></td></tr>
+    <tr><td>双解码器</td><td>D_c 出 29 维关节目标；D_r 重建机器人运动作辅助监督</td><td>D_r 使「人体→机器人」隐式重定向成立</td><td>§3.2</td></tr>
+    <tr><td>规划器</td><td>潜空间自回归 in-betweening，把用户意图变成短时参考</td><td>段长 0.8–2.4s；&lt;5ms（笔记本）/ ~12ms（Jetson Orin）；最快 100ms 重规划一次</td><td>§2.2, §3.3</td></tr>
+    <tr><td>VLA 接口</td><td>VLA 直接预测 64 维 token + 14 维手</td><td>78 维动作；5 个真机任务平均 75%</td><td>§2.5, Table 1</td></tr>
+  </table>
+  <p class="foot">与旧版页面的一处修正：VLA 侧动作是「每步 78 维（64 token + 7+7 手）」，并非「40×64 的 token 序列」；40 是 GR00T N1.7 的动作时域（<code>action_horizon=40</code>），2.5Hz 是仓库 VLA 文档标称的接口频率（<code>64-dim x 40</code>、VLA 2.5Hz / SONIC 50Hz）。论文本身未给 VLA 推理频率。</p>
+</section>
+
+<section>
+  <h2>4. 流程图（输入 / 频率 / 张量形状 / 输出）</h2>
   <div class="svgbox">
-  <svg viewBox="0 0 980 400" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
-    <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker></defs>
-    <rect x="20" y="20" width="210" height="90" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="46" font-size="13" font-weight="700" fill="#0b2a4a">参考运动 g1</text>
-    <text x="34" y="66" font-size="11.5">未来 10 帧，Δt=0.1s</text>
-    <text x="34" y="84" font-size="11.5">29 关节位/速 + 6D 朝向</text>
-    <text x="34" y="100" font-size="11.5">+ command_z（高度）</text>
+  <svg viewBox="0 0 1000 520" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif" role="img" aria-label="SONIC 推理与训练数据流：三编码器到 FSQ token 到双解码器">
+    <defs>
+      <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+        <path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/>
+      </marker>
+      <marker id="ao" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+        <path d="M0,0 L10,4 L0,8 z" fill="#b07a1e"/>
+      </marker>
+    </defs>
 
-    <rect x="20" y="140" width="210" height="90" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="166" font-size="13" font-weight="700" fill="#0b2a4a">teleop（VR）</text>
-    <text x="34" y="186" font-size="11.5">头+双腕位置/6D 朝向</text>
-    <text x="34" y="204" font-size="11.5">+ 下肢参考 + command_z</text>
+    <text x="20" y="24" font-size="12" font-weight="700" fill="#5b6a79">输入（三种参考运动，同一时刻可任选其一）</text>
 
-    <rect x="20" y="260" width="210" height="90" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="286" font-size="13" font-weight="700" fill="#0b2a4a">SMPL（人体）</text>
-    <text x="34" y="306" font-size="11.5">未来 10 帧，Δt=0.02s</text>
-    <text x="34" y="324" font-size="11.5">3D 关节 + 根朝向 + 腕</text>
+    <rect x="20" y="38" width="236" height="86" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="62" font-size="13" font-weight="700" fill="#0b2a4a">g_r 机器人参考（E_r）</text>
+    <text x="34" y="82" font-size="11.5">10 帧 × Δt=0.1s（≈1.0s 前视）</text>
+    <text x="34" y="99" font-size="11.5">每帧：29 关节位置 + 29 速度</text>
+    <text x="34" y="116" font-size="11.5">+ 6D 锚点朝向 ⇒ [B,10,64] @50Hz</text>
 
-    <rect x="290" y="60" width="190" height="70" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
-    <text x="304" y="88" font-size="13" font-weight="700">MLP 编码器 ×3</text>
-    <text x="304" y="108" font-size="11.5">[2048,1024,512,512] SiLU</text>
-    <rect x="290" y="160" width="190" height="70" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
-    <text x="304" y="188" font-size="13" font-weight="700">→ 2 tokens × 32 维</text>
-    <text x="304" y="208" font-size="11.5">每轮随机选 1 个编码器</text>
-    <rect x="290" y="260" width="190" height="70" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
-    <text x="304" y="288" font-size="13" font-weight="700">FSQ 量化</text>
-    <text x="304" y="308" font-size="11.5">32 级/维；直通梯度</text>
+    <rect x="20" y="140" width="236" height="86" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="164" font-size="13" font-weight="700" fill="#0b2a4a">g_m 遥操作（E_m）</text>
+    <text x="34" y="184" font-size="11.5">上体当前帧：头 + 双腕 SE(3)</text>
+    <text x="34" y="201" font-size="11.5">+ 下体机器人 10 帧 @Δt=0.1s</text>
+    <text x="34" y="218" font-size="11.5">⇒ 部分可观测（MPJPE 最大的一路）</text>
 
-    <rect x="540" y="120" width="190" height="80" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
-    <text x="554" y="148" font-size="13" font-weight="700">g1_dyn 解码器</text>
-    <text x="554" y="168" font-size="11.5">token(64)+proprio</text>
-    <text x="554" y="186" font-size="11.5">MLP[...512,512] → 29 关节</text>
+    <rect x="20" y="242" width="236" height="86" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="266" font-size="13" font-weight="700" fill="#0b2a4a">g_h 人体 SMPL（E_h）</text>
+    <text x="34" y="286" font-size="11.5">10 帧 × Δt=0.02s（≈200ms 前视）</text>
+    <text x="34" y="303" font-size="11.5">3D 关节位置 + 根朝向 6D</text>
+    <text x="34" y="320" font-size="11.5">⇒ 人体编码器输入</text>
 
-    <rect x="540" y="240" width="190" height="80" rx="9" fill="#f6f8fb" stroke="#5b6a79" stroke-dasharray="5,4"/>
-    <text x="554" y="268" font-size="12" font-weight="700">g1_kin 解码器（辅助）</text>
-    <text x="554" y="288" font-size="11.5">token → 未来 10 帧 58+6</text>
-    <text x="554" y="306" font-size="11.5">仅训练用</text>
+    <rect x="20" y="356" width="236" height="76" rx="9" fill="#f6f8fb" stroke="#5b6a79" stroke-dasharray="5,4"/>
+    <text x="34" y="380" font-size="13" font-weight="700">本体感知 s_p（历史 10 帧）</text>
+    <text x="34" y="400" font-size="11.5">q, q̇, ω_root, 重力向量, a_(t−1)</text>
+    <text x="34" y="417" font-size="11.5">⇒ 直接拼进解码器，不进编码器</text>
 
-    <rect x="790" y="200" width="170" height="70" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
-    <text x="804" y="228" font-size="13" font-weight="700">PD 控制 1kHz</text>
-    <text x="804" y="248" font-size="11.5">τ=Kp(q*−q)−Kd·q̇</text>
+    <rect x="300" y="70" width="196" height="196" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="314" y="94" font-size="13" font-weight="700" fill="#0b2a4a">编码器 MLP ×3</text>
+    <text x="314" y="114" font-size="11.5">hidden=[2048,1024,512,512]</text>
+    <text x="314" y="131" font-size="11.5">激活 SiLU，逐编码器独立权重</text>
+    <text x="314" y="155" font-size="11.5">每环境按概率 1:1:1 抽一路</text>
+    <text x="314" y="172" font-size="11.5">（<code>encoder_sample_probs</code>）</text>
+    <text x="314" y="196" font-size="11.5">输出 latent：每 token 32 维</text>
+    <text x="314" y="213" font-size="11.5">× 2 token ⇒ [B,2,32]</text>
+    <text x="314" y="237" font-size="11.5">本地坐标系（旋转不变）</text>
+    <text x="314" y="254" font-size="11.5">全程 6D 旋转表示</text>
 
-    <line x1="230" y1="65" x2="286" y2="90" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
-    <line x1="230" y1="185" x2="286" y2="190" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
-    <line x1="230" y1="305" x2="286" y2="290" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
-    <line x1="385" y1="130" x2="385" y2="156" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
-    <line x1="385" y1="230" x2="385" y2="256" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
-    <line x1="480" y1="295" x2="536" y2="295" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#a)"/>
-    <line x1="480" y1="190" x2="536" y2="165" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
-    <line x1="730" y1="160" x2="786" y2="215" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#a)"/>
-    <text x="20" y="382" font-size="12" fill="#5b6a79">推理时只用 g1_dyn（50Hz）；g1_kin 只在训练里提供「未来重建」梯度。VLA 可直接给 64 维 token 替代编码器。</text>
+    <rect x="300" y="296" width="196" height="104" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="314" y="320" font-size="13" font-weight="700" fill="#6b4a00">FSQ 量化（无码本）</text>
+    <text x="314" y="340" font-size="11.5">32 级/维，32 维/token</text>
+    <text x="314" y="357" font-size="11.5">round 到格点，直通估计传梯度</text>
+    <text x="314" y="374" font-size="11.5">输出 [B,2,32] → 展平 z ∈ R^64</text>
+    <text x="314" y="391" font-size="11.5">⇒ VLA 的动作就是这个 64 维</text>
+
+    <rect x="560" y="96" width="212" height="112" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="574" y="120" font-size="13" font-weight="700" fill="#0d4423">D_c 控制解码器</text>
+    <text x="574" y="140" font-size="11.5">输入：z(64) ⊕ s_p（10 帧历史）</text>
+    <text x="574" y="157" font-size="11.5">hidden=[2048,2048,1024,1024,512,512]</text>
+    <text x="574" y="174" font-size="11.5">输出：29 维目标关节角</text>
+    <text x="574" y="191" font-size="11.5">（对角高斯策略头，训练时采样）</text>
+
+    <rect x="560" y="240" width="212" height="112" rx="9" fill="#f6f8fb" stroke="#5b6a79" stroke-dasharray="5,4"/>
+    <text x="574" y="264" font-size="12" font-weight="700">D_r 运动解码器（仅训练）</text>
+    <text x="574" y="284" font-size="11.5">输入：只有 z</text>
+    <text x="574" y="301" font-size="11.5">hidden=[2048,1024,512,512]</text>
+    <text x="574" y="318" font-size="11.5">输出：未来 10 帧机器人参考</text>
+    <text x="574" y="335" font-size="11.5">作用：辅助监督 + 隐式人体→机器人重定向</text>
+
+    <rect x="820" y="96" width="160" height="112" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="834" y="120" font-size="13" font-weight="700" fill="#0d4423">输出 @50Hz</text>
+    <text x="834" y="140" font-size="11.5">q* ∈ R^29（目标关节角）</text>
+    <text x="834" y="157" font-size="11.5">→ 整机 PD 控制 1kHz</text>
+    <text x="834" y="174" font-size="11.5">τ = Kp(q*−q) − Kd·q̇</text>
+    <text x="834" y="191" font-size="11.5">推理 1–2ms/次（TensorRT）</text>
+
+    <line x1="256" y1="80" x2="296" y2="140" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#ah)"/>
+    <line x1="256" y1="183" x2="296" y2="180" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#ah)"/>
+    <line x1="256" y1="285" x2="296" y2="220" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#ah)"/>
+    <line x1="398" y1="266" x2="398" y2="292" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#ao)"/>
+    <line x1="496" y1="348" x2="556" y2="200" stroke="#1d6b38" stroke-width="1.5" marker-end="url(#ah)"/>
+    <line x1="496" y1="348" x2="556" y2="330" stroke="#5b6a79" stroke-width="1.5" marker-end="url(#ah)"/>
+    <line x1="256" y1="400" x2="556" y2="240" stroke="#5b6a79" stroke-width="1.3" stroke-dasharray="6,4" marker-end="url(#ah)"/>
+    <line x1="772" y1="152" x2="816" y2="152" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#ah)"/>
+
+    <text x="20" y="466" font-size="11.5" fill="#5b6a79">频率链：参考运动 50Hz 采样 → 策略前向 50Hz → 目标流 500Hz → 操作员输入 100Hz → 运动学规划 10Hz（§3.5、§S1.2）。</text>
+    <text x="20" y="486" font-size="11.5" fill="#5b6a79">训练时 D_r 与三条一致性损失只回传梯度到编码器与 D_r；PPO 更新编码器、量化器、D_c 与 critic（§3.2 “Training”）。</text>
+    <text x="20" y="506" font-size="11.5" fill="#8a5a00">⚠ 图中 [B,10,64] 的前两维（10 帧 / 64 维）为配置与文档实测；“64 = 58 关节 + 6D 朝向”的组合是按仓库文件结构推算（原文未写→推断）。</text>
   </svg>
   </div>
+  <p class="foot">依据：§3.2 与 Table S1（层宽、F=10、Δt）、<code>all_mlp_v1.yaml</code>（<code>max_num_tokens: 2</code>、<code>fsq_level_list: 32</code>、各模块 hidden_dims）、<code>observation_config_sonic_release.yaml</code>（<code>encoder.dimension: 64</code>）、<code>doc_motion_reference.md</code>（joint_pos/joint_vel 各 29 且 50Hz）。</p>
 </section>
 
 <section>
-  <h2>3. 关键公式</h2>
-  <div class="eq">token: t = FSQ(E(o)) ∈ R^{2×32};  flat 64 维</div>
-  <div class="eq">FSQ: q_i = round((z_i + 1)/2 · (L−1)) / (L−1) · 2 − 1,  L = 32</div>
-  <div class="eq">PPO: L = E[min(ρ A, clip(ρ,1−ε,1+ε) A)] − c_e·H + c_v·(V−R)², ε=0.2</div>
-  <div class="eq">总损失 = PPO + 0.01·L_recon + 1.0·(L_latent-g1/smpl + L_latent-g1/teleop + L_latent-teleop/smpl) + L_skating</div>
-  <p class="foot">物理意义：FSQ 把连续运动意图压成离散码本，跨编码器共享同一 token 空间；latent 对齐让「机器人/人体/遥操作」三种输入落在同一坐标；skating 惩罚脚接触时的预测滑移。</p>
-</section>
+  <h2>5. 逐节方法精读</h2>
 
-<section>
-  <h2>4. 网络与张量</h2>
+  <h3>5.1 §3.2“Motion Tracking Formulation”：把跟踪写成 MDP</h3>
+  <p>原文：“We formulated humanoid motion tracking as a Markov Decision Process M = ⟨S, A, T, R, γ⟩, comprising state space, action space, transition function, reward function, and discount factor γ.”</p>
+  <p><b>状态 s_t = (s_t^p, s_t^g)</b>：本体感知 s^p 含关节位置 q_t、关节速度 q̇_t、根角速度 ω_t、根坐标系下的重力向量 g_t、上一动作 a_(t−1)，并拼接 10 步历史：</p>
+  <p>原文：“We concatenated a 10-step history of all proprioceptive quantities and actions into s_t^p, that is, s_t^p ≜ (q_t, q̇_t, ω_t, g_t, a_(t−1))_(t−9:t), providing the policy with temporal context for anticipatory behavior.”</p>
+  <p>原文：“All state quantities are expressed in the robot’s local frame to ensure rotation invariance. We used the 6D rotation representation throughout.”</p>
+  <p><b>为什么是 10 帧历史 + 本地系</b>：本地系让「同一动作在不同朝向下是同一个输入」，把朝向自由度从策略里剥离出去（朝向在部署时由 heading alignment 一次性对齐，见 §S1.2）；10 帧（@50Hz = 200ms）刚好覆盖速度/加速度的可观测窗口——加速度是二阶量，单帧给不出。</p>
+
+  <p><b>动作</b>：原文 “The policy π outputs target joint positions a_t as actions, which are tracked by proportional-derivative (PD) controllers at each joint.” 即策略不输出力矩，输出关节角目标，PD 在 1kHz 环路里闭合——这是 sim2real 稳健的关键（力矩控制对模型误差极敏感）。</p>
+
+  <p><b>奖励</b>：r_t = R(s_t^p, s_t^g) + P(s_t^p, a_t)，R 追根/体段位姿与速度（含头、双腕、双踝的末端项），P 罚不平滑。完整表在 Table S3（本页第 8 节给出权重）。</p>
+
+  <h3>5.2 §3.2“Universal Control Policy”：编码器 / 量化器 / 解码器</h3>
+  <p>原文（核心动机）：“Specialized encoders map heterogeneous human and robot motion inputs into a shared latent representation, which is quantized into a universal token that drives a common robot control decoder; an auxiliary robot motion decoder facilitates feature learning and serves as an implicit human-to-robot retargeting module.”</p>
   <table>
-    <tr><th>模块</th><th>结构</th><th>输入 → 输出</th></tr>
-    <tr><td>编码器 ×3</td><td>MLP [2048,1024,512,512] + SiLU</td><td>10 帧观测 → [B,2,32]</td></tr>
-    <tr><td>FSQ</td><td>32 级/维，直通估计</td><td>[B,2,32] → 离散 token</td></tr>
-    <tr><td>g1_dyn</td><td>MLP [2048,2048,1024,1024,512,512] + SiLU</td><td>token(64)+proprio → [B,29]</td></tr>
-    <tr><td>g1_kin</td><td>MLP [2048,1024,512,512]</td><td>token → [B,10,64]（58 运动 + 6 朝向）</td></tr>
-    <tr><td>proprio 历史</td><td>10 帧</td><td>actor_obs</td></tr>
+    <tr><th>模块</th><th>输入（配置键）</th><th>时间维</th><th>输出</th></tr>
+    <tr><td>E_r（g1）</td><td><code>command_multi_future_nonflat</code> + <code>motion_anchor_ori_b_mf_nonflat</code>（+ <code>command_z_multi_future_nonflat</code>，见 5.6 的配置分层说明）</td><td>10 帧 × 0.1s</td><td>latent → token</td></tr>
+    <tr><td>E_m（teleop）</td><td><code>command_multi_future_lower_body</code> + <code>vr_3point_local_target</code> + <code>vr_3point_local_orn_target</code> + <code>motion_anchor_ori_b</code></td><td>下体 10 帧 × 0.1s；上体当前帧</td><td>latent → token</td></tr>
+    <tr><td>E_h（smpl）</td><td><code>smpl_joints_multi_future_nonflat</code> + <code>smpl_root_ori_b_multi_future</code></td><td>10 帧 × 0.02s</td><td>latent → token</td></tr>
+    <tr><td>FSQ</td><td>latent [B,2,32]</td><td>—</td><td>离散 token，展平 64 维</td></tr>
+    <tr><td>D_c（g1_dyn）</td><td><code>token_flattened</code> + <code>proprioception</code></td><td>无时间维</td><td>29 维关节目标</td></tr>
+    <tr><td>D_r（g1_kin）</td><td>仅 <code>token</code></td><td>输出 10 帧</td><td>未来机器人参考（58 + 6D）</td></tr>
   </table>
+  <p>原文（量化器）：“The encoded latent representation is quantized into a universal token z using Finite Scalar Quantization (FSQ), with two tokens, each a D_z-dimensional vector with L_z quantization levels per dimension.”</p>
+  <p><b>为什么 FSQ 而不是 VQ-VAE</b>——原文给了三条工程理由：“FSQ avoids codebook collapse (a failure mode where large portions of the codebook go unused), requires no auxiliary commitment loss or codebook exponential-moving-average (EMA) updates, and provides clean straight-through gradient estimation that is compatible with joint PPO optimization.”（§S1.1）</p>
+  <p>这条很关键：当量化器被放进 RL 训练图里时，VQ-VAE 的码本要靠 EMA 维护，而 PPO 的梯度又要穿过量化器——两套更新机制会互相打架；FSQ 无参数码本，只有固定的分格常数，直通估计天然兼容 PPO。</p>
+
+  <h3>5.3 §3.2“Training”：四个损失一起优化</h3>
+  <p>原文：“All four losses are optimized jointly in a single end-to-end training loop.”</p>
+  <p>原文（关键论断）：“In practice, the auxiliary losses regularize the latent space and stabilize rather than destabilize PPO optimization, and we observed no training instabilities from coupling quantization with RL across model scales.”</p>
+  <p>这条「规模不变的不稳定性也没有出现」是本文最容易被忽视的贡献——把量化器塞进 RL 循环在很多工作里是明确会炸的。</p>
+  <p>三项辅助损失各自负责一件事：</p>
+  <ul>
+    <li>L_recon（Eq.2）：用 D_r 从三种 token 分别重建「机器人运动」，人体 token 走这条路时就是<b>重定向损失</b>（原文：“the encoder-decoder acts as a retargeting pipeline from human to robot motion, and L_recon serves as a retargeting loss that enables learning from human motion data”）。</li>
+    <li>L_token（Eq.3）：三路 token 两两拉齐（r–h、r–m、m–h），让「同一段运动、不同输入格式」落到同一点。</li>
+    <li>L_cycle（Eq.4）：从人体 token 重建出机器人运动，再经 E_r 编码回 token，与原始机器人 token 对齐——保证「人→机→人」往返不丢运动特征。</li>
+  </ul>
+  <p>分布式训练：Isaac Lab + Ray/自定义多节点栈；bin-based 自适应采样按「失败率封顶」加权（Table S2：bin=1s、β=200、α=0.1），让难动作多练但不至于把采样全压在少数片段上。</p>
+
+  <h3>5.4 §3.3“Generative Kinematic Motion Planner”：潜空间自回归补间</h3>
+  <p>原文：“At a high level, the planning process was formulated as an autoregressive motion in-betweening generation task, that is, generating the intermediate motion that smoothly connects the current pose to a target keyframe.”</p>
+  <p>三个设计点：</p>
+  <ul>
+    <li><b>表示</b>：骨盆相对关节位置 + <b>全局</b>关节旋转。原文说明为什么不能用局部/canonical 旋转：“Incorporating global rotation instead of local, canonicalized rotation is essential for generating motions such as squatting and crawling, where the notion of heading is ill-defined and affects the quality of motion planning.”</li>
+    <li><b>生成</b>：masked token prediction，编码器降采样 4×；每次迭代只确认「最有信心的那部分 token」，推理时用余弦调度 1−cos(π/2 · L/L_max) 决定本步确认比例。</li>
+    <li><b>弹簧模型</b>（Eq.8）：把用户的速度/朝向指令变成 keyframe 目标位置，临界阻尼，位置 c=5ln2、朝向 c=20ln2，取 t=1.0s 的 x(1.0)。原文给了它可省的边界：“the planner is robust to the choice of damping coefficients—owing to its variable-length generation (0.8–2.4 s) and strong in-betweening, the spring model can often be omitted entirely—but including it improves behavioral predictability”。</li>
+  </ul>
+  <p>实用数字：段长 0.8–2.4s（由规划器自动定）；重规划最快每 100ms 一次，用户指令一变立刻重规划；S1.2 补充：规划器线程 30fps、最多 64 帧（~2s）、上下文 4 帧、新计划与旧轨迹交叉淡入 8 帧（160ms）、30fps→50fps 用位置线性插值 + 四元数 SLERP、速度用有限差分。</p>
+
+  <h3>5.5 §3.4–3.5：多模态与部署</h3>
+  <p>视频/文本/音乐统一走 GEM（“a unified generalist model that handles both motion estimation and generation by treating estimation as constrained generation”），生成的人体运动经 E_h 进策略；视频与文本都标称 ~60fps。部署侧：</p>
+  <p>原文：“All inference ran onboard a Jetson Orin GPU using TensorRT with CUDA Graph acceleration, yielding 1–2 ms per policy forward pass and ~12 ms for motion generation.”</p>
+  <p>原文：“The system used a multi-rate architecture with four concurrent loops: policy inference at 50 Hz, command streaming at 500 Hz, operator input at 100 Hz, and kinematic planning at 10 Hz.”</p>
+
+  <h3>5.6 §3.6：消融告诉我们的三件事</h3>
+  <ul>
+    <li><b>量化器选型</b>：FSQ 比「同容量多码本 VQ-VAE（4 头 / 码本 512 / 2 token）」在 test-content 上 MPJPE-L 低 8.7mm（Table 3A）。</li>
+    <li><b>容量怎么花</b>：原文 “Increasing capacity consistently improved performance, with token dimension having a larger effect than quantization levels”——即「加维度」比「加级数」划算（FSQ-32-16 vs FSQ-16-32 的对比见第 9 节表）。</li>
+    <li><b>一致性损失是必需的</b>：去掉后跨编码器散度上升（Figure S7）；三路编码器都保持 ≥99.2% 成功率，人体编码器只比机器人编码器差 +0.6mm。这条对下游 VLA 至关重要：VLA 直接预测 token，若三种遥操作数据不在同一潜空间，VLA 的训练分布就是碎的。</li>
+  </ul>
+
+  <div class="warn"><b>配置分层坑（源码级）</b>：<code>all_mlp_v1.yaml</code> 里 E_r 的 <code>inputs</code> 有 3 项（含 <code>command_z_multi_future_nonflat</code>）、E_m 有 5 项；而 <code>sonic_release.yaml</code> 把同一键覆盖成 2 项 / 4 项（不含 <code>command_z</code>），<code>decoders.g1_kin.outputs</code> 也从 3 项覆盖成 2 项。Hydra 合并<b>整体替换 list</b>，所以「对着 all_mlp_v1 数输入维度」会算错。复现时以 <code>sonic_release.yaml</code> 为准。</div>
 </section>
 
 <section>
-  <h2>5. 训练配方</h2>
+  <h2>6. 关键公式（公式 + 物理意义 + 代码映射）</h2>
+
+  <h3>6.1 总损失（Eq.1）</h3>
+  <div class="eq">L = L_ppo + L_recon + L_token + L_cycle</div>
+  <p><b>物理意义</b>：PPO 负责「把动作做对」，三项辅助损失负责「把中间表示对齐」——前者是任务梯度，后者是表示梯度，两者共用同一套编码器参数。</p>
+  <p><b>代码映射</b>：<code>gear_sonic/config/aux_losses/universal_token/g1_recon_and_all_latent.yaml</code> 的 <code>aux_loss_coef</code>（g1_recon 0.01，其余 1.0）；训练器 <code>gear_sonic/trl/trainer/ppo_trainer_aux_loss.py</code>。<b>注意</b>：代码里 L_recon 实际带 0.01 权重，Eq.1 写的是无权重求和——以代码为准时需要显式写系数。</p>
+
+  <h3>6.2 重建 / 重定向（Eq.2）</h3>
+  <div class="eq">L_recon = ‖D_r(z_r) − g_r‖² + ‖D_r(z_h) − g_r‖² + ‖D_r(z_m) − g_r‖²</div>
+  <p><b>物理意义</b>：右边三项的目标<b>都是机器人运动 g_r</b>（不是各自的输入）。所以人体 token z_h 被逼着「解得出机器人该长什么样」——这就是隐式重定向：不需要在运行时跑 IK/重定向器。</p>
+  <p><b>代码映射</b>：<code>token_losses.py::G1ReconLoss.forward</code>，把 <code>decoders_cfg["g1_kin"]["outputs"]</code> 列出的键 cat 起来算 masked MSE。</p>
+
+  <h3>6.3 token 对齐（Eq.3）与循环一致（Eq.4）</h3>
+  <div class="eq">L_token = ‖z_r − z_h‖² + ‖z_r − z_m‖² + ‖z_m − z_h‖²</div>
+  <div class="eq">L_cycle = ‖E_r(D_r(z_h)) − z_r‖²</div>
+  <p><b>物理意义</b>：Eq.3 是「三种方言说同一句话」；Eq.4 是「说完再翻回去不许变味」。Eq.4 比 Eq.3 更强——它要求经过一次解码+再编码仍能回到原 token，等价于在潜空间里加了往返约束。</p>
+  <p><b>代码映射</b>：<code>G1SmplLatentLoss</code>、<code>G1TeleopLatentLoss</code>、<code>TeleopSmplLatentLoss</code>、<code>ReencodedSmplG1LatentLoss</code>（均在 <code>token_losses.py</code>）。</p>
+  <div class="warn"><b>源码比论文多一层细节</b>：<code>teleop_smpl_latent.yaml</code> 里写着 <code>detach_teleop_target: True</code>，注释是「teleop is BRIDGE, train smpl to match teleop」。也就是说 teleop↔SMPL 这一对不是对称拉齐，而是把 teleop 当锚、只训练 SMPL 侧去靠。论文 Eq.3 写成对称形式，读代码才知道实际是非对称的。</p></div>
+
+  <h3>6.4 FSQ 量化</h3>
+  <div class="eq">q_i = round( (z_i + 1)/2 · (L−1) ) / (L−1) · 2 − 1 ，  梯度用 straight-through：∂q/∂z := 1</div>
+  <p><b>物理意义</b>：把每维压到 L 个等距格点上，因此不需要码本、不会有码本塌缩；L=32、每 token 32 维，两 token ⇒ 理论组合数 32^64，但实际用到的只是数据流形附近的一小片。反传时把 round 当恒等，让 PPO 的梯度能塑形编码器。</p>
+  <p><b>代码映射</b>：<code>gear_sonic/config/actor_critic/quantizers/fsq.yaml</code> → <code>vector_quantize_pytorch.FSQ</code>；级数与 token 数在 <code>all_mlp_v1.yaml</code>（<code>num_fsq_levels: 32</code>、<code>fsq_level_list: 32</code>、<code>max_num_tokens: 2</code>）。</p>
+
+  <h3>6.5 PPO（默认超参，Table S2）</h3>
+  <div class="eq">L_ppo = E[ min(ρ_t Â_t, clip(ρ_t, 1−ε, 1+ε) Â_t) ] − c_e·H(π) + c_v·(V − R̂)² ，  ε=0.2, c_e=0.013, c_v=1.0</div>
+  <p><b>物理意义</b>：ρ 是重要性比，clip 限制单步更新幅度（步长 24×4096 样本、5 epoch、4 minibatch）；熵系数只有 0.013，非常小——说明任务本身梯度足够密，不需要靠探索；价值损失系数 1.0。</p>
+  <p><b>代码映射</b>：<code>gear_sonic/config/algo/ppo_im_phc.yaml</code>（<code>clip_param: 0.2</code>、<code>entropy_coef: 0.01</code>、<code>actor_learning_rate: 2e-5</code>、<code>use_clipped_value_loss: True</code>、<code>desired_kl: 0.01</code>、自适应 LR ∈ [1e-5, 2e-4]）。<b>与论文不一致处见第 12 节坑 1</b>。</p>
+
+  <h3>6.6 规划器：潜序列与弹簧（Eq.5、Eq.8）</h3>
+  <div class="eq">{z_t}_(t=1..T/4) = enc( { (p_t, r_t) }_(t=1..T) )        （降采样率 4）</div>
+  <div class="eq">x(t) = [ (x_T − x_0) + ( v_0 + (c/2)(x_T − x_0) )·t ] · e^(−(c/2)·t)</div>
+  <p><b>物理意义</b>：Eq.5 把 50Hz 运动压到 12.5Hz 的潜序列（T/4 个 token），规划在潜空间做，等价于「在运动字典里选片段并拼接」而不是逐帧回归；Eq.8 是临界阻尼弹簧的解析解，t→∞ 收敛到 x_T 且不超调，把「速度指令」翻译成「1 秒后应该到哪」，从而把用户指令变成合法的 keyframe 位置。</p>
+  <p><b>代码映射</b>：规划器是独立 ONNX（见文档 <code>references/planner_onnx.md</code>），主仓训练侧在 <code>gear_sonic/</code> 规划相关配置；弹簧常数与取 t=1.0s 写在 §3.3。</p>
+
+  <h3>6.7 部署侧观测与 PD</h3>
+  <div class="eq">a_t = π( Enc( o_t ) ⊕ s_t^p ) ，  τ = Kp·(q* − q) − Kd·q̇ （1kHz 关节 PD）</div>
+  <p><b>物理意义</b>：策略在 50Hz 给角度目标，PD 在 1kHz 把角度目标变成力矩并吸收高频扰动；两者频率差 20×，是「低频智能 + 高频刚度」的经典分工。</p>
+</section>
+
+<section>
+  <h2>7. 网络与张量形状（Table S1 + 源码对照）</h2>
+  <table>
+    <tr><th>模块</th><th>结构（论文 Table S1）</th><th>源码键值</th><th>输入 → 输出（形状）</th></tr>
+    <tr><td>E_r / E_m / E_h</td><td>MLP hidden [2048,1024,512,512]</td><td><code>encoders/g1_mf_mlp.yaml</code> 等，activation SiLU</td><td>10 帧参考 → [B,2,32]</td></tr>
+    <tr><td>量化器</td><td>FSQ，D_z=32，L_z=32，2 token</td><td><code>num_fsq_levels: 32</code>、<code>fsq_level_list: 32</code>、<code>max_num_tokens: 2</code></td><td>[B,2,32] → 展平 [B,64]</td></tr>
+    <tr><td>D_c（actions）</td><td>MLP [2048,2048,1024,1024,512,512]</td><td><code>decoders/g1_dyn_mlp.yaml</code></td><td>token(64) + 本体 → [B,29]</td></tr>
+    <tr><td>D_r（refs）</td><td>MLP [2048,1024,512,512]</td><td><code>decoders/g1_kin_mf_mlp.yaml</code></td><td>token(64) → [B,10,60 或 64]（依配置覆盖）</td></tr>
+    <tr><td>动作头</td><td>对角高斯，维度 29（Table S1 写作 Diagonal Gaussian / 29）</td><td><code>DiagGaussian</code> 策略头</td><td>均值 + 标准差</td></tr>
+    <tr><td>Critic</td><td>MLP [2048,2048,1024,1024,512,512]</td><td><code>critics/mlp.yaml</code>，<code>running_mean_std: True</code></td><td>特权观测 → [B,1]</td></tr>
+    <tr><td>参考时域</td><td>F_r=F_m=F_h=10；Δt_r=Δt_m=0.1s、Δt_h=0.02s</td><td><code>num_future_frames: 10</code>、<code>dt_future_ref_frames: 0.1</code>、<code>smpl_dt_future_ref_frames: 0.02</code></td><td>—</td></tr>
+    <tr><td>部署输入</td><td>encoder 输入 1751 维（1 维 encoder_index + 1750 维 tokenizer obs）</td><td><code>observation_config_sonic_release.yaml</code> 头注释</td><td>→ [B,64] token</td></tr>
+    <tr><td>参数总量</td><td>1.2M / 16M / 42M 三档</td><td>论文未给逐模块分解</td><td>—</td></tr>
+  </table>
+  <p class="foot">说明：D_r 输出维度论文只写「重建机器人运动命令」，没有给具体数字；按仓库 <code>joint_pos</code>/<code>joint_vel</code> 各 29 列 + 6D 锚点朝向推测为 64/帧，属「原文未写→推断」，表中标为「60 或 64（依配置覆盖）」以提示不确定性。</p>
+</section>
+
+<section>
+  <h2>8. 训练配方与奖励（Table S2 / S3 / S4）</h2>
+  <h3>8.1 超参（Table S2 vs 源码）</h3>
+  <table>
+    <tr><th>超参</th><th>论文 Table S2</th><th>源码实测</th><th>备注</th></tr>
+    <tr><td>并行环境/GPU</td><td>4096</td><td><code>num_envs: 4096</code>（sonic_release.yaml）</td><td>一致</td></tr>
+    <tr><td>每环境步数</td><td>24</td><td><code>num_steps_per_env: 32</code> → 被 release 覆盖为 24</td><td>配置分层覆盖</td></tr>
+    <tr><td>学习 epoch / minibatch</td><td>5 / 4</td><td><code>num_learning_epochs: 5</code> / <code>num_mini_batches: 4</code></td><td>一致</td></tr>
+    <tr><td>γ / λ / clip</td><td>0.99 / 0.95 / 0.2</td><td>同</td><td>一致</td></tr>
+    <tr><td>熵系数</td><td>0.013</td><td><code>entropy_coef: 0.01</code></td><td><b>不一致</b></td></tr>
+    <tr><td>价值损失系数</td><td>1.0</td><td><code>value_loss_coef: 1.0</code></td><td>一致</td></tr>
+    <tr><td>Actor / Critic LR</td><td>2e-5 / 1e-3</td><td>同</td><td>一致</td></tr>
+    <tr><td>最大梯度范数</td><td>0.1</td><td>ppo 基础 1.0 → release 覆盖 0.1</td><td>必须看最终组合结果</td></tr>
+    <tr><td>目标 KL / 自适应 LR</td><td>0.01 / [1e-5, 2e-4]</td><td>同（<code>schedule: adaptive</code>）</td><td>一致</td></tr>
+    <tr><td>初始噪声 / 噪声夹取</td><td>0.05 / [0.001, 0.5]</td><td><code>init_noise_std: 0.05</code>、<code>std_clamp_min/max</code></td><td>一致</td></tr>
+    <tr><td>自适应采样</td><td>bin 1s、失败率上限 β=200、混合 α=0.1</td><td><code>adp_samp_failure_rate_max_over_mean: 200</code></td><td>一致</td></tr>
+    <tr><td>训练规模</td><td>128 GPU × 7 天 ≈ 21k GPU 小时；50k 迭代</td><td><code>num_learning_iterations: 100000</code>（上限，可早停）</td><td>论文报告 50k 迭代已平台</td></tr>
+  </table>
+
+  <h3>8.2 奖励（Table S3，权重 + 公式）</h3>
+  <table>
+    <tr><th>项</th><th>公式</th><th>权重</th></tr>
+    <tr><td>根位置</td><td>exp(−‖p^p − p^g‖² / 0.3²)</td><td>0.5</td></tr>
+    <tr><td>根朝向</td><td>exp(−‖o^p − o^g‖² / 0.4²)</td><td>0.5</td></tr>
+    <tr><td>体段位置（相对）</td><td>exp(−mean_b ‖p_b^p,rel − p_b^g,rel‖² / 0.3²)</td><td>1.0</td></tr>
+    <tr><td>体段朝向（相对）</td><td>exp(−mean_b ‖o_b^p,rel − o_b^g,rel‖² / 0.4²)</td><td>1.0</td></tr>
+    <tr><td>体段线速度</td><td>exp(−mean_b ‖v_b^p − v_b^g‖² / 1.0²)</td><td>1.0</td></tr>
+    <tr><td>体段角速度</td><td>exp(−mean_b ‖ω_b^p − ω_b^g‖² / 3.14²)</td><td>1.0</td></tr>
+    <tr><td>末端位置（5 点）</td><td>exp(−(1/5)Σ_k ‖p_k^p − p_k^g‖² / 0.1²)，k∈{头, 双腕, 双踝}</td><td>2.0</td></tr>
+    <tr><td>动作变化率</td><td>‖a_t − a_(t−1)‖²</td><td>−0.1</td></tr>
+    <tr><td>关节限位</td><td>Σ_j 1[q_j ∉ [q_min, q_max]]</td><td>−10.0</td></tr>
+    <tr><td>非期望接触</td><td>Σ_(c∉{踝,腕}) 1[‖F_c‖ &gt; 1.0N]</td><td>−0.1</td></tr>
+    <tr><td>抗抖（腕/头角速度）</td><td>Σ_k ‖ω_k‖² · 1[‖ω_k‖ &gt; 1.5]</td><td>−5e-3</td></tr>
+    <tr><td>脚加速度</td><td>Σ_(踝) ‖q̈_k‖²</td><td>−2.5e-6</td></tr>
+  </table>
+  <p class="foot">读法：末端项权重 2.0 最高（头/腕/踝位置），关节限位 −10.0 是唯一的硬惩罚；抗抖与脚加速度的量级只有 1e-3~1e-6，属于「只在越界时才生效的开关式正则」，不是主要约束力。</p>
+
+  <h3>8.3 域随机化（Table S4）</h3>
   <ul>
-    <li>4096 envs；PPO：γ=0.99、λ=0.95、clip=0.2、entropy=0.01、actor LR=2e-5、critic=1e-3、自适应 KL=0.01、max_grad_norm=0.1、24 步/轮、10 万迭代、σ∈[0.001,0.5]。</li>
-    <li>参考：G1 10 帧@0.1s；SMPL 10 帧@0.02s；三编码器采样 1:1:1；观测噪声 ±0.05；上体增强概率 0.5。</li>
-    <li>数据：700h 动捕、170 人（145–199cm）、50Hz、1 亿+帧；GMR 重定向；BONES-SEED 142K/288h。</li>
+    <li>静摩擦 μ_s ~ U[0.3, 1.6]，动摩擦 μ_d ~ U[0.3, 1.2]，恢复系数 e ~ U[0, 0.5]。</li>
+    <li>默认关节位置 +U[−0.01, 0.01]；基座质心偏移 x±0.075、y±0.1、z±0.1。</li>
+    <li>外部推力：根线速度 x,y±0.5、z±0.2；持续 U[1,3]s；根角速度 roll/pitch±0.52、yaw±0.78。</li>
+    <li>目标扰动：位置 x,y±0.05、z±0.01；朝向 roll/pitch±0.1、yaw±0.2；线速度 ±0.5（z±0.2）；角速度 ±0.52 / ±0.78；关节 +U[−0.1, 0.1]。</li>
+    <li>上体增强：<code>cat_upper_body_poses: true</code>、概率 0.5（把上体帧拼接做时间轴增强）。</li>
   </ul>
 </section>
 
 <section>
-  <h2>6. 核心代码（带物理意义注释）</h2>
-  <pre><code><span class="c"># —— 训练一步 ——</span>
-obs = build_obs(history=10)                    <span class="c"># 10 帧本体历史：给策略速度/加速度线索</span>
-enc = choice(["g1","teleop","smpl"], p=[1/3]*3) <span class="c"># 每环境随机选一种输入，逼共享 token 空间</span>
-tok = FSQ(Encoder[enc](obs.tokenizer))         <span class="c"># [B,2,32]；离散化让三种输入可互换</span>
-a   = Decoder_dyn(tok.flatten(1), obs.prop)    <span class="c"># [B,29] 目标关节角</span>
-adv = GAE(rew, val, γ=.99, λ=.95)              <span class="c"># 优势：平衡偏差/方差</span>
-L = ppo_clip(a, adv, clip=.2, ent=.01) \
-  + 0.01*recon(Decoder_kin(tok), future10)     <span class="c"># 重建未来：让 token 保留可解码的运动信息</span>
-  + 1.0*align(tok_g1, tok_smpl) + 1.0*align(tok_g1, tok_teleop) \
-  + skating_loss(feet_pos, contact_mask, dt)   <span class="c"># 脚接触时速度应≈0，防滑步</span>
+  <h2>9. 实验：原始数字与来源</h2>
 
-<span class="c"># —— 部署 50Hz ——</span>
-q_des = trt_decoder(trt_encoder(obs), obs.prop)  <span class="c"># 单次前向 <5ms</span>
-robot.set_joint_targets(q_des)                   <span class="c"># → PD 1kHz</span>
-<span class="c"># VLA 模式：q_des = sonic.decode(vla_tokens[40,64], obs.prop)</span></code></pre>
+  <h3>9.1 规模化三轴（Fig. 2A–C，§2.1）</h3>
+  <table>
+    <tr><th>轴</th><th>设置</th><th>结果（test-content，OOD）</th><th>来源</th></tr>
+    <tr><td>数据</td><td>4M / 10M / 22M / 100M 帧（≈20k / 50k / 110k / 317k clips）</td><td>随数据量单调提升；子集按子类均匀采样以保持多样性</td><td>§2.1</td></tr>
+    <tr><td>模型</td><td>1.2M / 16M / 42M</td><td>最大模型 <b>99.6%</b> 成功、<b>23.8mm</b> MPJPE-L；最小 1.2M 为 <b>98.0%</b> / <b>27.7mm</b></td><td>§2.1 原文数字</td></tr>
+    <tr><td>算力</td><td>16 / 32 / 128 GPU（均 50k 迭代，≈2k / 9k / 21k GPU 小时）</td><td>同迭代数下 GPU 越多渐近性能越好（大 batch 提升优化稳定性）</td><td>§2.1</td></tr>
+    <tr><td>误差棒</td><td>每配置 6 个评测 checkpoint</td><td>mean ± 1 s.d.</td><td>§2.1, §3.7</td></tr>
+  </table>
+  <p><b>结论</b>：性能沿三轴单调上升，且 <b>OOD 增益最大</b>——"Gains were most pronounced on OOD motions, confirming that scale improves generalization."</p>
+
+  <h3>9.2 与其他跟踪器对比（Fig. 2D–G，§2.1）</h3>
+  <table>
+    <tr><th>方法</th><th>训练数据</th><th>test-content SR</th><th>test-repetition SR</th><th>PHUMA SR</th><th>MPJPE-L</th></tr>
+    <tr><td><b>SONIC</b></td><td>自有 611h / 1 亿+ 帧</td><td><b>98.5%</b></td><td><b>99.2%</b></td><td><b>97.2%</b></td><td><b>23.7mm</b></td></tr>
+    <tr><td>BeyondMimic</td><td>LaFAN（单动作，作者按公开代码重训为多动作）</td><td>82.0%</td><td>85.4%</td><td>73.8%</td><td>40.9mm</td></tr>
+    <tr><td>Any2Track</td><td>LaFAN</td><td>61.6%</td><td>69.4%</td><td>78.5%</td><td>论文未给</td></tr>
+    <tr><td>GMT</td><td>AMASS</td><td colspan="4">论文正文只给出这两条基线的逐项数字，GMT 以图（Fig. 2D–G）呈现，正文未列具体值</td></tr>
+  </table>
+  <p><b>结论</b>：MPJPE-L 相对 BeyondMimic 降 <b>42%</b>（23.7 vs 40.9mm）；PHUMA 上 97.2% 尤其值得注意，因为 PHUMA 来自不同重定向管线，分布外程度更高。作者也明确限定了这个对比的性质：“This comparison primarily reflects cross-dataset generalization and scaling effects rather than a fully data-matched benchmark”。</p>
+  <p class="foot">评测口径：三套测试集（test-content 7,016 clips/15h、test-repetition 9,395 clips/12h、PHUMA 68,326 motions）；成功判据为「根高度或末端高度偏离参考 &gt; 0.25m」，与以全局根位置误差（如 0.5m）判定的旧工作不同——因为 SONIC 做的是<b>局部</b>跟踪，不追全局轨迹。基线对比在 MuJoCo 里用同一终止条件重测。</p>
+
+  <h3>9.3 与专用控制器对比（Fig. 2H–J，§2.1）</h3>
+  <table>
+    <tr><th>指标</th><th>SONIC（通用策略）</th><th>OpenHomie（专用运动控制器）</th><th>来源</th></tr>
+    <tr><td>整体存活率（0–5 m/s 指令域）</td><td><b>98.5%</b></td><td>43.0%</td><td>§2.1</td></tr>
+    <tr><td>失效阈值</td><td>~4 m/s 仍近 100%</td><td>超 2 m/s 开始崩，超 2.5 m/s 低于 20%</td><td>§2.1</td></tr>
+    <tr><td>算力伸缩</td><td>继续收益</td><td>超 8 GPU 即平台（Fig. S6）</td><td>§2.6</td></tr>
+  </table>
+  <p><b>结论</b>：通用跟踪器在「专用控制器的本行」（速度跟踪）上反而赢了 —— 数据多样性比任务专用化更值钱；而且专用控制器在算力上已经饱和，通用策略没有。</p>
+
+  <h3>9.4 Sim-to-real（Fig. 2K–L，§2.1 + Study Design）</h3>
+  <table>
+    <tr><th>指标</th><th>仿真</th><th>真机</th><th>来源</th></tr>
+    <tr><td>成功率（124 条动作，1 次/条）</td><td>100%</td><td><b>99.2%</b>（123/124）</td><td>§2.1, Study Design</td></tr>
+    <tr><td>整体 MPJPE-L</td><td>22.3mm</td><td>25.7mm</td><td>§2.1</td></tr>
+    <tr><td>上体 MPJPE-L</td><td>21.8mm</td><td>22.2mm</td><td>§2.1（差距最小）</td></tr>
+    <tr><td>脚部 MPJPE-L</td><td>29.0mm</td><td>53.7mm</td><td>§2.1（差距最大）</td></tr>
+  </table>
+  <p><b>结论</b>：整机成功率几乎不掉（99.2% vs 100%），但误差分布变了——脚部误差翻近一倍，说明「真机接触动力学」是唯一没被域随机化完全覆盖的缺口。</p>
+
+  <h3>9.5 消融（Table 3）</h3>
+  <table>
+    <tr><th>配置</th><th>TC SR</th><th>TC MPJPE-L</th><th>TC 速度距</th><th>TC 加速度距</th><th>TR SR</th><th>TR MPJPE-L</th></tr>
+    <tr><td>(A) FSQ（ours，128 GPU）</td><td>99.3</td><td>26.6</td><td>3.14</td><td>1.17</td><td>99.6</td><td>25.5</td></tr>
+    <tr><td>(A) VQ-VAE（4 头/码本 512/2 token）</td><td>98.7</td><td>35.3</td><td>3.76</td><td>1.37</td><td>99.3</td><td>32.2</td></tr>
+    <tr><td>(B) FSQ-16-16</td><td>96.9</td><td>35.7</td><td>3.68</td><td>1.26</td><td>97.5</td><td>32.7</td></tr>
+    <tr><td>(B) FSQ-16-32</td><td>98.3</td><td>29.7</td><td>3.39</td><td>1.21</td><td>98.7</td><td>28.4</td></tr>
+    <tr><td>(B) FSQ-32-16</td><td>98.3</td><td>30.3</td><td>3.44</td><td>1.22</td><td>98.4</td><td>28.9</td></tr>
+    <tr><td>(B) FSQ-32-32（默认）</td><td>98.8</td><td>27.5</td><td>3.25</td><td>1.19</td><td>99.3</td><td>26.3</td></tr>
+    <tr><td>(C) 仅机器人 E_r</td><td>99.6</td><td>23.8</td><td>2.89</td><td>1.12</td><td>99.8</td><td>22.5</td></tr>
+    <tr><td>(C) 仅人体 E_h</td><td>99.6</td><td>24.4</td><td>3.04</td><td>1.24</td><td>99.8</td><td>23.1</td></tr>
+    <tr><td>(C) 混合 E_m</td><td>99.2</td><td>26.5</td><td>3.25</td><td>1.22</td><td>99.7</td><td>25.2</td></tr>
+  </table>
+  <p class="foot">TC=test-content，TR=test-repetition，单位 mm；表注明确「每个配置只在完整测试集上评一次，属描述性，不做统计检验」。§3.6 还给出两条对比：QS 级数 vs 维度——FSQ-32-16（30.3）比 FSQ-16-32（29.7）差，说明<b>加维度优于加级数</b>；VQ-VAE 差 8.7mm。</p>
+  <div class="warn"><b>同一论文里数字不一致，引用务必带来源</b>：Table 3(A) 的 FSQ 行是 99.3%/26.6mm，Table 3(C) 的机器人编码器行是 99.6%/23.8mm，而 §2.1 的规模化叙述用的是 99.6%/23.8mm。三者是不同训练/评测批次，不要混着写成「SONIC 达到 99.6%」。</div>
+
+  <h3>9.6 VLA 下游任务（Table 1）</h3>
+  <table>
+    <tr><th>任务</th><th>接口</th><th>训练数据</th><th>试次</th><th>成功率</th></tr>
+    <tr><td>苹果→盘子</td><td>3-point</td><td>300 条（单物体）</td><td>20</td><td>90%</td></tr>
+    <tr><td>抓胡萝卜</td><td>whole-body</td><td>3,900 条（多物体）</td><td>20</td><td>75%</td></tr>
+    <tr><td>抓刷子</td><td>whole-body</td><td>3,900 条（多物体）</td><td>20</td><td>95%</td></tr>
+    <tr><td>踩踏板开垃圾桶</td><td>whole-body</td><td>200 条</td><td>10</td><td>70%</td></tr>
+    <tr><td>易拉罐→垃圾桶（五段串联）</td><td>whole-body</td><td>1,000 条（多物体）</td><td>10</td><td>60%</td></tr>
+    <tr><td>电钻装箱搬运</td><td>whole-body</td><td>300 条</td><td>10</td><td>70%</td></tr>
+    <tr><td><b>五任务平均</b></td><td>—</td><td>—</td><td>—</td><td><b>75%</b></td></tr>
+  </table>
+  <table>
+    <tr><th>动作空间消融（Table 1B）</th><th>FSQ token</th><th>显式 SMPL 位姿</th><th>差值</th></tr>
+    <tr><td>抓胡萝卜</td><td>75%</td><td>60%</td><td>+15</td></tr>
+    <tr><td>踩踏板开垃圾桶</td><td>70%</td><td>20%</td><td>+50</td></tr>
+    <tr><td>易拉罐→垃圾桶</td><td>60%</td><td>0%</td><td>+60</td></tr>
+    <tr><td>平均</td><td>68%</td><td>27%</td><td>+42</td></tr>
+  </table>
+  <p><b>结论</b>：VLA 的动作空间必须「低维且结构化」；任务越复杂差距越大（0% vs 60%），因为高维连续位姿空间会把小预测误差放大成跟踪失败。</p>
 </section>
 
 <section>
-  <h2>7. 推理与部署</h2>
-  <ul>
-    <li>encoder/decoder 分开导出 ONNX + TensorRT；obs 配置 `encoder.dimension: 64`；可选 fp16。</li>
-    <li>50Hz 控制、~10Hz 规划（每段 ~100 帧）；ZMQ/ROS2/DDS；29 关节日志。</li>
-    <li>VLA 接口：64 维 token ×40（2.5Hz）→ SONIC 解码 50Hz；动作空间 78 维（64+7+7）。</li>
-  </ul>
+  <h2>10. 代码精读（变量表 + 物理意义 + 出处）</h2>
+
+  <h3>10.1 训练一步：四损失的组装</h3>
+  <table>
+    <tr><th>变量</th><th>形状</th><th>物理意义</th></tr>
+    <tr><td><code>z</code></td><td>[B,64]（2×32 展平）</td><td>通用运动 token：机器人/人体/遥操作三路共享的离散「运动意图」编码</td></tr>
+    <tr><td><code>sp</code></td><td>[B,10,~275]</td><td>本体感知 10 帧历史（q, q̇, ω, 重力, 上一步动作），给解码器速度/加速度线索</td></tr>
+    <tr><td><code>a</code></td><td>[B,29]</td><td>目标关节角，交给 PD 闭环执行</td></tr>
+    <tr><td><code>g_r</code></td><td>[B,10,D]</td><td>未来 10 帧机器人参考（D 依 <code>g1_kin.outputs</code> 的键而定）</td></tr>
+    <tr><td><code>z_r / z_h / z_m</code></td><td>各 [B,64]</td><td>同一时刻同一运动的三路 token（r=机器人，h=SMPL，m=遥操作）</td></tr>
+  </table>
+<pre><code><span class="c"># 出处：gear_sonic/config/exp/manager/universal_token/all_modes/sonic_release.yaml</span>
+<span class="c">#       gear_sonic/config/aux_losses/universal_token/g1_recon_and_all_latent.yaml</span>
+<span class="c">#       gear_sonic/config/algo/ppo_im_phc.yaml</span>
+
+<span class="c"># 1) 采样哪一路输入：三路等概率（encoder_sample_probs 三个 1.0，未归一化）</span>
+mode = sample_p(["g1", "teleop", "smpl"], probs=[1.0, 1.0, 1.0])
+<span class="c">#    → 逼同一个 64 维 token 空间对三种「方言」都成立</span>
+
+<span class="c"># 2) 编码 + 量化：注意三路共用同一 FSQ，码本是隐式的（无参数）</span>
+lat  = Enc[mode](tokenizer_obs[mode])          <span class="c"># MLP[2048,1024,512,512] → [B,2,32]</span>
+z    = FSQ(lat).flatten(1)                     <span class="c"># round 到 32 级格点；直通估计回传梯度</span>
+
+<span class="c"># 3) 两个解码器分工：D_c 出动作，D_r 只吃 token 出参考（辅助监督）</span>
+a    = D_c(z, sp)                              <span class="c"># [B,29] 关节角目标（对角高斯）</span>
+g_hat= D_r(z)                                  <span class="c"># [B,10,D] 未来参考重建</span>
+
+<span class="c"># 4) 四损失：PPO 更新 enc/quant/D_c/critic；其余三项更新 enc/D_r</span>
+L = ppo_clip(a, adv, clip=0.2, ent=0.013, vf=1.0)
+  + 0.01 * mse(g_hat, g_r)                                     <span class="c"># Eq.2：人体 token 走这里 = 重定向损失</span>
+  + 1.00 * (mse(z_r, z_h) + mse(z_r, z_m) + mse(z_m, z_h))      <span class="c"># Eq.3：三路 token 两两对齐</span>
+  + 1.00 * mse(Enc_r(D_r(z_h)), z_r)                            <span class="c"># Eq.4：人→机→人 往返一致</span>
+<span class="c"># 注：0.01 / 1.00 的系数来自 aux_loss_coef；论文 Eq.1 写作无权重求和</span>
+</code></pre>
+  <p class="foot">物理意义串起来：PPO 把「跟踪」这个任务的梯度打到编码器上，四项辅助损失则保证「编码器的输出不被某一种输入格式独占」。没有 Eq.2，z_h 可以退化成任意可解码的东西；没有 Eq.3，三路会各自漂移；没有 Eq.4，人→机的映射只在单向成立，VLA 拿到的 token 分布就不一致。β=200 的失败率封顶让难动作被过采样但不过度（<code>adp_samp_failure_rate_max_over_mean: 200</code>）。</p>
+
+  <h3>10.2 损失实现：三处非对称细节</h3>
+  <table>
+    <tr><th>变量</th><th>形状</th><th>物理意义</th></tr>
+    <tr><td><code>encoded_latents["g1" / "smpl" / "teleop"]</code></td><td>[B,64]</td><td>三路编码后的连续 latent（量化前）</td></tr>
+    <tr><td><code>encoder_masks["g1_has_smpl"]</code></td><td>[B] bool</td><td>只有「同一运动同时有机器人+人体标注」的样本才参与对齐</td></tr>
+    <tr><td><code>frame_mask</code></td><td>[B,10,1]</td><td>变长片段/补齐的帧级掩码，避免 padding 帧污染损失</td></tr>
+  </table>
+<pre><code><span class="c"># 出处：gear_sonic/trl/losses/token_losses.py</span>
+<span class="c"># G1ReconLoss.forward（L528–557）：Eq.2 的实现</span>
+g1_target = cat([tokenizer_obs[k] for k in decoders_cfg["g1_kin"]["outputs"]], dim=-1)
+g1_pred   = cat([decoded_outputs["g1_kin"][k] for k in decoded_outputs["g1_kin"]], dim=-1)
+<span class="c"># 时间维对齐：把长的一侧截到短的一侧，避免 10 帧 vs 输出帧数不一致直接报错</span>
+mask = _build_frame_mask_for_loss(frame_mask, num_frames)   <span class="c"># [B,10,1]</span>
+loss = _compute_masked_loss(g1_pred, g1_target, mask, "mse")
+
+<span class="c"># G1SmplLatentLoss.forward（L599–626）：Eq.3 的 r–h 项</span>
+g1_matched = encoded_latents["g1"][encoder_masks["g1_has_smpl"]]  <span class="c"># 只取有配对的样本</span>
+<span class="k">if</span> g1_matched.shape[0] == 0: <span class="k">return</span> tensor(0.0)          <span class="c"># 空批次返回 0，不能让 0/0 变 nan</span>
+loss = F.mse_loss(g1_matched, encoded_latents["smpl"])
+
+<span class="c"># TeleopSmplLatentLoss：注意 detach_teleop_target: True（teleop_smpl_latent.yaml）</span>
+<span class="c"># → teleop 是「桥」，只训练 smpl 侧去靠近它，反向不回流</span>
+</code></pre>
+  <p class="foot">三处非对称：① 只有 <code>g1_has_smpl</code> 配对的样本参与 r–h 对齐（人体数据一定是重定向过的，配对率不是 100%）；② 空批次直接返回 0（真实训练里某些 batch 可能一条配对都没有）；③ teleop→smpl 单向 detach。这三点论文正文都没写，读源码才知道。</p>
+
+  <h3>10.3 部署：观测装配与 50Hz 主循环</h3>
+  <table>
+    <tr><th>变量</th><th>形状 / 值</th><th>物理意义</th></tr>
+    <tr><td><code>encoder.dimension</code></td><td>64</td><td>token 输出维；必须与 ONNX encoder 输出严格一致</td></tr>
+    <tr><td><code>encoder_index</code></td><td>1 维</td><td>告诉 encoder 走哪一路（g1=0 / teleop=1 / smpl=2），即「换输入不换网络」的开关</td></tr>
+    <tr><td>encoder 总输入</td><td>1751 = 1 + 1750</td><td>1750 是 tokenizer 观测展平后的维度；维度不匹配 C++ 侧会直接拒绝启动</td></tr>
+    <tr><td><code>his_*_10frame_step1</code></td><td>10 帧历史</td><td>本体历史（角速度/关节位置/关节速度/上一步动作/重力方向）</td></tr>
+    <tr><td><code>token_state</code></td><td>64</td><td>token 观测槽位：本地编码器算或外部 ZMQ/ROS2 注入</td></tr>
+  </table>
+<pre><code><span class="c"># 出处：gear_sonic_deploy/policy/release/observation_config_sonic_release.yaml</span>
+<span class="c">#       和 docs/source/model_card.md（三种 checkpoint 的前视差异）</span>
+obs = []
+obs += his("base_angular_velocity", frames=10, step=1)   <span class="c"># ω 历史：给解码器角速度线索</span>
+obs += his("body_joint_positions", frames=10, step=1)    <span class="c"># q 历史</span>
+obs += his("body_joint_velocities", frames=10, step=1)   <span class="c"># q̇ 历史</span>
+obs += his("last_actions", frames=10, step=1)            <span class="c"># a_(t-1) 历史：策略自反馈</span>
+obs += his("gravity_dir", frames=10, step=1)             <span class="c"># 重力在根系的投影：等价于姿态</span>
+obs += token_state                                        <span class="c"># 64 维 token，本地 encoder 输出</span>
+
+<span class="k">while</span> running:                        <span class="c"># 50Hz 控制环</span>
+    q_des = policy(obs)               <span class="c"># TensorRT + CUDA Graph，1–2 ms</span>
+    cmd_writer.publish(q_des)         <span class="c"># 500Hz 独立线程持续发最新目标</span>
+<span class="c"># 注意：前视 10×20ms=200ms 是「参考前视」，不是端到端延迟（model_card 明确说明）</span>
+</code></pre>
+  <p class="foot">为什么要把 <code>token_state</code> 做成可注入槽位：这正好是 VLA 的接缝——VLA 在 2.5Hz 预测 40×64 的 token 序列，塞进 <code>token_state</code>，SONIC 在 50Hz 消费；换控制器（默认 / 低延迟 4 帧 / v1.1）只换 ONNX + obs 配置，VLA 侧不用改动作空间定义。</p>
+
+  <h3>10.4 环境侧：参考与采样配置</h3>
+<pre><code><span class="c"># 出处：sonic_release.yaml 的 manager_env.commands.motion</span>
+motion:
+  reward_point_body: ["torso_link", "left_wrist_yaw_link", "right_wrist_yaw_link"]
+  reward_point_body_offset: [[0,0,0.5], [0,0,0], [0,0,0]]   <span class="c"># 躯干点抬高 0.5m</span>
+  num_future_frames: 10          <span class="c"># 机器人参考前视帧数</span>
+  dt_future_ref_frames: 0.1      <span class="c"># 帧间隔 0.1s ⇒ 前视 1.0s</span>
+  smpl_num_future_frames: 10
+  smpl_dt_future_ref_frames: 0.02 <span class="c"># SMPL 帧间隔 0.02s ⇒ 前视 200ms</span>
+  cat_upper_body_poses: true      <span class="c"># 上体帧拼接增强</span>
+  cat_upper_body_poses_prob: 0.5
+  freeze_frame_aug: true
+  teleop_sample_prob_when_smpl: 0.5
+  motion_file: data/motion_lib_bones_seed/robot_filtered   <span class="c"># BONES-SEED 机器人侧</span>
+  smpl_motion_file: data/bones_seed_smpl                   <span class="c"># 同批数据的人体侧</span>
+</code></pre>
+  <p class="foot">读法：<code>robot_filtered</code> 与 <code>bones_seed_smpl</code> 是<b>同一批动作的两个形态</b>，这是 Eq.2/Eq.3 能成立的数据前提——没有配对数据，人体编码器就学不到「机器人该怎么动」。<code>teleop_sample_prob_when_smpl: 0.5</code> 表示 SMPL 样本有一半会同时造出遥操作视图，从而让 E_m 也有配对监督。</p>
 </section>
 
 <section>
-  <h2>8. 坑</h2>
+  <h2>11. 局限与坑</h2>
+  <h3>11.1 论文自陈的局限</h3>
   <ul>
-    <li>`freq_test` 的频率不是 TRT 推理速度，别当延迟指标。</li>
-    <li>`command_multi_future_nonflat` 源码注释提示时间轴 flatten bug，复现要按 10×58 重排。</li>
-    <li>训练-部署的观测噪声/延迟要一致；否则 sim2real 抖动。</li>
+    <li>原文：“Limitations include the lack of formal treatment of safety and energy efficiency for extended deployments.”（§2.6）——没有安全性/能耗的形式化保证，长时间部署只能靠工程手段。</li>
+    <li>原文：“under more extreme conditions or very dynamic motions, the tracker may lose balance.”（§2.6）——极动态动作会失稳；靠的是「训练时对参考运动做域随机化 + 部署时弹簧模型过滤不现实指令」这两道闸。</li>
+    <li>成功判据是局部的（根/末端高度偏差 &gt; 0.25m 判死），不比全局轨迹——所以「99.2% 成功率」不等于「复现了参考运动的全局轨迹」。</li>
+    <li>人体编码器强依赖重定向质量：GMR + PyRoki 之后还要过滤「物理上不可行」的动作（爬楼梯、坐姿），700h 只留 611h。</li>
   </ul>
-  <p class="foot">参考：<a href="https://arxiv.org/abs/2511.07820">arXiv:2511.07820</a> ｜ <a href="https://nvlabs.github.io/GR00T-WholeBodyControl/">代码/文档</a> ｜ 返回 <a href="index.html">wiki 索引</a> ｜ <a href="../s2-s1-s0-stack/">S2→S0 指南</a></p>
+
+  <h3>11.2 复现与工程坑（源码级，均可核对）</h3>
+  <ol>
+    <li><b>论文与源码超参不一致</b>：Table S2 熵系数 0.013，<code>ppo_im_phc.yaml</code> 是 0.01；<code>max_grad_norm</code> 基础配置 1.0、release 覆盖成 0.1；<code>num_steps_per_env</code> 基础 32、release 覆盖成 24。<b>不要只读基础 yaml</b>，要读 Hydra 组合后的最终结果（训练目录里会 dump <code>config.yaml</code>）。</li>
+    <li><b>论文 Eq.1 无权重，代码有权重</b>：<code>aux_loss_coef</code> 里 <code>g1_recon: 0.01</code>、其余 1.0。照论文实现会得到完全不同的损失平衡。</li>
+    <li><b>list 被整体替换</b>：<code>sonic_release.yaml</code> 覆盖 <code>encoders.g1.inputs</code>、<code>encoders.teleop.inputs</code>、<code>decoders.g1_kin.outputs</code> 三个 list，项数与 <code>all_mlp_v1.yaml</code> 不同（是否含 <code>command_z*</code>）。按错版本数维度会得到 1751 vs 实测不一致。</li>
+    <li><b>teleop↔SMPL 对齐是非对称的</b>：<code>detach_teleop_target: True</code>，teleop 是锚。想复现「对称 Eq.3」得自己关掉这个 flag，但会改变收敛行为。</li>
+    <li><b>观测维度是硬约束</b>：部署配置头注释写明 encoder 输入 1751 维；C++ 侧要求「所有启用观测的维度之和等于 ONNX 输入尺寸」，维度是注册时固定的，运行时不可变。换 checkpoint 必须同时换 <code>observation_config</code>。</li>
+    <li><b>「低延迟」是参考前视短，不是延迟低</b>：low_latency 版是 4 帧×20ms≈80ms 前视（默认 10×20ms≈200ms）；model card 特别声明这不等于端到端遥操作延迟。把前视当延迟指标会得出错误结论。</li>
+    <li><b>v1.1 需要手动改增益</b>：官方示例给 <code>--motor-kp-scale 4,10=1.5 --motor-kd-scale 4,10=1.5</code>（电机 4/10 是左右踝 pitch），说明踝刚度不足会绊倒——这是 2026-08-31 那次「部署更新」的由来。</li>
+    <li><b>训练/部署观测必须一致</b>：训练用带噪观测 + 10 帧历史 + 本地系；部署侧 history 由 ring buffer 提供，启动时不足 10 帧会<b>零填充</b>。若你在部署侧改了 padding 策略（如前向复制），策略看到的分布就变了。</li>
+  </ol>
+</section>
+
+<section>
+  <h2>12. Q&amp;A（追问 why，带数值/反例）</h2>
+
+  <h3>Q1：为什么「运动跟踪」比「奖励工程」更可规模化？如果奖励工程也能写得很好呢？</h3>
+  <p>反例就是论文自己做的实验：OpenHomie 是<b>专门为运动</b>调优的控制器，理论上奖励工程做到极致；但速度跟踪存活率 43.0%，SONIC 98.5%，而且 OpenHomie 在 &gt;8 GPU 后不再提升（Fig. S6）。why：奖励工程的信息量是「标量、稀疏、任务专属」，而跟踪是「逐帧、稠密、任务通用」——前者加数据只加方差，后者加数据加信息。真正的差别不在「奖励写得好不好」，而在<b>监督信号的带宽</b>：一帧参考位姿给出 ~64 维目标，一个 reward 只给 1 个标量。</p>
+
+  <h3>Q2：既然三路编码器共享 token，为什么不干脆只留人体编码器？省掉机器人数据不是更省？</h3>
+  <p>不能。Table 3(C)：仅 E_r 的 MPJPE-L 是 23.8mm，仅 E_h 是 24.4mm，混合 E_m 是 26.5mm。如果只用 E_h，你会失去 23.8mm 这一档精度——why：人体 SMPL 与 G1 的形态差异只能靠 D_r 隐式重定向吸收，而重定向本身有误差；机器人侧数据提供了「无形态差」的锚点。反过来说，如果只用 E_r，就完全用不上 700h 人体动捕（只能用手臂遥操作采的数据，量级差两个数量级）。所以三路的必要性是<b>数据量与形态精度</b>的双向 trade-off，不是冗余设计。</p>
+
+  <h3>Q3：FSQ 只是「不用码本」，为什么能带来 8.7mm 的 MPJPE-L 收益？这不就是一个实现细节吗？</h3>
+  <p>不是实现细节。数值：FSQ 26.6mm vs VQ-VAE 35.3mm（Table 3A，同容量 4 头/512 码本/2 token），差 8.7mm 约为 VQ-VAE 误差的 25%。why：VQ-VAE 的码本靠 EMA 更新，而 PPO 同时在推编码器输出——两者互相追，码本会「跑去追策略」并出现大片未使用码（codebook collapse）。FSQ 的分格是<b>固定的</b>，只有编码器动，不存在两套更新机制的耦合。证据是论文那句「we observed no training instabilities from coupling quantization with RL across model scales」——如果换成 VQ-VAE，这句话就不成立。</p>
+
+  <h3>Q4：为什么 VLA 预测 64 维 token 比预测 81 维 SMPL 位姿好这么多（68% vs 27%）？维度只差 17 维而已。</h3>
+  <p>维度不是关键，<b>条件数</b>是关键。SMPL 位姿空间是高维连续流形，VLA 的小误差（几厘米）在重定向+PD 跟踪后会被放大成失败；而 FSQ token 是离散格点，误差要么被 round 吃掉、要么整格错，不存在「差一点」的中间态。极端反例最说明问题：易拉罐→垃圾桶任务 FSQ 60% vs SMPL 0%。为什么 SMPL 会 0%：该任务要求「单脚踩踏板同时保持平衡 + 单手投掷」，任何关节角的小偏差都会破坏平衡约束，而离散 token 的每次决策都在「合法的运动片段集合」内。</p>
+
+  <h3>Q5：既然规模化有效，为什么只做到 42M / 21k GPU 小时就停了？是收益饱和了吗？</h3>
+  <p>不是饱和，是<b>本文的预算边界</b>。论文的曲线是三轴单调上升（数据 4M→100M、模型 1.2M→42M、算力 16→128 GPU 均未出现平台），且明确「larger batch sizes improved optimization stability」——说明继续加还有空间。真正的天花板在数据：700h 动捕过滤后只剩 611h，且 BONES-SEED 只开源了 288h。要再放大 10× 需要新的动捕源，而不是更多 GPU。这也是为什么论文把「motion tracking as a practical foundation」而不是「scaling law」作为结论——它给的是<b>可行性证明</b>，不是饱和点。</p>
+
+  <h3>Q6（反例检验）：99.2% 真机成功率是否被「简单动作」稀释了？</h3>
+  <p>部分成立但不足以解释。124 条动作来自 §S2.3 的真实评测集（含跑步、跳跃、爬行、拳击、蹲跪），不是纯走路；而且脚部 MPJPE-L 从 29.0mm 恶化到 53.7mm 说明难动作确实存在且被计入了。更该质疑的是<b>统计口径</b>：每条动作只跑 1 次（123/124），没有重复试验，所以这个 99.2% 的置信区间很宽，不能与「20 次试验的成功率」直接比较。</p>
+</section>
+
+<section>
+  <h2>13. 全文总结块</h2>
+  <table>
+    <tr><th>环节</th><th>一句话</th><th>关键数字/证据</th></tr>
+    <tr><td><b>Problem</b></td><td>人形控制没享受规模化红利，根因是「任务选择」：奖励工程不可复用，对抗模仿随数据多样性塌缩</td><td>现有策略多为 3 层 MLP、单任务、几张卡（§1）</td></tr>
+    <tr><td><b>Method</b></td><td>把物理仿真中的运动跟踪作为可规模化预训练任务：三编码器 → FSQ 64 维通用 token → 双解码器，PPO + 3 项表示对齐损失端到端联合训练</td><td>1.2M→42M 参数；611h/1 亿+ 帧；21k GPU 小时；FSQ 2×32、32 级</td></tr>
+    <tr><td><b>Experiment</b></td><td>三轴缩放全单调上升；跨数据集/跨形态对比全面领先；真机几乎不掉点；token 动作空间让 VLA 学得动</td><td>99.6%/23.8mm（最大模型）；98.5/99.2/97.2% vs BeyondMimic 82.0/85.4/73.8%；真机 99.2%；VLA 五任务 75%，token vs SMPL +42pp</td></tr>
+    <tr><td><b>Takeaway</b></td><td>「规模化」的前提是先找到<b>监督信号带宽足够</b>的任务；找到之后，剩下的工程重点是把接口做成<b>可插拔的离散 token</b>——它同时解决多模态输入对齐和 VLA 动作空间两件事</td><td>同一策略支撑导航/VR/视频/文本/音乐/VLA，全部免重训（§2.2、§3.5）</td></tr>
+  </table>
+
+  <h3>它在这条线上的位置</h3>
+  <ul>
+    <li><b>向上</b>：给 VLA（GR00T N1.5/N1.7）提供一个 78 维（64+14）的低维全身动作空间，使 VLA 不必直接回归关节角——这是 SONIC 与 GR00T 系列衔接的关键接缝，详见 <a href="groot.html">GR00T 精读页</a>。</li>
+    <li><b>横向</b>：与「分层控制器 + 专用跟踪器」路线（OpenHomie 类）相比，SONIC 的论点不是「我的控制器更强」，而是「通用跟踪器在本行任务上也不输，而且还能继续吃算力」。</li>
+    <li><b>向下</b>：三编码器 + 共享 token 的思路来自运动生成/重定向领域（GMR、PyRoki、GEM），SONIC 的贡献是把它们和 RL 训练闭环焊在一起，并证明 PPO 与 FSQ 能共存。</li>
+  </ul>
+
+  <p class="foot">参考：<a href="https://arxiv.org/abs/2511.07820">arXiv:2511.07820</a> ｜ <a href="https://nvlabs.github.io/GEAR-SONIC/">GEAR-SONIC</a> ｜ <a href="https://nvlabs.github.io/GR00T-WholeBodyControl/">文档</a> ｜ <a href="https://github.com/NVlabs/GR00T-WholeBodyControl">GitHub</a> ｜ 返回 <a href="index.html">wiki 索引</a></p>
 </section>
 
 </div>
