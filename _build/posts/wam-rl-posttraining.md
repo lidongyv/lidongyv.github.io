@@ -351,15 +351,15 @@ def group_mask(witnesses, entity_masks):
     物理：只惩罚『错的那几帧、那几个物体』；整组全成功 → M=0，训练自动跳过。"""
     M_T = union_frames(witnesses)             # [T]
     M_S = union_entities(entity_masks)        # [T,H,W] 或 token 级
-    return M_T[:, None, None] * M_S           # [T,H,W]
+    return M_T.view(-1, 1, 1) * M_S           # [T,H,W]
 
 def ca_nft_loss(vpm, x_t, v_hat, r, M, beta):
     """Eq.7：credit-aware NFT。
     v_hat = 数据速度（ε−x0）；v_θ = 模型输出；v_old = 采样时策略（stop-grad）。"""
     v_plus  = (1 - beta) * v_old + beta * v_theta        # 正分支：更靠近数据
     v_minus = (1 + beta) * v_old - beta * v_theta        # 负分支：反射离开坏样本
-    loss_pos = r       * (M[None] * (v_plus  - v_hat)).pow(2)   # r=1 的样本
-    loss_neg = (1 - r) * (M[None] * (v_minus - v_hat)).pow(2)   # r=0 的样本
+    loss_pos = r       * (M.unsqueeze(0) * (v_plus  - v_hat)).pow(2)   # r=1 的样本
+    loss_neg = (1 - r) * (M.unsqueeze(0) * (v_minus - v_hat)).pow(2)   # r=0 的样本
     return (loss_pos + loss_neg).mean()
 
 def corrective_reflow(vpm, rollouts, rewards, M, t):
@@ -371,7 +371,7 @@ def corrective_reflow(vpm, rollouts, rewards, M, t):
     for r in rollouts:
         if r.reward != 0:            continue                    # 只对失败样本 N
         x0_hat = r.x_t - t * vpm(r.x_t, t, r.cond)              # 单步反推 x0
-        loss = loss + (M[None] * (x0_hat - x_bar_pos)).pow(2).mean()   # Eq.9
+        loss = loss + (M.unsqueeze(0) * (x0_hat - x_bar_pos)).pow(2).mean()   # Eq.9
     return loss
 
 # 总目标（§4.3）：两项 + 到冻结参考 Vidar 的 KL，λ/β 论文未给
@@ -482,48 +482,113 @@ def hilr_episode(policy, env, human):
 
 ### 3.2 DAgger 式恢复数据（XPACE）
 
-**代码解读**
-| 项 | 内容 |
+**DAgger 全称**：**Dataset Aggregation**（Ross, Gordon, Bagnell, AISTATS 2011）。
+
+**为什么需要它（物理直觉）**：行为克隆只在专家轨迹上训练；部署时机器人一旦偏离，就会进入**专家从没去过的状态**，误差越滚越大（covariate shift）。DAgger 的核心是：**在策略自己会去到的状态上，向专家要标签**，再把这些状态-动作聚合回训练集。
+
+**算法（Ross et al. 2011，标准 DAgger）**
+
+```python
+# 输入：专家策略 π*、初始演示数据 D、迭代轮数 N
+# 输出：在「策略自己访问到的状态分布」上也能正确动作的策略 π
+def dagger(expert, D, N):
+    pi = train_bc(D)                        # ① 先行为克隆
+    for i in range(N):
+        states = []                         # ② 用当前策略跑，收集它自己访问到的状态
+        for episode in rollouts(pi, env):
+            for s in episode.states:
+                states.append(s)
+        labels = [expert.act(s) for s in states]      # ③ 在这些状态上问专家要动作
+        D = D + list(zip(states, labels))             # ④ 聚合（Dataset Aggregation 的名字来源）
+        pi = train_bc(D)                    # ⑤ 在聚合数据上重训
+    return pi
+```
+
+- 关键点：**状态分布来自学生、标签来自专家**；`β_i` 混合（以概率 β 执行专家动作）只是稳定探索的变体；
+- 物理意义：把「机器人实际会走到哪里」和「那里该怎么做」对齐，而不是只对齐「专家会走到哪里」。
+
+**XPACE 的映射（工程版 DAgger）**
+
+| DAgger 组件 | XPACE 的实现 |
 |---|---|
-| 物理意义 | 人为制造「偏离专家轨迹」的状态，再用模拟器推演怎么回来。 |
-| 为什么这么做 | 真实部署必然偏离；与其等真机犯错，不如在模拟器里批量生成恢复样本。 |
-| 方法出处 | XPACE 摘要 + 项目页（恢复消融 61.7→86.7，异套件）；**无公开代码，依论文重建**；谱系来自 DAgger + 域随机化。 |
-| 优势与代价 | 优势：恢复数据仅占 ~8% 就能显著提升；代价：模拟器必须适配策略自己的视觉上下文，否则恢复轨迹不可迁移。 |
+| 学生状态分布 | 在专家轨迹附近**注入偏差**（inject deviation），模拟策略会偏离到的状态 |
+| 专家标签 | 用**模拟器推演恢复路径**（deviation–recovery），得到「怎么回来」的动作 |
+| 数据聚合 | 恢复数据只占约 **8%**，与专家演示混合 |
+| 额外步骤 | **一致性过滤**：只保留物理一致的恢复轨迹（DAgger 原本没有） |
 
 ```python
 def recovery_data(expert_traj, simulator, policy):
-    """物理：注入偏差→推演恢复→只留物理一致的样本。"""
-    sim = simulator.adapt_to(policy)              # 适配策略视觉上下文
+    """输入：专家轨迹；输出：deviation–recovery 恢复轨迹（用于混合微调）。
+    物理：制造『机器人实际会偏离到』的状态，再教它怎么回来。"""
+    sim = simulator.adapt_to(policy)              # 模拟器适配策略自己的视觉上下文
     recs = []
     for tau in expert_traj:
-        s_dev = inject_deviation(tau, scale=delta)
-        tau_rec = sim.rollout_recovery(s_dev)
-        if consistency_filter(tau_rec): recs.append(tau_rec)
-    return recs
+        s_dev = inject_deviation(tau, scale=delta) # ① 学生状态：人为偏离
+        tau_rec = sim.rollout_recovery(s_dev)      # ② 专家标签：模拟器推演恢复动作
+        if consistency_filter(tau_rec):            # ③ 过滤：只留物理一致的
+            recs.append(tau_rec)
+    return recs                                    # ④ 聚合：与专家数据混合微调
 ```
+
+**证据与边界**：XPACE 摘要 + 项目页；恢复消融 61.7→86.7（**异套件**，不能与 68.3% 直接比）；无官方代码，以上为依论文描述的重建；`delta`、模拟器细节、过滤阈值论文未给。
+
+---
 
 ### 3.3 失败数据闭环（FACT，**官方代码**）
 
-**代码解读**
-| 项 | 内容 |
-|---|---|
-| 物理意义 | 失败 episode 的动作不能学（会教坏机器人），但它的后果必须学——失败是负样本，也是成本信号。 |
-| 为什么这么做 | 失败数据稀缺且昂贵；只用成功数据会让价值函数看不到「坏在哪里」。 |
-| 方法出处 | 仓库 `Bariona/FACT`：`world_action_model/trainer/wa_casual_trainer.py`（源码级）；act-then-imagine 因果序。 |
-| 优势与代价 | 优势：失败数据直接进训练、无需额外标注；代价：掩码对象选错（比如把失败样本的动作也学）会把策略拉坏。 |
+**核心思想**：把「该模仿什么」与「该预测什么」分开——**失败轨迹的动作不学，但失败的后果（未来视频、进度）要学**。论文原话："FACT first proposes an action, then predicts the future video and task-progress value conditioned on the executed action."
+
+**输入 / 输出**：输入=成功演示 `D_s` + 失败 rollout `D_f`（带 episode 结果与失败起点）；输出=同时会「出动作、预测未来、估进度」的因果 WAM。
+
+#### 公式逐条（Eq.1–10）
+
+| 公式 | 内容 | 物理意义 |
+|---|---|---|
+| **Eq.(1)** `p(a_{t:t+H}\|o_t,ℓ)` | 标准策略：观测+指令 → 动作块 | 动作生成 |
+| **Eq.(2)** `p(o'_{t:t+K}, v_t(a_{t:t+H})\|o_t,ℓ,a_{t:t+H})` | **动作条件**的世界分支：给定动作，预测未来视频与进度值 | 「这个动作会导致什么后果」 |
+| **Eq.(3)** `p_t = G_t/G_T ∈ [0,1]` | 归一化进度：累积进度/总进度；均匀奖励下 `p_t=t/T` | 跨不同长度 episode 可比的进度 |
+| **Eq.(4)** `p(o', v(a_gt)\|o,ℓ,a_gt)` | teacher forcing：世界分支看**干净的真动作** `a_gt`，不看带噪的预测动作 | 把「动作模仿」与「后果预测」解耦 |
+| **Eq.(5)** `z=[P_ref‖A_pred‖G_gt‖V_value‖I_future]` | token 顺序：前缀、预测动作、真动作、价值、未来 | 注意力掩码的依据 |
+| **Eq.(6)** `v_t = p_{t+H}`（成功）/ `clip(p_{t+H}−λ_fail·1_fail, 0, 1)`（失败） | 失败时把进度目标**下调** `λ_fail`（=1） | 「做了这个动作会失败」→ 进度值应更低 |
+| **Eq.(7)** 流匹配损失（逐模态） | 动作/价值/未来三路都用同一 flow-matching | 统一训练 |
+| **Eq.(8)** `L_s = w_a L_a + w_v L_v + w_I L_I` | 成功样本：三路都学 | 学行为 + 后果 |
+| **Eq.(9)** `L_f = w_v L_v + w_I L_I` | 失败样本：**去掉动作项**，只学价值与未来 | 失败教「后果」，不教「动作」 |
+| **Eq.(10)** `a* = argmax_k V_θ(o,ℓ,a^(k))` | 可选：采样 N 个候选动作，用进度值打分选最优 | 推理期用价值做 best-of-N |
+
+**注意力掩码（Figure 3 的要点）**：训练时 `V`、`I` 只 attend 干净的 `G`，不 attend 带噪的 `A`；`A` 也看不到 `G`。这样失败样本的未来/价值监督不会污染动作分支。
+
+#### 代码（对应官方训练器）
 
 ```python
-# 事实：FACT 训练器源码
-action_loss_mask = batch_dict.get('action_loss_mask')
-
-def _masked_mean(per_sample_loss, mask):
-    """物理：m=1 可模仿、m=0 失败；失败样本动作损失置零。"""
+# 事实：FACT 训练器（world_action_model/trainer/wa_casual_trainer.py）
+action_loss_mask = batch_dict.get('action_loss_mask')       # 1=成功可模仿, 0=失败
+def _masked_mean(loss, mask):
     m = mask.reshape(-1)
-    return (per_sample_loss * m).sum() / m.sum().clamp_min(1e-8)
+    return (loss * m).sum() / m.sum().clamp_min(1e-8)        # 失败样本动作项被剔除（Eq.9）
 
-action_loss = _masked_mean(action_loss_raw.flatten(1).mean(dim=1), action_loss_mask)
-value_loss  = ((value_pred - value_target) ** 2).mean()   # 全部样本都学
+def fact_train_step(batch, model):
+    """物理：先动作、后后果。动作项只学成功；未来/价值项成功+失败都学。"""
+    pred_action, pred_value, pred_future = model(batch)       # 共享 DiT，动作 adapter
+    L_act = masked_mean(action_loss(pred_action, batch.a), batch.action_loss_mask)   # Eq.8/9
+    L_val = mse(pred_value, batch.value_target)               # Eq.6 的进度目标，全样本
+    L_fut = flow_mse(pred_future, batch.future_latents)
+    return 20.0*L_act + 1.0*L_val + 1.0*L_fut                 # w_a=20, w_v=w_I=1（§3.3 实现细节）
+
+# 两阶段推理（§3.3）
+def fact_infer(obs, instruction, N=1):
+    """Stage 1 只出动作；需要评估后果时进 Stage 2。"""
+    a = denoise_action(obs, instruction, steps=20)            # Stage 1
+    if N == 1: return a                                       # 动作单用，跳过世界分支
+    cands = [denoise_action(obs, instruction) for _ in range(N)]  # 候选
+    scores = [value_head(obs, instruction, c) for c in cands]     # Stage 2，Eq.10
+    return cands[argmax(scores)]
 ```
+
+**实现细节（论文 §3.3）**：Wan2.2-5B 初始化；动作 FFN 学习率 `2e-4`、骨干 `2e-5`；`w_a=20`、`w_v=w_I=1`；动作块 `H=48`；`λ_fail=1`；未来帧偏移 `[0, H/4, H/2, 3H/4, H]`；推理 20 步 flow-Euler。
+
+**为什么有效（物理）**：成功数据让模型知道「怎么做对」，失败数据让模型知道「做错会看到什么、进度会掉多少」——后者的价值在于**推理时能识别坏动作**（Eq.10 的候选打分）。
+
+---
 
 ### 3.4 DreamAvoid：混合数据价值模型 + 触发式 dreaming（**官方代码**）
 
@@ -686,7 +751,7 @@ class LoRALinear(nn.Module):
 4. 参考策略 KL 防止跑偏（VAMPO 用「只首步 SDE」的结构性约束替代显式 KL）。
 
 ```python
-def grpo_loss(logp, logp_old, rewards, clip=0.2, beta=0.0, logp_ref=None):
+def grpo_loss(logp, logp_old, rewards, clip=0.2, beta=0.0, has_ref=False, logp_ref=0.0):
     """物理：组内比较——比同组平均好的样本被强化，差的被压制。
     无 critic：均值/标准差就是基线。"""
     adv = (rewards - rewards.mean()) / (rewards.std() + 1e-8)     # 组相对优势
@@ -694,7 +759,7 @@ def grpo_loss(logp, logp_old, rewards, clip=0.2, beta=0.0, logp_ref=None):
     unclipped = ratio * adv
     clipped = torch.clamp(ratio, 1 - clip, 1 + clip) * adv
     loss = -torch.min(unclipped, clipped).mean()                  # 悲观（取 min）
-    if beta > 0 and logp_ref is not None:
+    if beta > 0 and has_ref:
         loss = loss + beta * (logp - logp_ref).mean()             # 可选 KL 惩罚
     return loss
 ```
