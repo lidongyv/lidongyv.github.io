@@ -100,7 +100,11 @@ li{margin:4px 0}
   <a href="#groot">12 GR00T 家族</a>
   <a href="#helix">13 Helix</a>
   <a href="#pd">14 PD 控制</a>
-  <a href="#refs">15 参考与术语</a>
+  <a href="#pi0">15 π0 / π0.5</a>
+  <a href="#vlm">16 VLM 规划器</a>
+  <a href="#wam">17 WAM（Fast-WAM 式）</a>
+  <a href="#mpc">18 MPC / WBC</a>
+  <a href="#refs">19 参考与术语</a>
 </nav>
 
 <section id="why">
@@ -389,9 +393,24 @@ token_buf.push(tok40, ts=now())      <span class="c"># 400ms 后才更新一次�
 </section>
 
 <section id="astra">
-  <h2>10. ASTRA（GPT-6 Astra）：最新外部基线，不是机器人策略</h2>
-  <p><b>它是什么</b>：GPT-6 Astra 是通用大模型。2026 年 9–10 月有两篇系统评测把它接到机器人上（<a href="https://arxiv.org/abs/2609.38537">2609.38537</a> 六域评测；<a href="https://arxiv.org/abs/2610.26846">2610.26846</a> 视触觉），测「通用模型能否直接当策略」。</p>
-  <h3>10.1 两种用法</h3>
+  <h2>10. 所有方法总表 + ASTRA</h2>
+  <h3>10.0 先看全表（本页覆盖的全部方法）</h3>
+  <table>
+    <tr><th>方法</th><th>角色</th><th>训练</th><th>推理</th><th>规模</th><th>数据构成</th></tr>
+    <tr><td><b>ASTRA</b>（GPT-6）</td><td>外部 S2/S2.5</td><td>无（冻结通用模型）</td><td>~40s/次调用；token 成本极高</td><td>闭源</td><td>上下文示例（in-context）</td></tr>
+    <tr><td><b>π0</b></td><td>VLA（S1 动作头）</td><td>flow matching 微调 VLM</td><td>动作块输出</td><td>VLM + 动作专家（参数量以论文为准）</td><td>多机器人、多形态（单臂/双臂/移动）</td></tr>
+    <tr><td><b>π0.5</b></td><td>VLA + 协同训练</td><td>异构协同：多机器人+网页+子任务预测</td><td>动作块 + 子任务</td><td>同 π0 系</td><td>多机器人 + web + 目标检测/子任务标注</td></tr>
+    <tr><td><b>GR00T N1</b></td><td>VLA（S2+S1）</td><td>1024×H100，~5 万 GPU 小时</td><td>S2 ~10Hz / S1 ~120Hz</td><td><b>2.2B</b></td><td>88h 遥操作→827h 神经轨迹 + 78 万仿真 + OXE</td></tr>
+    <tr><td><b>GR00T N1.5</b></td><td>VLA（冻结 VLM）</td><td>250K 步，1K×H100，GBS 16384</td><td>同 N1</td><td>VLM 2.1B</td><td>同 N1 + DreamGen/AgiBot-Beta</td></tr>
+    <tr><td><b>GR00T N1.7</b></td><td>VLA（3B）</td><td>20k 步微调（4 GPU）</td><td>PolicyServer + SONIC</td><td><b>3B</b></td><td>LeRobot 示教 50–100 条/任务</td></tr>
+    <tr><td><b>GR00T 2</b></td><td>WAM（S2）</td><td>未公开；真机 RL + LoRA</td><td>Turbo 124ms</td><td>Turbo <b>2B</b></td><td>402,730h 人视频 + 10,184h UMI + 23,500h 遥操作</td></tr>
+    <tr><td><b>Helix</b></td><td>双系统一体</td><td>单阶段端到端</td><td>S2 7–9Hz / S1 200Hz</td><td><b>7B + 80M</b></td><td>~500h 遥操作 + 自动标注 hindsight 指令</td></tr>
+    <tr><td><b>SONIC</b></td><td>S1 全身控制器</td><td>PPO，4096 envs，21k GPU 小时</td><td>50Hz</td><td><b>42M</b></td><td>700h 动捕（1 亿帧、170 人）+ BONES-SEED</td></tr>
+    <tr><td><b>VLM 规划器</b></td><td>纯 S2</td><td>无（prompt）</td><td>1–2Hz</td><td>7B–72B 级</td><td>无（靠预训练知识）</td></tr>
+    <tr><td><b>MPC / WBC</b></td><td>经典 S1</td><td>建模 + 调参</td><td>50–500Hz</td><td>无学习参数</td><td>模型/约束</td></tr>
+    <tr><td><b>PD</b></td><td>S0</td><td>系统辨识 + 调参</td><td>1kHz</td><td>无</td><td>无</td></tr>
+  </table>
+  <h3>10.1 ASTRA 的两种用法</h3>
   <table>
     <tr><th>模式</th><th>Astra 做什么</th><th>底层控制</th></tr>
     <tr><td><b>Direct</b></td><td>直接生成数值动作：末端/关节目标、夹爪、底盘指令、导航原语（前进步/转向/停止）</td><td>IK / 关节或操作空间控制 / 离散导航原语</td></tr>
@@ -546,15 +565,89 @@ tau = clamp(tau, tau_min, tau_max)
     enter_damping_mode()     <span class="c"># 上层失联→只留阻尼</span></code></pre>
 </section>
 
+<section id="pi0">
+  <h2>15. π0 / π0.5：VLM + flow matching 动作专家</h2>
+  <p><b>定位</b>：π 系列是「单模型 VLA」——一个 VLM 主干直接出动作块，不拆 S2/S1；与 GR00T 的双系统路线相对。</p>
+  <table>
+    <tr><th>项</th><th>π0（arXiv:2410.24164，RSS 2025）</th><th>π0.5（arXiv:2504.16054）</th></tr>
+    <tr><td>结构</td><td>预训练 VLM + <b>flow matching 动作专家</b>；输出连续动作块</td><td>同 π0 + <b>异构协同训练</b>（多机器人、web、语义子任务预测、目标检测）</td></tr>
+    <tr><td>训练数据</td><td>多机器人平台（单臂、双臂、移动操作）的多样数据</td><td>多机器人 + 网页数据 + 高层语义子任务；混合多模态样本（图像、语言、检测、子任务、动作）</td></tr>
+    <tr><td>能力</td><td>零样本任务、语言跟随、微调学新技能（叠衣、清桌、组装）</td><td>首次端到端系统在<b>全新家庭</b>做长程灵巧操作（清厨房/卧室）</td></tr>
+    <tr><td>推理</td><td>动作块（chunk）输出，闭环执行</td><td>动作 + 子任务预测</td></tr>
+  </table>
+  <pre><code><span class="c"># π0 式动作头：flow matching 出动作块（伪代码）</span>
+a_t = noise([B, H, d_a])
+<span class="k">for</span> step <span class="k">in</span> range(K):
+    v = action_expert(a_t, t=step, cond=vlm_tokens, proprio)
+    a_t = a_t + v / K                     <span class="c"># Euler 积分</span>
+execute(a_t)                              <span class="c"># 执行后重新预测</span>
+<span class="c"># 关键点：VLM 提供语义，动作专家只做「条件生成」；π0.5 额外让模型预测子任务</span></code></pre>
+  <p class="foot">注：π0/π0.5 的参数量与训练时长未在摘要给出，本页不臆造；引用请回论文正文。</p>
+</section>
+
+<section id="vlm">
+  <h2>16. VLM 规划器（纯 S2）：最便宜的上手方式</h2>
+  <p><b>用法</b>：VLM 只看图和指令，输出结构化子任务/目标点，S1 执行；VLM 不直接出关节角。</p>
+  <pre><code><span class="c"># 输入：当前图像 + 语言 + 机器人状态摘要；输出：JSON 指令</span>
+prompt = f<span class="s">"""You are a robot planner. Image: current view.
+Instruction: {user_cmd}
+Return JSON: {{"subtask": "...", "target": [x,y,z] or null,
+               "gripper": "open|close|none", "done": false}}"""</span>
+plan = vlm(prompt, image)              <span class="c"># 1–2Hz</span>
+subtask = json.loads(plan)
+send_to_s1(subtask)                    <span class="c"># 子任务/位姿接口</span></code></pre>
+  <ul>
+    <li><b>频率</b>：1–2Hz 重规划；S1 在两次规划之间自主执行。</li>
+    <li><b>接口</b>：子任务文本（π0.5 式）、目标点/位姿（3 点格式）、或直接给 S1 的 token（需 S1 支持）。</li>
+    <li><b>坑</b>：无动作先验、语言带宽低、grounding 错就全错；必须配 S1 的失败回退。</li>
+  </ul>
+</section>
+
+<section id="wam">
+  <h2>17. WAM（Fast-WAM 式）：训练联合、推理只出动作</h2>
+  <p><b>定义</b>：联合建模未来状态与动作 p(o′,a|o,l)；预测的未来必须进入动作路径。</p>
+  <h3>17.1 实现（Fast-WAM，arXiv:2603.16666）</h3>
+  <ul>
+    <li>骨干：<b>Wan2.2-5B 视频 DiT</b>（世界模型）+ <b>1B ActionDiT</b>（动作专家），MoT 共享注意力。</li>
+    <li>输入：多相机图拼单图 → VAE latent；语言 T5；proprio 1 token（代码实锤）；三组 token：首帧 clean / 未来帧 noisy（仅训练）/ 动作。</li>
+    <li><b>掩码</b>：动作 token 不能看未来视频 token；首帧不看其他 token。</li>
+    <li>训练：动作 flow matching + 未来视频 latent flow matching（λ 加权）；H=32，未来帧 9（4× 降采样）。</li>
+    <li>推理：删掉未来分支，只过首帧 latent 一次 → 直出 32 步动作块；<b>190ms</b>（RTX 5090D）。</li>
+    <li>结果：LIBERO 97.6 / RoboTwin 91.8；去掉视频共训掉到 83.8（RoboTwin）/ 10%（真机毛巾折叠）。</li>
+  </ul>
+  <pre><code><span class="c"># 训练：联合 flow matching</span>
+loss = L_act(a_hat, a) + λ * L_vid(v_hat, v_future)
+<span class="c"># 推理：只保留首帧</span>
+z = video_backbone(first_frame_latent)     <span class="c"># 单次前向</span>
+a = action_expert.sample(z, proprio)       <span class="c"># 32 步动作块</span></code></pre>
+  <p>GR00T 2 是同一范式的产业版（一个 DiT 联合去噪未来视频+动作，Turbo 124ms），见第 12 节。</p>
+</section>
+
+<section id="mpc">
+  <h2>18. MPC / WBC：经典 S1 的兜底方案</h2>
+  <p><b>MPC</b>：每周期解一个有限时域优化，执行第一段；<b>WBC</b>：分层任务（接触/姿态/力矩）用 QP 在 1kHz 求解。</p>
+  <pre><code><span class="c"># MPC 伪代码（50–500Hz）</span>
+<span class="k">for</span> k <span class="k">in</span> range(horizon):
+    x[k+1] = f(x[k], u[k])                 <span class="c"># 动力学模型</span>
+cost = Σ ‖x-x_ref‖²_Q + ‖u‖²_R
+solve min cost s.t. x[k+1]=f(...), u∈U, contact constraints
+apply(u[0]); shift(); repeat</code></pre>
+  <ul>
+    <li><b>优点</b>：约束硬（关节限位/摩擦锥/力矩）、可解释、无需训练数据。</li>
+    <li><b>缺点</b>：建模难（接触/柔性）、参数敏感、复杂地形弱。</li>
+    <li><b>适用</b>：工业臂、足式平衡、需要安全保证的场景；常与学习策略组合（学习出参考，MPC 跟踪）。</li>
+  </ul>
+</section>
+
 <section id="refs">
-  <h2>15. 参考与术语小抄</h2>
+  <h2>19. 参考与术语小抄</h2>
   <h3>关键参考</h3>
   <ul>
     <li><b>ASTRA</b>：<a href="https://arxiv.org/abs/2609.38537">arXiv:2609.38537</a>（六域评测）｜<a href="https://arxiv.org/abs/2610.26846">arXiv:2610.26846</a>（视触觉）</li>
     <li>SONIC（人形全身控制，50Hz，64 维 token）：<a href="https://arxiv.org/abs/2511.07820">arXiv:2511.07820</a>；<a href="https://nvlabs.github.io/GR00T-WholeBodyControl/">代码/文档</a>；配置：`sonic_release.yaml`、`all_mlp_v1.yaml`、`ppo_im_phc.yaml`</li>
     <li>GR00T N1.5/N1.7（VLA 微调与部署）：<a href="https://arxiv.org/abs/2503.14734">N1</a>；<a href="https://research.nvidia.com/labs/gear/gr00t-n1_5/">N1.5 官方页</a>；<a href="https://nvlabs.github.io/GR00T-WholeBodyControl/tutorials/vla_workflow.html">VLA workflow</a></li>
     <li>Helix（双系统，200Hz S1）：<a href="https://www.figure.ai/news/helix">Figure 博客</a></li>
-    <li>π0.5（语言子任务分层）：<a href="https://arxiv.org/abs/2504.16054">arXiv:2504.16054</a></li>
+    <li>π0 / π0.5（VLM + flow matching 动作专家）：<a href="https://arxiv.org/abs/2410.24164">π0 arXiv:2410.24164</a>；<a href="https://arxiv.org/abs/2504.16054">π0.5 arXiv:2504.16054</a></li>
     <li>GR00T 2（WAM + agent S2 + SONIC S1）：<a href="https://research.nvidia.com/labs/gear/gr00t-2/">官方页</a></li>
     <li>S0/S1/S2 概念来源：<a href="https://arxiv.org/abs/2503.06138">Taniguchi 2503.06138</a></li>
   </ul>

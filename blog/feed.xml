@@ -9,14 +9,12 @@
     <lastBuildDate>Fri, 27 Nov 2026 09:00:00 +0800</lastBuildDate>
 
     <item>
-      <title>wam-rl-posttraining</title>
+      <title>从 SFT 到闭环：VLA 与 WAM 的 RL 后训练怎么做（实现版）</title>
       <link>https://lidongyv.github.io/blog/wam-rl-posttraining.html</link>
       <guid isPermaLink="true">https://lidongyv.github.io/blog/wam-rl-posttraining.html</guid>
       <pubDate>Wed, 25 Nov 2026 09:00:00 +0800</pubDate>
-      <description></description>
-      <content:encoded><![CDATA[<p>﻿--- title: "从 SFT 到闭环：VLA 与 WAM 的 RL 后训练怎么做（实现版）" title_en: "From SFT to Closed Loop: RL Post-training for VLA and WAM (Implementation Notes)" summary: "按「输入/输出 → 中间算法 → 伪代码（附物理意义注释）」重写 RL 后训练：GigaBrain RAMP、VAMPO、EVA、CreFlow、WorldVLN，以及六类闭环训练的官方代码级实现（FACT / DreamAvoid / τ0-WM 为仓库源码）。" summary_en: "A rewrite of RL post-training with inputs/outputs, algorithms and annotated pseudocode: GigaBrain RAMP, VAMPO, EVA, CreFlow, WorldVLN, plus code-grounded closed-loop implementations (FACT, DreamAvoid, τ0-WM)." tags: ["RL", "后训练", "闭环训练", "VLA", "WAM", "代码"] tags_en: ["RL", "Post-training", "Closed-loop", "VLA", "WAM", "Code"]</p>
-<hr>
-<blockquote><p>这篇只讲<strong>训练范式</strong>：SFT 之后如何用奖励信号继续优化，以及<strong>闭环训练</strong>的具体实现。 约定：<code>[论文 §X]</code>=论文小节；<code>[代码 path]</code>=官方仓库文件；<strong>「伪代码」= 可执行结构的函数级代码</strong>，每段带「物理」注释说明这一步对机器人意味着什么；凡没有官方代码的方法，标注「依论文重建」，不冒充源码。 与 WAM 论文站（结构分类）分开：那边讲模型长什么样，这里讲怎么训、怎么闭环。</p></blockquote>
+      <description>按「输入/输出 → 中间算法 → 伪代码（附物理意义注释）」重写 RL 后训练：GigaBrain RAMP、VAMPO、EVA、CreFlow、WorldVLN，以及六类闭环训练的官方代码级实现（FACT / DreamAvoid / τ0-WM 为仓库源码）。</description>
+      <content:encoded><![CDATA[<blockquote><p>这篇只讲<strong>训练范式</strong>：SFT 之后如何用奖励信号继续优化，以及<strong>闭环训练</strong>的具体实现。 约定：<code>[论文 §X]</code>=论文小节；<code>[代码 path]</code>=官方仓库文件；<strong>「伪代码」= 可执行结构的函数级代码</strong>，每段带「物理」注释说明这一步对机器人意味着什么；凡没有官方代码的方法，标注「依论文重建」，不冒充源码。 与 WAM 论文站（结构分类）分开：那边讲模型长什么样，这里讲怎么训、怎么闭环。</p></blockquote>
 <hr>
 <h2 id="0-tl-dr">0. TL;DR</h2>
 <ul><li>VLA/WAM 的 SFT 有三个硬伤：<strong>分布漂移</strong>、<strong>长程复合误差</strong>、<strong>执行性 gap</strong>。RL 后训练针对它们，而不是「再多采点数据」。</li><li>奖励几乎从不来自真机执行，而是五种代理信号：<strong>世界模型价值 / IDM 动作平滑 / LTL 逻辑验证 / 专家潜距离 / 稀疏 episode 成功</strong>。</li><li>算法只有两大族：<strong>GRPO</strong>（组归一化优势 + 截断代理，无 critic）与 <strong>KL-RL 闭式解 → 加权 NLL</strong>（advantage-conditioned）。稀疏奖励走 DiffusionNFT。</li><li><strong>闭环训练</strong>有六类实现，其中三类有官方代码可直接读、可跑（FACT、DreamAvoid、τ0-WM）；本文按源码给出输入输出与伪代码。</li></ul>

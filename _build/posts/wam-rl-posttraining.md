@@ -1,4 +1,4 @@
-﻿---
+---
 title: "从 SFT 到闭环：VLA 与 WAM 的 RL 后训练怎么做（实现版）"
 title_en: "From SFT to Closed Loop: RL Post-training for VLA and WAM (Implementation Notes)"
 summary: "按「输入/输出 → 中间算法 → 伪代码（附物理意义注释）」重写 RL 后训练：GigaBrain RAMP、VAMPO、EVA、CreFlow、WorldVLN，以及六类闭环训练的官方代码级实现（FACT / DreamAvoid / τ0-WM 为仓库源码）。"
