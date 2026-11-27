@@ -348,6 +348,8 @@ def hilr_episode(policy, env, human):
 
 ### 3.2 DAgger（Dataset Aggregation）与 XPACE 恢复数据
 
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · DAgger](/blog/method-wiki/dagger.html) ／ [XPACE 恢复数据](/blog/method-wiki/xpace.html)
+
 **输入 / 输出（物理）**：输入=专家策略、初始演示、迭代轮数；输出=在「学生自己会走到的状态」上也能正确动作的策略。
 
 | 变量 | 形状 | 物理意义 |
@@ -494,6 +496,8 @@ def play(obs, state, N_proposals=8):
 **公式**：`RCS = −E_{K 个随机时间步}[‖ε−ε̂(z_t,t)‖²]`（重去噪误差的负值）——**物理**：一条候选如果「重新加噪再加噪不回去」，说明它是偶然采样，不可信。
 
 ### 3.6 CoachSI：语言教练 relabel
+
+> 精读（流程图 / 公式 / 代码 / 物理意义）：[方法精读 Wiki · CoachSI](/blog/method-wiki/coachsi.html)
 
 **输入 / 输出（物理）**：输入=冻结 VLM、成功轨迹、原任务指令；输出=带「下一步该做什么」标签的轨迹。
 

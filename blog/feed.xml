@@ -218,6 +218,7 @@ def corrective_reflow(vpm, rollouts, rewards, M, t):
     return scrub(traj)                            # 剔除切换瞬间的动作突变</code></pre>
 <p><strong>为什么</strong>：遥操作数据都在专家分布上；HILR 采的是「策略快失败」的边界样本，对策略最有信息量。 <strong>物理</strong>：<code>flag=1</code> 的那几步就是「机器人不会、人会」的地方；<code>scrub</code> 去掉切换瞬时的速度/位置跳变，否则策略学到不连续动作。</p>
 <h3 id="3-2-dagger-dataset-aggregation-与-xpace-恢复数据">3.2 DAgger（Dataset Aggregation）与 XPACE 恢复数据</h3>
+<blockquote><p>精读（流程图 / 公式 / 代码 / 物理意义）：<a href="/blog/method-wiki/dagger.html">方法精读 Wiki · DAgger</a> ／ <a href="/blog/method-wiki/xpace.html">XPACE 恢复数据</a></p></blockquote>
 <p><strong>输入 / 输出（物理）</strong>：输入=专家策略、初始演示、迭代轮数；输出=在「学生自己会走到的状态」上也能正确动作的策略。</p>
 <table><thead><tr><th>变量</th><th>形状</th><th>物理意义</th></tr></thead><tbody><tr><td><code>D</code></td><td>数据集</td><td>初始只有专家演示；后追加「学生状态 + 专家动作」</td></tr><tr><td><code>states</code></td><td>状态列表</td><td>学生策略实际访问到的状态（关键）</td></tr><tr><td><code>labels</code></td><td>动作列表</td><td>专家在这些状态上的动作</td></tr><tr><td><code>pi</code></td><td>策略</td><td>每轮在聚合数据上重训</td></tr></tbody></table>
 <pre><code class="language-python">def dagger(expert, D, N):
@@ -299,6 +300,7 @@ def dream_avoid_step(policy, value_model, obs, state, task):
     return best</code></pre>
 <p><strong>公式</strong>：<code>RCS = −E_{K 个随机时间步}[‖ε−ε̂(z_t,t)‖²]</code>（重去噪误差的负值）——<strong>物理</strong>：一条候选如果「重新加噪再加噪不回去」，说明它是偶然采样，不可信。</p>
 <h3 id="3-6-coachsi-语言教练-relabel">3.6 CoachSI：语言教练 relabel</h3>
+<blockquote><p>精读（流程图 / 公式 / 代码 / 物理意义）：<a href="/blog/method-wiki/coachsi.html">方法精读 Wiki · CoachSI</a></p></blockquote>
 <p><strong>输入 / 输出（物理）</strong>：输入=冻结 VLM、成功轨迹、原任务指令；输出=带「下一步该做什么」标签的轨迹。</p>
 <table><thead><tr><th>变量</th><th>形状</th><th>物理意义</th></tr></thead><tbody><tr><td><code>seg</code></td><td>帧窗口</td><td>轨迹切出的一段</td></tr><tr><td><code>steps</code></td><td>文本</td><td>VLM 命名的「下一步」</td></tr><tr><td><code>traj'</code></td><td><code>T×{obs,a,step}</code></td><td>新监督：动作 + 语义意图</td></tr></tbody></table>
 <pre><code class="language-python">def coach_relabel(traj, vlm, task):
