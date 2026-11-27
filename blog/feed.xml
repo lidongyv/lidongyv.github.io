@@ -13,375 +13,233 @@
       <link>https://lidongyv.github.io/blog/wam-rl-posttraining.html</link>
       <guid isPermaLink="true">https://lidongyv.github.io/blog/wam-rl-posttraining.html</guid>
       <pubDate>Wed, 25 Nov 2026 09:00:00 +0800</pubDate>
-      <description>按「物理意义 → 为什么 → 出处 → 优势」四要素重写 RL 后训练：GigaBrain RAMP、VAMPO、EVA、CreFlow、WorldVLN，以及六类闭环训练的官方代码级实现（FACT / DreamAvoid / τ0-WM 为仓库源码）。</description>
-      <content:encoded><![CDATA[<blockquote><p>这篇只讲<strong>训练范式</strong>：SFT 之后如何用奖励信号继续优化，以及<strong>闭环训练</strong>的具体实现。 约定：<code>[论文 §X]</code>=论文小节；<code>[代码 path]</code>=官方仓库文件。每段伪代码前有「代码解读」四要素：<strong>物理意义 / 为什么 / 出处 / 优势与代价</strong>——这是本文与「步骤清单式伪代码」的区别。 与 WAM 论文站（结构分类）分开：那边讲模型长什么样，这里讲怎么训、怎么闭环。</p></blockquote>
+      <description>按「输入输出物理意义 → 变量表 → 逐步骤注释 → 公式及物理意义」重写 RL 后训练：GigaBrain RAMP、VAMPO、EVA、CreFlow、WorldVLN，以及六类闭环实现的官方代码级拆解（FACT / DreamAvoid / τ0-WM 为仓库源码）。</description>
+      <content:encoded><![CDATA[<blockquote><p>阅读约定：每段代码前有 <strong>输入/输出（物理意义）</strong> 与 <strong>变量表</strong>；代码内用 <code>① ② ③</code> 标步骤，每步带「物理：…」注释；用到公式时给出公式 + 公式的物理意义。<code>[论文 §X]</code>=小节，<code>[代码 path]</code>=官方仓库文件；无源码的标「依论文重建」。</p></blockquote>
 <hr>
 <h2 id="0-tl-dr">0. TL;DR</h2>
-<ul><li>VLA/WAM 的 SFT 有三个硬伤：<strong>分布漂移</strong>、<strong>长程复合误差</strong>、<strong>执行性 gap</strong>。RL 后训练针对它们，而不是「再多采点数据」。</li><li>奖励几乎从不来自真机执行，而是五种代理信号：<strong>世界模型价值 / IDM 动作平滑 / LTL 逻辑验证 / 专家潜距离 / 稀疏 episode 成功</strong>。</li><li>算法只有两大族：<strong>GRPO</strong>（组归一化优势 + 截断代理，无 critic）与 <strong>KL-RL 闭式解 → 加权 NLL</strong>（advantage-conditioned）。稀疏奖励走 DiffusionNFT。</li><li>闭环训练三类有官方代码可直接读：FACT、DreamAvoid、τ0-WM；其余标注「依论文重建」。</li></ul>
+<ul><li>VLA/WAM 的 SFT 有四个硬伤：<strong>分布漂移</strong>、<strong>长程复合误差</strong>、<strong>执行性 gap</strong>、<strong>指令接地差</strong>。RL 后训练针对它们，而不是「再多采点数据」。</li><li>奖励几乎不直接来自真机执行，而是五种代理：<strong>世界模型价值 / IDM 动作平滑 / LTL 逻辑验证 / 专家潜距离 / 稀疏 episode 成功</strong>。</li><li>算法两大族：<strong>GRPO</strong>（组归一化优势，无 critic）与 <strong>KL-RL 闭式解 → 加权 NLL</strong>（advantage-conditioned）。</li><li>闭环训练六类，其中三类有官方代码：FACT、DreamAvoid、τ0-WM。</li></ul>
 <hr>
-<h2 id="1-为什么后训练-一句话版">1. 为什么后训练（一句话版）</h2>
-<table><thead><tr><th>失败模式</th><th>现象</th><th>后训练的介入点</th></tr></thead><tbody><tr><td>分布漂移</td><td>偏离演示后误差累积</td><td>用策略自己的状态采数据（DAgger/HILR）</td></tr><tr><td>长程复合</td><td>单步像、多步崩</td><td>段级/子任务级奖励，或世界模型长程评分</td></tr><tr><td>执行性 gap</td><td>未来看着对，动作抖动/越限</td><td>IDM 解码后按运动学约束给奖励（EVA）</td></tr><tr><td>指令接地差</td><td>靠画面捷径而非指令</td><td>语言教练/视觉目标重标注（CoachSI、JEPA-WAM）</td></tr></tbody></table>
+<h2 id="1-为什么后训练">1. 为什么后训练</h2>
+<table><thead><tr><th>失败模式</th><th>现象</th><th>介入点</th></tr></thead><tbody><tr><td>分布漂移</td><td>偏离演示后误差累积</td><td>用策略自己的状态采数据（DAgger/HILR）</td></tr><tr><td>长程复合</td><td>单步像、多步崩</td><td>段级/子任务级奖励，或世界模型长程评分</td></tr><tr><td>执行性 gap</td><td>未来像、动作抖/越限</td><td>IDM 解码后按运动学约束给奖励（EVA）</td></tr><tr><td>指令接地差</td><td>靠画面捷径</td><td>语言教练/视觉目标重标注（CoachSI）</td></tr></tbody></table>
 <hr>
 <h2 id="2-五个-rl-后训练方法">2. 五个 RL 后训练方法</h2>
 <h3 id="2-1-gigabrain-ramp-kl-rl-闭式解-加权-nll">2.1 GigaBrain RAMP：KL-RL 闭式解 → 加权 NLL</h3>
-<p><strong>先给符号表</strong>（shape 中 <code>C_z</code>=VAE 潜通道数、<code>h×w</code>=潜分辨率、<code>d_p</code>=本体维、<code>H_a</code>=动作块长、<code>d_a</code>=动作维；论文未给的数值标「未给」）：</p>
-<table><thead><tr><th>符号</th><th>形状</th><th>物理含义</th><th>从哪来</th></tr></thead><tbody><tr><td><code>o_t</code></td><td><code>[3,H,W]</code></td><td>t 时刻 RGB 观测</td><td>数据</td></tr><tr><td><code>p_t</code></td><td><code>[d_p]</code></td><td>本体感知（关节/夹爪）</td><td>数据</td></tr><tr><td><code>a_t</code></td><td><code>[H_a,d_a]</code></td><td>动作块（策略输出）</td><td>数据/策略</td></tr><tr><td><code>l</code></td><td>token ids</td><td>语言指令</td><td>数据</td></tr><tr><td><code>success</code></td><td>bool</td><td>episode 级成功标签</td><td>数据（遥操作日志）</td></tr><tr><td><code>z_t</code></td><td><code>[H′,W′,C′]</code></td><td>当前帧的 VAE 时空潜</td><td><code>z_t = E_vae(o_t)</code></td></tr><tr><td><code>z_future_i</code></td><td><code>[C_z,h,w]</code></td><td>未来帧潜，<code>i∈{12,24,36,48}</code> 步后</td><td><code>E_vae(o_{t+i})</code>，仅训练期</td></tr><tr><td><code>v_t</code></td><td>标量</td><td>价值估计≈「负的期望剩余步数」</td><td>价值头 <code>W.value(s_t)</code></td></tr><tr><td><code>Ψ(·)</code></td><td><code>R → R^{H′×W′×1}</code>；<code>R^d → R^{H′×W′×d}</code></td><td><strong>spatial tiling projection</strong>：把标量价值/低维本体复制并广播到空间维，与视觉潜对齐</td><td>论文 §3.2.2（Eq.6）</td></tr><tr><td><code>s_t</code></td><td><code>[H′,W′,C′+1+d]</code></td><td>增强状态：潜 + 价值图 + 本体图（通道拼接，Eq.6）</td><td><code>s_t=[z_t;Ψ(v_t);Ψ(p_t)]</code></td></tr><tr><td><code>W.flow(u,τ,s_t,a_t)</code></td><td>→ <code>[C_z,h,w]</code></td><td>流匹配速度场：给定加噪潜、流时间、状态、动作，预测「往干净未来走的速度」</td><td>世界模型骨干（Wan2.2 + flow matching）</td></tr><tr><td><code>u_τ</code></td><td><code>[C_z,h,w]</code></td><td>加噪插值潜 <code>(1−τ)ε+τz_future</code></td><td>训练时构造</td></tr><tr><td><code>ε</code>（噪声）</td><td><code>[C_z,h,w]</code></td><td>流匹配噪声</td><td><code>randn_like</code></td></tr><tr><td><code>r_t</code></td><td>标量</td><td>稀疏奖励（Eq.5）</td><td>由 <code>success</code> 与步数算出</td></tr><tr><td><code>A_t</code></td><td>标量</td><td>n 步 TD 优势（Eq.8）</td><td>由 <code>r_t</code>、<code>v_t</code> 算出</td></tr><tr><td><code>I_t</code></td><td><code>{0,1}</code></td><td>改进指示：<code>1[A_t&gt;ε_thr]</code></td><td>由 <code>A_t</code> 与阈值算出</td></tr><tr><td><code>γ, n, ε_thr, α, C_fail, β</code></td><td>标量</td><td>折扣/TD 步长/二值阈值/权重/失败代价/KL 温度</td><td><strong>数值论文未给</strong></td></tr></tbody></table>
-<p><strong>数据流闭环（先看这个，再看代码）</strong></p>
-<pre><code>数据 episode ──► (o_t, o_{t+i}, p_t, a_t, l, success)
-                        │
-        ┌───────────────┴────────────────┐
-        ▼                                ▼
-   VAE 编码 o_t / o_{t+i}           稀疏奖励 r_t（Eq.5）
-        │  z_t / z_future_i              │
-        ▼                                ▼
-   s_t=[z_t;Ψ(v_t);Ψ(p_t)] ──► W.flow 训练（Eq.7）──► 价值头 v_t（TD）
-        │                                              │
-        └────────────► A_t（Eq.8） ◄──────────────────┘
-                        │
-                 I_t=1[A_t&gt;ε_thr]
-                        │
-                        ▼
-             策略损失（Eq.3，两项 NLL）</code></pre>
+<p><strong>输入 / 输出（物理）</strong>：输入=真机 episode（观测、本体、动作、指令、成功标签）+ 预训练 VLA + Wan2.2 世界模型；输出=会「看价值信号做动作」的策略，以及同步续训的世界模型。</p>
 <p><strong>代码解读</strong></p>
-<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>世界模型学「给当前观测+本体+动作，12/24/36/48 步后画面变成什么」；价值头学「还剩多少步能成功」；策略学「在 I=1 的条件下更像专家」。</td></tr><tr><td>为什么这么做</td><td>真机奖励极稀疏，直接用策略梯度方差太大；把 KL-RL 闭式解改写成两项 NLL，等价于用优势当条件做加权模仿，训练更稳。</td></tr><tr><td>方法出处</td><td>论文 §3.2.1–3.2.2（Eq.2/3/5/6/7/8）；<strong>无官方代码，本文依论文重建</strong>；KL-RL 谱系来自 LLM 的 RLHF/DPO，RECAP 是同族特例。</td></tr><tr><td>优势与代价</td><td>优势：无需 critic、可用离线日志、训练稳定；代价：依赖价值头精度，β/γ/n/ε/α 论文未给需自调。</td></tr></tbody></table>
-<pre><code class="language-python"># ── 采样：一条 episode 的字段（success 是 episode 级标签）──────────
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>世界模型学「动作作用后世界怎么变」；价值头学「还剩多少步能成功」；策略学「在 I=1（这步更好）的条件下更像专家」。</td></tr><tr><td>为什么</td><td>真机奖励极稀疏，策略梯度方差大；KL-RL 闭式解可改写成两项 NLL，变成「带优势条件的模仿」，稳定且无需 critic。</td></tr><tr><td>出处</td><td>论文 §3.2.1–3.2.2（Eq.2/3/5/6/7/8）；<strong>无官方代码，依论文重建</strong>；谱系：RLHF/DPO → RECAP（特例）。</td></tr><tr><td>优势与代价</td><td>优势：离线日志可用、无 critic；代价：依赖价值精度，β/γ/n/ε/α 未给。</td></tr></tbody></table>
+<p><strong>变量表</strong></p>
+<table><thead><tr><th>变量</th><th>形状</th><th>物理意义</th></tr></thead><tbody><tr><td><code>o_t</code></td><td><code>[3,H,W]</code></td><td>t 时刻主视角 RGB</td></tr><tr><td><code>p_t</code></td><td><code>[d]</code></td><td>本体（关节角/夹爪）</td></tr><tr><td><code>a_t</code></td><td><code>[H_a,d_a]</code></td><td>动作块（H_a 步，d_a 维）</td></tr><tr><td><code>l</code></td><td>token ids</td><td>语言指令</td></tr><tr><td><code>success</code></td><td>bool</td><td>episode 是否成功（遥操作日志）</td></tr><tr><td><code>z_t</code></td><td><code>[H′,W′,C′]</code></td><td>当前帧 VAE 时空潜</td></tr><tr><td><code>z_future</code></td><td><code>[H′,W′,C′]</code></td><td>未来帧潜（<code>t+12/24/36/48</code>，仅训练）</td></tr><tr><td><code>v_t</code></td><td>标量</td><td>价值≈负期望剩余步数</td></tr><tr><td><code>Ψ(·)</code></td><td>广播投影</td><td>把标量/低维向量复制到空间维（spatial tiling）</td></tr><tr><td><code>s_t</code></td><td><code>[H′,W′,C′+1+d]</code></td><td>增强状态 <code>[z_t;Ψ(v_t);Ψ(p_t)]</code>（Eq.6）</td></tr><tr><td><code>r_t</code></td><td>标量</td><td>稀疏奖励（Eq.5）</td></tr><tr><td><code>A_t</code></td><td>标量</td><td>n 步 TD 优势（Eq.8）</td></tr><tr><td><code>I_t</code></td><td>{0,1}</td><td><code>1[A_t&gt;ε]</code> 改进指示</td></tr></tbody></table>
+<p><strong>公式与物理意义</strong></p>
+<ul><li>Eq.(5) <code>r_t = 0(成功终步) / −C_fail(失败终步) / −1(其余)</code>：<strong>成功不罚、失败重罚、每多一步扣一分</strong>——价值函数因此等价于「负的期望剩余步数」。</li><li>Eq.(6) <code>s_t=[z_t;Ψ(v_t);Ψ(p_t)]</code>：<strong>把「价值」和「本体」画成图</strong>，与视觉潜拼在一起，让世界模型一次前向同时看到画面、进度与关节。</li><li>Eq.(7) <code>L_WM=E‖W(s_future^τ,ε)−(s_future−ε)‖²</code>：流匹配学「从噪声到未来潜的速度场」。</li><li>Eq.(8) <code>A_t=Σ_{k&lt;n}γ^k r_{t+k}+γ^n v_{t+n}−v_t</code>：<strong>这一步实得回报 + 未来价值 − 当前价值基线</strong>；&gt;0 表示比预期好。</li><li>Eq.(3) <code>L=−logπ(a|o,z,l)−αlogπ(a|I,o,z,l)</code>：<strong>正常模仿 + 在「更好」条件下的模仿</strong>。</li></ul>
+<p><strong>代码（逐步物理注释）</strong></p>
+<pre><code class="language-python"># ── 输入：episode 字典；输出：一条 episode 的字段 ─────────────────
 def sample_episode(D):
-    &quot;&quot;&quot;返回：o [T,3,H,W]；p [T,d_p]；a [T,H_a,d_a]；l；success: bool。&quot;&quot;&quot;
-    return {&quot;o&quot;: o, &quot;p&quot;: p, &quot;a&quot;: a, &quot;l&quot;: l, &quot;success&quot;: success}
+    &quot;&quot;&quot;o [T,3,H,W]；p [T,d]；a [T,H_a,d_a]；l；success: bool。&quot;&quot;&quot;
+    return {&quot;o&quot;: o, &quot;p&quot;: p, &quot;a&quot;: a, &quot;l&quot;: l, &quot;success&quot;: success}   # ① 采样一条 episode
 
-# ── 编码：图像 → 潜（VAE 冻结）──────────────────────────────────
-def encode(vae, img):                       # img [3,H,W] → [C_z,h,w]
-    return vae.encode(img).latent_dist.mode()
+# ── 编码：图像 → 潜；② 把像素压成时空潜，下游只在潜空间算 ──────────
+def encode(vae, img):                       # img [3,H,W] → [H′,W′,C′]
+    return vae.encode(img).latent_dist.mode()             # 取分布众数，确定性
 
 # ── 构造增强状态 s_t（Eq.6）────────────────────────────────────
 def build_state(z_t, v_t, p_t, psi_v, psi_p):
-    &quot;&quot;&quot;物理：把标量价值与本体向量『画』成与潜同尺寸的通道图，再通道拼接。
-    z_t [C_z,h,w]；Ψ(v_t)→[1,h,w]；Ψ(p_t)→[C_p,h,w]；输出 [C_z+1+C_p,h,w]。&quot;&quot;&quot;
-    v_map = psi_v(v_t).view(1, h, w)        # spatial tiling：标量复制成单通道图
-    p_map = psi_p(p_t).view(d, h, w)        # spatial tiling：d 维本体广播到 d 通道
-    return cat([z_t, v_map, p_map], dim=0)  # Eq.6 channel-wise concat
+    &quot;&quot;&quot;z_t：画面；Ψ(v_t)：进度图；Ψ(p_t)：本体图。
+    ③ 三者通道拼接，世界模型一次前向同时看到『看到什么、走到哪、关节在哪』。&quot;&quot;&quot;
+    v_map = psi_v(v_t).view(1, h, w)     # 标量 → 单通道（spatial tiling）
+    p_map = psi_p(p_t).view(d, h, w)     # 低维向量 → d 通道
+    return cat([z_t, v_map, p_map], dim=0)               # [C′+1+d,H′,W′]
 
-# ── 世界模型一步：流匹配（Eq.7）──────────────────────────────────
+# ── 世界模型一步（Eq.7）────────────────────────────────────────
 def world_model_step(W, vae, ep, tau):
-    &quot;&quot;&quot;物理：给『加噪的未来潜』和『当前状态+动作』，预测往干净未来走的速度。
-    目标速度 = z_future − ε（流匹配的标准目标）。&quot;&quot;&quot;
-    z_t   = encode(vae, ep[&quot;o&quot;][t])
-    v_t   = W.value(build_state(z_t, W.value(build_state(z_t, 0, ep[&quot;p&quot;][t]), ep[&quot;p&quot;][t]), ep[&quot;p&quot;][t]))  # 价值头估计
-    s_t   = build_state(z_t, v_t, ep[&quot;p&quot;][t], W.psi_v, W.psi_p)
-    z_future = [encode(vae, ep[&quot;o&quot;][t+i]) for i in (12, 24, 36, 48)]   # 四个未来目标
-    eps   = randn_like(z_future[0])                 # ε [C_z,h,w]
-    u     = (1 - tau) * eps + tau * z_future[0]     # 插值潜 u_τ
-    target = z_future[0] - eps                      # 目标速度
-    return mse(W.flow(u, tau, s_t, ep[&quot;a&quot;][t]), target)   # Eq.7
+    &quot;&quot;&quot;④ 取当前帧与未来帧的潜；⑤ 加噪插值；⑥ 预测速度并回归到 z_future−ε。&quot;&quot;&quot;
+    z_t = encode(vae, ep[&quot;o&quot;][t])                        # 当前帧潜
+    s_t = build_state(z_t, W.value(z_t), ep[&quot;p&quot;][t], W.psi_v, W.psi_p)
+    z_fut = encode(vae, ep[&quot;o&quot;][t+i])                    # 未来帧潜（目标）
+    eps = randn_like(z_fut)                              # 噪声 ε
+    u = (1 - tau) * eps + tau * z_fut                    # 插值潜 u_τ
+    return mse(W.flow(u, tau, s_t, ep[&quot;a&quot;][t]), z_fut - eps)   # Eq.7
 
-# ── 稀疏奖励（Eq.5）：输入是 episode，输出每步 r_t ────────────────
+# ── 稀疏奖励（Eq.5）───────────────────────────────────────────
 def sparse_reward(ep, C_fail):
-    &quot;&quot;&quot;物理：成功=0（不罚），失败=固定代价，中间每步 −1（时间成本）。
-    v 头学到的就是『负的期望剩余步数』。&quot;&quot;&quot;
+    &quot;&quot;&quot;⑦ 成功=0；失败=−C_fail；其余=−1（时间成本）。&quot;&quot;&quot;
     T = len(ep[&quot;a&quot;]); r = [-1.0] * T
     r[T-1] = 0.0 if ep[&quot;success&quot;] else -C_fail
-    return r                                     # [T]
+    return r
 
-# ── n 步 TD 优势（Eq.8）──────────────────────────────────────────
+# ── 优势（Eq.8）与二值化 ────────────────────────────────────────
 def n_step_advantage(r, v, gamma, n):
-    &quot;&quot;&quot;物理：A_t = 这段动作实际拿到的折扣回报 + 未来价值基线 − 当前价值基线。
-    A_t&gt;0 表示『这一步比价值函数的预期更好』。&quot;&quot;&quot;
+    &quot;&quot;&quot;⑧ 用 r 与价值 v 算优势：实得回报 + 未来价值 − 当前价值。&quot;&quot;&quot;
     T = len(r); A = [0.0] * T
     for t in range(T):
-        k = min(n, T - 1 - t)
+        k = min(n, T-1-t)
         A[t] = sum(gamma**i * r[t+i] for i in range(k)) \
-               + gamma**k * v[min(t+k, T-1)] - v[t]     # Eq.8
-    return A                                     # [T]
+               + gamma**k * v[min(t+k, T-1)] - v[t]
+    return A
 
-# ── 策略损失（Eq.3）：两项 NLL ───────────────────────────────────
+# ── 策略损失（Eq.3）───────────────────────────────────────────
 def policy_loss(pi, ep, s_t, A, eps_thr, alpha):
-    &quot;&quot;&quot;物理：第一项=正常模仿；第二项=『在 I=1（这步更好）条件下』模仿。
-    I 是优势的二值化，作为额外的条件 token 喂给策略。&quot;&quot;&quot;
-    I = [1.0 if a &gt; eps_thr else 0.0 for a in A]        # I_t ∈ {0,1}
+    &quot;&quot;&quot;⑨ 第一项无条件模仿；第二项在 I=1（更好）条件下模仿。
+    I 是优势的二值化，作为额外条件 token。&quot;&quot;&quot;
+    I = [1.0 if a &gt; eps_thr else 0.0 for a in A]         # I_t
     loss = 0.0
     for t in range(len(A)):
         loss += -logp(pi, ep[&quot;a&quot;][t], cond=(ep[&quot;o&quot;][t], s_t[t], ep[&quot;l&quot;])) \
                 - alpha * logp(pi, ep[&quot;a&quot;][t], cond=(ep[&quot;o&quot;][t], s_t[t], ep[&quot;l&quot;], I[t]))
-    return loss                                  # Eq.3</code></pre>
-<p><strong>HILR（Human-in-the-Loop Rollout，人机接力 rollout）到底算什么</strong>：它不是公式，是<strong>数据采集过程</strong>——输入策略/环境/人类接管策略，输出带干预标记的轨迹。</p>
-<pre><code class="language-python">def hilr_episode(policy, env, human):
-    &quot;&quot;&quot;物理：机器人自己跑；人只在『即将失败』时接管。
-    输出 [(obs, a, intervened)]，并剔除切换瞬间的抖动样本（否则策略学到突变动作）。&quot;&quot;&quot;
-    traj, obs, done = [], env.reset(), False
-    while not done:
-        a = policy.act(obs)
-        if human.wants_control(obs):
-            a, flag = human.act(obs), 1      # 人接管
-        else:
-            a, flag = a, 0
-        traj.append((obs, a, flag))
-        obs, done = env.step(a)
-    return scrub(traj)                       # 去切换边界伪影
-
-# Stage 4：世界模型 + 策略在 HILR+base 上联合续训（混合比例论文未给）
-def joint_continue(W, pi, D_hilr, D_base):
-    for batch in sample_mix(D_hilr, D_base):     # ratio 未给
-        W.update(world_model_step(W, W.vae, batch, tau=rand()))   # 防优势坍缩
-        pi.update(policy_loss(pi, batch, build_states(batch), A=batch.A))</code></pre>
+    return loss</code></pre>
+<p><strong>HILR（Human-in-the-Loop Rollout）</strong>：不是公式，是数据采集——策略跑、人接管、记录 <code>(obs, a, 是否干预)</code>、剔除切换边界伪影，然后用它做 Stage 4 联合续训（防优势坍缩）。</p>
 <h3 id="2-2-vampo-grpo-训练视频去噪器-官方代码">2.2 VAMPO：GRPO 训练视频去噪器（<strong>官方代码</strong>）</h3>
-<p><strong>输入 / 输出</strong>：输入=专家视频（SVD VAE 潜 <code>[B,F,C,H,W]</code>）、SFT 后的 VPM、初始噪声；输出=后训练 VPM（动作侧 AGM 冻结）。</p>
-<p><strong>代码解读</strong></p>
-<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>同一条当前观测下想象 G 种未来；与专家未来越接近的想象越可执行。</td></tr><tr><td>为什么这么做</td><td>直接对动作策略做 RL 需要真机 rollout；这里把「视频预测器」当策略，奖励来自专家潜距离，<strong>完全离线</strong>、无需环境交互。</td></tr><tr><td>方法出处</td><td>仓库 <code>OpenHelix-Team/VAMPO</code>：<code>grpo/eas_with_logprob.py</code>、<code>grpo/reward_fn.py</code>、<code>step1_train_svd_grpo.py</code>（源码级）；GRPO 谱系来自 DeepSeek-R1 的组相对优势。</td></tr><tr><td>优势与代价</td><td>优势：离线、无 critic、见效快；代价：只改进视频预测，不直接改动作策略；首步 SDE 的方差需调 clip。</td></tr></tbody></table>
-<h4 id="①-采样器-euler_step-到底怎么算">① 采样器：<code>euler_step</code> 到底怎么算</h4>
-<p>仓库里没有叫 <code>euler_step</code> 的函数；实际是 <strong>diffusers 的 <code>EulerDiscreteScheduler</code></strong>：首步走 <code>eas_step_with_logprob</code>（Euler <strong>Ancestral</strong>，即带噪声的 SDE 步），其余步走普通 <code>scheduler.step</code>（纯 Euler，<code>sigma_up=0</code>，无噪声）。源码核心（<code>grpo/eas_with_logprob.py</code>）：</p>
-<pre><code class="language-python"># 输入：model_output=模型预测的噪声 v̂ [B,F,C,H,W]；sample=当前潜 x_σ; sigma=σ_k
-# 1) 先从噪声预测反推「干净样本」x0（epsilon 参数化）
-pred_original_sample = sample - sigma * model_output        # x0 = x − σ·ε̂
-# 2) Euler 的导数 = (x − x0)/σ，即「指向 x0 的方向 / σ」
-derivative = (sample - pred_original_sample) / sigma
-# 3) 步长：sigma_down 是去掉噪声后的目标 σ；sigma_up 是本步注入的噪声量
-sigma_up   = (sigma_to**2 * (sigma_from**2 - sigma_to**2) / sigma_from**2) ** 0.5
-sigma_down = (sigma_to**2 - sigma_up**2) ** 0.5
-dt = sigma_down - sigma
-# 4) 确定性部分：Euler 一步
-prev_sample_mean = sample + derivative * dt
-# 5) 随机部分：只有首步（prev_sample 未提供）才真采样噪声
-if first_step:            # 首步：prev_sample 未提供
-    noise = randn_tensor(sample.shape)
-    prev_sample = prev_sample_mean + noise * sigma_up       # SDE 步
-    self._step_index += 1
-# 6) 反推本步实际用的噪声，算对数概率（用于 PPO/GRPO 的重要性比）
-noise = (prev_sample - prev_sample_mean) / sigma_up
-log_prob = (-0.5*noise**2 - torch.log(sigma_up) - 0.5*math.log(2*math.pi)) \
-             .mean(dim=tuple(range(2, prev_sample.ndim)))   # 空间维平均 → [B,C]</code></pre>
-<ul><li><strong>为什么 <code>sigma_up</code> 随 σ 变化</strong>：ancestral 采样在 σ 大时注入更多噪声（探索），σ 小时几乎不加（收敛）；</li><li><strong>为什么只首步要 log-prob</strong>：后续 ODE 步 <code>sigma_up=0</code>，是确定性的，概率为 1（无梯度信号）；只有首步的随机转移有密度，才有策略梯度。</li><li>论文原话（为什么不全步随机）：<code>[§3.3]</code> "introducing stochasticity at all denoising steps leads to severe credit assignment issues"。</li></ul>
-<h4 id="②-奖励-latent_reward-的实现-不改像素">② 奖励：<code>latent_reward</code> 的实现（不改像素）</h4>
-<p>源码（<code>grpo/reward_fn.py</code>），形状标注为 <code>[B,F,C,H,W]</code>：</p>
-<pre><code class="language-python">def latent_reward_fn(pred_latents, true_latents, vae,
-                     decode_chunk_size=8, use_mae=True, use_cosine=True,
-                     mae_weight=1.0, cosine_weight=1.0):
-    &quot;&quot;&quot;物理：预测未来与专家未来在潜空间的接近程度。
-    L1 管结构（物体在哪、多大），cosine 管方向（整体变化趋势）。&quot;&quot;&quot;
-    bsz, num_frames = pred_latents.shape[0], pred_latents.shape[1]
-    all_mae, all_cos = [], []
-    with torch.no_grad():                       # 奖励不回传梯度
-        for i in range(0, bsz, decode_chunk_size):
-            p = pred_latents[i:i+decode_chunk_size]      # [b,F,C,H,W]
-            t = true_latents[i:i+decode_chunk_size]
-            if use_mae:
-                mae = F.l1_loss(p, t, reduction=&#x27;none&#x27;).mean(dim=[2,3,4])  # [b,F]
-                all_mae.append(-mae)                                # 负 L1 作奖励
-            if use_cosine:
-                pf = p.view(p.shape[0], num_frames, -1)             # [b,F,C*H*W]
-                tf = t.view(t.shape[0], num_frames, -1)
-                cos = (F.normalize(pf, dim=-1) * F.normalize(tf, dim=-1)).sum(-1)  # [b,F]
-                all_cos.append(cos)
-    reward = mae_weight*torch.cat(all_mae) + cosine_weight*torch.cat(all_cos)  # [B,F]
-    return reward                               # 逐帧奖励，训练时再按帧平均/求和</code></pre>
-<p>注意：repo 里另有 <code>pixel_reward_fn</code>——先 <code>vae.decode</code> 再算 MAE + <strong>LPIPS</strong>（感知奖励），用于需要像素感知差异的场景；默认的 <code>latent_reward_fn</code> 不解码，省算力。</p>
-<h4 id="③-grpo-更新-逐行注释">③ GRPO 更新：逐行注释</h4>
-<p>源码（<code>step1_train_svd_grpo.py</code>）：</p>
-<pre><code class="language-python"># 组归一化优势：同一观测的 G=8 条想象里，谁更接近专家
-rewards = rewards.reshape(sample_batch_size, num_generations, num_frames)  # [B,G,F]
-advantages = (rewards - rewards.mean(dim=1, keepdim=True)) \
-             / (rewards.std(dim=1, keepdim=True) + 1e-8)                   # [B,G,F]
-# ↑ 物理：没有 critic，用「同组平均」当基线——这就是 GRPO 与 PPO 的区别
+<p><strong>输入 / 输出（物理）</strong>：输入=专家视频（SVD VAE 潜 <code>[B,F,C,H,W]</code>）+ SFT 后的视频预测器 VPM；输出=后训练 VPM（动作侧冻结）。</p>
+<p><strong>变量表</strong></p>
+<table><thead><tr><th>变量</th><th>形状</th><th>物理意义</th></tr></thead><tbody><tr><td><code>z0</code></td><td><code>[B,F,C,H,W]</code></td><td>初始噪声（F 帧未来）</td></tr><tr><td><code>traj</code></td><td><code>[G,B,F,C,H,W]</code></td><td>G 条「想象出的未来」</td></tr><tr><td><code>logp</code></td><td><code>[B,C]</code></td><td>首步 SDE 的对数概率（策略梯度用）</td></tr><tr><td><code>r</code></td><td><code>[B,G,F]</code></td><td>逐帧奖励：−L1+cosine</td></tr><tr><td><code>adv</code></td><td><code>[B,G,F]</code></td><td>组归一化优势</td></tr></tbody></table>
+<p><strong>公式与物理意义</strong></p>
+<ul><li>采样（ancestral）：<code>x_{k+1}=x_k+derivative·dt+noise·σ_up</code>——<strong>确定漂移 + 随机注入</strong>；σ 大时多注入（探索），σ 小时收敛。</li><li>奖励：<code>r=−L1(pred,expert)+cos(pred,expert)</code>——<strong>结构像 + 方向像</strong>。</li><li>GRPO：<code>A=(r−mean_G)/std_G</code>——<strong>同组比较</strong>；<code>loss=min(ρA, clip(ρ)A)</code>——<strong>悲观截断</strong>。</li></ul>
+<p><strong>代码（逐步物理注释）</strong></p>
+<pre><code class="language-python"># ── ① 采样：G 条未来；只有首步 SDE 有随机性与 log-prob ─────────────
+def rollout_group(vpm, z0, cond, G=8, steps=20):
+    trajs, logps = [], []
+    for g in range(G):
+        z, logp = z0.clone(), 0.0
+        for i, t in enumerate(scheduler.timesteps(steps)):
+            if i == 0:                                   # 首步：真采样噪声（SDE）
+                z, logp = eas_step_with_logprob(vpm, z, t, cond)
+            else:                                        # 其余：确定性 Euler（ODE）
+                z = euler_step(vpm, z, t, cond)
+        trajs.append(z); logps.append(logp)
+    return trajs, logps
 
-# 重要性比：当前策略 vs 采样时策略，对同一条轨迹的概率比
-ratio = torch.exp(log_prob - batch_log_probs)          # π_new / π_old，标量/张量
-clipped_ratio = torch.clamp(ratio, 1.0 - clip_range, 1.0 + clip_range)  # 0.8~1.2
-# 截断代理：min(未截断, 截断) = 悲观估计，防止单步更新过猛
-unclipped_loss = -advantages * ratio                   # 优势&gt;0 时希望 ratio 变大
-clipped_loss   = -advantages * clipped_ratio
-loss = torch.mean(torch.minimum(unclipped_loss, clipped_loss))
-# 诊断指标（不参与反传）
-approx_kl = 0.5 * torch.mean((log_prob - batch_log_probs) ** 2)        # 策略漂移
-clipfrac  = torch.mean((torch.abs(ratio - 1.0) &gt; clip_range).float())  # 被截断比例</code></pre>
-<ul><li><strong>优势&gt;0</strong>：这条想象比组内平均更接近专家 → 提高其概率（ratio↑）；<strong>优势&lt;0</strong> → 压低；</li><li><strong>为什么取 min</strong>：未截断项在 ratio 很大时仍线性增长，可能被单条样本带飞；截断项把它压住，取 min 得到保守更新（PPO 的标准做法）；</li><li><strong><code>clip_range=0.2</code>、<code>adv_clip_max=2.0</code>、<code>lr=1e-6</code>、<code>G=8</code>、<code>I=20 步</code>、<code>guidance=7.5</code></strong>：均来自 <code>scripts/train_calvin_svd_grpo.sh</code> 的实参；</li><li><strong><code>log_prob</code> 从哪来</strong>：首步 SDE 的 <code>eas_step_with_logprob</code> 返回值（见 ①），后续 ODE 步没有 log-prob。</li></ul>
-<pre><code class="language-python"># 训练主干（按源码结构）
-def grpo_step(vpm, expert_latents, cond, G=8, steps=20, clip=0.2):
-    z0 = randn_like(expert_latents)                 # 共享初始噪声 [B,F,C,H,W]
-    trajs, logps = rollout_group(vpm, z0, cond, G, steps)   # 只首步 SDE
-    r   = latent_reward_fn(torch.stack(trajs), expert_latents)  # [B,G,F]
-    adv = (r - r.mean(1, keepdim=True)) / (r.std(1, keepdim=True) + 1e-8)
-    loss = clipped_surrogate(vpm, trajs, logps, adv, clip)     # 见上
-    vpm.update(loss)                                # 只更新 VPM；VAE/文本编码器冻结</code></pre>
+# ── ② 奖励：潜空间一致性（不解码像素）──────────────────────────
+def latent_reward(pred_latents, expert_latents):
+    &quot;&quot;&quot;L1 管结构（物体在哪、多大）；cosine 管方向（整体变化趋势）。&quot;&quot;&quot;
+    mae    = l1(pred_latents, expert_latents).mean(dim=[2,3,4])   # [B,F]
+    cosine = cosine_sim(pred_latents.flatten(2), expert_latents.flatten(2))
+    return -mae + cosine                              # 逐帧奖励
+
+# ── ③ 更新：组优势 + 截断代理 ──────────────────────────────────
+def grpo_update(vpm, trajs, logps, expert_latents, clip=0.2):
+    r   = [latent_reward(z, expert_latents) for z in trajs]        # [G,B,F]
+    adv = (r - mean(r)) / (std(r) + 1e-8)                          # 组归一化
+    loss = 0
+    for z, lp, a in zip(trajs, logps, adv):
+        ratio = exp(new_logprob(vpm, z) - lp)                      # π_new/π_old
+        loss += min(-a*ratio, -a*clip(ratio, 1-clip, 1+clip))      # 悲观截断
+    vpm.update(loss)                                  # 只更新 VPM</code></pre>
 <h3 id="2-3-eva-idm-动作平滑度奖励-flow-grpo">2.3 EVA：IDM 动作平滑度奖励 + Flow-GRPO</h3>
-<p><strong>代码解读</strong></p>
-<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>把生成视频解码成关节角，惩罚抖动/急加速/超限——机械臂真实执行时最容易出问题的三种运动。</td></tr><tr><td>为什么这么做</td><td>视频看着合理不代表能动；用冻结 IDM 把「画面质量」翻译成「动作可执行性」，补上执行性 gap。</td></tr><tr><td>方法出处</td><td>论文 §4.2–4.3（Eq.3–7）；<strong>无官方代码，依论文重建</strong>；Flow-GRPO 谱系来自 GRPO 在扩散/流模型上的适配。</td></tr><tr><td>优势与代价</td><td>优势：奖励无需真机、物理可解释；代价：依赖 IDM 精度，平滑奖励可被「不动」骗过（用限幅惩罚堵）。</td></tr></tbody></table>
+<p><strong>输入 / 输出（物理）</strong>：输入=生成视频 + 冻结 IDM；输出=生成器 LoRA 的梯度。</p>
+<p><strong>变量表</strong></p>
+<table><thead><tr><th>变量</th><th>形状</th><th>物理意义</th></tr></thead><tbody><tr><td><code>q</code></td><td><code>[T,D]</code></td><td>IDM 解码的关节序列（T 帧，D 关节）</td></tr><tr><td><code>v,a,j</code></td><td><code>[T−1,D]</code> 等</td><td>速度/加速度/jerk</td></tr><tr><td><code>R</code></td><td>标量</td><td>动作质量奖励</td></tr></tbody></table>
+<p><strong>公式与物理意义</strong>：<code>R=−(λj·Huber(j)+λα·Huber(a)+λv·max(|v|−vmax,0)²+λa·max(|a|−amax,0)²)</code>——<strong>惩罚抖动、急加速、越限</strong>；限幅项专门堵「不动骗奖励」。</p>
+<p><strong>代码（逐步物理注释）</strong></p>
 <pre><code class="language-python">def eva_reward(video, idm, vmax, amax, lam):
-    &quot;&quot;&quot;物理：q 为关节序列；v/a/j 是速度/加速度/jerk。
-    平滑项抑制抖动，限幅项抑制超速。&quot;&quot;&quot;
-    q = idm.decode(video)
-    v = diff(q); a = diff(v); j = diff(a)
+    &quot;&quot;&quot;① 解码成关节序列；② 差分出速度/加速度/jerk；③ 加权惩罚。&quot;&quot;&quot;
+    q = idm.decode(video)                     # [T,D]
+    v = diff(q); a = diff(v); j = diff(a)     # 运动学量
     return -(lam.j*huber(j) + lam.a*huber(a)
              + lam.v*relu(abs(v)-vmax).pow(2)
-             + lam.a2*relu(abs(a)-amax).pow(2))
+             + lam.a2*relu(abs(a)-amax).pow(2))   # 标量奖励
 
 def flow_grpo_step(gen, videos, prompts):
-    &quot;&quot;&quot;物理：同一提示词多生成，谁动作更平滑就强化谁；KL 防止丢画面先验。&quot;&quot;&quot;
+    &quot;&quot;&quot;④ 组内比较；⑤ KL 防止丢掉预训练画面先验。&quot;&quot;&quot;
     rs  = [eva_reward(v, idm) for v in videos]
     adv = (rs - mean(rs)) / (std(rs) + 1e-8)
     gen.update(clipped_surrogate(adv, ratio) - beta * KL(gen, gen_ref))  # 仅 LoRA</code></pre>
 <h3 id="2-4-creflow-ltl-稀疏奖励-diffusionnft-corrective-reflow">2.4 CreFlow：LTL 稀疏奖励 + DiffusionNFT + corrective reflow</h3>
-<p><strong>输入 / 输出</strong>：输入=rollout 视频、离线合成的 LTLf 规格、冻结的参考策略（Vidar）；输出=生成器梯度（监视器、IDM 冻结）。 <strong>代码解读</strong></p>
-<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>用线性时序逻辑检查「抓取→移动→放下」是否按顺序完成；违例帧就是不能学的区域。</td></tr><tr><td>为什么这么做</td><td>稀疏成功奖励下，失败 rollout 不能整段模仿；把失败样本推向同组成功样本的均值，给出物理可执行的改进方向。</td></tr><tr><td>方法出处</td><td>论文 §3–§4.3（Eq.2–9）；<strong>无官方代码，依论文重建</strong>；NFT 谱系来自 DiffusionNFT，reflow 来自 Rectified Flow。</td></tr><tr><td>优势与代价</td><td>优势：只用二值奖励就能训、更新被限制在违例区；代价：需要离线合成 LTL 规格，规格错了奖励就错。</td></tr></tbody></table>
-<h4 id="公式逐条-eq-5-eq-9-分别在说什么">公式逐条：Eq.5–Eq.9 分别在说什么</h4>
-<table><thead><tr><th>公式</th><th>内容</th><th>物理意义</th></tr></thead><tbody><tr><td><strong>Eq.(5)</strong> <code>(r,𝒱,𝒮)=ℳ_c(x0;y)</code></td><td>LTL 监视器输出：二值奖励 <code>r∈{0,1}</code>、违例 witness <code>𝒱</code>（哪一帧违反哪条子句）、实体 mask <code>𝒮</code>（SAM3 跟踪的物体）</td><td>「这一遍到底错在哪一帧、哪个物体上」——不是只给一个 0/1</td></tr><tr><td><strong>Eq.(6)</strong> <code>M = M_T ⊗ M_S</code></td><td>组共享掩码：<code>M_T=⋃</code> 失败子句的帧，<code>M_S=⋃</code> 全部 rollout 的实体 mask</td><td>只在「出错的时空区域」加梯度；整组都成功时 <code>M≡0</code>，等价于组相对优势为 0（不更新）</td></tr><tr><td><strong>Eq.(7)</strong> <code>L_CA-NFT(θ)=E[r‖M⊙(v⁺−v̂)‖²+(1−r)‖M⊙(v⁻−v̂)‖²]</code></td><td>带掩码的 NFT 损失；<code>v⁺=(1−β)v_old+βv_θ</code>（正分支），<code>v⁻=(1+β)v_old−βv_θ</code>（负分支）</td><td>好样本：把速度场往「数据速度 <code>v̂</code>」拉；坏样本：把速度场<strong>反射</strong>着推离——用模型自身构造正负分支，不需要奖励模型或偏好对</td></tr><tr><td><strong>Eq.(8)</strong> `x̄₀⁺ := (1/</td><td>P</td><td>)Σ_{j∈P} x₀^(j)`</td><td>组内<strong>成功样本</strong>的干净潜均值（<code>P</code>=成功集合）</td><td>「同一指令下，成功的样子平均长什么样」——给失败样本一个具体的靠拢目标</td></tr><tr><td><strong>Eq.(9)</strong> <code>L_CR(θ)=E_{i∈N}‖M⊙(x̂₀^(i)−x̄₀⁺)‖²</code></td><td>corrective reflow：失败样本的单步 <code>x0</code> 预测 <code>x̂₀=x_t−t·v_θ</code> 拉向 <code>x̄₀⁺</code></td><td>「别只告诉我错，告诉我该往哪走」；只对失败样本 <code>N</code>，且只在掩码区</td></tr></tbody></table>
-<p><strong>为什么 Eq.(8) 不能换成「最近的成功样本」</strong>：论文原话（§4.3）用组内均值是「within-condition positive mean 的无偏估计」，而「nearest-positive selection」会引入 matching bias（挑到谁取决于度量，方差更大、容易过拟合到单条轨迹）。</p>
-<p><strong>为什么 Eq.(7) 要取 min/反射而不是直接回归</strong>：直接对失败样本回归会「学会失败」；反射分支让更新方向与坏样本相反。<strong>为什么 Eq.(9) 只对失败样本</strong>：成功样本已经在 <code>x̄₀⁺</code> 里，重复约束没有增益，还会压制多样性。</p>
-<h4 id="代码-eq-5-9-逐行对应">代码（Eq.5–9 逐行对应）</h4>
+<p><strong>输入 / 输出（物理）</strong>：输入=rollout 视频 + 离线 LTLf 规格 + 冻结参考 Vidar；输出=生成器梯度。</p>
+<p><strong>公式逐条与物理意义</strong></p>
+<table><thead><tr><th>公式</th><th>内容</th><th>物理意义</th></tr></thead><tbody><tr><td>Eq.(5)</td><td><code>(r,𝒱,𝒮)=ℳ_c(x0;y)</code></td><td>哪一帧违反了哪条时序约束、涉及哪个物体</td></tr><tr><td>Eq.(6)</td><td><code>M = M_T ⊗ M_S</code></td><td>只在「出错的帧 × 相关物体」上加梯度；整组成功则 M≡0</td></tr><tr><td>Eq.(7)</td><td><code>L_CA-NFT = E[r‖M⊙(v⁺−v̂)‖²+(1−r)‖M⊙(v⁻−v̂)‖²]</code></td><td>好样本拉向数据速度；坏样本<strong>反射</strong>推开；<code>v⁺=(1−β)v_old+βv_θ</code>、<code>v⁻=(1+β)v_old−βv_θ</code></td></tr><tr><td>Eq.(8)</td><td><code>x̄₀⁺ = mean_{j∈P} x₀^(j)</code></td><td>同条件下成功样本的「平均结局」，给失败样本一个具体靠拢点</td></tr><tr><td>Eq.(9)</td><td><code>L_CR = E_{i∈N}‖M⊙(x̂₀^(i)−x̄₀⁺)‖²</code></td><td>失败样本单步反推 x0 → 拉向成功均值；只对失败集</td></tr></tbody></table>
+<p><strong>代码（逐步物理注释）</strong></p>
 <pre><code class="language-python">def ltl_monitor(video, spec):
-    &quot;&quot;&quot;Eq.5：返回 (r, witness, entity_masks)。
-    r∈{0,1}；witness=违例的帧/子句；masks=SAM3 实体 mask（[T,H,W]）。&quot;&quot;&quot;
-    return spec.check(frames(video))          # ℳ_c(x0;y)
+    &quot;&quot;&quot;① 把视频提升成「实体状态轨迹」，逐子句验证。&quot;&quot;&quot;
+    return spec.check(frames(video))          # (r, witness, entity_masks)（Eq.5）
 
 def group_mask(witnesses, entity_masks):
-    &quot;&quot;&quot;Eq.6：组共享掩码 = 违例帧 ⊗ 相关实体。
-    物理：只惩罚『错的那几帧、那几个物体』；整组全成功 → M=0，训练自动跳过。&quot;&quot;&quot;
+    &quot;&quot;&quot;② 时间掩码 ∪ 实体掩码 → 组共享 mask（Eq.6）。&quot;&quot;&quot;
     M_T = union_frames(witnesses)             # [T]
-    M_S = union_entities(entity_masks)        # [T,H,W] 或 token 级
-    return M_T.view(-1, 1, 1) * M_S           # [T,H,W]
+    M_S = union_entities(entity_masks)        # [T,H,W]
+    return M_T.view(-1, 1, 1) * M_S
 
 def ca_nft_loss(vpm, x_t, v_hat, r, M, beta):
-    &quot;&quot;&quot;Eq.7：credit-aware NFT。
-    v_hat = 数据速度（ε−x0）；v_θ = 模型输出；v_old = 采样时策略（stop-grad）。&quot;&quot;&quot;
-    v_plus  = (1 - beta) * v_old + beta * v_theta        # 正分支：更靠近数据
-    v_minus = (1 + beta) * v_old - beta * v_theta        # 负分支：反射离开坏样本
-    loss_pos = r       * (M.unsqueeze(0) * (v_plus  - v_hat)).pow(2)   # r=1 的样本
-    loss_neg = (1 - r) * (M.unsqueeze(0) * (v_minus - v_hat)).pow(2)   # r=0 的样本
+    &quot;&quot;&quot;③ 正分支强化好样本；负分支反射坏样本；只在 mask 区梯度。&quot;&quot;&quot;
+    v_plus  = (1 - beta) * v_old + beta * v_theta
+    v_minus = (1 + beta) * v_old - beta * v_theta
+    loss_pos = r       * (M.unsqueeze(0) * (v_plus  - v_hat)).pow(2)
+    loss_neg = (1 - r) * (M.unsqueeze(0) * (v_minus - v_hat)).pow(2)
     return (loss_pos + loss_neg).mean()
 
 def corrective_reflow(vpm, rollouts, rewards, M, t):
-    &quot;&quot;&quot;Eq.8 + Eq.9：失败样本向组内成功均值纠正。&quot;&quot;&quot;
-    # Eq.8：成功 rollout 的干净潜均值（同一指令下的『平均成功结局』）
-    x0_pos = [r.x0 for r in rollouts if r.reward == 1]          # 每个 [C,F,H,W]
-    x_bar_pos = torch.mean(torch.stack(x0_pos), dim=0)
+    &quot;&quot;&quot;④ 成功均值；⑤ 失败样本单步 x0 向均值靠拢（Eq.8/9）。&quot;&quot;&quot;
+    x0_pos = [r.x0 for r in rollouts if r.reward == 1]
+    x_bar_pos = mean(x0_pos)
     loss = 0.0
     for r in rollouts:
-        if r.reward != 0:            continue                    # 只对失败样本 N
-        x0_hat = r.x_t - t * vpm(r.x_t, t, r.cond)              # 单步反推 x0
-        loss = loss + (M.unsqueeze(0) * (x0_hat - x_bar_pos)).pow(2).mean()   # Eq.9
-    return loss
-
-# 总目标（§4.3）：两项 + 到冻结参考 Vidar 的 KL，λ/β 论文未给
-loss = ca_nft_loss(...) + lambda_cr * corrective_reflow(...) \
-       + beta_kl * KL(gen, vidar_ref)</code></pre>
+        if r.reward != 0: continue
+        x0_hat = r.x_t - t * vpm(r.x_t, t, r.cond)
+        loss = loss + (M.unsqueeze(0) * (x0_hat - x_bar_pos)).pow(2).mean()
+    return loss</code></pre>
 <h3 id="2-5-worldvln-自回归-wam-的段级-grpo">2.5 WorldVLN：自回归 WAM 的段级 GRPO</h3>
-<p><strong>输入 / 输出</strong>：输入=在线模拟器、真实观测流、目标（goal）、同一 goal 下的多段 rollout；输出=自回归 WAM 的策略梯度。 <strong>代码解读</strong></p>
-<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>段末用真实观测替换模型想象的潜状态，防止长程想象误差累积（世界模型只有短程可信）。</td></tr><tr><td>为什么这么做</td><td>导航奖励稀疏且长程；拆成段、每段组内比较，能把「哪一段走得更好」变成可学信号。</td></tr><tr><td>方法出处</td><td>论文 §4.2–4.3（Eq.9–13）；<strong>无官方代码，依论文重建</strong>；段级 GRPO 谱系来自 GRPO 的 segment-level 变体。</td></tr><tr><td>优势与代价</td><td>优势：真观测回灌显著缓解漂移；代价：需要在线模拟器与真实观测流同步，λ/G/γ 数值未给。</td></tr></tbody></table>
-<h4 id="奖励-r_j-怎么算-eq-9-12-三项各管什么">奖励 <code>r_j</code> 怎么算（Eq.9–12）：三项各管什么</h4>
-<table><thead><tr><th>项</th><th>公式（论文 §4.2）</th><th>物理意义</th><th>少了它会怎样</th></tr></thead><tbody><tr><td><code>r_traj</code></td><td><code>1/(1+‖a−a*‖)</code></td><td><strong>轨迹项</strong>：预测的动作/路点与专家动作 <code>a*</code> 的距离；越像越高</td><td>只学「到终点」，可能学会绕路/危险捷径</td></tr><tr><td><code>r_task</code></td><td><code>1/(1+终点距目标)</code></td><td><strong>任务项</strong>：段末位置离目标越近越高</td><td>只学「像专家」，换目标就失效</td></tr><tr><td><code>r_ref</code></td><td>`log π_ref(a</td><td>s)`</td><td><strong>参考项</strong>：参考策略（SFT/预训练策略）下该动作的对数概率</td><td>策略漂到参考分布外，泛化崩（相当于 KL 约束的奖励版）</td></tr></tbody></table>
-<p>合成方式（Eq.12）：</p>
-<p><code>r_j = γ^{j−1} · (λ_traj·r_traj + λ_task·r_task + λ_ref·r_ref)</code></p>
-<ul><li><code>j</code> 是段序号（第 1 段最早）；<code>γ^{j−1}</code> 让<strong>越早的段权重越大</strong>——后面的段还能纠，前面的段错了代价更高；</li><li><code>λ_*</code> 是三项权重，<strong>数值论文未给</strong>；距离用哪种范数（L1/L2）论文未逐字写明；</li><li><code>a*</code> 的来源：专家轨迹（或规划器给出的参考路径），具体定义见论文 §4.2。</li></ul>
-<h4 id="a-是什么-有什么用"><code>A</code> 是什么、有什么用</h4>
-<p><code>A_j = (r_j − mean_group(r)) / (std_group(r) + ε)</code></p>
-<ul><li><strong>是什么</strong>：段级<strong>组相对优势</strong>——把「这一段的奖励」减去「同一 goal 下所有段的平均奖励」，再除以标准差。GRPO 用它代替 critic/价值网络（PPO 需要学一个 value 基线，GRPO 用组均值当基线）。</li><li><strong>有什么用</strong>：给策略更新<strong>定方向与幅度</strong>：</li><li><code>A_j &gt; 0</code>：这一段比同组平均好 → 提高该段动作的概率；</li><li><code>A_j &lt; 0</code>：比平均差 → 降低概率；</li><li>幅度由「好多少（以标准差为单位）」决定，组内比较消除了任务难度带来的绝对分数差异（同一个 goal 的段才可比）。</li><li><strong>注意</strong>：<code>A</code> 不是价值、不是回报，是<strong>归一化后的相对优势</strong>；它只出现在策略损失里，不参与环境交互。</li></ul>
-<h4 id="代码-含逐行注释">代码（含逐行注释）</h4>
+<p><strong>输入 / 输出（物理）</strong>：输入=在线模拟器、真实观测流、目标；输出=整段动作的策略梯度。</p>
+<p><strong>变量表 / 公式</strong></p>
+<table><thead><tr><th>变量</th><th>形状</th><th>物理意义</th></tr></thead><tbody><tr><td><code>seg</code></td><td><code>[H_a,d_a]</code></td><td>一个段的动作块</td></tr><tr><td><code>r_traj</code></td><td>标量</td><td>与专家轨迹相似度 <code>1/(1+‖a−a*‖)</code></td></tr><tr><td><code>r_task</code></td><td>标量</td><td>终点离目标 <code>1/(1+d)</code></td></tr><tr><td><code>r_ref</code></td><td>标量</td><td>参考策略对数概率 <code>log π_ref</code></td></tr><tr><td><code>r_j</code></td><td>标量</td><td><code>γ^{j−1}(λ_traj r_traj+λ_task r_task+λ_ref r_ref)</code></td></tr><tr><td><code>A_j</code></td><td>标量</td><td>组相对优势 <code>(r_j−mean)/std</code></td></tr></tbody></table>
+<p><strong>代码（逐步物理注释）</strong></p>
 <pre><code class="language-python">def worldvln_step(model, segs, goal, gamma, lam):
-    &quot;&quot;&quot;segs：同一 goal 下的 J 个段（每段含动作 a、段末状态 end）。
-    物理：组内比较「哪段走得更好」，用真观测回灌避免长程漂移。&quot;&quot;&quot;
+    &quot;&quot;&quot;① 逐段算三项奖励；② 段间时间衰减；③ 组归一化优势；④ 截断代理。&quot;&quot;&quot;
     R = []
     for j, seg in enumerate(segs, start=1):
-        r_traj = 1.0 / (1.0 + dist(seg.a, seg.a_star))   # 像不像专家轨迹
-        r_task = 1.0 / (1.0 + dist(seg.end, goal))       # 离目标多近
-        r_ref  = logp_ref(seg.a, seg.s)                  # 参考策略锚定（KL 的奖励版）
-        R.append(gamma**(j-1) * (lam.traj*r_traj
-                                 + lam.task*r_task
-                                 + lam.ref*r_ref))       # Eq.(12)
-    R = torch.tensor(R)
-    A = (R - R.mean()) / (R.std() + 1e-8)                # 组相对优势（无 critic）
-    ratio = torch.exp(logp_new - logp_old)               # 段级重要性比
-    loss = -torch.min(ratio * A,
-                      torch.clamp(ratio, 1-0.2, 1+0.2) * A).mean()   # Eq.(13) 截断代理
+        r_traj = 1/(1 + dist(seg.a, seg.a_star))     # 像专家
+        r_task = 1/(1 + dist(seg.end, goal))         # 到目标
+        r_ref  = logp_ref(seg.a, seg.s)              # 别漂
+        R.append(gamma**(j-1) * (lam.traj*r_traj + lam.task*r_task + lam.ref*r_ref))
+    R = tensor(R)
+    A = (R - R.mean()) / (R.std() + 1e-8)            # 组相对优势
+    loss = -min(ratio*A, clip(ratio, .8, 1.2)*A).mean()
     model.update(loss)</code></pre>
-<h4 id="与-vampo-的-grpo-有什么不同">与 VAMPO 的 GRPO 有什么不同</h4>
-<table><thead><tr><th></th><th>VAMPO</th><th>WorldVLN</th></tr></thead><tbody><tr><td>优化对象</td><td>视频预测器（VPM）</td><td>自回归 WAM 的策略（整段动作）</td></tr><tr><td>比较单位</td><td>一次去噪轨迹（<code>G</code> 条想象）</td><td>一个段（<code>J</code> 段 rollout）</td></tr><tr><td>奖励</td><td>与专家未来的潜距离</td><td>轨迹 + 任务 + 参考三项加权</td></tr><tr><td>基线</td><td>组内均值（G 条）</td><td>组内均值（J 段）</td></tr><tr><td>特殊点</td><td>只首步 SDE 才有 log-prob</td><td>真观测回灌（防长程漂移）</td></tr></tbody></table>
 <hr>
-<h2 id="3-闭环训练-六类实现">3. 闭环训练：六类实现</h2>
-<h3 id="3-1-hilr-人机接力">3.1 HILR：人机接力</h3>
-<p><strong>代码解读</strong></p>
-<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>只在「机器人快做错」的边界上由人示范，样本价值远高于随机演示。</td></tr><tr><td>为什么这么做</td><td>纯自主 rollout 会反复犯同样的错；人的介入点正是策略的分布边界，最值得学。</td></tr><tr><td>方法出处</td><td>GigaBrain §3.2.2 Stage 3；<strong>无官方代码，依论文重建</strong>；谱系来自 DAgger（干预式数据采集）。</td></tr><tr><td>优势与代价</td><td>优势：样本效率高；代价：依赖人力和接管时机，切换抖动必须剔除。</td></tr></tbody></table>
+<h2 id="3-六类闭环训练">3. 六类闭环训练</h2>
+<h3 id="3-1-hilr-human-in-the-loop-rollout">3.1 HILR（Human-in-the-Loop Rollout）</h3>
+<p><strong>输入/输出（物理）</strong>：输入=策略、环境、人类接管策略；输出=带干预标记的轨迹（已剔除切换抖动）。 <strong>为什么</strong>：自主执行的动作分布贴近部署分布（比遥操作更有效），但失败需要人纠正；切换瞬间的突变必须剔除。</p>
 <pre><code class="language-python">def hilr_episode(policy, env, human):
-    &quot;&quot;&quot;物理：切换瞬间动作会突变，必须剔除，否则策略学到不连续动作。&quot;&quot;&quot;
-    traj, intervened = [], False
-    while True:
-        obs = env.observe()
-        if human.takeover(obs):
-            a, intervened = human.act(obs), True
-        else:
-            a = policy.act(obs)
-        traj.append((obs, a, intervened))
-        nxt, done = env.step(a)
-        if done: break
-    return scrub_switch_artifact(traj)</code></pre>
-<h3 id="3-2-dagger-式恢复数据-xpace">3.2 DAgger 式恢复数据（XPACE）</h3>
-<p><strong>DAgger 全称</strong>：<strong>Dataset Aggregation</strong>（Ross, Gordon, Bagnell, AISTATS 2011）。</p>
-<p><strong>为什么需要它（物理直觉）</strong>：行为克隆只在专家轨迹上训练；部署时机器人一旦偏离，就会进入<strong>专家从没去过的状态</strong>，误差越滚越大（covariate shift）。DAgger 的核心是：<strong>在策略自己会去到的状态上，向专家要标签</strong>，再把这些状态-动作聚合回训练集。</p>
-<p><strong>算法（Ross et al. 2011，标准 DAgger）</strong></p>
-<pre><code class="language-python"># 输入：专家策略 π*、初始演示数据 D、迭代轮数 N
-# 输出：在「策略自己访问到的状态分布」上也能正确动作的策略 π
-def dagger(expert, D, N):
-    pi = train_bc(D)                        # ① 先行为克隆
+    &quot;&quot;&quot;① 策略跑；② 人判断要接管就由人给动作；③ 记录干预标记；④ 去边界伪影。&quot;&quot;&quot;
+    traj, obs, done = [], env.reset(), False
+    while not done:
+        a = policy.act(obs)
+        flag = 0
+        if human.wants_control(obs):          # 人判断：快失败
+            a, flag = human.act(obs), 1
+        traj.append((obs, a, flag))
+        obs, done = env.step(a)
+    return scrub(traj)                        # 剔除切换边界</code></pre>
+<h3 id="3-2-dagger-dataset-aggregation-与-xpace-的恢复数据">3.2 DAgger（Dataset Aggregation）与 XPACE 的恢复数据</h3>
+<p><strong>DAgger 算法（Ross et al., 2011）</strong>：① 行为克隆初始化；② 用学生跑、收集它访问的状态；③ 在这些状态上问专家要动作；④ 聚合数据；⑤ 重训。</p>
+<pre><code class="language-python">def dagger(expert, D, N):
+    &quot;&quot;&quot;输入：专家、初始数据；输出：在『学生状态分布』上也正确的策略。&quot;&quot;&quot;
+    pi = train_bc(D)                         # ① 初始克隆
     for i in range(N):
-        states = []                         # ② 用当前策略跑，收集它自己访问到的状态
-        for episode in rollouts(pi, env):
-            for s in episode.states:
-                states.append(s)
-        labels = [expert.act(s) for s in states]      # ③ 在这些状态上问专家要动作
-        D = D + list(zip(states, labels))             # ④ 聚合（Dataset Aggregation 的名字来源）
-        pi = train_bc(D)                    # ⑤ 在聚合数据上重训
+        states = rollout_states(pi)          # ② 学生自己会走到的状态（关键）
+        labels = [expert.act(s) for s in states]   # ③ 专家标签
+        D = D + list(zip(states, labels))    # ④ 聚合（名字来源）
+        pi = train_bc(D)                     # ⑤ 重训
     return pi</code></pre>
-<ul><li>关键点：<strong>状态分布来自学生、标签来自专家</strong>；<code>β_i</code> 混合（以概率 β 执行专家动作）只是稳定探索的变体；</li><li>物理意义：把「机器人实际会走到哪里」和「那里该怎么做」对齐，而不是只对齐「专家会走到哪里」。</li></ul>
-<p><strong>XPACE 的映射（工程版 DAgger）</strong></p>
-<table><thead><tr><th>DAgger 组件</th><th>XPACE 的实现</th></tr></thead><tbody><tr><td>学生状态分布</td><td>在专家轨迹附近<strong>注入偏差</strong>（inject deviation），模拟策略会偏离到的状态</td></tr><tr><td>专家标签</td><td>用<strong>模拟器推演恢复路径</strong>（deviation–recovery），得到「怎么回来」的动作</td></tr><tr><td>数据聚合</td><td>恢复数据只占约 <strong>8%</strong>，与专家演示混合</td></tr><tr><td>额外步骤</td><td><strong>一致性过滤</strong>：只保留物理一致的恢复轨迹（DAgger 原本没有）</td></tr></tbody></table>
-<pre><code class="language-python">def recovery_data(expert_traj, simulator, policy):
-    &quot;&quot;&quot;输入：专家轨迹；输出：deviation–recovery 恢复轨迹（用于混合微调）。
-    物理：制造『机器人实际会偏离到』的状态，再教它怎么回来。&quot;&quot;&quot;
-    sim = simulator.adapt_to(policy)              # 模拟器适配策略自己的视觉上下文
-    recs = []
-    for tau in expert_traj:
-        s_dev = inject_deviation(tau, scale=delta) # ① 学生状态：人为偏离
-        tau_rec = sim.rollout_recovery(s_dev)      # ② 专家标签：模拟器推演恢复动作
-        if consistency_filter(tau_rec):            # ③ 过滤：只留物理一致的
-            recs.append(tau_rec)
-    return recs                                    # ④ 聚合：与专家数据混合微调</code></pre>
-<p><strong>证据与边界</strong>：XPACE 摘要 + 项目页；恢复消融 61.7→86.7（<strong>异套件</strong>，不能与 68.3% 直接比）；无官方代码，以上为依论文描述的重建；<code>delta</code>、模拟器细节、过滤阈值论文未给。</p>
-<hr>
-<h3 id="3-3-失败数据闭环-fact-官方代码">3.3 失败数据闭环（FACT，<strong>官方代码</strong>）</h3>
-<p><strong>核心思想</strong>：把「该模仿什么」与「该预测什么」分开——<strong>失败轨迹的动作不学，但失败的后果（未来视频、进度）要学</strong>。论文原话："FACT first proposes an action, then predicts the future video and task-progress value conditioned on the executed action."</p>
-<p><strong>输入 / 输出</strong>：输入=成功演示 <code>D_s</code> + 失败 rollout <code>D_f</code>（带 episode 结果与失败起点）；输出=同时会「出动作、预测未来、估进度」的因果 WAM。</p>
-<h4 id="公式逐条-eq-1-10">公式逐条（Eq.1–10）</h4>
-<table><thead><tr><th>公式</th><th>内容</th><th>物理意义</th></tr></thead><tbody><tr><td><strong>Eq.(1)</strong> `p(a_{t:t+H}\</td><td>o_t,ℓ)`</td><td>标准策略：观测+指令 → 动作块</td><td>动作生成</td></tr><tr><td><strong>Eq.(2)</strong> `p(o'_{t:t+K}, v_t(a_{t:t+H})\</td><td>o_t,ℓ,a_{t:t+H})`</td><td><strong>动作条件</strong>的世界分支：给定动作，预测未来视频与进度值</td><td>「这个动作会导致什么后果」</td></tr><tr><td><strong>Eq.(3)</strong> <code>p_t = G_t/G_T ∈ [0,1]</code></td><td>归一化进度：累积进度/总进度；均匀奖励下 <code>p_t=t/T</code></td><td>跨不同长度 episode 可比的进度</td></tr><tr><td><strong>Eq.(4)</strong> `p(o', v(a_gt)\</td><td>o,ℓ,a_gt)`</td><td>teacher forcing：世界分支看<strong>干净的真动作</strong> <code>a_gt</code>，不看带噪的预测动作</td><td>把「动作模仿」与「后果预测」解耦</td></tr><tr><td><strong>Eq.(5)</strong> <code>z=[P_ref‖A_pred‖G_gt‖V_value‖I_future]</code></td><td>token 顺序：前缀、预测动作、真动作、价值、未来</td><td>注意力掩码的依据</td></tr><tr><td><strong>Eq.(6)</strong> <code>v_t = p_{t+H}</code>（成功）/ <code>clip(p_{t+H}−λ_fail·1_fail, 0, 1)</code>（失败）</td><td>失败时把进度目标<strong>下调</strong> <code>λ_fail</code>（=1）</td><td>「做了这个动作会失败」→ 进度值应更低</td></tr><tr><td><strong>Eq.(7)</strong> 流匹配损失（逐模态）</td><td>动作/价值/未来三路都用同一 flow-matching</td><td>统一训练</td></tr><tr><td><strong>Eq.(8)</strong> <code>L_s = w_a L_a + w_v L_v + w_I L_I</code></td><td>成功样本：三路都学</td><td>学行为 + 后果</td></tr><tr><td><strong>Eq.(9)</strong> <code>L_f = w_v L_v + w_I L_I</code></td><td>失败样本：<strong>去掉动作项</strong>，只学价值与未来</td><td>失败教「后果」，不教「动作」</td></tr><tr><td><strong>Eq.(10)</strong> <code>a* = argmax_k V_θ(o,ℓ,a^(k))</code></td><td>可选：采样 N 个候选动作，用进度值打分选最优</td><td>推理期用价值做 best-of-N</td></tr></tbody></table>
-<p><strong>注意力掩码（Figure 3 的要点）</strong>：训练时 <code>V</code>、<code>I</code> 只 attend 干净的 <code>G</code>，不 attend 带噪的 <code>A</code>；<code>A</code> 也看不到 <code>G</code>。这样失败样本的未来/价值监督不会污染动作分支。</p>
-<h4 id="代码-对应官方训练器">代码（对应官方训练器）</h4>
-<pre><code class="language-python"># 事实：FACT 训练器（world_action_model/trainer/wa_casual_trainer.py）
-action_loss_mask = batch_dict.get(&#x27;action_loss_mask&#x27;)       # 1=成功可模仿, 0=失败
+<p><strong>XPACE 的工程映射</strong>：注入偏差=学生状态；模拟器推演恢复=专家标签；恢复数据仅 ~8% 与专家混合；额外加<strong>一致性过滤</strong>。恢复消融 61.7→86.7（异套件）。</p>
+<h3 id="3-3-fact-失败数据闭环-官方代码">3.3 FACT：失败数据闭环（<strong>官方代码</strong>）</h3>
+<p><strong>输入/输出（物理）</strong>：输入=成功演示 + 失败 rollout（带结果与失败起点）；输出=同时会出动作、预测未来、估进度的因果 WAM。 <strong>核心</strong>：先动作、后后果；失败的动作不学，失败的后果要学。</p>
+<p><strong>公式与物理意义</strong></p>
+<table><thead><tr><th>公式</th><th>内容</th><th>物理意义</th></tr></thead><tbody><tr><td>Eq.(2)</td><td>`p(o',v\</td><td>o,l,a)`</td><td>动作条件的世界分支：这个动作导致什么</td></tr><tr><td>Eq.(3)</td><td><code>p_t=G_t/G_T</code>（均匀奖励 <code>t/T</code>）</td><td>跨 episode 可比的进度</td></tr><tr><td>Eq.(4)</td><td>世界分支看<strong>干净真动作</strong> <code>a_gt</code></td><td>动作模仿与后果预测解耦</td></tr><tr><td>Eq.(5)</td><td><code>z=[P_ref‖A_pred‖G_gt‖V_value‖I_future]</code></td><td>token 顺序；V/I 只看 G，A 看不到 G</td></tr><tr><td>Eq.(6)</td><td>成功 <code>v=p_{t+H}</code>；失败 <code>clip(p−λ_fail·1_fail,0,1)</code></td><td>失败动作的进度目标下调（λ_fail=1）</td></tr><tr><td>Eq.(8/9)</td><td>成功三路损失；失败只保留价值+未来</td><td>失败教后果，不教动作</td></tr><tr><td>Eq.(10)</td><td><code>a*=argmax V(o,l,a^(k))</code></td><td>推理期用价值做 best-of-N</td></tr></tbody></table>
+<pre><code class="language-python">action_loss_mask = batch[&#x27;action_loss_mask&#x27;]      # 1=成功, 0=失败
 def _masked_mean(loss, mask):
+    &quot;&quot;&quot;① 失败样本动作项置零（Eq.9）；价值/未来项不受影响。&quot;&quot;&quot;
     m = mask.reshape(-1)
-    return (loss * m).sum() / m.sum().clamp_min(1e-8)        # 失败样本动作项被剔除（Eq.9）
+    return (loss * m).sum() / m.sum().clamp_min(1e-8)
 
 def fact_train_step(batch, model):
-    &quot;&quot;&quot;物理：先动作、后后果。动作项只学成功；未来/价值项成功+失败都学。&quot;&quot;&quot;
-    pred_action, pred_value, pred_future = model(batch)       # 共享 DiT，动作 adapter
-    L_act = masked_mean(action_loss(pred_action, batch.a), batch.action_loss_mask)   # Eq.8/9
-    L_val = mse(pred_value, batch.value_target)               # Eq.6 的进度目标，全样本
+    &quot;&quot;&quot;② 三路损失：动作（掩码）、价值（全样本）、未来（全样本）。&quot;&quot;&quot;
+    pred_action, pred_value, pred_future = model(batch)
+    L_act = _masked_mean(action_loss(pred_action, batch.a), action_loss_mask)
+    L_val = mse(pred_value, batch.value_target)
     L_fut = flow_mse(pred_future, batch.future_latents)
-    return 20.0*L_act + 1.0*L_val + 1.0*L_fut                 # w_a=20, w_v=w_I=1（§3.3 实现细节）
-
-# 两阶段推理（§3.3）
-def fact_infer(obs, instruction, N=1):
-    &quot;&quot;&quot;Stage 1 只出动作；需要评估后果时进 Stage 2。&quot;&quot;&quot;
-    a = denoise_action(obs, instruction, steps=20)            # Stage 1
-    if N == 1: return a                                       # 动作单用，跳过世界分支
-    cands = [denoise_action(obs, instruction) for _ in range(N)]  # 候选
-    scores = [value_head(obs, instruction, c) for c in cands]     # Stage 2，Eq.10
-    return cands[argmax(scores)]</code></pre>
-<p><strong>实现细节（论文 §3.3）</strong>：Wan2.2-5B 初始化；动作 FFN 学习率 <code>2e-4</code>、骨干 <code>2e-5</code>；<code>w_a=20</code>、<code>w_v=w_I=1</code>；动作块 <code>H=48</code>；<code>λ_fail=1</code>；未来帧偏移 <code>[0, H/4, H/2, 3H/4, H]</code>；推理 20 步 flow-Euler。</p>
-<p><strong>为什么有效（物理）</strong>：成功数据让模型知道「怎么做对」，失败数据让模型知道「做错会看到什么、进度会掉多少」——后者的价值在于<strong>推理时能识别坏动作</strong>（Eq.10 的候选打分）。</p>
-<hr>
+    return 20.0*L_act + 1.0*L_val + 1.0*L_fut</code></pre>
 <h3 id="3-4-dreamavoid-混合数据价值模型-触发式-dreaming-官方代码">3.4 DreamAvoid：混合数据价值模型 + 触发式 dreaming（<strong>官方代码</strong>）</h3>
-<p><strong>代码解读</strong></p>
-<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>给「当前画面 + 这段动作 + 它导致的未来若干帧」打分，分数高≈不会失败。</td></tr><tr><td>为什么这么做</td><td>全时想象太贵；只在关键阶段（trigger 判断）才花算力做梦，平时直接执行。</td></tr><tr><td>方法出处</td><td>仓库 <code>XianzheFan/DreamAvoid</code>：<code>DreamDojo-da/examples/value_model.py</code>、<code>openpi-da/agilex/agilex_infer_dream_trigger.py</code>（源码级）。</td></tr><tr><td>优势与代价</td><td>优势：失败/边界数据都能进价值模型，推理可控成本；代价：需要关键阶段标注与触发阈值调参。</td></tr></tbody></table>
-<pre><code class="language-python"># 事实：ValueModel 源码
-class ValueModel(nn.Module):
-    &quot;&quot;&quot;物理：DINOv2 编码当前帧与未来帧；value token 汇总后与动作/任务/状态拼接。&quot;&quot;&quot;
+<p><strong>输入/输出（物理）</strong>：输入=当前 obs、候选动作块、预测未来帧、任务、状态；输出=标量价值（越高越不会失败）。</p>
+<pre><code class="language-python">class ValueModel(nn.Module):
+    &quot;&quot;&quot;① DINOv2 编码当前帧与未来帧；② value token 汇总；③ 与动作/任务/状态拼接。&quot;&quot;&quot;
     def forward(self, obs, future, action, state, task_id):
         obs_tok = encoder(obs) + frame_emb[0]
         fut_tok = encoder(future) + frame_emb[1] + time_emb[:L]
@@ -390,87 +248,63 @@ class ValueModel(nn.Module):
         return head(x).squeeze(-1)
 
 def dream_avoid_step(policy, value_model, obs, state, task):
-    &quot;&quot;&quot;物理：未到关键阶段直接执行；到关键阶段才采样候选、梦未来、选最高价值。&quot;&quot;&quot;
+    &quot;&quot;&quot;④ 未到关键阶段直接执行；⑤ 到关键阶段才采候选、梦未来、选最高价值。&quot;&quot;&quot;
     if not trigger(obs): return policy.act(obs)
     cands = [policy.sample_action(obs) for _ in range(8)]
     return max(cands, key=lambda a: value_model.score(
         obs, rollout_future(policy, obs, a), a, state, task))</code></pre>
 <h3 id="3-5-τ0-wm-propose-rcs-排序-模拟器精炼-官方代码">3.5 τ0-WM：propose → RCS 排序 → 模拟器精炼（<strong>官方代码</strong>）</h3>
-<p><strong>代码解读</strong></p>
-<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>一次生成 N 个候选动作块；RCS 判断哪个不是偶然采样；模拟器推演谁的未来回报高。</td></tr><tr><td>为什么这么做</td><td>单次采样不可靠，重去噪一致性是「可信度」的廉价代理；模拟器进一步按回报截断执行步数。</td></tr><tr><td>方法出处</td><td>仓库 <code>sii-research/tau-0-wm</code>：<code>web_infer_utils/posttrain_taco_play_withTTC/TauPolicyTTC.py</code>（源码级）；谱系来自 best-of-N + MPPI 式评估。</td></tr><tr><td>优势与代价</td><td>优势：推理期即闭环、无需训练；代价：N 倍算力，模拟器误差会传导。</td></tr></tbody></table>
-<pre><code class="language-python">def play(obs, state, N_proposals=8, RCS_timestep_ratios=[0.5]):
-    &quot;&quot;&quot;物理：RCS 高=更可信；模拟回报峰值决定执行几步。&quot;&quot;&quot;
+<p><strong>输入/输出（物理）</strong>：输入=观测、状态、候选数 N、RCS 比例、模拟器；输出=选中动作块（可截短执行步数）。</p>
+<pre><code class="language-python">def play(obs, state, N_proposals=8):
+    &quot;&quot;&quot;① 生成 N 个候选；② RCS 选最可信；③ 模拟器回报决定执行几步。&quot;&quot;&quot;
     pred = pipeline.infer(obs, state, N_proposals=N_proposals, get_RCS=True)
     cands, rcs = pred[&#x27;action&#x27;], pred[&#x27;rcs&#x27;]
-    best = cands[rcs.max(dim=0).indices]
+    best = cands[rcs.max(dim=0).indices]              # RCS 最高者
     if sim_refine:
         sim_rewards = sim_pipeline.infer(actions=cands, return_reward=True)
         if sim_rewards.max() &lt; 0:
-            best = re_predict_with_sim_latent(...)
+            best = re_predict_with_sim_latent(...)    # 全差 → 用模拟器潜重生成
         else:
             best = cands[best_idx, :argmax(sim_rewards)+1]
     return best</code></pre>
-<h3 id="3-6-语言教练-relabel-coachsi">3.6 语言教练 relabel（CoachSI）</h3>
-<p><strong>代码解读</strong></p>
-<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>机器人失败常因「不知道该干哪一步」，而不是「不会动」。</td></tr><tr><td>为什么这么做</td><td>用冻结 VLM 把成功轨迹切段命名，等于补上「下一步」监督，且不动动作骨干。</td></tr><tr><td>方法出处</td><td>CoachSI 摘要（长程 47.4→59.3）；<strong>无公开代码，依论文重建</strong>；谱系来自 hindsight relabeling。</td></tr><tr><td>优势与代价</td><td>优势：不改动作模型、成本低；代价：只解决指令接地，不解决技能本身。</td></tr></tbody></table>
+<h3 id="3-6-coachsi-语言教练-relabel">3.6 CoachSI：语言教练 relabel</h3>
+<p><strong>输入/输出（物理）</strong>：输入=冻结 VLM、成功轨迹、原指令；输出=带「下一步」标签的轨迹。</p>
 <pre><code class="language-python">def coach_relabel(traj, vlm, task):
-    &quot;&quot;&quot;物理：VLM 给每段轨迹命名下一步，作为新的指令监督。&quot;&quot;&quot;
+    &quot;&quot;&quot;① 切段；② VLM 命名下一步；③ 用命名做新监督。&quot;&quot;&quot;
     steps = [vlm.describe(seg.frames, task, &quot;next step?&quot;) for seg in segment(traj)]
     return [(seg.obs, seg.action, s) for seg, s in zip(segment(traj), steps)]</code></pre>
 <hr>
 <h2 id="4-六类闭环对照">4. 六类闭环对照</h2>
-<table><thead><tr><th>类</th><th>数据从哪来</th><th>奖励/信号</th><th>更新什么</th><th>代码</th></tr></thead><tbody><tr><td>HILR</td><td>人接管边界</td><td>无（模仿）</td><td>策略</td><td>无公开</td></tr><tr><td>DAgger 恢复</td><td>模拟器推演偏离-恢复</td><td>一致性过滤</td><td>策略</td><td>项目页</td></tr><tr><td>失败数据（FACT）</td><td>真机失败 rollouts</td><td>掩码 + 价值头</td><td>策略+价值</td><td><a href="https://github.com/Bariona/FACT">Bariona/FACT</a></td></tr><tr><td>混合价值（DreamAvoid）</td><td>成功/失败/边界</td><td>学出的价值模型</td><td>价值模型+推理选优</td><td><a href="https://github.com/XianzheFan/DreamAvoid">XianzheFan/DreamAvoid</a></td></tr><tr><td>模拟器精炼（τ0-WM）</td><td>候选动作 + 模拟器</td><td>RCS + 模拟回报</td><td>不更新（推理选优）</td><td><a href="https://github.com/sii-research/tau-0-wm">sii-research/tau-0-wm</a></td></tr><tr><td>语言教练（CoachSI）</td><td>成功轨迹</td><td>VLM 命名</td><td>指令跟随</td><td>项目页</td></tr></tbody></table>
+<table><thead><tr><th>类</th><th>数据从哪来</th><th>信号</th><th>更新什么</th><th>代码</th></tr></thead><tbody><tr><td>HILR</td><td>人接管边界</td><td>无（模仿）</td><td>策略</td><td>无公开</td></tr><tr><td>DAgger</td><td>学生访问状态 + 专家标签</td><td>专家动作</td><td>策略</td><td>无公开</td></tr><tr><td>失败数据（FACT）</td><td>真机失败 rollouts</td><td>掩码 + 价值</td><td>策略+价值</td><td><a href="https://github.com/Bariona/FACT">Bariona/FACT</a></td></tr><tr><td>混合价值（DreamAvoid）</td><td>成功/失败/边界</td><td>学出的价值</td><td>价值+推理选优</td><td><a href="https://github.com/XianzheFan/DreamAvoid">XianzheFan/DreamAvoid</a></td></tr><tr><td>模拟器精炼（τ0-WM）</td><td>候选 + 模拟器</td><td>RCS + 模拟回报</td><td>不更新（推理选优）</td><td><a href="https://github.com/sii-research/tau-0-wm">sii-research/tau-0-wm</a></td></tr><tr><td>语言教练（CoachSI）</td><td>成功轨迹</td><td>VLM 命名</td><td>指令跟随</td><td>项目页</td></tr></tbody></table>
 <hr>
 <h2 id="5-工程清单">5. 工程清单</h2>
-<ol><li><strong>奖励能否离线算</strong>？能 → 先做离线 GRPO；不能 → 才考虑在线 rollout。</li><li><strong>有没有失败数据</strong>？失败数据比成功数据稀缺，价值更高。</li><li><strong>防退化三件套</strong>：KL/参考锚定、优势裁剪、混合 SFT 损失。</li><li><strong>评测</strong>：成功率 + 完成时间 + 进度；报告相对 SFT 的增量。</li><li><strong>算力</strong>：在线 RL ≈ 单次推理 × G（G=8、20 步约 160×）。</li></ol>
+<ol><li>奖励能否离线算？能 → 离线 GRPO；不能 → 在线 rollout。</li><li>有无失败数据？有 → FACT 式掩码；无 → 先补采。</li><li>防退化三件套：KL/参考锚定、优势裁剪、混合 SFT 损失。</li><li>评测：成功率 + 完成时间 + 进度；报告相对 SFT 的增量。</li><li>算力：在线 RL ≈ 单次推理 × G（G=8、20 步 ≈ 160×）。</li></ol>
 <hr>
 <h2 id="6-坑">6. 坑</h2>
-<ul><li>「伪代码」必须能落地：没有函数签名、输入输出、数据流的，只是步骤清单。</li><li>公式要映射代码行；论文没给的超参写「论文未给」，不补默认值。</li><li>自评数字：跨论文比较先看协议（trials、任务套件）。</li><li>奖励 hacking：平滑度可被「不动」骗过，EVA 用限幅惩罚堵。</li><li>闭环≠更好：世界模型偏差会被 RL 放大。</li><li>不要把 post-training 都当 RL：V-JEPA 2 的 post-training 是加动作条件的微调。</li></ul>
+<ul><li>伪代码必须能落地：函数签名、输入输出、数据流、变量物理意义，缺一不可。</li><li>公式要映射代码行；论文没给的超参写「未给」。</li><li>自评数字：跨论文比较先看协议。</li><li>奖励 hacking：平滑度可被「不动」骗过（EVA 用限幅堵）。</li><li>闭环≠更好：世界模型偏差会被放大。</li></ul>
 <hr>
-<h2 id="7-术语附录-q-的-shape-lora-grpo">7. 术语附录：q 的 shape、LoRA、GRPO</h2>
-<h3 id="7-1-q-的-shape-eva-里的关节序列">7.1 <code>q</code> 的 shape（EVA 里的关节序列）</h3>
-<p><code>q = idm.decode(video)</code>：<code>video</code> 形状 <code>[T_v, 3, H, W]</code>，解码后</p>
-<ul><li><code>q ∈ R^{T×D}</code>：<code>T</code> 个动作帧（通常与视频帧率对齐或降采样），<code>D</code>=关节维数；双臂 <code>D=14</code>（每臂 6 关节+1 夹爪），单臂 <code>D=7</code>；</li><li><code>v = diff(q) ∈ R^{(T−1)×D}</code>（速度）；<code>a = diff(v) ∈ R^{(T−2)×D}</code>；<code>j = diff(a) ∈ R^{(T−3)×D}</code>；</li><li>奖励 <code>R</code> 是标量：各阶差分先按关节平均，再加权求和。</li></ul>
-<p><strong><code>T</code> 与 <code>D</code> 的具体数值 EVA 论文未给</strong>（EVA 依 LVP 初始化、不同任务 D 不同）；能确定的是「逐帧、逐关节」的二维表。</p>
-<h3 id="7-2-lora-全称-原理-实现">7.2 LoRA：全称、原理、实现</h3>
-<p><strong>全称</strong>：Low-Rank Adaptation（Hu et al., ICLR 2022，arXiv:2106.09685）。</p>
-<p><strong>原理</strong>：冻结预训练权重 <code>W0 ∈ R^{d×k}</code>，只学一个低秩增量 <code>ΔW = BA</code>：</p>
-<p><code>h = W0·x + (α/r)·B·A·x</code>，其中 <code>B ∈ R^{d×r}</code>、<code>A ∈ R^{r×k}</code>，<code>r ≪ min(d,k)</code>。</p>
-<ul><li>初始化：<code>A ~ 高斯(小方差)</code>、<code>B = 0</code> → 训练起点 <code>ΔW=0</code>，不破坏原模型；</li><li>只训练 <code>A、B</code>（参数量 <code>r(d+k)</code>，通常是原权重的 0.1–1%）；</li><li>推理时可合并：<code>W' = W0 + (α/r)·BA</code>，<strong>零额外延迟</strong>；不合并则相当于旁路。</li></ul>
+<h2 id="7-术语附录">7. 术语附录</h2>
+<h3 id="7-1-q-的-shape-eva">7.1 <code>q</code> 的 shape（EVA）</h3>
+<p><code>q ∈ R^{T×D}</code>：<code>T</code> 动作帧、<code>D</code> 关节维（双臂 14、单臂 7）；<code>v/a/j</code> 逐阶差分。<code>T/D</code> 论文未给。</p>
+<h3 id="7-2-lora-low-rank-adaptation">7.2 LoRA（Low-Rank Adaptation）</h3>
+<p>冻结 <code>W0 ∈ R^{d×k}</code>，学 <code>ΔW=BA</code>（<code>B∈R^{d×r}</code>、<code>A∈R^{r×k}</code>）：<code>h=W0x+(α/r)BAx</code>；<code>A~小方差</code>、<code>B=0</code> 初始化；推理可合并 <code>W'=W0+(α/r)BA</code>。</p>
 <pre><code class="language-python">class LoRALinear(nn.Module):
-    &quot;&quot;&quot;物理：给冻结的线性层加一条低秩旁路，只学「任务增量」。&quot;&quot;&quot;
-    def __init__(self, base: nn.Linear, r=16, alpha=16):
-        super().__init__()
-        self.base, self.r, self.scale = base, r, alpha / r
-        self.A = nn.Parameter(torch.randn(r, base.in_features) * 0.01)  # [r,k]
-        self.B = nn.Parameter(torch.zeros(base.out_features, r))        # [d,r]
-        for p in base.parameters():
-            p.requires_grad_(False)                    # 冻结原权重
-
-    def forward(self, x):                              # x [..., k]
-        return self.base(x) + self.scale * (x @ self.A.T @ self.B.T)   # [..., d]</code></pre>
-<p><strong>为什么在本领域用</strong>：VLA/WAM 骨干动辄数 B 参数，全量微调显存扛不住；LoRA 只训旁路、可并存多任务适配器。<strong>代价</strong>：秩 <code>r</code> 限制表达能力，分布偏移大时不如全量微调。 <strong>代码位置</strong>：VAMPO <code>scripts/train_calvin_svd_grpo.sh</code> 的 <code>train_args.use_lora=False, lora_rank=16</code>（可切）；EVA「只更新生成器 LoRA」；DreamAvoid 的 <code>openpi-da</code> 也带 <code>lora.py</code>。</p>
-<h3 id="7-3-grpo-全称-原理-实现">7.3 GRPO：全称、原理、实现</h3>
-<p><strong>全称</strong>：Group Relative Policy Optimization（DeepSeekMath，arXiv:2402.03300）。</p>
-<p><strong>原理</strong>：PPO 需要 value/critic 估计基线；GRPO <strong>用同组样本的均值/标准差代替 critic</strong>：</p>
-<ol><li>对同一条件采样 <code>G</code> 条输出，得到奖励 <code>r_1..r_G</code>；</li><li>组内标准化优势：<code>Â_i = (r_i − mean(r)) / (std(r)+ε)</code>；</li><li>最大化截断代理目标：<code>J = E[ (1/G) Σ_i min(ρ_i Â_i, clip(ρ_i,1−c,1+c) Â_i) ] − β·D_KL(π‖π_ref)</code>，其中 <code>ρ_i = π_θ(o_i)/π_old(o_i)</code>；</li><li>参考策略 KL 防止跑偏（VAMPO 用「只首步 SDE」的结构性约束替代显式 KL）。</li></ol>
-<pre><code class="language-python">def grpo_loss(logp, logp_old, rewards, clip=0.2, beta=0.0, has_ref=False, logp_ref=0.0):
-    &quot;&quot;&quot;物理：组内比较——比同组平均好的样本被强化，差的被压制。
-    无 critic：均值/标准差就是基线。&quot;&quot;&quot;
-    adv = (rewards - rewards.mean()) / (rewards.std() + 1e-8)     # 组相对优势
-    ratio = torch.exp(logp - logp_old)                            # 重要性比
-    unclipped = ratio * adv
-    clipped = torch.clamp(ratio, 1 - clip, 1 + clip) * adv
-    loss = -torch.min(unclipped, clipped).mean()                  # 悲观（取 min）
-    if beta &gt; 0 and has_ref:
-        loss = loss + beta * (logp - logp_ref).mean()             # 可选 KL 惩罚
-    return loss</code></pre>
-<p><strong>与 PPO 的差异</strong>：省掉 value 网络（显存/工程更简单）、基线随组自适应；<strong>代价</strong>：每组要 <code>G</code> 条完整采样（算力 ×G），组内奖励方差大时优势噪声大；<code>G</code> 太小则基线不稳。 <strong>在 VAMPO 里的实例</strong>：<code>G=8</code>、<code>clip=0.2</code>、<code>adv_clip_max=2.0</code>、<code>lr=1e-6</code>、首步 SDE 才有 <code>log_prob</code>、20 步去噪、guidance 7.5。</p>
+    &quot;&quot;&quot;物理：给冻结层加低秩旁路，只学任务增量。&quot;&quot;&quot;
+    def __init__(self, base, r=16, alpha=16):
+        self.base, self.scale = base, alpha/r
+        self.A = nn.Parameter(torch.randn(r, base.in_features) * 0.01)
+        self.B = nn.Parameter(torch.zeros(base.out_features, r))
+        for p in base.parameters(): p.requires_grad_(False)
+    def forward(self, x):
+        return self.base(x) + self.scale * (x @ self.A.T @ self.B.T)</code></pre>
+<h3 id="7-3-grpo-group-relative-policy-optimization">7.3 GRPO（Group Relative Policy Optimization）</h3>
+<p>组内标准化优势 + 截断代理，无 critic： <code>Â=(r−mean_G)/std_G</code>；<code>J=E[min(ρÂ, clip(ρ,1−c,1+c)Â)] − βD_KL</code>。</p>
+<pre><code class="language-python">adv = (r - r.mean()) / (r.std() + 1e-8)      # 组内基线
+ratio = torch.exp(logp - logp_old)
+loss = -torch.min(ratio*adv, torch.clamp(ratio, 1-c, 1+c)*adv).mean()</code></pre>
+<hr>
 <h2 id="8-参考">8. 参考</h2>
-<ul><li>GigaBrain-0.5M*（RAMP）：arXiv 2602.12099（无官方代码）</li><li>VAMPO：arXiv 2603.19370 · <a href="https://github.com/OpenHelix-Team/VAMPO">OpenHelix-Team/VAMPO</a></li><li>EVA：arXiv 2603.17808</li><li>CreFlow：arXiv 2605.14274</li><li>WorldVLN：arXiv 2605.15964</li><li>FACT：arXiv 2608.10232 · <a href="https://github.com/Bariona/FACT">Bariona/FACT</a></li><li>DreamAvoid：arXiv 2605.11750 · <a href="https://github.com/XianzheFan/DreamAvoid">XianzheFan/DreamAvoid</a></li><li>τ0-WM：arXiv 2606.01027 · <a href="https://github.com/sii-research/tau-0-wm">sii-research/tau-0-wm</a></li><li>CoachSI：arXiv 2611.25529</li><li>DreamGen（开环反例）：arXiv 2505.12705</li><li>WAM 论文站：/blog/wam-survey/</li></ul>
-<h2 id="9-缩写表-全站简写对照">9. 缩写表（全站简写对照）</h2>
-<table><thead><tr><th>简写</th><th>全称</th><th>一句话</th></tr></thead><tbody><tr><td><strong>WAM</strong></td><td>World Action Model</td><td>联合建模未来状态与动作的具身基础模型</td></tr><tr><td><strong>VLA</strong></td><td>Vision-Language-Action (model)</td><td>视觉-语言-动作模型</td></tr><tr><td><strong>VDM</strong></td><td>Video Diffusion Model</td><td>视频扩散模型</td></tr><tr><td><strong>DiT</strong></td><td>Diffusion Transformer</td><td>扩散 Transformer 骨干</td></tr><tr><td><strong>MoT</strong></td><td>Mixture-of-Transformers</td><td>多专家共享注意力的 Transformer 组合</td></tr><tr><td><strong>VAE</strong></td><td>Variational Autoencoder</td><td>变分自编码器（图像↔潜）</td></tr><tr><td><strong>IDM</strong></td><td>Inverse Dynamics Model</td><td>逆动力学模型：视频→动作</td></tr><tr><td><strong>VPM</strong></td><td>Video Prediction Model</td><td>VAMPO 里被 RL 优化的视频预测器</td></tr><tr><td><strong>AGM</strong></td><td>Action Generation Model</td><td>VAMPO 里冻结的动作生成器</td></tr><tr><td><strong>GRPO</strong></td><td>Group Relative Policy Optimization</td><td>组相对策略优化（无 critic，用组均值当基线）</td></tr><tr><td><strong>PPO</strong></td><td>Proximal Policy Optimization</td><td>近端策略优化（需要 critic）</td></tr><tr><td><strong>KL</strong></td><td>Kullback–Leibler divergence</td><td>分布散度，用作「别偏离参考策略」的约束</td></tr><tr><td><strong>LoRA</strong></td><td>Low-Rank Adaptation</td><td>低秩适配：冻结主干、只训低秩旁路</td></tr><tr><td><strong>LTL / LTLf</strong></td><td>(Linear) Temporal Logic (over finite traces)</td><td>线性时序逻辑（有限轨迹版），用来写任务约束</td></tr><tr><td><strong>NFT</strong></td><td>Negative-aware FineTuning（DiffusionNFT）</td><td>用正/负分支做扩散模型偏好式微调</td></tr><tr><td><strong>HILR</strong></td><td><strong>Human-in-the-Loop Rollout</strong></td><td>人机接力 rollout：自主执行 + 人工纠正，剔除切换伪影</td></tr><tr><td><strong>DAgger</strong></td><td><strong>Dataset Aggregation</strong>（Ross et al., 2011）</td><td>在线聚合「策略访问到的状态 + 专家动作」的模仿学习</td></tr><tr><td><strong>RAMP</strong></td><td>Reinforcement leArning via world Model-conditioned Policy</td><td>GigaBrain 的「世界模型条件化策略」RL 框架</td></tr><tr><td><strong>RECAP</strong></td><td>（π0.6*/π0.5 的 advantage-conditioned RL 框架，论文称 RAMP 的特例）</td><td>用稀疏优势（0/1）条件化的策略改进</td></tr><tr><td><strong>SDE / ODE</strong></td><td>Stochastic / Ordinary Differential Equation</td><td>随机/常微分方程（采样器的随机步/确定步）</td></tr><tr><td><strong>MPPI</strong></td><td>Model Predictive Path Integral</td><td>采样型 MPC，用加权样本更新控制分布</td></tr><tr><td><strong>CEM</strong></td><td>Cross-Entropy Method</td><td>交叉熵方法（采样+精英更新）</td></tr><tr><td><strong>MPC</strong></td><td>Model Predictive Control</td><td>模型预测控制</td></tr><tr><td><strong>RCS</strong></td><td>Re-denoising Consistency Score</td><td>重去噪一致性分数（τ0-WM 的候选可信度）</td></tr><tr><td><strong>ACVS</strong></td><td>论文已在 §VI 使用；全称在已获取正文中未展开 ⚠️</td><td>τ0-WM 的密集任务进度评估模块</td></tr><tr><td><strong>LAR</strong></td><td>论文称「局部动作重查询」（Local Action Re-query）⚠️</td><td>τ0-WM 的局部重查询</td></tr><tr><td><strong>TTC</strong></td><td>Test-Time Computation</td><td>测试时计算（τ0-WM 的 TTC 推理）</td></tr><tr><td><strong>EEF</strong></td><td>End-Effector</td><td>末端执行器</td></tr><tr><td><strong>SAM3</strong></td><td>Segment Anything Model 3</td><td>分割基础模型（CreFlow 的实体 mask）</td></tr><tr><td><strong>VLM</strong></td><td>Vision-Language Model</td><td>视觉语言模型</td></tr><tr><td><strong>TTT</strong></td><td>Test-Time Training</td><td>测试时训练（WAM-TTT）</td></tr><tr><td><strong>OPD</strong></td><td>On-Policy Distillation</td><td>在线策略蒸馏（WAM-OPD）</td></tr><tr><td><strong>KV</strong></td><td>Key-Value (cache)</td><td>注意力键值缓存</td></tr></tbody></table>
-<blockquote><p>⚠️ 标注项：全称未在论文已获取部分出现，按论文用词记录；不臆造展开。</p></blockquote>]]></content:encoded>
+<ul><li>GigaBrain-0.5M*（RAMP）：arXiv 2602.12099（无官方代码）</li><li>VAMPO：arXiv 2603.19370 · <a href="https://github.com/OpenHelix-Team/VAMPO">OpenHelix-Team/VAMPO</a></li><li>EVA：arXiv 2603.17808</li><li>CreFlow：arXiv 2605.14274</li><li>WorldVLN：arXiv 2605.15964</li><li>FACT：arXiv 2608.10232 · <a href="https://github.com/Bariona/FACT">Bariona/FACT</a></li><li>DreamAvoid：arXiv 2605.11750 · <a href="https://github.com/XianzheFan/DreamAvoid">XianzheFan/DreamAvoid</a></li><li>τ0-WM：arXiv 2606.01027 · <a href="https://github.com/sii-research/tau-0-wm">sii-research/tau-0-wm</a></li><li>CoachSI：arXiv 2611.25529</li><li>DreamGen（开环反例）：arXiv 2505.12705</li><li>WAM 论文站：/blog/wam-survey/</li></ul>]]></content:encoded>
     </item>
     <item>
       <title>世界模型在量产里到底怎么用：四个必须回答的问题</title>
