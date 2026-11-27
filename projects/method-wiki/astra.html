@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASTRA 精读：GPT-6 Astra 当具身策略</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>ASTRA：GPT-6 Astra 当具身策略</h1>
+  <p class="sub">通用大模型直接生成动作 / 审阅策略提案 · 六域评测 + 视触觉 · 不是专门训练的机器人模型</p>
+  <p class="meta">L3（两篇评测论文逐字） · arXiv:2609.38537（六域） / 2610.26846（视触觉） · 2026-09/10</p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a class="on" href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+</nav>
+
+<section>
+  <h2>1. 它是什么 / 不是什么</h2>
+  <table>
+    <tr><th>是</th><th>不是</th></tr>
+    <tr><td>通用大模型（GPT-6 Astra）在机器人任务上的系统评测：能否直接当策略</td><td>不是机器人基础模型；没有在机器人动作数据上训练</td></tr>
+    <tr><td>两种用法：<b>Direct</b>（直接出数值动作/原语）与 <b>Hybrid</b>（审阅/修改学习策略的提案，或给冻结 WBC 提供参考）</td><td>不是实时控制器；单次调用数十秒</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox">
+  <svg viewBox="0 0 980 320" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
+    <defs><marker id="s" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker></defs>
+    <rect x="20" y="40" width="190" height="90" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="66" font-size="13" font-weight="700">RGB / 视触觉图</text>
+    <text x="34" y="86" font-size="11.5">+ 语言指令</text>
+    <text x="34" y="104" font-size="11.5">+ 机器人状态摘要</text>
+
+    <rect x="260" y="30" width="220" height="110" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="274" y="58" font-size="13" font-weight="700">Astra（API）</text>
+    <text x="274" y="78" font-size="11.5">Direct：末端/关节/夹爪/底盘</text>
+    <text x="274" y="96" font-size="11.5">导航：0.25m/30° 原语</text>
+    <text x="274" y="114" font-size="11.5">Hybrid：审阅/修改策略提案</text>
+    <text x="274" y="132" font-size="11.5">单次 ~40s（物理暂停）</text>
+
+    <rect x="540" y="30" width="200" height="110" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="554" y="58" font-size="13" font-weight="700">底层控制</text>
+    <text x="554" y="78" font-size="11.5">IK / 操作空间 / 关节 PD</text>
+    <text x="554" y="96" font-size="11.5">或冻结 WBC（混合）</text>
+    <text x="554" y="114" font-size="11.5">或 π0.5 任务策略</text>
+
+    <rect x="800" y="40" width="160" height="90" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="814" y="66" font-size="13" font-weight="700">执行/反馈</text>
+    <text x="814" y="86" font-size="11.5">动作 → 观测</text>
+    <text x="814" y="104" font-size="11.5">→ 下一步推理</text>
+
+    <line x1="210" y1="85" x2="256" y2="85" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#s)"/>
+    <line x1="480" y1="85" x2="536" y2="85" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#s)"/>
+    <line x1="740" y1="85" x2="796" y2="85" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#s)"/>
+    <text x="20" y="290" font-size="12" fill="#5b6a79">要点：Astra 是「S2 的极限测试」——语义强、频率极低；必须配 Direct 控制器或 Hybrid 的现成策略/WBC 才能闭环。</text>
+  </svg>
+  </div>
+</section>
+
+<section>
+  <h2>3. 结果（论文数字）</h2>
+  <table>
+    <tr><th>域</th><th>结果</th><th>解读</th></tr>
+    <tr><td>夹爪操作（RoboDojo 子集）</td><td>与 π0.5 混合控制 <b>48%</b></td><td>能纠正目标/准备接触，不替代策略</td></tr>
+    <tr><td>灵巧操作（DexJoCo 10 次）</td><td>混合 <b>50%</b>；直接手内控制差</td><td>接触密集仍是专用策略强项</td></tr>
+    <tr><td>移动操作（RoboCasa365）</td><td>混合 <b>38.7%</b></td><td>协调有增益但不稳</td></tr>
+    <tr><td>导航</td><td>RxR <b>92%</b>；HM3D 物体搜索 <b>82%</b></td><td>局部领先，绕路/搜索低效</td></tr>
+    <tr><td>运动（locomotion）</td><td>单障碍赛道 5 次 <b>0 次</b>到达</td><td>密集运动参考不可靠</td></tr>
+    <tr><td>人形 loco-manipulation</td><td>30 个 HumanoidBench 中 <b>13 个</b>超基线</td><td>必须配预训练全身控制器</td></tr>
+    <tr><td>视触觉（UniVTAC/OpenViTAC）</td><td><b>93.8% / 81.8%</b>（纯视觉 76.3/80.6）</td><td>触觉 RGB 走视觉接口；比专用基线 +22.9/+13.1pp</td></tr>
+  </table>
+  <div class="warn">成本：50 个实例/条件消耗 6.248 亿（Hybrid）~11.32 亿 token（Direct）；30 秒运动跑 250 次调用、平均 39.86s/次，推理期间物理暂停。结论：只适合当 S2，不能做实时控制。</div>
+</section>
+
+<section>
+  <h2>4. 接入代码（带注释）</h2>
+  <pre><code><span class="c"># Direct：让 Astra 出数值动作（低层控制器执行）</span>
+prompt = build_prompt(image, instruction, robot_state)  <span class="c"># 图+语言+状态，文本化</span>
+resp = astra.call(prompt)                                <span class="c"># ~40s；物理暂停</span>
+acts = parse_json(resp)                                  <span class="c"># {"ee":[...], "gripper":0/1, "base":[...]}</span>
+ik_controller.execute(acts)                              <span class="c"># 由 IK/PD 变关节目标</span>
+
+<span class="c"># Hybrid：Astra 审阅/修改现成策略的提案（更稳）</span>
+proposal = policy.propose(obs)                           <span class="c"># π0.5 / WBC 先给动作</span>
+resp = astra.call(f"Review and correct: {proposal}\n{situation}")
+execute(parse_json(resp))                                <span class="c"># 只做高层修正，频率由策略保证</span>
+
+<span class="c"># 导航：离散原语（500 个预算）</span>
+prim = {"forward": 0.25, "turn_deg": 30}                 <span class="c"># 适配器映射；无路径规划</span></code></pre>
+</section>
+
+<section>
+  <h2>5. 对搭建者的意义</h2>
+  <ul>
+    <li>ASTRA 证明「通用模型当 S2」可行，但延迟/成本决定它只能慢决策。</li>
+    <li>Hybrid（通用模型 + 现成策略/WBC）比 Direct 稳；接触密集任务别指望通用模型直接控手。</li>
+    <li>触觉可以走「视觉接口」（视触觉 RGB 当图像），这是低改造成本的触觉接入方式。</li>
+  </ul>
+  <p class="foot">参考：<a href="https://arxiv.org/abs/2609.38537">arXiv:2609.38537</a> ｜ <a href="https://arxiv.org/abs/2610.26846">arXiv:2610.26846</a> ｜ 返回 <a href="index.html">索引</a> ｜ <a href="../s2-s1-s0-stack/">S2→S0 指南</a></p>
+</section>
+</div>
+</body>
+</html>

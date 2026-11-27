@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fast-WAM 精读：训练联合视频、推理只出动作</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<div class="wrap">
+<header class="hero">
+  <h1>Fast-WAM：WAM 的联合训练 / 动作-only 推理</h1>
+  <p class="sub">Wan2.2-5B 视频 DiT + 1B ActionDiT · 联合 flow matching · 推理删未来分支 · 190ms</p>
+  <p class="meta">L2（部分正文/开源代码） · arXiv:2603.16666 · 代表「World-Action Model」</p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a class="on" href="fast-wam.html">Fast-WAM</a>
+</nav>
+
+<section>
+  <h2>1. 定位</h2>
+  <p>WAM（World-Action Model）联合建模未来观测与动作：<b>p(o′, a | o, l)</b>。训练时预测未来（视频/潜），推理时可以只出动作——既保留「想象」带来的表征，又不为生成视频付延迟。</p>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>骨干</td><td>Wan2.2-<b>5B</b> 视频 DiT（世界模型）+ <b>1B</b> ActionDiT（动作专家），MoT 共享注意力</td></tr>
+    <tr><td>动作块</td><td>H=<b>32</b>；未来视频帧 9（4× 降采样）</td></tr>
+    <tr><td>推理</td><td>删未来分支，单次前向 → 32 步动作；<b>190ms</b>（RTX 5090D）</td></tr>
+    <tr><td>结果</td><td>LIBERO 97.6 / RoboTwin 91.8；去掉视频共训掉到 83.8（RoboTwin）/ 10%（真机毛巾折叠）</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox">
+  <svg viewBox="0 0 980 340" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
+    <defs><marker id="w" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker></defs>
+    <rect x="20" y="30" width="200" height="70" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="56" font-size="13" font-weight="700">多相机图</text><text x="34" y="76" font-size="11.5">拼单图 → VAE latent</text>
+    <rect x="20" y="130" width="200" height="60" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="156" font-size="13" font-weight="700">语言（T5）</text><text x="34" y="176" font-size="11.5">指令 token</text>
+    <rect x="20" y="220" width="200" height="60" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="246" font-size="13" font-weight="700">proprio</text><text x="34" y="266" font-size="11.5">1 个 token（代码实锤）</text>
+
+    <rect x="280" y="30" width="210" height="100" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="294" y="56" font-size="13" font-weight="700">首帧 latent（clean）</text>
+    <text x="294" y="76" font-size="11.5">可见所有条件</text>
+    <rect x="280" y="150" width="210" height="100" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="294" y="176" font-size="13" font-weight="700">未来帧 latent（noisy）</text>
+    <text x="294" y="196" font-size="11.5">仅训练用；推理删掉</text>
+    <rect x="280" y="270" width="210" height="55" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="294" y="294" font-size="13" font-weight="700">动作 token</text>
+    <text x="294" y="312" font-size="11.5">不能看未来视频 token（掩码）</text>
+
+    <rect x="550" y="80" width="200" height="90" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="564" y="108" font-size="13" font-weight="700">MoT 共享注意力</text>
+    <text x="564" y="128" font-size="11.5">视频专家 + 动作专家</text>
+    <text x="564" y="146" font-size="11.5">联合去噪</text>
+
+    <rect x="810" y="60" width="150" height="60" rx="9" fill="#f6f8fb" stroke="#5b6a79"/>
+    <text x="824" y="86" font-size="12" font-weight="700">L_vid</text><text x="824" y="104" font-size="11.5">未来 latent FM</text>
+    <rect x="810" y="140" width="150" height="60" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="824" y="166" font-size="12" font-weight="700">L_act</text><text x="824" y="184" font-size="11.5">动作 FM</text>
+
+    <line x1="220" y1="65" x2="276" y2="75" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#w)"/>
+    <line x1="220" y1="160" x2="276" y2="185" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#w)"/>
+    <line x1="220" y1="250" x2="276" y2="292" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#w)"/>
+    <line x1="490" y1="80" x2="546" y2="110" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#w)"/>
+    <line x1="490" y1="200" x2="546" y2="140" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#w)"/>
+    <line x1="490" y1="297" x2="546" y2="150" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#w)"/>
+    <line x1="750" y1="110" x2="806" y2="90" stroke="#5b6a79" stroke-width="1.8" marker-end="url(#w)"/>
+    <line x1="750" y1="140" x2="806" y2="168" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#w)"/>
+    <text x="20" y="360" font-size="12" fill="#5b6a79">训练：两条 flow matching 损失加权；动作 token 掩掉未来视频，防止「抄答案」。推理：只保留首帧 → 一次前向 → 32 步动作。</text>
+  </svg>
+  </div>
+</section>
+
+<section>
+  <h2>3. 关键公式</h2>
+  <div class="eq">L = L_act(a_τ, τ) + λ · L_vid(v_τ, τ)，两项都是 flow matching</div>
+  <div class="eq">L_act = ‖ v_θ(a_τ, τ, c) − (ε − a) ‖²，c = 首帧 latent + 语言 + proprio</div>
+  <div class="eq">注意力掩码：M[action, future]=−∞；M[first, others]=−∞（首帧只做条件）</div>
+  <p class="foot">物理意义：未来视频 token 只在训练时提供「世界会怎么变」的梯度；推理时不需要生成视频，所以动作模型仍能享受世界模型表征，却不背生成延迟。</p>
+</section>
+
+<section>
+  <h2>4. 核心代码（带注释）</h2>
+  <pre><code><span class="c"># —— 训练：联合 flow matching ——</span>
+z0 = vae(first_frame)                     <span class="c"># clean 条件</span>
+z_f = vae(future_frames)                  <span class="c"># 未来（9 帧，4× 降采样）</span>
+z_f_t = (1-τ)*z_f + τ*ε                   <span class="c"># 加噪：学未来速度场</span>
+a_t = (1-τ)*a + τ*ε                       <span class="c"># 动作同样加噪</span>
+v_vid = video_dit(z_f_t, z0, lang, proprio, mask)   <span class="c"># 未来 token 可见条件</span>
+v_act = action_dit(a_t, z0, lang, proprio, mask)    <span class="c"># 动作 token 掩掉未来</span>
+loss = mse(v_act, ε-a) + λ*mse(v_vid, ε-z_f)
+
+<span class="c"># —— 推理：删掉未来分支 ——</span>
+z = video_dit.encode(z0)                  <span class="c"># 单次前向，不生成视频</span>
+a = sample(action_dit, cond=z, steps=K)   <span class="c"># 32 步动作块</span>
+execute(a)                                 <span class="c"># 190ms（RTX 5090D）</span></code></pre>
+</section>
+
+<section>
+  <h2>5. 结果与坑</h2>
+  <ul>
+    <li>LIBERO 97.6 / RoboTwin 91.8；去掉视频共训：RoboTwin 83.8、真机毛巾折叠 10%——证明「未来监督」不是装饰。</li>
+    <li>坑：未来帧数/降采样率影响显存；动作掩码写错会「抄未来」导致推理崩；proprio 只 1 token，信息瓶颈要留意。</li>
+  </ul>
+  <p class="foot">参考：<a href="https://arxiv.org/abs/2603.16666">arXiv:2603.16666</a> ｜ 返回 <a href="index.html">索引</a> ｜ <a href="../s2-s1-s0-stack/">S2→S0 指南</a></p>
+</section>
+</div>
+</body>
+</html>

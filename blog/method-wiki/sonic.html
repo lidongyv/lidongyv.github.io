@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SONIC 精读：人形全身控制器（训练/推理/代码）</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<div class="wrap">
+
+<header class="hero">
+  <h1>SONIC：人形全身控制器</h1>
+  <p class="sub">Supersizing Motion Tracking for Natural Humanoid Whole-Body Control · Unitree G1 · 50Hz · 42M</p>
+  <p class="meta">L3（论文 + 官方源码/配置） · arXiv:2511.07820 · Science Robotics 2026 · 代码：GR00T-WholeBodyControl</p>
+</header>
+
+<nav class="top">
+  <a href="index.html">索引</a>
+  <a class="on" href="sonic.html">SONIC</a>
+  <a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a>
+  <a href="pi0.html">π0 / π0.5</a>
+  <a href="astra.html">ASTRA</a>
+  <a href="fast-wam.html">Fast-WAM</a>
+</nav>
+
+<section>
+  <h2>1. 定位与关键数字</h2>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>角色</td><td>S1 全身控制器（System 1）：吃参考运动/VR 指令，出关节目标，PD 跟踪</td></tr>
+    <tr><td>机器人</td><td>Unitree G1（`g1_model_12_dex`，29 身体关节；12-DoF 手另管）</td></tr>
+    <tr><td>规模/频率</td><td><b>42M</b> 参数；控制 <b>50Hz</b>；VLA 接口 64 维 token ×40 @2.5Hz</td></tr>
+    <tr><td>训练</td><td>PPO + 辅助损失；<b>4096</b> 并行环境；<b>21k GPU 小时</b>（128 卡 ×7 天）</td></tr>
+    <tr><td>数据</td><td><b>700h</b> 动捕、<b>1 亿+帧</b>@50Hz、<b>170 人</b>；GMR 重定向；BONES-SEED 142K 动作</td></tr>
+    <tr><td>效果</td><td>test-content 98.5%；真机 124 条动作 99.2%；vs OpenHomie 存活 98.5% vs 43.0%</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox">
+  <svg viewBox="0 0 980 400" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
+    <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker></defs>
+    <rect x="20" y="20" width="210" height="90" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="46" font-size="13" font-weight="700" fill="#0b2a4a">参考运动 g1</text>
+    <text x="34" y="66" font-size="11.5">未来 10 帧，Δt=0.1s</text>
+    <text x="34" y="84" font-size="11.5">29 关节位/速 + 6D 朝向</text>
+    <text x="34" y="100" font-size="11.5">+ command_z（高度）</text>
+
+    <rect x="20" y="140" width="210" height="90" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="166" font-size="13" font-weight="700" fill="#0b2a4a">teleop（VR）</text>
+    <text x="34" y="186" font-size="11.5">头+双腕位置/6D 朝向</text>
+    <text x="34" y="204" font-size="11.5">+ 下肢参考 + command_z</text>
+
+    <rect x="20" y="260" width="210" height="90" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="286" font-size="13" font-weight="700" fill="#0b2a4a">SMPL（人体）</text>
+    <text x="34" y="306" font-size="11.5">未来 10 帧，Δt=0.02s</text>
+    <text x="34" y="324" font-size="11.5">3D 关节 + 根朝向 + 腕</text>
+
+    <rect x="290" y="60" width="190" height="70" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="304" y="88" font-size="13" font-weight="700">MLP 编码器 ×3</text>
+    <text x="304" y="108" font-size="11.5">[2048,1024,512,512] SiLU</text>
+    <rect x="290" y="160" width="190" height="70" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="304" y="188" font-size="13" font-weight="700">→ 2 tokens × 32 维</text>
+    <text x="304" y="208" font-size="11.5">每轮随机选 1 个编码器</text>
+    <rect x="290" y="260" width="190" height="70" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="304" y="288" font-size="13" font-weight="700">FSQ 量化</text>
+    <text x="304" y="308" font-size="11.5">32 级/维；直通梯度</text>
+
+    <rect x="540" y="120" width="190" height="80" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="554" y="148" font-size="13" font-weight="700">g1_dyn 解码器</text>
+    <text x="554" y="168" font-size="11.5">token(64)+proprio</text>
+    <text x="554" y="186" font-size="11.5">MLP[...512,512] → 29 关节</text>
+
+    <rect x="540" y="240" width="190" height="80" rx="9" fill="#f6f8fb" stroke="#5b6a79" stroke-dasharray="5,4"/>
+    <text x="554" y="268" font-size="12" font-weight="700">g1_kin 解码器（辅助）</text>
+    <text x="554" y="288" font-size="11.5">token → 未来 10 帧 58+6</text>
+    <text x="554" y="306" font-size="11.5">仅训练用</text>
+
+    <rect x="790" y="200" width="170" height="70" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="804" y="228" font-size="13" font-weight="700">PD 控制 1kHz</text>
+    <text x="804" y="248" font-size="11.5">τ=Kp(q*−q)−Kd·q̇</text>
+
+    <line x1="230" y1="65" x2="286" y2="90" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
+    <line x1="230" y1="185" x2="286" y2="190" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
+    <line x1="230" y1="305" x2="286" y2="290" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
+    <line x1="385" y1="130" x2="385" y2="156" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
+    <line x1="385" y1="230" x2="385" y2="256" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
+    <line x1="480" y1="295" x2="536" y2="295" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#a)"/>
+    <line x1="480" y1="190" x2="536" y2="165" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#a)"/>
+    <line x1="730" y1="160" x2="786" y2="215" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#a)"/>
+    <text x="20" y="382" font-size="12" fill="#5b6a79">推理时只用 g1_dyn（50Hz）；g1_kin 只在训练里提供「未来重建」梯度。VLA 可直接给 64 维 token 替代编码器。</text>
+  </svg>
+  </div>
+</section>
+
+<section>
+  <h2>3. 关键公式</h2>
+  <div class="eq">token: t = FSQ(E(o)) ∈ R^{2×32};  flat 64 维</div>
+  <div class="eq">FSQ: q_i = round((z_i + 1)/2 · (L−1)) / (L−1) · 2 − 1,  L = 32</div>
+  <div class="eq">PPO: L = E[min(ρ A, clip(ρ,1−ε,1+ε) A)] − c_e·H + c_v·(V−R)², ε=0.2</div>
+  <div class="eq">总损失 = PPO + 0.01·L_recon + 1.0·(L_latent-g1/smpl + L_latent-g1/teleop + L_latent-teleop/smpl) + L_skating</div>
+  <p class="foot">物理意义：FSQ 把连续运动意图压成离散码本，跨编码器共享同一 token 空间；latent 对齐让「机器人/人体/遥操作」三种输入落在同一坐标；skating 惩罚脚接触时的预测滑移。</p>
+</section>
+
+<section>
+  <h2>4. 网络与张量</h2>
+  <table>
+    <tr><th>模块</th><th>结构</th><th>输入 → 输出</th></tr>
+    <tr><td>编码器 ×3</td><td>MLP [2048,1024,512,512] + SiLU</td><td>10 帧观测 → [B,2,32]</td></tr>
+    <tr><td>FSQ</td><td>32 级/维，直通估计</td><td>[B,2,32] → 离散 token</td></tr>
+    <tr><td>g1_dyn</td><td>MLP [2048,2048,1024,1024,512,512] + SiLU</td><td>token(64)+proprio → [B,29]</td></tr>
+    <tr><td>g1_kin</td><td>MLP [2048,1024,512,512]</td><td>token → [B,10,64]（58 运动 + 6 朝向）</td></tr>
+    <tr><td>proprio 历史</td><td>10 帧</td><td>actor_obs</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>5. 训练配方</h2>
+  <ul>
+    <li>4096 envs；PPO：γ=0.99、λ=0.95、clip=0.2、entropy=0.01、actor LR=2e-5、critic=1e-3、自适应 KL=0.01、max_grad_norm=0.1、24 步/轮、10 万迭代、σ∈[0.001,0.5]。</li>
+    <li>参考：G1 10 帧@0.1s；SMPL 10 帧@0.02s；三编码器采样 1:1:1；观测噪声 ±0.05；上体增强概率 0.5。</li>
+    <li>数据：700h 动捕、170 人（145–199cm）、50Hz、1 亿+帧；GMR 重定向；BONES-SEED 142K/288h。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>6. 核心代码（带物理意义注释）</h2>
+  <pre><code><span class="c"># —— 训练一步 ——</span>
+obs = build_obs(history=10)                    <span class="c"># 10 帧本体历史：给策略速度/加速度线索</span>
+enc = choice(["g1","teleop","smpl"], p=[1/3]*3) <span class="c"># 每环境随机选一种输入，逼共享 token 空间</span>
+tok = FSQ(Encoder[enc](obs.tokenizer))         <span class="c"># [B,2,32]；离散化让三种输入可互换</span>
+a   = Decoder_dyn(tok.flatten(1), obs.prop)    <span class="c"># [B,29] 目标关节角</span>
+adv = GAE(rew, val, γ=.99, λ=.95)              <span class="c"># 优势：平衡偏差/方差</span>
+L = ppo_clip(a, adv, clip=.2, ent=.01) \
+  + 0.01*recon(Decoder_kin(tok), future10)     <span class="c"># 重建未来：让 token 保留可解码的运动信息</span>
+  + 1.0*align(tok_g1, tok_smpl) + 1.0*align(tok_g1, tok_teleop) \
+  + skating_loss(feet_pos, contact_mask, dt)   <span class="c"># 脚接触时速度应≈0，防滑步</span>
+
+<span class="c"># —— 部署 50Hz ——</span>
+q_des = trt_decoder(trt_encoder(obs), obs.prop)  <span class="c"># 单次前向 <5ms</span>
+robot.set_joint_targets(q_des)                   <span class="c"># → PD 1kHz</span>
+<span class="c"># VLA 模式：q_des = sonic.decode(vla_tokens[40,64], obs.prop)</span></code></pre>
+</section>
+
+<section>
+  <h2>7. 推理与部署</h2>
+  <ul>
+    <li>encoder/decoder 分开导出 ONNX + TensorRT；obs 配置 `encoder.dimension: 64`；可选 fp16。</li>
+    <li>50Hz 控制、~10Hz 规划（每段 ~100 帧）；ZMQ/ROS2/DDS；29 关节日志。</li>
+    <li>VLA 接口：64 维 token ×40（2.5Hz）→ SONIC 解码 50Hz；动作空间 78 维（64+7+7）。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>8. 坑</h2>
+  <ul>
+    <li>`freq_test` 的频率不是 TRT 推理速度，别当延迟指标。</li>
+    <li>`command_multi_future_nonflat` 源码注释提示时间轴 flatten bug，复现要按 10×58 重排。</li>
+    <li>训练-部署的观测噪声/延迟要一致；否则 sim2real 抖动。</li>
+  </ul>
+  <p class="foot">参考：<a href="https://arxiv.org/abs/2511.07820">arXiv:2511.07820</a> ｜ <a href="https://nvlabs.github.io/GR00T-WholeBodyControl/">代码/文档</a> ｜ 返回 <a href="index.html">wiki 索引</a> ｜ <a href="../s2-s1-s0-stack/">S2→S0 指南</a></p>
+</section>
+
+</div>
+</body>
+</html>

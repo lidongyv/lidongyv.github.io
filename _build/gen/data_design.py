@@ -294,4 +294,10 @@ DESIGN = [
      "summary": "给非具身背景读者的分层实操指南：S2/S1/S0 选型矩阵、自下而上 7 步搭建流程图、带物理意义注释的关键代码、接口延迟补偿、五种备选方案与常见坑。",
      "summary_en": "A non-expert-friendly practical guide: selection matrix for S2/S1/S0, bottom-up 7-step build flow, key code with physical-meaning comments, latency compensation, five alternative stacks and pitfalls.",
      "tags": ["具身", "控制", "教程"], "tags_en": ["Embodied", "Control", "Tutorial"]},
+    {"slug": "method-wiki", "root": "repo", "src": "method-wiki",
+     "title": "方法精读 Wiki：论文 / 流程图 / 公式 / 代码",
+     "title_en": "Method wiki: papers, flowcharts, formulas, code",
+     "summary": "常用具身方法的 paper-reading 级精读，每个方法独立一页：论文定位、网络流程图、关键公式、张量形状、训练配方、推理栈、带物理意义注释的代码、结果与坑。多项目共用，避免重复讨论。",
+     "summary_en": "Paper-reading level notes for common embodied methods, one page each: paper positioning, network flowcharts, key formulas, tensor shapes, training recipes, inference stacks, code with physical-meaning comments, results and pitfalls.",
+     "tags": ["具身", "方法精读", "wiki"], "tags_en": ["Embodied", "Methods", "Wiki"]},
 ]

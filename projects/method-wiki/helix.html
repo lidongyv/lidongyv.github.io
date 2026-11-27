@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Helix 精读：双系统 VLA（7B + 80M，200Hz）</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>Helix：双系统一体的全身 VLA</h1>
+  <p class="sub">Figure · 7B VLM（7–9Hz）+ 80M visuomotor（200Hz）· 单 latent 向量接口 · 35-DoF 上半身</p>
+  <p class="meta">L1（Figure 官方博客，信息很全但无源码） · 2025-02 · 无 arXiv</p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a class="on" href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+</nav>
+
+<section>
+  <h2>1. 定位与关键数字</h2>
+  <table>
+    <tr><th>项</th><th>值</th></tr>
+    <tr><td>角色</td><td>S2+S1 一体（双系统 VLA），输出上半身连续控制</td></tr>
+    <tr><td>S2</td><td><b>7B</b> 开源 VLM；单目图+状态+语言 → 单个连续 latent；<b>7–9Hz</b></td></tr>
+    <tr><td>S1</td><td><b>80M</b> 交叉注意力 encoder-decoder；卷积多尺度视觉；<b>200Hz</b>；35-DoF + 任务完成度</td></tr>
+    <tr><td>数据</td><td>约 <b>500h</b> 多机器人多操作员遥操作（&lt;同类 VLA 数据集的 5%）；自动标注 VLM 生成 hindsight 指令</td></tr>
+    <tr><td>训练</td><td><b>单阶段端到端</b>回归；梯度经 latent 回传；训练加时间偏移对齐部署延迟</td></tr>
+    <tr><td>部署</td><td>每机器人双低功耗板载 GPU；S2 异步后台、S1 实时；单套权重覆盖全部行为</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox">
+  <svg viewBox="0 0 980 340" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
+    <defs><marker id="h" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker></defs>
+    <rect x="20" y="40" width="190" height="80" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="66" font-size="13" font-weight="700">单目图像</text>
+    <text x="34" y="86" font-size="11.5">+ 机器人状态（腕位姿/手指）</text>
+    <text x="34" y="104" font-size="11.5">+ 语言指令</text>
+    <rect x="20" y="180" width="190" height="70" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="206" font-size="13" font-weight="700">共享内存 latent</text>
+    <text x="34" y="226" font-size="11.5">S2 异步写入</text>
+
+    <rect x="270" y="40" width="200" height="110" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="284" y="68" font-size="13" font-weight="700">S2：7B VLM</text>
+    <text x="284" y="88" font-size="11.5">视觉编码 + 语言</text>
+    <text x="284" y="106" font-size="11.5">→ latent z（单向量）</text>
+    <text x="284" y="124" font-size="11.5">7–9Hz</text>
+    <text x="284" y="142" font-size="11.5">不直接出动作</text>
+
+    <rect x="530" y="40" width="220" height="110" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="544" y="68" font-size="13" font-weight="700">S1：80M 交叉注意力</text>
+    <text x="544" y="88" font-size="11.5">多尺度卷积视觉（仿真预训练）</text>
+    <text x="544" y="106" font-size="11.5">+ project(z) 拼 token</text>
+    <text x="544" y="124" font-size="11.5">200Hz 解码</text>
+    <text x="544" y="142" font-size="11.5">35-DoF + 完成度</text>
+
+    <rect x="810" y="40" width="150" height="110" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="824" y="68" font-size="13" font-weight="700">执行</text>
+    <text x="824" y="88" font-size="11.5">腕/手指/头</text>
+    <text x="824" y="106" font-size="11.5">躯干朝向</text>
+    <text x="824" y="124" font-size="11.5">完成度→终止</text>
+
+    <line x1="210" y1="80" x2="266" y2="90" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#h)"/>
+    <line x1="470" y1="95" x2="526" y2="95" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#h)"/>
+    <line x1="210" y1="215" x2="526" y2="150" stroke="#5b6a79" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#h)"/>
+    <line x1="750" y1="95" x2="806" y2="95" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#h)"/>
+    <text x="20" y="300" font-size="12" fill="#5b6a79">关键：S2 只更新 latent（异步），S1 每 5ms 读最新 latent 跑闭环；训练时给 S2/S1 输入加时间偏移，模拟部署延迟差。</text>
+  </svg>
+  </div>
+</section>
+
+<section>
+  <h2>3. 关键公式与训练</h2>
+  <div class="eq">训练：L = Σ_t ‖ a_t − π_S1(vision_t, proj(z), state_t) ‖²，梯度经 z 回传到 S2</div>
+  <div class="eq">时间偏移：训练时用 x_{t+Δ} 作为 S1 输入，Δ = 部署时 S2 推理延迟（帧）</div>
+  <div class="eq">接口：z = S2(img, state, lang) ∈ R^d（d 未公开；建议先试 256–1024）</div>
+  <ul>
+    <li>单阶段端到端：像素+文本 → 连续动作，无任务头、无 per-task 微调。</li>
+    <li>数据：500h 遥操作；用 VLM 对视频做 hindsight 指令标注（"如果想让机器人做出视频里的动作，你会给什么指令？"）。</li>
+    <li>35-DoF：腕位姿、手指屈伸/外展、躯干/头朝向；外加「任务完成百分比」动作（自预测终止）。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>4. 核心代码（带物理意义注释）</h2>
+  <pre><code><span class="c"># —— 训练（单阶段端到端）——</span>
+z = s2(img_t, state_t, lang)            <span class="c"># 语义意图：慢、低频，但决定「做什么」</span>
+a = s1(vision_s1(img_t), proj(z), state_t)  <span class="c"># 80M：像素+意图 → 35 维动作</span>
+loss = mse(a, a_gt)                     <span class="c"># 标准回归；梯度经 z 回传，S2 也被动作监督</span>
+
+<span class="c"># —— 部署（双 GPU 异步）——</span>
+<span class="c"># GPU0：S2 后台，7–9Hz</span>
+shared_latent.write(s2(latest_img, state, lang))
+<span class="c"># GPU1：S1 实时，200Hz</span>
+a = s1(vision_s1(img), proj(shared_latent.read()), state)  <span class="c"># 读最新意图，不追旧</span>
+robot.set_targets(a); sleep(5ms)        <span class="c"># 5ms = 200Hz 周期</span>
+<span class="c"># 完成度 &gt; 阈值 → 终止当前子任务（自预测，不依赖外部成功检测）</span></code></pre>
+</section>
+
+<section>
+  <h2>5. 结果与可复现缺口</h2>
+  <table>
+    <tr><th>可复现（博客明确）</th><th>未公开（不要臆造）</th></tr>
+    <tr><td>7B/80M、7–9Hz/200Hz、35-DoF、单 latent、单阶段端到端、时间偏移、双板载 GPU、500h 数据</td><td>VLM 具体型号、S1 层数/隐藏维、latent 维度、数据采集频率、损失权重、训练步数、GPU 型号</td></tr>
+  </table>
+  <div class="warn">复现优先级：① 时间偏移（训练镜像部署延迟）；② latent 接口维度与投影；③ S1 视觉骨干的多尺度设计；④ 完成度自终止。</div>
+  <p class="foot">参考：<a href="https://www.figure.ai/news/helix">Figure Helix 博客</a> ｜ 返回 <a href="index.html">索引</a> ｜ <a href="../s2-s1-s0-stack/">S2→S0 指南</a></p>
+</section>
+</div>
+</body>
+</html>

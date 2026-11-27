@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>π0 / π0.5 精读：VLM + flow matching 动作专家</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <h1>π0 / π0.5：单模型 VLA</h1>
+  <p class="sub">Physical Intelligence · 预训练 VLM + flow matching 动作专家 · 动作块输出 · 开放世界泛化</p>
+  <p class="meta">L2（摘要级 + 公开信息；正文参数量/时长未在摘要给出） · arXiv:2410.24164（π0） / 2504.16054（π0.5）</p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a class="on" href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+</nav>
+
+<section>
+  <h2>1. 定位与差异</h2>
+  <table>
+    <tr><th>项</th><th>π0（2024-10）</th><th>π0.5（2025-04）</th></tr>
+    <tr><td>结构</td><td>预训练 VLM + <b>flow matching 动作专家</b>；输出动作块</td><td>同 π0 + <b>异构协同训练</b>（多机器人、web、子任务预测、目标检测）</td></tr>
+    <tr><td>数据</td><td>多机器人平台（单臂/双臂/移动操作）</td><td>多机器人 + 网页 + 高层语义子任务；混合多模态样本</td></tr>
+    <tr><td>能力</td><td>零样本、语言跟随、微调学新技能（叠衣/清桌/组装）</td><td>首次端到端在<b>全新家庭</b>做长程灵巧操作（厨房/卧室）</td></tr>
+    <tr><td>推理</td><td>动作块闭环执行</td><td>动作 + 子任务预测</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox">
+  <svg viewBox="0 0 980 300" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
+    <defs><marker id="p" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker></defs>
+    <rect x="20" y="40" width="180" height="90" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="66" font-size="13" font-weight="700">多相机图像</text>
+    <text x="34" y="86" font-size="11.5">+ 语言指令</text>
+    <text x="34" y="104" font-size="11.5">+ 本体状态</text>
+
+    <rect x="250" y="40" width="200" height="90" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="264" y="66" font-size="13" font-weight="700">预训练 VLM</text>
+    <text x="264" y="86" font-size="11.5">视觉-语言语义</text>
+    <text x="264" y="104" font-size="11.5">（PaliGemma 类）</text>
+
+    <rect x="500" y="30" width="210" height="110" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="514" y="58" font-size="13" font-weight="700">动作专家（flow）</text>
+    <text x="514" y="78" font-size="11.5">条件：VLM token + state</text>
+    <text x="514" y="96" font-size="11.5">从噪声积分出动作块</text>
+    <text x="514" y="114" font-size="11.5">π0.5：额外预测子任务</text>
+
+    <rect x="760" y="40" width="180" height="90" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="774" y="66" font-size="13" font-weight="700">动作块</text>
+    <text x="774" y="86" font-size="11.5">→ 关节/末端</text>
+    <text x="774" y="104" font-size="11.5">→ PD 执行</text>
+
+    <line x1="200" y1="85" x2="246" y2="85" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#p)"/>
+    <line x1="450" y1="85" x2="496" y2="85" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#p)"/>
+    <line x1="710" y1="85" x2="756" y2="85" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#p)"/>
+    <text x="20" y="260" font-size="12" fill="#5b6a79">π0 与 π0.5 都是「单模型」：不拆 S2/S1；π0.5 的协同训练让同一个模型既会预测子任务，也能出低层动作。</text>
+  </svg>
+  </div>
+</section>
+
+<section>
+  <h2>3. 关键公式与代码</h2>
+  <div class="eq">flow matching: a_τ = (1−τ)·a + τ·ε；L = ‖ v_θ(a_τ, τ, o, l) − (ε − a) ‖²</div>
+  <div class="eq">推理：a ← a + v_θ(a, τ_k)/K，K 步；动作块 H 步</div>
+  <pre><code><span class="c"># —— 动作专家采样（伪代码）——</span>
+a = randn([B, H, d_a])                <span class="c"># 从噪声起步</span>
+<span class="k">for</span> k <span class="k">in</span> range(K):
+    v = action_expert(a, t=k/K, cond=vlm_tokens, state=proprio)
+    a = a + v / K                     <span class="c"># Euler 沿速度场</span>
+execute(a)                             <span class="c"># 执行整块或前若干步后重规划</span>
+<span class="c"># π0.5：同一前向里额外输出 subtask token → 语言子任务（可解释）</span></code></pre>
+</section>
+
+<section>
+  <h2>4. 训练与数据（可核实部分）</h2>
+  <ul>
+    <li>π0：多机器人平台（单臂、双臂、移动操作）的多样数据；VLM 继承互联网语义，动作专家学连续控制。</li>
+    <li>π0.5：异构协同——多机器人数据 + 网页数据 + 高层语义子任务 + 目标检测；混合多模态样本（图像、语言、检测、子任务、动作）。</li>
+    <li>结果：π0.5 在全新家庭完成长程清洁（厨房/卧室），是「端到端 VLA 开放世界」的代表性证据。</li>
+  </ul>
+  <p class="foot">注：参数量、训练时长、精确数据规模未在摘要给出——本页不臆造。参考 <a href="https://arxiv.org/abs/2410.24164">π0</a>、<a href="https://arxiv.org/abs/2504.16054">π0.5</a> ｜ 返回 <a href="index.html">索引</a></p>
+</section>
+</div>
+</body>
+</html>

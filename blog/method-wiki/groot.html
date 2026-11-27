@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GR00T 精读：N1 / N1.5 / N1.7 / 2（架构/训练/代码）</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<style id="ldy-backbar-css">
+/* a bar in the flow at the very top: cannot be missed, whatever the page does */
+.ldy-topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+ padding:9px 14px;background:#12141a;color:#eef1f6;border-bottom:1px solid rgba(255,255,255,.12);
+ font:13.5px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+ position:relative;z-index:2147483000}
+.ldy-topbar a{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
+ color:#dfe7f5;text-decoration:none;font-weight:560;border:1px solid rgba(255,255,255,.14)}
+.ldy-topbar a:hover{background:rgba(255,255,255,.12);color:#fff}
+.ldy-topbar a.ldy-topbar__home{background:#2563eb;border-color:#2563eb;color:#fff}
+.ldy-topbar a.ldy-topbar__home:hover{background:#3b82f6}
+.ldy-topbar__hint{margin-left:auto;font-size:12px;color:#8b95a7}
+
+/* the same thing, floating, for long pages */
+.ldy-backbar{position:fixed;left:14px;bottom:14px;z-index:2147483000;display:flex;gap:6px;
+ font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.ldy-backbar a{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;
+ color:#fff;text-decoration:none;background:rgba(18,20,26,.85);border:1px solid rgba(255,255,255,.16);
+ box-shadow:0 2px 12px rgba(0,0,0,.28);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ font-weight:560;letter-spacing:.01em;transition:background .15s ease,transform .15s ease}
+.ldy-backbar a:hover{background:rgba(38,44,58,.95);transform:translateY(-1px)}
+.ldy-backbar a.ldy-backbar__home{background:rgba(37,99,235,.92)}
+.ldy-backbar a.ldy-backbar__home:hover{background:rgba(59,130,246,.98)}
+@media print{.ldy-backbar,.ldy-topbar{display:none}}
+</style>
+<div class="ldy-topbar" role="navigation" aria-label="站点导航"><a class="ldy-topbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a><span class="ldy-topbar__hint">于立冬的个人网站</span></div><div class="ldy-backbar" role="navigation" aria-label="站点导航"><a class="ldy-backbar__home" href="/">← 返回主页</a><a href="/about.html">个人资料</a><a href="/blog/">博客</a></div>
+<div class="wrap">
+<header class="hero">
+  <h1>GR00T 家族：N1 / N1.5 / N1.7 / GR00T 2</h1>
+  <p class="sub">Vision-Language-Action → World-Action Model · NVIDIA · 动作块 flow matching</p>
+  <p class="meta">N1=L3（论文全文）｜N1.5/GR00T 2=L1（官方页）｜N1.7=L1（官方源码配置）· 代码：Isaac-GR00T / GR00T-WholeBodyControl</p>
+</header>
+<nav class="top">
+  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a class="on" href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+</nav>
+
+<section>
+  <h2>1. 四代定位</h2>
+  <table>
+    <tr><th>版本</th><th>骨干</th><th>动作头</th><th>规模</th><th>数据</th><th>训练</th></tr>
+    <tr><td><b>N1</b></td><td>Eagle-2（1.34B，SmolLM2+SigLIP-2）</td><td>DiT；H=16；K=4 步</td><td>2.2B</td><td>88h 遥操作→827h 神经轨迹 + 78 万仿真 + OXE</td><td>1024×H100，~5 万 GPU 小时</td></tr>
+    <tr><td><b>N1.5</b></td><td>Eagle 2.5（2.1B，冻结）</td><td>同 N1 + FLARE</td><td>VLM 2.1B</td><td>同 N1 + DreamGen/AgiBot-Beta</td><td>250K 步，1K×H100，GBS 16384</td></tr>
+    <tr><td><b>N1.7</b></td><td><b>Cosmos-Reason2-2B</b>（Qwen3-VL）</td><td>AlternateVLDiT；<b>H=40</b>；K=4</td><td>~3B</td><td>LeRobot 示教（50–100 条/任务）</td><td>20k 步、bs 32、4 GPU（文档示例）</td></tr>
+    <tr><td><b>GR00T 2</b></td><td>（未公开）</td><td><b>WAM</b>：一个 DiT 联合去噪视频+动作</td><td>Turbo 2B</td><td>402,730h 人视频 + 10,184h UMI + 23,500h 遥操作</td><td>未公开；真机 RL + LoRA</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. 流程图</h2>
+  <div class="svgbox">
+  <svg viewBox="0 0 980 360" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
+    <defs><marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker></defs>
+    <rect x="20" y="30" width="200" height="80" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="56" font-size="13" font-weight="700">图像（多相机）</text>
+    <text x="34" y="76" font-size="11.5">224² → 64 token/帧</text>
+    <text x="34" y="94" font-size="11.5">（pixel shuffle）</text>
+    <rect x="20" y="140" width="200" height="70" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="166" font-size="13" font-weight="700">语言指令</text><text x="34" y="186" font-size="11.5">tokenizer → VLM</text>
+    <rect x="20" y="240" width="200" height="70" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="34" y="266" font-size="13" font-weight="700">本体状态</text><text x="34" y="286" font-size="11.5">MLP 编码（132 维 pad）</text>
+
+    <rect x="280" y="80" width="200" height="90" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="294" y="108" font-size="13" font-weight="700">VLM（取第 12 层）</text>
+    <text x="294" y="128" font-size="11.5">N1: Eagle-2 / N1.7: Cosmos-Reason2</text>
+    <text x="294" y="146" font-size="11.5">默认冻结 LLM/视觉塔</text>
+
+    <rect x="540" y="80" width="200" height="90" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="554" y="108" font-size="13" font-weight="700">AlternateVLDiT</text>
+    <text x="554" y="128" font-size="11.5">16 层 / 32 头 / ada_norm</text>
+    <text x="554" y="146" font-size="11.5">VL token 与动作 token 交替</text>
+
+    <rect x="790" y="80" width="170" height="90" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="804" y="108" font-size="13" font-weight="700">动作块</text>
+    <text x="804" y="128" font-size="11.5">H=16（N1）/ 40（N1.7）</text>
+    <text x="804" y="146" font-size="11.5">→ PD / SONIC</text>
+
+    <line x1="220" y1="70" x2="276" y2="110" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#g)"/>
+    <line x1="220" y1="175" x2="276" y2="150" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#g)"/>
+    <line x1="220" y1="275" x2="276" y2="190" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#g)"/>
+    <line x1="480" y1="125" x2="536" y2="125" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#g)"/>
+    <line x1="740" y1="125" x2="786" y2="125" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#g)"/>
+    <text x="20" y="340" font-size="12" fill="#5b6a79">N1.5 在 VLM 特征上加 FLARE（对齐目标未来嵌入，loss 0.2）；GR00T 2 把动作 token 换成「视频+动作」联合去噪（WAM）。</text>
+  </svg>
+  </div>
+</section>
+
+<section>
+  <h2>3. 关键公式</h2>
+  <div class="eq">flow matching: L = E_{τ,ε} ‖ V_θ(A_τ, τ, o, l) − (ε − A) ‖²</div>
+  <div class="eq">τ ~ Beta((s−τ)/s; 1.5, 1), s = 0.999；推理 Euler 积分 K=4 步</div>
+  <div class="eq">N1.5: L = L_act + 0.2 · L_FLARE(z_pred, stopgrad(z_future))</div>
+  <p class="foot">物理意义：flow matching 学「从噪声到动作块」的速度场；K=4 是精度/延迟折中；FLARE 不做像素生成，只把预测特征对齐未来表征，让模型从人类视频学到「未来感」。</p>
+</section>
+
+<section>
+  <h2>4. N1.7 网络配置（源码）</h2>
+  <table>
+    <tr><th>字段</th><th>值</th><th>物理意义</th></tr>
+    <tr><td>骨干</td><td>Cosmos-Reason2-2B（Qwen3-VL）</td><td>更强的视觉-语言理解，替代 Eagle</td></tr>
+    <tr><td>`select_layer=12`</td><td>第 12 层</td><td>中间层语义更「可动作化」，且推理更快</td></tr>
+    <tr><td>`max_state_dim/action_dim`</td><td>132 / 132</td><td>跨本体 padding，按 embodiment 掩码</td></tr>
+    <tr><td>`action_horizon`</td><td>40</td><td>一次预测 40 步，降低推理频率</td></tr>
+    <tr><td>`state_dropout_prob`</td><td>0.8</td><td>逼模型依赖视觉而非本体记忆</td></tr>
+    <tr><td>DiT</td><td>16 层/32 头/48 head_dim/ada_norm</td><td>轻量动作去噪头</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>5. 训练配方</h2>
+  <ul>
+    <li><b>N1</b>：1024×H100、~5 万 GPU 小时；混合真机动作、潜动作（VQ-VAE 当 IDM）、神经轨迹（纯动作+伪动作）；语言塔冻结。</li>
+    <li><b>N1.5</b>：VLM 全程冻结；250K 步、1K×H100、GBS 16384；FLARE 0.2；语言跟随 46.6→93.3%。</li>
+    <li><b>N1.7 微调默认</b>：GBS 64、LR 1e-4、10000 步、wd 1e-5、warmup 0.05、episode sampling 0.1、每 1000 步存。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>6. 核心代码（带注释）</h2>
+  <pre><code><span class="c"># —— 采样：从噪声积分到动作块 ——</span>
+a = randn([B, H, d_a])                 <span class="c"># H=16(N1)/40(N1.7)：动作块时长</span>
+<span class="k">for</span> k <span class="k">in</span> range(4):                    <span class="c"># K=4：精度 vs 延迟</span>
+    v = dit(a, t=k/4, cond=vl_tokens, state=proprio)
+    a = a + v / 4                      <span class="c"># Euler：沿速度场走一小步</span>
+execute(a)                             <span class="c"># 执行后重新观测，闭环</span>
+
+<span class="c"># —— 微调（官方）——</span>
+uv run python gr00t/experiment/launch_finetune.py \
+  --base-model-path nvidia/GR00T-N1.7-3B \
+  --dataset-path /path/to/lerobot_dataset \
+  --embodiment-tag UNITREE_G1_SONIC \
+  --max-steps 20000 --global-batch-size 32 --num-gpus 4
+<span class="c"># 数据：LeRobot（parquet + 视频 + meta）；50–100 条/任务起步</span>
+
+<span class="c"># —— 部署 ——</span>
+server: gr00t/eval/run_gr00t_server.py --model-path ckpt --port 5550
+client: 输出动作块 → SONIC 50Hz 执行（或直接 PD）</code></pre>
+</section>
+
+<section>
+  <h2>7. 结果与坑</h2>
+  <ul>
+    <li>N1：真机 GR-1 语言跟随 46.6%→N1.5 93.3%；G1 1K demos 98.8%；RoboCasa 30 demos 47.5。</li>
+    <li>GR00T 2：5 示教（&lt;3 分钟）+30 分钟 LoRA → 95%；真机 RL 88–96%；Turbo 124ms。</li>
+    <li>坑：`strict_action_padding_mask` 开启后 TensorRT 拒绝该 checkpoint（必须 PyTorch 头）；embodiment tag 配错会导致动作维度错位。</li>
+  </ul>
+  <p class="foot">参考：<a href="https://arxiv.org/abs/2503.14734">N1</a> ｜ <a href="https://research.nvidia.com/labs/gear/gr00t-n1_5/">N1.5</a> ｜ <a href="https://research.nvidia.com/labs/gear/gr00t-2/">GR00T 2</a> ｜ <a href="https://github.com/NVIDIA/Isaac-GR00T">Isaac-GR00T</a> ｜ 返回 <a href="index.html">索引</a></p>
+</section>
+</div>
+</body>
+</html>
