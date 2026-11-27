@@ -46,11 +46,11 @@ tags_en: ["RL", "Post-training", "Closed-loop", "VLA", "WAM", "Code"]
 | `a_t` | `[H_a,d_a]` | 动作块（策略输出） | 数据/策略 |
 | `l` | token ids | 语言指令 | 数据 |
 | `success` | bool | episode 级成功标签 | 数据（遥操作日志） |
-| `z_t` | `[C_z,h,w]` | 当前帧的 VAE 潜 | `z_t = E_vae(o_t)` |
+| `z_t` | `[H′,W′,C′]` | 当前帧的 VAE 时空潜 | `z_t = E_vae(o_t)` |
 | `z_future_i` | `[C_z,h,w]` | 未来帧潜，`i∈{12,24,36,48}` 步后 | `E_vae(o_{t+i})`，仅训练期 |
 | `v_t` | 标量 | 价值估计≈「负的期望剩余步数」 | 价值头 `W.value(s_t)` |
-| `Ψ(·)` | — | 轻量 MLP：把标量价值/本体向量投影到潜通道 | 论文只说「MLP 对齐维度」，结构未给 |
-| `s_t` | `[C_z+1+C_p,h,w]` | 增强状态：潜 + 价值图 + 本体图（通道拼接，Eq.6） | `s_t=[z_t;Ψ(v_t);Ψ(p_t)]` |
+| `Ψ(·)` | `R → R^{H′×W′×1}`；`R^d → R^{H′×W′×d}` | **spatial tiling projection**：把标量价值/低维本体复制并广播到空间维，与视觉潜对齐 | 论文 §3.2.2（Eq.6） |
+| `s_t` | `[H′,W′,C′+1+d]` | 增强状态：潜 + 价值图 + 本体图（通道拼接，Eq.6） | `s_t=[z_t;Ψ(v_t);Ψ(p_t)]` |
 | `W.flow(u,τ,s_t,a_t)` | → `[C_z,h,w]` | 流匹配速度场：给定加噪潜、流时间、状态、动作，预测「往干净未来走的速度」 | 世界模型骨干（Wan2.2 + flow matching） |
 | `u_τ` | `[C_z,h,w]` | 加噪插值潜 `(1−τ)ε+τz_future` | 训练时构造 |
 | `ε`（噪声） | `[C_z,h,w]` | 流匹配噪声 | `randn_like` |
@@ -101,8 +101,8 @@ def encode(vae, img):                       # img [3,H,W] → [C_z,h,w]
 def build_state(z_t, v_t, p_t, psi_v, psi_p):
     """物理：把标量价值与本体向量『画』成与潜同尺寸的通道图，再通道拼接。
     z_t [C_z,h,w]；Ψ(v_t)→[1,h,w]；Ψ(p_t)→[C_p,h,w]；输出 [C_z+1+C_p,h,w]。"""
-    v_map = psi_v(v_t).view(1, h, w)        # 标量 → 单通道图
-    p_map = psi_p(p_t).view(C_p, h, w)      # MLP 投影到 C_p 通道
+    v_map = psi_v(v_t).view(1, h, w)        # spatial tiling：标量复制成单通道图
+    p_map = psi_p(p_t).view(d, h, w)        # spatial tiling：d 维本体广播到 d 通道
     return cat([z_t, v_map, p_map], dim=0)  # Eq.6 channel-wise concat
 
 # ── 世界模型一步：流匹配（Eq.7）──────────────────────────────────
@@ -149,7 +149,7 @@ def policy_loss(pi, ep, s_t, A, eps_thr, alpha):
     return loss                                  # Eq.3
 ```
 
-**HILR（Stage 3）到底算什么**：它不是公式，是**数据采集过程**——输入策略/环境/人类接管策略，输出带干预标记的轨迹。
+**HILR（Human-in-the-Loop Rollout，人机接力 rollout）到底算什么**：它不是公式，是**数据采集过程**——输入策略/环境/人类接管策略，输出带干预标记的轨迹。
 
 ```python
 def hilr_episode(policy, env, human):
@@ -716,3 +716,43 @@ def grpo_loss(logp, logp_old, rewards, clip=0.2, beta=0.0, logp_ref=None):
 - CoachSI：arXiv 2611.25529
 - DreamGen（开环反例）：arXiv 2505.12705
 - WAM 论文站：/blog/wam-survey/
+
+## 9. 缩写表（全站简写对照）
+
+| 简写 | 全称 | 一句话 |
+|---|---|---|
+| **WAM** | World Action Model | 联合建模未来状态与动作的具身基础模型 |
+| **VLA** | Vision-Language-Action (model) | 视觉-语言-动作模型 |
+| **VDM** | Video Diffusion Model | 视频扩散模型 |
+| **DiT** | Diffusion Transformer | 扩散 Transformer 骨干 |
+| **MoT** | Mixture-of-Transformers | 多专家共享注意力的 Transformer 组合 |
+| **VAE** | Variational Autoencoder | 变分自编码器（图像↔潜） |
+| **IDM** | Inverse Dynamics Model | 逆动力学模型：视频→动作 |
+| **VPM** | Video Prediction Model | VAMPO 里被 RL 优化的视频预测器 |
+| **AGM** | Action Generation Model | VAMPO 里冻结的动作生成器 |
+| **GRPO** | Group Relative Policy Optimization | 组相对策略优化（无 critic，用组均值当基线） |
+| **PPO** | Proximal Policy Optimization | 近端策略优化（需要 critic） |
+| **KL** | Kullback–Leibler divergence | 分布散度，用作「别偏离参考策略」的约束 |
+| **LoRA** | Low-Rank Adaptation | 低秩适配：冻结主干、只训低秩旁路 |
+| **LTL / LTLf** | (Linear) Temporal Logic (over finite traces) | 线性时序逻辑（有限轨迹版），用来写任务约束 |
+| **NFT** | Negative-aware FineTuning（DiffusionNFT） | 用正/负分支做扩散模型偏好式微调 |
+| **HILR** | **Human-in-the-Loop Rollout** | 人机接力 rollout：自主执行 + 人工纠正，剔除切换伪影 |
+| **DAgger** | **Dataset Aggregation**（Ross et al., 2011） | 在线聚合「策略访问到的状态 + 专家动作」的模仿学习 |
+| **RAMP** | Reinforcement leArning via world Model-conditioned Policy | GigaBrain 的「世界模型条件化策略」RL 框架 |
+| **RECAP** | （π0.6*/π0.5 的 advantage-conditioned RL 框架，论文称 RAMP 的特例） | 用稀疏优势（0/1）条件化的策略改进 |
+| **SDE / ODE** | Stochastic / Ordinary Differential Equation | 随机/常微分方程（采样器的随机步/确定步） |
+| **MPPI** | Model Predictive Path Integral | 采样型 MPC，用加权样本更新控制分布 |
+| **CEM** | Cross-Entropy Method | 交叉熵方法（采样+精英更新） |
+| **MPC** | Model Predictive Control | 模型预测控制 |
+| **RCS** | Re-denoising Consistency Score | 重去噪一致性分数（τ0-WM 的候选可信度） |
+| **ACVS** | 论文已在 §VI 使用；全称在已获取正文中未展开 ⚠️ | τ0-WM 的密集任务进度评估模块 |
+| **LAR** | 论文称「局部动作重查询」（Local Action Re-query）⚠️ | τ0-WM 的局部重查询 |
+| **TTC** | Test-Time Computation | 测试时计算（τ0-WM 的 TTC 推理） |
+| **EEF** | End-Effector | 末端执行器 |
+| **SAM3** | Segment Anything Model 3 | 分割基础模型（CreFlow 的实体 mask） |
+| **VLM** | Vision-Language Model | 视觉语言模型 |
+| **TTT** | Test-Time Training | 测试时训练（WAM-TTT） |
+| **OPD** | On-Policy Distillation | 在线策略蒸馏（WAM-OPD） |
+| **KV** | Key-Value (cache) | 注意力键值缓存 |
+
+> ⚠️ 标注项：全称未在论文已获取部分出现，按论文用词记录；不臆造展开。
