@@ -302,127 +302,197 @@ def worldvln_step(model, segs, goal, gamma, lam):
 
 ## 3. 六类闭环训练
 
-### 3.1 HILR（Human-in-the-Loop Rollout）
+> 总览：闭环 = 让策略执行自己的动作，并把执行后果（失败、干预、恢复、模拟器反馈）纳入训练。
 
-**输入/输出（物理）**：输入=策略、环境、人类接管策略；输出=带干预标记的轨迹（已剔除切换抖动）。
-**为什么**：自主执行的动作分布贴近部署分布（比遥操作更有效），但失败需要人纠正；切换瞬间的突变必须剔除。
+![RL 后训练总流程](/assets/blog/rl-loop.svg)
+
+### 3.1 HILR（Human-in-the-Loop Rollout，人机接力）
+
+**输入 / 输出（物理）**：输入=当前策略、环境、人类接管判断；输出=一条带「是否人接管」标记的轨迹（已剔除切换抖动）。
+
+| 变量 | 形状 | 物理意义 |
+|---|---|---|
+| `obs` | `[3,H,W]` | 当前相机画面 |
+| `a` | `[d_a]` | 这一步的动作（策略或人给的） |
+| `flag` | {0,1} | 1=这一步由人接管 |
+| `traj` | `T×{obs,a,flag}` | 整条轨迹 |
 
 ```python
 def hilr_episode(policy, env, human):
-    """① 策略跑；② 人判断要接管就由人给动作；③ 记录干预标记；④ 去边界伪影。"""
+    """① 策略自主跑；② 人判断快失败就接管；③ 记录标记；④ 去切换伪影。"""
     traj, obs, done = [], env.reset(), False
     while not done:
-        a = policy.act(obs)
+        a = policy.act(obs)                       # 策略动作
         flag = 0
-        if human.wants_control(obs):          # 人判断：快失败
-            a, flag = human.act(obs), 1
-        traj.append((obs, a, flag))
-        obs, done = env.step(a)
-    return scrub(traj)                        # 剔除切换边界
+        if human.wants_control(obs):              # 人判断：这一步会失败
+            a, flag = human.act(obs), 1           # 人给纠正动作
+        traj.append((obs, a, flag))               # 记录「状态-动作-是否干预」
+        obs, done = env.step(a)                   # 环境推进
+    return scrub(traj)                            # 剔除切换瞬间的动作突变
 ```
 
-### 3.2 DAgger（Dataset Aggregation）与 XPACE 的恢复数据
+**为什么**：遥操作数据都在专家分布上；HILR 采的是「策略快失败」的边界样本，对策略最有信息量。
+**物理**：`flag=1` 的那几步就是「机器人不会、人会」的地方；`scrub` 去掉切换瞬时的速度/位置跳变，否则策略学到不连续动作。
 
-**DAgger 算法（Ross et al., 2011）**：① 行为克隆初始化；② 用学生跑、收集它访问的状态；③ 在这些状态上问专家要动作；④ 聚合数据；⑤ 重训。
+### 3.2 DAgger（Dataset Aggregation）与 XPACE 恢复数据
+
+**输入 / 输出（物理）**：输入=专家策略、初始演示、迭代轮数；输出=在「学生自己会走到的状态」上也能正确动作的策略。
+
+| 变量 | 形状 | 物理意义 |
+|---|---|---|
+| `D` | 数据集 | 初始只有专家演示；后追加「学生状态 + 专家动作」 |
+| `states` | 状态列表 | 学生策略实际访问到的状态（关键） |
+| `labels` | 动作列表 | 专家在这些状态上的动作 |
+| `pi` | 策略 | 每轮在聚合数据上重训 |
 
 ```python
 def dagger(expert, D, N):
-    """输入：专家、初始数据；输出：在『学生状态分布』上也正确的策略。"""
-    pi = train_bc(D)                         # ① 初始克隆
+    """① 先克隆；② 学生跑、收它自己的状态；③ 问专家要标签；④ 聚合；⑤ 重训。"""
+    pi = train_bc(D)                              # ① 行为克隆初始化
     for i in range(N):
-        states = rollout_states(pi)          # ② 学生自己会走到的状态（关键）
-        labels = [expert.act(s) for s in states]   # ③ 专家标签
-        D = D + list(zip(states, labels))    # ④ 聚合（名字来源）
-        pi = train_bc(D)                     # ⑤ 重训
+        states = rollout_states(pi)               # ② 学生状态分布（不是专家的）
+        labels = [expert.act(s) for s in states]  # ③ 专家标签
+        D = D + list(zip(states, labels))         # ④ Dataset Aggregation
+        pi = train_bc(D)                          # ⑤ 重训
     return pi
 ```
 
-**XPACE 的工程映射**：注入偏差=学生状态；模拟器推演恢复=专家标签；恢复数据仅 ~8% 与专家混合；额外加**一致性过滤**。恢复消融 61.7→86.7（异套件）。
+**公式**：训练目标就是行为克隆的负对数似然 `L=−E_{(s,a*)∼D}[log π(a*|s)]`——**物理**：在聚合后的状态分布上，让策略对专家动作的似然最大。
+
+**XPACE 的工程映射**：注入偏差=学生状态；模拟器推演恢复=专家标签；恢复数据 ~8% 与专家混合；额外加一致性过滤。恢复消融 61.7→86.7（异套件）。
 
 ### 3.3 FACT：失败数据闭环（**官方代码**）
 
-**输入/输出（物理）**：输入=成功演示 + 失败 rollout（带结果与失败起点）；输出=同时会出动作、预测未来、估进度的因果 WAM。
-**核心**：先动作、后后果；失败的动作不学，失败的后果要学。
+**输入 / 输出（物理）**：输入=成功演示 + 失败 rollout（带结果与失败起点）；输出=同时会出动作、预测未来、估进度的因果 WAM。
+
+![FACT 训练与推理](/assets/blog/fact-train-infer.svg)
+
+| 变量 | 形状 | 物理意义 |
+|---|---|---|
+| `o, l` | 图像 / token | 当前观测与指令 |
+| `a_gt` | `[H,d_a]` | 演示里的真实动作块（teacher forcing 用） |
+| `a_pred` | `[H,d_a]` | 模型预测的动作块 |
+| `value_target` | 标量 ∈[0,1] | 进度目标（Eq.6：成功 p_{t+H}，失败下调） |
+| `mask` | {0,1} | 1=成功可模仿，0=失败 |
+| `L_a, L_v, L_I` | 标量 | 动作/价值/未来三路损失 |
 
 **公式与物理意义**
 
 | 公式 | 内容 | 物理意义 |
 |---|---|---|
-| Eq.(2) | `p(o',v\|o,l,a)` | 动作条件的世界分支：这个动作导致什么 |
-| Eq.(3) | `p_t=G_t/G_T`（均匀奖励 `t/T`） | 跨 episode 可比的进度 |
-| Eq.(4) | 世界分支看**干净真动作** `a_gt` | 动作模仿与后果预测解耦 |
-| Eq.(5) | `z=[P_ref‖A_pred‖G_gt‖V_value‖I_future]` | token 顺序；V/I 只看 G，A 看不到 G |
-| Eq.(6) | 成功 `v=p_{t+H}`；失败 `clip(p−λ_fail·1_fail,0,1)` | 失败动作的进度目标下调（λ_fail=1） |
-| Eq.(8/9) | 成功三路损失；失败只保留价值+未来 | 失败教后果，不教动作 |
-| Eq.(10) | `a*=argmax V(o,l,a^(k))` | 推理期用价值做 best-of-N |
+| Eq.(2) | `p(o',v\|o,l,a)` | 给动作，预测它会带来的画面与进度 |
+| Eq.(3) | `p_t=G_t/G_T`（均匀奖励 `t/T`） | 把「离完成还有多远」归一化到 0–1 |
+| Eq.(4) | 世界分支用干净 `a_gt` | 后果预测不被「还没学会的动作」污染 |
+| Eq.(6) | 成功 `p_{t+H}`；失败 `clip(p−λ_fail,0,1)` | 失败动作的进度应更低（λ_fail=1） |
+| Eq.(8) | `L_s=w_aL_a+w_vL_v+w_IL_I` | 成功：行为与后果都学 |
+| Eq.(9) | `L_f=w_vL_v+w_IL_I` | 失败：只学后果（动作项被剔除） |
+| Eq.(10) | `a*=argmax V(o,l,a^(k))` | 推理时用价值给候选打分 |
 
 ```python
-action_loss_mask = batch['action_loss_mask']      # 1=成功, 0=失败
+action_loss_mask = batch['action_loss_mask']        # 1=成功, 0=失败
+
 def _masked_mean(loss, mask):
-    """① 失败样本动作项置零（Eq.9）；价值/未来项不受影响。"""
+    """① 失败样本动作项置零——失败教『后果』，不教『动作』（Eq.9）。"""
     m = mask.reshape(-1)
     return (loss * m).sum() / m.sum().clamp_min(1e-8)
 
 def fact_train_step(batch, model):
     """② 三路损失：动作（掩码）、价值（全样本）、未来（全样本）。"""
-    pred_action, pred_value, pred_future = model(batch)
+    pred_action, pred_value, pred_future = model(batch)          # 共享 DiT，动作 adapter
     L_act = _masked_mean(action_loss(pred_action, batch.a), action_loss_mask)
-    L_val = mse(pred_value, batch.value_target)
+    L_val = mse(pred_value, batch.value_target)                  # Eq.6 目标
     L_fut = flow_mse(pred_future, batch.future_latents)
-    return 20.0*L_act + 1.0*L_val + 1.0*L_fut
+    return 20.0*L_act + 1.0*L_val + 1.0*L_fut                    # w_a=20, w_v=w_I=1
+
+def fact_infer(obs, instruction, N=1):
+    """③ Stage 1 出动作；④ 需要时 Stage 2 用干净动作条件化价值；⑤ 选最高价值。"""
+    a = denoise_action(obs, instruction, steps=20)               # Stage 1
+    if N == 1: return a                                          # 动作单用
+    cands = [denoise_action(obs, instruction) for _ in range(N)]
+    scores = [value_head(obs, instruction, c) for c in cands]    # Stage 2
+    return cands[argmax(scores)]                                 # Eq.10
 ```
+
+**实现细节**：Wan2.2-5B 初始化；动作 FFN `2e-4`、骨干 `2e-5`；`H=48`；未来帧偏移 `[0,H/4,H/2,3H/4,H]`；20 步 flow-Euler。
 
 ### 3.4 DreamAvoid：混合数据价值模型 + 触发式 dreaming（**官方代码**）
 
-**输入/输出（物理）**：输入=当前 obs、候选动作块、预测未来帧、任务、状态；输出=标量价值（越高越不会失败）。
+**输入 / 输出（物理）**：输入=当前画面、候选动作块、该动作预测出的未来帧、任务、状态；输出=标量价值（越高越不会失败）。
+
+| 变量 | 形状 | 物理意义 |
+|---|---|---|
+| `obs` | `[3,H,W]` | 当前画面 |
+| `future` | `[L,3,H,W]` | 候选动作导致的未来帧 |
+| `action` | `[H_a,d_a]` | 候选动作块 |
+| `state` | `[d]` | 本体 |
+| `V` | 标量 | 价值（安全/进度） |
 
 ```python
 class ValueModel(nn.Module):
-    """① DINOv2 编码当前帧与未来帧；② value token 汇总；③ 与动作/任务/状态拼接。"""
+    """① DINOv2 逐帧编码；② value token 汇总时序；③ 与动作/任务/状态拼接出价值。"""
     def forward(self, obs, future, action, state, task_id):
-        obs_tok = encoder(obs) + frame_emb[0]
-        fut_tok = encoder(future) + frame_emb[1] + time_emb[:L]
-        seq = transformer([value_token] + obs_tok + fut_tok)
+        obs_tok = encoder(obs) + frame_emb[0]                  # 当前帧 token
+        fut_tok = encoder(future) + frame_emb[1] + time_emb[:L]  # 未来帧 token
+        seq = transformer([value_token] + obs_tok + fut_tok)   # 时序注意力
         x = cat([seq[:, 0], proj(action), task_emb(task_id), proj(state)])
-        return head(x).squeeze(-1)
+        return head(x).squeeze(-1)                             # 标量价值
 
 def dream_avoid_step(policy, value_model, obs, state, task):
-    """④ 未到关键阶段直接执行；⑤ 到关键阶段才采候选、梦未来、选最高价值。"""
-    if not trigger(obs): return policy.act(obs)
-    cands = [policy.sample_action(obs) for _ in range(8)]
+    """④ 未到关键阶段直接执行；⑤ 关键阶段才采候选、梦未来、选最高价值。"""
+    if not trigger(obs): return policy.act(obs)                # 省算力
+    cands = [policy.sample_action(obs) for _ in range(8)]      # 8 个候选
     return max(cands, key=lambda a: value_model.score(
         obs, rollout_future(policy, obs, a), a, state, task))
 ```
 
+**公式**：`V=f(obs,future,a,state,task)`——**物理**：价值不是「动作本身好不好」，而是「这个动作导致的未来看起来会不会失败」。
+
 ### 3.5 τ0-WM：propose → RCS 排序 → 模拟器精炼（**官方代码**）
 
-**输入/输出（物理）**：输入=观测、状态、候选数 N、RCS 比例、模拟器；输出=选中动作块（可截短执行步数）。
+**输入 / 输出（物理）**：输入=观测、状态、候选数 N；输出=选中动作块（可截短执行步数）。
+
+| 变量 | 形状 | 物理意义 |
+|---|---|---|
+| `cands` | `[N,H_a,d_a]` | N 个候选动作块 |
+| `rcs` | `[N]` | 重去噪一致性分数（可信度） |
+| `sim_rewards` | `[N,T]` | 模拟器给出的逐步回报 |
+| `step` | int | 实际执行几步（取回报峰值前） |
 
 ```python
 def play(obs, state, N_proposals=8):
-    """① 生成 N 个候选；② RCS 选最可信；③ 模拟器回报决定执行几步。"""
+    """① 生成 N 候选；② RCS 选最可信；③ 模拟器回报决定执行步数。"""
     pred = pipeline.infer(obs, state, N_proposals=N_proposals, get_RCS=True)
-    cands, rcs = pred['action'], pred['rcs']
-    best = cands[rcs.max(dim=0).indices]              # RCS 最高者
+    cands, rcs = pred['action'], pred['rcs']           # 候选 + 可信度
+    best = cands[rcs.max(dim=0).indices]               # RCS 最高者
     if sim_refine:
         sim_rewards = sim_pipeline.infer(actions=cands, return_reward=True)
         if sim_rewards.max() < 0:
-            best = re_predict_with_sim_latent(...)    # 全差 → 用模拟器潜重生成
+            best = re_predict_with_sim_latent(...)     # 全差 → 用模拟器潜重生成
         else:
-            best = cands[best_idx, :argmax(sim_rewards)+1]
+            best = cands[best_idx, :argmax(sim_rewards)+1]  # 只执行峰值前
     return best
 ```
 
+**公式**：`RCS = −E_{K 个随机时间步}[‖ε−ε̂(z_t,t)‖²]`（重去噪误差的负值）——**物理**：一条候选如果「重新加噪再加噪不回去」，说明它是偶然采样，不可信。
+
 ### 3.6 CoachSI：语言教练 relabel
 
-**输入/输出（物理）**：输入=冻结 VLM、成功轨迹、原指令；输出=带「下一步」标签的轨迹。
+**输入 / 输出（物理）**：输入=冻结 VLM、成功轨迹、原任务指令；输出=带「下一步该做什么」标签的轨迹。
+
+| 变量 | 形状 | 物理意义 |
+|---|---|---|
+| `seg` | 帧窗口 | 轨迹切出的一段 |
+| `steps` | 文本 | VLM 命名的「下一步」 |
+| `traj'` | `T×{obs,a,step}` | 新监督：动作 + 语义意图 |
 
 ```python
 def coach_relabel(traj, vlm, task):
-    """① 切段；② VLM 命名下一步；③ 用命名做新监督。"""
+    """① 切段；② VLM 命名下一步；③ 用命名做新监督（动作骨干冻结）。"""
     steps = [vlm.describe(seg.frames, task, "next step?") for seg in segment(traj)]
     return [(seg.obs, seg.action, s) for seg, s in zip(segment(traj), steps)]
 ```
+
+**物理**：机器人失败常是「不知道该干哪一步」；VLM 把成功轨迹命名成子任务，等于补上语义监督，且不改动作模型。
 
 ---
 
