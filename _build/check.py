@@ -143,13 +143,14 @@ def main():
 
         # template leftovers (skip legacy pages: they contain original LaTeX/markup)
         if not re.match(r"(project\d+|_build/out/project\d+)\.html$", rel):
+            scan_text = re.sub(r"(?s)<(?:pre|code)\b[^>]*>.*?</(?:pre|code)>", "", text)
             for pat, label in ((r"%\([a-z_]+\)s", "py format-leftover"),
                                (r"\{[a-z_]+\}", "brace-leftover"),
                                (r"\bNone\b", "None"),
                                (r"\bundefined\b", "undefined"),
                                (r"\{\{|\{%", "liquid")):
-                for m in re.finditer(pat, text):
-                    ctx = text[max(0, m.start() - 40):m.end() + 40].replace("\n", " ")
+                for m in re.finditer(pat, scan_text):
+                    ctx = scan_text[max(0, m.start() - 40):m.end() + 40].replace("\n", " ")
                     problems.append("%s: %s -> …%s…" % (rel, label, ctx))
                     break
 

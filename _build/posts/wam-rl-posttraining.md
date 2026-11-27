@@ -549,7 +549,78 @@ def coach_relabel(traj, vlm, task):
 
 ---
 
-## 7. 参考
+## 7. 术语附录：q 的 shape、LoRA、GRPO
+
+### 7.1 `q` 的 shape（EVA 里的关节序列）
+
+`q = idm.decode(video)`：`video` 形状 `[T_v, 3, H, W]`，解码后
+
+- `q ∈ R^{T×D}`：`T` 个动作帧（通常与视频帧率对齐或降采样），`D`=关节维数；双臂 `D=14`（每臂 6 关节+1 夹爪），单臂 `D=7`；
+- `v = diff(q) ∈ R^{(T−1)×D}`（速度）；`a = diff(v) ∈ R^{(T−2)×D}`；`j = diff(a) ∈ R^{(T−3)×D}`；
+- 奖励 `R` 是标量：各阶差分先按关节平均，再加权求和。
+
+**`T` 与 `D` 的具体数值 EVA 论文未给**（EVA 依 LVP 初始化、不同任务 D 不同）；能确定的是「逐帧、逐关节」的二维表。
+
+### 7.2 LoRA：全称、原理、实现
+
+**全称**：Low-Rank Adaptation（Hu et al., ICLR 2022，arXiv:2106.09685）。
+
+**原理**：冻结预训练权重 `W0 ∈ R^{d×k}`，只学一个低秩增量 `ΔW = BA`：
+
+`h = W0·x + (α/r)·B·A·x`，其中 `B ∈ R^{d×r}`、`A ∈ R^{r×k}`，`r ≪ min(d,k)`。
+
+- 初始化：`A ~ 高斯(小方差)`、`B = 0` → 训练起点 `ΔW=0`，不破坏原模型；
+- 只训练 `A、B`（参数量 `r(d+k)`，通常是原权重的 0.1–1%）；
+- 推理时可合并：`W' = W0 + (α/r)·BA`，**零额外延迟**；不合并则相当于旁路。
+
+```python
+class LoRALinear(nn.Module):
+    """物理：给冻结的线性层加一条低秩旁路，只学「任务增量」。"""
+    def __init__(self, base: nn.Linear, r=16, alpha=16):
+        super().__init__()
+        self.base, self.r, self.scale = base, r, alpha / r
+        self.A = nn.Parameter(torch.randn(r, base.in_features) * 0.01)  # [r,k]
+        self.B = nn.Parameter(torch.zeros(base.out_features, r))        # [d,r]
+        for p in base.parameters():
+            p.requires_grad_(False)                    # 冻结原权重
+
+    def forward(self, x):                              # x [..., k]
+        return self.base(x) + self.scale * (x @ self.A.T @ self.B.T)   # [..., d]
+```
+
+**为什么在本领域用**：VLA/WAM 骨干动辄数 B 参数，全量微调显存扛不住；LoRA 只训旁路、可并存多任务适配器。**代价**：秩 `r` 限制表达能力，分布偏移大时不如全量微调。
+**代码位置**：VAMPO `scripts/train_calvin_svd_grpo.sh` 的 `train_args.use_lora=False, lora_rank=16`（可切）；EVA「只更新生成器 LoRA」；DreamAvoid 的 `openpi-da` 也带 `lora.py`。
+
+### 7.3 GRPO：全称、原理、实现
+
+**全称**：Group Relative Policy Optimization（DeepSeekMath，arXiv:2402.03300）。
+
+**原理**：PPO 需要 value/critic 估计基线；GRPO **用同组样本的均值/标准差代替 critic**：
+
+1. 对同一条件采样 `G` 条输出，得到奖励 `r_1..r_G`；
+2. 组内标准化优势：`Â_i = (r_i − mean(r)) / (std(r)+ε)`；
+3. 最大化截断代理目标：`J = E[ (1/G) Σ_i min(ρ_i Â_i, clip(ρ_i,1−c,1+c) Â_i) ] − β·D_KL(π‖π_ref)`，其中 `ρ_i = π_θ(o_i)/π_old(o_i)`；
+4. 参考策略 KL 防止跑偏（VAMPO 用「只首步 SDE」的结构性约束替代显式 KL）。
+
+```python
+def grpo_loss(logp, logp_old, rewards, clip=0.2, beta=0.0, logp_ref=None):
+    """物理：组内比较——比同组平均好的样本被强化，差的被压制。
+    无 critic：均值/标准差就是基线。"""
+    adv = (rewards - rewards.mean()) / (rewards.std() + 1e-8)     # 组相对优势
+    ratio = torch.exp(logp - logp_old)                            # 重要性比
+    unclipped = ratio * adv
+    clipped = torch.clamp(ratio, 1 - clip, 1 + clip) * adv
+    loss = -torch.min(unclipped, clipped).mean()                  # 悲观（取 min）
+    if beta > 0 and logp_ref is not None:
+        loss = loss + beta * (logp - logp_ref).mean()             # 可选 KL 惩罚
+    return loss
+```
+
+**与 PPO 的差异**：省掉 value 网络（显存/工程更简单）、基线随组自适应；**代价**：每组要 `G` 条完整采样（算力 ×G），组内奖励方差大时优势噪声大；`G` 太小则基线不稳。
+**在 VAMPO 里的实例**：`G=8`、`clip=0.2`、`adv_clip_max=2.0`、`lr=1e-6`、首步 SDE 才有 `log_prob`、20 步去噪、guidance 7.5。
+
+
+## 8. 参考
 
 - GigaBrain-0.5M*（RAMP）：arXiv 2602.12099（无官方代码）
 - VAMPO：arXiv 2603.19370 · [OpenHelix-Team/VAMPO](https://github.com/OpenHelix-Team/VAMPO)

@@ -65,7 +65,7 @@
     <h1 style="margin-top:14px">从 SFT 到闭环：VLA 与 WAM 的 RL 后训练怎么做（实现版）</h1>
     <div class="post-meta">
       <time datetime="2026-11-25">2026-11-25</time><span class="sep"></span>
-      <span>10 分钟阅读</span><span class="sep"></span>
+      <span>12 分钟阅读</span><span class="sep"></span>
       <span><span class="tag">[&quot;RL&quot;</span><span class="tag">&quot;后训练&quot;</span><span class="tag">&quot;闭环训练&quot;</span><span class="tag">&quot;VLA&quot;</span><span class="tag">&quot;WAM&quot;</span><span class="tag">&quot;代码&quot;]</span></span>
     </div>
   </header>
@@ -404,7 +404,46 @@ def dream_avoid_step(policy, value_model, obs, state, task):
 <h2 id="6-坑">6. 坑</h2>
 <ul><li>「伪代码」必须能落地：没有函数签名、输入输出、数据流的，只是步骤清单。</li><li>公式要映射代码行；论文没给的超参写「论文未给」，不补默认值。</li><li>自评数字：跨论文比较先看协议（trials、任务套件）。</li><li>奖励 hacking：平滑度可被「不动」骗过，EVA 用限幅惩罚堵。</li><li>闭环≠更好：世界模型偏差会被 RL 放大。</li><li>不要把 post-training 都当 RL：V-JEPA 2 的 post-training 是加动作条件的微调。</li></ul>
 <hr>
-<h2 id="7-参考">7. 参考</h2>
+<h2 id="7-术语附录-q-的-shape-lora-grpo">7. 术语附录：q 的 shape、LoRA、GRPO</h2>
+<h3 id="7-1-q-的-shape-eva-里的关节序列">7.1 <code>q</code> 的 shape（EVA 里的关节序列）</h3>
+<p><code>q = idm.decode(video)</code>：<code>video</code> 形状 <code>[T_v, 3, H, W]</code>，解码后</p>
+<ul><li><code>q ∈ R^{T×D}</code>：<code>T</code> 个动作帧（通常与视频帧率对齐或降采样），<code>D</code>=关节维数；双臂 <code>D=14</code>（每臂 6 关节+1 夹爪），单臂 <code>D=7</code>；</li><li><code>v = diff(q) ∈ R^{(T−1)×D}</code>（速度）；<code>a = diff(v) ∈ R^{(T−2)×D}</code>；<code>j = diff(a) ∈ R^{(T−3)×D}</code>；</li><li>奖励 <code>R</code> 是标量：各阶差分先按关节平均，再加权求和。</li></ul>
+<p><strong><code>T</code> 与 <code>D</code> 的具体数值 EVA 论文未给</strong>（EVA 依 LVP 初始化、不同任务 D 不同）；能确定的是「逐帧、逐关节」的二维表。</p>
+<h3 id="7-2-lora-全称-原理-实现">7.2 LoRA：全称、原理、实现</h3>
+<p><strong>全称</strong>：Low-Rank Adaptation（Hu et al., ICLR 2022，arXiv:2106.09685）。</p>
+<p><strong>原理</strong>：冻结预训练权重 <code>W0 ∈ R^{d×k}</code>，只学一个低秩增量 <code>ΔW = BA</code>：</p>
+<p><code>h = W0·x + (α/r)·B·A·x</code>，其中 <code>B ∈ R^{d×r}</code>、<code>A ∈ R^{r×k}</code>，<code>r ≪ min(d,k)</code>。</p>
+<ul><li>初始化：<code>A ~ 高斯(小方差)</code>、<code>B = 0</code> → 训练起点 <code>ΔW=0</code>，不破坏原模型；</li><li>只训练 <code>A、B</code>（参数量 <code>r(d+k)</code>，通常是原权重的 0.1–1%）；</li><li>推理时可合并：<code>W' = W0 + (α/r)·BA</code>，<strong>零额外延迟</strong>；不合并则相当于旁路。</li></ul>
+<pre><code class="language-python">class LoRALinear(nn.Module):
+    &quot;&quot;&quot;物理：给冻结的线性层加一条低秩旁路，只学「任务增量」。&quot;&quot;&quot;
+    def __init__(self, base: nn.Linear, r=16, alpha=16):
+        super().__init__()
+        self.base, self.r, self.scale = base, r, alpha / r
+        self.A = nn.Parameter(torch.randn(r, base.in_features) * 0.01)  # [r,k]
+        self.B = nn.Parameter(torch.zeros(base.out_features, r))        # [d,r]
+        for p in base.parameters():
+            p.requires_grad_(False)                    # 冻结原权重
+
+    def forward(self, x):                              # x [..., k]
+        return self.base(x) + self.scale * (x @ self.A.T @ self.B.T)   # [..., d]</code></pre>
+<p><strong>为什么在本领域用</strong>：VLA/WAM 骨干动辄数 B 参数，全量微调显存扛不住；LoRA 只训旁路、可并存多任务适配器。<strong>代价</strong>：秩 <code>r</code> 限制表达能力，分布偏移大时不如全量微调。 <strong>代码位置</strong>：VAMPO <code>scripts/train_calvin_svd_grpo.sh</code> 的 <code>train_args.use_lora=False, lora_rank=16</code>（可切）；EVA「只更新生成器 LoRA」；DreamAvoid 的 <code>openpi-da</code> 也带 <code>lora.py</code>。</p>
+<h3 id="7-3-grpo-全称-原理-实现">7.3 GRPO：全称、原理、实现</h3>
+<p><strong>全称</strong>：Group Relative Policy Optimization（DeepSeekMath，arXiv:2402.03300）。</p>
+<p><strong>原理</strong>：PPO 需要 value/critic 估计基线；GRPO <strong>用同组样本的均值/标准差代替 critic</strong>：</p>
+<ol><li>对同一条件采样 <code>G</code> 条输出，得到奖励 <code>r_1..r_G</code>；</li><li>组内标准化优势：<code>Â_i = (r_i − mean(r)) / (std(r)+ε)</code>；</li><li>最大化截断代理目标：<code>J = E[ (1/G) Σ_i min(ρ_i Â_i, clip(ρ_i,1−c,1+c) Â_i) ] − β·D_KL(π‖π_ref)</code>，其中 <code>ρ_i = π_θ(o_i)/π_old(o_i)</code>；</li><li>参考策略 KL 防止跑偏（VAMPO 用「只首步 SDE」的结构性约束替代显式 KL）。</li></ol>
+<pre><code class="language-python">def grpo_loss(logp, logp_old, rewards, clip=0.2, beta=0.0, logp_ref=None):
+    &quot;&quot;&quot;物理：组内比较——比同组平均好的样本被强化，差的被压制。
+    无 critic：均值/标准差就是基线。&quot;&quot;&quot;
+    adv = (rewards - rewards.mean()) / (rewards.std() + 1e-8)     # 组相对优势
+    ratio = torch.exp(logp - logp_old)                            # 重要性比
+    unclipped = ratio * adv
+    clipped = torch.clamp(ratio, 1 - clip, 1 + clip) * adv
+    loss = -torch.min(unclipped, clipped).mean()                  # 悲观（取 min）
+    if beta &gt; 0 and logp_ref is not None:
+        loss = loss + beta * (logp - logp_ref).mean()             # 可选 KL 惩罚
+    return loss</code></pre>
+<p><strong>与 PPO 的差异</strong>：省掉 value 网络（显存/工程更简单）、基线随组自适应；<strong>代价</strong>：每组要 <code>G</code> 条完整采样（算力 ×G），组内奖励方差大时优势噪声大；<code>G</code> 太小则基线不稳。 <strong>在 VAMPO 里的实例</strong>：<code>G=8</code>、<code>clip=0.2</code>、<code>adv_clip_max=2.0</code>、<code>lr=1e-6</code>、首步 SDE 才有 <code>log_prob</code>、20 步去噪、guidance 7.5。</p>
+<h2 id="8-参考">8. 参考</h2>
 <ul><li>GigaBrain-0.5M*（RAMP）：arXiv 2602.12099（无官方代码）</li><li>VAMPO：arXiv 2603.19370 · <a href="https://github.com/OpenHelix-Team/VAMPO">OpenHelix-Team/VAMPO</a></li><li>EVA：arXiv 2603.17808</li><li>CreFlow：arXiv 2605.14274</li><li>WorldVLN：arXiv 2605.15964</li><li>FACT：arXiv 2608.10232 · <a href="https://github.com/Bariona/FACT">Bariona/FACT</a></li><li>DreamAvoid：arXiv 2605.11750 · <a href="https://github.com/XianzheFan/DreamAvoid">XianzheFan/DreamAvoid</a></li><li>τ0-WM：arXiv 2606.01027 · <a href="https://github.com/sii-research/tau-0-wm">sii-research/tau-0-wm</a></li><li>CoachSI：arXiv 2611.25529</li><li>DreamGen（开环反例）：arXiv 2505.12705</li><li>WAM 论文站：/blog/wam-survey/</li></ul></div>
   </div>
 </article>
