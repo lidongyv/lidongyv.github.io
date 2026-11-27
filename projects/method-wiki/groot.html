@@ -3,132 +3,562 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GR00T 精读：N1 / N1.5 / N1.7 / 2（架构/训练/代码）</title>
+<title>GR00T 精读：N1 / N1.5 / N1.7 / 2（论文+公式+源码+实验）</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
+
 <header class="hero">
-  <h1>GR00T 家族：N1 / N1.5 / N1.7 / GR00T 2</h1>
-  <p class="sub">Vision-Language-Action → World-Action Model · NVIDIA · 动作块 flow matching</p>
-  <p class="meta">N1=L3（论文全文）｜N1.5/GR00T 2=L1（官方页）｜N1.7=L1（官方源码配置）· 代码：Isaac-GR00T / GR00T-WholeBodyControl</p>
+  <h1>GR00T 家族：从 VLA 到 World-Action Model</h1>
+  <p class="sub">N1（论文全文）→ N1.5（冻结 VLM + FLARE）→ N1.7（Cosmos-Reason2-2B + 相对 EEF）→ GR00T 2（视频+动作联合去噪）</p>
+  <p class="meta">N1 与 N1.7 为 L3（论文全文 / 源码配置）· N1.5 与 GR00T 2 为 L1（官方技术页）· 代码：NVIDIA/Isaac-GR00T、NVlabs/GR00T-WholeBodyControl</p>
 </header>
+
 <nav class="top">
-  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a class="on" href="groot.html">GR00T</a>
-  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="index.html">索引</a>
+  <a href="sonic.html">SONIC</a>
+  <a class="on" href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a>
+  <a href="pi0.html">π0 / π0.5</a>
+  <a href="astra.html">ASTRA</a>
+  <a href="fast-wam.html">Fast-WAM</a>
 </nav>
 
 <section>
-  <h2>1. 四代定位</h2>
+  <h2>0. 论文/技术报告信息表（四代并列）</h2>
   <table>
-    <tr><th>版本</th><th>骨干</th><th>动作头</th><th>规模</th><th>数据</th><th>训练</th></tr>
-    <tr><td><b>N1</b></td><td>Eagle-2（1.34B，SmolLM2+SigLIP-2）</td><td>DiT；H=16；K=4 步</td><td>2.2B</td><td>88h 遥操作→827h 神经轨迹 + 78 万仿真 + OXE</td><td>1024×H100，~5 万 GPU 小时</td></tr>
-    <tr><td><b>N1.5</b></td><td>Eagle 2.5（2.1B，冻结）</td><td>同 N1 + FLARE</td><td>VLM 2.1B</td><td>同 N1 + DreamGen/AgiBot-Beta</td><td>250K 步，1K×H100，GBS 16384</td></tr>
-    <tr><td><b>N1.7</b></td><td><b>Cosmos-Reason2-2B</b>（Qwen3-VL）</td><td>AlternateVLDiT；<b>H=40</b>；K=4</td><td>~3B</td><td>LeRobot 示教（50–100 条/任务）</td><td>20k 步、bs 32、4 GPU（文档示例）</td></tr>
-    <tr><td><b>GR00T 2</b></td><td>（未公开）</td><td><b>WAM</b>：一个 DiT 联合去噪视频+动作</td><td>Turbo 2B</td><td>402,730h 人视频 + 10,184h UMI + 23,500h 遥操作</td><td>未公开；真机 RL + LoRA</td></tr>
+    <tr><th>版本</th><th>标题 · 作者 · 机构</th><th>时间 / Venue</th><th>链接 / 证据级别</th></tr>
+    <tr>
+      <td><b>N1</b></td>
+      <td><b>GR00T N1: An Open Foundation Model for Generalist Humanoid Robots</b><br>
+        作者：NVIDIA，署名 41 人（字母序）。Johan Bjorck, Fernando Castañeda, Nikita Cherniadev, Xingye Da, Runyu Ding, Linxi “Jim” Fan, …, Yuke Zhu；项目 lead 为 Linxi Fan 与 Yuke Zhu。<br>
+        机构：NVIDIA</td>
+      <td>v1 2025-03-18；v2 2025-03-27<br>
+        Venue：arXiv 预印本（cs.RO）</td>
+      <td><a href="https://arxiv.org/abs/2503.14734">arXiv:2503.14734</a><br>
+        <b>L3</b>：全文 + 附录（Table 6 超参、Table 2/3 结果）</td>
+    </tr>
+    <tr>
+      <td><b>N1.5</b></td>
+      <td><b>GR00T N1.5: An Improved Open Foundation Model for Generalist Humanoid Robots</b><br>
+        作者：NVIDIA GEAR，署名 38 人（字母序）。Johan Bjorck, Valts Blukis, …, Yuke Zhu。<br>
+        机构：NVIDIA GEAR</td>
+      <td>2025-06-11（页面标注）<br>
+        Venue：官方技术页（无 arXiv 全文）</td>
+      <td><a href="https://research.nvidia.com/labs/gear/gr00t-n1_5/">GEAR N1.5</a><br>
+        <b>L1</b>：官方页面，仅结论与表格数字，无方法细节公式</td>
+    </tr>
+    <tr>
+      <td><b>N1.7</b></td>
+      <td><b>NVIDIA Isaac GR00T N1.7（General Availability）</b><br>
+        作者：README 未列个人署名；权重在 HuggingFace <code>nvidia/GR00T-N1.7-3B</code>。<br>
+        机构：NVIDIA</td>
+      <td>2026（README 版本；模型包 <code>gr00t_n1d7</code>）<br>
+        Venue：开源代码 + 模型权重，README 为唯一权威文档</td>
+      <td><a href="https://github.com/NVIDIA/Isaac-GR00T">Isaac-GR00T</a><br>
+        <b>L3（配置级）</b>：<code>gr00t/configs/model/gr00t_n1d7.py</code>、<code>gr00t/configs/finetune_config.py</code>、README benchmark；无独立论文</td>
+    </tr>
+    <tr>
+      <td><b>GR00T 2</b></td>
+      <td><b>GR00T 2: Scaling Robot Foundation Models for Generalization, Dexterity, and Adaptation</b><br>
+        作者：NVIDIA（BibTeX 记 <code>NVIDIA et al.</code>，类型 <code>@techreport</code> 白皮书）。<br>
+        机构：NVIDIA GEAR</td>
+      <td>2026-11（页面标注 November 2026）<br>
+        Venue：官方技术页 + 白皮书 PDF（<code>gr00t2_whitepaper.pdf</code>）；页面写 “Code Available in December”</td>
+      <td><a href="https://research.nvidia.com/labs/gear/gr00t-2/">GEAR GR00T 2</a><br>
+        <b>L1</b>：官方页面数字；架构仅一句“一个 DiT 同时去噪视频与动作”</td>
+    </tr>
   </table>
+  <div class="ok"><b>一句话结论</b>：N1 把「VLM 当 System 2、flow-matching DiT 当 System 1」的双系统 VLA 立起来，并用「数据金字塔 + 潜动作 + 神经轨迹」解决人形数据稀缺；N1.5 靠冻结 VLM + FLARE 把语言跟随从 46.6% 拉到 93.3%；N1.7 换成 Cosmos-Reason2-2B、动作时域 40、相对 EEF 动作空间；GR00T 2 把动作头升级成「视频+动作联合去噪」的 WAM，并用 40 万小时人类视频换来跨本体迁移（X-Adapt）。</div>
 </section>
 
 <section>
-  <h2>2. 流程图</h2>
-  <div class="svgbox">
-  <svg viewBox="0 0 980 360" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
-    <defs><marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker></defs>
-    <rect x="20" y="30" width="200" height="80" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="56" font-size="13" font-weight="700">图像（多相机）</text>
-    <text x="34" y="76" font-size="11.5">224² → 64 token/帧</text>
-    <text x="34" y="94" font-size="11.5">（pixel shuffle）</text>
-    <rect x="20" y="140" width="200" height="70" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="166" font-size="13" font-weight="700">语言指令</text><text x="34" y="186" font-size="11.5">tokenizer → VLM</text>
-    <rect x="20" y="240" width="200" height="70" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="266" font-size="13" font-weight="700">本体状态</text><text x="34" y="286" font-size="11.5">MLP 编码（132 维 pad）</text>
+  <h2>1. Abstract 原文（N1）+ 中译</h2>
+  <h3>原文（逐句引用，共 5 句）</h3>
+  <div class="eq" style="font-family:inherit;font-size:13.8px">
+    <p>(1) “A robot foundation model, trained on massive and diverse data sources, is essential for enabling the robots to reason about novel situations, robustly handle real-world variability, and rapidly learn new tasks.”</p>
+    <p>(2) “GR00T N1 is a Vision-Language-Action (VLA) model with a dual-system architecture.”</p>
+    <p>(3) “The vision-language module (System 2) interprets the environment through vision and language instructions. The subsequent diffusion transformer module (System 1) generates fluid motor actions in real time. Both modules are tightly coupled and jointly trained end-to-end.”</p>
+    <p>(4) “We train GR00T N1 with a heterogeneous mixture of real-robot trajectories, human videos, and synthetically generated datasets.”</p>
+    <p>(5) “We show that our generalist robot model GR00T N1 outperforms the state-of-the-art imitation learning baselines on standard simulation benchmarks across multiple robot embodiments.”</p>
+  </div>
+  <p class="foot">出处：arXiv:2503.14734v2，Abstract。原文首句 “General-purpose robots need a versatile body and an intelligent mind.” 为开篇铺垫，未列入上表。</p>
 
-    <rect x="280" y="80" width="200" height="90" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
-    <text x="294" y="108" font-size="13" font-weight="700">VLM（取第 12 层）</text>
-    <text x="294" y="128" font-size="11.5">N1: Eagle-2 / N1.7: Cosmos-Reason2</text>
-    <text x="294" y="146" font-size="11.5">默认冻结 LLM/视觉塔</text>
+  <h3>中译</h3>
+  <p>（1）一个在大量多样数据上训练的机器人基础模型，是让机器人能推理新情境、稳健应对真实世界变化、并快速学会新任务的关键。</p>
+  <p>（2）GR00T N1 是一个采用双系统架构的视觉-语言-动作（VLA）模型。</p>
+  <p>（3）视觉-语言模块（System 2）通过视觉和语言指令理解环境；随后的扩散 Transformer 模块（System 1）实时生成流畅的动作；两个模块紧耦合、端到端联合训练。</p>
+  <p>（4）我们用真实机器人轨迹、人类视频与合成数据的异构混合来训练 GR00T N1。</p>
+  <p>（5）我们证明该通用机器人在跨多个本体形态的标准仿真基准上超过了当前最优的模仿学习基线。</p>
 
-    <rect x="540" y="80" width="200" height="90" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
-    <text x="554" y="108" font-size="13" font-weight="700">AlternateVLDiT</text>
-    <text x="554" y="128" font-size="11.5">16 层 / 32 头 / ada_norm</text>
-    <text x="554" y="146" font-size="11.5">VL token 与动作 token 交替</text>
+  <div class="warn"><b>读法提示</b>：N1 的摘要里没有任何数字——规模（2.2B/1.34B）、速度（63.9ms/16 动作）、算力（约 5 万 H100 小时）全部藏在正文 §2 与 §2.3。所以本页第 0/3/4 节给的信息密度比摘要高得多；引用 N1 的规模数字时请务必标 §2。</div>
+</section>
 
-    <rect x="790" y="80" width="170" height="90" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
-    <text x="804" y="108" font-size="13" font-weight="700">动作块</text>
-    <text x="804" y="128" font-size="11.5">H=16（N1）/ 40（N1.7）</text>
-    <text x="804" y="146" font-size="11.5">→ PD / SONIC</text>
+<section>
+  <h2>2. Problem → Core idea</h2>
 
-    <line x1="220" y1="70" x2="276" y2="110" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#g)"/>
-    <line x1="220" y1="175" x2="276" y2="150" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#g)"/>
-    <line x1="220" y1="275" x2="276" y2="190" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#g)"/>
-    <line x1="480" y1="125" x2="536" y2="125" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#g)"/>
-    <line x1="740" y1="125" x2="786" y2="125" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#g)"/>
-    <text x="20" y="340" font-size="12" fill="#5b6a79">N1.5 在 VLM 特征上加 FLARE（对齐目标未来嵌入，loss 0.2）；GR00T 2 把动作 token 换成「视频+动作」联合去噪（WAM）。</text>
+  <h3>2.1 问题：人形数据是「数据孤岛」，没有互联网级语料</h3>
+  <p>原文：“However, unlike the digital realms of words and pixels, no Internet of humanoid robot datasets exist for large-scale pre-training. The data available for any single humanoid hardware would be orders of magnitude too small.”（§1）</p>
+  <p>原文：“the great variability in robot embodiments, sensors, actuator degrees of freedom, control modes, and other factors result in an archipelago of “data islands” rather than a coherent, Internet-scale dataset needed for training a true generalist model.”（§1）</p>
+  <p>拆开就是两难：① 单一本体的真机数据量级不够；② 跨本体拼数据又会因为状态/动作维度不齐而无法直接回归。</p>
+
+  <h3>2.2 答案一：数据金字塔 + 把「无动作视频」变成有动作</h3>
+  <p>原文：“we organize heterogeneous sources by scale: large quantities of web data and human videos lay the base of the pyramid; synthetic data generated with physics simulations and/or augmented by off-the-shelf neural models form the middle layer, and real-world data collected on the physical robot hardware complete the top.”（§1）</p>
+  <p>三层各自的「动作标注」来源：</p>
+  <table>
+    <tr><th>层</th><th>数据</th><th>动作从哪来</th><th>规模（N1）</th></tr>
+    <tr><td>底层</td><td>人类第一视角视频、VLM 预训练网页数据</td><td>VQ-VAE 逆动力学（latent action / LAPA）</td><td>论文未给小时数（见 §3.3）</td></tr>
+    <tr><td>中层</td><td>神经轨迹（视频生成模型造）+ DexMimicGen 仿真</td><td>潜动作 或 IDM 预测的伪动作</td><td>827h 神经轨迹（88h→约 10×）；78 万条仿真轨迹 ≈ 6,500h</td></tr>
+    <tr><td>顶层</td><td>GR-1 真机遥操作 + OXE + AgiBot-Alpha</td><td>真实动作</td><td>88h 自有遥操作；AgiBot 用到当时可得的 14 万条</td></tr>
+  </table>
+
+  <h3>2.3 答案二：双系统 —— 慢的想，快的做</h3>
+  <p>原文：“It adopts a dual-system compositional architecture, inspired by human cognitive processing (Kahneman, 2011). The System 2 reasoning module is a pre-trained Vision-Language Model (VLM) that runs at 10Hz on an NVIDIA L40 GPU.”（§1）</p>
+  <p>原文：“It generates closed-loop motor actions at a higher frequency (120Hz).”（§1）</p>
+  <div class="warn"><b>120Hz 与 63.9ms 的矛盾</b>：§2 给的是「采样 16 动作的 chunk 耗时 63.9ms（L40，bf16）」。若每 chunk 都重新推理，等效只有约 15.6 次/秒，与 120Hz 差 7.7×。两个数字同时成立的唯一解释是：120Hz 指底层动作回放/控制频率，chunk 在此频率上被逐条消费，推理与执行流水化。论文没有澄清这个口径——引用「120Hz」时应当加上这个限定。</div>
+</section>
+
+<section>
+  <h2>3. 逐节方法精读（N1 为主，N1.5/N1.7/2 的差异单列）</h2>
+
+  <h3>3.1 §2.1 状态与动作编码器：用「每本体一个 MLP」抹平维度差</h3>
+  <p>原文：“To process states and actions of varying dimensions across different robot embodiments, we use an MLP per embodiment to project them to a shared embedding dimension as input to the DiT. As in Black et al. (2024), the Action Encoder MLP also encodes the diffusion timestep together with the noised action vector.”</p>
+  <p>关键：<b>时间步 τ 不是单独 embedding 注入，而是与带噪动作一起过同一个 MLP</b>。这让「去噪进度」与「动作内容」在编码阶段就纠缠，ada_norm 再在 DiT 内部调制——比「CONCAT 一个标量」更容易学到与噪声水平相关的行为。</p>
+  <p>原文（动作分块）：“The actions are processed in chunks as in Zhao et al. (2023), meaning that at any given time t the model uses A_t = [a_t, a_(t+1), …, a_(t+H−1)] which contains the action vectors of timesteps t through t+H−1. We set H=16 in our implementation.”</p>
+
+  <h3>3.2 §2.1 System 2：Eagle-2，取第 12 层而不是最后一层</h3>
+  <p>原文：“Images are encoded at resolution 224×224 followed by pixel shuffle (Shi et al., 2016), resulting in 64 image token embeddings per frame.”</p>
+  <p>原文：“We found that using middle-layer instead of final-layer LLM embeddings resulted in both faster inference speed and higher downstream policy success rate. For GR00T-N1-2B, we use the representations from the 12th layer.”</p>
+  <p>为什么是中间层：最后一层的表征被「下一个 token 预测」这个预训练目标高度特化，语义更偏语言建模；中间层保留了更多可直接用于空间/物体定位的视觉-语言联合特征。同时只跑到第 12 层 ⇒ 前向计算更短（这也是 N1.7 仍用 <code>select_layer: 12</code> 的原因）。</p>
+
+  <h3>3.3 §2.1 System 1：DiT 的 cross/self 交替 + ada_norm</h3>
+  <p>原文：“The self-attention blocks operate on noised action token embeddings A_t^τ together with state embeddings q_t, while cross-attention blocks allow conditioning on the vision-language token embeddings φ_t output by VLM.”</p>
+  <p>读了这句就能理解结构：<b>动作 token 与状态 token 在 self-attention 里同场</b>（所以状态不是外挂条件，而是序列的一员），<b>VLM token 只通过 cross-attention 进来</b>（所以视觉-语言信息不被动作序列的注意力稀释）。这就是 Flamingo/VIMA 式的交替堆叠。</p>
+  <p>原文：“After the final DiT block, we apply an embodiment-specific Action Decoder, another MLP, to the final H tokens to predict the actions.”</p>
+
+  <h3>3.4 §2.2 潜动作：把「一个 VQ-VAE」当成跨本体统一动作语言</h3>
+  <p>原文：“The encoder takes the current frame x_t and the future frame x_(t+H) of a video with a fixed window size H and outputs the latent action z_t. The decoder is trained to take the latent action z_t and x_t and reconstruct x_(t+H).”</p>
+  <p>原文：“After training, we take the encoder and use it as an inverse dynamics model; given an x_t and x_(t+H) pair, we extract the continuous pre-quantized embedding and use this as the latent action label during pre-training, with the same flow-matching loss, but treat it as a distinct “LAPA” embodiment.”</p>
+  <p>两个细节值得抄下来：① 用的是<b>量化前的连续 embedding</b>，不是码本索引——所以标签是连续向量，可以直接做 flow-matching 回归；② 把它当成「一个独立本体（LAPA）」而不是单独的任务头，因此数据混合逻辑不用改。</p>
+
+  <h3>3.5 §2.2 神经轨迹与仿真：把 88 小时变成 827 小时</h3>
+  <p>原文：“we ~10× our in-house collected teleoperation trajectories — the “peak” of the data pyramid — from 88 hours to 827 hours, using diverse counterfactual robot trajectories with novel language instructions”</p>
+  <p>原文：“Considering the pre- and post-training datasets, we have generated 780,000 simulation trajectories — equivalent to 6,500 hours, or nine continuous months, of human demonstration data — in just 11 hours.”</p>
+  <p>生成之后必须有过滤器，否则噪声指令会污染策略：用一个商用多模态 LLM 先枚举「从 A 拿 object 放到 B」的物理可行组合，再用 LLM-as-judge 看降采样的 8 帧判断是否真的执行了指令，最后重新 caption。</p>
+
+  <h3>3.6 §2.3 训练：预训练 / 后训练 / 神经轨迹后训练</h3>
+  <ul>
+    <li><b>预训练</b>：flow-matching（Eq.1）在全部本体与数据源上混合采样；人类视频用潜动作，机器人数据同时用真实动作与潜动作，神经轨迹同时用潜动作与 IDM 伪动作。</li>
+    <li><b>后训练</b>：单本体微调；原文 “we keep the language component of the VL backbone frozen and fine-tune the rest of the model.”——注意 N1 只冻结语言塔（附录 Table 6 写 “Backbone’s vision encoder: unfrozen”），视觉塔是训的。</li>
+    <li><b>神经轨迹后训练</b>：真机轨迹与神经轨迹 <b>1:1 采样</b>共训；只在与真实数据同分布的 10% 数据上训视频模型，以模拟「遥操作数据稀缺」的真实场景。</li>
+    <li><b>基础设施</b>：OSMO 编排、H100 + Quantum-2 InfiniBand fat-tree、单模型最多 1024 GPU；原文 “GR00T-N1-2B used roughly 50,000 H100 GPU hours for pretraining.”</li>
+  </ul>
+
+  <h3>3.7 N1.5 的四个改动（L1，官方页原话）</h3>
+  <table>
+    <tr><th>改动</th><th>原文</th><th>效果（官方页数字）</th></tr>
+    <tr><td>VLM 全程冻结</td><td>“The VLM model is frozen during both pretraining and finetuning.”</td><td>与 N1 的「视觉塔可训」相反</td></tr>
+    <tr><td>Adapter 简化 + LayerNorm</td><td>“The adapter MLP connecting the vision encoder to the LLM is simplified and adds layer normalization to both visual and text token embeddings input to the LLM.”</td><td>“greatly improved language following and generalization”</td></tr>
+    <tr><td>底层 VLM 换 Eagle 2.5</td><td>“starting from Eagle 2.5 and tuned for better grounding capabilities and physical understanding”</td><td>GR-1 grounding IoU 40.4 vs Qwen2.5-VL-3B 35.5；RefCOCOg-val 89.6 vs 85.2</td></tr>
+    <tr><td>加 FLARE</td><td>“Rather than generatively modeling future frames, FLARE aligns the model with target future embeddings.”</td><td>损失系数 0.2；同时“unlocks the ability to learn from human videos”</td></tr>
+  </table>
+  <p>训练：250K 步、1K H100、全局 batch 16384、AdamW + cosine + warmup 0.05（与 N1 同配方）。</p>
+
+  <h3>3.8 N1.7 的改动（L3 配置级）</h3>
+  <p>N1.7 没有论文，唯一权威来源是源码与 README。README 的官方说法：</p>
+  <ul>
+    <li>骨干换成 <code>nvidia/Cosmos-Reason2-2B</code>（Qwen3-VL 架构），替换 N1.6 的 Eagle；支持原生分辨率、不 padding。</li>
+    <li>“N1.7 adopts a relative end-effector action space shared across robot and human embodiments.”——相对 EEF 动作空间是跨本体迁移的关键。</li>
+    <li>预训练加入 20K 小时 EgoScale 人类视频；“Because the relative EEF action representation is consistent across both human and robot data, the model can transfer manipulation priors learned from human video directly to robot control.”</li>
+    <li>“Action head remains flow-matching DiT, but changes from 32 to 16 diffusion layers and adds newer N1.7 behavior options.”</li>
+    <li>速度：“~40 Hz on NVIDIA RTX PRO 6000 Blackwell Server Edition and ~28 Hz on Jetson AGX Thor with TensorRT”（batch-1 LIBERO）。</li>
+    <li>模型规模：基座 <code>nvidia/GR00T-N1.7-3B</code> = 3B 参数。</li>
+  </ul>
+
+  <h3>3.9 GR00T 2：从 VLA 到 WAM（L1）</h3>
+  <p>原文（官方页）：“GR00T 2 predicts future video and robot actions together, learning how physical interactions unfold along with the actions that produce them.”</p>
+  <p>原文：“One diffusion transformer denoises future video and robot actions together. Predicting how the scene should change lets GR00T 2 learn physics from human video; small per-robot heads turn the plan into motor commands for each body.”</p>
+  <p>与 N1 的本质区别：N1 的 DiT 只去噪动作，视频/人类数据只能靠「潜动作标签」间接注入；GR00T 2 让 DiT 同时去噪视频与动作，于是人类视频本身成了监督信号（不必先抽潜动作）。这也是它能做到「只看人类演示就让机器人学会」（X-Adapt）的原因。</p>
+  <p>Turbo 变体：“a smaller joint video–action transformer (2B parameters) and a higher-compression video encoder that exploits redundancy in video”——2B 参数、124ms/次（Jetson Thor） onboard G1，通过 SONIC 的潜全身 token 驱动整机（与 <a href="sonic.html">SONIC 页</a>的第 10.3 节接口一致）。</p>
+</section>
+
+<section>
+  <h2>4. 流程图（输入 / 频率 / 形状 / 输出，N1 与 N1.7 并列）</h2>
+  ﻿<div class="svgbox">
+  <svg viewBox="0 0 1000 596" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif" role="img" aria-label="GR00T 双系统 VLA 数据流：图像与语言到 VLM 第 12 层到 DiT 到动作块；下方为 GR00T 2 的 WAM 结构">
+    <defs>
+      <marker id="ga" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+        <path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/>
+      </marker>
+      <marker id="gb" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+        <path d="M0,0 L10,4 L0,8 z" fill="#1d6b38"/>
+      </marker>
+      <marker id="gc" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+        <path d="M0,0 L10,4 L0,8 z" fill="#b07a1e"/>
+      </marker>
+      <marker id="gd" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+        <path d="M0,0 L10,4 L0,8 z" fill="#5b6a79"/>
+      </marker>
+    </defs>
+
+    <text x="20" y="26" font-size="12" font-weight="700" fill="#5b6a79">System 2（慢，~10Hz，L40 GPU）</text>
+    <text x="510" y="26" font-size="12" font-weight="700" fill="#5b6a79">System 1（快，DiT + flow matching）</text>
+
+    <rect x="20" y="44" width="190" height="76" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="32" y="68" font-size="12.5" font-weight="700" fill="#0b2a4a">多相机图像</text>
+    <text x="32" y="88" font-size="11">224×224 → pixel shuffle</text>
+    <text x="32" y="105" font-size="11">⇒ 64 token/帧（N1）</text>
+
+    <rect x="20" y="132" width="190" height="62" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="32" y="156" font-size="12.5" font-weight="700" fill="#0b2a4a">语言指令</text>
+    <text x="32" y="175" font-size="11">chat 模板 → tokenizer</text>
+    <text x="32" y="190" font-size="11">（文本塔冻结）</text>
+
+    <rect x="240" y="44" width="230" height="140" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="252" y="68" font-size="13" font-weight="700" fill="#0b2a4a">VLM 骨干</text>
+    <text x="252" y="88" font-size="11">N1：Eagle-2（1.34B）</text>
+    <text x="252" y="105" font-size="11">N1.5：Eagle 2.5（2.1B，冻结）</text>
+    <text x="252" y="122" font-size="11">N1.7：Cosmos-Reason2-2B</text>
+    <text x="252" y="137" font-size="11">　　　（Qwen3-VL 架构）</text>
+    <text x="252" y="160" font-size="11" font-weight="700">取第 12 层 ⇒ φ_t（VL token）</text>
+
+    <rect x="240" y="204" width="230" height="100" rx="9" fill="#f6f8fb" stroke="#5b6a79" stroke-dasharray="5,4"/>
+    <text x="252" y="228" font-size="12.5" font-weight="700">本体状态 q_t</text>
+    <text x="252" y="248" font-size="11">每本体一个 MLP 投到共享维</text>
+    <text x="252" y="265" font-size="11">N1.7: max_state_dim=132</text>
+    <text x="252" y="282" font-size="11">state_dropout=0.8（训练）</text>
+    <text x="252" y="299" font-size="11">⇒ 与动作 token 同场做 attn</text>
+
+    <rect x="510" y="44" width="250" height="280" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="522" y="68" font-size="12.5" font-weight="700" fill="#0d4423">DiT（AlternateVLDiT）</text>
+    <text x="522" y="88" font-size="11">N1.7: 16 层 / 32 头 /d_head 48</text>
+    <text x="522" y="105" font-size="11">ada_norm 用 τ 调制</text>
+    <text x="522" y="126" font-size="11" font-weight="700">self-attn：A_t^τ 与 q_t</text>
+    <text x="522" y="143" font-size="11">（带噪动作与状态同场）</text>
+    <text x="522" y="164" font-size="11" font-weight="700">cross-attn：φ_t</text>
+    <text x="522" y="181" font-size="11">（VL token 只从这里进）</text>
+    <text x="522" y="202" font-size="11">动作头：每本体一个 MLP</text>
+    <text x="522" y="219" font-size="11">N1: H=16 / N1.7: H=40</text>
+    <text x="522" y="236" font-size="11">flow：τ~Beta(1.5,1)，s=0.999</text>
+    <text x="522" y="253" font-size="11">采样 K=4 步 Euler 积分</text>
+    <text x="522" y="270" font-size="11">N1.7: max_action_dim=132</text>
+    <text x="522" y="287" font-size="11">参数：N1 2.2B / N1.7 3B</text>
+    <text x="522" y="308" font-size="10.5" fill="#8a5a00">N1 的层数论文正文未给（见脚注）</text>
+
+    <rect x="800" y="60" width="180" height="140" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="812" y="84" font-size="12.5" font-weight="700" fill="#0d4423">输出：动作块</text>
+    <text x="812" y="104" font-size="11">N1: 16 × d_a</text>
+    <text x="812" y="121" font-size="11">N1.7: 40 × 132</text>
+    <text x="812" y="138" font-size="11">相对 EEF（N1.7）</text>
+    <text x="812" y="155" font-size="11">N1: 63.9ms / 16 动作</text>
+    <text x="812" y="172" font-size="11">N1.7: ~40Hz</text>
+    <text x="812" y="189" font-size="11">（L40 bf16 / TensorRT）</text>
+
+    <rect x="800" y="224" width="180" height="100" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="812" y="248" font-size="12.5" font-weight="700" fill="#6b4a00">下层执行</text>
+    <text x="812" y="268" font-size="11">直接 PD（关节 / EEF）</text>
+    <text x="812" y="285" font-size="11">或 SONIC：64 token</text>
+    <text x="812" y="302" font-size="11">+ 14 手 = 78 维</text>
+    <text x="812" y="319" font-size="11">2.5Hz → 全身 50Hz</text>
+
+    <line x1="210" y1="82" x2="236" y2="96" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#ga)"/>
+    <line x1="210" y1="163" x2="236" y2="142" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#ga)"/>
+    <line x1="470" y1="106" x2="506" y2="120" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#gb)"/>
+    <line x1="470" y1="252" x2="506" y2="228" stroke="#5b6a79" stroke-width="1.6" marker-end="url(#gd)"/>
+    <line x1="760" y1="128" x2="796" y2="128" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#gb)"/>
+    <line x1="890" y1="200" x2="890" y2="220" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#gc)"/>
+
+    <text x="20" y="380" font-size="12" font-weight="700" fill="#5b6a79">GR00T 2（WAM）：同一个 DiT 同时去噪「未来视频 + 动作」</text>
+
+    <rect x="20" y="394" width="300" height="86" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="32" y="418" font-size="12.5" font-weight="700" fill="#0b2a4a">输入</text>
+    <text x="32" y="437" font-size="11">最近视频（3 路相机 320×224）+ 指令 + 状态</text>
+    <text x="32" y="454" font-size="11">历史窗口 0.8s</text>
+    <text x="32" y="471" font-size="11">预训练：人类第一视角 402,730h</text>
+
+    <rect x="352" y="394" width="300" height="86" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="364" y="418" font-size="12.5" font-weight="700" fill="#0d4423">联合去噪</text>
+    <text x="364" y="437" font-size="11">未来视频 latent + 动作 chunk 一起积分</text>
+    <text x="364" y="454" font-size="11">Turbo：2B + 高压缩视频编码器</text>
+    <text x="364" y="471" font-size="11">1.6s chunk，约 1 次/秒；124ms（Thor）</text>
+
+    <rect x="684" y="394" width="292" height="86" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="696" y="418" font-size="12.5" font-weight="700" fill="#6b4a00">输出与作用</text>
+    <text x="696" y="437" font-size="11">动作 → 各本体的 per-robot head</text>
+    <text x="696" y="454" font-size="11">预测未来视频可作「想象」用于 RL / Agent</text>
+    <text x="696" y="471" font-size="11">经 SONIC 驱动 G1 全身（50Hz）</text>
+
+    <line x1="320" y1="437" x2="348" y2="437" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#ga)"/>
+    <line x1="652" y1="437" x2="680" y2="437" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#gb)"/>
+
+    <text x="20" y="516" font-size="11" fill="#5b6a79">频率：N1 的 System 2 约 10Hz；System 1 标称 120Hz，但受 63.9ms/16 动作限制（口径矛盾见第 2.3 节）；N1.7 端到端约 40Hz（batch-1 LIBERO，TensorRT）。</text>
+    <text x="20" y="536" font-size="11" fill="#8a5a00">⚠ N1 的 DiT 层数与头数论文正文未给；图中“16 层 / 32 头”是 N1.7 源码（gr00t_n1d7.py）的值，不代表 N1 结构。</text>
+    <text x="20" y="556" font-size="11" fill="#8a5a00">⚠ 虚线框表示该输入不进入 VLM，只在 DiT 的 self-attention 里与动作 token 汇合。</text>
+    <text x="20" y="576" font-size="11" fill="#8a5a00">⚠ 尺寸链：N1 动作块 16 步、N1.7 为 40 步且 pad 到 132 维；SONIC 接口每步 78 维（64 token + 7+7 手）。</text>
   </svg>
   </div>
+  <p class="foot">依据：§2.1（224×224、64 token/帧、第 12 层、H=16、K=4、Eq.1、Euler 式）、§2「2.2B / 1.34B / 63.9ms」、§1「10Hz / 120Hz」；N1.7 依据 <code>gr00t_n1d7.py</code>（<code>select_layer</code>、<code>action_horizon</code>、<code>max_state_dim/max_action_dim</code>、<code>diffusion_model_cfg</code>、<code>num_inference_timesteps</code>）；GR00T 2 依据官方技术页。</p>
 </section>
 
 <section>
-  <h2>3. 关键公式</h2>
-  <div class="eq">flow matching: L = E_{τ,ε} ‖ V_θ(A_τ, τ, o, l) − (ε − A) ‖²</div>
-  <div class="eq">τ ~ Beta((s−τ)/s; 1.5, 1), s = 0.999；推理 Euler 积分 K=4 步</div>
-  <div class="eq">N1.5: L = L_act + 0.2 · L_FLARE(z_pred, stopgrad(z_future))</div>
-  <p class="foot">物理意义：flow matching 学「从噪声到动作块」的速度场；K=4 是精度/延迟折中；FLARE 不做像素生成，只把预测特征对齐未来表征，让模型从人类视频学到「未来感」。</p>
+  <h2>5. 关键公式（公式 + 物理意义 + 代码/配置映射）</h2>
+
+  <h3>5.1 flow-matching 损失（N1 Eq.1）</h3>
+  <div class="eq">A_t^τ = τ·A_t + (1−τ)·ε ，  ε ~ N(0, I) ，  τ ∈ [0,1]</div>
+  <div class="eq">L_fm(θ) = E_τ [ ‖ V_θ(φ_t, A_t^τ, q_t) − (ε − A_t) ‖² ]</div>
+  <p><b>物理意义</b>：网络不预测动作本身，而是预测「从噪声指向真实动作的向量场」ε−A_t。τ=0 时 A^τ 纯噪声，τ=1 时是真实动作；训练时随机插值，让网络在整条路径上都能给出正确的移动方向。</p>
+  <p><b>代码映射</b>：<code>gr00t/model/gr00t_n1d7/gr00t_n1d7.py</code> 的 flow-matching 通路；超参在 <code>gr00t_n1d7.py</code>：<code>noise_beta_alpha=1.5</code>、<code>noise_beta_beta=1.0</code>、<code>noise_s=0.999</code>、<code>num_timestep_buckets=1000</code>。</p>
+
+  <h3>5.2 时间步采样分布</h3>
+  <div class="eq">p(τ) = Beta( (s − τ)/s ; 1.5, 1 ) ，  s = 0.999</div>
+  <p><b>物理意义</b>：Beta(1.5,1) 的密度随自变量增大而增大，而自变量 (s−τ)/s 在 τ→0 时最大——所以 <b>采样偏向低 τ（高噪声）端</b>。直觉：高噪声区间的向量场更难学，多给它样本。这是从 Black et al. (2024) 继承的技巧，N1 原文明确注明。</p>
+
+  <h3>5.3 推理：K 步 Euler 积分</h3>
+  <div class="eq">A_t^(τ+1/K) = A_t^τ + (1/K)·V_θ(φ_t, A_t^τ, q_t) ，  K = 4</div>
+  <p><b>物理意义</b>：从 A_t^0 ~ N(0,I) 出发沿速度场走 4 步，每步 1/K。K 越小越快但越粗；K=4 是「精度/延迟」的经验折中（原文：“we found K=4 inference steps to work well across all embodiments”）。N1.7 源码里对应 <code>num_inference_timesteps = 4</code>。</p>
+
+  <h3>5.4 N1.5 的 FLARE</h3>
+  <div class="eq">L_N1.5 = L_act + 0.2 · L_FLARE( 预测的未来表征, stopgrad(目标未来表征) )</div>
+  <p><b>物理意义</b>：不去「生成未来帧」（像素级），而是把模型的中间表征对齐到未来时刻的语义嵌入。因为它不要求像素重建，人类视频（无动作标注）也能提供梯度——这就是 N1.5「能从人类视频学」的机制。系数 0.2 对预训练与后训练都相同（官方页明示）。</p>
+  <p class="foot">注意：L_N1.5 的公式形式（stopgrad、具体用哪一层表征）官方页<b>未给出</b>，上式为按 FLARE 项目描述与「loss coefficient 0.2」重建的示意；严格引用请只引「FLARE 对齐未来嵌入，系数 0.2」。</p>
+
+  <h3>5.5 N1.7 的相对 EEF 动作空间</h3>
+  <div class="eq">a_rel,t = T_ee,t^(−1) · T_ee,t+1  （末端位姿的相对变换；机器人数据与人类数据共用同一表示）</div>
+  <p><b>物理意义</b>：把「动作」定义成相对当前末端的增量，而不是世界系的绝对目标。这样人类手部轨迹与机器人末端轨迹落在同一个表示空间里，人类视频的先验才能直接迁移；同时对基座漂移天然免疫。README 明确：「Representing actions as deltas from the current pose (rather than absolute targets) improves generalization and is a key factor in the model's cross-embodiment performance.」</p>
+  <p class="foot">上式是按「relative EEF」的字面定义写出的示意式；README 未给公式，只给描述与开关（<code>use_relative_action</code> 字段在 <code>gr00t_n1d7.py</code> 中存在，默认 False，由 embodiment 配置决定）。</p>
+
+  <h3>5.6 状态/动作 padding</h3>
+  <div class="eq">s_dim, a_dim ≤ D_max = 132 ，  超出按 embodiment 掩码截断</div>
+  <p><b>物理意义</b>：不同本体的状态/动作维度不同（Franka 7 维、G1 双臂+腰颈几十维），统一 pad 到 132 维才能放进同一个 DiT。pad 的部分必须靠 mask 屏蔽，否则梯度会学到「零动作」这个虚假目标——这正是 <code>strict_action_padding_mask</code> 要解决的问题（见第 10 节坑）。</p>
 </section>
 
 <section>
-  <h2>4. N1.7 网络配置（源码）</h2>
+  <h2>6. 网络与张量（N1 论文数字 vs N1.7 源码字段）</h2>
   <table>
-    <tr><th>字段</th><th>值</th><th>物理意义</th></tr>
-    <tr><td>骨干</td><td>Cosmos-Reason2-2B（Qwen3-VL）</td><td>更强的视觉-语言理解，替代 Eagle</td></tr>
-    <tr><td>`select_layer=12`</td><td>第 12 层</td><td>中间层语义更「可动作化」，且推理更快</td></tr>
-    <tr><td>`max_state_dim/action_dim`</td><td>132 / 132</td><td>跨本体 padding，按 embodiment 掩码</td></tr>
-    <tr><td>`action_horizon`</td><td>40</td><td>一次预测 40 步，降低推理频率</td></tr>
-    <tr><td>`state_dropout_prob`</td><td>0.8</td><td>逼模型依赖视觉而非本体记忆</td></tr>
-    <tr><td>DiT</td><td>16 层/32 头/48 head_dim/ada_norm</td><td>轻量动作去噪头</td></tr>
+    <tr><th>项</th><th>N1（论文）</th><th>N1.7（源码 <code>gr00t_n1d7.py</code>）</th><th>物理意义</th></tr>
+    <tr><td>VLM 骨干</td><td>Eagle-2，1.34B（总 2.2B）</td><td><code>nvidia/Cosmos-Reason2-2B</code>，<code>backbone_embedding_dim=2048</code></td><td>视觉-语言理解；N1.7 换 Qwen3-VL 架构以支持原生分辨率</td></tr>
+    <tr><td>取哪层</td><td>第 12 层</td><td><code>select_layer=12</code></td><td>中间层更快且下游成功率更高</td></tr>
+    <tr><td>图像分辨率</td><td>224×224 + pixel shuffle ⇒ 64 token/帧</td><td><code>image_target_size=(256,256)</code>、<code>image_crop_size=(230,230)</code></td><td>token 数决定 System 2 的序列长度与延迟</td></tr>
+    <tr><td>动作时域 H</td><td>16</td><td><code>action_horizon=40</code></td><td>一次推理覆盖多长轨迹；越长越省推理次数、越难精确</td></tr>
+    <tr><td>去噪步数 K</td><td>4</td><td><code>num_inference_timesteps=4</code></td><td>精度/延迟折中</td></tr>
+    <tr><td>状态/动作上限</td><td>论文未给具体维度</td><td><code>max_state_dim=132</code>、<code>max_action_dim=132</code></td><td>跨本体 padding 的固定宽度</td></tr>
+    <tr><td>DiT 结构</td><td>“a variant of DiT … alternating cross-attention and self-attention blocks”</td><td><code>num_layers=16</code>、<code>num_attention_heads=32</code>、<code>attention_head_dim=48</code>、<code>norm_type=ada_norm</code>、<code>output_dim=1024</code>、<code>interleave_self_attention=True</code></td><td>16×32×48 ≈ 24.6k 宽/层；ada_norm 用 τ 调制</td></tr>
+    <tr><td>内部宽</td><td>论文未给</td><td><code>hidden_size=1024</code>、<code>input_embedding_dim=1536</code></td><td>动作 token 的宽度</td></tr>
+    <tr><td>状态 dropout</td><td>论文未给</td><td>模型配置 <code>0.8</code>；微调 <code>FinetuneConfig</code> 默认 <code>0.2</code></td><td>训练时随机丢状态，逼模型依赖视觉；微调时降为 0.2</td></tr>
+    <tr><td>本体数上限</td><td>论文未给</td><td><code>max_num_embodiments=32</code></td><td>embodiment embedding 表大小</td></tr>
+    <tr><td>推理速度</td><td>63.9ms / 16 动作（L40 bf16）</td><td>~40Hz（RTX PRO 6000）、~28Hz（Jetson Thor），TensorRT</td><td>N1.7 的 6 倍多提速来自 TensorRT + 更小 DiT（32→16 层）</td></tr>
+    <tr><td>参数量</td><td>2.2B（VLM 1.34B）</td><td>3B（<code>nvidia/GR00T-N1.7-3B</code>）</td><td>N1.7 的 VLM 从 1.34B 涨到 2B</td></tr>
   </table>
 </section>
 
 <section>
-  <h2>5. 训练配方</h2>
-  <ul>
-    <li><b>N1</b>：1024×H100、~5 万 GPU 小时；混合真机动作、潜动作（VQ-VAE 当 IDM）、神经轨迹（纯动作+伪动作）；语言塔冻结。</li>
-    <li><b>N1.5</b>：VLM 全程冻结；250K 步、1K×H100、GBS 16384；FLARE 0.2；语言跟随 46.6→93.3%。</li>
-    <li><b>N1.7 微调默认</b>：GBS 64、LR 1e-4、10000 步、wd 1e-5、warmup 0.05、episode sampling 0.1、每 1000 步存。</li>
-  </ul>
+  <h2>7. 实验：原始数字与来源</h2>
+
+  <h3>7.1 N1 预训练模型直接评测（§4.4，真机 GR-1）</h3>
+  <table>
+    <tr><th>任务</th><th>设置</th><th>成功率</th><th>来源</th></tr>
+    <tr><td>协同双手搬运（物体在左手外侧）</td><td>5 种物体 × 3 试次 = 15</td><td><b>76.6%</b>（11.5/15）</td><td>§4.4</td></tr>
+    <tr><td>新物体放入未见容器</td><td>5 种物体 × 3 试次 = 15</td><td><b>73.3%</b>（11/15）</td><td>§4.4</td></tr>
+  </table>
+  <p class="foot">注：0.5 分表示「抓到了但没放进去」，即部分分；两个任务都是<b>未后训练</b>的基座模型。</p>
+
+  <h3>7.2 N1 仿真后训练对比（Table 2，100 条示教/任务）</h3>
+  <table>
+    <tr><th>方法</th><th>RoboCasa（24 任务）</th><th>DexMG（9 任务）</th><th>GR-1（24 任务）</th><th>平均</th></tr>
+    <tr><td>BC Transformer</td><td>26.3%</td><td>53.9%</td><td>16.1%</td><td>26.4%</td></tr>
+    <tr><td>Diffusion Policy</td><td>25.6%</td><td>56.1%</td><td>32.7%</td><td>33.4%</td></tr>
+    <tr><td><b>GR00T-N1-2B</b></td><td><b>32.1%</b></td><td><b>66.5%</b></td><td><b>50.0%</b></td><td><b>45.0%</b></td></tr>
+  </table>
+  <p><b>结论</b>：GR-1 上比最强基线高 17.3 个百分点（50.0 vs 32.7），说明预训练带来的收益在「本体最接近预训练分布」时最大；RoboCasa 只高 6.5pp（32.1 vs 25.6），则说明跨本体迁移仍有损耗。</p>
+  <p class="foot">评测协议：仿真取最后 5 个 checkpoint（每 500 步存一次）中的最高分，100 次试验平均；后训练默认全局 batch 1024、60k 步（DexMG 因每本体任务少，用 batch 128）。</p>
+
+  <h3>7.3 N1 真机后训练 vs Diffusion Policy（Table 3）</h3>
+  <table>
+    <tr><th>方法 / 数据量</th><th>Pick-and-Place</th><th>Articulated</th><th>Industrial</th><th>Coordination</th><th>平均</th></tr>
+    <tr><td>DP（10% 数据）</td><td>3.0%</td><td>14.3%</td><td>6.7%</td><td>27.5%</td><td>10.2%</td></tr>
+    <tr><td>DP（全量）</td><td>36.0%</td><td>38.6%</td><td>61.0%</td><td>62.5%</td><td>46.4%</td></tr>
+    <tr><td><b>GR00T-N1-2B（10%）</b></td><td>35.0%</td><td>62.0%</td><td>31.0%</td><td>50.0%</td><td><b>42.6%</b></td></tr>
+    <tr><td><b>GR00T-N1-2B（全量）</b></td><td>82.0%</td><td>70.9%</td><td>70.0%</td><td>82.5%</td><td><b>76.8%</b></td></tr>
+  </table>
+  <p><b>结论</b>：GR00T 用 10% 数据（42.6%）几乎追平 DP 用全量数据（46.4%），只低 3.8pp——这是「预训练=数据效率」最硬的一条证据。全量下领先 30.4pp，10% 下领先 32.4pp。</p>
+
+  <h3>7.4 N1 神经轨迹消融（§4.4 + Fig. 9）</h3>
+  <table>
+    <tr><th>设置</th><th>增益</th><th>来源</th></tr>
+    <tr><td>RoboCasa，30 / 100 / 300 条示教</td><td>+4.2% / +8.8% / +6.8%（平均）</td><td>§4.4 原文数字</td></tr>
+    <tr><td>GR-1 真机，8 个任务</td><td>+5.8%（平均）</td><td>§4.4</td></tr>
+    <tr><td>LAPA vs IDM 伪动作</td><td>低数据（30）时 LAPA 略优；数据变多（100、300）后 IDM 反超</td><td>§4.4</td></tr>
+  </table>
+  <p><b>结论</b>：神经轨迹不是「白送数据」，它在低数据区最值钱（+8.8% 出现在 100 条档）；而伪动作标签的质量随 IDM 训练数据增加而提升，所以「数据多时用 IDM、数据少时用 LAPA」是可用经验。</p>
+
+  <h3>7.5 N1.5 全部官方数字（L1，逐表）</h3>
+  <table>
+    <tr><th>实验</th><th>GR00T N1</th><th>GR00T N1.5</th><th>说明</th></tr>
+    <tr><td>Language Table（scratch）</td><td>52.8%</td><td><b>93.2%</b></td><td>架构验证，需语言跟随</td></tr>
+    <tr><td>Sim GR-1 Language（scratch）</td><td>36.4%</td><td><b>54.4%</b></td><td>5 个仿真 GR-1 任务</td></tr>
+    <tr><td>RoboCasa，30 示教/任务</td><td>17.4</td><td><b>47.5</b></td><td>数据极少的后训练</td></tr>
+    <tr><td>Sim GR-1，0-shot</td><td>39.6</td><td><b>43.9</b></td><td>同本体其它任务在预训练里</td></tr>
+    <tr><td>Sim GR-1，30 示教/任务</td><td>43.2</td><td><b>47.4</b></td><td>—</td></tr>
+    <tr><td>真机 GR-1 语言跟随率</td><td>46.6%</td><td><b>93.3%</b></td><td>两个水果选一个放到盘子</td></tr>
+    <tr><td>真机 GR-1 总成功率</td><td>43.3%</td><td><b>83.0%</b></td><td>同上</td></tr>
+    <tr><td>新物体（10 个未见物体）0-shot</td><td>0%</td><td><b>15.0%</b></td><td>—</td></tr>
+    <tr><td>新物体，FLARE 在人类视频上后训练</td><td>页未给</td><td><b>55.0%</b></td><td>只用人类视频 + 极少机器人数据</td></tr>
+    <tr><td>DreamGen 12 个新动词</td><td>13.1%</td><td><b>38.3%</b></td><td>“zero-shot” 指无遥操作数据，但有 DreamGen 轨迹</td></tr>
+    <tr><td>Unitree G1，1K 遥操作（已见物体）</td><td>44.0%</td><td><b>98.8%</b></td><td>—</td></tr>
+    <tr><td>Unitree G1，1K 遥操作（5 个新物体）</td><td>页未给</td><td><b>84.2%</b></td><td>—</td></tr>
+  </table>
+  <p class="foot">VLM grounding：N1.5 VLM 2.1B 在 GR-1 grounding 集 IoU 40.4（Qwen2.5-VL-3B 35.5），RefCOCOg-val 89.6（85.2）。注意这是「同一个 VLM 换适配器+训练配方」的对比，不是纯模型大小对比。</p>
+
+  <h3>7.6 GR00T 2 数字（L1，官方技术页）</h3>
+  <table>
+    <tr><th>维度</th><th>数字</th><th>设置</th></tr>
+    <tr><td>预训练数据</td><td>402,730h 人类第一视角 + 10,184h UMI（2,897 任务）+ 23,500h 遥操作</td><td>Human-1M 数据集，其中 100K 小时以 Human-1M-100K 开源</td></tr>
+    <tr><td>人类视频 scaling</td><td>视频 rollout 任务进度 64%→77%；真机 50%→70%</td><td>0 / 1% / 10% / 100% 人类视频，72 个 Dexter 任务</td></tr>
+    <tr><td>人类→机器人（X-Adapt）</td><td>滤纸装配 65%</td><td>只用人类戴手套 + 头/腕相机演示，无遥操作</td></tr>
+    <tr><td>UMI→YAM</td><td>玩具卡车整机装配 60%（单次最长 4 分钟）</td><td>YAM 只提供与本任务无关的遥操作数据</td></tr>
+    <tr><td>50 个未见任务</td><td>0-shot 40%；1 示教 71%；5 示教 <b>95%</b></td><td>单张 RTX 5090，每次 30 分钟 LoRA；5 示教 &lt; 3 分钟数据</td></tr>
+    <tr><td>灵巧操作（22-DoF Sharpa 手）</td><td>GB300 内存条装配 85%；玩具卡车 65%</td><td>少量后训练</td></tr>
+    <tr><td>真机 RL（GRPO 自模仿）</td><td>监督后训练 40–76% → RL 后 <b>88–96%</b></td><td>只用任务级成功信号，三个接触密集插入任务</td></tr>
+    <tr><td>Agentic 控制</td><td>玩具飞机 98/100、拖拉机 97/100、Hot Wheels 97/100</td><td>同一后训练策略无 agent 时 71–84；仅 SFT 23–69</td></tr>
+    <tr><td>Visual steering</td><td>YAM 40%→92%；Dexter 30%→70%</td><td>短程 what-and-where 指令；仅给步骤指令为 66% / 33%</td></tr>
+    <tr><td>长程任务</td><td>垃圾分拣 17/20；NIST 板拆解 3/10</td><td>带标记；无标记时 0 完成</td></tr>
+    <tr><td>Turbo onboard</td><td>爆米花 48/48；清桌 93%</td><td>Jetson Thor，124ms/次，1.6s chunk，SONIC 50Hz 执行</td></tr>
+    <tr><td>加仿真数据</td><td>OOD 成功率 6.7%→63.3%</td><td>同一批真机数据，一组加仿真 episode；GR00T 1.7 同设置到 40.0%</td></tr>
+    <tr><td>仿真-真机相关性</td><td>成功率 Pearson 0.92 / Spearman 0.89</td><td>14 个策略 × 25 任务 YAM 基准</td></tr>
+  </table>
+  <p><b>结论</b>：GR00T 2 的关键不是「更大」，而是「预测世界」——因为预测未来视频，人类视频从「只能给潜动作标签」升级为「直接监督」，于是 50 个从未在目标机器人上出现过的任务能有 40% 零样本、5 条示教到 95%。</p>
 </section>
 
 <section>
-  <h2>6. 核心代码（带注释）</h2>
-  <pre><code><span class="c"># —— 采样：从噪声积分到动作块 ——</span>
-a = randn([B, H, d_a])                 <span class="c"># H=16(N1)/40(N1.7)：动作块时长</span>
-<span class="k">for</span> k <span class="k">in</span> range(4):                    <span class="c"># K=4：精度 vs 延迟</span>
-    v = dit(a, t=k/4, cond=vl_tokens, state=proprio)
-    a = a + v / 4                      <span class="c"># Euler：沿速度场走一小步</span>
-execute(a)                             <span class="c"># 执行后重新观测，闭环</span>
+  <h2>8. 代码精读（变量表 + 物理意义 + 出处）</h2>
 
-<span class="c"># —— 微调（官方）——</span>
-uv run python gr00t/experiment/launch_finetune.py \
-  --base-model-path nvidia/GR00T-N1.7-3B \
-  --dataset-path /path/to/lerobot_dataset \
-  --embodiment-tag UNITREE_G1_SONIC \
-  --max-steps 20000 --global-batch-size 32 --num-gpus 4
-<span class="c"># 数据：LeRobot（parquet + 视频 + meta）；50–100 条/任务起步</span>
+  <h3>8.1 采样：从噪声积分到动作块</h3>
+  <table>
+    <tr><th>变量</th><th>形状</th><th>物理意义</th></tr>
+    <tr><td><code>A</code></td><td>[B, H, d_a]（N1: H=16；N1.7: H=40, d_a ≤ 132）</td><td>动作块：一次推理覆盖的时间窗口；块内动作被顺序执行</td></tr>
+    <tr><td><code>tau</code></td><td>标量 / [B]</td><td>去噪进度：0=纯噪声，1=真实动作</td></tr>
+    <tr><td><code>V</code></td><td>[B, H, d_a]</td><td>预测的速度场（目标为 ε−A），单位是「动作空间的位移」</td></tr>
+    <tr><td><code>phi</code></td><td>[B, L_vl, 1024]</td><td>VLM 第 12 层的 VL token</td></tr>
+    <tr><td><code>q</code></td><td>[B, 132]</td><td>padding 后的本体状态（embodiment 掩码选择有效维）</td></tr>
+  </table>
+<pre><code><span class="c"># 出处：gr00t/model/gr00t_n1d7/gr00t_n1d7.py（生成通路）</span>
+<span class="c">#       gr00t/configs/model/gr00t_n1d7.py（num_inference_timesteps=4）</span>
+phi = vlm(images, text)                       <span class="c"># 取第 12 层（select_layer=12）：[B, L_vl, 2048] → 1024</span>
+q   = state_mlp[embodiment](state)            <span class="c"># [B, 132]：每本体一个 MLP 投到共享维</span>
+A   = randn([B, 40, 132])                     <span class="c"># τ=0：纯噪声起步</span>
+<span class="k">for</span> k <span class="k">in</span> range(4):                          <span class="c"># K=4：精度/延迟折中（N1 §2.1）</span>
+    tau = k / 4
+    v = dit(A, tau, cond=phi, state=q)        <span class="c"># ada_norm 用 tau 调制；cross-attn 吃 phi</span>
+    A = A + v / 4                             <span class="c"># Euler：沿速度场走 1/K 步</span>
+execute(A)                                    <span class="c"># 执行整个 chunk，然后重新观测（闭环）</span>
+</code></pre>
+  <p class="foot">物理意义串讲：DiT 的 self-attention 里 A 与 q 同场，cross-attention 只吃 φ——所以「状态」影响的是动作序列内部的关系，「视觉-语言」影响的是「往哪个方向去」。K=4 的含义是：整条从噪声到动作的路径只走 4 段折线；折线越少越模糊，越多越慢。N1.7 把 H 从 16 提到 40，相当于「一次走 40 步」，推理次数可降到原来的 40%，但块内误差累积风险上升。</p>
 
-<span class="c"># —— 部署 ——</span>
-server: gr00t/eval/run_gr00t_server.py --model-path ckpt --port 5550
-client: 输出动作块 → SONIC 50Hz 执行（或直接 PD）</code></pre>
+  <h3>8.2 微调：FinetuneConfig 字段表</h3>
+  <table>
+    <tr><th>字段</th><th>默认值</th><th>物理意义</th></tr>
+    <tr><td><code>base_model_path</code></td><td>必填（如 <code>nvidia/GR00T-N1.7-3B</code>）</td><td>预训练权重；同时决定 modality config 的默认来源</td></tr>
+    <tr><td><code>dataset_path</code></td><td>必填，可用 <code>os.pathsep</code> 拼多个根</td><td>支持多数据集混采（<code>ds_weights_alpha</code> 可按长度加权）</td></tr>
+    <tr><td><code>embodiment_tag</code></td><td>必填</td><td>决定用哪套状态/动作键与归一化统计；配错直接报错或维度错位</td></tr>
+    <tr><td><code>tune_llm</code> / <code>tune_visual</code></td><td>False / False</td><td>默认只训 projector + DiT + 各本体头（低成本路线）</td></tr>
+    <tr><td><code>state_dropout_prob</code></td><td><b>0.2</b>（微调）× 模型配置 0.8</td><td>微调时降低，避免过度依赖视觉导致本体抖动</td></tr>
+    <tr><td><code>global_batch_size</code></td><td><b>64</b>（类默认）× 32（<code>finetune.sh</code> 默认）</td><td>梯度累积前的一次前反向总 batch</td></tr>
+    <tr><td><code>learning_rate</code> / <code>weight_decay</code></td><td>1e-4 / 1e-5</td><td>与 N1 附录 Table 6 的预训练配方一致</td></tr>
+    <tr><td><code>max_steps</code> / <code>save_steps</code></td><td>10000 / 1000</td><td>示例默认；实际任务常调到 20000 步</td></tr>
+    <tr><td><code>warmup_ratio</code></td><td>0.05</td><td>与 N1/N1.5 相同</td></tr>
+    <tr><td><code>episode_sampling_rate</code></td><td>0.1</td><td>按 episode 采样（而非按帧）的比例，缓解长尾</td></tr>
+    <tr><td><code>use_percentiles</code></td><td>True</td><td>用 q01/q99 而不是 min/max 归一化，抗离群值</td></tr>
+    <tr><td><code>strict_action_padding_mask</code></td><td>not set（继承 checkpoint）</td><td>True 时屏蔽 pad 维；<b>该 checkpoint 只能用 PyTorch 动作头，TensorRT 路径会拒绝</b></td></tr>
+  </table>
+<pre><code><span class="c"># 出处：examples/finetune.sh + gr00t/experiment/launch_finetune.py</span>
+<span class="c"># 单机 4 卡微调 N1.7（UNITREE_G1_SONIC 是 SONIC 全身控制接口的官方后训练 tag）</span>
+NUM_GPUS=4 MAX_STEPS=20000 GLOBAL_BATCH_SIZE=32 \
+bash examples/finetune.sh \
+  --base-model-path  nvidia/GR00T-N1.7-3B \
+  --dataset-path     outputs/2026-04-03-14-30-00-G1-robot01 \
+  --embodiment-tag   UNITREE_G1_SONIC \
+  --output-dir       outputs/g1_sonic_ft
+
+<span class="c"># 实际拼出的核心参数（finetune.sh 内固定值）</span>
+<span class="c">#   --learning_rate 1e-4 --weight_decay 1e-5 --warmup_ratio 0.05</span>
+<span class="c">#   --save_steps 1000 --save_total_limit 5 --episode_sampling_rate 0.1</span>
+</code></pre>
+  <p class="foot">注意 <code>--base-model-path</code>（连字符）与底层 <code>launch_finetune.py</code> 的 <code>--base_model_path</code>（下划线）不是同一个东西：前者是 shell 包装脚本的参数，后者是 Python 入口的参数。抄命令时混用会直接报 unknown argument。</p>
+
+  <h3>8.3 与 SONIC 的接缝：为什么 tag 叫 UNITREE_G1_SONIC</h3>
+  <p>官方 policy 文档把 tag 分成两类：<b>pretrain tags</b>（<code>OXE_DROID_RELATIVE_EEF_RELATIVE_JOINT</code>、<code>XDOF</code>、<code>REAL_G1</code>，可直接零样本推理）与 <b>posttrain tags</b>（<code>UNITREE_G1_SONIC</code>、<code>LIBERO_PANDA</code>、<code>SIMPLER_ENV_*</code>，<b>必须配已微调的 checkpoint</b>，拿基座模型跑会报错）。</p>
+  <p>原文（tag 表）：<code>UNITREE_G1_SONIC</code> = “Unitree G1 with GEAR-SONIC WBC (latent actions)”。也就是说这套接口的动作空间不是关节角，而是 SONIC 的 64 维潜动作——VLA 在 2.5Hz 预测 40×64 的 token，SONIC 在 50Hz 解码成全身关节（详见 <a href="sonic.html">SONIC 页 §10.3</a>）。</p>
 </section>
 
 <section>
-  <h2>7. 结果与坑</h2>
+  <h2>9. 局限与坑</h2>
+
+  <h3>9.1 论文自陈（N1 §4.6）</h3>
   <ul>
-    <li>N1：真机 GR-1 语言跟随 46.6%→N1.5 93.3%；G1 1K demos 98.8%；RoboCasa 30 demos 47.5。</li>
-    <li>GR00T 2：5 示教（&lt;3 分钟）+30 分钟 LoRA → 95%；真机 RL 88–96%；Turbo 124ms。</li>
-    <li>坑：`strict_action_padding_mask` 开启后 TensorRT 拒绝该 checkpoint（必须 PyTorch 头）；embodiment tag 配错会导致动作维度错位。</li>
+    <li>原文：“Currently, our GR00T N1 model focuses primarily on short-horizon tabletop manipulation tasks.”——不做长程 loco-manipulation。</li>
+    <li>合成数据“still face challenges in generating diverse and counterfactual data, while adhering to the laws of physics”——生成的视频会违物理，直接限制伪动作质量。</li>
+    <li>后训练会<b>覆盖</b>预训练能力：论文给了具体反例——<b>预训练</b>模型能把左手的苹果交给右手再放篮子；<b>后训练</b>模型反而失败，因为后训练数据全是右手、没有换手。</li>
   </ul>
-  <p class="foot">参考：<a href="https://arxiv.org/abs/2503.14734">N1</a> ｜ <a href="https://research.nvidia.com/labs/gear/gr00t-n1_5/">N1.5</a> ｜ <a href="https://research.nvidia.com/labs/gear/gr00t-2/">GR00T 2</a> ｜ <a href="https://github.com/NVIDIA/Isaac-GR00T">Isaac-GR00T</a> ｜ 返回 <a href="index.html">索引</a></p>
+
+  <h3>9.2 复现与工程坑（逐条可核对）</h3>
+  <ol>
+    <li><b>120Hz 与 63.9ms 不能同时按字面理解</b>：见第 2.3 节。写 benchmark 时如果用 120Hz 反推延迟会得到 8.3ms/动作，与实际 63.9ms/16 动作（≈4ms/动作，但要 63.9ms 才出结果）不是一回事。</li>
+    <li><b>N1 的视觉塔是训的</b>：附录 Table 6 写 “Backbone’s vision encoder: unfrozen”，只有 text tokenizer 冻结；而 N1.5 是「VLM 全程冻结」。两代的可训参数集完全不同，不能把 N1.5 的配方套到 N1。</li>
+    <li><b>DiT 层数在 N1.6→N1.7 从 32 变 16</b>：README 明写 “changes from 32 to 16 diffusion layers”。N1（2025-03）的论文正文没给层数，别把 N1.7 的 16 层当成 N1 的结构去引用。</li>
+    <li><b><code>strict_action_padding_mask</code> 会废掉 TensorRT</b>：FinetuneConfig 的 docstring 写得很清楚——开启后“Such checkpoints have to be served with the PyTorch action head: the TensorRT paths refuse them because the engines cannot reproduce the masking.”。要么不开，要么部署侧只能用 PyTorch。</li>
+    <li><b>两个 <code>state_dropout_prob</code> 默认值</b>：模型配置 0.8、微调配置 0.2。查「N1.7 的 state dropout 是多少」会得到两个答案，取决于你问的是架构默认还是微调默认。</li>
+    <li><b>两个 <code>global_batch_size</code> 默认值</b>：<code>FinetuneConfig</code> 类默认 64，<code>examples/finetune.sh</code> 默认 32。不显式传参时以你实际调用的入口为准。</li>
+    <li><b>embodiment tag 不能混用</b>：官方文档明写「you cannot mix embodiment tags and datasets（例如 <code>--embodiment-tag LIBERO_PANDA</code> 期待 LIBERO 的状态键，遇到 SO100 数据集会失败）」。自采数据必须注册 modality config。</li>
+    <li><b>HF 上是 gated 模型</b>：<code>nvidia/Cosmos-Reason2-2B</code> 需在模型页申请权限，否则任何 checkpoint（含 <code>nvidia/GR00T-N1.7-3B</code>）首次加载都会失败。</li>
+    <li><b>视频解码只剩 torchcodec</b>：README 明确 decord / pyav 不再支持，且默认 pin 的 torchcodec 0.8.0 要求 FFmpeg 4–7（FFmpeg 8 不支持）。这是最容易在环境上卡住的一条。</li>
+    <li><b>GR00T 2 的代码还没放出来</b>：官方页写 “Code Available in December”，BibTeX 是 whitepaper。所有 GR00T 2 结论目前都是 L1（厂商自述数字），无法复现验证。</li>
+  </ol>
 </section>
+
+<section>
+  <h2>10. Q&amp;A（追问 why）</h2>
+
+  <h3>Q1：为什么非要「取第 12 层」而不是最后一层？只快一点点值得吗？</h3>
+  <p>不只是快。原文给的是两条收益同时成立：“faster inference speed and higher downstream policy success rate”。why 更快是显然的（少跑后面 N−12 层）；why 更准需要解释：最后一层的表征被下一个 token 预测目标特化，越深越偏「语言建模」，而第 12 层还保留空间定位信息。反例检验：如果最后一层更好，那 N1.7 换了完全不同的骨干（Qwen3-VL）后就不该继续用 <code>select_layer=12</code>——但源码里它仍然是 12，说明这是与骨干无关的经验规律，不是 Eagle 的特性。</p>
+
+  <h3>Q2：潜动作（LAPA）和 IDM 伪动作有什么区别？为什么数据一多 IDM 就反超？</h3>
+  <p>LAPA 的标签是「VQ-VAE 编码器的量化前连续 embedding」——它编码的是「两帧之间的视觉变化」，与具体机器人无关；IDM 的标签是「用真机数据训出来的逆动力学模型预测的动作」，单位是真实动作空间。why IDM 会随数据增加反超：IDM 是一个可训练的监督模型，数据越多它越准，标签越接近真实动作；而 LAPA 的表示不含执行器信息，永远存在「视觉变化→具体关节」的歧义。数值证据：RoboCasa 30 条示教时 LAPA 略优，100/300 条时 IDM 反超（§4.4）。</p>
+
+  <h3>Q3：N1.5 把 VLM 冻结了，为什么语言跟随反而从 46.6% 涨到 93.3%？冻结不是应该更弱吗？</h3>
+  <p>因为坏的不是 VLM 的「知识」，而是「适配器把视觉/语言 token 混在一起的方式」。官方页给的两条改动是：① adapter MLP 简化 + 对视觉与文本 token 都加 LayerNorm；② 骨干换成 grounding 更强的 Eagle 2.5。why 冻结有帮助：微调时若放开 VLM，小数据（几十条示教）会把 VLM 的语言对齐能力训崩（灾难性遗忘），而语言跟随恰恰依赖「指令词与视觉目标的对应」。旁证：N1.5 在 GR-1 grounding 上 IoU 40.4 高于 Qwen2.5-VL-3B 的 35.5，说明冻结的那个 VLM 本身就比同类开源模型更会定位。</p>
+
+  <h3>Q4：GR00T 2 为什么能「只看人类视频就学会机器人任务」？N1 也有潜动作，为什么做不到？</h3>
+  <p>差别在监督信号的位置。N1 的 DiT 只去噪<b>动作</b>，人类视频必须先被压成一个潜动作标签（信息损失 + 与执行器脱钩）；GR00T 2 的 DiT 同时去噪<b>未来视频和动作</b>，于是「预测下一帧该长什么样」本身就是梯度来源，人类视频直接参与训练。数值证据：X-Adapt 里「人类→Dexter」的化学实验任务只用人类演示（无遥操作）就到 65%；N1.5 用人类视频 0-shot 只有 15%、专门后训练到 55%——量级不同。代价是推理成本：GR00T 2 要生成视频 latent，所以才有 Turbo（2B、124ms）这条工程路线。</p>
+
+  <h3>Q5：既然 H=40 更省推理次数，为什么不干脆 H=100？</h3>
+  <p>两个约束。① 误差累积：动作块内是开环执行，块越长，块内后期的动作越依赖「模型对未来的想象」而不是真实观测；论文没给 H 的消融，但 N1 用 16、N1.7 用 40，而 H 增大同时把「每步推理覆盖时间」拉长，等效控制带宽下降。② 训练时 O(H) 的注意力与流匹配目标长度都线性增长，而 N1.7 同时把 DiT 层数从 32 降到 16——这本身就是在「更长时域」和「更小模型」之间做交换。反例：Diffusion Policy 的基线在 Table 2 里 H=16 也只有 33.4% 平均成功率，说明 H 不是瓶颈，预训练才是。</p>
+
+</section>
+
+<section>
+  <h2>11. 全文总结块</h2>
+  <table>
+    <tr><th>环节</th><th>一句话</th><th>关键数字/证据</th></tr>
+    <tr><td><b>Problem</b></td><td>人形机器人没有「互联网级」数据：单本体数据量级不够，跨本体又因状态/动作维度不齐而成「数据孤岛」</td><td>“no Internet of humanoid robot datasets exist”（§1）</td></tr>
+    <tr><td><b>Method</b></td><td>双系统 VLA（VLM System 2 + flow-matching DiT System 1）+ 数据金字塔（人类视频/神经轨迹/仿真/真机）+ 把无动作视频变成「潜动作」；N1.7 换成 Cosmos-Reason2-2B、H=40、相对 EEF；GR00T 2 把动作头升级为视频+动作联合去噪（WAM）</td><td>2.2B（VLM 1.34B）；H=16→40；K=4；~5 万 H100 小时；DiT 32→16 层</td></tr>
+    <tr><td><b>Experiment</b></td><td>仿真三基准全面超基线，真机数据效率极高，语言跟随被 N1.5 补上，GR00T 2 用人类视频换来跨本体迁移</td><td>仿真平均 45.0% vs 33.4%/26.4%；真机 76.8% vs 46.4%；10% 数据 42.6% 只差全量 DP 3.8pp；N1.5 语言跟随 46.6→93.3%；GR00T 2 5 示教 95%</td></tr>
+    <tr><td><b>Takeaway</b></td><td>VLA 的瓶颈不在动作头而在<b>监督信号的来源</b>：先解决「无动作数据怎么变成有监督」，再谈模型；而「预测世界」（WAM）是比「预测动作」更强的监督形式——因为它让人类视频从「标签源」变成「梯度源」</td><td>N1→N1.5 冻结 VLM + FLARE 即涨 46.7pp；GR00T 2 联合去噪后 X-Adapt 65%/60%</td></tr>
+  </table>
+
+  <h3>四代速查</h3>
+  <table>
+    <tr><th></th><th>N1</th><th>N1.5</th><th>N1.7</th><th>GR00T 2</th></tr>
+    <tr><td>骨干</td><td>Eagle-2（1.34B）</td><td>Eagle 2.5（2.1B，冻结）</td><td>Cosmos-Reason2-2B</td><td>未公开（Turbo 2B）</td></tr>
+    <tr><td>动作头</td><td>flow-matching DiT，H=16</td><td>同 N1 + FLARE(0.2)</td><td>DiT 16 层，H=40，相对 EEF</td><td>DiT 同时去噪视频+动作（WAM）</td></tr>
+    <tr><td>规模</td><td>2.2B</td><td>VLM 2.1B</td><td>3B</td><td>未给（Turbo 2B）</td></tr>
+    <tr><td>数据亮点</td><td>88h 遥操作 / 827h 神经轨迹 / 78 万仿真 / 14 万 AgiBot</td><td>+ DreamGen + AgiBot-Beta</td><td>+ 20K h EgoScale 人类视频</td><td>402,730h 人类视频 + 10,184h UMI + 23,500h 遥操作</td></tr>
+    <tr><td>标志性数字</td><td>真机 76.8%</td><td>语言跟随 93.3%</td><td>~40Hz（RTX PRO 6000）</td><td>5 示教 95%；agentic 98/100</td></tr>
+  </table>
+
+  <p class="foot">参考：<a href="https://arxiv.org/abs/2503.14734">N1 arXiv:2503.14734</a> ｜ <a href="https://research.nvidia.com/labs/gear/gr00t-n1_5/">N1.5 官方页</a> ｜ <a href="https://research.nvidia.com/labs/gear/gr00t-2/">GR00T 2 官方页</a> ｜ <a href="https://github.com/NVIDIA/Isaac-GR00T">Isaac-GR00T</a> ｜ <a href="https://github.com/NVlabs/GR00T-WholeBodyControl">GR00T-WholeBodyControl</a> ｜ 返回 <a href="index.html">wiki 索引</a></p>
+</section>
+
 </div>
 </body>
 </html>

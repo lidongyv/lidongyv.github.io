@@ -8,83 +8,519 @@
 </head>
 <body>
 <div class="wrap">
+
 <header class="hero">
-  <h1>π0 / π0.5：单模型 VLA</h1>
-  <p class="sub">Physical Intelligence · 预训练 VLM + flow matching 动作专家 · 动作块输出 · 开放世界泛化</p>
-  <p class="meta">L2（摘要级 + 公开信息；正文参数量/时长未在摘要给出） · arXiv:2410.24164（π0） / 2504.16054（π0.5）</p>
+  <h1>π0 / π0.5：预训练 VLM + flow matching 动作专家（paper-reading 级精读）</h1>
+  <p class="sub">Physical Intelligence · 3.3B（3B PaliGemma + 300M action expert）· 动作块 H=50 · 10 步 Euler 去噪 · π0.5 加异构协同 + 分层推理</p>
+  <p class="meta">证据级别 L3（论文正文逐字 + 官方 openpi 源码）· π0 arXiv v4 2026-01-08 / RSS 2025 · π0.5 arXiv v1 2025-04-22 · 精读更新 2026-11-27</p>
 </header>
+
 <nav class="top">
-  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
-  <a href="helix.html">Helix</a><a class="on" href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a href="fast-wam.html">Fast-WAM</a>
+  <a href="index.html">索引</a>
+  <a href="sonic.html">SONIC</a>
+  <a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a>
+  <a class="on" href="pi0.html">π0 / π0.5</a>
+  <a href="astra.html">ASTRA</a>
+  <a href="fast-wam.html">Fast-WAM</a>
 </nav>
 
 <section>
-  <h2>1. 定位与差异</h2>
+  <h2>1. 论文信息表</h2>
   <table>
-    <tr><th>项</th><th>π0（2024-10）</th><th>π0.5（2025-04）</th></tr>
-    <tr><td>结构</td><td>预训练 VLM + <b>flow matching 动作专家</b>；输出动作块</td><td>同 π0 + <b>异构协同训练</b>（多机器人、web、子任务预测、目标检测）</td></tr>
-    <tr><td>数据</td><td>多机器人平台（单臂/双臂/移动操作）</td><td>多机器人 + 网页 + 高层语义子任务；混合多模态样本</td></tr>
-    <tr><td>能力</td><td>零样本、语言跟随、微调学新技能（叠衣/清桌/组装）</td><td>首次端到端在<b>全新家庭</b>做长程灵巧操作（厨房/卧室）</td></tr>
-    <tr><td>推理</td><td>动作块闭环执行</td><td>动作 + 子任务预测</td></tr>
+    <tr><th>项</th><th>π0</th><th>π0.5</th></tr>
+    <tr><td>标题</td><td>π0: A Vision-Language-Action Flow Model for General Robot Control</td><td>π0.5: a Vision-Language-Action Model with Open-World Generalization</td></tr>
+    <tr><td>作者 / 机构</td><td>Physical Intelligence（Kevin Black, Noah Brown, Danny Driess, … Sergey Levine, 等 20+ 人；arXiv 作者列表逐字）</td><td>Physical Intelligence（Kevin Black, Noah Brown, James Darpinian, … Lili Yu, Ury Zhilinsky, 等 30+ 人；arXiv 作者列表逐字）</td></tr>
+    <tr><td>时间</td><td>v1 2024-10-31；本页用 v4 2026-01-08</td><td>v1 2025-04-22（仅此一版）</td></tr>
+    <tr><td>venue</td><td><b>RSS 2025</b>（arXiv abs 页 Comments 字段逐字：“Published in RSS 2025”）</td><td>arXiv 预印本；abs 页无 Comments 字段，未标注会议/期刊（<b>论文未给</b>）</td></tr>
+    <tr><td>链接</td><td><a href="https://arxiv.org/abs/2410.24164">arXiv:2410.24164</a>（HTML v4 正文逐字引用）</td><td><a href="https://arxiv.org/abs/2504.16054">arXiv:2504.16054</a>（HTML v1 正文逐字引用）</td></tr>
+    <tr><td>官方代码</td><td><a href="https://github.com/Physical-Intelligence/openpi">Physical-Intelligence/openpi</a>：<code>src/openpi/models/pi0.py</code>、<code>pi0_config.py</code>（本页代码节逐行对应）</td><td>同一份 openpi 代码的 <code>pi05</code> 分支开关（<code>Pi0Config.pi05=True</code>：状态离散化 + action expert 用 adaRMSNorm）</td></tr>
+    <tr><td>证据级别</td><td><b>L3</b>：论文正文（架构/公式/附录/表 I）+ 官方源码 + 官方配置三重可核</td><td><b>L3</b>：论文正文逐字 + openpi 中 pi05 配置可核；但 π0.5 专属数据集/权重未开源</td></tr>
   </table>
+  <p class="foot">本页「原文：」一律为 arXiv HTML 正文英文原句逐字（保留原文标点与数字）；「代码」一律标注 openpi 文件与行号；两者不能互推的地方单独标注「论文未给」。</p>
 </section>
 
 <section>
-  <h2>2. 流程图</h2>
+  <h2>2. 原文引用（5 句英 + 中译）</h2>
+  <h3>Q1 · π0 的抽象（一句话说清整篇）</h3>
+  <p>原文： "We propose a novel flow matching architecture built on top of a pre-trained vision-language model (VLM) to inherit Internet-scale semantic knowledge."（Abstract）</p>
+  <p>中译：我们提出一种新的 flow matching 架构，构建在预训练的视觉-语言模型（VLM）之上，以继承互联网规模的语义知识。</p>
+
+  <h3>Q2 · 为什么要动作块 + flow</h3>
+  <p>原文： "we use an action chunking architecture with flow matching (a variant of diffusion) to represent complex continuous action distributions. This enables our model to control robots at frequencies of up to 50 Hz for dexterous tasks such as laundry folding"（Introduction）</p>
+  <p>中译：我们使用带 flow matching（扩散的一个变体）的动作块架构来表示复杂的连续动作分布。这使我们的模型能在叠衣服这类灵巧任务上以最高 50 Hz 的频率控制机器人。</p>
+
+  <h3>Q3 · 关键部件</h3>
+  <p>原文： "To combine flow matching with VLMs, we use a novel action expert that augments the standard VLM with flow-based outputs."（Introduction）</p>
+  <p>中译：为了把 flow matching 与 VLM 结合，我们用一个新颖的 action expert，为标准 VLM 增补了基于 flow 的输出。</p>
+
+  <h3>Q4 · π0.5 的抽象</h3>
+  <p>原文： "We describe π0.5, a new model based on π0 that uses co-training on heterogeneous tasks to enable broad generalization."（Abstract）</p>
+  <p>中译：我们描述 π0.5，一个基于 π0 的新模型，它通过对异构任务的协同训练来实现广泛泛化。</p>
+
+  <h3>Q5 · π0.5 的分层推理</h3>
+  <p>原文： "At runtime, during each step of inference, the model first predicts the semantic subtask, inferring the behavior that is appropriate to perform next based on the task structure and the semantics of the scene, and then predicts the low-level robot action chunk based on this subtask."（Introduction）</p>
+  <p>中译：运行时，在每一步推理中，模型先预测语义子任务——基于任务结构与场景语义推断下一步该做什么行为——然后基于这个子任务预测低层机器人动作块。</p>
+  <div class="ok">这 5 句给出整条演化链：<b>VLM 继承语义 → 动作块 + flow 表示连续多模态动作 → action expert 把两者焊在一起 → π0.5 换成异构协同 → 推理改成「先想子任务再出动作」</b>。</div>
+</section>
+
+<section>
+  <h2>3. Problem</h2>
+  <h3>3.1 π0：三个瓶颈同时挡路</h3>
+  <p>原文： "However, developing such generalist robot policies — i.e., robot foundation models — involves a number of major challenges. First, any such research must be done at a very large scale, because the full benefits of large-scale pre-training are often not present at smaller scales. Second, it requires developing the right model architectures that can effectively make use of diverse data sources, while at the same time being able to represent the intricate and subtle behaviors necessary to interact with complex physical scenes. Third, it requires the right training recipe."（Introduction）</p>
+  <p>中译：然而，开发这类通用机器人策略——即机器人基础模型——涉及若干主要挑战。第一，这类研究必须在非常大的规模上做，因为大规模预训练的好处往往在小规模上并不成立。第二，需要正确的模型架构，既能有效利用多样数据源，又能表示与复杂物理场景交互所需的精细微妙行为。第三，需要正确的训练配方。</p>
+  <p>原文： "Training only on high-quality data does not teach the model how to recover from mistakes, since mistakes are rarely seen in such data. Training on only lower-quality pre-training data does not teach the model to act efficiently and robustly."（Introduction）</p>
+  <p>中译：只用高质量数据训练，教不会模型如何从错误中恢复，因为这类数据里几乎看不到错误。只用较低质量的预训练数据训练，教不会模型高效、鲁棒地行动。</p>
+  <p><b>问题本质：</b>机器人领域缺的不是「一个更好的策略网络」，而是<strong>三件套</strong>（规模 / 架构 / 配方）。π0 的赌注是：把 NLP 的「预训练 + 后训练」两段式搬到机器人上，用 VLM 补语义、用大规模多机器人数据补覆盖、用高质量小数据补「流畅与鲁棒」。</p>
+
+  <h3>3.2 π0.5：从「实验室泛化」到「别人家的厨房」</h3>
+  <p>原文： "Open-world generalization represents one of the biggest open problems in physical intelligence: embodied systems such as robotic arms, humanoids, and autonomous vehicles only truly become useful when they can leave the lab and handle the diverse situations and unexpected events that occur in the real world."（Introduction）</p>
+  <p>中译：开放世界泛化是物理智能最大的开放问题之一：机械臂、人形、自动驾驶等具身系统只有走出实验室、能处理真实世界里多样情境与意外事件时，才真正有用。</p>
+  <p>原文： "However, the diversity of situations that a robot might encounter in the real world requires more than just scale: we need to design training recipes that can provide the breadth of knowledge that will allow robots to generalize at many levels of abstraction."（同段）</p>
+  <p>中译：然而，机器人在真实世界可能遇到的情境多样性，要求的不只是规模：我们需要设计训练配方，提供足够广博的知识，使机器人能在多个抽象层级上泛化。</p>
+  <p><b>为什么「刷数据」在这里失效：</b>擦一个陌生厨房涉及三类不同泛化——① 已充分覆盖的技能（抓盘子）；② 已有技能的新组合/新用法；③ 纯语义推断（哪个抽屉该开、台面上哪个东西最可能是沥水架）。第三类不可能靠在更多房子里采更多轨迹来覆盖，只能从<strong>非机器人数据</strong>里迁移。这就是 π0.5 的全部动机。</p>
+</section>
+
+<section>
+  <h2>4. Core idea</h2>
+  <h3>4.1 π0：VLM 出语义，flow 出连续动作，中间用 action expert 隔开</h3>
+  <p>原文： "π0 uses conditional flow matching to model the continuous distribution of actions. Flow matching provides our model with high precision and multimodal modeling capability, making it especially well suited to high-frequency dexterous tasks."（IV The π0 Model）</p>
+  <p>中译：π0 使用条件 flow matching 来建模动作的连续分布。Flow matching 为模型提供了高精度与多模态建模能力，使其特别适合高频灵巧任务。</p>
+  <p>原文： "π0 is implemented as a single transformer with two sets of weights (also known as experts), where each token is routed to one of the experts; the weights interact only through the transformer's self-attention layers."（Appendix A-B）</p>
+  <p>中译：π0 实现为单个 transformer 但带两套权重（也称专家），每个 token 被路由到其中一个专家；两套权重只通过 transformer 的自注意力层交互。</p>
+  <p><b>一句话核心：</b>不是「VLM 输出动作」，而是「VLM 输出<strong>条件</strong>，另一个小专家在<strong>连续空间</strong>里用去噪的方式生成动作块」。这避免了把高维连续动作离散成 token 再自回归（OpenVLA 路线在高维人形上会遇到的扩展问题）。</p>
+
+  <h3>4.2 π0.5：同一套权重，先写字再动手</h3>
+  <p>原文： "The π0.5 architecture can flexibly represent both action chunk distributions and tokenized text outputs, with the latter used both for co-training tasks (e.g., question-answering) and for outputting high-level subtask predictions during hierarchical inference."（IV-A）</p>
+  <p>中译：π0.5 架构能灵活表示动作块分布与词元化的文本输出，后者既用于协同训练任务（如问答），也用于分层推理时输出高层子任务预测。</p>
+  <p>原文： "πθ(a(t:t+H), ℓ̂ | o_t, ℓ) = πθ(a(t:t+H) | o_t, ℓ̂) · πθ(ℓ̂ | o_t, ℓ)"（IV-A 式；论文原式为下标记法 a 下标 t 冒号 t+H，本页统一改成括号记法 a(…)，含义不变，避免花括号占位）</p>
+  <p>中译：给定观测 o_t 与总指令 ℓ，动作块与文本输出 ℓ̂ 的联合分布，可分解为「给定子任务出动作」×「给定总指令与观测出子任务」。</p>
+  <p><b>一行物理意义：</b>把「做什么」和「怎么动」显式拆成两次前向，但共享同一套权重与同一段上下文——所以它既不是两个模型（如 SayCan 的 VLM 规划器 + 独立策略），也不是纯端到端（如图 π0 直接出动作）。论文强调 “the high-level inference process still runs at a lower frequency than low-level action inference”，即慢的那一层负责结构，快的那一层负责精度。</p>
+</section>
+
+<section>
+  <h2>5. 架构细节</h2>
+  <h3>5.1 规模：3B VLM + 300M 专家 = 3.3B</h3>
+  <p>原文： "we use PaliGemma as our base model. PaliGemma is an open-source 3 billion parameter VLM that offers a convenient tradeoff between size and performance. We add 300M parameters for the action expert (which is initialized from scratch) for a total of 3.3 billion parameters."（IV）</p>
+  <p>中译：我们以 PaliGemma 作为基座。PaliGemma 是一个开源、30 亿参数的 VLM，在规模与性能之间提供了便利的折中。我们为 action expert 增加 300M 参数（从零初始化），总计 33 亿参数。</p>
+  <p>原文： "PaliGemma is based on the Gemma 2B language model, which uses multi-query attention and a configuration of width=2048, depth=18, mlp_dim=16,384, num_heads=18, num_kv_heads=1, head_dim=256. … To speed up inference (which requires multiple forward passes of the action expert), we downsize the action expert to width=1024, mlp_dim=4096, resulting in a parameter count of ~300M."（Appendix A-B）</p>
+  <p>中译：PaliGemma 基于 Gemma 2B 语言模型，使用 multi-query attention，配置为 width=2048, depth=18, mlp_dim=16,384, num_heads=18, num_kv_heads=1, head_dim=256。……为加速推理（action expert 需要多次前向），我们把 action expert 缩小到 width=1024, mlp_dim=4096，参数量约 300M。</p>
+  <table>
+    <tr><th>部件</th><th>配置</th><th>参数量</th><th>为什么是这个尺寸</th></tr>
+    <tr><td>VLM 骨干</td><td>width 2048 / depth 18 / mlp 16384 / 18 heads / 1 KV head / head_dim 256</td><td>3B（PaliGemma 总参；语言骨干为 Gemma 2B）</td><td>要装下互联网级语义；每次观测只跑 1 次，可以慢</td></tr>
+    <tr><td>action expert</td><td>width 1024 / mlp 4096，其余同构</td><td>~300M</td><td>要在一次推理里跑 10 遍 → 必须小；论文明确写 “To speed up inference”</td></tr>
+    <tr><td>总参数</td><td>两者只通过 self-attention 交互</td><td>3.3B</td><td>width/mlp 不必对齐，因为专家之间不共享 FFN</td></tr>
+  </table>
+
+  <h3>5.2 序列与注意力：三个 block，动作 token 双向</h3>
+  <p>原文： "π0 uses a blockwise causal attention mask with 3 blocks: … Within each block, there is full bidirectional attention, whereas the tokens in each block cannot attend to the tokens in future blocks."（Appendix A-B；原文三个 block 依次为「图像 + 语言提示」「本体状态」「噪声动作」，数组下标展开用省略号略去）</p>
+  <p>中译：π0 使用 3 个 block 的分块因果注意力掩码：图像与语言提示、状态、噪声动作。每个 block 内部是全双向注意力，而每个 block 的 token 不能注意未来 block 的 token。</p>
+  <p>原文： "The action expert uses a full bidirectional attention mask, so that all action tokens attend to each other."（IV）</p>
+  <p>中译：action expert 使用完全双向的注意力掩码，使所有动作 token 互相可见。</p>
+  <p><b>三个 block 各自的物理理由：</b>① 图像/语言放第一个 block 且不看向后两个 → 保持与 PaliGemma 预训练时的分布一致，减少分布漂移；② 状态单独一个 block → 它在 10 次去噪迭代中不变，单独分块后其 K/V 可缓存；③ 噪声动作 block 可以看见前面全部 → 动作生成必须条件化在观测上，且 50 个动作 token 之间要互相协调（例如两手不能同时伸向同一处）。</p>
+
+  <h3>5.3 动作块与积分步数</h3>
+  <p>原文： "Formally, we want to model the data distribution p(A_t | o_t), where A_t … corresponds to an action chunk of future actions (we use H = 50 for our tasks), and o_t is an observation."（IV；省略号处原文为动作块数组 50 个元素的下标展开，本页略去以免下标记法写成花括号）</p>
+  <p>中译：形式上我们要建模 p(A_t | o_t)，其中 A_t 是未来动作的动作块（我们的任务取 H = 50），o_t 是观测。</p>
+  <p>原文： "At inference time, we generate actions by integrating the learned vector field from τ=0 to τ=1, starting with random noise … We use 10 integration steps (corresponding to δ=0.1) in our experiments."（IV）</p>
+  <p>中译：推理时，我们从随机噪声出发，把学到的速度场从 τ=0 积分到 τ=1 来生成动作……实验中我们用 10 个积分步（对应 δ=0.1）。</p>
+  <p class="warn">注意一个易错点：论文用 <b>τ=0 是噪声、τ=1 是动作</b>；而 openpi 代码的约定相反（<code>t=1 是噪声、t=0 是目标</code>，源码注释里作者自己写了 “yes, this is the opposite of the pi0 paper, and I'm sorry.”）。读公式与读代码时必须先确认约定，否则符号会全反。</p>
+
+  <h3>5.4 时间步采样：偏「高噪声」而不是偏「中间」</h3>
+  <p>原文： "we hypothesized that the task of action prediction is subtly different from high-resolution image synthesis — while it may be relatively easy to predict the mean image conditioned on a text label, predicting the mean action conditioned on a robot observation (i.e., learning E[A_t | o_t]) is a much harder problem; this is because the observation o_t is very informative in that it should constrain the distribution of possible actions much more than a text label constrains the distribution of possible images. As a result, we designed a timestep sampling distribution that emphasizes low timesteps (high noise levels) … The distribution is given by p(τ) = Beta((s−τ)/s; 1.5, 1) … We use s = 0.999 in our experiments, which allows for δ &gt; 1/1000, or up to 1,000 integration steps."（Appendix A-B）</p>
+  <p>中译：我们假设动作预测任务与高分辨率图像合成有微妙差异——给定文本标签预测「平均图像」可能相对容易，而给定机器人观测预测「平均动作」（即学 E[A_t | o_t]）要难得多；因为观测 o_t 信息量很大，它对可能动作分布的约束远强于文本标签对图像分布的约束。因此我们设计了一个强调低时间步（高噪声）的采样分布……分布为 Beta((s−τ)/s; 1.5, 1)……实验取 s = 0.999，允许 δ &gt; 1/1000，即最多 1,000 个积分步。</p>
+  <p><b>一句话物理意义：</b>动作分布的「均值」本身就有意义（它是对观测最合理的动作），所以要在高噪声端多采样、把均值学好；而图像生成的均值常常是模糊的平均图，无意义，所以常见做法偏中间步。这是 π0 与图像扩散在训练分布上的关键差异。</p>
+
+  <h3>5.5 π0.5 的三处改动</h3>
+  <table>
+    <tr><th>改动</th><th>原文依据</th><th>为什么</th></tr>
+    <tr><td>状态从连续输入变成<strong>离散文本 token</strong></td><td>“The robot proprioceptive state is discretized and input to the model as text tokens.”（IV-A）</td><td>让状态进入 VLM 的语言通道，从而能在预训练阶段（纯自回归、无 action expert）也被用到</td></tr>
+    <tr><td>时间步用独立 MLP + <strong>adaRMSNorm</strong> 注入</td><td>“Unlike π0 that fuses the flow-matching timestep τ with the noisy action before being fed into the transformer, π0.5 uses a separate MLP for projecting τ only and then applies adaptive RMSNorm to inject the timestep information to each layer of the action expert.”（Appendix A-E）</td><td>τ 不再占动作 token 的通道，动作 token 只表示动作；调制改为逐层进行</td></tr>
+    <tr><td>动作有两种表示共存：FAST 离散 token + flow 连续</td><td>“We use the attention matrix to ensure that the different action representations do not attend to each other.”（IV-B）</td><td>预训练用离散（可自回归、训练快），推理用连续（非自回归、10 步出块）；两种表示互相遮蔽以防信息泄漏</td></tr>
+  </table>
+  <p class="foot">π0.5 的动作块长度：正文 IV-E 与 Appendix A-E 写 “action horizon of 50, i.e. H = 49”。这是论文自身的表述矛盾（50 与 49 同时出现）；openpi 配置里 <code>action_horizon=50</code>。引用时建议写「H≈50，论文 A-E 处出现 50/49 两种写法」。</p>
+</section>
+
+<section>
+  <h2>6. 训练</h2>
+  <h3>6.1 π0 的数据混合：9.1% 开源 + 903M 自有步</h3>
+  <p>原文： "9.1% of the training mixture consists of open-source datasets, including OXE, Bridge v2, and DROID. The robots and tasks in these datasets typically have one or two cameras and use low-frequency control, between 2 and 10 Hz. However, these datasets cover a wide range of objects and environments. To learn dexterous and more complex tasks, we also use 903M timesteps of data from our own datasets, where 106M steps are from single-arm robots and 797M are from dual-arm robots. This data has 68 tasks"（V-A）</p>
+  <p>中译：训练混合中 9.1% 是开源数据集，包括 OXE、Bridge v2、DROID。这些数据集的机器人通常有 1–2 个相机、控制频率较低（2–10 Hz），但覆盖了大量物体与环境。为学习灵巧且更复杂的任务，我们还用了自有数据集的 903M 时间步，其中 106M 来自单臂机器人、797M 来自双臂机器人，共 68 个任务。</p>
+  <p>原文： "Since the datasets are somewhat imbalanced in size (e.g., the more difficult laundry folding tasks are overrepresented), we weight each task-robot combination by n^0.43, where n is the number of samples for that combination, such that over-represented combinations are down-weighted."（V-A）</p>
+  <p>中译：由于数据集在规模上有些不平衡（例如更难的叠衣任务被过度表示），我们按 n^0.43 对每个「任务-机器人」组合加权，n 是该组合的样本数，从而把过度表示的组合降权。</p>
+  <p>原文： "The configuration vector q_t and action vectors a_t always have the dimensionality of the largest robot in the dataset (18 in our case, to accommodate two 6-DoF arms, 2 grippers, a mobile base, and a vertically actuated torso). For robots with lower-dimensional configuration and action spaces, we zero-pad the configuration and action vectors."（V-A）</p>
+  <p>中译：配置向量 q_t 与动作向量 a_t 始终取数据集中最大机器人的维度（本文为 18：两条 6-DoF 臂 + 2 个夹爪 + 移动底座 + 竖直升降躯干）。对维度更低的机器人，用零填充配置与动作向量。</p>
+  <p><b>n^0.43 是什么意思：</b>若某组合样本量是另一组合的 10 倍，其原始权重高 10 倍，加权后只高 10^0.43 ≈ 2.7 倍。这是一条「温和的平方根级」重加权——比取平方根（n^0.5）更弱，目的是不让最多数的数据支配梯度，同时不把稀缺的高质量任务压没。</p>
+  <table>
+    <tr><th>项</th><th>π0 数值</th><th>来源</th></tr>
+    <tr><td>预训练总机器人数据</td><td>“over 10,000 hours of robot data”；“10,000 hours of dexterous manipulation data from 7 different robot configurations and 68 tasks”</td><td>Introduction / VII</td></tr>
+    <tr><td>自有数据时间步</td><td>903M（106M 单臂 + 797M 双臂；两者相加自洽）</td><td>V-A</td></tr>
+    <tr><td>开源数据占比</td><td>9.1%（OXE / Bridge v2 / DROID）</td><td>V-A</td></tr>
+    <tr><td>机器人构型 / 任务数</td><td>7 种构型 / 68 个任务</td><td>V-A、VII</td></tr>
+    <tr><td>动作维度</td><td>18（零填充统一）</td><td>V-A</td></tr>
+    <tr><td>重加权</td><td>n^0.43（n = 该「任务-机器人」组合样本数）</td><td>V-A</td></tr>
+    <tr><td>后训练数据量</td><td>“the simplest of the tasks necessitating only 5 hours and the most complex tasks using 100 or more hours of data”</td><td>V-A</td></tr>
+    <tr><td>训练步数</td><td>主模型 700k；compute parity 对照 160k</td><td>VI-A</td></tr>
+    <tr><td>batch size / 学习率 / 优化器 / GPU 数 / 训练时长</td><td><b>论文未给</b>（全文检索无 batch size、learning rate、优化器、GPU 集群或训练小时数；唯一 GPU 提及是推理计时用的 RTX 4090）</td><td>—</td></tr>
+  </table>
+
+  <h3>6.2 语言标注的粒度：2 秒一段</h3>
+  <p>原文： "The pre-training phase also uses diverse language labels, combining task names and segment annotations (fine-grained labels for sub-trajectories, typically about 2 seconds in length)."（III Overview）</p>
+  <p>中译：预训练阶段还使用多样的语言标签，结合了任务名与分段标注（对子轨迹的细粒度标签，通常约 2 秒长）。</p>
+  <p><b>为什么是 2 秒：</b>50Hz 下 2 秒 = 100 个控制步 ≈ 2 个动作块（H=50）。也就是说语言标签的粒度与动作块的粒度同量级——这样一条指令对应一个可执行的「动作单元」，而不是一整段长任务。这是 π0 能做「语言跟随」实验（每条指令对应一个抓取/放置）的数据基础。</p>
+
+  <h3>6.3 π0.5 的两段训练：280k 离散 + 80k 连续</h3>
+  <p>原文： "After pre-training the model with discrete tokens for 280k gradient steps, we perform a second stage of training that we refer to as post-training."（IV-D）</p>
+  <p>中译：在用离散 token 预训练 280k 个梯度步之后，我们进行第二段训练，称之为后训练。</p>
+  <p>原文： "We optimize the objective in Equation (1), with α = 10.0 for 80k additional steps."（IV-D）</p>
+  <p>中译：我们优化式 (1) 的目标，取 α = 10.0，再训练 80k 步。</p>
+  <p>原文： "This scheme enables us to first pre-train our model as a standard VLM transformer model by mapping actions to text tokens (α = 0), and then add additional action expert weights predicting continuous action tokens in a non-autoregressive fashion for fast inference in a post-training stage."（IV-B）</p>
+  <p>中译：这套方案让我们先把动作映射成文本 token、把模型当作标准 VLM transformer 预训练（α = 0），随后在后训练阶段加入额外的 action expert 权重，以非自回归方式预测连续动作 token，从而实现快速推理。</p>
+  <table>
+    <tr><th>项</th><th>π0.5 数值</th><th>来源</th></tr>
+    <tr><td>预训练步数</td><td>280k 梯度步（α = 0，纯自回归离散）</td><td>IV-D、IV-B</td></tr>
+    <tr><td>后训练步数</td><td>80k 步（α = 10.0，加 action expert）</td><td>IV-D</td></tr>
+    <tr><td>移动操作数据 MM</td><td>约 400 小时，约 100 个家庭环境</td><td>IV-C</td></tr>
+    <tr><td>非移动-多环境 ME</td><td>单臂/双臂固定式，多家庭环境（数量未给）</td><td>IV-C</td></tr>
+    <tr><td>实验室跨构型 CE</td><td>实验室多任务 + 开源 OXE（π0 数据的扩展版）</td><td>IV-C</td></tr>
+    <tr><td>高层子任务 HL</td><td>人工标注所有多子任务数据的语义描述；先预测相关 bounding box，再预测子任务</td><td>IV-C</td></tr>
+    <tr><td>网页数据 WD</td><td>captioning（CapsFusion、COCO）+ QA（Cambrian-7M、PixMo、VQAv2）+ 物体定位（含扩充的室内场景/家用物体框标注）</td><td>IV-C</td></tr>
+    <tr><td>语言示范 VI</td><td>专家用语言「遥操作」机器人给出子任务指令；仅占高层移动操作样本的约 11%</td><td>IV-D、V-E</td></tr>
+    <tr><td>第一阶段非移动操作样本占比</td><td><b>97.6%</b></td><td>Introduction</td></tr>
+    <tr><td>状态/动作维度</td><td>18 或 19（随平台），50 Hz 动作块</td><td>IV-E</td></tr>
+    <tr><td>图像增广</td><td>RandomCrop(0.95) → Resize → Rotate(±5°) → ColorJitter(0.3/0.4/0.5)</td><td>Appendix A-E</td></tr>
+    <tr><td>batch size / 学习率 / 优化器 / 总训练时长</td><td><b>论文未给</b></td><td>—</td></tr>
+  </table>
+  <div class="ok"><b>97.6% 这个数字是 π0.5 全篇最有信息量的一个数：</b>只有 2.4% 的样本来自「目标形态（移动操作）」的机器人，剩下 97.6% 全是别的机器人、别的任务、网页数据。反推：若 400h ≈ 2.4%，总量约 1.7 万小时（推算，非原文）。它直接回答了「为什么不用在更多房子里采更多数据」——因为采不起。</div>
+  <p class="foot">数据归一化：π0.5 把所有动作数据按每个数据集各自的 1% / 99% 分位数归一到 [−1, 1]，并用固定维度（取所有数据集里最大动作空间）零填充。关节/末端两种控制模式靠提示词区分：<code>&lt;&lt;control_mode&gt;&gt; joint/end effector &lt;&lt;control_mode&gt;&gt;</code>（IV-C）。</p>
+</section>
+
+<section>
+  <h2>7. 部署与推理</h2>
+  <h3>7.1 π0：开环执行动作块，故意不做时间集成</h3>
+  <p>原文： "Since the model generates an entire H-step action chunk at once, we can execute up to H actions before we need to run inference again. However, we may run inference more often than that… We tried temporal ensembling early on and found that it hurt policy performance, so we opted not to aggregate actions and instead execute action chunks open-loop. For the 20Hz UR5e and Franka robots, we run inference every 0.8 seconds (after executing 16 actions), and for all other robots, which run at 50Hz, we run inference every 0.5 seconds (after executing 25 actions)."（Appendix A-D）</p>
+  <p>中译：由于模型一次性生成整个 H 步动作块，我们在需要再次推理前最多可执行 H 个动作。但我们可能比这更频繁地推理……我们早期尝试过时间集成（temporal ensembling），发现它损害策略性能，因此选择不聚合动作，而是开环执行动作块。对 20Hz 的 UR5e 与 Franka，我们每 0.8 秒推理一次（执行 16 个动作后）；对其他 50Hz 机器人，每 0.5 秒推理一次（执行 25 个动作后）。</p>
+  <p><b>一行物理意义：</b>H=50 给出 1 秒的动作（50Hz 下），但只执行 25 步（0.5 秒）就重规划——<strong>用一半的块长换取对外界变化的响应</strong>；剩下的半块是「保险」，不是浪费，因为重规划会覆盖它。</p>
+
+  <h3>7.2 推理时间（论文唯一一张数值表 Table I）</h3>
+  <table>
+    <tr><th>环节</th><th>耗时</th><th>说明</th></tr>
+    <tr><td>image encoders</td><td>14 ms</td><td>3 路相机图像编码</td></tr>
+    <tr><td>observation forward pass</td><td>32 ms</td><td>prefix（图像 + 语言 + 状态）走 3B VLM</td></tr>
+    <tr><td>×10 action forward pass (flow)</td><td>27 ms</td><td>10 步去噪共用 KV cache，合计 27 ms</td></tr>
+    <tr><td>network latency（若 off-board）</td><td>13 ms</td><td>Wi-Fi 回传</td></tr>
+    <tr><td><b>total on-board inference</b></td><td><b>73 ms</b></td><td>14 + 32 + 27 = 73（自洽）</td></tr>
+    <tr><td><b>total off-board inference</b></td><td><b>86 ms</b></td><td>73 + 13 = 86（自洽）</td></tr>
+  </table>
+  <p class="foot">来源：π0 Appendix A-D，Table I，逐字；“The operations were timed on an NVIDIA GeForce RTX 4090 consumer-grade GPU.” 注意这是消费级单卡、3 相机、未量化；论文明确说 “Further optimizations, quantization, and other improvements might further reduce inference times.”</p>
+  <p><b>算一笔账：</b>50Hz 下每 0.5 秒推理一次 → 每次 73 ms → 推理占空比 73/500 ≈ 15%。也就是说单卡跑 π0 时还有约 85% 的时间空着，这正是后续可以做异步/批处理/更大模型的空间（本页推算）。</p>
+
+  <h3>7.3 π0.5：4 相机分层 + 极简控制栈</h3>
+  <p>原文： "The control system is very simple: the π0.5 model directly commands target poses for the arms, gripper, and torso lift, and the target base velocities at 50 Hz (with action chunking). These targets are tracked with simple PD controllers, without any additional trajectory planning or collision detection. All manipulation and navigation control is fully end-to-end."（IV-E）</p>
+  <p>中译：控制系统非常简单：π0.5 模型直接指令手臂、夹爪、躯干升降的目标位姿，以及 50 Hz 的底座目标速度（带动作块）。这些目标由简单的 PD 控制器跟踪，没有任何额外的轨迹规划或碰撞检测。所有操作与导航控制完全端到端。</p>
+  <p>原文： "We use all four cameras for high-level inference, and the wrist and forward cameras for the low-level inference process. The total dimensionality of the state and action spaces is 18 or 19, depending on the platform."（IV-E）</p>
+  <p>中译：高层推理使用全部四个相机（前、后、双腕），低层推理只用腕部与前向相机。状态与动作空间总维度为 18 或 19，取决于平台。</p>
+  <p><b>为什么两层用不同相机：</b>高层要「看全局」（后方相机决定往哪走、哪个抽屉在哪），低层要「看手」（腕相机给接触几何、前向相机给接近方向）。这是把算力花在刀刃上：4 相机 token 数更多，只跑低频；2 相机只跑高频。</p>
+</section>
+
+<section>
+  <h2>8. 流程图（输入/输出、频率、张量形状）</h2>
   <div class="svgbox">
-  <svg viewBox="0 0 980 300" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
-    <defs><marker id="p" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker></defs>
-    <rect x="20" y="40" width="180" height="90" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="66" font-size="13" font-weight="700">多相机图像</text>
-    <text x="34" y="86" font-size="11.5">+ 语言指令</text>
-    <text x="34" y="104" font-size="11.5">+ 本体状态</text>
+  <svg viewBox="0 0 1000 620" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
+    <defs>
+      <marker id="pp" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker>
+      <marker id="pg" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#1d6b38"/></marker>
+      <marker id="po" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#b07a1e"/></marker>
+    </defs>
 
-    <rect x="250" y="40" width="200" height="90" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
-    <text x="264" y="66" font-size="13" font-weight="700">预训练 VLM</text>
-    <text x="264" y="86" font-size="11.5">视觉-语言语义</text>
-    <text x="264" y="104" font-size="11.5">（PaliGemma 类）</text>
+    <text x="20" y="18" font-size="12" fill="#5b6a79">上行 π0（单段端到端）｜下行 π0.5（两阶段训练 + 分层推理）｜形状：论文给维度，代码给 action_dim=32 / H=50</text>
 
-    <rect x="500" y="30" width="210" height="110" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
-    <text x="514" y="58" font-size="13" font-weight="700">动作专家（flow）</text>
-    <text x="514" y="78" font-size="11.5">条件：VLM token + state</text>
-    <text x="514" y="96" font-size="11.5">从噪声积分出动作块</text>
-    <text x="514" y="114" font-size="11.5">π0.5：额外预测子任务</text>
+    <rect x="20" y="34" width="900" height="238" rx="10" fill="#fbfdff" stroke="#dfe5ec"/>
+    <text x="34" y="56" font-size="13" font-weight="700" fill="#0b2a4a">π0：prefix（3B）→ suffix（300M 专家，10 步去噪）→ 动作块</text>
 
-    <rect x="760" y="40" width="180" height="90" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
-    <text x="774" y="66" font-size="13" font-weight="700">动作块</text>
-    <text x="774" y="86" font-size="11.5">→ 关节/末端</text>
-    <text x="774" y="104" font-size="11.5">→ PD 执行</text>
+    <rect x="34" y="70" width="180" height="88" rx="8" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="46" y="90" font-size="12" font-weight="700">输入</text>
+    <text x="46" y="108" font-size="11">2–3 相机图像 (b, N_img, c)</text>
+    <text x="46" y="124" font-size="11">语言 token (b, T)｜T 未公开</text>
+    <text x="46" y="140" font-size="11">状态 q_t (b, 18)→零填充 32</text>
 
-    <line x1="200" y1="85" x2="246" y2="85" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#p)"/>
-    <line x1="450" y1="85" x2="496" y2="85" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#p)"/>
-    <line x1="710" y1="85" x2="756" y2="85" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#p)"/>
-    <text x="20" y="260" font-size="12" fill="#5b6a79">π0 与 π0.5 都是「单模型」：不拆 S2/S1；π0.5 的协同训练让同一个模型既会预测子任务，也能出低层动作。</text>
+    <rect x="240" y="70" width="220" height="88" rx="8" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="252" y="90" font-size="12" font-weight="700">prefix：PaliGemma 3B</text>
+    <text x="252" y="108" font-size="11">width 2048 / depth 18 / 18 heads</text>
+    <text x="252" y="124" font-size="11">1 KV head / head_dim 256</text>
+    <text x="252" y="140" font-size="11">图像+语言双向注意力</text>
+
+    <rect x="486" y="70" width="230" height="88" rx="8" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="498" y="90" font-size="12" font-weight="700" fill="#166b38">suffix：action expert 300M</text>
+    <text x="498" y="108" font-size="11">width 1024 / mlp 4096</text>
+    <text x="498" y="124" font-size="11">1 状态 token + H=50 动作 token</text>
+    <text x="498" y="140" font-size="11">(b, 51, 1024)；动作块双向</text>
+
+    <rect x="742" y="70" width="164" height="88" rx="8" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="754" y="90" font-size="12" font-weight="700" fill="#8a5a00">输出 / 执行</text>
+    <text x="754" y="108" font-size="11">a chunk (b, 50, 32)</text>
+    <text x="754" y="124" font-size="11">50Hz：执行 25 步(0.5s)</text>
+    <text x="754" y="140" font-size="11">20Hz：执行 16 步(0.8s)</text>
+
+    <line x1="214" y1="114" x2="236" y2="114" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#pp)"/>
+    <line x1="460" y1="114" x2="482" y2="114" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#pp)"/>
+    <line x1="716" y1="114" x2="738" y2="114" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#pg)"/>
+
+    <text x="34" y="180" font-size="11.5" fill="#5b6a79">积分：A(τ+δ) = A(τ) + δ·v_θ(A(τ), o)，δ = 0.1，共 10 步；τ 从 0（噪声）到 1（动作）</text>
+    <text x="34" y="200" font-size="11.5" fill="#5b6a79">注意力：3 个 block（图像+语言 / 状态 / 噪声动作）；块内双向，块间因果；状态块 K/V 可缓存</text>
+    <text x="34" y="220" font-size="11.5" fill="#5b6a79">时序：每次推理 73 ms（RTX 4090，3 相机），推理占空比 73/500 ≈ 15%（推算）</text>
+    <text x="34" y="240" font-size="11.5" fill="#5b6a79">训练：条件 flow matching；τ 由 Beta((s−τ)/s; 1.5, 1) 采样，s = 0.999（偏大噪声端）</text>
+    <text x="34" y="260" font-size="11.5" fill="#8a5a00">参数未公开：相机分辨率、N_img、语言序列长度 T、batch size</text>
+
+    <rect x="20" y="286" width="900" height="310" rx="10" fill="#fbfdff" stroke="#dfe5ec"/>
+    <text x="34" y="308" font-size="13" font-weight="700" fill="#0b2a4a">π0.5：预训练（离散 FAST）→ 后训练（加专家，flow）→ 推理（先子任务，再动作）</text>
+
+    <rect x="34" y="322" width="200" height="74" rx="8" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="46" y="342" font-size="12" font-weight="700">阶段 1：预训练 280k 步</text>
+    <text x="46" y="360" font-size="11">纯自回归 next-token（α = 0）</text>
+    <text x="46" y="376" font-size="11">动作 = FAST 离散 token</text>
+    <text x="46" y="392" font-size="11">状态 = 离散文本 token</text>
+
+    <rect x="264" y="322" width="220" height="74" rx="8" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="276" y="342" font-size="12" font-weight="700" fill="#166b38">阶段 2：后训练 80k 步</text>
+    <text x="276" y="360" font-size="11">加 300M 专家，α = 10.0</text>
+    <text x="276" y="376" font-size="11">H=50 个噪声动作 token</text>
+    <text x="276" y="392" font-size="11">adaRMSNorm 注入 τ</text>
+
+    <rect x="514" y="322" width="200" height="74" rx="8" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="526" y="342" font-size="12" font-weight="700" fill="#8a5a00">推理 A：高层（4 相机）</text>
+    <text x="526" y="360" font-size="11">总指令 ℓ → 子任务 ℓ̂</text>
+    <text x="526" y="376" font-size="11">自回归文本解码</text>
+    <text x="526" y="392" font-size="11">低频（每步推理一次）</text>
+
+    <rect x="744" y="322" width="162" height="74" rx="8" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="756" y="342" font-size="12" font-weight="700" fill="#8a5a00">推理 B：低层（2 相机）</text>
+    <text x="756" y="360" font-size="11">条件：o_t, ℓ̂</text>
+    <text x="756" y="376" font-size="11">10 步去噪 → 动作块</text>
+    <text x="756" y="392" font-size="11">50Hz PD 跟踪</text>
+
+    <line x1="234" y1="359" x2="260" y2="359" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#pp)"/>
+    <line x1="484" y1="359" x2="510" y2="359" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#pg)"/>
+    <line x1="714" y1="359" x2="740" y2="359" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#po)"/>
+
+    <text x="34" y="430" font-size="11.5" fill="#5b6a79">数据：MM ≈400h / ~100 homes（仅 2.4%）+ ME 非移动多环境 + CE 实验室跨构型 + HL 子任务标注 + WD 网页；后训练加 VI 语言示范（约占 HL 移动样本 11%）</text>
+    <text x="34" y="450" font-size="11.5" fill="#5b6a79">联合分布：π(a, ℓ̂ | o, ℓ) = π(a | o, ℓ̂) · π(ℓ̂ | o, ℓ)；动作分布只依赖子任务 ℓ̂，不依赖总指令 ℓ</text>
+    <text x="34" y="470" font-size="11.5" fill="#5b6a79">两阶段损失：CE(文本 token，含 FAST 动作 token) + α·‖ω − a − v_θ(a^τ,ω, o, ℓ)‖²，α = 10.0</text>
+    <text x="34" y="490" font-size="11.5" fill="#5b6a79">对照：π0-FAST+Flow（有 flow、无 HL/WD）仍不如 π0.5 → 差距来自「异构协同」而非「动作表示」</text>
+    <text x="34" y="510" font-size="11.5" fill="#5b6a79">π0.5 比 π0 强，且把 π0 训到 300k 步仍不如 π0.5（论文 V-D 明确）</text>
+    <text x="34" y="532" font-size="11.5" fill="#8a5a00">论文未给：π0.5 的相机分辨率、子任务词表规模、α 之外的损失权重、batch size、总训练时长</text>
+
+    <text x="34" y="566" font-size="11.5" fill="#5b6a79">H=50 与执行步数的关系（π0 附录 A-D）：生成 50 步 = 50Hz 下一整秒；实际只执行 25 步（0.5s，50Hz）或 16 步（0.8s，20Hz）就重规划。</text>
+    <text x="34" y="586" font-size="11.5" fill="#5b6a79">论文 A-E 处写 “action horizon of 50, i.e. H = 49”，与正文 H=50 不一致；openpi 配置取 action_horizon = 50。</text>
   </svg>
   </div>
 </section>
 
 <section>
-  <h2>3. 关键公式与代码</h2>
-  <div class="eq">flow matching: a_τ = (1−τ)·a + τ·ε；L = ‖ v_θ(a_τ, τ, o, l) − (ε − a) ‖²</div>
-  <div class="eq">推理：a ← a + v_θ(a, τ_k)/K，K 步；动作块 H 步</div>
-  <pre><code><span class="c"># —— 动作专家采样（伪代码）——</span>
-a = randn([B, H, d_a])                <span class="c"># 从噪声起步</span>
-<span class="k">for</span> k <span class="k">in</span> range(K):
-    v = action_expert(a, t=k/K, cond=vlm_tokens, state=proprio)
-    a = a + v / K                     <span class="c"># Euler 沿速度场</span>
-execute(a)                             <span class="c"># 执行整块或前若干步后重规划</span>
-<span class="c"># π0.5：同一前向里额外输出 subtask token → 语言子任务（可解释）</span></code></pre>
+  <h2>9. 公式 + 物理意义 + 映射到代码</h2>
+  <h3>式 1 · 条件 flow matching 训练目标（π0 IV 逐字）</h3>
+  <div class="eq">L^τ(θ) = E over p(A_t|o_t)、q(A_t^τ|A_t)：‖ v_θ(A_t^τ, o_t) − u(A_t^τ | A_t) ‖²，u = A_t − ε，A_t^τ = τ·A_t + (1−τ)·ε，ε ~ N(0, I)</div>
+  <p><b>一行物理意义：</b>网络要学的不是「动作本身」，而是「把噪声推回示教动作块的速度方向」——同一个网络对所有噪声等级都给出指向动作的速度，因此天然能表示多模态（多个合理抓法各自成流）。</p>
+  <p>路径：q(A_t^τ | A_t) = N(τ·A_t, (1−τ)·I)（线性高斯 / 最优传输路径，π0 IV 逐字给出）。</p>
+
+  <h3>式 2 · 推理：前向 Euler 积分（π0 IV 逐字）</h3>
+  <div class="eq">A_t^(τ+δ) = A_t^τ + δ·v_θ(A_t^τ, o_t)，A_t^0 ~ N(0, I)，δ = 0.1，共 10 步</div>
+  <p><b>一行物理意义：</b>从纯噪声出发沿学到的速度场走 10 小步，落到一个「既符合观测、又像示教」的动作块上；10 步是精度与延迟的折中点（Table I 实测 27 ms）。</p>
+
+  <h3>式 3 · π0.5 联合目标（π0.5 式 1 逐字）</h3>
+  <div class="eq">E over D、τ、ω：[ H(x(1:M), f^ℓ_θ(o_t, ℓ)) + α‖ω − a(t:t+H) − f^a_θ(a(t:t+H)^(τ,ω), o_t, ℓ)‖² ]，α = 10.0</div>
+  <p><b>一行物理意义：</b>同一个 transformer 同时被两件事监督——文本（含子任务与 FAST 动作 token）走交叉熵，连续动作走 flow 回归；α 是「动作精度」相对「语言能力」的权重（论文取 10.0，说明后训练阶段重心明显偏向动作）。</p>
+
+  <h3>式 4 · 分层分解（π0.5 IV-A 逐字）</h3>
+  <div class="eq">πθ(a(t:t+H), ℓ̂ | o_t, ℓ) = πθ(a(t:t+H) | o_t, ℓ̂) · πθ(ℓ̂ | o_t, ℓ)</div>
+  <p><b>一行物理意义：</b>动作给定子任务后与总指令条件独立——所以「换说法但同一子任务」不会改变动作，这让语言条件的泛化与动作执行解耦。</p>
+
+  <h3>公式 → 代码逐行映射（openpi）</h3>
+  <table>
+    <tr><th>公式/论文</th><th>openpi 代码</th><th>文件:行</th></tr>
+    <tr><td>A_t^τ = τ·A_t + (1−τ)·ε（论文约定）</td><td><code>x_t = time_expanded * noise + (1 - time_expanded) * actions</code></td><td>pi0.py:199</td></tr>
+    <tr><td>u = A_t − ε</td><td><code>u_t = noise - actions</code></td><td>pi0.py:200</td></tr>
+    <tr><td>‖v_θ − u‖²</td><td><code>jnp.mean(jnp.square(v_t - u_t), axis=-1)</code></td><td>pi0.py:214</td></tr>
+    <tr><td>p(τ)=Beta((s−τ)/s;1.5,1)，s=0.999</td><td><code>time = jax.random.beta(time_rng, 1.5, 1, batch_shape) * 0.999 + 0.001</code></td><td>pi0.py:197</td></tr>
+    <tr><td>10 步 Euler、δ=0.1</td><td><code>dt = -1.0 / num_steps</code>（num_steps 默认 10）+ <code>while_loop</code></td><td>pi0.py:222、228、278</td></tr>
+    <tr><td>A^(τ+δ) = A^τ + δ·v</td><td><code>return x_t + dt * v_t, time + dt</code></td><td>pi0.py:271</td></tr>
+    <tr><td>状态 K/V 可缓存</td><td>先对 prefix 跑一次并取 <code>kv_cache</code>，之后每步只跑 suffix</td><td>pi0.py:237、261</td></tr>
+    <tr><td>H=50、动作维度 18（论文）/32（代码）</td><td><code>action_horizon: int = 50</code>、<code>action_dim: int = 32</code></td><td>pi0_config.py:22-23</td></tr>
+  </table>
+  <p class="warn"><b>符号约定警告：</b>论文是「τ=0 噪声 → τ=1 动作」；openpi 是「t=1 噪声 → t=0 目标」（源码注释原文：“note that we use the convention more common in diffusion literature, where t=1 is noise and t=0 is the target distribution. yes, this is the opposite of the pi0 paper, and I'm sorry.”）。所以代码里 <code>x_t = t·noise + (1−t)·actions</code> 与论文式子的 τ 是互补关系，不是笔误。</p>
 </section>
 
 <section>
-  <h2>4. 训练与数据（可核实部分）</h2>
-  <ul>
-    <li>π0：多机器人平台（单臂、双臂、移动操作）的多样数据；VLM 继承互联网语义，动作专家学连续控制。</li>
-    <li>π0.5：异构协同——多机器人数据 + 网页数据 + 高层语义子任务 + 目标检测；混合多模态样本（图像、语言、检测、子任务、动作）。</li>
-    <li>结果：π0.5 在全新家庭完成长程清洁（厨房/卧室），是「端到端 VLA 开放世界」的代表性证据。</li>
-  </ul>
-  <p class="foot">注：参数量、训练时长、精确数据规模未在摘要给出——本页不臆造。参考 <a href="https://arxiv.org/abs/2410.24164">π0</a>、<a href="https://arxiv.org/abs/2504.16054">π0.5</a> ｜ 返回 <a href="index.html">索引</a></p>
+  <h2>10. 实验</h2>
+  <p class="warn"><b>先说清证据形态：</b>π0 与 π0.5 的<strong>成功率全部以柱状图呈现</strong>（π0：Fig. 7 / 9 / 11 / 13；π0.5：Fig. 7–13、16、17），正文只给协议、评测量纲与定性结论，<b>没有逐任务的数值表</b>。因此下面只放论文真正写出来的数字，绝不从柱子上读数。</p>
+
+  <h3>10.1 π0 实验协议（可核实的数字）</h3>
+  <table>
+    <tr><th>项</th><th>原文数字</th><th>来源</th></tr>
+    <tr><td>每任务试次</td><td>10 episodes / task / method，取平均归一化分数（满分 1.0，部分完成给小数分）</td><td>VI-A</td></tr>
+    <tr><td>模型训练量</td><td>主模型 700k 步；compute parity 版 160k 步（基线：OpenVLA 160k、Octo 320k）</td><td>VI-A</td></tr>
+    <tr><td>基线</td><td>OpenVLA（7B，OXE 预训练）、Octo（93M，扩散）、OpenVLA-UR5e-only、π0-small（470M，无 VLM 初始化）</td><td>VI-A、IV</td></tr>
+    <tr><td>Out-of-box 任务</td><td>shirt folding、bussing easy（满分 7）、bussing hard（满分 12）、grocery bagging（满分 7）、toast out of toaster（满分 4）</td><td>VI-A、Appendix A-E</td></tr>
+    <tr><td>语言跟随任务</td><td>bussing（12 物体 / 约 30 条指令）、table setting（7 物体 / 约 20 条）、grocery bagging（7 物体 / 约 14 条）</td><td>VI-B、Appendix A-E</td></tr>
+    <tr><td>微调任务</td><td>stack bowls（满分 3）、towel folding（3）、Tupperware in microwave（4）、paper towel replacement（4）、Franka items in drawer（5）</td><td>VI-C、Appendix A-E</td></tr>
+    <tr><td>复杂多阶段任务</td><td>laundry folding（4）、mobile laundry、dryer unloading（5）、table bussing（12）、box building（5）、packing eggs（7）、to-go box（5）；每条 5–20 分钟</td><td>VI-D、Appendix A-E</td></tr>
+    <tr><td>训练数据梯度</td><td>「最简单的任务只需 5 小时，最复杂的任务用 100 小时以上」</td><td>V-A</td></tr>
+  </table>
+
+  <h3>10.2 π0 的原文结论（逐字，不含百分比）</h3>
+  <table>
+    <tr><th>结论</th><th>原文（逐字）</th><th>出处</th></tr>
+    <tr><td>Out-of-box 全面最好</td><td>“π0 attains by far the best results across the board on all the out-of-box tasks, with near perfect success rates on shirt folding and the easier bussing tasks, and large improvements over all baselines.”</td><td>VI-A</td></tr>
+    <tr><td>只训 160k 步也赢基线</td><td>“The “parity” version of π0, which is trained for only 160k steps, still outperforms all the baselines, and even π0-small outperforms OpenVLA and Octo.”</td><td>VI-A</td></tr>
+    <tr><td>OpenVLA 失败原因</td><td>“OpenVLA struggles on these tasks because its autoregressive discretization architecture does not support action chunks.”</td><td>VI-A</td></tr>
+    <tr><td>预训练收益</td><td>“the pre-trained model is frequently better than the non-pre-trained model, sometimes by as much as 2x”</td><td>VI-C</td></tr>
+    <tr><td>复杂任务</td><td>“The full pre-trained π0 model attains more than 50% of the maximum score across all of the tasks, and typically outperforms the ablations, with especially significant improvements on the hardest tasks.”（Fig. 13 caption）</td><td>VI-D</td></tr>
+    <tr><td>困难任务无人可比</td><td>“These tasks are very difficult, and we were not able to solve them with other methods.”</td><td>VI-D</td></tr>
+  </table>
+
+  <h3>10.3 π0.5 实验设置（可核实的数字）</h3>
+  <table>
+    <tr><th>项</th><th>原文数字</th><th>来源</th></tr>
+    <tr><td>真实家庭</td><td>3 个厨房 + 3 个卧室，全部<strong>未出现在训练集中</strong></td><td>Fig. 7 caption、V-A</td></tr>
+    <tr><td>试次</td><td>每任务 10 次（mock 环境）；真实家庭同样报平均</td><td>V-A、Fig. 7</td></tr>
+    <tr><td>任务时长</td><td>多阶段任务约 2–5 分钟；整体清洁任务 10–15 分钟</td><td>V-A、Introduction</td></tr>
+    <tr><td>训练环境数扫描</td><td>3 / 12 / 22 / 53 / 82 / 104 个地点</td><td>V-B</td></tr>
+    <tr><td>扫描实验的步数控制</td><td>统一 40k 训练步，保证各模型看到相同数量的唯一样本</td><td>V-B</td></tr>
+    <tr><td>评分</td><td>约等于「成功完成的步骤百分比」（例：一半盘子放水槽 ≈ 50%）</td><td>V-A</td></tr>
+    <tr><td>对照模型</td><td>π0、π0-FAST+Flow（有 flow 无 HL/WD）、GPT-4 当高层、人类 oracle 高层、no WD / no VI / no HL / implicit HL / no ME / no CE</td><td>V-D、V-E、V-C</td></tr>
+    <tr><td>消融结论（定性）</td><td>ME 与 CE 去掉都显著掉；WD 在整体任务上不显著，但在 OOD 语言跟随与高层子任务上关键；VI 仅占 11% 却「critical」</td><td>V-C、V-E</td></tr>
+    <tr><td>对比结论（逐字）</td><td>“π0.5 significantly outperforms both π0 and our enhanced version. This result holds even when we allow for longer training up to 300k training steps of π0”</td><td>V-D</td></tr>
+    <tr><td>高层结论（逐字）</td><td>“the full π0.5 model performs the best, and outperforms even the human HL 'oracle' baseline.”；“the zero-shot GPT-4 ablation attains the worst performance”</td><td>V-E</td></tr>
+    <tr><td>成功率百分比 / 各任务均值 / 误差棒</td><td><b>论文未给数字表</b>（仅柱状图）</td><td>Fig. 7–13</td></tr>
+  </table>
+
+  <h3>10.4 结论</h3>
+  <div class="ok">
+  <p><b>π0：</b>证明的是「<b>架构 + 配方</b>」而非单点技巧——在 out-of-box 与微调两类设定上，同时赢过自回归 VLA（OpenVLA）与扩散基线（Octo），且用 1/4.4 的训练步数（160k vs 700k）仍领先。最有说服力的对照是 π0-small：同样的数据、更小的模型、无 VLM 初始化 → 全面更差，说明「VLM 预训练 + 大容量 + flow」三者缺一不可。</p>
+  <p><b>π0.5：</b>证明的是「<b>异构协同</b>」——在 97.6% 训练样本都不来自目标机器人的前提下，仍能在全新家庭完成长程清洁；且 π0-FAST+Flow（已补齐 flow、只缺 HL/WD）仍不如它，把增益精确定位到数据构成而非动作表示。这比「我们更大更强」有信息量得多。</p>
+  <p><b>但要警惕：</b>两篇论文的关键结果都在图里，没有表格；跨论文比较「谁成功率更高」缺乏共同的评测协议（任务不同、评分尺度不同、试次少）。正确的引用方式是引用它们各自的<strong>受控对照</strong>（表内相对差），而不是引用绝对成功率。</p>
+  </div>
 </section>
+
+<section>
+  <h2>11. 代码：变量表 + 逐步骤物理意义 + 出处</h2>
+  <p class="warn"><b>出处：</b>以下代码逐行对应 <a href="https://github.com/Physical-Intelligence/openpi">openpi</a> 的 <code>src/openpi/models/pi0.py</code>（main 分支，抓取于 2026-11-27）。为聚焦机制，省略了数据预处理与 mask 构造的样板行，保留所有与公式对应、决定张量形状的行；每段末尾标原文行号。这不是抄写全文，是「可核对的最小片段」。</p>
+
+  <h3>11.1 变量表</h3>
+  <table>
+    <tr><th>变量</th><th>形状</th><th>物理意义</th><th>出处</th></tr>
+    <tr><td><code>obs.images[name]</code></td><td>(b, H, W, 3)，每机器人 2–3 张</td><td>多路相机图像：给「场景长什么样、手在哪」</td><td>论文 IV；H/W 未公开</td></tr>
+    <tr><td><code>obs.tokenized_prompt</code></td><td>(b, T)</td><td>语言指令 token：唯一可在线切换任务的条件</td><td>pi0.py:129</td></tr>
+    <tr><td><code>obs.state</code></td><td>(b, 32)</td><td>本体状态：关节角/夹爪/底座（论文写 18 维，代码 padding 到 32）</td><td>pi0.py:153；pi0_config.py:22</td></tr>
+    <tr><td><code>actions</code> / <code>noise</code></td><td>(b, 50, 32)</td><td>示教动作块 / 同形状高斯噪声：flow 的两端</td><td>pi0.py:196；config H=50</td></tr>
+    <tr><td><code>time</code></td><td>(b,)</td><td>flow 时间下标 τ（代码里 t=1 是噪声）</td><td>pi0.py:197</td></tr>
+    <tr><td><code>x_t</code></td><td>(b, 50, 32)</td><td>加噪后的动作块：网络要预测它的速度</td><td>pi0.py:199</td></tr>
+    <tr><td><code>u_t</code></td><td>(b, 50, 32)</td><td>目标速度场（noise − actions）：回归标签</td><td>pi0.py:200</td></tr>
+    <tr><td><code>prefix_tokens</code></td><td>(b, S_prefix, 2048)</td><td>图像 patch + 语言嵌入：VLM 的世界理解</td><td>pi0.py:203、114、129</td></tr>
+    <tr><td><code>suffix_tokens</code></td><td>(b, 1 + 50, 1024)</td><td>1 个状态 token + 50 个动作 token，在专家宽度上</td><td>pi0.py:153、159、179</td></tr>
+    <tr><td><code>v_t</code></td><td>(b, 50, 32)</td><td>预测速度：投影回动作维度后才与 u_t 比</td><td>pi0.py:212、269</td></tr>
+    <tr><td><code>kv_cache</code></td><td>prefix 的 K/V</td><td>10 步去噪复用的缓存：省掉 9 次 prefix 前向</td><td>pi0.py:237</td></tr>
+  </table>
+
+  <h3>11.2 训练一步（openpi <code>compute_loss</code>，pi0.py:189–214）</h3>
+  <pre><code><span class="c"># 出处：src/openpi/models/pi0.py L192–L214（openpi main）；注释为本页所加</span>
+observation = _model.preprocess_observation(preprocess_rng, observation, train=train)
+noise = jax.random.normal(noise_rng, actions.shape)     <span class="c"># 同形状高斯噪声：flow 的起点端</span>
+time = jax.random.beta(time_rng, 1.5, 1, batch_shape) * 0.999 + 0.001
+                                                        <span class="c"># p(τ)=Beta(·;1.5,1) 截断到 (0.001,1)：偏大噪声端采样</span>
+x_t = time * noise + (1 - time) * actions               <span class="c"># 线性插值：t=1 纯噪声、t=0 示教动作（与论文 τ 互补）</span>
+u_t = noise - actions                                   <span class="c"># 目标速度场：从动作指向噪声的反方向</span>
+
+prefix_tokens, prefix_mask, prefix_ar_mask = self.embed_prefix(observation)
+                                                        <span class="c"># 图像 patch + 语言：走 3B VLM，每步观测只算一次</span>
+suffix_tokens, suffix_mask, ar_mask, adarms_cond = self.embed_suffix(observation, x_t, time)
+                                                        <span class="c"># 状态 1 token + 动作 50 token，宽度 1024；τ 经 MLP 注入</span>
+(prefix_out, suffix_out), _ = self.PaliGemma.llm([prefix_tokens, suffix_tokens], mask=attn_mask, ...)
+                                                        <span class="c"># 一次大前向：两个专家只通过 self-attention 交互</span>
+v_t = self.action_out_proj(suffix_out[:, -self.action_horizon:])
+                                                        <span class="c"># 只取最后 50 个槽 → 投影回动作维度 32</span>
+return jnp.mean(jnp.square(v_t - u_t), axis=-1)         <span class="c"># 逐样本 MSE：这就是论文式 (1) 的第二项</span></code></pre>
+
+  <h3>11.3 推理（openpi <code>sample_actions</code>，pi0.py:217–279）</h3>
+  <pre><code><span class="c"># 出处：src/openpi/models/pi0.py L217–L279（openpi main）；注释为本页所加</span>
+dt = -1.0 / num_steps                                   <span class="c"># num_steps=10 → dt=-0.1：从 t=1（噪声）走向 t=0（动作）</span>
+noise = jax.random.normal(rng, (batch_size, self.action_horizon, self.action_dim))
+                                                        <span class="c"># (b, 50, 32)：每个控制周期重新从噪声起步</span>
+
+_, kv_cache = self.PaliGemma.llm([prefix_tokens, None], mask=prefix_attn_mask, positions=positions)
+                                                        <span class="c"># 只前向一次 prefix 并缓存 K/V：3B 部分不进 10 步循环</span>
+
+<span class="k">def</span> step(carry):
+    x_t, time = carry
+    suffix_tokens, ... = self.embed_suffix(observation, x_t, time)
+                                                        <span class="c"># 每步重算 80M 专家的输入嵌入（含 τ 调制）</span>
+    (prefix_out, suffix_out), _ = self.PaliGemma.llm([None, suffix_tokens], mask=full_attn_mask,
+                                                    kv_cache=kv_cache, ...)
+                                                        <span class="c"># 只跑 suffix：开销 = 27ms / 10 步（论文 Table I）</span>
+    v_t = self.action_out_proj(suffix_out[:, -self.action_horizon:])
+    <span class="k">return</span> x_t + dt * v_t, time + dt                  <span class="c"># Euler：A ← A + δ·v（论文式 2）</span>
+
+x_0, _ = jax.lax.while_loop(<span class="k">lambda</span> c: c[1] &gt;= -dt / 2, step, (noise, 1.0))
+                                                        <span class="c"># 循环到 t≈0：10 步后得到动作块</span></code></pre>
+  <p class="foot">为什么 <code>kv_cache</code> 是性能关键：prefix 3B 前向 32 ms 只做一次，10 步循环里只跑 300M 专家（合计 27 ms）。若不做缓存，10 步 × 32 ms = 320 ms，50Hz 部署直接不可行——这就是论文说「inference can be implemented efficiently by caching the attention keys and values for the prefix」的实际含义。</p>
+</section>
+
+<section>
+  <h2>12. 局限与未公开项</h2>
+  <h3>12.1 论文自述局限（逐字）</h3>
+  <p>π0 原文： "our experiments do not yet provide a comprehensive understanding of how the pre-training datasets should be composed: we combined all data available to us, but understanding what type of data is more helpful to add and how it should be weighted remains an open problem. Not all tasks in our evaluation work reliably, and it remains unclear how to predict how much and what kind of data is needed to attain near-perfect performance."（VII）</p>
+  <p>中译：我们的实验还没有给出「预训练数据该如何构成」的完整理解：我们把手上所有数据都合在一起了，但弄清「哪类数据更有帮助、该如何加权」仍是开放问题。我们评估中的任务并非都可靠可复现，也仍不清楚如何预测「要达到近完美性能需要多少、何种数据」。</p>
+  <p>π0.5 原文： "While our VLA exhibits broad generalization, it still makes mistakes. Some environments present persistent challenges (e.g., unfamiliar handles on drawers, or cabinets that are physically hard for the robot to open), some behaviors present challenges with partial observability (e.g., the robot arm occluding a spill that should be wiped), and in some cases the high-level sub-task inference is easily distracted (e.g., closing and opening a drawer multiple times while putting away items)."（VI）</p>
+  <p>中译：虽然我们的 VLA 展现了广泛泛化，它仍会犯错。有些环境带来持续挑战（如不熟悉的抽屉把手、机器人物理上难以打开的柜门）；有些行为存在部分可观测问题（如机械臂挡住了本该擦掉的污渍）；还有些情况下高层子任务推断容易被干扰（如收纳物品时反复开合同一个抽屉）。</p>
+  <p>π0.5 原文： "The model also uses a relatively modest context, and incorporating richer context and memory could make the model significantly more capable in settings with more partial observability, such as tasks that require navigating between different rooms or remembering where objects are stored."（VI）</p>
+  <p>中译：该模型的上下文也相对有限；引入更丰富的上下文与记忆，可以显著提升模型在部分可观测更强的场景中的能力，例如需要在不同房间之间移动、或需要记住物体存放位置的任务。</p>
+
+  <h3>12.2 未公开项清单（不要从别处补数）</h3>
+  <table>
+    <tr><th>类别</th><th>未公开项</th><th>影响</th></tr>
+    <tr><td>训练超参</td><td>batch size、学习率、优化器与 schedule、weight decay、warmup、梯度裁剪</td><td>无法判断训练稳定性来源；复现需自行扫参</td></tr>
+    <tr><td>算力</td><td>GPU/TPU 数量与型号、训练总时长、总 FLOPs（π0 唯一 GPU 提及是推理用的 RTX 4090）</td><td>无法估算复现成本</td></tr>
+    <tr><td>视觉输入</td><td>图像分辨率、patch 大小、每机器人图像 patch 数（N_img）</td><td>直接决定 prefix 序列长度与 32 ms 是否可复现</td></tr>
+    <tr><td>π0.5</td><td>子任务词表规模、HL 的 prompt 格式、VI 采集的样本条数、α 之外的损失权重、π0.5 的相机配置细节</td><td>「11% 的 VI 为何 critical」无法从论文数字反推</td></tr>
+    <tr><td>结果数值</td><td>两篇论文的逐任务成功率（只有柱状图）、误差棒、试次方差</td><td>无法做跨论文横向比较</td></tr>
+    <tr><td>数据</td><td>7 种机器人各自占比（论文只有饼图 Fig. 4）、π0.5 的 ME/CE 具体小时数、家庭环境的采集协议</td><td>无法复现数据配比</td></tr>
+    <tr><td>论文内部不一致</td><td>π0.5 Appendix A-E：「action horizon of 50, i.e. H = 49」；正文与附录各写一次，互相矛盾</td><td>引用时应写 H≈50 并注明出处</td></tr>
+    <tr><td>论文 / 代码不一致</td><td>论文动作维度 18（数据集最大机器人）；openpi 默认 <code>action_dim=32</code></td><td>不要混用；32 是固定上界 + zero-padding 的实现约定</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>13. Q&amp;A（追问 why，带数值或反例）</h2>
+
+  <h3>Q1：为什么不用自回归离散动作（OpenVLA 路线），非要 flow？</h3>
+  <p><b>数值：</b>H=50 的动作块若离散化，需要串行解码 50 步；flow 只需 10 步并行（实测这 10 步共 27 ms）。串行长度差 5 倍，且每步都要跑一次网络前向——50Hz 下 20 ms 的动作预算会被直接吃穿。<b>论文的实测对照：</b>OpenVLA 在同一预训练混合上“struggles on these tasks because its autoregressive discretization architecture does not support action chunks”（VI-A），即便是只训 160k 步的 π0 也全面赢它。<b>反例边界：</b>若动作维度很低（比如只有 1 个二值夹爪），离散化完全够用，flow 的收益就不明显——这正是论文说 prior VLA 在低维控制（如二值平行夹爪）上有一些成功的原因。</p>
+
+  <h3>Q2：为什么 action expert 只有 300M，而不是也给 3B？</h3>
+  <p><b>数值：</b>一次推理里 prefix 跑 1 次（32 ms），专家跑 10 次（27 ms）。若专家也是 3B（≈10 倍），这 10 步会膨胀到约 270 ms 量级（按参数量线性外推，量级估算），加上 prefix 32 ms + 编码 14 ms，单次推理超过 300 ms；50Hz 下 0.5 秒的执行窗口只剩不到 40% 余量，20Hz 的 UR5e（0.8 秒窗口）也接近极限。<b>why：</b>专家的计算被「放在最内层循环」——它的成本要乘以积分步数，所以必须小；而 VLM 的计算在循环外，可以大。这条「非对称分工」是整个设计的经济学基础。</p>
+
+  <h3>Q3：时间步为什么偏「高噪声」采样，而不是像图像扩散那样偏中间？</h3>
+  <p><b>why：</b>高噪声端（τ 小）对应「几乎纯噪声 → 动作均值」的映射。图像生成里这个均值是模糊的平均图，没意义；但动作里 E[A_t | o_t] 是「给定观测下最合理的动作」，本身就很有用。所以要多采样。<b>反例：</b>若按 logit-normal 偏中间采样（图像扩散常用），τ 小的一端样本稀疏，模型学不好「从纯噪声一步跳到合理动作」，10 步积分的前 2–3 步就会生成明显偏离的动作块——而 π0 只有 10 步可用，没有纠错余地。论文用一个具体参数把这件事钉死：s = 0.999（保证 δ 可小到 1/1000，即最多 1000 步，但实际只用 10 步）。</p>
+
+  <h3>Q4：π0.5 为什么非要「先离散预训练、再连续后训练」两条腿？直接全程 flow 不行吗？</h3>
+  <p><b>why：</b>两个效率约束方向相反。训练端：FAST 把动作块压成离散 token 后，训练是标准 next-token 预测，可复用 VLM 的成熟配方，稳定且快（论文：α=0 阶段 280k 步）。推理端：离散表示要自回归解码 50 步，太慢；连续 flow 非自回归，10 步出块。所以「训练用离散、推理用连续」。<b>反例（论文自己做的）：</b>π0-FAST+Flow 就是这个混合配方、但只用动作数据训练 → 仍然不如 π0.5，说明「混合表示」本身不是增益来源，HL + WD 数据才是。同时论文还给出更强的一条：把 π0 训到 300k 步仍不如 π0.5 —— 排除了「只是训练更久」的解释。</p>
+
+  <h3>Q5：为什么 π0.5 的高层预测能超过人类 oracle？</h3>
+  <p><b>论文事实：</b>“the full π0.5 model performs the best, and outperforms even the human HL 'oracle' baseline”（V-E）。<b>本页推断（非原文）：</b>人类 oracle 给的是「人认为对的子任务」，但不保证<strong>低层策略执行得了</strong>——比如人看到污渍会说「擦掉它」，而低层策略可能从未学过擦拭动作；模型预测的子任务则是在同一批机器人数据上训练出来的，天然落在「低层已具备的能力集合」内。换言之，高层与低层共享权重与数据分布，等于自带「可执行性约束」；人类 oracle 没有这个约束。<b>佐证：</b>论文同时报告 implicit HL（不做高层推理、但训练里含子任务数据）是第二好（V-E），说明收益一部分来自「子任务标注提供的结构信息」，而不只是运行时的显式规划。这也解释了为什么 no VI 只去掉 11% 的数据却显著变差——语言示范教会了模型「怎么把技能拆成可执行步骤」。</p>
+</section>
+
+<section>
+  <h2>14. 全文总结（problem → method → experiment → takeaway）</h2>
+  <table>
+    <tr><th>环节</th><th>π0</th><th>π0.5</th></tr>
+    <tr><td>Problem</td><td>机器人基础模型同时缺规模、缺架构、缺配方；纯高质量数据学不会纠错，纯预训练数据学不会流畅</td><td>开放世界泛化：真实家庭的语义长尾无法靠「在更多房子里采更多轨迹」覆盖</td></tr>
+    <tr><td>Method</td><td>PaliGemma 3B + 300M action expert（单 transformer 双专家）+ 动作块 H=50 + 条件 flow matching + 10 步 Euler；两段式预训练/后训练</td><td>同架构，但预训练用 FAST 离散 token 自回归（280k 步），后训练加 flow 专家（80k 步，α=10）；数据换成 MM/ME/CE/HL/WD 异构协同 + VI 语言示范；推理分「先出子任务、再出动作块」</td></tr>
+    <tr><td>Experiment</td><td>out-of-box + 语言跟随 + 新技能微调 + 多阶段任务；10 试次/任务；全面胜过 OpenVLA / Octo / π0-small；推理 73 ms（RTX 4090）</td><td>3 个未见过的真实家庭（3 厨房 + 3 卧室）+ mock 房；环境数 3→104 扫描；消融 ME/CE/WD/VI/HL；超过 π0 与 π0-FAST+Flow，超过 GPT-4 与人类 oracle 高层</td></tr>
+    <tr><td>Takeaway</td><td>「VLM 出条件、flow 出连续动作块」是高频灵巧操作的可用形态；关键是让两个专家只通过 self-attention 交互，且把贵的前向放进循环外</td><td>泛化的瓶颈不是机器人数据量，而是<strong>知识的异构性</strong>；在目标形态数据只占 2.4% 时，跨构型 + 网页 + 子任务标注 + 语言示范才是泛化的真正来源</td></tr>
+  </table>
+  <div class="ok"><b>一句话记住这一对：</b>π0 = 「怎么把 VLM 变成能出连续动作块的策略」（架构问题）；π0.5 = 「怎么用别人的数据学会自己家的事」（数据/配方问题）。两者共享同一副骨架，差别全在训练阶段划分与数据构成。</div>
+  <p class="foot">对照读：<a href="helix.html">Helix</a> 走「双系统 + 单 latent + 双频」路线，与 π0 的单模型 + 动作块形成直接对照——Helix 换实时性，π0 换动作精度与多模态；<a href="sonic.html">SONIC</a> 则是更下一层的全身控制器。参考：<a href="https://arxiv.org/abs/2410.24164">π0 (arXiv:2410.24164)</a> ｜ <a href="https://arxiv.org/abs/2504.16054">π0.5 (arXiv:2504.16054)</a> ｜ <a href="https://github.com/Physical-Intelligence/openpi">openpi 源码</a> ｜ 返回 <a href="index.html">wiki 索引</a></p>
+</section>
+
 </div>
 </body>
 </html>

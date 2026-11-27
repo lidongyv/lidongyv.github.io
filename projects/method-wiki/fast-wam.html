@@ -3,111 +3,409 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fast-WAM 精读：训练联合视频、推理只出动作</title>
+<title>Fast-WAM 精读：训练共训视频、推理只出动作（含官方代码逐行核对）</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
+
 <header class="hero">
-  <h1>Fast-WAM：WAM 的联合训练 / 动作-only 推理</h1>
-  <p class="sub">Wan2.2-5B 视频 DiT + 1B ActionDiT · 联合 flow matching · 推理删未来分支 · 190ms</p>
-  <p class="meta">L2（部分正文/开源代码） · arXiv:2603.16666 · 代表「World-Action Model」</p>
+  <h1>Fast-WAM：世界动作模型需不需要在推理时想象未来？（paper-reading 精读）</h1>
+  <p class="sub">Wan2.2-5B 视频 DiT + 1B ActionDiT · 共享注意力 MoT · H=32 / 每 chunk 9 帧 · 训练共训、推理删未来分支 · 190ms</p>
+  <p class="meta">证据级别 <b>L3</b>（全文 v2 + 官方代码 FastWAM + configs 逐项核对；<i>训练未复现</i>）｜ arXiv:2603.16666（v1 2026-03-17 / v2 2026-03-23）</p>
 </header>
+
 <nav class="top">
-  <a href="index.html">索引</a><a href="sonic.html">SONIC</a><a href="groot.html">GR00T</a>
-  <a href="helix.html">Helix</a><a href="pi0.html">π0 / π0.5</a><a href="astra.html">ASTRA</a><a class="on" href="fast-wam.html">Fast-WAM</a>
+  <a href="index.html">索引</a>
+  <a href="sonic.html">SONIC</a>
+  <a href="groot.html">GR00T</a>
+  <a href="helix.html">Helix</a>
+  <a href="pi0.html">π0 / π0.5</a>
+  <a href="astra.html">ASTRA</a>
+  <a class="on" href="fast-wam.html">Fast-WAM</a>
 </nav>
 
 <section>
-  <h2>1. 定位</h2>
-  <p>WAM（World-Action Model）联合建模未来观测与动作：<b>p(o′, a | o, l)</b>。训练时预测未来（视频/潜），推理时可以只出动作——既保留「想象」带来的表征，又不为生成视频付延迟。</p>
+  <h2>1. 论文信息表</h2>
   <table>
-    <tr><th>项</th><th>值</th></tr>
-    <tr><td>骨干</td><td>Wan2.2-<b>5B</b> 视频 DiT（世界模型）+ <b>1B</b> ActionDiT（动作专家），MoT 共享注意力</td></tr>
-    <tr><td>动作块</td><td>H=<b>32</b>；未来视频帧 9（4× 降采样）</td></tr>
-    <tr><td>推理</td><td>删未来分支，单次前向 → 32 步动作；<b>190ms</b>（RTX 5090D）</td></tr>
-    <tr><td>结果</td><td>LIBERO 97.6 / RoboTwin 91.8；去掉视频共训掉到 83.8（RoboTwin）/ 10%（真机毛巾折叠）</td></tr>
+    <tr><th>项</th><th>内容</th></tr>
+    <tr><td>标题</td><td>Fast-WAM: Do World Action Models Need Test-time Future Imagination?</td></tr>
+    <tr><td>作者</td><td>Tianyuan Yuan, Zibin Dong, Yicheng Liu, Hang Zhao</td></tr>
+    <tr><td>机构</td><td>IIIS, Tsinghua University；Galaxea AI</td></tr>
+    <tr><td>时间</td><td>v1 2026-03-17；v2 2026-03-23（本页按 v2 核对）</td></tr>
+    <tr><td>venue</td><td>arXiv preprint（cs.CV / cs.AI）。论文未给正式会议或期刊</td></tr>
+    <tr><td>链接</td><td><a href="https://arxiv.org/abs/2603.16666">arXiv:2603.16666</a> ｜ <a href="https://arxiv.org/html/2603.16666v2">HTML v2</a> ｜ <a href="https://yuantianyuan01.github.io/FastWAM/">项目页</a> ｜ <a href="https://github.com/yuantianyuan01/FastWAM">代码</a></td></tr>
+    <tr><td>证据级别</td><td><b>L3</b>：论文全文（含 Table 1/2、Eq.1–9、附录 Table 3）+ 官方仓库的模型代码、训练 config、RoboTwin 部署 config 三方对齐。<b>但训练与数字未复现</b></td></tr>
+    <tr><td>本页未核实项</td><td>真机毛巾折叠的具体成功率/完成时间（论文只在 Figure 4 给散点，<b>正文未给数值表</b>）；训练总 GPU 小时、数据规模（<b>论文未给</b>）；λ（论文未给具体值，代码默认 1.0）</td></tr>
+  </table>
+  <p class="foot">分级口径：<b>L1</b> 只读到摘要/二手转述；<b>L2</b> 全文（含附录表、公式）逐字核对但无代码；<b>L3</b> 全文 + 官方代码/配置可复核实现细节（≠ 已复现数字）。</p>
+</section>
+
+<section>
+  <h2>2. 一页结论（先看这里）</h2>
+  <div class="ok">
+    <b>一句话：</b>把 WAM 的收益拆成“训练时的视频共训”和“推理时的未来想象”两件事之后，作者发现——<b>价值几乎全在训练端</b>。推理删掉整个未来分支不掉点（91.8 vs Joint 90.6 / IDM 91.3），但去掉视频共训就掉 8 个点（91.8 → 83.8），真机毛巾折叠从可用掉到 10%。
+  </div>
+  <table>
+    <tr><th>问题</th><th>论文的答案</th><th>证据</th></tr>
+    <tr><td>推理时要不要显式生成未来？</td><td>不需要；单次前向把首帧编码成世界表征即可</td><td>RoboTwin 91.8 vs Joint 90.6 / IDM 91.3；LIBERO 97.6 vs 98.5 / 98.0</td></tr>
+    <tr><td>那 WAM 的增益从哪来？</td><td>训练时预测未来视频这一目标对表征的塑形</td><td>去掉共训：RoboTwin 83.8（−8.0）、LIBERO 93.5（−4.1）、真机 10%</td></tr>
+    <tr><td>快多少？</td><td>190ms，比 imagine-then-execute 快 4 倍以上</td><td>IDM 810ms（同一张 5090D V2）</td></tr>
+    <tr><td>要 embodied 预训练吗？</td><td>不要；这是本文最“反直觉”的效率结论</td><td>LIBERO 97.6 / RoboTwin 91.8 均标 Embodied PT. = ✗</td></tr>
   </table>
 </section>
 
 <section>
-  <h2>2. 流程图</h2>
+  <h2>3. Problem：被纠缠在一起的两个因素</h2>
+  <p>论文的出发点不是“再做一个 WAM”，而是把一个问题问清楚。Introduction 第 2 段把两个候选原因写得很精确：</p>
+  <p><b>原文：</b>“Most existing WAMs follow an imagine-then-execute paradigm: they first generate future observations, then predict actions conditioned on the imagined future. While intuitive, this design incurs substantial test-time latency due to iterative video denoising.”</p>
+  <p><b>译文：</b>现有大多数 WAM 采用“先想象、后执行”范式：先生成未来观测，再以想象出的未来为条件预测动作。这个设计很直觉，但由于迭代式视频去噪，它在测试时带来可观的延迟。</p>
+  <p><b>原文：</b>“More fundamentally, it remains unclear whether explicit future imagination is actually necessary for strong action performance. The effectiveness of WAMs may stem from two distinct sources: (1) the video prediction objective during training, which may help the model acquire stronger physical priors and action-conditioned representations, and (2) explicit future generation during inference, which may provide additional foresight for action prediction.”</p>
+  <p><b>译文：</b>更根本地说，尚不清楚显式的未来想象对强动作性能是否真的必要。WAM 的有效性可能来自两个不同来源：(1) 训练时的视频预测目标，它可能帮助模型获得更强的物理先验与动作条件表征；(2) 推理时的显式未来生成，它可能为动作预测提供额外的预判。</p>
+  <p>所以这篇论文的“问题定义”本身就是贡献：<b>(1) 与 (2) 在现有系统里永远是耦合的</b>（同一个模型既从未来视频学习、又在测试时合成未来），因此观测到的增益无法归因。要拆开，就必须造一个“训练共训、推理不生成”的模型，并在同一套骨干/分词/训练配方下造出它的对照组。</p>
+  <p class="foot">出处：§1 Introduction 第 2–3 段；§3.3 Controlled Variants（‘keeping the backbone, tokenization, and training recipe as aligned as possible’）。</p>
+</section>
+
+<section>
+  <h2>4. 流程图：训练两条损失 vs 推理一条前向</h2>
   <div class="svgbox">
-  <svg viewBox="0 0 980 340" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
-    <defs><marker id="w" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker></defs>
-    <rect x="20" y="30" width="200" height="70" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="56" font-size="13" font-weight="700">多相机图</text><text x="34" y="76" font-size="11.5">拼单图 → VAE latent</text>
-    <rect x="20" y="130" width="200" height="60" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="156" font-size="13" font-weight="700">语言（T5）</text><text x="34" y="176" font-size="11.5">指令 token</text>
-    <rect x="20" y="220" width="200" height="60" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
-    <text x="34" y="246" font-size="13" font-weight="700">proprio</text><text x="34" y="266" font-size="11.5">1 个 token（代码实锤）</text>
+  <svg viewBox="0 0 980 520" xmlns="http://www.w3.org/2000/svg" font-family="Microsoft YaHei, Segoe UI, sans-serif">
+    <defs><marker id="f" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker>
+      <marker id="fg" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#1d6b38"/></marker>
+      <marker id="fo" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#b07a1e"/></marker></defs>
 
-    <rect x="280" y="30" width="210" height="100" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
-    <text x="294" y="56" font-size="13" font-weight="700">首帧 latent（clean）</text>
-    <text x="294" y="76" font-size="11.5">可见所有条件</text>
-    <rect x="280" y="150" width="210" height="100" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
-    <text x="294" y="176" font-size="13" font-weight="700">未来帧 latent（noisy）</text>
-    <text x="294" y="196" font-size="11.5">仅训练用；推理删掉</text>
-    <rect x="280" y="270" width="210" height="55" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
-    <text x="294" y="294" font-size="13" font-weight="700">动作 token</text>
-    <text x="294" y="312" font-size="11.5">不能看未来视频 token（掩码）</text>
+    <text x="20" y="26" font-size="13" font-weight="700" fill="#0b2a4a">训练（两条 flow-matching 损失，动作看不到未来）</text>
 
-    <rect x="550" y="80" width="200" height="90" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
-    <text x="564" y="108" font-size="13" font-weight="700">MoT 共享注意力</text>
-    <text x="564" y="128" font-size="11.5">视频专家 + 动作专家</text>
-    <text x="564" y="146" font-size="11.5">联合去噪</text>
+    <rect x="20" y="38" width="190" height="80" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="33" y="60" font-size="12" font-weight="700">观测输入</text>
+    <text x="33" y="79" font-size="10.8">2 路 224×224 水平拼接</text>
+    <text x="33" y="95" font-size="10.8">→ 单图 224×448</text>
+    <text x="33" y="111" font-size="10.8">33 帧原始 → 4× 抽帧</text>
 
-    <rect x="810" y="60" width="150" height="60" rx="9" fill="#f6f8fb" stroke="#5b6a79"/>
-    <text x="824" y="86" font-size="12" font-weight="700">L_vid</text><text x="824" y="104" font-size="11.5">未来 latent FM</text>
-    <rect x="810" y="140" width="150" height="60" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
-    <text x="824" y="166" font-size="12" font-weight="700">L_act</text><text x="824" y="184" font-size="11.5">动作 FM</text>
+    <rect x="228" y="38" width="150" height="80" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="241" y="60" font-size="12" font-weight="700">VAE</text>
+    <text x="241" y="79" font-size="10.8">48 通道 latent</text>
+    <text x="241" y="95" font-size="10.8">空间 8× / 时间 4×</text>
+    <text x="241" y="111" font-size="10.8">→ 28×56 / 帧</text>
 
-    <line x1="220" y1="65" x2="276" y2="75" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#w)"/>
-    <line x1="220" y1="160" x2="276" y2="185" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#w)"/>
-    <line x1="220" y1="250" x2="276" y2="292" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#w)"/>
-    <line x1="490" y1="80" x2="546" y2="110" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#w)"/>
-    <line x1="490" y1="200" x2="546" y2="140" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#w)"/>
-    <line x1="490" y1="297" x2="546" y2="150" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#w)"/>
-    <line x1="750" y1="110" x2="806" y2="90" stroke="#5b6a79" stroke-width="1.8" marker-end="url(#w)"/>
-    <line x1="750" y1="140" x2="806" y2="168" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#w)"/>
-    <text x="20" y="360" font-size="12" fill="#5b6a79">训练：两条 flow matching 损失加权；动作 token 掩掉未来视频，防止「抄答案」。推理：只保留首帧 → 一次前向 → 32 步动作。</text>
+    <rect x="396" y="38" width="190" height="80" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="409" y="60" font-size="12" font-weight="700">视频 token（9 帧）</text>
+    <text x="409" y="79" font-size="10.8">首帧 clean：1×392</text>
+    <text x="409" y="95" font-size="10.8">未来 noisy：8×392</text>
+    <text x="409" y="111" font-size="10.8">共 3528 token</text>
+
+    <rect x="604" y="38" width="150" height="80" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="617" y="60" font-size="12" font-weight="700">动作 token</text>
+    <text x="617" y="79" font-size="10.8">32 步 × 7 维</text>
+    <text x="617" y="95" font-size="10.8">Linear(7→1024)</text>
+    <text x="617" y="111" font-size="10.8">= 32 个 token</text>
+
+    <rect x="772" y="38" width="188" height="80" rx="9" fill="#fdf4e3" stroke="#b07a1e"/>
+    <text x="785" y="60" font-size="12" font-weight="700">条件（cross-attn）</text>
+    <text x="785" y="79" font-size="10.8">T5 文本 128 token</text>
+    <text x="785" y="95" font-size="10.8">+ proprio 1 token</text>
+    <text x="785" y="111" font-size="10.8">（拼进 context 序列）</text>
+
+    <rect x="250" y="150" width="300" height="86" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="264" y="172" font-size="12.5" font-weight="700">MoT：共享注意力的两个专家</text>
+    <text x="264" y="191" font-size="10.8">视频 DiT：Wan2.2-5B（3072 维 / 30 层 / 24 头）</text>
+    <text x="264" y="207" font-size="10.8">动作 DiT：1B（1024 维 / 30 层 / ffn 4096）</text>
+    <text x="264" y="223" font-size="10.8">合计 6B 参数；patch = 1×2×2</text>
+
+    <rect x="578" y="150" width="382" height="86" rx="9" fill="#f6f8fb" stroke="#5b6a79"/>
+    <text x="592" y="172" font-size="12.5" font-weight="700">结构化掩码（关键）</text>
+    <text x="592" y="191" font-size="10.8">动作 token → 未来视频 token：<tspan font-weight="700">禁止</tspan>（防“抄答案”）</text>
+    <text x="592" y="207" font-size="10.8">动作 token → 首帧 clean token：允许；首帧不 attend 其它</text>
+    <text x="592" y="223" font-size="10.8">视频内部 first_frame_causal；动作内部双向（group_diagonal）</text>
+
+    <rect x="250" y="262" width="300" height="72" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="264" y="284" font-size="12.5" font-weight="700">L = L_act + λ·L_vid</text>
+    <text x="264" y="303" font-size="10.8">两项都是 flow matching；视频损失只算未来帧</text>
+    <text x="264" y="319" font-size="10.8">λ：论文未给数值，配置里两个权重都是 1.0</text>
+
+    <rect x="578" y="262" width="382" height="72" rx="9" fill="#fff8ec" stroke="#b07a1e"/>
+    <text x="592" y="284" font-size="12.5" font-weight="700">三个对照变体（同一骨干/配方）</text>
+    <text x="592" y="303" font-size="10.8">Fast-WAM-Joint（未来与动作一起去噪）｜Fast-WAM-IDM（先生成未来再出动作）</text>
+    <text x="592" y="319" font-size="10.8">无视频共训（架构与推理不变，只删视频损失）</text>
+
+    <text x="20" y="362" font-size="13" font-weight="700" fill="#0b2a4a">推理（删掉整个未来分支）</text>
+
+    <rect x="20" y="374" width="206" height="82" rx="9" fill="#eaf2fb" stroke="#0b6bcb"/>
+    <text x="33" y="396" font-size="12" font-weight="700">只留首帧</text>
+    <text x="33" y="415" font-size="10.8">1×392 clean token</text>
+    <text x="33" y="431" font-size="10.8">未来 token 完全不实例化</text>
+    <text x="33" y="447" font-size="10.8">（不生成任何未来帧）</text>
+
+    <rect x="252" y="374" width="240" height="82" rx="9" fill="#eef4fa" stroke="#0b6bcb"/>
+    <text x="265" y="396" font-size="12" font-weight="700">视频分支：单次前向</text>
+    <text x="265" y="415" font-size="10.8">prefill 出 KV cache</text>
+    <text x="265" y="431" font-size="10.8">→ 世界表征 z(o, l)</text>
+    <text x="265" y="447" font-size="10.8">动作去噪时复用该 cache</text>
+
+    <rect x="520" y="374" width="232" height="82" rx="9" fill="#eaf7ee" stroke="#1d6b38"/>
+    <text x="533" y="396" font-size="12" font-weight="700">动作去噪 10 步</text>
+    <text x="533" y="415" font-size="10.8">只跑 1B action expert</text>
+    <text x="533" y="431" font-size="10.8">CFG = 1.0（等价不做引导）</text>
+    <text x="533" y="447" font-size="10.8">bf16；logit-normal 时间调度</text>
+
+    <rect x="778" y="374" width="182" height="82" rx="9" fill="#fff8ec" stroke="#b07a1e"/>
+    <text x="791" y="396" font-size="12" font-weight="700">32 步动作块</text>
+    <text x="791" y="415" font-size="10.8">部署按每 8 步重规划</text>
+    <text x="791" y="431" font-size="10.8">（replan_steps=8）</text>
+    <text x="791" y="447" font-size="10.8">190ms / 次（5090D V2）</text>
+
+    <line x1="210" y1="78" x2="224" y2="78" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#f)"/>
+    <line x1="378" y1="78" x2="392" y2="78" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#f)"/>
+    <line x1="586" y1="78" x2="600" y2="78" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#fg)"/>
+    <line x1="586" y1="90" x2="768" y2="88" stroke="#b07a1e" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#fo)"/>
+    <line x1="490" y1="118" x2="420" y2="146" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#f)"/>
+    <line x1="679" y1="118" x2="500" y2="146" stroke="#1d6b38" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#fg)"/>
+    <line x1="866" y1="118" x2="700" y2="146" stroke="#b07a1e" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#fo)"/>
+    <line x1="400" y1="236" x2="400" y2="258" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#fg)"/>
+
+    <line x1="123" y1="374" x2="123" y2="122" stroke="#5b6a79" stroke-width="1.6" stroke-dasharray="6,5" marker-end="url(#f)"/>
+    <line x1="226" y1="415" x2="248" y2="415" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#f)"/>
+    <line x1="492" y1="415" x2="516" y2="415" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#f)"/>
+    <line x1="752" y1="415" x2="774" y2="415" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#fo)"/>
+
+    <text x="20" y="482" font-size="11.2" fill="#5b6a79">读图要点：① 训练时动作 token 就被禁止看未来，所以“推理删掉未来”并不改变动作的条件分布——这是 190ms 不掉点的结构性原因；</text>
+    <text x="20" y="500" font-size="11.2" fill="#5b6a79">② 视频分支在推理时只做 1 帧的 prefill，10 步去噪全部落在 1B 动作专家上；③ 频率：190ms/次 ≈ 5.3Hz 决策，动作块 32 步、按每 8 步重规划执行。</text>
   </svg>
   </div>
+  <p class="foot">token 数推导：VAE 空间 8×（<code>wan_video_vae.py</code> 的 <code>dim_mult=[1,2,4,4]</code> + 三级下采样）→ 224×448 变 28×56；patch 1×2×2 → 每帧 14×28 = 392；9 帧 = 3528。动作每步 1 个 token（<code>Linear(7→1024)</code>），共 32 个。此为<b>本页按官方 config + 代码结构推算</b>，论文正文未列 token 数。</p>
 </section>
 
 <section>
-  <h2>3. 关键公式</h2>
-  <div class="eq">L = L_act(a_τ, τ) + λ · L_vid(v_τ, τ)，两项都是 flow matching</div>
-  <div class="eq">L_act = ‖ v_θ(a_τ, τ, c) − (ε − a) ‖²，c = 首帧 latent + 语言 + proprio</div>
-  <div class="eq">注意力掩码：M[action, future]=−∞；M[first, others]=−∞（首帧只做条件）</div>
-  <p class="foot">物理意义：未来视频 token 只在训练时提供「世界会怎么变」的梯度；推理时不需要生成视频，所以动作模型仍能享受世界模型表征，却不背生成延迟。</p>
+  <h2>5. Core idea：把“世界编码器”从“视频生成器”里救出来</h2>
+  <p><b>原文：</b>“Instead of using a pretrained video generation model to iteratively synthesize future frames during inference, Fast-WAM repurposes a pretrained video Diffusion Transformer (DiT) as a single-pass world encoder for action generation.”</p>
+  <p><b>译文：</b>Fast-WAM 不再在推理时用预训练视频生成模型迭代合成未来帧，而是把预训练视频 DiT 改造成一个单次前向的世界编码器，用于动作生成。</p>
+  <p><b>原文：</b>“During training, the video prediction objective shapes the video DiT to encode physically meaningful motion and interaction structure. During inference, the video DiT processes the observation context in a single forward pass and provides latent world representations for action denoising, avoiding explicit future video denoising and enabling efficient real-time control.”</p>
+  <p><b>译文：</b>训练时，视频预测目标把视频 DiT 塑造成能编码有物理意义的运动与交互结构的模型；推理时，视频 DiT 用单次前向处理观测上下文，为动作去噪提供潜空间世界表征，从而避免显式的未来视频去噪，并实现高效的实时控制。</p>
+  <p>形式化只差一行积分。imagine-then-execute 写的是对未来做边缘化，Fast-WAM 写的是直接把动作条件在“单次编码出的表征”上：</p>
+  <p><b>原文：</b>“Formally, let z(o, l) denote the latent world representation produced by the video backbone conditioned on the current context. Fast-WAM uses this representation to parameterize the action distribution … The key difference from imagine-then-execute WAMs is that z(o, l) is obtained by a single forward encoding pass, rather than by explicitly sampling or denoising future observations at inference time.”</p>
+  <p><b>译文：</b>形式化地，令 z(o, l) 表示视频骨干在给定当前上下文后产生的潜空间世界表征。Fast-WAM 用该表征来参数化动作分布……与 imagine-then-execute 类 WAM 的关键区别在于：z(o, l) 由一次前向编码得到，而不是在推理时显式采样或去噪未来观测。</p>
+  <p>而“为什么删掉分支不掉点”这件事，论文给的答案是掩码，而不是“未来信息会泄漏进动作”这种模糊说法：</p>
+  <p><b>原文：</b>“Crucially, action tokens cannot attend to future video tokens, and the clean first-frame tokens do not attend to any other tokens. This ensures that both video modeling and action prediction are grounded in the same visual context while preventing future information from leaking into the action branch.”</p>
+  <p><b>译文：</b>关键在于：动作 token 不能关注未来视频 token，而干净的首帧 token 也不关注任何其它 token。这保证了视频建模与动作预测都建立在同一视觉上下文之上，同时防止未来信息泄漏到动作分支。</p>
+  <p class="foot">出处：§1 Introduction 第 4 段；§3.1 Problem Formulation（Eq.3–4 及其后一段）；§3.2 Architecture 第 3 段。</p>
 </section>
 
 <section>
-  <h2>4. 核心代码（带注释）</h2>
-  <pre><code><span class="c"># —— 训练：联合 flow matching ——</span>
-z0 = vae(first_frame)                     <span class="c"># clean 条件</span>
-z_f = vae(future_frames)                  <span class="c"># 未来（9 帧，4× 降采样）</span>
-z_f_t = (1-τ)*z_f + τ*ε                   <span class="c"># 加噪：学未来速度场</span>
-a_t = (1-τ)*a + τ*ε                       <span class="c"># 动作同样加噪</span>
-v_vid = video_dit(z_f_t, z0, lang, proprio, mask)   <span class="c"># 未来 token 可见条件</span>
-v_act = action_dit(a_t, z0, lang, proprio, mask)    <span class="c"># 动作 token 掩掉未来</span>
-loss = mse(v_act, ε-a) + λ*mse(v_vid, ε-z_f)
+  <h2>6. 方法/接口：三组 token、一张掩码、三个对照</h2>
+  <p>接口定义本身就是论文最“可实施”的部分，因为 token 分组直接决定了掩码和推理图：</p>
+  <p><b>原文：</b>“We organize the input tokens into three groups: clean latent tokens of the first observation frame, which serve as the shared visual anchor; noisy latent tokens of future video frames, which are used only during training for video modeling; and action tokens, which are processed by the action expert for action generation.”</p>
+  <p><b>译文：</b>我们把输入 token 组织成三组：第一个观测帧的干净潜变量 token，作为共享的视觉锚点；未来视频帧的带噪潜变量 token，仅在训练时用于视频建模；以及动作 token，由动作专家处理以生成动作。</p>
+  <p><b>原文：</b>“At inference time, Fast-WAM removes the future video branch entirely: only the clean first-frame latent tokens are retained and passed through the video backbone once to produce latent world features for the action expert.”</p>
+  <p><b>译文：</b>推理时，Fast-WAM 把未来视频分支整体删除：只保留干净的首帧潜变量 token，让它们通过视频骨干一次前向，为动作专家产生潜空间世界特征。</p>
+  <h3>6.1 三组 token 与掩码（论文与代码逐条对齐）</h3>
+  <table>
+    <tr><th>token 组</th><th>训练时</th><th>推理时</th><th>论文 / 代码证据</th></tr>
+    <tr><td>首帧 clean latent（视觉锚点）</td><td>可见所有条件；不 attend 其它 token</td><td>唯一保留的组，送进视频分支</td><td>§3.2；<code>latents[:, :, 0:1] = first_frame_latents</code>（训练时把首帧写回干净值），<code>infer_action</code> 只 encode 单张图</td></tr>
+    <tr><td>未来 noisy latent（8 帧）</td><td>视频分支内部双向 + 可看首帧；只用于视频损失</td><td><b>不实例化</b></td><td>§3.2；视频损失只算未来帧（训练代码里裁掉第 0 帧）</td></tr>
+    <tr><td>动作 token（32 个）</td><td>动作分支内部双向 + 可看首帧；<b>不可看未来视频</b></td><td>去噪 10 步产出 32 步动作</td><td>§3.2 掩码段；<code>mask[video:, video:] 全 True</code>、<code>mask[action, future] 保持 False</code></td></tr>
+    <tr><td>语言 / 本体（cross-attention 上下文）</td><td>T5 128 token；proprio 经 <code>Linear</code> 变成 <b>1 个额外 token</b> 拼在 context 末尾</td><td>同左</td><td>§3.2（T5 cross-attn）；代码 <code>_append_proprio_to_context</code>。<b>注意</b>：论文正文<b>未提</b> proprio token，这是代码事实</td></tr>
+  </table>
 
-<span class="c"># —— 推理：删掉未来分支 ——</span>
-z = video_dit.encode(z0)                  <span class="c"># 单次前向，不生成视频</span>
-a = sample(action_dit, cond=z, steps=K)   <span class="c"># 32 步动作块</span>
-execute(a)                                 <span class="c"># 190ms（RTX 5090D）</span></code></pre>
+  <h3>6.2 模型与训练超参（论文 + 官方 config 对照）</h3>
+  <table>
+    <tr><th>项</th><th>论文</th><th>官方 config / 代码</th></tr>
+    <tr><td>骨干</td><td>Wan2.2-5B 视频 DiT + 1B action expert，合计 <b>6B</b></td><td><code>model_id: Wan-AI/Wan2.2-TI2V-5B</code>；action DiT <code>hidden_dim: 1024</code>、30 层</td></tr>
+    <tr><td>视频 DiT</td><td>—（论文未列维度）</td><td><code>hidden_dim 3072</code>、30 层、24 头、head 128、patch <code>[1,2,2]</code>、in/out <code>48</code></td></tr>
+    <tr><td>动作块 H</td><td><b>32</b>；视频帧 9（4× 时间降采样）</td><td><code>action_video_freq_ratio: 4  # 32 action, 9 video frames</code>（<code>num_frames: 33</code>）</td></tr>
+    <tr><td>文本编码</td><td>内置 T5，cross-attention 注入所有 token</td><td><code>tokenizer_max_len: 128</code>、<code>context_len: 128</code></td></tr>
+    <tr><td>推理去噪步数</td><td><b>10</b> 步，CFG = 1.0</td><td>RoboTwin 部署配置 <code>num_inference_steps: 10</code>、<code>text_cfg_scale: 1.0</code>（函数签名默认 20，须显式设 10）</td></tr>
+    <tr><td>调度</td><td>logit-normal 时间采样（沿用 Wan2.2）</td><td><code>video_scheduler.train_shift 5.0</code>、<code>action_scheduler.train_shift 1.0</code>、1000 步</td></tr>
+    <tr><td>损失权重 λ</td><td>论文只写“λ 平衡两项”，<b>未给数值</b></td><td><code>loss_lambda_video = 1.0</code>、<code>loss_lambda_action = 1.0</code>（默认）</td></tr>
+    <tr><td>优化</td><td>AdamW lr 1e-4、wd 0.01、cosine、混合精度、梯度裁剪 1.0</td><td>任务配置 <code>learning_rate: 1e-4</code>、<code>weight_decay: 1e-2</code>、<code>lr_scheduler_type: cosine</code></td></tr>
+    <tr><td>训练预算</td><td>LIBERO 20k 步；RoboTwin 30k 步；真机 30k 步</td><td>任务 config 的 <code>max_steps</code> 置空、按 epoch 控制；步数取论文</td></tr>
+    <tr><td>数据</td><td>LIBERO 4 套 × 500 演示；RoboTwin 2,500 干净 + 25,000 随机化；真机 60h 遥操作（Galaxea R1 Lite）</td><td><code>libero_2cam</code>：2 路 224×224、动作 7 维（EEF 6 + 夹爪 1）、proprio 8 维</td></tr>
+    <tr><td>多相机</td><td>多相机图像先拼成单图再进 VAE</td><td><code>concat_multi_camera: horizontal</code>、<code>video_size: [224, 448]</code></td></tr>
+  </table>
+
+  <h3>6.3 三个对照变体（这是论文的核心实验设计）</h3>
+  <table>
+    <tr><th>变体</th><th>结构差别</th><th>回答什么问题</th></tr>
+    <tr><td>Fast-WAM</td><td>训练共训、推理删未来</td><td>“训练有视频、推理不生成”能不能打</td></tr>
+    <tr><td>Fast-WAM-Joint</td><td>视频与动作 token 一起去噪（允许互相看见）</td><td>与联合建模范式比（inference 更贵）</td></tr>
+    <tr><td>Fast-WAM-IDM</td><td>先生成未来视频，再以其为条件出动作；训练时对真值视频 token 加噪 p=0.5</td><td>与“先视频后动作”范式比（190ms vs 810ms）</td></tr>
+    <tr><td>w.o. video co-train</td><td>架构与推理完全不变，<b>只删视频损失</b></td><td>视频共训本身贡献多少</td></tr>
+  </table>
+  <p class="foot">出处：§3.3；§4.1 实现细节（IDM 的 p=0.5 噪声增强）；官方 <code>configs/model/</code> 下四个模型配置俱全：<code>fastwam.yaml</code>、<code>fastwam_joint.yaml</code>、<code>fastwam_idm.yaml</code>、<code>fastwam_optional_idm.yaml</code>。</p>
 </section>
 
 <section>
-  <h2>5. 结果与坑</h2>
+  <h2>7. 关键公式：一条插值 + 一条速度场 + 两个损失</h2>
+  <div class="eq">y<sub>t</sub> = (1 − t)·y + t·ε,&nbsp;&nbsp; ε ~ N(0, I),&nbsp; t ∈ (0, 1)</div>
+  <div class="eq">L<sub>FM</sub>(y) = E[ ‖ f<sub>θ</sub>(y<sub>t</sub>, t, o, l) − (ε − y) ‖<sub>2</sub><sup>2</sup> ]</div>
+  <div class="eq">L<sub>act</sub> = L<sub>FM</sub>(a<sub>1:H</sub>),&nbsp;&nbsp; L<sub>vid</sub> = L<sub>FM</sub>(z<sub>1:T</sub>),&nbsp;&nbsp; L = L<sub>act</sub> + λ·L<sub>vid</sub></div>
+  <p><b>一行物理意义：</b>λ=1 时，动作分支学“怎么动”，视频分支学“动了之后画面会变成什么样”；两者共用同一套注意力，所以“画面会怎么变”的知识通过共享表征进入动作分支——而不是通过推理时生成未来帧。</p>
+  <p class="foot">评测口径说明：本文用成功率与完成时间（真机还看完成时间），不用 SPL 这类路径效率指标，因此没有第三条评价公式。</p>
+  <p><b>映射到代码（逐项）：</b></p>
+  <table>
+    <tr><th>公式</th><th>代码位置</th><th>物理意义</th></tr>
+    <tr><td>Eq.5 插值 y<sub>t</sub></td><td><code>scheduler.add_noise(latents, noise, t)</code>（视频）／<code>add_noise(action, noise, t)</code>（动作）</td><td>同一个 t 决定“加了多少噪声”，也决定模型看到的是“从干净到纯噪声”的哪一段</td></tr>
+    <tr><td>Eq.6 速度场目标 (ε − y)</td><td><code>scheduler.training_target(...)</code> → <code>F.mse_loss(pred, target)</code></td><td>预测的是“从数据指向噪声”的速度，而不是噪声本身；推理时沿反方向积分回数据</td></tr>
+    <tr><td>Eq.9 总损失</td><td><code>loss_total = loss_lambda_video * loss_video + loss_lambda_action * loss_action</code></td><td>两个分支各占一份梯度；λ 是“世界知识”和“动作拟合”的配比</td></tr>
+    <tr><td>视频损失只算未来帧</td><td>首帧融合进 latent 的配置下，训练代码里 <code>pred_video = pred_video[:, :, 1:]</code>、<code>target_video = target_video[:, :, 1:]</code></td><td>首帧是给定的条件，不该被“重建”；这才是“预测未来”而不是“重建现在”</td></tr>
+  </table>
+  <p class="foot">出处：§3.2 Training objective（Eq.5–9）；官方 <code>src/fastwam/models/wan22/fastwam.py</code> 的 <code>training_loss</code>（对视频/动作分别采样 t、加噪、算 MSE、按 pad 掩码归一）。</p>
+</section>
+
+<section>
+  <h2>8. 实验：原文数字表（全部标注来源）</h2>
+  <p><b>原文：</b>“On RoboTwin, Fast-WAM achieves 91.8% success rate, exceeding all baselines without embodied pretraining and remaining highly competitive with the strongest pretrained WAMs.”</p>
+  <p><b>译文：</b>在 RoboTwin 上，Fast-WAM 取得 91.8% 的成功率，超过所有未做具身预训练的基线，并且与最强的带预训练 WAM 仍然非常有竞争力。</p>
+  <p><b>原文：</b>“In contrast, removing video co-training causes a dramatic degradation on both metrics: Fast-WAM without video co-training drops to only 10% success rate and also requires the longest completion time among all methods.”</p>
+  <p><b>译文：</b>相反，去掉视频共训会让两个指标同时剧烈退化：不做视频共训的 Fast-WAM 掉到只有 10% 成功率，并且是所有方法中完成时间最长的。</p>
+  <h3>8.1 RoboTwin 2.0（Table 1）：不预训练也到 91.8</h3>
+  <table>
+    <tr><th>方法</th><th>Embodied PT.</th><th>Clean</th><th>Rand.</th><th>Average</th></tr>
+    <tr><td>π0</td><td>✓</td><td>65.92</td><td>58.40</td><td>62.2</td></tr>
+    <tr><td>π0.5</td><td>✓</td><td>82.74</td><td>76.76</td><td>79.8</td></tr>
+    <tr><td>Motus</td><td>✓</td><td>88.66</td><td>87.02</td><td>87.8</td></tr>
+    <tr><td>Motus from WAN2.2</td><td>✗</td><td>77.56</td><td>77.00</td><td>77.3</td></tr>
+    <tr><td>LingBot-VA</td><td>✓</td><td>92.90</td><td>91.50</td><td>92.2</td></tr>
+    <tr><td>LingBot-VA from WAN2.2</td><td>✗</td><td>80.60</td><td>—</td><td>80.6</td></tr>
+    <tr><td><b>Fast-WAM</b></td><td>✗</td><td><b>91.88</b></td><td><b>91.78</b></td><td><b>91.8</b></td></tr>
+    <tr><td>Fast-WAM-Joint</td><td>✗</td><td>90.84</td><td>90.32</td><td>90.6</td></tr>
+    <tr><td>Fast-WAM-IDM</td><td>✗</td><td>91.16</td><td>91.34</td><td>91.3</td></tr>
+    <tr><td>Fast-WAM w.o. video co-train</td><td>✗</td><td>82.76</td><td>84.80</td><td><b>83.8</b></td></tr>
+  </table>
+  <p>结论：不带 embodied 预训练的 Fast-WAM（91.8）超过了带预训练的 Motus（87.8），与带预训练的 LingBot-VA（92.2）只差 0.4；而<b>只删视频共训</b>就掉到 83.8。三个“有视频”的变体（91.8 / 90.6 / 91.3）彼此差不到 1.2 个点——说明“推理时怎么用未来”不是主要矛盾。</p>
+
+  <h3>8.2 LIBERO（Table 2）：97.6，且掉点集中在 Spatial / Long</h3>
+  <table>
+    <tr><th>方法</th><th>Embodied PT.</th><th>Spatial</th><th>Object</th><th>Goal</th><th>Long</th><th>Average</th></tr>
+    <tr><td>OpenVLA</td><td>✓</td><td>84.7</td><td>88.4</td><td>79.2</td><td>53.7</td><td>76.5</td></tr>
+    <tr><td>π0</td><td>✓</td><td>96.8</td><td>98.8</td><td>95.8</td><td>85.2</td><td>94.1</td></tr>
+    <tr><td>π0.5</td><td>✓</td><td>98.8</td><td>98.2</td><td>98.0</td><td>92.4</td><td>96.9</td></tr>
+    <tr><td>LingBot-VA</td><td>✓</td><td>98.5</td><td>99.6</td><td>97.2</td><td>98.5</td><td>98.5</td></tr>
+    <tr><td>Motus</td><td>✓</td><td>96.8</td><td>99.8</td><td>96.6</td><td>97.6</td><td>97.7</td></tr>
+    <tr><td><b>Fast-WAM</b></td><td>✗</td><td>98.2</td><td><b>100.0</b></td><td>97.0</td><td>95.2</td><td><b>97.6</b></td></tr>
+    <tr><td>Fast-WAM-Joint</td><td>✗</td><td>99.6</td><td>99.4</td><td>98.2</td><td>96.8</td><td>98.5</td></tr>
+    <tr><td>Fast-WAM-IDM</td><td>✗</td><td>98.8</td><td>97.8</td><td>97.8</td><td>97.6</td><td>98.0</td></tr>
+    <tr><td>Fast-WAM w.o. video co-train</td><td>✗</td><td>89.2</td><td>99.2</td><td>95.4</td><td>90.0</td><td><b>93.5</b></td></tr>
+  </table>
+  <p>结论：平均 97.6 高于 π0.5（96.9）、低于 Joint（98.5）与 LingBot-VA（98.5）；但去掉共训掉到 93.5，且<b>掉点极不均匀</b>——Spatial 98.2→89.2（−9.0）、Long 95.2→90.0（−5.2），而 Object 只掉 0.8。这与“视频共训提供的是空间/时序连续性先验”一致。</p>
+
+  <h3>8.3 真机与延迟（Figure 4 + 正文）</h3>
+  <table>
+    <tr><th>项</th><th>结果</th><th>来源</th></tr>
+    <tr><td>任务</td><td>Galaxea R1 Lite 上的长程毛巾折叠；60h 遥操作演示；30k 步训练</td><td>§4.2 Real-World Evaluation</td></tr>
+    <tr><td>成功率</td><td>带预训练的 π0.5 仍最强；Fast-WAM 系列“可比”，其中 IDM 成功率最高、Fast-WAM 完成时间更好</td><td>§4.3.3（<b>具体数值论文未给</b>，只在 Figure 4 散点）</td></tr>
+    <tr><td>去共训</td><td><b>10%</b> 成功率，且完成时间最长</td><td>§4.3.3</td></tr>
+    <tr><td>延迟</td><td>Fast-WAM <b>190ms</b>；Fast-WAM-IDM <b>810ms</b>（≈4.3×）</td><td>§4.3.3；摘要“over 4× faster”</td></tr>
+    <tr><td>硬件</td><td>单卡 NVIDIA RTX 5090D V2 32GB</td><td>§4.1</td></tr>
+  </table>
+  <p>结论：真机上“共训 vs 不共训”的差距（10% 对可用）比“想象 vs 不想象”的差距大得多；而 190ms 与 810ms 的差距是部署分水岭——后者已接近/超过很多操作任务的单步预算。</p>
+</section>
+
+<section>
+  <h2>9. 代码：变量表 + 逐步骤物理意义 + 出处</h2>
+  <p>这一节的代码全部来自官方仓库（<a href="https://github.com/yuantianyuan01/FastWAM">yuantianyuan01/FastWAM</a>），行号对应 <code>src/fastwam/models/wan22/fastwam.py</code>。为聚焦主干，省略了 pad 掩码与异常检查。</p>
+
+  <h3>9.1 变量表</h3>
+  <table>
+    <tr><th>变量</th><th>形状 / 类型</th><th>物理意义</th><th>出处</th></tr>
+    <tr><td><code>video</code></td><td>[B, 3, 33, 224, 448]</td><td>2 路相机水平拼成的 33 帧原始视频（4× 抽帧后 → 9 帧）</td><td>configs/data/libero_2cam.yaml</td></tr>
+    <tr><td><code>input_latents</code></td><td>[B, 48, 9, 28, 56]</td><td>VAE 潜变量：9 个时间步，每帧 28×56 空间网格</td><td>build_inputs / VAE</td></tr>
+    <tr><td><code>first_frame_latents</code></td><td>[B, 48, 1, 28, 56]</td><td>“现在”的干净表征，训练与推理都被保留为锚点</td><td>L354、L541-542</td></tr>
+    <tr><td><code>action</code></td><td>[B, 32, 7]</td><td>32 步动作块；7 维 = EEF 位姿 6（前 6 维取增量）+ 夹爪 1（绝对值）</td><td>L306-309；libero_2cam 的 <code>delta_action_dim_mask</code></td></tr>
+    <tr><td><code>noisy_action</code></td><td>[B, 32, 7]</td><td>同形状的加噪版本，作为动作专家的输入</td><td>L544-550</td></tr>
+    <tr><td><code>proprio</code></td><td>[B, 8]（LIBERO）</td><td>本体状态：EEF 位姿 6 + 夹爪 2；<b>只取时间维第 0 帧</b></td><td>L363-372（<code>proprio[:, 0, :]</code>）</td></tr>
+    <tr><td><code>context</code></td><td>[B, 128(+1), 4096]</td><td>T5 文本嵌入 + 1 个 proprio token（cross-attn 的 key/value）</td><td>L224-246、<code>tokenizer_max_len: 128</code></td></tr>
+    <tr><td><code>attention_mask</code></td><td>[3560, 3560] bool</td><td>3528 视频 token + 32 动作 token 的可见性矩阵</td><td>L397-418、L556-561</td></tr>
+    <tr><td><code>latents_action</code>（推理）</td><td>[1, 32, 7]</td><td>从纯噪声出发，10 步去噪后就是动作块</td><td>L1027-1032</td></tr>
+  </table>
+
+  <h3>9.2 训练一步（带物理意义注释）</h3>
+  <pre><code><span class="c"># 出处：src/fastwam/models/wan22/fastwam.py，training_loss()；行号为官方 main 分支</span>
+noise_video = randn_like(input_latents)              <span class="c"># 未来的“另一种可能”，作为回归目标的方向</span>
+t_v = video_scheduler.sample_training_t(...)         <span class="c"># logit-normal 采样：偏向中间噪声段（最难学的部分）</span>
+latents = video_scheduler.add_noise(input_latents, noise_video, t_v)   <span class="c"># y_t = (1-t)y + t*eps</span>
+target_video = video_scheduler.training_target(...)  <span class="c"># eps - y：预测“往噪声方向走的速度”</span>
+<span class="k">if</span> first_frame_latents <span class="k">is not</span> empty:
+    latents[:, :, 0:1] = first_frame_latents         <span class="c"># 首帧写回干净值：它是条件，不是要预测的东西</span>
+
+noise_action = randn_like(action)                    <span class="c"># 动作同样走 flow matching（不是 DDPM 的离散步）</span>
+t_a = action_scheduler.sample_training_t(...)
+noisy_action = action_scheduler.add_noise(action, noise_action, t_a)
+target_action = action_scheduler.training_target(action, noise_action, t_a)
+
+attention_mask = build_mot_attention_mask(...)       <span class="c"># 关键：动作 → 未来视频 的位一直保持 False</span>
+pred_video, pred_action = joint_denoise_core(latents, noisy_action, ..., attention_mask)
+
+<span class="k">if</span> first_frame_latents <span class="k">is not</span> empty:
+    pred_video   = pred_video[:, :, 1:]              <span class="c"># 视频损失只算未来 8 帧（不重建“现在”）</span>
+    target_video = target_video[:, :, 1:]
+loss_video  = weighted_mse(pred_video, target_video) <span class="c"># 未来画面对不对：世界模型的监督</span>
+loss_action = weighted_mse(pred_action, target_action)  <span class="c"># 动作对不对：策略的监督</span>
+loss_total  = 1.0 * loss_video + 1.0 * loss_action   <span class="c"># 论文的 lambda：配置里两个都是 1.0</span></code></pre>
+  <p class="foot">读法：这段代码解释了“为什么删推理分支不掉点”——动作 token 在<b>训练时</b>就已经看不到未来 token，所以推理时把未来 token 整组拿掉，改变的只是计算量，不是动作的条件分布。</p>
+
+  <h3>9.3 推理一次（190ms 的构成）</h3>
+  <pre><code><span class="c"># 出处：同文件 infer_action()，L979-1159；部署超参见 experiments/robotwin/fastwam_policy/deploy_policy.yml</span>
+latents_action = randn(1, action_horizon, 7)        <span class="c"># 32 步动作，从纯噪声起步</span>
+first_frame_latents = vae.encode(input_image)       <span class="c"># 只有 1 帧：这一步决定了“没有视频去噪”</span>
+video_tokens = video_expert.prepare(first_frame_latents, timestep=0)   <span class="c"># t=0：把首帧当 clean 条件</span>
+cache_k, cache_v = mot.prefill_video_cache(video_tokens, ...)         <span class="c"># 视频分支只跑这一次前向</span>
+<span class="k">for</span> step_t, step_delta <span class="k">in</span> action_scheduler.build_inference_schedule(steps=10):
+    pred = action_expert_with_video_cache(latents_action, step_t, cache_k, cache_v)
+    <span class="c"># ^ 每步只跑 1B 动作专家 + 对视频 KV cache 的 cross-attention</span>
+    latents_action = action_scheduler.step(pred, step_delta, latents_action)
+<span class="k">return</span> latents_action                                <span class="c"># [1,32,7] 动作块 → 部署时每 8 步重规划一次</span></code></pre>
+  <p class="foot">物理意义：190ms ≈ “1 帧视频编码 + 10 次 1B 专家去噪”；对照组 IDM 的 810ms ≈ “9 帧视频逐步去噪 + 同样的动作去噪”。这 4 倍差距不是工程优化，而是<b>把未来视频生成的整段计算删掉</b>的结构性收益。</p>
+</section>
+
+<section>
+  <h2>10. 局限与坑</h2>
   <ul>
-    <li>LIBERO 97.6 / RoboTwin 91.8；去掉视频共训：RoboTwin 83.8、真机毛巾折叠 10%——证明「未来监督」不是装饰。</li>
-    <li>坑：未来帧数/降采样率影响显存；动作掩码写错会「抄未来」导致推理崩；proprio 只 1 token，信息瓶颈要留意。</li>
+    <li><b>“论文未给”要记清</b>：真机成功率与完成时间只有 Figure 4 散点；数据量/GPU 小时未给；λ 未给数值（代码默认 1.0）。引用时不要编造精确数字。</li>
+    <li><b>190ms 的硬件前提</b>：单卡 RTX 5090D V2 32GB、bf16、10 步、CFG=1.0。换卡、换步数、开 CFG 都会改变这个数。</li>
+    <li><b>函数默认值会把速度打回一半</b>：<code>infer_action</code> 签名默认 <code>num_inference_steps=20</code>，论文/部署配置是 10——直接调用函数而不覆盖参数，延迟会翻倍。</li>
+    <li><b>proprio 只取第 0 帧</b>：代码 <code>proprio[:, 0, :]</code>，历史被折叠成 1 个 token（LIBERO 是 8 维）。论文正文完全没提 proprio，这是实现细节，会直接影响“速度信息够不够”。</li>
+    <li><b>H=32 与 9 帧是硬约束</b>：<code>action_horizon % (num_frames − 1) == 0</code> 否则代码直接报错；改帧数必须同步改动作块或频率比（ratio=4）。</li>
+    <li><b>部署按 8 步重规划</b>：<code>replan_steps: 8</code>，不是把 32 步一次执行完。这解释了“32 步 chunk”与“4 动作/视频帧”的对应关系，也意味着实际控制频率 ≈ 每 8 个仿真步一次模型调用。</li>
+    <li><b>单一动作空间</b>：LIBERO 用 7 维 EEF+夹爪、delta 只作用于前 6 维；没有关节空间、没有双手、没有移动底盘。</li>
+    <li><b>共训的代价被隐藏了</b>：训练要跑 9 帧视频序列（1 干净 + 8 带噪 = 3528 token）× 30 层 × 3072 维，显存/算力远高于纯动作模型；论文只报推理收益。</li>
+    <li><b>真机只有 1 个任务</b>：毛巾折叠（可变形物、长程），样本与任务多样性都不足以支撑“通用”结论。</li>
+    <li><b>结论的适用范围</b>：所有对比都在“同骨干、同分词、同配方”内成立；“视频共训比想象更重要”不能被外推成“所有 WAM 都不需要想象”。</li>
   </ul>
-  <p class="foot">参考：<a href="https://arxiv.org/abs/2603.16666">arXiv:2603.16666</a> ｜ 返回 <a href="index.html">索引</a> ｜ <a href="../s2-s1-s0-stack/">S2→S0 指南</a></p>
 </section>
+
+<section>
+  <h2>11. Q&amp;A：追问 why，用数值与反例</h2>
+
+  <h3>Q1：为什么“推理删掉未来分支”不掉点？</h3>
+  <p><b>A：</b>因为动作 token 在训练时就被禁止看未来 token（掩码），推理删分支<b>不改变动作的条件分布</b>，只删掉了一段对动作没有输入贡献的计算。反证：如果动作真的在用未来信息，删掉必然掉点；而实验里 Fast-WAM（91.8）反而略高于 Joint（90.6）与 IDM（91.3）。另一条反证是“去掉共训”那条：架构与推理一字不改，只删训练损失，RoboTwin 就掉到 83.8。所以“未来视频的价值在参数里，不在推理图里”。</p>
+
+  <h3>Q2：190ms 是怎么省的？省在哪一步？</h3>
+  <p><b>A：</b>算一下就清楚。IDM 要先把未来视频去噪出来（每步都要跑 5B 视频 DiT，9 帧 = 3528 token，10 步），再把结果喂给动作分支；Fast-WAM 的视频分支只做<b>一次</b> 1 帧（392 token）的前向并缓存 KV，随后 10 步全部只跑 1B 动作专家。实测 810ms → 190ms ≈ 4.26×，与摘要“over 4× faster”一致。注意这不是“更快的视频模型”，而是“视频模型被调用 1 次而不是 10 次×9 帧”。</p>
+
+  <h3>Q3：为什么去掉视频共训会掉这么多，而且掉得不均匀？</h3>
+  <p><b>A：</b>LIBERO 的分项给出了线索：Spatial 98.2→89.2（−9.0）、Long 95.2→90.0（−5.2）、Goal 97.0→95.4（−1.6）、Object 100.0→99.2（−0.8）。掉得最狠的正是“需要空间关系与长时序连续性”的两套任务——这恰好是“预测未来画面”这个目标最直接塑造的能力；而 Object 这种“认得出物体就能做”的任务几乎不受影响。真机上更极端：10% 成功率，说明在可变形物+长程任务上，没有共训的表征几乎不可用。</p>
+
+  <h3>Q4：既然视频共训最重要，那能不能干脆只训视频、不训动作？</h3>
+  <p><b>A：</b>不能——这正是“两件事”里的另一件。论文的消融是“架构不变、只删视频损失”，不是“只训视频”。而且从损失权重看（配置里 L_act 与 L_vid 都是 1.0），动作监督始终在场。<b>反例逻辑</b>：如果只训视频就能出动作，那 IDM 变体（先生成未来再出动作）应该最强，但实际上它是 810ms 且成功率不高于 Fast-WAM。所以正确表述是：<b>视频共训是“表征红利”，动作损失是“接口落地”，两者不可互换</b>。</p>
+
+  <h3>Q5：这套结果能直接搬到我的机器人上吗？</h3>
+  <p><b>A：</b>三个前提要先满足。① 动作接口：论文只做了 7 维 EEF+夹爪（前 6 维 delta、夹爪绝对），换关节空间/双手/底盘要改 <code>action_dim</code> 与 processor，H=32 与 4× 频率比也要重算；② 观测：2 路相机水平拼接成 224×448，相机数量变化会改变 token 数与 VAE 输入尺寸；③ proprio：只取 1 帧、8 维，如果你的状态含速度/力矩历史，需要自己改 <code>_append_proprio_to_context</code> 与数据管线。此外 190ms 是 5090D 上的数，换端侧卡要重新测。</p>
+</section>
+
+<section>
+  <h2>12. 全文总结：problem → method → experiment → takeaway</h2>
+  <p><b>原文：</b>“Across simulation benchmarks and real-world robotic tasks, Fast-WAM achieves strong performance without embodied pretraining while running in real time. More importantly, controlled comparisons show that Fast-WAM remains competitive with imagine-then-execute variants, whereas removing video co-training leads to a much larger degradation.”</p>
+  <p><b>译文：</b>在仿真基准与真实机器人任务上，Fast-WAM 在不做具身预训练的情况下取得强性能，并且能实时运行。更重要的是，受控对比显示 Fast-WAM 与“先想象后执行”变体相比仍具竞争力，而去掉视频共训会带来大得多的性能退化。</p>
+  <table>
+    <tr><th>环节</th><th>内容</th></tr>
+    <tr><td>Problem</td><td>现有 WAM 把“训练时的视频预测”和“推理时的未来生成”耦合在一起，导致无法判断增益来源；而 imagine-then-execute 的迭代去噪在测试时昂贵。</td></tr>
+    <tr><td>Method</td><td>Fast-WAM：Wan2.2-5B 视频 DiT + 1B 动作 DiT 的共享注意力 MoT；训练用联合 flow matching（动作 32 步、未来 8 帧 latent、λ 加权）；<b>结构化掩码</b>让动作 token 看不到未来；推理只保留首帧、视频分支单次前向给出世界表征，动作去噪 10 步。另造 Joint / IDM / 去共训三个对照。</td></tr>
+    <tr><td>Experiment</td><td>RoboTwin 91.8（Joint 90.6 / IDM 91.3 / 去共训 83.8），全部无 embodied 预训练；LIBERO 97.6（去共训 93.5，Spatial −9.0）；真机毛巾折叠可用、去共训仅 10%；延迟 190ms vs IDM 810ms（单卡 5090D V2）。</td></tr>
+    <tr><td>Takeaway</td><td><b>①</b> WAM 的主要价值在训练端的视频共训，而非推理端的未来想象；<b>②</b> 只要训练时用掩码把“未来”挡在动作分支之外，推理就可以合法地把整条未来分支删掉，换来 4× 以上的速度；<b>③</b> 因此“世界模型”可以退化成“世界编码器”，这对部署是决定性的；<b>④</b> 边界要记住：单动作空间、单真机任务、单卡延迟、λ 未公开。</td></tr>
+  </table>
+  <p class="foot">参考：<a href="https://arxiv.org/abs/2603.16666">arXiv:2603.16666</a> ｜ <a href="https://yuantianyuan01.github.io/FastWAM/">项目页</a> ｜ <a href="https://github.com/yuantianyuan01/FastWAM">代码</a> ｜ 返回 <a href="index.html">wiki 索引</a> ｜ <a href="../s2-s1-s0-stack/">S2→S1→S0 指南</a></p>
+</section>
+
 </div>
 </body>
 </html>

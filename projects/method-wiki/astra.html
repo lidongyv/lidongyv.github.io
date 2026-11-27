@@ -30,12 +30,12 @@
   <table>
     <tr><th>项</th><th>六域系统评测</th><th>原生视触觉策略</th></tr>
     <tr><td>标题</td><td>Systematically Exploring the Capabilities of GPT-6 Astra as Embodied Policies</td><td>GPT-6 Astra Is a Native Visuo-Tactile Policy for Contact-Rich Manipulation</td></tr>
-    <tr><td>作者/机构</td><td>Galbot Team（Galbot）· 32 位署名作者，按姓氏字母序</td><td>Chen Yang, Linzhe Shi, Hang Zhang, Mu Xu, Jiansheng Fan, Chen Wang（Tsinghua University；Amap, Alibaba Group）</td></tr>
+    <tr><td>作者/机构</td><td>Galbot Team（团队署名，<b>33 位作者</b>按姓氏字母序；论文首页只给团队名，<b>未列机构行</b>）</td><td>Chen Yang, Linzhe Shi, Hang Zhang, Mu Xu, Jiansheng Fan, Chen Wang（Tsinghua University；Amap, Alibaba Group）</td></tr>
     <tr><td>时间</td><td>2026-09（arXiv v1 提交 2026-09-29 20:54 UTC）</td><td>2026-10-20（arXiv v1：2026-10-19）</td></tr>
     <tr><td>venue</td><td>arXiv preprint / 技术报告（cs.RO，CC BY 4.0）。论文未给正式会议或期刊</td><td>arXiv preprint / 技术报告（cs.RO）。论文未给正式会议或期刊</td></tr>
     <tr><td>链接</td><td><a href="https://arxiv.org/abs/2609.38537">arXiv:2609.38537</a> · <a href="https://arxiv.org/html/2609.38537v1">HTML 全文</a></td><td><a href="https://arxiv.org/abs/2610.26846">arXiv:2610.26846</a> · <a href="https://arxiv.org/html/2610.26846v1">HTML 全文</a> · 代码 <a href="https://github.com/ccyydd/TacTalent">TacTalent</a></td></tr>
     <tr><td>证据级别</td><td><b>L2</b>：全文 + 附录表逐字核对；论文未给 harness 代码链接，无法复核实现</td><td><b>L3</b>：全文 + 官方仓库可读接口代码（本页 §10 引用了其动作校验函数）；<i>数字未独立复现</i></td></tr>
-    <tr><td>本页未核实项</td><td>官方 harness 代码（未公开）；RoboDojo 公开分数的“重加权”过程（论文只给结果）</td><td>代码仓库是否为该论文实验的原始快照（仓库自述为 vendored RoboICL）；真机结果（论文全部为仿真）</td></tr>
+    <tr><td>本页未核实项</td><td>官方 harness 代码（<b>未找到论文给出的代码链接</b>）；RoboDojo 公开分数的“重加权”过程（论文只给结果）</td><td>代码仓库是否为该论文实验的原始快照（仓库自述为 vendored RoboICL）；真机结果（论文全部为仿真）</td></tr>
   </table>
   <p class="foot">分级口径（本 wiki 通用）：<b>L1</b> 只读到摘要/二手转述；<b>L2</b> 读到全文（含附录表、公式）且逐字核对，但无代码可复核；<b>L3</b> 全文 + 官方代码/配置可复核实现细节（≠ 已复现数字）。</p>
 </section>
@@ -156,9 +156,9 @@
     <line x1="788" y1="184" x2="822" y2="180" stroke="#1d6b38" stroke-width="1.8" marker-end="url(#ag)"/>
     <line x1="788" y1="300" x2="822" y2="220" stroke="#b07a1e" stroke-width="1.8" marker-end="url(#ao)"/>
 
-    <text x="20" y="368" font-size="11.5" fill="#5b6a79">读图要点：① Direct 与 Hybrid 是两条互斥分支，Hybrid 里 Astra 只对 14.4%（RoboDojo）/ 11.98%（灵巧）/ 26.4%（DexJoCo）的步数动手；</text>
-    <text x="20" y="388" font-size="11.5" fill="#5b6a79">② 频率由低层控制器决定（25 / 20 / 50Hz），Astra 的决策周期以“秒”计；③ 参考运动、原语、稀疏目标都需要低层控制器才有物理意义。</text>
-    <text x="20" y="412" font-size="11.5" fill="#5b6a79">数据来源：Appx A Gripper/Humanoid Interfaces；§Gripper Manipulation；§Navigation；§Locomotion；§Humanoid Loco-Manipulation；Section 9.4 资源表。</text>
+    <text x="20" y="366" font-size="11.5" fill="#5b6a79">读图要点：① Direct 与 Hybrid 是互斥分支；Hybrid 里 Astra 只改一小部分步数（RoboDojo 14.4%、灵巧 11.98%、DexJoCo 26.4%）。</text>
+    <text x="20" y="386" font-size="11.5" fill="#5b6a79">② 频率由低层控制器决定（25 / 20 / 50Hz），Astra 的决策周期以“秒”计；③ 输出回灌构成闭环，推理期间物理往往被暂停。</text>
+    <text x="20" y="406" font-size="11.5" fill="#5b6a79">数据来源：Appx A（Gripper / Humanoid Interfaces）、§Gripper Manipulation、§Navigation、§Locomotion、§Humanoid Loco-Manipulation、Section 9.4。</text>
   </svg>
   </div>
 </section>
@@ -180,6 +180,11 @@
 
 <section>
   <h2>6. 方法/接口：每个域看到什么、输出什么形状、跑多快</h2>
+  <p>这一节的核心不是“Astra 会什么”，而是“每个域把哪一段控制权交给了它”。接口本身在附录里写得非常具体：</p>
+  <p><b>原文：</b>“Direct specifies bimanual position, orientation, and gripper targets. Bounded damped least-squares inverse kinematics converts them to joint commands, with 5 cm translation and 0.35 rad rotation safeguards. Segments last one to five 25-Hz control steps.”</p>
+  <p><b>译文：</b>Direct 指定双臂的位置、朝向与夹爪目标；带边界约束的阻尼最小二乘逆运动学把它们转换为关节指令，并设有 5cm 平移与 0.35rad 旋转的安全保护；每段持续 1 到 5 个 25Hz 控制步。</p>
+  <p><b>原文：</b>“Astra receives one forward-facing 512×384 RGB image, the instruction or object category, a step counter, and action feedback. GPS, compass, depth, semantic labels, goal coordinates, reference routes, and evaluation distances are withheld. … The adapter converts these to 0.25 m forward steps and 30° turns without path planning, under a 500-primitive budget.”</p>
+  <p><b>译文：</b>Astra 只接收一张前向 512×384 RGB 图像、指令或物体类别、步数计数器与动作反馈；GPS、罗盘、深度、语义标签、目标坐标、参考路线与评测距离全部被屏蔽……适配器把它转成 0.25m 前进与 30° 转向，不做路径规划，预算是 500 个原语。</p>
   <table>
     <tr><th>域</th><th>Astra 的输入</th><th>Astra 的输出（张量/动作形状）</th><th>节奏与预算</th><th>低层控制</th></tr>
     <tr><td>夹爪操作<br>RoboDojo / RoboLab</td><td>头 + 双腕 RGB（策略图 640×480，Astra 通常看长边 480 的预览）、14 维本体状态、实测 EEF 位姿、指令、执行历史、进度、步数预算、完成规则</td><td>Direct：双臂位置+朝向+夹爪目标（经 IK 变关节）；Hybrid：接受 π0.5 的 <b>50×14</b> 关节提案前缀 <b>1–15</b> 步，或替换为 <b>1–5</b> 步 EEF 修正</td><td>25Hz 控制步；Direct 段长 1–5 步</td><td>阻尼最小二乘 IK（保护 5cm / 0.35rad）+ PD</td></tr>
@@ -218,7 +223,10 @@
 
 <section>
   <h2>8. 实验：原文数字表（六域 + 成本），全部标注来源</h2>
-
+  <p><b>原文：</b>“Hybrid succeeds on 24 of 50 instances (48%), compared with 13 of 50 (26%) for Direct. Its mean Score is 62.60, compared with 37.81 for Direct.”</p>
+  <p><b>译文：</b>Hybrid 在 50 个实例中成功 24 个（48%），Direct 为 13 个（26%）；Hybrid 的平均 Score 为 62.60，Direct 为 37.81。</p>
+  <p><b>原文：</b>“After five rounds of trial and error, Astra still does not achieve reliable locomotion through this dense-reference interface. Later attempts improve stability and produce some forward motion, but body and limb coordination is inconsistent.”</p>
+  <p><b>译文：</b>经过五轮试错，Astra 仍然无法通过这个密集参考接口实现可靠的运动；后期尝试提升了稳定性并产生了一些前进，但身体与肢体的协调并不一致。</p>
   <h3>8.1 六域总览</h3>
   <table>
     <tr><th>域</th><th>基准 / 规模</th><th>主结果</th><th>来源</th></tr>
@@ -265,7 +273,7 @@
     <tr><td>手内旋转（圆柱，步内达标比例）</td><td>0.51%</td><td>任务专用 RL 76.90%</td><td>Table 4</td></tr>
     <tr><td>手内旋转（长方体）</td><td>4.40%</td><td>任务专用 RL 63.50%</td><td>Table 4</td></tr>
   </table>
-  <p>结论：Hybrid 的介入只占 11.98% 的执行步（DexJoCo 为 26.4%），却把平均分从 44.2 抬到 61.6——说明“少量定向修正”比“逐步控制”有效；但一旦要求持续改变手指接触（手内旋转），Astra 就掉到 1% 量级。DexJoCo 单次试验还消耗 63.60M token，其中只有 0.136M 用于审阅。</p>
+  <p>结论：Hybrid 的介入只占 11.98% 的执行步（DexJoCo 为 26.4%），却把平均分从 44.2 抬到 61.6——说明“少量定向修正”比“逐步控制”有效；但一旦要求持续改变手指接触（手内旋转），Astra 就掉到 1% 量级。DexJoCo 的 10 次试验 + 5 次审阅共消耗 63.60M token，其中只有 0.136M 用于审阅。</p>
   <p class="foot">出处：§3.2 Policy Assistance（Table 3、Figure 3）；§3.2 DexJoCo（63.60M / 0.136M）；§3.2 Stable Grasping, Limited Rotation（Table 4 的 76.90 / 63.50 / 0.51 / 4.40 与 76.90% 对应文本）。</p>
 
   <h3>8.5 RoboCasa365：平均提升来自“见过”，unseen 反而更差</h3>
@@ -382,9 +390,12 @@
         <span class="k">for</span> side <span class="k">in</span> ("left", "right"):
             values = np.asarray(item[side], dtype=np.float32)   <span class="c"># 形状必须恰为 (7,) 或 (6,)</span>
             grip = item[side + "_gripper"]                       <span class="c"># 夹爪目标，[0,1] 的连续量而非二值</span>
+            <span class="k">if</span> values.shape != (size,):
+                <span class="k">raise</span> ValueError(...)                            <span class="c"># 维度不对=语义不对，直接拒</span>
             <span class="k">if</span> mode == "ee_delta":
+                previous = ee_targets[side]                      <span class="c"># 上一条的目标位姿 = 本次增量的基准</span>
                 angle = np.linalg.norm(values[3:])               <span class="c"># 旋转向量模长 = 本次转多少弧度</span>
-                dq = np.r_[cos(angle/2), values[3:] * (sin(angle/2)/angle)]   <span class="c"># 旋转向量 → 增量四元数</span>
+                dq = np.r_[np.cos(angle/2), values[3:] * (np.sin(angle/2)/angle)]   <span class="c"># 旋转向量 → 增量四元数</span>
                 values = np.r_[previous[:3] + values[:3], _quat_mul(dq, previous[3:])]
                 <span class="c"># ^ 平移直接相加；旋转用左乘（世界系增量），所以顺序不能反</span>
             <span class="k">if</span> mode <span class="k">in</span> ("ee", "ee_delta"):
@@ -417,14 +428,14 @@ obs = robot.observe()                      <span class="c"># 反馈闭环：新�
   <h2>11. 局限与坑</h2>
   <ul>
     <li><b>物理被暂停</b>：locomotion 的 250 次调用 × 39.86s ≈ 9965s 是在“物理暂停”下完成的；论文自己承认真实场景不会等你。</li>
-    <li><b>“论文未给”的三处</b>：六域报告的 harness 代码未公开；DexJoCo 的已发表基线只有图（Figure 4）没有数值表；RoboDojo 公开分数的“重加权”明细只给结果不给权重。</li>
-    <li><b>样本量小</b>：视触觉每任务 10 集 → 单次结果就移动 10pp；§8 明确说需要更大样本与多种子。</li>
+    <li><b>“论文未给”的三处</b>：六域报告<b>未给 harness 代码链接</b>（本页只能按附录复原伪代码）；DexJoCo 的已发表基线只有图（Figure 4）没有数值表；RoboDojo 公开分数的“重加权”只给结果不给权重。</li>
+    <li><b>样本量小</b>：视触觉每任务 10 集 → 单次结果就移动 10pp；第二篇 §8 明确说需要更大样本与多种子。</li>
     <li><b>只是仿真</b>：视触觉全篇为仿真，真机在传感器噪声、标定误差、真实接触动力学、执行延迟下未验证。</li>
     <li><b>成功判据可被“语法”骗过</b>：论文给了具体反例——Insert 指令完成但物体仍卡在孔口；释放命令完成但物体还在边缘。必须用“结果状态”验证，而不是“命令已下发”。</li>
     <li><b>检索/记忆边界</b>：RoboCasa 里 Astra 拿不到物体位姿与接触真值，很多失败源于“跨阶段的状态跟踪”，不是策略不会动。</li>
     <li><b>Hybrid 会拖累已成功的案例</b>：CoffeeSetupMug 全部 5 个 seed 两个 Astra 条件都失败，而 π0.5 单干成功 3 次；WashLettuce 同理（π0.5 成功 2 次）。</li>
     <li><b>标定即性能</b>：只改步态时钟 1.2→1.8Hz，Walk 回报 705.72→746.60。任何“Astra 提升了 X”都必须写清 WBC 标定版本。</li>
-    <li><b>成本口径容易误读</b>：RoboDojo 的 624.8M 里 607.6M 是缓存输入；把总 token 当“推理算力”会高估 20 倍以上。</li>
+    <li><b>成本口径容易误读</b>：RoboDojo 的 624.8M 里 607.6M 是缓存输入，真正新增的输入只有 15.90M；把总 token 当“推理算力”会高估数十倍。</li>
     <li><b>一次适应轨迹被当成 5 次试验</b>：locomotion 的 5 次是同一轨迹的连续阶段（Table 9 caption 明确写了），不能当独立重复实验做统计。</li>
   </ul>
 </section>
@@ -439,7 +450,7 @@ obs = robot.observe()                      <span class="c"># 反馈闭环：新�
   <p><b>A：</b>三个约束叠在一起。① 信息量：每次调用要输出 0.5s × 50Hz × 65 维 = <b>1625</b> 个必须互相一致的数（根高、投影重力、平面速度、偏航率、29 关节位置+速度）；单个关节差 5° 就足以让跟踪器摔倒或原地踏步。② 频率错配：决策 39.86s/次，而跟踪器 50Hz——一次决策覆盖的运动早已被物理“走完”。③ 反馈粒度：前 4 次只在“摔倒/无进展”级别得到反馈（第 2–4 次前进量 −0.024 / 0.012 / 0.159m），这种反馈无法定位到“哪个关节的相位错了”。反例对照：PASSAGE 用学习到的生成器，同样接口、同样跟踪器，13.18s 到达、误差 0.495m。</p>
 
   <h3>Q3：624.8M token 里到底什么最贵？怎么降？</h3>
-  <p><b>A：</b>缓存输入 607.6M、未缓存输入 15.90M、输出 1.31M。也就是说<b>钱的 97% 花在“重复把同一段上下文再喂一遍”</b>。推论：优化顺序应是 ① 减少调用次数（把段长从 1–5 步拉到上限、或让策略多跑几步）② 压缩上下文（图像预览长边从 640 降到 480、裁掉旧历史）③ 最后才是缩短系统提示。交叉验证：Hybrid 把总量降了 44.8%，但 RoboCasa 上 Hybrid 的请求数反而更多（8,941 vs 7,910）——说明“省 token”靠的是每次请求更小/更少，而不是“让策略多干活”。</p>
+  <p><b>A：</b>缓存输入 607.6M、未缓存输入 15.90M、输出 1.31M。也就是说<b>钱的 97% 花在“重复把同一段上下文再喂一遍”</b>。推论：优化顺序应是 ① 减少调用次数（把段长从 1–5 步拉到上限、或让策略多跑几步）② 压缩上下文（图像预览长边已默认压到 480，可再降；裁掉旧历史）③ 最后才是缩短系统提示。交叉验证：Hybrid 把总量降了 44.8%，但 RoboCasa 上 Hybrid 的请求数反而更多（8,941 vs 7,910）——说明“省 token”靠的是每次请求更小/更少，而不是“让策略多干活”。</p>
 
   <h3>Q4：视触觉 +22.9pp 真的是“触觉”的功劳吗？</h3>
   <p><b>A：</b>部分是，部分不是。反例一：纯视觉就有 76.3%，已经高于最强的专用基线 SimpleTouch 70.9%——说明“通用模型的细粒度视觉”本身就能替代一部分触觉判断。反例二：OpenViTac 上触觉只带来 +1.2pp（80.6→81.8），因为该基准每个任务都有固定+腕双相机；UniVTAC 6/8 任务只有固定相机，触觉才带来 +17.5pp。反例三：19 个任务里 <b>4 个变差</b>，Weight Classify 的三对配对里纯视觉靠“看见滑移”判对、触觉反而把弱剪切误读成轻物体。所以正确说法是：触觉在“视觉被遮挡/分辨率不足”的接触密集任务上收益最大，在视觉已经够用的任务上可能有害。</p>
@@ -450,11 +461,15 @@ obs = robot.observe()                      <span class="c"># 反馈闭环：新�
 
 <section>
   <h2>13. 全文总结：problem → method → experiment → takeaway</h2>
+  <p><b>原文：</b>“Astra shows strengths in navigation and task-oriented manipulation, correcting targets and contact conditions while cooperating with learned policies; pretrained whole-body controllers also support humanoid loco-manipulation. However, direct in-hand control and dense-reference locomotion remain unreliable, and policy assistance can fail on tasks that the standalone policy solves. These findings expose a gap between generating useful action decisions and reliably producing and verifying their physical effects.”</p>
+  <p><b>译文：</b>Astra 在导航与任务导向的操作上表现强，能在与学习策略协作时纠正目标与接触条件；预训练全身控制器也支撑了人形 loco-manipulation。但直接手内控制与密集参考运动仍不可靠，而且策略辅助会在单干策略本就能解决的任务上失败。这些发现揭示出“产生有用的动作决策”与“可靠地产生并验证其物理效果”之间的鸿沟。</p>
+  <p><b>原文：</b>“These findings challenge the view that tactile manipulation is intrinsically reserved for specialist policies.”（第二篇结论）</p>
+  <p><b>译文：</b>这些发现挑战了“触觉操作天然属于专用策略”的观点。</p>
   <table>
     <tr><th>环节</th><th>内容</th></tr>
     <tr><td>Problem</td><td>通用大模型开始能输出数值动作后，“任务成功率”不再能说明它到底承担了哪些控制责任、哪些能力其实来自接口与控制器、反馈如何把这些串起来。需要一个跨六域、同时记录成功与失败的评测，并单独计量 token 与延迟。</td></tr>
     <tr><td>Method</td><td>把用法拆成 <b>Direct</b>（Astra 出命令 + 解析式控制）与 <b>Hybrid</b>（Astra 审阅/改写学习策略的提案，或给冻结 WBC 提供参考）；固定模型权重，只允许研究者改提示/接口/WBC 设置，并把“固定配置评测”与“开发试验”分开报告。视触觉那篇进一步把触觉 RGB 直接塞进视觉接口，用演示块+在线记忆做少样本闭环。</td></tr>
-    <tr><td>Experiment</td><td>六域：RoboDojo 48%（vs Direct 26%）、RoboLab 98%/92%、灵巧 61.6 分 / DexJoCo 5-10、RoboCasa 38.7%、导航 RxR 92% / HM3D 82%（SPL 43.69）、locomotion 0/5、HumanoidBench 13/30 超基线（6 个达阈值）。成本：RoboDojo 624.8M/1132.3M token、locomotion 250×39.86s。视触觉：93.8%/81.8%（纯视觉 76.3%/80.6%），335.97M token / ¥7,505。</td></tr>
+    <tr><td>Experiment</td><td>六域：RoboDojo 48%（vs Direct 26%）、RoboLab 98%/92%、灵巧 61.6 分 / DexJoCo 5/10、RoboCasa 38.7%、导航 RxR 92% / HM3D 82%（SPL 43.69）、locomotion 0/5、HumanoidBench 13/30 超基线（6 个达阈值）。成本：RoboDojo 624.8M/1132.3M token、locomotion 250×39.86s。视触觉：93.8%/81.8%（纯视觉 76.3%/80.6%），335.97M token / ¥7,505。</td></tr>
     <tr><td>Takeaway</td><td><b>①</b> Astra 是可靠的“任务级决策器”，不是可靠的“物理控制器”；<b>②</b> 增益来自“在正确的地方做少量修正”（14.4% / 11.98% / 26.4% 的步数），而不是替代策略；<b>③</b> 协同是否值得，取决于策略先验与任务是否匹配（RoboDojo 涨、RoboLab 掉、RoboCasa 只在 seen 上涨）；<b>④</b> 触觉可以走视觉接口，但收益由相机配置决定；<b>⑤</b> 延迟与 token 是结构约束，做系统设计时应当作一等公民。</td></tr>
   </table>
   <p class="foot">参考：<a href="https://arxiv.org/abs/2609.38537">arXiv:2609.38537</a> ｜ <a href="https://arxiv.org/abs/2610.26846">arXiv:2610.26846</a> ｜ 代码 <a href="https://github.com/ccyydd/TacTalent">TacTalent</a> ｜ 返回 <a href="index.html">wiki 索引</a> ｜ <a href="../s2-s1-s0-stack/">S2→S1→S0 指南</a></p>
