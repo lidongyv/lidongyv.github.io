@@ -587,6 +587,32 @@ uv run python gr00t/experiment/launch_finetune.py \
 <span class="c"># 部署：PolicyServer + SONIC 推理</span>
 uv run python gr00t/eval/run_gr00t_server.py --model-path ckpt --port 5550
 python gear_sonic/scripts/launch_inference.py --policy-host <ip> --policy-port 5550</code></pre>
+
+  <h3>12.6 N1.7 源码配置逐项（`gr00t/configs/model/gr00t_n1d7.py`）</h3>
+  <table>
+    <tr><th>字段</th><th>值</th><th>含义</th></tr>
+    <tr><td>`model_name`</td><td>`nvidia/Cosmos-Reason2-2B`（Qwen3-VL 架构）</td><td>N1.7 起用 Cosmos-Reason2 替代 Eagle 骨干</td></tr>
+    <tr><td>`backbone_embedding_dim`</td><td><b>2048</b></td><td>VLM 隐维，投影到动作头</td></tr>
+    <tr><td>`select_layer`</td><td><b>12</b></td><td>取第 12 层特征（同 N1 做法）</td></tr>
+    <tr><td>`tune_llm` / `tune_visual`</td><td>False / False</td><td>默认冻结语言与视觉塔</td></tr>
+    <tr><td>`tune_projector` / `tune_diffusion_model`</td><td>True / True</td><td>只训投影层与 DiT 动作头</td></tr>
+    <tr><td>`max_state_dim` / `max_action_dim`</td><td><b>132 / 132</b></td><td>跨本体 padding 上界（按 embodiment 掩码）</td></tr>
+    <tr><td>`action_horizon`</td><td><b>40</b></td><td>动作块长度（N1 是 16）</td></tr>
+    <tr><td>`hidden_size` / `input_embedding_dim`</td><td>1024 / 1536</td><td>DiT 隐维 / 输入投影维</td></tr>
+    <tr><td>`state_history_length`</td><td>1</td><td>状态历史 1 帧</td></tr>
+    <tr><td>`state_dropout_prob`</td><td><b>0.8</b></td><td>强状态 dropout，逼模型用视觉</td></tr>
+    <tr><td>`use_percentiles` / `use_relative_action`</td><td>True / False</td><td>q01/q99 归一化；默认绝对动作</td></tr>
+    <tr><td>DiT</td><td>16 层、32 头、head_dim 48、ada_norm、dropout 0.2、interleave self-attn、`attend_text_every_n_blocks=2`</td><td>AlternateVLDiT（VL token 与动作 token 交替）</td></tr>
+    <tr><td>Flow matching</td><td><b>4</b> 步推理；Beta(1.5,1)；s=0.999；1000 buckets</td><td>与 N1 相同配方</td></tr>
+    <tr><td>`max_num_embodiments`</td><td>32</td><td>最多 32 个本体条件</td></tr>
+  </table>
+  <h3>12.7 微调默认值（`FinetuneConfig`）</h3>
+  <ul>
+    <li>全局 batch <b>64</b>、LR <b>1e-4</b>、weight decay 1e-5、warmup 0.05、默认 <b>10000 步</b>（官方 N1.7 文档示例用 20000 步，可改）。</li>
+    <li>`episode_sampling_rate=0.1`、fast loader（按样本读帧 + shuffle buffer）、每 1000 步存 checkpoint（最多 5 个）。</li>
+    <li>`strict_vl_padding_mask` / `strict_action_padding_mask`：默认继承 checkpoint（旧版权重训练时 padding 可见）；开启后 TensorRT 路径拒绝该 checkpoint，必须用 PyTorch 动作头。</li>
+  </ul>
+  <div class="ok"><b>与 N1 的关键差异</b>：N1 = Eagle-2 + H=16 + 2.2B；N1.7 = Cosmos-Reason2-2B + <b>H=40</b> + 132 维跨本体 padding + 状态 dropout 0.8；动作块变长意味着同样控制频率下单次推理覆盖更久（降低推理频率需求）。</div>
 </section>
 
 <section id="helix">
@@ -607,6 +633,16 @@ z = s2(image, state, instruction); shared_latent.write(z)
 x = vision_s1(image) + project(shared_latent.read())
 a = s1(x)                      <span class="c"># 35-DoF + 完成度</span>
 robot.set_targets(a); sleep(5ms)</code></pre>
+
+  <h3>13.2 可复现要点 vs 未公开项（Helix 无开源代码）</h3>
+  <table>
+    <tr><th>可复现（博客明确给出）</th><th>未公开（不要臆造）</th></tr>
+    <tr><td>7B VLM（7–9Hz）+ 80M S1（200Hz）；35-DoF 上半身控制；单 latent 向量接口；梯度经 latent 回传</td><td>VLM 的具体开源型号、S1 的层数/隐藏维、latent 维度</td></tr>
+    <tr><td>约 500h 遥操作数据；自动标注 VLM 生成 hindsight 指令；训练物品排除评测</td><td>数据采集频率、每任务示教条数、数据清洗规则</td></tr>
+    <tr><td>单阶段端到端回归；训练时给 S1/S2 输入加时间偏移（校准部署延迟）</td><td>损失权重、训练步数/算力、优化器细节</td></tr>
+    <tr><td>每机器人双低功耗板载 GPU；S2 异步后台、S1 实时进程</td><td>GPU 型号/功耗、S2 到 S1 的共享内存延迟、控制周期抖动</td></tr>
+  </table>
+  <div class="warn">复现建议：把「时间偏移 = 部署推理延迟」当成第一优先级——这是 Helix 与普通双系统最大的工程差别；latent 维度可先用 256–1024 试。</div>
 </section>
 
 <section id="pd">
@@ -713,7 +749,7 @@ apply(u[0]); shift(); repeat</code></pre>
   <ul>
     <li><b>ASTRA</b>：<a href="https://arxiv.org/abs/2609.38537">arXiv:2609.38537</a>（六域评测）｜<a href="https://arxiv.org/abs/2610.26846">arXiv:2610.26846</a>（视触觉）</li>
     <li>SONIC（人形全身控制，50Hz，64 维 token）：<a href="https://arxiv.org/abs/2511.07820">arXiv:2511.07820</a>；<a href="https://nvlabs.github.io/GR00T-WholeBodyControl/">代码/文档</a>；配置：`sonic_release.yaml`、`all_mlp_v1.yaml`、`ppo_im_phc.yaml`</li>
-    <li>GR00T N1.5/N1.7（VLA 微调与部署）：<a href="https://arxiv.org/abs/2503.14734">N1</a>；<a href="https://research.nvidia.com/labs/gear/gr00t-n1_5/">N1.5 官方页</a>；<a href="https://nvlabs.github.io/GR00T-WholeBodyControl/tutorials/vla_workflow.html">VLA workflow</a></li>
+    <li>GR00T N1.5/N1.7（VLA 微调与部署）：<a href="https://arxiv.org/abs/2503.14734">N1</a>；<a href="https://research.nvidia.com/labs/gear/gr00t-n1_5/">N1.5 官方页</a>；<a href="https://nvlabs.github.io/GR00T-WholeBodyControl/tutorials/vla_workflow.html">VLA workflow</a>；源码 <a href="https://github.com/NVIDIA/Isaac-GR00T">Isaac-GR00T</a>（`gr00t/configs/model/gr00t_n1d7.py`、`FinetuneConfig`）</li>
     <li>Helix（双系统，200Hz S1）：<a href="https://www.figure.ai/news/helix">Figure 博客</a></li>
     <li>π0 / π0.5（VLM + flow matching 动作专家）：<a href="https://arxiv.org/abs/2410.24164">π0 arXiv:2410.24164</a>；<a href="https://arxiv.org/abs/2504.16054">π0.5 arXiv:2504.16054</a></li>
     <li>GR00T 2（WAM + agent S2 + SONIC S1）：<a href="https://research.nvidia.com/labs/gear/gr00t-2/">官方页</a></li>
