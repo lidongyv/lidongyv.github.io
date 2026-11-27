@@ -263,25 +263,36 @@ def corrective_reflow(vpm, rollouts, rewards, M, t):
 loss = ca_nft_loss(...) + lambda_cr * corrective_reflow(...) \
        + beta_kl * KL(gen, vidar_ref)</code></pre>
 <h3 id="2-5-worldvln-自回归-wam-的段级-grpo">2.5 WorldVLN：自回归 WAM 的段级 GRPO</h3>
-<p><strong>代码解读</strong></p>
-<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>段末用真实观测替换模型想象的潜状态，防止长程想象误差累积（世界模型只有短程可信）。</td></tr><tr><td>为什么这么做</td><td>导航任务奖励稀疏且长程；拆成段、每段组内比较，能把「哪一段走得更好」变成可学信号。</td></tr><tr><td>方法出处</td><td>论文 §4.2–4.3（Eq.9–13）；<strong>无官方代码，依论文重建</strong>；段级 GRPO 谱系来自 GRPO 的 segment-level 变体。</td></tr><tr><td>优势与代价</td><td>优势：真观测回灌显著缓解漂移；代价：需要在线模拟器与真实观测流同步。</td></tr></tbody></table>
-<pre><code class="language-python">def segment_rollout(model, env, goal, gamma):
-    &quot;&quot;&quot;物理：走一段，段末用真观测替换想象潜（真观测回灌）。&quot;&quot;&quot;
-    seg, seg_obs = [], env.reset()
-    for j in range(J):
-        a = model.act(seg_obs); seg.append(a)
-        obs = env.step(a)
-        seg_obs = obs if env.is_real else model.predict(obs)   # 回灌
-    return seg
-
-def worldvln_step(model, seg, goal, gamma):
-    &quot;&quot;&quot;物理：轨迹像专家 + 终点离目标近 + 别偏离参考策略，按 γ^{j-1} 衰减。&quot;&quot;&quot;
-    r = sum(gamma**(j-1) * (lam_traj * r_traj(seg[j], goal)
-                            + lam_task * r_task(seg[j], goal)
-                            + lam_ref * log_ref(seg[j]))
-            for j in range(1, J+1))                 # Eq.(9-12)
-    A = (r - mean_group(r)) / (std_group(r) + 1e-8)
-    model.update(clipped_surrogate(A, ratio))        # Eq.(13)</code></pre>
+<p><strong>输入 / 输出</strong>：输入=在线模拟器、真实观测流、目标（goal）、同一 goal 下的多段 rollout；输出=自回归 WAM 的策略梯度。 <strong>代码解读</strong></p>
+<table><thead><tr><th>项</th><th>内容</th></tr></thead><tbody><tr><td>物理意义</td><td>段末用真实观测替换模型想象的潜状态，防止长程想象误差累积（世界模型只有短程可信）。</td></tr><tr><td>为什么这么做</td><td>导航奖励稀疏且长程；拆成段、每段组内比较，能把「哪一段走得更好」变成可学信号。</td></tr><tr><td>方法出处</td><td>论文 §4.2–4.3（Eq.9–13）；<strong>无官方代码，依论文重建</strong>；段级 GRPO 谱系来自 GRPO 的 segment-level 变体。</td></tr><tr><td>优势与代价</td><td>优势：真观测回灌显著缓解漂移；代价：需要在线模拟器与真实观测流同步，λ/G/γ 数值未给。</td></tr></tbody></table>
+<h4 id="奖励-r_j-怎么算-eq-9-12-三项各管什么">奖励 <code>r_j</code> 怎么算（Eq.9–12）：三项各管什么</h4>
+<table><thead><tr><th>项</th><th>公式（论文 §4.2）</th><th>物理意义</th><th>少了它会怎样</th></tr></thead><tbody><tr><td><code>r_traj</code></td><td><code>1/(1+‖a−a*‖)</code></td><td><strong>轨迹项</strong>：预测的动作/路点与专家动作 <code>a*</code> 的距离；越像越高</td><td>只学「到终点」，可能学会绕路/危险捷径</td></tr><tr><td><code>r_task</code></td><td><code>1/(1+终点距目标)</code></td><td><strong>任务项</strong>：段末位置离目标越近越高</td><td>只学「像专家」，换目标就失效</td></tr><tr><td><code>r_ref</code></td><td>`log π_ref(a</td><td>s)`</td><td><strong>参考项</strong>：参考策略（SFT/预训练策略）下该动作的对数概率</td><td>策略漂到参考分布外，泛化崩（相当于 KL 约束的奖励版）</td></tr></tbody></table>
+<p>合成方式（Eq.12）：</p>
+<p><code>r_j = γ^{j−1} · (λ_traj·r_traj + λ_task·r_task + λ_ref·r_ref)</code></p>
+<ul><li><code>j</code> 是段序号（第 1 段最早）；<code>γ^{j−1}</code> 让<strong>越早的段权重越大</strong>——后面的段还能纠，前面的段错了代价更高；</li><li><code>λ_*</code> 是三项权重，<strong>数值论文未给</strong>；距离用哪种范数（L1/L2）论文未逐字写明；</li><li><code>a*</code> 的来源：专家轨迹（或规划器给出的参考路径），具体定义见论文 §4.2。</li></ul>
+<h4 id="a-是什么-有什么用"><code>A</code> 是什么、有什么用</h4>
+<p><code>A_j = (r_j − mean_group(r)) / (std_group(r) + ε)</code></p>
+<ul><li><strong>是什么</strong>：段级<strong>组相对优势</strong>——把「这一段的奖励」减去「同一 goal 下所有段的平均奖励」，再除以标准差。GRPO 用它代替 critic/价值网络（PPO 需要学一个 value 基线，GRPO 用组均值当基线）。</li><li><strong>有什么用</strong>：给策略更新<strong>定方向与幅度</strong>：</li><li><code>A_j &gt; 0</code>：这一段比同组平均好 → 提高该段动作的概率；</li><li><code>A_j &lt; 0</code>：比平均差 → 降低概率；</li><li>幅度由「好多少（以标准差为单位）」决定，组内比较消除了任务难度带来的绝对分数差异（同一个 goal 的段才可比）。</li><li><strong>注意</strong>：<code>A</code> 不是价值、不是回报，是<strong>归一化后的相对优势</strong>；它只出现在策略损失里，不参与环境交互。</li></ul>
+<h4 id="代码-含逐行注释">代码（含逐行注释）</h4>
+<pre><code class="language-python">def worldvln_step(model, segs, goal, gamma, lam):
+    &quot;&quot;&quot;segs：同一 goal 下的 J 个段（每段含动作 a、段末状态 end）。
+    物理：组内比较「哪段走得更好」，用真观测回灌避免长程漂移。&quot;&quot;&quot;
+    R = []
+    for j, seg in enumerate(segs, start=1):
+        r_traj = 1.0 / (1.0 + dist(seg.a, seg.a_star))   # 像不像专家轨迹
+        r_task = 1.0 / (1.0 + dist(seg.end, goal))       # 离目标多近
+        r_ref  = logp_ref(seg.a, seg.s)                  # 参考策略锚定（KL 的奖励版）
+        R.append(gamma**(j-1) * (lam.traj*r_traj
+                                 + lam.task*r_task
+                                 + lam.ref*r_ref))       # Eq.(12)
+    R = torch.tensor(R)
+    A = (R - R.mean()) / (R.std() + 1e-8)                # 组相对优势（无 critic）
+    ratio = torch.exp(logp_new - logp_old)               # 段级重要性比
+    loss = -torch.min(ratio * A,
+                      torch.clamp(ratio, 1-0.2, 1+0.2) * A).mean()   # Eq.(13) 截断代理
+    model.update(loss)</code></pre>
+<h4 id="与-vampo-的-grpo-有什么不同">与 VAMPO 的 GRPO 有什么不同</h4>
+<table><thead><tr><th></th><th>VAMPO</th><th>WorldVLN</th></tr></thead><tbody><tr><td>优化对象</td><td>视频预测器（VPM）</td><td>自回归 WAM 的策略（整段动作）</td></tr><tr><td>比较单位</td><td>一次去噪轨迹（<code>G</code> 条想象）</td><td>一个段（<code>J</code> 段 rollout）</td></tr><tr><td>奖励</td><td>与专家未来的潜距离</td><td>轨迹 + 任务 + 参考三项加权</td></tr><tr><td>基线</td><td>组内均值（G 条）</td><td>组内均值（J 段）</td></tr><tr><td>特殊点</td><td>只首步 SDE 才有 log-prob</td><td>真观测回灌（防长程漂移）</td></tr></tbody></table>
 <hr>
 <h2 id="3-闭环训练-六类实现">3. 闭环训练：六类实现</h2>
 <h3 id="3-1-hilr-人机接力">3.1 HILR：人机接力</h3>
